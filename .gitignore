@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Next.js
+.next/
+out/
+.vercel
+
+# build / TypeScript
+*.tsbuildinfo
+dist/
+build/
+coverage/
+
+# env — never commit secrets (.env.example is the names-only template)
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# os / editors
+.DS_Store
+*.pem
+.idea/
+.vscode/
