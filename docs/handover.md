@@ -11,7 +11,7 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 - **What:** OUTZA is an Australian "what's on" events website. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary and ask an AI search for ideas. It also has community listings ("OUTZA Local"), a promoter dashboard with paid promotions, and a weekly email newsletter ("THE WEEKENDER").
 - **Brand:** "OUTZA." (orange dot) + tagline **"Get out. Get amongst it."** Fun, energetic, witty copy. Dark charcoal + orange (#f9652a / #e8553f).
 - **Live:** https://outza-outza.vercel.app. `https://outza-sepia.vercel.app` 308-redirects there. Set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
-- **Stack:** Next.js **16** (App Router, Turbopack), React, TypeScript, Tailwind 3.4 + shadcn/Radix UI, Prisma + PostgreSQL, Auth.js / next-auth **v5 beta** (credentials + Google), Stripe (currently **not configured → test mode**), Leaflet maps (Esri tiles), sharp for images, S3 for uploads. LLM calls use Vercel AI Gateway. Outbound email is turned off.
+- **Stack:** Next.js **16** (App Router, Turbopack), React, TypeScript, Tailwind 3.4 + shadcn/Radix UI, Prisma + PostgreSQL, Auth.js / next-auth **v5 beta** (credentials + Google), Stripe (currently **not configured → test mode**), Leaflet maps (Esri tiles), sharp for images, S3 for uploads. LLM calls use Vercel AI Gateway. Outbound email uses Resend when `RESEND_API_KEY` is set and stays off otherwise.
 - **Hosting:** Vercel. Deploys come from this git repository.
 - **Owner:** the site owner (Sydney, AEST/AEDT). The owner admin account is `owner@outza.app` (role ADMIN). The password is **not** in this document; ask the owner.
 
@@ -174,10 +174,10 @@ Rules: no mock data; never present LGA/state figures as suburb figures; SEIFA is
 `lib/images/*`: non-generative pipeline (Lanczos upscale + integrity checks). Never crop poster text (contain over a blurred extension). A failed enhancement never replaces a usable original. Admin `/admin/images`. **Never republish images without permission** (imports from Local sources carry no images).
 
 ### 4.14 Background jobs (`instrumentation.ts`)
-On the Node runtime: refresh every 2h (startup if stale), digests hourly, owner jobs hourly (`lib/owner-alerts.ts`: fortnightly ideas summary when there are new suggestions; health checks), Intelligence ingest hourly. `onRequestError` records uncaught server errors for the owner (production only, deduped). Email delivery is off, so those jobs record the fault and do not send. Cron endpoints accept header `x-cron-secret: $CRON_SECRET` or an ADMIN session: `/api/cron/digest`, `/api/cron/owner-alerts`, `/api/cron/promoter-reports`, `/api/cron/intel`.
+On the Node runtime: refresh every 2h (startup if stale), digests hourly, owner jobs hourly (`lib/owner-alerts.ts`: fortnightly ideas summary when there are new suggestions; health checks), Intelligence ingest hourly. `onRequestError` records uncaught server errors for the owner (production only, deduped) and emails them when Resend is configured. Cron endpoints accept header `x-cron-secret: $CRON_SECRET` or an ADMIN session: `/api/cron/digest`, `/api/cron/owner-alerts`, `/api/cron/promoter-reports`, `/api/cron/intel`.
 
 ### 4.15 Email + AI
-- Email: `lib/email.ts` `sendEmail` is turned off (`emailSendingEnabled()` is false). It does not call a mail API. Scheduled digests, weekly promoter reports, and owner mail skip the send. Do not point this at Abacus.
+- Email: `lib/email.ts` `sendEmail` POSTs to Resend (`https://api.resend.com/emails`) when `RESEND_API_KEY` is set. From is `RESEND_FROM_EMAIL`, or `Outza <noreply@outza.app>` when that is unset. The From domain must be verified in Resend. With no key, `emailSendingEnabled()` is false and `sendEmail` returns disabled without calling a mail API. Scheduled digests, weekly promoter reports, and owner mail follow that flag and keep their own skip rules (not due, no events, not production, and so on). Do not point this at Abacus.
 - LLM: `lib/llm.ts` calls Vercel AI Gateway with the `ai` package (`generateText` + `Output.json()`). On Vercel the deployment's OIDC token authenticates the request. Locally set `AI_GATEWAY_API_KEY`. Model id is `AI_GATEWAY_MODEL`, or `openai/gpt-5.4-mini` when that is unset. Used by ai-search, local moderation, flyer/page extract, newsletter copy, and the Destination NSW PDF extract. PDFs go to the model as file parts; don't add PDF-parsing libraries.
 
 ---
@@ -197,6 +197,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 **Environment variables (names only; the owner holds values):**
 - Set today: `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TICKETMASTER_API_KEY`, `OZTIX_ALGOLIA_KEY`, `AWS_PROFILE`, `AWS_REGION`, `AWS_BUCKET_NAME`, `AWS_FOLDER_PREFIX`.
 - AI Gateway: `AI_GATEWAY_API_KEY` for local/non-Vercel calls. Vercel deploys use `VERCEL_OIDC_TOKEN`. Optional `AI_GATEWAY_MODEL` (a `provider/model` id). There is no `ABACUSAI_API_KEY` or `WEB_APP_ID`.
+- Email: `RESEND_API_KEY` turns sending on. Optional `RESEND_FROM_EMAIL` (default `Outza <noreply@outza.app>`). The From domain must be verified in Resend.
 - Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (→ cron endpoints only work for ADMIN sessions), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars, `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
 - `NEXT_PUBLIC_SITE_URL` is the public origin override. Do not set it to an Abacus host.
 
