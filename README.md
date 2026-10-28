@@ -32,6 +32,7 @@ You need:
 cp .env.example .env
 corepack enable
 corepack prepare yarn@4.10.3 --activate
+export YARN_GLOBAL_FOLDER="${YARN_GLOBAL_FOLDER:-$HOME/.yarn/berry}"
 yarn install
 yarn prisma generate
 yarn dev
@@ -47,7 +48,7 @@ yarn prisma db push
 
 Use a local `DATABASE_URL`. Preview and production share one database, so a casual local session must stay off that URL. Schema changes have to stay additive. Do not pass `--accept-data-loss` or `--force-reset`.
 
-`.yarnrc.yml` is the Abacus Yarn config. It stores the package cache under `/opt/hostedapp/node/yarn/global`. If a local install cannot write that path, override it for the session with `YARN_GLOBAL_FOLDER` (for example `YARN_GLOBAL_FOLDER="$HOME/.yarn/berry" yarn install`) and leave the committed file unchanged.
+`.yarnrc.yml` is the Abacus Yarn config and stays as it is. It stores the package cache under `/opt/hostedapp/node/yarn/global`, which a normal machine cannot create. `YARN_GLOBAL_FOLDER` points that cache at a writable directory for the session and does not change the committed file.
 
 `scripts/seed.ts` upserts an admin user and will not run unless `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are set in the environment. Those names are intentionally absent from `.env.example`. Do not commit them, and do not run the seed against the shared database.
 
