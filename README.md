@@ -4,7 +4,7 @@ OUTZA is an Australian "what's on" events site. It pulls public events from lawf
 
 Brand lockup: **OUTZA.** (orange dot). Tagline: **Get out. Get amongst it.**
 
-Live site: [https://outza.abacusai.app](https://outza.abacusai.app)
+Live site: [https://outza-outza.vercel.app](https://outza-outza.vercel.app). `https://outza-sepia.vercel.app` is a legacy Vercel alias and 308-redirects to that host. Set `NEXT_PUBLIC_SITE_URL` only for a custom domain that replaces it.
 
 Read [docs/handover.md](docs/handover.md) before changing the product. It covers features, owner rules, environment names, and the open to-do list. The app in this repository is the latest preview source, promoted from `nextjs_space/` to the repository root.
 

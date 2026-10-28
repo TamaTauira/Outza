@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getEventDetail } from '@/lib/event-detail'
 import { cityDef } from '@/lib/cities'
 import { eventPath, idFromEventParam, isPastEvent as isPast } from '@/lib/seo'
-import { eventImageUrl, eventJsonLd, jsonLdString, requestOrigin } from '@/lib/seo-server'
+import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
 import { EventDetailClient } from './_components/event-detail-client'
 import { classifyReferral, recordReferral } from '@/lib/referrals'
@@ -87,7 +87,7 @@ export default async function EventPage({ params, searchParams }: Props) {
     permanentRedirect(sp.size ? `${canonical}?${sp}` : canonical)
   }
 
-  const origin = await requestOrigin()
+  const origin = siteUrl()
   const ev = data.event
   const ld = !ev.duplicateOfId ? eventJsonLd(ev, origin) : null
   const initial = JSON.parse(JSON.stringify(data))
