@@ -1,8 +1,9 @@
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
-import { classifyCategory, checkLGBTI, checkFree, guessSuburb } from '@/lib/categories'
+import { classifyCategory, checkLGBTI, guessSuburb } from '@/lib/categories'
 import { DEFAULT_CITY, suburbFromAddress } from '@/lib/cities'
-import { isSameEvent, normalizeTitle, normalizeVenue, parsePriceRange } from '@/lib/quality'
+import { isSameEvent, normalizeTitle, normalizeVenue } from '@/lib/quality'
+import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
 
@@ -78,15 +79,16 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   }
   const { category, subTags } = classifyCategory(title, description, ev.genres ?? [])
   const isLGBTI = checkLGBTI(title, `${description} ${(ev.genres ?? []).join(' ')}`)
-  const isFree = Boolean(ev.isFree) || checkFree(ev.price)
-  const price = isFree ? 'Free' : ev.price ?? null
+  const parsedPrice = readPrice(ev.price, Boolean(ev.isFree))
+  const isFree = parsedPrice.isFree
+  const price = parsedPrice.price
   const time = normTime(ev.time)
   const endTime = normTime(ev.endTime)
   const endDate = ev.endDate && ev.endDate !== ev.date ? new Date(`${ev.endDate}T00:00:00.000Z`) : null
   const dedupeHash = makeDedupeHash(title, ev.date, venueName)
   const city = ev.city ?? DEFAULT_CITY
   const status = ev.status && STATUS_UPDATABLE.has(ev.status) ? ev.status : 'SCHEDULED'
-  const range = parsePriceRange(isFree, price)
+  const range = { min: parsedPrice.min, max: parsedPrice.max }
   const now = new Date()
   const imageUrl = bestSourceUrl(ev.imageUrl)
 

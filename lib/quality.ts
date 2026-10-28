@@ -2,6 +2,7 @@
  * Event data-quality rules shared by ingestion, ranking and the UI.
  * Pure functions only, so the module is safe to import on the client.
  */
+import { readPrice } from '@/lib/price'
 
 export type EventStatus = 'SCHEDULED' | 'CANCELLED' | 'POSTPONED' | 'RESCHEDULED' | 'SOLD_OUT'
 export type Recurrence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'RECURRING'
@@ -120,13 +121,16 @@ export function isSameEvent(a: Listing, b: Listing): boolean {
   return ts >= 0.6 && vs >= 0.5
 }
 
-/** Parses "$25 - $80", "From $30", "Free" into a numeric range. */
+/** Parses "$25 - $80", "From $30", "Free", "$1,250" into a numeric range. Does not invent a number. */
 export function parsePriceRange(isFree: boolean, price?: string | null): { min: number | null; max: number | null } {
   if (isFree) return { min: 0, max: 0 }
-  if (!price) return { min: null, max: null }
-  const nums = (price.replace(/,/g, '').match(/\d+(?:\.\d+)?/g) ?? []).map(Number).filter(Number.isFinite)
-  if (!nums.length) return /free/i.test(price) ? { min: 0, max: 0 } : { min: null, max: null }
-  return { min: Math.min(...nums), max: Math.max(...nums) }
+  const r = readPrice(price)
+  return { min: r.min, max: r.max }
+}
+
+/** Promoters can edit events they created. Ingested listings stay as the source published them. */
+export function promoterCanEditEvent(source: string | null | undefined): boolean {
+  return source === 'promoter'
 }
 
 const money = (n: number) => (n === 0 ? 'Free' : `$${Number.isInteger(n) ? n : n.toFixed(2)}`)

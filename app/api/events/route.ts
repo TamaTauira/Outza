@@ -8,6 +8,7 @@ import { activeTierMap } from '@/lib/promotions'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { CITY_NAMES } from '@/lib/cities'
+import { knownCategories } from '@/lib/categories'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { confidence } from '@/lib/quality'
 
@@ -44,9 +45,8 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    if (category) {
-      where.category = category
-    }
+    const categories = knownCategories([...(category ? [category] : []), ...(sp.get('categories') ?? '').split(',')])
+    if (categories.length) where.category = { in: categories }
 
     if (subTag) {
       where.subTags = { has: subTag }

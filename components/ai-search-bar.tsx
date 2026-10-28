@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
-  lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; keywords: string[]; soon: boolean
+  lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; keywords: string[]; soon: boolean; city?: string
 }
 type When = '' | 'soon' | 'tonight' | 'weekend'
 type Budget = '' | 'free' | '30' | '75'
@@ -50,6 +50,7 @@ function understood(f: AiSearchFilters, today: string | null): string[] {
     f.category,
     f.isFree ? 'Free' : f.maxPrice ? `Under $${f.maxPrice}` : '',
     f.lgbtiq ? 'LGBTIQ+' : '',
+    f.city || '',
     f.suburb ? `Near ${f.suburb}` : '',
     ...f.keywords.map((k) => `“${k}”`),
   ].filter(Boolean)
@@ -319,7 +320,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/80">Nothing on Outza matches that yet{city ? ` in ${city}` : ''}. Try different dates, a wider area or fewer details.</p>
+            <p className="mt-3 text-sm text-white/80">Nothing on Outza matches that yet{(data.filters.city || city) ? ` in ${data.filters.city || city}` : ''}. Try different dates, a wider area or fewer details.</p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

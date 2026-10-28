@@ -104,7 +104,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
             <Section title="Who lives around your venue" Icon={Building2} sub="ABS Data by Region. Venue area = ABS SA2 containing the venue. Census figures are from 2021.">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[560px]">
-                  <thead><tr className="text-xs text-muted-foreground text-left"><th className="py-2 pr-3 font-medium">Measure</th><th className="py-2 px-3 font-medium text-right">Venue area</th><th className="py-2 px-3 font-medium text-right">Council</th><th className="py-2 px-3 font-medium text-right">Greater Sydney</th><th className="py-2 pl-3 font-medium text-right">Year</th></tr></thead>
+                  <thead><tr className="text-xs text-muted-foreground text-left"><th className="py-2 pr-3 font-medium">Measure</th><th className="py-2 px-3 font-medium text-right">Venue area</th><th className="py-2 px-3 font-medium text-right">Council</th><th className="py-2 px-3 font-medium text-right">{data.benchLabel}</th><th className="py-2 pl-3 font-medium text-right">Year</th></tr></thead>
                   <tbody>
                     {data.area.map((a) => (
                       <tr key={a.code} className="border-t border-border">
@@ -123,7 +123,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {data.ages.length > 0 && (
-              <Section title="Age mix of residents" Icon={Users} sub={`Share of residents, venue area vs Greater Sydney (ABS, ${data.agePeriod}).`}>
+              <Section title="Age mix of residents" Icon={Users} sub={`Share of residents, venue area vs ${data.benchLabel} (ABS, ${data.agePeriod}).`}>
                 <ul className="space-y-3">
                   {data.ages.map((a) => (
                     <li key={a.band} className="text-xs">
@@ -133,7 +133,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
                     </li>
                   ))}
                 </ul>
-                <p className="text-[11px] text-muted-foreground mt-3">Thick bar: venue area. Thin bar: Greater Sydney.</p>
+                <p className="text-[11px] text-muted-foreground mt-3">Thick bar: venue area. Thin bar: {data.benchLabel}.</p>
               </Section>
             )}
             {data.seifa.length > 0 && (
@@ -141,7 +141,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
                 <ul className="space-y-3">
                   {data.seifa.map((s) => (
                     <li key={s.index} className="text-sm">
-                      <div className="flex justify-between gap-3"><span>{s.label}</span><span className="tabular-nums font-semibold shrink-0">NSW decile {s.nswDecile ?? '—'}</span></div>
+                      <div className="flex justify-between gap-3"><span>{s.label}</span><span className="tabular-nums font-semibold shrink-0">{data.stateName} decile {s.nswDecile ?? '—'}</span></div>
                       <p className="text-[11px] text-muted-foreground">{s.meaning}</p>
                     </li>
                   ))}
@@ -150,9 +150,9 @@ export function IntelTab({ events }: { events: Ev[] }) {
             )}
           </div>
 
-          {data.status !== 'no_location' && data.status !== 'outside_nsw' && (
-            <Section title="Getting there" Icon={TrainFront} sub="Transport for NSW stations, wharves and stops within 2 km (straight line). Tap-ons are monthly Opal totals, not attendance.">
-              {data.stations.length ? (
+          {data.status !== 'no_location' && data.status !== 'outside_au' && (
+            <Section title="Getting there" Icon={TrainFront} sub={data.transportCovered ? 'Transport for NSW stations, wharves and stops within 2 km (straight line). Tap-ons are monthly Opal totals, not attendance.' : 'Opal tap-on counts are published for New South Wales only.'}>
+              {!data.transportCovered ? <p className="text-sm text-muted-foreground">This city is outside the Transport for NSW dataset, so station patronage is not shown. We don&apos;t substitute another city&apos;s taps.</p> : data.stations.length ? (
                 <ul className="divide-y divide-border">
                   {data.stations.map((s) => (
                     <li key={s.name} className="py-2.5 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -167,7 +167,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {data.spending.length > 0 && (
-              <Section title="NSW household spending" Icon={ShoppingBag} sub={`ABS Monthly Household Spending Indicator, ${period(data.spending[0].month)}. Statewide, current prices.`}>
+              <Section title={`${data.spendLabel} household spending`} Icon={ShoppingBag} sub={`ABS Monthly Household Spending Indicator, ${period(data.spending[0].month)}. Statewide, current prices.`}>
                 <table className="w-full text-sm">
                   <thead><tr className="text-xs text-muted-foreground text-left"><th className="py-1.5 font-medium">Category</th><th className="py-1.5 font-medium text-right">$m</th><th className="py-1.5 font-medium text-right">vs last year</th></tr></thead>
                   <tbody>{data.spending.map((s) => <tr key={s.category} className="border-t border-border"><td className="py-2">{s.label}</td><td className="py-2 text-right tabular-nums">{num(s.valueM)}</td><td className="py-2 text-right tabular-nums font-semibold">{signed(s.yoyPct)}</td></tr>)}</tbody>
@@ -175,7 +175,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
               </Section>
             )}
             {data.tourism.period && (
-              <Section title="Visitors to Sydney" Icon={Plane} sub={`Destination NSW, ${period(data.tourism.period)}. Sydney-wide survey estimates.`}>
+              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW, ${period(data.tourism.period)}. Survey estimates for that region, not this venue.`}>
                 <dl className="grid grid-cols-2 gap-4 text-sm">
                   <div><dt className="text-xs text-muted-foreground">All visitors</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.visitors)}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Visitor nights</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.nights)}</dd></div>

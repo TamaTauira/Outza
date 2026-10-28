@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes'
 import { FilterState } from '@/components/filter-panel'
 import { Loader2, LocateFixed, X } from 'lucide-react'
 import { eventPath } from '@/lib/seo'
-import { CATEGORIES } from '@/lib/categories'
+import { CATEGORIES, knownCategories } from '@/lib/categories'
 import { cityDef } from '@/lib/cities'
 import { formatPrice } from '@/lib/board'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
@@ -26,7 +26,7 @@ const TILE = MAP_TILE
 
 function popupHtml(e: any, tier?: string) {
   const date = new Date(e?.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
-  const p = formatPrice(e?.isFree, e?.price)
+  const p = formatPrice(e?.isFree, e?.price, e?.priceMin, e?.priceMax)
   return `<div class="se-pop">${tier ? `<span class="se-pop-tier se-${tier.toLowerCase()}">${esc(tier)}</span>` : ''}
     <div class="se-pop-title">${esc(e?.title)}</div>
     <div class="se-pop-meta">${esc(date)}${e?.time ? ` · ${esc(e.time)}` : ''}<br/>${esc(e?.venueName)}</div>
@@ -75,7 +75,9 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       params.set('limit', '300')
       if (city) params.set('city', city)
       if (searchQuery) params.set('search', searchQuery)
-      if (filters.category) params.set('category', filters.category)
+      const cats = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : [])
+      if (cats.length === 1) params.set('category', cats[0])
+      else if (cats.length > 1) params.set('categories', cats.join(','))
       if (filters.subTag) params.set('subTag', filters.subTag)
       if (filters.suburb) params.set('suburb', filters.suburb)
       if (filters.isFree) params.set('isFree', 'true')

@@ -1,5 +1,6 @@
 import { fetchHtml, saveEvent, sleep, toSydneyParts } from '@/lib/event-store'
 import { CITIES, type CityDef } from '@/lib/cities'
+import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
 
 function parseServerData(html: string): any | null {
   const marker = 'window.__SERVER_DATA__ = '
@@ -17,11 +18,10 @@ function parseServerData(html: string): any | null {
 function priceFromAvailability(t: any): string | null {
   if (!t) return null
   if (t.is_free) return 'Free'
-  const min = parseFloat(t.minimum_ticket_price?.major_value)
-  const max = parseFloat(t.maximum_ticket_price?.major_value)
-  if (!Number.isFinite(min)) return null
-  if (min === 0 && (!Number.isFinite(max) || max === 0)) return 'Free'
-  return Number.isFinite(max) && max > min ? `$${Math.round(min)} - $${Math.round(max)}` : `$${Math.round(min)}`
+  const min = moneyNumber(t.minimum_ticket_price ?? t.min_price)
+  const max = moneyNumber(t.maximum_ticket_price ?? t.max_price)
+  if (min == null && max == null) return readPrice(t.minimum_ticket_price?.display ?? t.minimum_ticket_price_display).price
+  return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price
 }
 
 /** Live ticket prices for a batch of Eventbrite event ids (best-effort). */

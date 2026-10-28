@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { FilterState } from '@/components/filter-panel'
+import { knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
 import { DAY_PARTS, dayLabel, toMinutes, type TimeWindow } from '@/lib/board'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
-import { Loader2, CalendarDays, Sparkles, ChevronRight, MousePointerClick } from 'lucide-react'
+import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBackState } from '@/lib/scroll-memory'
 
@@ -14,17 +15,15 @@ interface EventListProps {
   filters: FilterState
   searchQuery: string
   day: string | null
-  days: string[]
   today: string | null
   nowMinutes: number
   timeWindow: TimeWindow
   onWindowChange?: (w: TimeWindow) => void
   windowPinned?: boolean
-  onDayChange: (day: string) => void
   city?: string
 }
 
-export function EventList({ filters, searchQuery, day, days, today, nowMinutes, timeWindow, onWindowChange, windowPinned, onDayChange, city }: EventListProps) {
+export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city }: EventListProps) {
   const [events, setEvents] = useState<BoardEvent[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -47,7 +46,9 @@ export function EventList({ filters, searchQuery, day, days, today, nowMinutes, 
       const params = new URLSearchParams({ page: String(pageNum), limit: '300', dateFrom: d, dateTo: d })
       if (searchQuery) params.set('search', searchQuery)
       if (city) params.set('city', city)
-      if (filters.category) params.set('category', filters.category)
+      const cats = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : [])
+      if (cats.length === 1) params.set('category', cats[0])
+      else if (cats.length > 1) params.set('categories', cats.join(','))
       if (filters.subTag) params.set('subTag', filters.subTag)
       if (filters.suburb) params.set('suburb', filters.suburb)
       if (filters.isFree) params.set('isFree', 'true')
@@ -67,7 +68,7 @@ export function EventList({ filters, searchQuery, day, days, today, nowMinutes, 
         setLoadingMore(false)
       }
     }
-  }, [searchQuery, city, filters.category, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI])
+  }, [searchQuery, city, filters.category, filters.categories, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI])
 
   useEffect(() => {
     if (!day) return
@@ -132,36 +133,16 @@ export function EventList({ filters, searchQuery, day, days, today, nowMinutes, 
   return (
     <div>
       {/* Summary row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-2.5 border-b border-border">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span className="w-1.5 h-1.5 rounded-full bg-free" />
-          <span className="font-semibold text-foreground">{loading ? '…' : timed.length}</span> timed events
-          {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
-          {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
-            <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
-              <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
-              Show ended ({endedCount})
-            </label>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="relative flex items-center gap-2 text-sm">
-            <CalendarDays className="w-4 h-4 text-muted-foreground" />
-            <select
-              value={day ?? ''}
-              onChange={(e) => onDayChange(e.target.value)}
-              className="bg-transparent font-medium pr-1 focus:outline-none cursor-pointer"
-              aria-label="Choose a day"
-            >
-              {days.map((d) => (
-                <option key={d} value={d} className="bg-popover text-popover-foreground">{dayLabel(d, today)}</option>
-              ))}
-            </select>
+      <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
+        <span className="w-1.5 h-1.5 rounded-full bg-free" />
+        <span className="font-semibold text-foreground">{loading ? '…' : timed.length}</span> timed events
+        {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
+        {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
+          <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
+            Show ended ({endedCount})
           </label>
-          <span className="hidden md:inline-flex items-center gap-1 font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            <MousePointerClick className="w-3.5 h-3.5" /> Tap a row for the goods
-          </span>
-        </div>
+        )}
       </div>
 
       <BoardHeadings />

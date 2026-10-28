@@ -101,6 +101,17 @@ export function parseDnswHeadline(text: string): DnswHeadline | null {
   }
 }
 
+/**
+ * Australian geography for the cities Outza lists (every state and territory).
+ * ASGS codes start with the state digit 1–8; Australia-wide rows are kept as the national benchmark.
+ */
+export function isAuAsgs(regionType: string, code: string) {
+  if (!code) return false
+  if (regionType === 'AUS' || code === 'AUS') return true
+  if (regionType === 'STE') return /^[1-8]$/.test(code)
+  return /^[1-8]/.test(code)
+}
+
 /** Rule-based confidence for advisor insights: data recency, geographic precision and sample adequacy. */
 export function confidenceFor(o: { hasData: boolean; geoPrecise: boolean; ageYears: number; small?: boolean; proxy?: boolean }): 'high' | 'medium' | 'low' | 'insufficient' {
   if (!o.hasData) return 'insufficient'

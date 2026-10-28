@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { CampaignBuilder } from './campaign-builder'
 import { LocalAdsTab } from './local-ads-tab'
 import { EditEventPanel } from './edit-event-panel'
+import { promoterCanEditEvent, sourceLabel } from '@/lib/quality'
 import { AudienceCard } from './audience-card'
 import { IntelTab } from './intel-tab'
 
@@ -20,7 +21,7 @@ type Promo = { id: string; tier: string; days?: number | null; orderId?: string 
 type MyEvent = {
   id: string; title: string; date: string; city?: string; venueName: string; views?: number; ticketClicks?: number; promotions?: Promo[]; _count?: { savedBy: number; attendees: number }
   time?: string | null; endTime?: string | null; venueAddress?: string | null; price?: string | null; isFree?: boolean; ticketUrl?: string | null; imageUrl?: string | null; description?: string | null
-  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; organiserEditedAt?: string | null
+  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; organiserEditedAt?: string | null; source?: string | null
   referrals?: { source: string; count: number }[]
 }
 type Pass = { id: string; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
@@ -226,6 +227,56 @@ function ReportsCard({ account, onAccount }: { account: Account; onAccount: (a: 
   )
 }
 
+function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onPromote: (id?: string) => void; goEvents: () => void }) {
+  const cutoff = Date.now() - 86400000
+  const upcoming = events.filter((e) => new Date(e.date).getTime() >= cutoff)
+  const past = events.length - upcoming.length
+  const byCity = new Map<string, { views: number; clicks: number; n: number }>()
+  for (const e of events) {
+    const city = e.city || 'Unspecified'
+    const row = byCity.get(city) ?? { views: 0, clicks: 0, n: 0 }
+    row.views += e.views ?? 0
+    row.clicks += e.ticketClicks ?? 0
+    row.n += 1
+    byCity.set(city, row)
+  }
+  const cities = [...byCity.entries()].sort((a, b) => b[1].views - a[1].views)
+  const actions: { title: string; body: string; cta: string; go: () => void }[] = []
+  const unboosted = upcoming.find((e) => !e.promotions?.some((p) => isLive(p)))
+  if (unboosted) actions.push({ title: `Boost “${unboosted.title}”`, body: 'This upcoming listing has no live campaign. Views and clicks are counted once people open it.', cta: 'Promote', go: () => onPromote(unboosted.id) })
+  const incomplete = events.find((e) => promoterCanEditEvent(e.source) && new Date(e.date).getTime() >= cutoff && (!e.ticketUrl || (!e.isFree && !e.price) || !e.imageUrl))
+  if (incomplete) actions.push({ title: `Finish “${incomplete.title}”`, body: 'This is your own listing and it is missing a ticket link, a price, or an image.', cta: 'Open My events', go: goEvents })
+  if (!actions.length) actions.push({ title: 'Nothing waiting', body: 'Upcoming listings are on the board. Promote one if you want it higher up.', cta: 'See my events', go: goEvents })
+  return (
+    <div className="mt-6 grid lg:grid-cols-2 gap-4">
+      <div className="rounded-lg border border-border bg-background p-4">
+        <p className="font-semibold text-sm">Listings</p>
+        <p className="text-sm mt-2"><b className="tabular-nums">{upcoming.length}</b> upcoming · <b className="tabular-nums">{past}</b> past</p>
+        <table className="w-full text-xs mt-3">
+          <thead><tr className="text-muted-foreground text-left"><th className="py-1 font-medium">City</th><th className="py-1 font-medium text-right">Listings</th><th className="py-1 font-medium text-right">Views</th><th className="py-1 font-medium text-right">Clicks</th></tr></thead>
+          <tbody>
+            {cities.map(([city, row]) => (
+              <tr key={city} className="border-t border-border"><td className="py-1.5">{city}</td><td className="py-1.5 text-right tabular-nums">{row.n}</td><td className="py-1.5 text-right tabular-nums">{row.views.toLocaleString('en-AU')}</td><td className="py-1.5 text-right tabular-nums">{row.clicks.toLocaleString('en-AU')}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="rounded-lg border border-border bg-background p-4">
+        <p className="font-semibold text-sm">Next</p>
+        <ul className="mt-2 space-y-3">
+          {actions.map((a) => (
+            <li key={a.title}>
+              <p className="text-sm font-medium">{a.title}</p>
+              <p className="text-xs text-muted-foreground">{a.body}</p>
+              <button type="button" onClick={a.go} className="mt-1 text-xs font-semibold text-primary hover:underline">{a.cta} →</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents, onAccount }: {
   stats: { live: number; views: number; clicks: number; fans: number; spend: number }; account: Account; events: MyEvent[]
   onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; goEvents: () => void; onAccount: (a: Partial<Account>) => void
@@ -260,6 +311,13 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
               </li>
             ))}
           </ol>
+          {!events.length && (
+            <div className="mt-6 rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">No listings on your dashboard yet</p>
+              <p className="mt-1">Create an event you can edit, claim one you organise, or add a local business ad. Views and clicks show up here once people open your listings.</p>
+            </div>
+          )}
+          {events.length > 0 && <ListingHealth events={events} onPromote={onPromote} goEvents={goEvents} />}
           {events.length > 0 && (
             <>
               <h3 className="font-semibold text-sm mt-6 mb-2">Your next events</h3>
@@ -346,7 +404,8 @@ function EventsTab({ events, pro, onPromote, reload }: { events: MyEvent[]; pro:
                       <td className="px-5 py-3 min-w-0">
                         <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>
                         <p className="text-xs text-muted-foreground">{fmt(ev.date)} · {ev.venueName}{ev.city ? ` · ${ev.city}` : ''}</p>
-                        {ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
+                        {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
+                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">From {sourceLabel(ev.source)} · details stay as published</p>}
                       </td>
                       <td className="px-3 py-3">
                         {past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (
@@ -361,14 +420,12 @@ function EventsTab({ events, pro, onPromote, reload }: { events: MyEvent[]; pro:
                       <td className="px-3 py-3 text-right tabular-nums">{ev._count?.savedBy ?? 0} / {ev._count?.attendees ?? 0}</td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button>
+                          {promoterCanEditEvent(ev.source) ? <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button> : <span className="text-[11px] text-muted-foreground">Not editable</span>}
                           {!past && <button onClick={() => onPromote(ev.id)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold">{liveTier ? 'Boost' : 'Promote'}</button>}
                         </div>
                       </td>
                     </tr>
-                    {editing === ev.id && (
-                      <tr><td colSpan={6} className="px-5 pb-4"><EditEventPanel event={ev} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} /></td></tr>
-                    )}
+                    {editing === ev.id && promoterCanEditEvent(ev.source) && <tr><td colSpan={6} className="px-5 pb-4"><EditEventPanel event={ev} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} /></td></tr>}
                     </Fragment>
                   )
                 })}

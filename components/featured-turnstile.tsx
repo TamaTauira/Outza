@@ -12,7 +12,7 @@ import type { ClientImage } from '@/lib/images/spec'
 
 interface FeaturedItem {
   id: string; title: string; date: string; time: string | null; venueName: string; city?: string
-  category: string; isFree: boolean; price: string | null; imageUrl?: string | null; imageAsset?: ClientImage | null; tier: string
+  category: string; isFree: boolean; price: string | null; priceMin?: number | null; priceMax?: number | null; imageUrl?: string | null; imageAsset?: ClientImage | null; tier: string
 }
 
 export function FeaturedTurnstile({ city }: { city: string }) {
@@ -55,7 +55,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const color = CATEGORIES.find((c) => c.name === it.category)?.color ?? '#f9652a'
   const t = tierDef(it.tier)
   const badge = it.tier === 'HOT' ? { label: 'HOT', bg: '#c2410c', fg: '#ffffff' } : { label: (t?.name ?? it.tier).toUpperCase(), bg: t?.color ?? '#C0C7D1', fg: '#000000' }
-  const price = formatPrice(it.isFree, it.price)
+  const price = formatPrice(it.isFree, it.price, it.priceMin, it.priceMax)
   const time = formatTime(it.time)
   const date = new Date(it.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
   return (
@@ -66,7 +66,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
         <span className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
           {it.tier === 'HOT' && <Flame className="w-2.5 h-2.5" />}{badge.label}
         </span>
-        <span className="absolute z-10 bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white font-mono text-xs">{price.value}</span>
+        <span className="absolute z-10 bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white font-mono text-xs">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
       </div>
       <div className="p-3">
         <p className="font-semibold text-sm truncate" title={it.title}>{it.title}</p>

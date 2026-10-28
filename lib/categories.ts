@@ -1,4 +1,5 @@
 import { suburbFromAddress } from '@/lib/cities'
+import { readPrice } from '@/lib/price'
 
 export interface CategoryDef {
   name: string
@@ -87,9 +88,29 @@ export function checkLGBTI(title: string, description: string): boolean {
 }
 
 export function checkFree(priceStr: string | null | undefined): boolean {
-  if (!priceStr) return false
-  const p = priceStr.toLowerCase().trim()
-  return p === 'free' || p === '$0' || p === '$0.00' || p === '0' || p.includes('free entry') || p.includes('no charge') || p.includes('complimentary')
+  return readPrice(priceStr).isFree
+}
+
+/** Category names the product actually lists, in a stable order, with junk dropped. */
+export function knownCategories(input: unknown): string[] {
+  const names = new Set(CATEGORIES.map((c) => c.name))
+  const list = Array.isArray(input) ? input : typeof input === 'string' && input ? [input] : []
+  const out: string[] = []
+  for (const raw of list) {
+    if (typeof raw !== 'string') continue
+    const name = raw.trim()
+    if (names.has(name) && !out.includes(name)) out.push(name)
+  }
+  return out
+}
+
+/** Multi-select category chips. A single pick keeps `category` so older filters still match; sub-tags only apply to that one type. */
+export function withCategories<T extends { category?: string; categories?: string[]; subTag?: string }>(f: T, categories: string[]): T {
+  const next = knownCategories(categories)
+  const single = next.length === 1 ? next[0] : ''
+  const prev = knownCategories(f.categories?.length ? f.categories : f.category ? [f.category] : [])
+  const keepSub = next.length === 1 && prev.length === 1 && prev[0] === next[0]
+  return { ...f, categories: next, category: single, subTag: keepSub ? (f.subTag ?? '') : '' }
 }
 
 export function guessSuburb(venueName: string, address: string): string | null {
