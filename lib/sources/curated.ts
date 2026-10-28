@@ -108,7 +108,8 @@ export const CURATED: Curated[] = [
     description: 'Relaxed Sunday market in shady Nightcliff Village: food, local musicians, clothing and handmade goods.', slots: [{ days: [0], start: '08:00', end: '14:00' }], isFree: true, genres: ['market'] },
 ]
 
-const DAYS_AHEAD = 42
+/** Recurring listings are materialised this far ahead (~15 months), so a full season and the next one stay on the board. */
+const DAYS_AHEAD = 457
 
 function inSeason(mmdd: string, s?: { from: string; to: string }): boolean {
   if (!s) return true
@@ -121,7 +122,7 @@ function addDays(ymd: string, n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-/** Generates the next six weeks of occurrences for every curated regular event. */
+/** Generates occurrences for every curated regular, through DAYS_AHEAD, skipping dates outside a season window. */
 export async function fetchCuratedEvents(): Promise<number> {
   let saved = 0
   for (const c of CURATED) {
