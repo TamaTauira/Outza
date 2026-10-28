@@ -10,6 +10,7 @@ import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { useSaved } from '@/lib/saved'
 import { CITY_NAMES, DEFAULT_CITY, cityDef } from '@/lib/cities'
+import { readCity, writeCity } from '@/lib/city-pref'
 import { LOCAL_CATEGORIES, LOCAL_SOURCES, fmtDay, fmtTime, localPath, localToBoard } from '@/lib/local-shared'
 import { BoardRow, BoardHeadings, GroupBar, getStatus } from '@/components/board-row'
 import { dayLabel } from '@/lib/board'
@@ -38,7 +39,9 @@ export function LocalClient() {
   const tab = (TABS.find((t) => t.key === params.get('tab'))?.key ?? 'browse') as (typeof TABS)[number]['key']
   const setTab = (t: string) => router.replace(t === 'browse' ? '/local' : `/local?tab=${t}`, { scroll: false })
 
-  const [city, setCity] = useState(DEFAULT_CITY)
+  const [city, setCityState] = useState(DEFAULT_CITY)
+  const setCity = (c: string) => { setCityState(c); writeCity(c) }
+  const [loadNote, setLoadNote] = useState<string | null>(null)
   const [category, setCategory] = useState('')
   const [when, setWhen] = useState('weekend')
   const [data, setData] = useState<{ items: Item[]; counts: Record<string, number> } | null>(null)
@@ -53,9 +56,26 @@ export function LocalClient() {
   }, [city])
 
   useEffect(() => {
+    const saved = readCity()
+    if (saved && CITY_NAMES.includes(saved)) setCityState(saved)
+  }, [])
+
+  useEffect(() => {
     if (tab !== 'browse') return
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), 8000)
     setData(null)
-    fetch(`/api/local?${new URLSearchParams({ city, category, when })}`).then((r) => r.json()).then(setData).catch((e) => { console.error(e); setData({ items: [], counts: {} }) })
+    setLoadNote(null)
+    fetch(`/api/local?${new URLSearchParams({ city, category, when })}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((d) => { setData(d?.items ? d : { items: [], counts: {} }); setLoadNote(null) })
+      .catch((e) => {
+        console.error(e)
+        setData({ items: [], counts: {} })
+        setLoadNote(e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.')
+      })
+      .finally(() => clearTimeout(timer))
+    return () => { clearTimeout(timer); ac.abort() }
   }, [tab, city, category, when])
 
   const loadMine = useCallback(() => {
@@ -76,7 +96,7 @@ export function LocalClient() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-clip">
       <Navbar savedCount={saved.length} />
       <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10">
         <header className="max-w-3xl">
@@ -85,7 +105,7 @@ export function LocalClient() {
           <p className="mt-3 text-muted-foreground sm:text-lg">Garage sales, warehouse clearances, markets and community happenings: the good stuff that never makes the big posters. Listing’s free.</p>
         </header>
 
-        <div className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border">
+        <div className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border max-w-full min-w-0">
           {TABS.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative px-4 py-3 text-sm whitespace-nowrap', tab === t.key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
               {t.label}{tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
@@ -131,7 +151,7 @@ export function LocalClient() {
                 <div className="p-8 text-center">
                   <Store className="w-8 h-8 mx-auto text-muted-foreground" />
                   <p className="mt-3 font-display text-lg font-bold">Nothing listed for {city} {WHEN.find((w) => w.key === when)?.label.toLowerCase()} yet.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Running a garage sale, clearance, market or community activity? Be the trailblazer.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{loadNote ?? 'Running a garage sale, clearance, market or community activity? Be the trailblazer.'}</p>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     <button onClick={() => setTab('submit')} className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" />List It Free</button>
                     <Link href={`/${citySlug(city)}/markets`} className="h-10 px-5 rounded-full bg-muted text-sm inline-flex items-center">Markets on the Board</Link>

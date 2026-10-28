@@ -20,6 +20,8 @@ import { ListingTrustActions } from '@/components/listing-trust-actions'
 import { ticketHref } from '@/lib/affiliate'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { FollowPromoterButton } from '@/components/follow-promoter-button'
+import { displaySuburb } from '@/lib/cities'
+import { placeLine } from '@/lib/place'
 
 export function EventDetailClient({ eventId, initial }: { eventId: string; initial?: { event: any; related: any[]; signedIn?: boolean } }) {
   const [event, setEvent] = useState<any>(initial?.event ?? null)
@@ -64,6 +66,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
     )
   }
 
+  const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
+  const where = placeLine({ ...event, suburb })
   const dateObj = new Date(event.date)
   const formattedDate = dateObj.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' })
   const catDef = CATEGORIES.find((c) => c.name === event?.category)
@@ -148,9 +152,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <MapPin className="w-5 h-5 text-primary" />
                     <div>
-                      <span className="font-medium text-foreground">{event?.venueName}</span>
-                      {event?.venueAddress && <p className="text-sm">{event.venueAddress}</p>}
-                      {event?.suburb && <p className="text-sm">{event.suburb}</p>}
+                      <span className="font-medium text-foreground">{where || event?.venueName}</span>
                     </div>
                   </div>
                 </div>

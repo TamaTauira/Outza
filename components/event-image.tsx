@@ -35,20 +35,24 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
 
   if (stage === 'variant' && m && hasVariants) {
     const widths = m.sizes[kind]!
+    const full = variantUrl(m, kind, widths[widths.length - 1], 'webp')
     return (
-      <picture>
-        <source type="image/avif" srcSet={srcSet(m, kind, 'avif') ?? undefined} sizes={sizes} />
-        <source type="image/webp" srcSet={srcSet(m, kind, 'webp') ?? undefined} sizes={sizes} />
-        <img
-          src={variantUrl(m, kind, widths[widths.length - 1], 'webp')}
-          alt={alt}
-          loading={loading}
-          decoding="async"
-          fetchPriority={priority ? 'high' : 'auto'}
-          className={cn('absolute inset-0 w-full h-full object-cover', className)}
-          onError={() => setStage(src ? 'source' : 'none')}
-        />
-      </picture>
+      <>
+        <img src={full} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />
+        <picture>
+          <source type="image/avif" srcSet={srcSet(m, kind, 'avif') ?? undefined} sizes={sizes} />
+          <source type="image/webp" srcSet={srcSet(m, kind, 'webp') ?? undefined} sizes={sizes} />
+          <img
+            src={full}
+            alt={alt}
+            loading={loading}
+            decoding="async"
+            fetchPriority={priority ? 'high' : 'auto'}
+            className={cn('absolute inset-0 w-full h-full object-contain', className)}
+            onError={() => setStage(src ? 'source' : 'none')}
+          />
+        </picture>
+      </>
     )
   }
 

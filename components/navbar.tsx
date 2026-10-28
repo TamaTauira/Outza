@@ -43,16 +43,16 @@ export function Navbar({ savedCount }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 border-b border-border">
+      <div className="max-w-[1280px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1 min-w-0 border-b border-border">
         <a href="/" className="flex items-center gap-2.5 shrink-0" aria-label="Outza home">
           <OutzaLogo size="md" labelClassName="hidden sm:flex" />
         </a>
 
-        <nav className="flex items-stretch h-full">
+        <nav className="flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
-                <Link key="local" href="/local" className={cn('relative flex items-center gap-2 px-3 sm:px-4 text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="OUTZA Local">
+                <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="OUTZA Local">
                   <Store className="w-4 h-4" /><span className="hidden sm:inline">Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
@@ -66,29 +66,29 @@ export function Navbar({ savedCount }: NavbarProps) {
                 aria-current={view === key ? 'page' : undefined}
                 aria-label={key === 'saved' ? `Saved (${mounted ? savedCount : 0})` : label}
                 className={cn(
-                  'relative flex items-center gap-2 px-3 sm:px-4 text-sm transition-colors',
+                  'relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm transition-colors',
                   view === key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{label}</span>
                 {key === 'saved' && (
-                  <span className="min-w-[20px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{mounted ? savedCount : 0}</span>
+                  <span className="hidden sm:inline min-w-[20px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{mounted ? savedCount : 0}</span>
                 )}
                 {view === key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
               </Link>
             )
           })}
-          <Link href="/itinerary" className={cn('relative flex items-center gap-2 px-3 sm:px-4 text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
+          <Link href="/itinerary" className={cn('relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
             <CalendarRange className="w-4 h-4" /><span className="hidden md:inline">Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
           <button
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            className="w-10 h-10 shrink-0 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             aria-label="Toggle light or dark mode"
           >
             {mounted && resolvedTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
@@ -115,8 +115,9 @@ export function Navbar({ savedCount }: NavbarProps) {
           ) : (
             <>
               <Link href="/promoters" className="hidden lg:inline-flex h-10 items-center gap-1.5 px-3 text-sm text-muted-foreground hover:text-foreground"><Megaphone className="w-4 h-4" />For promoters</Link>
+              <Link href="/login" className="inline-flex md:hidden h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:text-foreground" aria-label="Sign in"><User className="w-4 h-4" /></Link>
               <Link href="/login" className="hidden md:inline-flex h-10 items-center px-3 text-sm text-muted-foreground hover:text-foreground">Sign In</Link>
-              <Link href="/signup" className="inline-flex h-10 items-center gap-1.5 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
+              <Link href="/signup" aria-label="Sign up" className="inline-flex h-10 w-10 sm:w-auto shrink-0 items-center justify-center gap-1.5 sm:px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
                 <User className="w-4 h-4" /><span className="hidden sm:inline">Sign Up</span>
               </Link>
             </>

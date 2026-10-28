@@ -21,9 +21,12 @@ interface FilterPanelProps {
   onChange: (filters: FilterState) => void
   onClose?: () => void
   isMobile?: boolean
+  /** Board time windows, so the drawer has the same Tonight / Soon choices as the board. */
+  when?: '' | 'tonight' | 'soon' | 'today'
+  onWhen?: (when: 'tonight' | 'soon' | 'today') => void
 }
 
-export function FilterPanel({ filters, onChange, onClose, isMobile }: FilterPanelProps) {
+export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', onWhen }: FilterPanelProps) {
   const [expandedCat, setExpandedCat] = useState<string>(filters.category)
 
   const update = (partial: Partial<FilterState>) => {
@@ -93,6 +96,18 @@ export function FilterPanel({ filters, onChange, onClose, isMobile }: FilterPane
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">When</p>
         <div className="flex flex-wrap gap-1.5">
+          {onWhen && ([{ key: 'tonight' as const, label: 'Tonight' }, { key: 'soon' as const, label: 'Soon' }, { key: 'today' as const, label: 'Today' }]).map((p) => (
+            <button
+              key={p.key}
+              onClick={() => onWhen(p.key)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                when === p.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
           {[{ key: 'weekend', label: 'This Weekend' }, { key: 'week', label: 'This Week' }, { key: 'month', label: 'This Month' }].map((p) => (
             <button
               key={p.key}

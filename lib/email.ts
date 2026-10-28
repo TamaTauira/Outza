@@ -42,6 +42,4 @@ export function escapeHtml(s: string | null | undefined) {
   return (s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 }
 
-export function siteUrl() {
-  return (process.env.NEXTAUTH_URL || 'https://sydneyupcoming.abacusai.app').replace(/\/$/, '')
-}
+export { siteUrl } from '@/lib/site-url'

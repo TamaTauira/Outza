@@ -6,6 +6,7 @@ import { Accessibility, Baby, Bus, Building2, ExternalLink, RefreshCw, Share2, M
 import { toast } from 'sonner'
 import { checkedAgo } from '@/lib/board'
 import { sourceLabel } from '@/lib/quality'
+import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
 import { VenueMap } from '@/components/venue-map'
@@ -73,7 +74,7 @@ export function VerifiedLine({ event }: { event: any }) {
   }
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-sm text-muted-foreground">
-      {checked && <span className="inline-flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" />Last verified {now ? checkedAgo(checked, now) : '…'} from {sourceLabel(event.source)}</span>}
+      {checked && <span className="inline-flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" />{now && checkedAgo(checked, now) ? `Last verified ${checkedAgo(checked, now)}` : 'Last verified'} from {sourceLabel(event.source)}</span>}
       {original && <a href={original} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">View original listing <ExternalLink className="w-3.5 h-3.5" /></a>}
       <button onClick={share} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 hover:bg-muted text-foreground"><Share2 className="w-3.5 h-3.5" />Share</button>
     </div>
@@ -92,7 +93,7 @@ const NotStated = ({ what }: { what: string }) => <p>The organiser hasn&apos;t l
 
 /** Map, getting there, organiser, accessibility and age details. */
 export function EventExtras({ event }: { event: any }) {
-  const place = [event.venueName, event.venueAddress, event.suburb, event.city].filter(Boolean).join(', ')
+  const place = placeLine(event)
   const precise = event.latitude != null && event.longitude != null && event.source !== 'promoter'
   const dest = precise ? `${event.latitude},${event.longitude}` : place
   const cat = CATEGORIES.find((c) => c.name === event.category)

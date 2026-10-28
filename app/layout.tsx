@@ -4,21 +4,29 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { Providers } from '@/components/providers'
-
-export const dynamic = 'force-dynamic'
+import { siteUrl } from '@/lib/site-url'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' })
 const jakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-display' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
+const theme = '#0c0f0e'
+
 export const metadata = {
-  metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
+  metadataBase: new URL(siteUrl()),
   title: 'Outza — Get out. Get amongst it.',
   description: 'Your city. Your events. Your next adventure. A board of gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save events, follow promoters and get email picks.',
+  applicationName: 'Outza',
+  manifest: '/manifest.webmanifest',
+  robots: { index: true, follow: true },
   icons: {
-    icon: '/outza-icon.svg',
-    shortcut: '/outza-icon.svg',
-    apple: '/outza-icon.svg',
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/outza-icon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
     title: 'Outza — Get out. Get amongst it.',
@@ -41,6 +49,15 @@ export const metadata = {
   },
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f6f4ee' },
+    { media: '(prefers-color-scheme: dark)', color: theme },
+  ],
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -48,25 +65,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en-AU" suppressHydrationWarning>
-      <head>
-        <script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
-        <link
-          rel="stylesheet"
-          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          crossOrigin=""
-        />
-        <link
-          rel="stylesheet"
-          href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-        />
-        <link
-          rel="stylesheet"
-          href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-        />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossOrigin="" defer></script>
-        <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" defer></script>
-      </head>
       <body className={`${dmSans.variable} ${jakartaSans.variable} ${jetbrainsMono.variable} font-sans`}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: 'Outza',
+          url: siteUrl(),
+          inLanguage: 'en-AU',
+          description: 'Events, gigs, markets and things to do across Australian cities.',
+        }).replace(/</g, '\\u003c') }} />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
