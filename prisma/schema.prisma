@@ -554,7 +554,7 @@ model LocalListing {
 model IntelSource {
   key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | google_bp
   enabled       Boolean   @default(true)
-  status        String    @default("never_run") // never_run | ok | unchanged | running | failed | needs_config
+  status        String    @default("never_run") // never_run | ok | unchanged | running | partial | failed | needs_config
   lastCheckedAt DateTime?
   lastSuccessAt DateTime?
   lastChangeAt  DateTime?
@@ -571,7 +571,7 @@ model IntelIngestJob {
   id          String    @id @default(cuid())
   source      String
   trigger     String    @default("schedule") // schedule | admin | cron | test
-  status      String    @default("running") // running | ok | unchanged | failed
+  status      String    @default("running") // running | ok | unchanged | partial | failed
   startedAt   DateTime  @default(now())
   endedAt     DateTime?
   rows        Int       @default(0)

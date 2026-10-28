@@ -24,7 +24,7 @@ export const INTEL_SOURCES: Record<SourceKey, SourceDef> = {
     licence: 'CC BY 4.0', attribution: 'Source: Australian Bureau of Statistics, Socio-Economic Indexes for Areas (SEIFA) 2021.',
     scheduleHours: 24 * 30, scheduleLabel: 'Checked monthly (SEIFA is released once per Census)',
     scope: 'SA2, suburbs and localities (SAL), postal areas (POA) and LGAs in every state and territory',
-    limitations: 'SEIFA ranks areas, not people. It summarises the area as a whole in 2021 and says nothing about any individual, a household’s spending or anyone’s willingness to pay.',
+    limitations: 'SEIFA ranks areas, not people. It summarises the area as a whole in 2021 and says nothing about any individual, a household’s spending or anyone’s willingness to pay. Preference order: suburb (SAL), then SA2. If the suburb has no SEIFA deciles, the SA2 indexes are used.',
   },
   abs_hsi: {
     key: 'abs_hsi', name: 'ABS Monthly Household Spending Indicator', publisher: 'Australian Bureau of Statistics',

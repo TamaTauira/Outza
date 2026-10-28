@@ -3,6 +3,7 @@ import { runDueSources } from '@/lib/intel/ingest'
 import { getSessionUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
+// Chunked ABS imports stop around 200s so this limit can save a resume cursor.
 export const maxDuration = 300
 
 /** Runs any OUTZA Intelligence source that is due. Vercel Cron calls GET with Authorization: Bearer CRON_SECRET. */
