@@ -217,18 +217,18 @@ export function weekendRange(city: CityDef, now = new Date()): { from: string; t
   return { from: fri, to: addDaysKey(fri, 2) }
 }
 
-/** Tonight is 5pm onward (or still running then). Untimed all-day listings stay. 5:45am does not. */
+/**
+ * Tonight is a start of 5pm or later in local time (HH:MM). Untimed all-day listings stay.
+ * A 6:00, 9:30 or 10:00 start does not, even when the event keeps running past 5pm.
+ */
 export function isTonightSlot(time: string | null | undefined, endTime?: string | null): boolean {
-  const mins = (t?: string | null) => {
-    if (!t) return null
-    const [h, m] = t.split(':').map((n) => parseInt(n, 10))
-    return Number.isFinite(h) ? h * 60 + (Number.isFinite(m) ? m : 0) : null
-  }
-  const start = mins(time)
-  if (start === null) return true
-  if (start >= 17 * 60) return true
-  const end = mins(endTime)
-  return end !== null && end >= 17 * 60 && end > start
+  // endTime is accepted so callers can pass a slot, and ignored: only the start decides tonight.
+  void endTime
+  if (!time) return true
+  const [h, m] = time.split(':').map((n) => parseInt(n, 10))
+  if (!Number.isFinite(h)) return true
+  const start = h * 60 + (Number.isFinite(m) ? m : 0)
+  return start >= 17 * 60
 }
 
 /** "+11:00" style UTC offset for a timezone on a given local date. */

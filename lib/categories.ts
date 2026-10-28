@@ -1,4 +1,4 @@
-import { suburbFromAddress } from '@/lib/cities'
+import { suburbFromAddress, tidyVenueName } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
 
 export interface CategoryDef {
@@ -47,20 +47,17 @@ export function classifyCategory(title: string, description: string, genres: str
     }
   }
 
-  // Genre-based classification
-  if (genres.some((g: string) => ['music', 'concert', 'live music'].some((k: string) => g.toLowerCase().includes(k)))) {
-    category = 'Music'
-  } else if (genres.some((g: string) => ['sport', 'athletic'].some((k: string) => g.toLowerCase().includes(k)))) {
-    category = 'Sports'
-  } else if (genres.some((g: string) => ['art', 'theatre', 'theater', 'comedy', 'dance', 'film', 'exhibition'].some((k: string) => g.toLowerCase().includes(k)))) {
-    category = 'Arts & Culture'
-  } else if (genres.some((g: string) => ['food', 'drink', 'wine', 'beer', 'dining'].some((k: string) => g.toLowerCase().includes(k)))) {
-    category = 'Food & Drink'
-  } else if (genres.some((g: string) => ['family', 'kids', 'children'].some((k: string) => g.toLowerCase().includes(k)))) {
-    category = 'Family'
-  } else if (genres.some((g: string) => ['business', 'conference', 'seminar'].some((k: string) => g.toLowerCase().includes(k)))) {
-    category = 'Business'
-  }
+  // Genre words match on boundaries so "partnership" / "party" / "start" are not "art",
+  // and "Martial Arts" is not filed as Arts & Culture.
+  const genreText = genres.join('\n')
+  const genreHas = (words: string[], source = genreText) =>
+    words.some((w) => new RegExp(`(^|[^a-z])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i').test(source))
+  if (genreHas(['music', 'concert', 'live music'])) category = 'Music'
+  else if (genreHas(['sport', 'athletic'])) category = 'Sports'
+  else if (genreHas(['theatre', 'theater', 'comedy', 'dance', 'film', 'exhibition', 'arts', 'art'], genreText.replace(/martial arts/gi, ' '))) category = 'Arts & Culture'
+  else if (genreHas(['food', 'drink', 'wine', 'beer', 'dining'])) category = 'Food & Drink'
+  else if (genreHas(['family', 'kids', 'children'])) category = 'Family'
+  else if (genreHas(['business', 'conference', 'seminar', 'networking'])) category = 'Business'
 
   // Text-based fallback
   if (category === 'Community') {
@@ -75,11 +72,98 @@ export function classifyCategory(title: string, description: string, genres: str
     else if (/\b(lecture|talk|course|education|learning|tour)\b/.test(text)) category = 'Education'
   }
 
-  // Strict: a comedy/theatre show is never "Music" just because the source genre says music.
-  if (category === 'Music' && /\b(comedy|comedian|stand[- ]?up|theatre|theater|circus|cabaret|burlesque|improv)\b/.test(title.toLowerCase())) category = 'Arts & Culture'
+  // These win over a loose genre hit (Music on a play, Arts on a networking breakfast, Music on a toddler ballet class).
+  const blob = `${title} ${description} ${genres.join(' ')}`
+  if (isBusinessNetworking(blob)) category = 'Business'
+  else if (isKidsDanceClass(blob)) category = 'Family'
+  else if (category === 'Music' && conflictsWithMusicIntent(title, `${description} ${genres.join(' ')}`, [...subTags, ...genres])) category = 'Arts & Culture'
+  if (category === 'Business' && isBusinessNetworking(blob) && !subTags.includes('Networking')) subTags.push('Networking')
+  if (category === 'Family' && isKidsDanceClass(blob) && !subTags.includes('Kids Activities')) subTags.push('Kids Activities')
   // Only keep tags that belong to the final category, so the Type column matches the filter.
   const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
   return { category, subTags: [...new Set(subTags)].filter((t) => own.includes(t)) }
+}
+
+const CONCERT_TITLE = /\b(concerts?|gigs?|recitals?|symphon(?:y|ies)|orchestras?|live music|dj sets?)\b/i
+
+/** BNI and other business networking, including when a source tag says "arts" or "partnership". */
+export function isBusinessNetworking(text: string): boolean {
+  return /\bbni\b/i.test(text)
+    || /\bbusiness networking\b/i.test(text)
+    || /\bnetworking (breakfasts?|brunches?|lunches?|dinners?|events?|meetings?|sessions?)\b/i.test(text)
+    || /\bbusiness network(?:ing)? (events?|meetings?|breakfasts?)\b/i.test(text)
+}
+
+/**
+ * A dance or ballet class for children. A concert, recital, showcase or production stays a performance.
+ */
+export function isKidsDanceClass(text: string): boolean {
+  if (/\b(concerts?|recitals?|performances?|showcases?|productions?|gigs?)\b/i.test(text)) return false
+  if (!/\b(ballet|dance)\b/i.test(text)) return false
+  const ages = /\b(toddlers?|kids?|children|child|babies|baby|pre-?school|preschool)\b/i.test(text)
+    || /\b\d+(?:\.\d+)?\s*[-–]\s*\d+\s*(yrs|years)\b/i.test(text)
+  if (/\bclasses?\b/i.test(text) && ages) return true
+  return ages && /\b(ballet|dance with me)\b/i.test(text)
+}
+
+/**
+ * Film, theatre, comedy and kids' dance classes are not live music, even when a source
+ * genre or the Music category says they are. A title that is itself a concert stays.
+ * "Theatre" inside a venue name is not enough; a Theatre/Comedy/Film tag is.
+ */
+export function conflictsWithMusicIntent(title: string, description = '', extra: string[] = []): boolean {
+  if (CONCERT_TITLE.test(title)) return false
+  const blob = `${title}\n${description}`
+  if (/\b(comedy|comedian|stand-?up|standup)\b/i.test(blob)) return true
+  if (/\b(screenings?|documentar(?:y|ies)|cinema)\b/i.test(blob) || /\bfilms?\b/i.test(blob)) return true
+  if (/\b(stage plays?|theatre shows?|theater shows?)\b/i.test(blob)) return true
+  if (extra.some((t) => /^(theatre|theater|comedy|film)$/i.test(t.trim()))) return true
+  if (isKidsDanceClass(`${title} ${description}`)) return true
+  return false
+}
+
+/**
+ * Correct a stored category when title, description or tags show it was mistagged.
+ * Returns null when the stored category should stand. Used on refresh and when reading listings.
+ */
+export function refineStoredCategory(ev: { title: string; description?: string | null; category: string; subTags?: string[] | null }): { category: string; subTags: string[] } | null {
+  const subTags = [...(ev.subTags ?? [])]
+  const text = `${ev.title} ${ev.description ?? ''} ${subTags.join(' ')}`
+  let category = ev.category
+  if (isBusinessNetworking(text)) category = 'Business'
+  else if (category === 'Music' && isKidsDanceClass(text)) category = 'Family'
+  else if (category === 'Music' && conflictsWithMusicIntent(ev.title, ev.description ?? '', subTags)) category = 'Arts & Culture'
+  if (category === ev.category) return null
+  const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
+  const next = subTags.filter((t) => own.includes(t))
+  if (category === 'Business' && own.includes('Networking') && !next.includes('Networking')) next.push('Networking')
+  if (category === 'Family' && own.includes('Kids Activities') && !next.includes('Kids Activities')) next.push('Kids Activities')
+  if (category === 'Arts & Culture') {
+    if (/\b(comedy|comedian|stand-?up|standup)\b/i.test(text) && own.includes('Comedy') && !next.includes('Comedy')) next.push('Comedy')
+    if (/\b(screenings?|documentar(?:y|ies)|cinema|films?)\b/i.test(text) && own.includes('Film') && !next.includes('Film')) next.push('Film')
+    if (/\b(theatres?|theaters?)\b/i.test(text) && own.includes('Theatre') && !next.includes('Theatre')) next.push('Theatre')
+  }
+  return { category, subTags: next }
+}
+
+type ListingPlace = {
+  title: string
+  description?: string | null
+  category: string
+  subTags?: string[] | null
+  venueName?: string | null
+  venueAddress?: string | null
+  suburb?: string | null
+  city?: string | null
+}
+
+/** Category, suburb and venue as they should be shown and filtered. Idempotent. */
+export function presentListing<T extends ListingPlace>(ev: T): T {
+  const city = ev.city ?? ''
+  const refined = refineStoredCategory({ title: ev.title, description: ev.description, category: ev.category, subTags: ev.subTags })
+  const suburb = reconcileSuburb(ev.suburb, ev.venueName ?? '', ev.venueAddress, city)
+  const venueName = tidyVenueName(ev.venueName, ev.venueAddress, city)
+  return { ...ev, ...(refined ?? {}), suburb, venueName }
 }
 
 export function checkLGBTI(title: string, description: string): boolean {
@@ -149,6 +233,45 @@ export function guessSuburb(venueName: string, address: string): string | null {
   if (/\b(darlinghurst)\b/.test(text)) return 'Darlinghurst'
   if (/\b(haymarket|chinatown)\b/.test(text)) return 'Haymarket'
   if (/\b(luna park|milsons point)\b/.test(text)) return 'North Shore'
-  if (/\b(cbd|george st|pitt st|town hall|martin place|wynyard)\b/.test(text)) return 'CBD'
+  // CBD is a precinct, not the fallback for every Sydney address. Postcode 2000 or a CBD landmark.
+  // "George St" alone is not enough — that name shows up outside the CBD.
+  if (/\b2000\b/.test(address)) return 'CBD'
+  if (/\b(cbd|town hall|martin place|wynyard|pitt street mall|hyde park)\b/.test(text)) return 'CBD'
   return null
+}
+
+const CBD_EVIDENCE = /\b(cbd|town hall|martin place|wynyard|pitt street mall|hyde park)\b|\b2000\b/i
+
+/**
+ * Suburb to store. A parsed suburb wins. Stored "CBD" is kept only when the address
+ * actually supports the CBD; otherwise it is cleared so CBD is not a dump bucket.
+ * A specific stored suburb is left alone when the address does not name a better one.
+ */
+export function reconcileSuburb(stored: string | null | undefined, venueName: string, address: string | null | undefined, city: string): string | null {
+  const addr = address ?? ''
+  const next = city === 'Sydney' ? guessSuburb(venueName, addr) : suburbFromAddress(addr)
+  if (next) return next
+  const cur = (stored ?? '').trim()
+  if (!cur) return null
+  if (/^cbd$/i.test(cur) && !CBD_EVIDENCE.test(`${venueName} ${addr}`)) return null
+  if (city && cur.toLowerCase() === city.toLowerCase()) return null
+  return cur
+}
+
+const CITY_AREAS: Record<string, string[]> = {
+  Melbourne: ['CBD', 'Carlton', 'Parkville', 'Fitzroy', 'Collingwood', 'Richmond', 'Brunswick', 'Northcote', 'Southbank', 'Docklands', 'South Melbourne', 'Port Melbourne', 'St Kilda', 'South Yarra', 'Prahran', 'Windsor', 'Footscray', 'Hawthorn', 'Brighton', 'Williamstown'],
+  Brisbane: ['CBD', 'South Bank', 'Fortitude Valley', 'West End', 'South Brisbane', 'New Farm', 'Kangaroo Point', 'Spring Hill', 'Paddington', 'Woolloongabba'],
+  'Gold Coast': ['Surfers Paradise', 'Broadbeach', 'Southport', 'Main Beach', 'Burleigh Heads', 'Coolangatta', 'Mermaid Beach'],
+  Perth: ['CBD', 'Northbridge', 'Fremantle', 'Subiaco', 'Leederville', 'Mount Lawley', 'Victoria Park', 'Scarborough'],
+  Adelaide: ['CBD', 'North Adelaide', 'Glenelg', 'Norwood', 'Hindley Street', 'Port Adelaide'],
+  Canberra: ['Civic', 'Braddon', 'Kingston', 'Manuka', 'Belconnen', 'Woden'],
+  Newcastle: ['CBD', 'Hamilton', 'Cooks Hill', 'The Junction', 'Merewether', 'Darby Street'],
+  Hobart: ['CBD', 'Salamanca', 'Battery Point', 'North Hobart', 'Sandy Bay'],
+  Darwin: ['CBD', 'Stuart Park', 'Parap', 'Fannie Bay', 'Nightcliff'],
+}
+
+/** Area choices for the filter drawer. Sydney has its own list; other cities are not offered Sydney suburbs. */
+export function areasForCity(city: string): string[] {
+  if (city === 'Sydney') return SYDNEY_SUBURBS
+  return CITY_AREAS[city] ?? []
 }

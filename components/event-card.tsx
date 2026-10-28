@@ -10,7 +10,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
-import { displaySuburb } from '@/lib/cities'
+import { displaySuburb, tidyVenueName } from '@/lib/cities'
 
 interface EventData {
   id: string
@@ -107,7 +107,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                {event.venueName && event.city && event.venueName.trim().toLowerCase() === event.city.trim().toLowerCase() ? (suburb || event.venueName) : event.venueName}
+                {tidyVenueName(event.venueName, event.venueAddress, event.city)}
                 {suburb && <span className="text-muted-foreground/60">· {suburb}</span>}
               </span>
             </div>

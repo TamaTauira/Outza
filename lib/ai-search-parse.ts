@@ -295,5 +295,6 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   } else {
     merged = ai ? { ...fb, ...ai, city: fb.city || ai.city, category: ai.category || fb.category, timeOfDay: fb.timeOfDay || ai.timeOfDay } : fb
   }
+  if (/\b(live music|gigs?|concerts?)\b/i.test(q)) merged = { ...merged, category: 'Music' }
   return normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
 }

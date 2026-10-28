@@ -8,7 +8,7 @@ import { activeTierMap } from '@/lib/promotions'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { CITY_NAMES } from '@/lib/cities'
-import { knownCategories } from '@/lib/categories'
+import { knownCategories, presentListing } from '@/lib/categories'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { confidence } from '@/lib/quality'
 
@@ -53,7 +53,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (suburb) {
-      where.suburb = suburb
+      // Stored suburb can still say CBD for a Coogee address until the next refresh.
+      // Match the address and venue too, then keep rows whose corrected suburb is the one asked for.
+      const suburbMatch: Prisma.EventWhereInput = {
+        OR: [
+          { suburb },
+          { venueAddress: { contains: suburb, mode: 'insensitive' } },
+          { venueName: { contains: suburb, mode: 'insensitive' } },
+        ],
+      }
+      const extra = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []
+      where.AND = [...extra, suburbMatch]
     }
 
     if (isFree) {
@@ -99,7 +109,15 @@ export async function GET(request: NextRequest) {
       prisma.event.count({ where }),
     ])
 
-    const ids = events.map((e) => e.id)
+    let shown = events.map((e) => presentListing(e))
+    if (categories.length) shown = shown.filter((e) => categories.includes(e.category))
+    if (suburb) {
+      const want = suburb.toLowerCase()
+      shown = shown.filter((e) => (e.suburb ?? '').toLowerCase() === want)
+    }
+    const dropped = events.length - shown.length
+
+    const ids = shown.map((e) => e.id)
     const me = await getSessionUser().catch(() => null)
     const [tiers, friends, mine] = await Promise.all([
       activeTierMap(ids),
@@ -109,14 +127,14 @@ export async function GET(request: NextRequest) {
     const going = new Set(mine.map((m) => m.eventId))
 
     return NextResponse.json({
-      events: events.map((e) => ({
+      events: shown.map((e) => ({
         ...e,
         promoTier: tiers[e.id] ?? null,
         friendsGoing: friends[e.id] ?? [],
         going: going.has(e.id),
         confidenceLevel: confidence(e).level,
       })),
-      total,
+      total: Math.max(0, total - dropped),
       page,
       totalPages: Math.ceil(total / limit),
     })

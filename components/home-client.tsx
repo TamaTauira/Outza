@@ -8,7 +8,7 @@ import { EventList } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
 import { MapView } from '@/components/map-view';
 import { Footer } from '@/components/footer';
-import { CATEGORIES, knownCategories, withCategories } from '@/lib/categories';
+import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
 import { ArrowRight, CalendarDays, Check, Info, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
@@ -37,8 +37,8 @@ const WINDOWS: {key: TimeWindow;label: string;todayOnly?: boolean;}[] = [
 
 
 export function HomeClient() {
-  // Board, Map and Saved are real addresses (/, /map, /saved) sharing this one component via the
-  // (board) layout, so filters survive switching views and Back/bookmarks/sharing all work.
+  // Board, Map and Saved are real addresses (/, /map, /saved) sharing this layout.
+  // City is shared. Category, date and area filters are per view, so Music on the board does not filter the map.
   const router = useRouter();
   const view = viewForPath(usePathname()) ?? 'board';
   const goView = (v: 'board' | 'map' | 'saved') => router.push(v === 'board' ? '/' : `/${v}`);
@@ -47,18 +47,34 @@ export function HomeClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
-  const [filters, setFilters] = useBackState<FilterState>('home:filters', EMPTY_FILTERS);
+  // Board and map keep their own filters. City is shared. Music on the board does not follow you onto /map.
+  const [boardFilters, setBoardFilters] = useBackState<FilterState>('home:filters', EMPTY_FILTERS);
+  const [mapFilters, setMapFilters] = useBackState<FilterState>('map:filters', EMPTY_FILTERS);
+  const filters = view === 'map' ? mapFilters : boardFilters;
+  const setFilters = view === 'map' ? setMapFilters : setBoardFilters;
   const [now, setNow] = useState<SydneyNow | null>(null);
   const [day, setDay] = useBackState<string | null>('home:day', null);
-  // Opens on what's on now and next, not on the earlier, already-ended part of the day.
-  const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'now');
+  // Full day matches the "Today" date chip. Ended rows stay hidden until "Show ended".
+  const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'all');
   const [windowPinned, setWindowPinned] = useState(false);
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
   const [catsHydrated, setCatsHydrated] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const { saved } = useSaved();
   const boardRef = useRef<HTMLDivElement>(null);
-  const setCity = (c: string) => { setCityState(c); writeCity(c); };
+  const setCity = (c: string) => {
+    setCityState(c);
+    writeCity(c);
+    // Drop an area preset from the city we're leaving. Keep a free-text suburb Ask Outza set.
+    const nextAreas = new Set(areasForCity(c));
+    const previousAreas = new Set(areasForCity(city));
+    const keep = (f: FilterState): FilterState => {
+      if (!f.suburb || nextAreas.has(f.suburb) || !previousAreas.has(f.suburb)) return f;
+      return { ...f, suburb: '' };
+    };
+    setBoardFilters(keep);
+    setMapFilters(keep);
+  };
   const pinWindow = (w: TimeWindow) => { setWindowPinned(true); setTimeWindow(w); };
 
   useEffect(() => {
@@ -66,7 +82,7 @@ export function HomeClient() {
       const raw = localStorage.getItem(CAT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setFilters((f) => withCategories(f, parsed));
+        if (Array.isArray(parsed)) setBoardFilters((f) => withCategories(f, parsed));
       }
     } catch {}
     setCatsHydrated(true);
@@ -74,16 +90,15 @@ export function HomeClient() {
 
   useEffect(() => {
     if (!catsHydrated) return;
-    const list = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
+    const list = knownCategories(Array.isArray(boardFilters.categories) ? boardFilters.categories : boardFilters.category ? [boardFilters.category] : []);
     try { localStorage.setItem(CAT_KEY, JSON.stringify(list)); } catch {}
-  }, [catsHydrated, filters.categories, filters.category]);
+  }, [catsHydrated, boardFilters.categories, boardFilters.category]);
 
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search).get('city');
-      if (q && CITIES.some((x) => x.name === q)) { setCity(q); return; }
-      const c = readCity();
-      if (c !== null) setCityState(c);
+      const named = q && CITIES.some((x) => x.name === q) ? q : readCity();
+      if (named !== null) setCity(named);
     } catch {}
   }, []);
 
@@ -148,7 +163,7 @@ export function HomeClient() {
     setDay(f.dateFrom);
     setTimeWindow(f.soon ? 'now' : f.timeOfDay === 'evening' ? 'evening' : 'all');
     setSearchInput(f.keywords.join(' '));
-    setFilters({
+    setBoardFilters({
       ...EMPTY_FILTERS,
       categories: f.category ? [f.category] : [],
       category: f.category,
@@ -161,14 +176,15 @@ export function HomeClient() {
     if (f.city) setCity(f.city);
     requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
-  const noType = picked.length === 0
+  const boardPicked = knownCategories(Array.isArray(boardFilters.categories) ? boardFilters.categories : boardFilters.category ? [boardFilters.category] : []);
+  const noType = boardPicked.length === 0
   const quickLinks = [
-  { label: 'Today', active: day === today && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
-  { label: 'Tonight', active: day === today && timeWindow === 'evening' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setFilters(EMPTY_FILTERS); }) },
-  { label: 'This weekend', active: !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6); if (sat) setDay(sat); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
-  { label: 'Free events', active: filters.isFree, onClick: goBoard(() => update({ isFree: !filters.isFree })) },
-  { label: 'LGBTIQ+ events', active: filters.isLGBTI, onClick: goBoard(() => update({ isLGBTI: !filters.isLGBTI })) },
-  { label: 'Live music', active: picked.length === 1 && picked[0] === 'Music', onClick: goBoard(() => setFilters((f) => withCategories(f, picked.length === 1 && picked[0] === 'Music' ? [] : ['Music']))) }];
+  { label: 'Today', active: day === today && timeWindow === 'all' && !boardFilters.isFree && !boardFilters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('all'); setBoardFilters(EMPTY_FILTERS); }) },
+  { label: 'Tonight', active: day === today && timeWindow === 'evening' && !boardFilters.isFree && !boardFilters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setBoardFilters(EMPTY_FILTERS); }) },
+  { label: 'This weekend', active: !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !boardFilters.isFree && !boardFilters.isLGBTI && noType, onClick: goBoard(() => { const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6); if (sat) setDay(sat); pinWindow('all'); setBoardFilters(EMPTY_FILTERS); }) },
+  { label: 'Free events', active: boardFilters.isFree, onClick: goBoard(() => setBoardFilters((f) => ({ ...f, isFree: !f.isFree }))) },
+  { label: 'LGBTIQ+ events', active: boardFilters.isLGBTI, onClick: goBoard(() => setBoardFilters((f) => ({ ...f, isLGBTI: !f.isLGBTI }))) },
+  { label: 'Live music', active: boardPicked.length === 1 && boardPicked[0] === 'Music', onClick: goBoard(() => setBoardFilters((f) => withCategories(f, boardPicked.length === 1 && boardPicked[0] === 'Music' ? [] : ['Music']))) }];
 
 
   return (
@@ -389,16 +405,17 @@ export function HomeClient() {
               onChange={setFilters}
               onClose={() => setShowFilters(false)}
               isMobile
-              when={day === today ? (timeWindow === 'evening' ? 'tonight' : timeWindow === 'now' || timeWindow === 'hour' ? 'soon' : timeWindow === 'all' ? 'today' : '') : ''}
-              onWhen={(w) => {
+              areas={areasForCity(city)}
+              when={view === 'board' && day === today ? timeWindow : ''}
+              onWhen={view === 'board' ? (w) => {
                 if (!today) return;
                 setDay(today);
                 setWindowPinned(true);
-                setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
-                pinWindow(w === 'tonight' ? 'evening' : w === 'soon' ? 'now' : 'all');
+                setBoardFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                pinWindow(w);
                 setShowFilters(false);
                 requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-              }}
+              } : undefined}
             />
           </div>
         </div>

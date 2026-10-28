@@ -216,14 +216,14 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
 
   const count = events.filter((e: any) => e?.latitude && e?.longitude).length
   return (
-    <div className="relative w-full" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
+    <div className="relative w-full h-[70vh] min-h-[420px] sm:h-[calc(100vh-200px)] sm:min-h-[500px]">
       {loading && (
         <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/40">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
       <div ref={mapRef} className="se-map w-full h-full rounded-2xl overflow-hidden" />
-      <div className="absolute top-4 left-4 z-[500] rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg">
+      <div className="absolute top-4 left-1/2 z-[500] max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg sm:left-4 sm:max-w-none sm:translate-x-0">
         {loading ? <span>Loading map…</span> : <><span className="text-primary font-bold">{count}</span> events on map</>}
       </div>
       {ready && (

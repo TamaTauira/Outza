@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
+import { conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type TopicDef, type TopicKey } from '@/lib/seo'
 import { addDaysStr, localDupKey, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
 
@@ -61,10 +62,14 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
 
   const filter = opts.topic ? TOPIC_FILTER[opts.topic] : undefined
   const tonight = opts.topic === 'tonight'
-  const rows = await prisma.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: filter || tonight ? 500 : take * 2 })
-  let clean = rows.filter((e) => !addressInOtherState(e.venueAddress, city) && (!filter || filter(e)))
+  const liveMusic = opts.topic === 'live-music'
+  const rows = await prisma.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: filter || tonight || liveMusic ? 500 : take * 2 })
+  let clean = rows
+    .filter((e) => !addressInOtherState(e.venueAddress, city) && (!filter || filter(e)))
+    .map((e) => presentListing(e))
   if (tonight) clean = clean.filter((e) => isTonightSlot(e.time, e.endTime))
-  const total = filter || tonight ? clean.length : await prisma.event.count({ where })
+  if (liveMusic) clean = clean.filter((e) => e.category === 'Music' && !conflictsWithMusicIntent(e.title, e.description ?? '', e.subTags ?? []))
+  const total = filter || tonight || liveMusic ? clean.length : await prisma.event.count({ where })
   return { events: clean.slice(0, take), total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
 }
 
@@ -108,8 +113,9 @@ export const landingData = cache(async function landingData(city: CityDef, topic
       : dated
         ? await landingLocal(city, null, { from: ev.from, to: ev.to ?? ev.from, ownOnly: true })
         : []
-  // Imported community listings mirror board events; never show the same thing twice
-  const local = raw.filter((l) => !ev.titles.has(normTitle(l.title)))
+  // Imported community listings mirror board events; never show the same thing twice.
+  // Tonight uses the same 5pm start rule as the board events above it.
+  const local = raw.filter((l) => !ev.titles.has(normTitle(l.title)) && (topic?.key !== 'tonight' || isTonightSlot(l.startTime, l.endTime)))
   return { events: ev.events, from: ev.from, to: ev.to, local, total: ev.total + local.length }
 })
 

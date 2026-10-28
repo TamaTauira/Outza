@@ -129,7 +129,7 @@ async function saveCosHit(h: any): Promise<boolean> {
     date: h.upcomingDate ?? h.dates?.[0],
     time: start ? parse12h(start) : null,
     endTime: end ? parse12h(end) : null,
-    venueName: h.venueName ?? 'Sydney',
+    venueName: h.venueName || h.suburbName || 'TBA',
     venueAddress: h.suburbName ? `${h.suburbName}, NSW` : null,
     genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
     isFree: free,
