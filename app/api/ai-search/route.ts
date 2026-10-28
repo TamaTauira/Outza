@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
 import { addDays, sydneyNow, toMinutes } from '@/lib/board'
-import { CATEGORIES } from '@/lib/categories'
+import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, type AiFilters } from '@/lib/ai-search-parse'
 
@@ -101,9 +101,14 @@ export async function POST(req: NextRequest) {
         ]) }] }
       : {}
     const select = {
-      id: true, title: true, date: true, time: true, venueName: true, suburb: true, city: true, category: true,
+      id: true, title: true, description: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,
       isFree: true, price: true, priceMin: true, views: true, _count: { select: { savedBy: true, attendees: true } },
     } as const
+    const musicIntent = filters.category === 'Music' || /\b(live music|gigs?|concerts?)\b/i.test(q)
+    const focusMusic = <T extends { title: string; description?: string | null; category: string; subTags?: string[] | null }>(list: T[]) => {
+      if (!musicIntent) return list
+      return list.filter((e) => e.category === 'Music' && !conflictsWithMusicIntent(e.title, e.description ?? '', e.subTags ?? []))
+    }
 
     const run = async (where: Prisma.EventWhereInput) => {
       const rows = await prisma.event.findMany({ where, select, take: 400, orderBy: [{ date: 'asc' }, { time: 'asc' }] })
@@ -122,16 +127,17 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    let rows = await run({ AND: [base, kw] })
+    let rows = focusMusic((await run({ AND: [base, kw] })).map((e) => presentListing(e)))
     let relaxed = false
-    if (!rows.length && filters.keywords.length && filters.category) {
+    if (!rows.length && filters.keywords.length && filters.category && !musicIntent) {
       // The user's words matter more than a guessed category: try them across every category first.
+      // A live-music ask does not drop the Music category — that is how film and comedy leak in.
       const { category: _omit, ...noCategory } = base
-      rows = await run({ AND: [noCategory, kw] })
+      rows = focusMusic((await run({ AND: [noCategory, kw] })).map((e) => presentListing(e)))
       if (rows.length) filters.category = ''
     }
-    if (!rows.length && filters.keywords.length) {
-      rows = await run(base)
+    if (!rows.length && filters.keywords.length && !musicIntent) {
+      rows = focusMusic((await run(base)).map((e) => presentListing(e)))
       relaxed = rows.length > 0
     }
 

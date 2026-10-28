@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { X, Filter, ChevronDown, ChevronUp, Flag } from 'lucide-react'
-import { CATEGORIES, SYDNEY_SUBURBS, knownCategories, withCategories } from '@/lib/categories'
+import { CATEGORIES, knownCategories, withCategories } from '@/lib/categories'
+import type { TimeWindow } from '@/lib/board'
 import { cn } from '@/lib/utils'
 
 export interface FilterState {
@@ -22,12 +23,21 @@ interface FilterPanelProps {
   onChange: (filters: FilterState) => void
   onClose?: () => void
   isMobile?: boolean
-  /** Board time windows, so the drawer has the same Tonight / Soon choices as the board. */
-  when?: '' | 'tonight' | 'soon' | 'today'
-  onWhen?: (when: 'tonight' | 'soon' | 'today') => void
+  /** Same time-of-day value the board highlights, so the drawer cannot say something else. */
+  when?: '' | TimeWindow
+  onWhen?: (when: TimeWindow) => void
+  /** Suburbs for the selected city. Empty hides the area list (never Sydney's list for another city). */
+  areas?: string[]
 }
 
-export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', onWhen }: FilterPanelProps) {
+const WHEN_CHOICES: { key: TimeWindow; label: string }[] = [
+  { key: 'now', label: 'Now & next' },
+  { key: 'hour', label: 'Next 60 min' },
+  { key: 'evening', label: 'Evening' },
+  { key: 'all', label: 'Full day' },
+]
+
+export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', onWhen, areas = [] }: FilterPanelProps) {
   const [expandedCat, setExpandedCat] = useState<string>(filters.category)
 
   const update = (partial: Partial<FilterState>) => {
@@ -98,7 +108,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">When</p>
         <div className="flex flex-wrap gap-1.5">
-          {onWhen && ([{ key: 'tonight' as const, label: 'Tonight' }, { key: 'soon' as const, label: 'Soon' }, { key: 'today' as const, label: 'Today' }]).map((p) => (
+          {onWhen && WHEN_CHOICES.map((p) => (
             <button
               key={p.key}
               onClick={() => onWhen(p.key)}
@@ -220,20 +230,21 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
         </div>
       </div>
 
-      {/* Suburb */}
+      {areas.length > 0 && (
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Area</p>
         <select
-          value={filters.suburb}
+          value={areas.includes(filters.suburb) ? filters.suburb : ''}
           onChange={(e) => update({ suburb: e.target.value })}
           className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
         >
           <option value="">All Areas</option>
-          {SYDNEY_SUBURBS.map((s) => (
+          {areas.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
       </div>
+      )}
     </div>
   )
 }

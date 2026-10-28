@@ -47,7 +47,9 @@ export function custodiansLine(name: string | null | undefined): string {
     : 'Events across Australia take place on the lands of many Aboriginal and Torres Strait Islander nations. We pay our respects to their Elders past and present.'
 }
 
-const GENERIC_PLACE = /^(australia|cbd|city|inner city|sydney|melbourne|brisbane|perth|adelaide|hobart|canberra|darwin|gold coast|newcastle|nsw|vic|qld|wa|sa|tas|act|nt)$/i
+const GENERIC_PLACE = /^(australia|cbd|city|inner city|online|virtual|sydney|melbourne|brisbane|perth|adelaide|hobart|canberra|darwin|gold coast|newcastle|nsw|vic|qld|wa|sa|tas|act|nt)$/i
+/** True when the text actually points at the Sydney CBD, not merely "somewhere in Sydney". */
+const CBD_EVIDENCE = /\b(cbd|town hall|martin place|wynyard|pitt street mall|hyde park)\b|\b2000\b/i
 const STREET = /\b(st|rd|dr|ave|hwy|pde|ln|lane|cres|cct|blvd|street|road|drive|terrace|place|avenue|parade|way|court|close)\b\.?$/i
 
 /** Best-effort suburb from an address like "12 Smith St, Coogee NSW 2034" or "Fitzroy, VIC 3065". */
@@ -55,7 +57,7 @@ export function suburbFromAddress(address: string | null | undefined): string | 
   if (!address) return null
   const parts = address.split(',').map((p) => p.trim()).filter(Boolean)
   for (let i = parts.length - 1; i >= 0; i--) {
-    let p = parts[i].replace(/\b\d{4}\b/g, ' ').replace(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Australia)\b/ig, ' ').replace(/\s+/g, ' ').trim()
+    const p = parts[i].replace(/\b\d{4}\b/g, ' ').replace(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Australia)\b/ig, ' ').replace(/\s+/g, ' ').trim()
     if (!p || /\d/.test(p) || GENERIC_PLACE.test(p) || STREET.test(p)) continue
     return p
   }
@@ -71,5 +73,21 @@ export function displaySuburb(suburb: string | null | undefined, address: string
   const stored = suburb?.trim() || ''
   const generic = !stored || GENERIC_PLACE.test(stored) || (!!city && stored.toLowerCase() === city.trim().toLowerCase())
   if (parsed && (generic || /^cbd$/i.test(stored))) return parsed
+  // Stored "CBD" with a non-CBD address (Cronulla, Coogee, Bankstown, …) is a bad default.
+  if (/^cbd$/i.test(stored) && !CBD_EVIDENCE.test(address ?? '')) return parsed
   return stored || null
+}
+
+/**
+ * A venue named only after the city ("Sydney") is not a place. Prefer the suburb parsed
+ * from the address, otherwise TBA, so the city name is not shown as the venue.
+ */
+export function tidyVenueName(venueName: string | null | undefined, address: string | null | undefined, city?: string | null): string {
+  const venue = (venueName ?? '').replace(/\s+/g, ' ').trim()
+  const cityName = (city ?? '').trim()
+  const generic = !venue || /^(tba|tbc)$/i.test(venue) || GENERIC_PLACE.test(venue) || (!!cityName && venue.toLowerCase() === cityName.toLowerCase())
+  if (!generic) return venue.slice(0, 200)
+  const suburb = suburbFromAddress(address)
+  if (suburb && (!cityName || suburb.toLowerCase() !== cityName.toLowerCase())) return suburb.slice(0, 200)
+  return 'TBA'
 }

@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { makeSeriesKey, sydneyToday } from '@/lib/event-store'
+import { reconcileSuburb, refineStoredCategory } from '@/lib/categories'
+import { tidyVenueName } from '@/lib/cities'
 import { SOURCES, inferRecurrence, isSameEvent, parsePriceRange } from '@/lib/quality'
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
@@ -90,7 +92,36 @@ export async function runQualityPass() {
   }
   await inBatches(updates, 20, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
 
-  const result = { backfilled: missing.length, merged, recurringSeries: recurring }
+  // 4) Correct dump-bucket suburbs, city-as-venue names, and known category mistags.
+  // Organiser edits are left alone. The same rules run at ingest; this catches rows already stored.
+  const review = await prisma.event.findMany({
+    where: { ...upcoming, duplicateOfId: null, organiserEditedAt: null },
+    select: { id: true, title: true, description: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true },
+  })
+  let places = 0
+  let categories = 0
+  const placeUpdates: { id: string; data: Record<string, unknown> }[] = []
+  for (const e of review) {
+    const suburb = reconcileSuburb(e.suburb, e.venueName, e.venueAddress, e.city)
+    const venueName = tidyVenueName(e.venueName, e.venueAddress, e.city)
+    const refined = refineStoredCategory(e)
+    const data: Record<string, unknown> = {}
+    if ((suburb ?? null) !== (e.suburb ?? null)) data.suburb = suburb
+    if (venueName !== e.venueName) {
+      data.venueName = venueName
+      data.seriesKey = makeSeriesKey(e.title, venueName, e.city)
+    }
+    if (refined) {
+      data.category = refined.category
+      data.subTags = refined.subTags
+      categories++
+    }
+    if (data.suburb !== undefined || data.venueName) places++
+    if (Object.keys(data).length) placeUpdates.push({ id: e.id, data })
+  }
+  await inBatches(placeUpdates, 20, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
+
+  const result = { backfilled: missing.length, merged, recurringSeries: recurring, places, categories }
   console.log('[quality] pass complete', result)
   return result
 }

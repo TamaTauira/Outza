@@ -12,7 +12,7 @@ import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
 import { statusInfo } from '@/lib/quality'
-import { displaySuburb } from '@/lib/cities'
+import { displaySuburb, tidyVenueName } from '@/lib/cities'
 
 export type BoardEvent = SavedEvent
 
@@ -66,7 +66,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
   const done = status.tone === 'done'
   const type = ev.subTags?.[0] ?? ev.category
   const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
-  const venue = ev.venueName && ev.city && ev.venueName.trim().toLowerCase() === ev.city.trim().toLowerCase() ? (suburb || ev.venueName) : ev.venueName
+  const venue = tidyVenueName(ev.venueName, ev.venueAddress, ev.city)
   const reported = statusInfo(ev.status, ev.statusSource)
   const itinerary = useItinerary()
   const inIt = itinerary.has(ev.id)

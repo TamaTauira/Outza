@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
-import { classifyCategory, checkLGBTI, guessSuburb } from '@/lib/categories'
-import { DEFAULT_CITY, suburbFromAddress } from '@/lib/cities'
+import { classifyCategory, checkLGBTI, reconcileSuburb } from '@/lib/categories'
+import { DEFAULT_CITY, tidyVenueName } from '@/lib/cities'
 import { isSameEvent, normalizeTitle, normalizeVenue } from '@/lib/quality'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
@@ -71,12 +71,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const description = cleanText(ev.description)
   const date = new Date(`${ev.date}T00:00:00.000Z`)
   if (date < sydneyToday()) return false
-  const cityName = ev.city
-  let venueName = cleanText(ev.venueName, 200) || 'TBA'
-  if (cityName && venueName.toLowerCase() === cityName.toLowerCase()) {
-    const named = suburbFromAddress(ev.venueAddress)
-    if (named) venueName = named
-  }
+  const city = ev.city ?? DEFAULT_CITY
+  const rawVenue = cleanText(ev.venueName, 200) || 'TBA'
+  const suburb = reconcileSuburb(null, rawVenue, ev.venueAddress, city)
+  const venueName = tidyVenueName(rawVenue, ev.venueAddress, city)
   const { category, subTags } = classifyCategory(title, description, ev.genres ?? [])
   const isLGBTI = checkLGBTI(title, `${description} ${(ev.genres ?? []).join(' ')}`)
   const parsedPrice = readPrice(ev.price, Boolean(ev.isFree))
@@ -86,7 +84,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const endTime = normTime(ev.endTime)
   const endDate = ev.endDate && ev.endDate !== ev.date ? new Date(`${ev.endDate}T00:00:00.000Z`) : null
   const dedupeHash = makeDedupeHash(title, ev.date, venueName)
-  const city = ev.city ?? DEFAULT_CITY
+  const legacyHash = makeDedupeHash(title, ev.date, rawVenue)
   const status = ev.status && STATUS_UPDATABLE.has(ev.status) ? ev.status : 'SCHEDULED'
   const range = { min: parsedPrice.min, max: parsedPrice.max }
   const now = new Date()
@@ -106,20 +104,28 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     ...(ev.organiserUrl && /^https?:\/\//.test(ev.organiserUrl) ? { organiserUrl: ev.organiserUrl.slice(0, 500) } : {}),
   }
 
-  const existing = await prisma.event.findUnique({
-    where: { dedupeHash },
-    select: { id: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true },
+  const existing = await prisma.event.findFirst({
+    where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
+    select: { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true },
   })
   if (existing) {
     const sources = existing.sources.includes(ev.source) ? existing.sources : [...existing.sources, ev.source]
     // The organiser edited this listing: keep their details, only record that the source still lists it
     if (existing.organiserEditedAt) {
-      await prisma.event.update({ where: { dedupeHash }, data: { sources, lastVerifiedAt: new Date(), ...(status === 'CANCELLED' ? { status } : {}) } })
+      await prisma.event.update({ where: { id: existing.id }, data: { sources, lastVerifiedAt: new Date(), ...(status === 'CANCELLED' ? { status } : {}) } })
       return true
     }
     if (existing.source === ev.source) {
       const { imageUrl: _img, ...rest } = data
-      const update: Record<string, unknown> = { ...rest, sources }
+      const update: Record<string, unknown> = {
+        ...rest, sources, venueName, suburb,
+        seriesKey: makeSeriesKey(title, venueName, city),
+        ...(ev.venueAddress ? { venueAddress: ev.venueAddress } : {}),
+      }
+      if (dedupeHash !== existing.dedupeHash) {
+        const clash = await prisma.event.findUnique({ where: { dedupeHash }, select: { id: true } })
+        if (!clash) update.dedupeHash = dedupeHash
+      }
       // Admin-replaced artwork is locked; a source that drops its image keeps the one we have
       if (!existing.imageLocked && imageUrl && imageUrl !== existing.imageUrl) {
         update.imageUrl = imageUrl
@@ -130,7 +136,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
           })
         }
       }
-      await prisma.event.update({ where: { dedupeHash }, data: update })
+      await prisma.event.update({ where: { id: existing.id }, data: update })
     } else await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl })
     return true
   }
@@ -155,9 +161,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     data: {
       ...data, title, date, venueName,
       venueAddress: ev.venueAddress ?? null,
-      suburb: (city === DEFAULT_CITY
-        ? guessSuburb(venueName, ev.venueAddress ?? '')
-        : suburbFromAddress(ev.venueAddress)) || null,
+      suburb,
       source: ev.source, sources: [ev.source], dedupeHash, city,
       seriesKey: makeSeriesKey(title, venueName, city),
     },
