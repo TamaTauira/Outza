@@ -1,0 +1,123 @@
+/**
+ * SEO helpers shared by server pages and client links. Pure functions only (client-safe).
+ * URL scheme: /<city>/<topic> landing pages, /<city>/<suburb> suburb pages, /events/<title-slug>-<id> event pages.
+ */
+import { CITIES, type CityDef } from '@/lib/cities'
+import { toSydneyParts } from '@/lib/event-store-parts'
+
+export function slugify(s: string, max = 70): string {
+  const out = s
+    .normalize('NFKD').replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return out.slice(0, max).replace(/-+$/, '') || 'event'
+}
+
+/** Canonical event URL: readable title slug followed by the (hyphen-free) id. */
+export const eventPath = (ev: { id: string; title?: string | null }) =>
+  ev.title ? `/events/${slugify(ev.title)}-${ev.id}` : `/events/${ev.id}`
+
+/** Pulls the id back out of "/events/<slug>-<id>" (ids never contain hyphens). */
+export const idFromEventParam = (param: string) => decodeURIComponent(param).split('-').pop() ?? param
+
+export const citySlug = (c: string | CityDef) => slugify(typeof c === 'string' ? c : c.name)
+export const cityFromSlug = (slug: string): CityDef | undefined => CITIES.find((c) => citySlug(c) === slug.toLowerCase())
+
+export type TopicKey =
+  | 'events' | 'tonight' | 'this-weekend' | 'free-events' | 'live-music' | 'markets' | 'festivals' | 'family' | 'lgbtiq'
+  | 'garage-sales' | 'warehouse-sales' | 'pop-up-sales' | 'community-events'
+
+/** A landing page is only indexed (and listed in the sitemap / guide links) with at least this many genuine listings. */
+export const MIN_INDEX = 5
+
+export interface TopicDef {
+  key: TopicKey
+  label: string
+  /** Search-friendly <title> lead (defaults to heading) */
+  title?: (city: string) => string
+  /** Which OUTZA Local category (if any) also feeds this page */
+  local?: 'GARAGE' | 'WAREHOUSE' | 'MARKET' | 'COMMUNITY'
+  /** Page heading / title builder */
+  heading: (city: string) => string
+  /** Short unique meta description lead */
+  blurb: (city: string) => string
+}
+
+export const TOPICS: TopicDef[] = [
+  { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `Gigs, shows, markets and festivals: every upcoming thing to do in ${c}, sorted by date.` },
+  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on today`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `Last-minute plans, sorted. Gigs, shows, trivia and late-night fun happening in ${c} today.` },
+  { key: 'this-weekend', label: 'This weekend', title: (c) => `What’s on in ${c} this weekend`, heading: (c) => `Things to do in ${c} this weekend`, blurb: (c) => `Friday to Sunday sorted: live music, markets, theatre, sport and family days out in ${c}.` },
+  { key: 'free-events', label: 'Free events', heading: (c) => `Free events in ${c}`, blurb: (c) => `Zero dollars, full fun: free festivals, markets, talks and exhibitions in ${c}.` },
+  { key: 'live-music', label: 'Live music', title: (c) => `Live music & gigs in ${c}`, heading: (c) => `Live music in ${c}`, blurb: (c) => `From sticky-floor pub gigs to arena tours, here’s every upcoming show in ${c}.` },
+  { key: 'markets', label: 'Markets', local: 'MARKET', heading: (c) => `Markets in ${c}`, blurb: (c) => `Farmers, night, makers and food markets: every upcoming market in ${c}.` },
+  { key: 'festivals', label: 'Festivals', heading: (c) => `Festivals in ${c}`, blurb: (c) => `Music, food, culture and street festivals: every upcoming festival in ${c}, all in one spot.` },
+  { key: 'family', label: 'Family & kids', title: (c) => `Family activities & things to do with kids in ${c}`, heading: (c) => `Family activities in ${c}`, blurb: (c) => `Little legends welcome: shows, workshops, holiday fun and family days out in ${c}.` },
+  { key: 'lgbtiq', label: 'LGBTIQ+', title: (c) => `LGBTIQ+ events in ${c}: queer nights, drag & Pride`, heading: (c) => `LGBTIQ+ events in ${c}`, blurb: (c) => `Drag, dance floors, Pride and queer community events happening in ${c}.` },
+  { key: 'garage-sales', label: 'Garage sales', local: 'GARAGE', title: (c) => `Garage sales in ${c} this week`, heading: (c) => `Garage sales in ${c}`, blurb: (c) => `One person’s clutter, your next treasure: public garage, moving and car boot sales around ${c}.` },
+  { key: 'warehouse-sales', label: 'Warehouse sales', local: 'WAREHOUSE', heading: (c) => `Warehouse sales in ${c}`, blurb: (c) => `Clearances, sample sales and stock sell-offs from brands and retailers around ${c}.` },
+  { key: 'pop-up-sales', label: 'Pop-up sales', local: 'MARKET', heading: (c) => `Pop-up sales & shops in ${c}`, blurb: (c) => `Here today, gone tomorrow: pop-up shops, stalls and limited-time sales around ${c}.` },
+  { key: 'community-events', label: 'Community', local: 'COMMUNITY', title: (c) => `Community events in ${c}: fetes, fundraisers & meetups`, heading: (c) => `Community events in ${c}`, blurb: (c) => `School fetes, fundraisers, swaps and neighbourhood get-togethers around ${c}.` },
+]
+export const topicDef = (key: string) => TOPICS.find((t) => t.key === key)
+
+export const cityPath = (city: string | CityDef, topic: TopicKey = 'events') => `/${citySlug(city)}/${topic}`
+export const suburbPath = (city: string | CityDef, suburb: string) => `/${citySlug(city)}/${slugify(suburb)}`
+
+const ROAD = /\d|^cnr\b|\b(st|rd|dr|tce|pl|ave|hwy|pde|ln|lane|cres|cct|blvd|street|road|drive|terrace|place|avenue)\.?$/i
+/** Suburb strings good enough to deserve their own landing page. */
+export function isLandingSuburb(suburb: string | null | undefined, city: CityDef): suburb is string {
+  if (!suburb || suburb.trim().length < 3 || ROAD.test(suburb.trim())) return false
+  const s = slugify(suburb)
+  if (s === citySlug(city) || TOPICS.some((t) => t.key === s)) return false
+  return !CITIES.some((c) => citySlug(c) === s)
+}
+
+const STATE_RE = /\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Tasmania|Victoria|Queensland|New South Wales|Western Australia|South Australia|Northern Territory)\b/i
+const STATE_NAMES: Record<string, string> = {
+  tasmania: 'TAS', victoria: 'VIC', queensland: 'QLD', 'new south wales': 'NSW', 'western australia': 'WA', 'south australia': 'SA', 'northern territory': 'NT',
+}
+/** True when an address clearly names a different state (mis-filed listing). */
+export function addressInOtherState(address: string | null | undefined, city: CityDef): boolean {
+  const m = address?.match(STATE_RE)
+  if (!m) return false
+  const st = STATE_NAMES[m[1].toLowerCase()] ?? m[1].toUpperCase()
+  const ok = city.state === 'ACT' ? ['ACT', 'NSW'] : [city.state]
+  return !ok.includes(st)
+}
+
+export const addDaysKey = (key: string, n: number) => {
+  const d = new Date(`${key}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Today's date (YYYY-MM-DD) in the city's own timezone. */
+export const cityToday = (city: CityDef, now = new Date()) => toSydneyParts(now, city.tz).date
+
+/** True when an event's last day (end date, else start date) is before today in its city. Past events are never shown. */
+export const isPastEvent = (ev: { date: Date | string; endDate?: Date | string | null; city?: string | null }) => {
+  const last = ev.endDate ?? ev.date
+  const key = (typeof last === 'string' ? last : last.toISOString()).slice(0, 10)
+  return key < cityToday(CITIES.find((c) => c.name === ev.city) ?? CITIES[0])
+}
+
+/** Friday–Sunday of the current weekend in the city's timezone (from today if already the weekend). */
+export function weekendRange(city: CityDef, now = new Date()): { from: string; to: string } {
+  const today = cityToday(city, now)
+  const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
+  if (dow === 0) return { from: today, to: today }
+  if (dow === 6) return { from: today, to: addDaysKey(today, 1) }
+  if (dow === 5) return { from: today, to: addDaysKey(today, 2) }
+  const fri = addDaysKey(today, 5 - dow)
+  return { from: fri, to: addDaysKey(fri, 2) }
+}
+
+/** "+11:00" style UTC offset for a timezone on a given local date. */
+export function tzOffset(tz: string, dateKey: string): string {
+  const probe = new Date(`${dateKey}T12:00:00Z`)
+  const name = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(probe).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT'
+  const m = name.match(/GMT([+-]\d{2}):?(\d{2})?/)
+  return m ? `${m[1]}:${m[2] ?? '00'}` : '+00:00'
+}

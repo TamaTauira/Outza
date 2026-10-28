@@ -1,0 +1,716 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  date        DateTime
+  endDate     DateTime?
+  time        String?
+  endTime     String?
+  venueName   String
+  venueAddress String?
+  suburb      String?
+  category    String   @default("Community")
+  subTags     String[] @default([])
+  isLGBTI     Boolean  @default(false)
+  isFree      Boolean  @default(false)
+  price       String?
+  imageUrl    String?
+  ticketUrl   String?
+  source      String   @default("ticketmaster")
+  city        String   @default("Sydney")
+  latitude    Float?
+  longitude   Float?
+  dedupeHash  String   @unique
+  promoterId  String?
+  views       Int      @default(0)
+  ticketClicks Int     @default(0)
+  shares       Int     @default(0)
+  itineraryAdds Int    @default(0)
+  // Data quality
+  status         String    @default("SCHEDULED") // SCHEDULED | CANCELLED | POSTPONED | RESCHEDULED | SOLD_OUT
+  statusSource   String?
+  lastVerifiedAt DateTime?
+  sources        String[]  @default([])
+  priceMin       Float?
+  priceMax       Float?
+  feesIncluded   Boolean?
+  seriesKey      String?
+  recurrence     String?   // DAILY | WEEKLY | FORTNIGHTLY | MONTHLY | RECURRING
+  duplicateOfId  String?
+  // Visitor details (from the source listing or the organiser; never inferred)
+  galleryUrls       String[] @default([])
+  accessibilityInfo String?  @db.Text
+  ageRestriction    String?
+  transportInfo     String?  @db.Text
+  organiserName     String?
+  organiserUrl      String?
+  // Image pipeline
+  imageAssetId   String?
+  imageLocked    Boolean   @default(false) // admin replaced the artwork; source refreshes must not overwrite it
+  imageLookupAt  DateTime? // last attempt to find artwork on the event's own page (og:image / JSON-LD)
+  organiserEditedAt DateTime? // the organiser edited this listing; source refreshes must not overwrite their details
+  referrals      EventReferral[]
+  imageAsset     ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  imageHistory   ImageHistory[]
+  promoter    User?    @relation("PromoterEvents", fields: [promoterId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  savedBy     SavedEvent[]
+  attendees   Attendance[]
+  promotions  Promotion[]
+  localAds    LocalAd[]
+  reports     EventReport[]
+  claims      EventClaim[]
+  signals     EventSignal[]
+
+  @@index([date])
+  @@index([category])
+  @@index([isFree])
+  @@index([isLGBTI])
+  @@index([suburb])
+  @@index([city, date])
+  @@index([promoterId])
+  @@index([dedupeHash])
+  @@index([seriesKey])
+  @@index([city, date, duplicateOfId])
+  @@index([imageAssetId])
+}
+
+/// One processed source image, keyed by sha1 of its (upgraded) source URL. Shared by every event using that URL.
+model ImageAsset {
+  id            String    @id // sha1(sourceUrl)
+  sourceUrl     String    @db.Text
+  contentHash   String?   // sha1 of the original bytes - variants are cached by this
+  status        String    @default("PENDING") // PENDING | OK | ENHANCED | LOW_RES | REVIEW | FAILED
+  width         Int?
+  height        Int?
+  format        String?
+  bytes         Int?
+  originalPath  String?   // cloud_storage_path of the untouched original
+  isPublic      Boolean   @default(true)
+  variants      Json?     // { card: { w400: {webp, avif}, w800: {...} }, featured: ..., hero: ..., square: ... }
+  fit           Json?     // per variant: "cover" | "contain-blur"
+  score         Json?     // sharpness, blockiness, entropy, aspect, overall, integrity
+  enhanced      Boolean   @default(false)
+  note          String?
+  attempts      Int       @default(0)
+  costUsd       Float     @default(0)
+  processedAt   DateTime?
+  checkedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  events        Event[]
+  localListings LocalListing[]
+
+  @@index([status])
+  @@index([contentHash])
+  @@index([checkedAt])
+}
+
+/// Artwork changes per event (source updates and admin replacements).
+model ImageHistory {
+  id          String   @id @default(cuid())
+  eventId     String
+  oldAssetId  String?
+  newAssetId  String?
+  oldUrl      String?  @db.Text
+  newUrl      String?  @db.Text
+  reason      String   // SOURCE_UPDATE | ARTWORK_CHANGED | ADMIN_REPLACE | ADMIN_REGENERATE
+  createdAt   DateTime @default(now())
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+/// One run of the async image pass - success/rejection/cost stats.
+model ImageRun {
+  id         String    @id @default(cuid())
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  trigger    String    @default("refresh")
+  processed  Int       @default(0)
+  ok         Int       @default(0)
+  enhanced   Int       @default(0)
+  rejected   Int       @default(0) // enhancement failed integrity check - original kept
+  review     Int       @default(0)
+  failed     Int       @default(0)
+  cached     Int       @default(0)
+  unchanged  Int       @default(0)
+  costUsd    Float     @default(0)
+  errors     String?   @db.Text
+}
+
+model RefreshLog {
+  id        String   @id @default(cuid())
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  status    String   @default("running")
+  eventsAdded Int    @default(0)
+  errors    String?
+}
+
+model User {
+  id                  String    @id @default(cuid())
+  name                String?
+  email               String    @unique
+  emailVerified       DateTime?
+  image               String?
+  password            String?
+  role                String    @default("CONSUMER") // CONSUMER | PROMOTER | ADMIN
+  orgName             String?
+  bio                 String?   @db.Text
+  website             String?
+  homeCity            String    @default("Sydney")
+  preferredCategories String[]  @default([])
+  preferredCities     String[]  @default([])
+  emailOptIn          Boolean   @default(false)
+  emailFrequency      String    @default("weekly") // daily | weekly | monthly
+  lastDigestAt        DateTime?
+  proUntil            DateTime?
+  weeklyReport        Boolean   @default(false) // promoter opted in to a weekly emailed performance report
+  lastReportAt        DateTime?
+  birthDate           DateTime? @db.Date // event-goers: required in the app; only ever shown to promoters as grouped age bands
+  homePostcode        String?   // optional 4-digit AU postcode; only ever shown to promoters as grouped home areas
+  vibeProfile         Json?     // optional vibe answers (lib/vibe-shared.ts); own recommendations + grouped stats only
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  saved           SavedEvent[]
+  attending       Attendance[]
+  promotedEvents  Event[]          @relation("PromoterEvents")
+  promotions      Promotion[]
+  following       PromoterFollow[] @relation("Follower")
+  followers       PromoterFollow[] @relation("Followed")
+  sentRequests    Friendship[]     @relation("Requester")
+  receivedRequests Friendship[]    @relation("Addressee")
+  suggestions     Suggestion[]
+  proPasses       ProPass[]
+  localAds        LocalAd[]
+  eventReports    EventReport[]
+  eventClaims     EventClaim[]
+  eventSignals    EventSignal[]
+
+  @@index([emailOptIn])
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model SavedEvent {
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+  @@index([eventId])
+}
+
+model Attendance {
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+  @@index([eventId])
+}
+
+/// One signed-in person's interaction with an event (first time only), used for grouped audience insights.
+model EventSignal {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  kind      String   // VIEW | TICKET | SHARE | ITINERARY
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId, kind])
+  @@index([eventId])
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   @default("PENDING") // PENDING | ACCEPTED
+  createdAt   DateTime @default(now())
+  requester   User     @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User     @relation("Addressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+}
+
+model PromoterFollow {
+  followerId String
+  promoterId String
+  createdAt  DateTime @default(now())
+  follower   User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  promoter   User     @relation("Followed", fields: [promoterId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, promoterId])
+  @@index([promoterId])
+}
+
+model Promotion {
+  id              String    @id @default(cuid())
+  eventId         String
+  promoterId      String
+  tier            String    // SILVER | BRONZE | GOLD | add-ons: SPOTLIGHT | FRONTROW
+  days            Int?
+  orderId         String?
+  status          String    @default("PENDING") // PENDING | ACTIVE | EXPIRED | CANCELLED
+  amountCents     Int
+  currency        String    @default("aud")
+  stripeSessionId String?   @unique
+  paymentMode     String    @default("stripe") // stripe | test
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  promoter        User      @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+
+  @@index([status, endsAt])
+  @@index([eventId])
+  @@index([promoterId])
+  @@index([orderId])
+}
+
+/// Local business recommendation (restaurant, bar, parking, experience, service) shown beneath one event. Runs until the event ends.
+model LocalAd {
+  id              String    @id @default(cuid())
+  eventId         String
+  promoterId      String
+  kind            String    // DINING | BAR | PARKING | EXPERIENCE | SERVICE
+  businessName    String
+  blurb           String
+  address         String?
+  url             String
+  status          String    @default("PENDING") // PENDING | ACTIVE | CANCELLED
+  amountCents     Int
+  currency        String    @default("aud")
+  stripeSessionId String?   @unique
+  paymentMode     String    @default("stripe") // stripe | test
+  startsAt        DateTime?
+  endsAt          DateTime?
+  views           Int       @default(0)
+  clicks          Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  event           Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  promoter        User      @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, status, endsAt])
+  @@index([promoterId])
+}
+
+/// Promoter Pro membership pass (30 days per purchase)
+model ProPass {
+  id              String    @id @default(cuid())
+  userId          String
+  status          String    @default("PENDING") // PENDING | ACTIVE | CANCELLED
+  amountCents     Int
+  currency        String    @default("aud")
+  stripeSessionId String?   @unique
+  paymentMode     String    @default("stripe")
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String?
+  email     String?
+  role      String   @default("CONSUMER")
+  message    String    @db.Text
+  createdAt  DateTime  @default(now())
+  /// Set once the suggestion has gone out in the owner's fortnightly ideas summary.
+  digestedAt DateTime?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([digestedAt])
+}
+
+/// Owner alerts: fault fingerprints (deduped, throttled emails) and the ideas-summary schedule marker.
+model OwnerAlert {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  kind          String    // FAULT | IDEAS_DIGEST
+  title         String
+  detail        String?   @db.Text
+  count         Int       @default(1)
+  firstSeen     DateTime  @default(now())
+  lastSeen      DateTime  @default(now())
+  lastEmailedAt DateTime?
+
+  @@index([kind, lastEmailedAt])
+}
+
+/// "Report incorrect details" submissions from visitors, reviewed in /admin/trust.
+model EventReport {
+  id         String    @id @default(cuid())
+  eventId    String
+  userId     String?
+  reason     String    // WRONG_DATE | WRONG_VENUE | WRONG_PRICE | CANCELLED | DUPLICATE | BROKEN_LINK | OTHER
+  details    String?   @db.Text
+  email      String?
+  status     String    @default("OPEN") // OPEN | RESOLVED | DISMISSED
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([eventId])
+}
+
+/// Where event-page visits came from (counted per traffic source), for promoter referral reporting.
+model EventReferral {
+  id        String   @id @default(cuid())
+  eventId   String
+  source    String   // OUTZA | SEARCH | SOCIAL | EMAIL | DIRECT | OTHER
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, source])
+}
+
+/// Organiser claims on a listing. Approved claims make the claimant the event's promoter.
+model EventClaim {
+  id          String    @id @default(cuid())
+  eventId     String
+  userId      String
+  orgName     String
+  position    String?
+  evidenceUrl String?
+  message     String?   @db.Text
+  method      String?   // EMAIL_DOMAIN (auto-verified) | MANUAL
+  status      String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNote  String?
+  createdAt   DateTime  @default(now())
+  reviewedAt  DateTime?
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([status, createdAt])
+}
+
+/// One newsletter issue sent (or test-sent / skipped / blocked by QA) to one subscriber.
+model NewsletterSend {
+  id        String    @id @default(cuid())
+  userId    String
+  city      String
+  edition   String    // weekly | daily | monthly
+  subject   String
+  preview   String
+  variant   String    @default("") // subject style tested (playful | curious | event-led)
+  cta       String    @default("") // CTA wording variant
+  headline  String    @default("")
+  eventIds  String[]  @default([])
+  sections  Json?     // { hero, picks[], wildcard, sponsored, sponsoredPos }
+  subjects  Json?     // all candidates generated for this issue
+  qa        Json?
+  status    String    @default("PENDING") // PENDING | SENT | TEST | SKIPPED | BLOCKED | FAILED
+  error     String?
+  sentAt    DateTime  @default(now())
+  openedAt  DateTime?
+  clicks    NewsletterClick[]
+
+  @@index([userId, sentAt])
+  @@index([sentAt])
+  @@index([status])
+}
+
+model NewsletterClick {
+  id        String   @id @default(cuid())
+  sendId    String
+  eventId   String?
+  placement String   // hero | picks | wildcard | sponsored | explore | footer
+  target    String   // detail | ticket | explore | prefs | unsubscribe
+  category  String?
+  createdAt DateTime @default(now())
+  send      NewsletterSend @relation(fields: [sendId], references: [id], onDelete: Cascade)
+
+  @@index([sendId])
+  @@index([createdAt])
+}
+
+/// Cached AI editorial line per event, regenerated when the grounding facts change.
+model EventBlurb {
+  eventId   String   @id
+  text      String
+  model     String
+  factsHash String
+  createdAt DateTime @default(now())
+}
+
+/// OUTZA Local: community-submitted public listings (garage sales, clearances, markets, community activities).
+/// Recurring listings are stored once and expanded into occurrences at read time.
+model LocalListing {
+  id              String    @id @default(cuid())
+  userId          String?
+  title           String
+  category        String    // GARAGE | WAREHOUSE | MARKET | COMMUNITY
+  description     String    @db.Text
+  address         String
+  suburb          String
+  postcode        String
+  city            String
+  lat             Float?
+  lng             Float?
+  addressVerified Boolean   @default(false)
+  startDate       String    // YYYY-MM-DD, first occurrence (local date)
+  endDate         String?   // multi-day one-off sales
+  startTime       String    // HH:MM
+  endTime         String    // HH:MM
+  recurrence      String    @default("NONE") // NONE | WEEKLY | FORTNIGHTLY | MONTHLY_NTH
+  recurUntil      String?   // YYYY-MM-DD
+  priceNote       String?
+  organiserName   String
+  contactEmail    String
+  websiteUrl      String?
+  status          String    @default("PENDING") // PENDING | APPROVED | REJECTED | REMOVED
+  flags           String[]  @default([])
+  duplicateOfId   String?
+  reportCount     Int       @default(0)
+  ipHash          String?
+  reviewNote      String?
+  sourceName      String?   // set when imported from a public event feed (null = organiser submission)
+  sourceKey       String?
+  imagePath       String?   // cloud_storage_path of the lister's own image (public, re-encoded WebP)
+  imageAssetId    String?   // processed variants of imagePath via the shared image pipeline
+  imageAsset      ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([sourceKey])
+  @@index([city, status, expiresAt])
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([ipHash, createdAt])
+  @@index([imageAssetId])
+}
+
+/// OUTZA Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, Google Business Profile)
+model IntelSource {
+  key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | google_bp
+  enabled       Boolean   @default(true)
+  status        String    @default("never_run") // never_run | ok | unchanged | running | failed | needs_config
+  lastCheckedAt DateTime?
+  lastSuccessAt DateTime?
+  lastChangeAt  DateTime?
+  versionHash   String?   // hash of the last imported payload (change detection)
+  latestPeriod  String?
+  obsCount      Int       @default(0)
+  lastError     String?   @db.Text
+  failCount     Int       @default(0)
+  config        Json?
+  updatedAt     DateTime  @updatedAt
+}
+
+model IntelIngestJob {
+  id          String    @id @default(cuid())
+  source      String
+  trigger     String    @default("schedule") // schedule | admin | cron | test
+  status      String    @default("running") // running | ok | unchanged | failed
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  rows        Int       @default(0)
+  attempts    Int       @default(1)
+  versionHash String?
+  message     String?   @db.Text
+
+  @@index([source, startedAt])
+}
+
+/// Active (last good) version per dataset. Observations of other versions are ignored until swapped in.
+model IntelDataset {
+  id            String   @id // `${source}:${dataset}`
+  source        String
+  activeVersion String
+  rows          Int      @default(0)
+  latestPeriod  String?
+  updatedAt     DateTime @updatedAt
+}
+
+model IntelObservation {
+  id         String   @id @default(cuid())
+  source     String
+  dataset    String
+  version    String
+  measure    String
+  geoType    String   // AUS | STE | GCCSA | SA4 | SA3 | SA2 | LGA | POA | SAL | STATION | TOURISM
+  geoCode    String
+  period     String   // YYYY | YYYY-MM | YE-YYYY-MM
+  value      Float?
+  unit       String?
+  unitMult   Int      @default(0)
+  adjustment String   @default("") // HSI: SA | ORIG ; '' otherwise
+  category   String   @default("")
+  obsStatus  String?
+  importedAt DateTime @default(now())
+
+  @@unique([source, dataset, version, measure, geoType, geoCode, period, adjustment, category])
+  @@index([geoType, geoCode, measure])
+  @@index([source, dataset, version])
+}
+
+model IntelArea {
+  id      String @id // `${geoType}:${code}`
+  geoType String
+  code    String
+  name    String
+
+  @@index([geoType, name])
+}
+
+model IntelTransportStop {
+  tsn           String   @id
+  name          String
+  normName      String
+  lat           Float
+  lng           Float
+  modes         String
+  facilities    String?  @db.Text
+  accessibility String?  @db.Text
+  updatedAt     DateTime @updatedAt
+
+  @@index([normName])
+}
+
+/// Venue coordinates resolved to official ABS ASGS 2021 areas (point-in-polygon via ABS geo services)
+model IntelVenueGeo {
+  key        String   @id // rounded "lat,lng"
+  lat        Float
+  lng        Float
+  sa2        String?
+  sa2Name    String?
+  sa3        String?
+  sa3Name    String?
+  sa4        String?
+  sa4Name    String?
+  gccsa      String?
+  gccsaName  String?
+  state      String?
+  lga        String?
+  lgaName    String?
+  poa        String?
+  sal        String?
+  salName    String?
+  resolvedAt DateTime @default(now())
+}
+
+model IntelCache {
+  key       String   @id
+  data      Json
+  createdAt DateTime @default(now())
+}
+
+model GoogleBusinessConnection {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  refreshTokenEnc String    @db.Text // AES-256-GCM, server-side only, never sent to the client
+  scope           String?
+  googleEmail     String?
+  status          String    @default("connected") // connected | needs_location | ok | api_not_approved | error
+  accountName     String?
+  locationName    String?   // locations/{id}
+  locationTitle   String?
+  lastSyncAt      DateTime?
+  lastError       String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model GoogleBusinessMetric {
+  id           String @id @default(cuid())
+  connectionId String
+  locationName String
+  metric       String
+  date         String // YYYY-MM-DD
+  value        Int
+
+  @@unique([connectionId, locationName, metric, date])
+  @@index([connectionId, date])
+}
+
+model GoogleBusinessKeyword {
+  id           String @id @default(cuid())
+  connectionId String
+  locationName String
+  month        String // YYYY-MM
+  keyword      String
+  impressions  Int?
+  threshold    Int?   // Google reports "fewer than N" for low volumes
+
+  @@unique([connectionId, locationName, month, keyword])
+}
+
+model IntelAuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

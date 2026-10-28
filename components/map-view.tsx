@@ -1,0 +1,247 @@
+'use client'
+
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTheme } from 'next-themes'
+import { FilterState } from '@/components/filter-panel'
+import { Loader2, LocateFixed, X } from 'lucide-react'
+import { eventPath } from '@/lib/seo'
+import { CATEGORIES } from '@/lib/categories'
+import { cityDef } from '@/lib/cities'
+import { formatPrice } from '@/lib/board'
+import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
+
+declare const L: any
+
+interface MapViewProps {
+  filters: FilterState
+  searchQuery: string
+  city?: string
+}
+
+const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
+const TILE = MAP_TILE
+
+function popupHtml(e: any, tier?: string) {
+  const date = new Date(e?.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const p = formatPrice(e?.isFree, e?.price)
+  return `<div class="se-pop">${tier ? `<span class="se-pop-tier se-${tier.toLowerCase()}">${esc(tier)}</span>` : ''}
+    <div class="se-pop-title">${esc(e?.title)}</div>
+    <div class="se-pop-meta">${esc(date)}${e?.time ? ` · ${esc(e.time)}` : ''}<br/>${esc(e?.venueName)}</div>
+    <div class="se-pop-row"><span class="se-pop-price ${p.kind === 'free' ? 'free' : ''}">${esc(p.prefix ? `${p.prefix} ` : '')}${esc(p.value)}</span>
+    <a href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
+}
+
+function markerIcon(color: string, letter: string, tier?: string) {
+  const size = tier === 'GOLD' ? 44 : tier === 'BRONZE' ? 36 : 26
+  const bg = tier === 'GOLD' ? '#F5B700' : color
+  return L.divIcon({
+    className: 'se-marker-wrap',
+    html: `<div class="se-marker ${tier ? `se-marker-${tier.toLowerCase()}` : ''}" style="width:${size}px;height:${size}px;background:${bg}">${tier === 'GOLD' ? '★' : esc(letter)}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
+}
+
+const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coordinates are never stored)
+type LocState = 'idle' | 'asking' | 'locating' | 'found' | 'denied' | 'unavailable'
+
+export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
+  const mapRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<any>(null)
+  const tileRef = useRef<any>(null)
+  const markersRef = useRef<any>(null)
+  const goldRef = useRef<any>(null)
+  const [events, setEvents] = useState<any[]>([])
+  const [featured, setFeatured] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [ready, setReady] = useState(false)
+  const youRef = useRef<any>(null)
+  const [loc, setLoc] = useState<LocState>('idle')
+  const { resolvedTheme } = useTheme()
+  const dark = resolvedTheme !== 'light'
+
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      params.set('limit', '300')
+      if (city) params.set('city', city)
+      if (searchQuery) params.set('search', searchQuery)
+      if (filters.category) params.set('category', filters.category)
+      if (filters.subTag) params.set('subTag', filters.subTag)
+      if (filters.suburb) params.set('suburb', filters.suburb)
+      if (filters.isFree) params.set('isFree', 'true')
+      if (filters.isLGBTI) params.set('isLGBTI', 'true')
+      if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
+      if (filters.dateTo) params.set('dateTo', filters.dateTo)
+      const [res, feat] = await Promise.all([
+        fetch(`/api/events?${params.toString()}`).then((r) => r.json()),
+        fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((r) => r.json()).catch(() => ({ items: [] })),
+      ])
+      setEvents(res?.events ?? [])
+      setFeatured(feat?.items ?? [])
+    } catch (err) {
+      console.error('Failed to fetch events for map:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [searchQuery, filters, city])
+
+  useEffect(() => { fetchEvents() }, [fetchEvents])
+
+  // Create the map once Leaflet has loaded
+  useEffect(() => {
+    let tries = 0
+    const init = () => {
+      if (!mapRef.current || mapInstanceRef.current) return
+      if (typeof L === 'undefined') { if (tries++ < 50) setTimeout(init, 200); return }
+      const map = L.map(mapRef.current, { zoomControl: false }).setView([-33.8688, 151.2093], 12)
+      L.control.zoom({ position: 'bottomright' }).addTo(map)
+      mapInstanceRef.current = map
+      setReady(true)
+    }
+    init()
+    return () => { if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null } }
+  }, [])
+
+  // Theme-aware CARTO basemap
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!ready || !map) return
+    if (tileRef.current) map.removeLayer(tileRef.current)
+    tileRef.current = L.tileLayer(TILE(dark), {
+      attribution: MAP_ATTRIBUTION,
+      maxZoom: MAP_MAX_ZOOM,
+    }).addTo(map)
+  }, [ready, dark])
+
+  // Re-centre when the city changes
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!ready || !map) return
+    if (city) { const c = cityDef(city); map.setView([c.lat, c.lng], 12) }
+    else map.setView([-27.5, 134], 4)
+  }, [ready, city])
+
+  // Zoom to the visitor's own location (only after they've opted in; used in the browser only)
+  const locate = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setLoc('unavailable'); return }
+    setLoc('locating')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        try { localStorage.setItem(LOC_KEY, 'granted') } catch {}
+        const map = mapInstanceRef.current
+        if (!map) return
+        const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+        if (youRef.current) map.removeLayer(youRef.current)
+        youRef.current = L.marker(ll, {
+          icon: L.divIcon({ className: 'se-you-wrap', html: '<div style="width:18px;height:18px;border-radius:9999px;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 6px rgba(59,130,246,.25)"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+          zIndexOffset: 2000, keyboard: false,
+        }).bindTooltip('You are here').addTo(map)
+        map.setView(ll, 14)
+        setLoc('found')
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} ; setLoc('denied') }
+        else setLoc('unavailable')
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+    )
+  }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    let pref: string | null = null
+    try { pref = localStorage.getItem(LOC_KEY) } catch {}
+    if (pref === 'granted') locate()
+    else if (pref !== 'declined') setLoc('asking')
+  }, [ready, locate])
+
+  const declineLocation = () => { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} ; setLoc('idle') }
+
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!ready || !map) return
+    if (markersRef.current) map.removeLayer(markersRef.current)
+    if (goldRef.current) map.removeLayer(goldRef.current)
+
+    const tierById = new Map<string, string>(featured.map((f: any) => [f.id, f.tier]))
+    const mcg = L.markerClusterGroup
+      ? L.markerClusterGroup({
+          showCoverageOnHover: false,
+          iconCreateFunction: (cl: any) => L.divIcon({ className: 'se-cluster-wrap', html: `<div class="se-cluster">${cl.getChildCount()}</div>`, iconSize: [40, 40] }),
+        })
+      : L.layerGroup()
+    const gold = L.layerGroup()
+
+    for (const e of events) {
+      if (!e?.latitude || !e?.longitude) continue
+      const tier = e.promoTier ?? tierById.get(e.id)
+      if (tier === 'GOLD') continue // gold rendered separately, always visible
+      const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#f9652a'
+      const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(color, e?.category?.[0] ?? 'E', tier), zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
+        .bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
+      if (tier === 'BRONZE') gold.addLayer(m)
+      else mcg.addLayer(m)
+    }
+    for (const f of featured) {
+      if (f.tier !== 'GOLD' || !f.latitude || !f.longitude) continue
+      gold.addLayer(L.marker([f.latitude, f.longitude], { icon: markerIcon('#F5B700', '★', 'GOLD'), zIndexOffset: 1000 })
+        .bindPopup(popupHtml(f, 'GOLD'), { className: 'se-popup', maxWidth: 280 }))
+    }
+    map.addLayer(mcg)
+    map.addLayer(gold)
+    markersRef.current = mcg
+    goldRef.current = gold
+  }, [events, featured, ready])
+
+  const count = events.filter((e: any) => e?.latitude && e?.longitude).length
+  return (
+    <div className="relative w-full" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
+      {loading && (
+        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/40">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
+      <div ref={mapRef} className="se-map w-full h-full rounded-2xl overflow-hidden" />
+      <div className="absolute top-4 left-4 z-[500] rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg">
+        <span className="text-primary font-bold">{count}</span> events on map
+      </div>
+      {ready && (
+        <button
+          onClick={locate}
+          disabled={loc === 'locating'}
+          className="absolute top-4 right-4 z-[500] inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-white/90 text-neutral-900 dark:bg-neutral-900/80 dark:text-white backdrop-blur-xl shadow-lg hover:bg-white dark:hover:bg-neutral-900 disabled:opacity-60"
+          aria-label="Zoom to my location"
+        >
+          {loc === 'locating' ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <LocateFixed className="w-4 h-4 text-primary" />}
+          <span className="hidden sm:inline">Near Me</span>
+        </button>
+      )}
+      {loc === 'asking' && (
+        <div className="absolute left-4 right-4 bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4">
+          <button onClick={declineLocation} className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
+            <X className="w-4 h-4" />
+          </button>
+          <p className="font-display font-bold text-lg leading-tight pr-6">Where you at?</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">Share your location and we'll zoom straight to the action around you.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Your location is only used in your browser to centre the map. We don't store it.</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={locate} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Share My Location</button>
+            <button onClick={declineLocation} className="h-10 px-4 rounded-lg border border-border text-sm font-medium hover:bg-muted">Not Now</button>
+          </div>
+        </div>
+      )}
+      {(loc === 'denied' || loc === 'unavailable') && (
+        <div className="absolute left-4 right-4 bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-xl bg-card text-card-foreground shadow-xl ring-1 ring-border p-3 pr-9 text-sm">
+          <button onClick={() => setLoc('idle')} className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
+            <X className="w-4 h-4" />
+          </button>
+          {loc === 'denied'
+            ? 'No worries. Location access is off, so we\'ll stick to the city view. You can turn it on in your browser settings any time.'
+            : 'We couldn\'t pin you down just now. Give Near Me another tap in a moment.'}
+        </div>
+      )}
+    </div>
+  )
+}
