@@ -23,15 +23,27 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const queryError = params.get('error')
+  const message = error || (queryError ? 'Invalid email or password' : '')
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const res = await signIn('credentials', { email, password, redirect: false })
-    setLoading(false)
-    if (!res || res.error) { setError('Invalid email or password'); return }
-    router.replace(next)
+    try {
+      const res = await signIn('credentials', { email, password, redirect: false })
+      const urlError = typeof res?.url === 'string' && /[?&]error=/.test(res.url)
+      if (!res || res.error || res.ok === false || urlError) {
+        setError('Invalid email or password')
+        return
+      }
+      router.replace(next)
+    } catch (err) {
+      console.error(err)
+      setError('Invalid email or password')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const modes = [
@@ -62,7 +74,7 @@ function LoginForm() {
         <Label htmlFor="password">Password</Label>
         <Input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
       </div>
-      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+      {message && <p className="text-base sm:text-sm font-medium text-destructive" role="alert">{message}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{mode === 'PROMOTER' ? 'Sign In to Promoter Dashboard' : 'Sign In'}
       </Button>

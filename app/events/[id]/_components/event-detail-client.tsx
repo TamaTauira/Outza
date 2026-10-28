@@ -90,9 +90,10 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                 alt={event?.title ?? 'Event'}
                 sizes="(max-width: 1280px) 100vw, 1280px"
                 priority
+                fallback={{ color: catDef?.color ?? '#f9652a', title: event?.title ?? 'Event' }}
               />
               {event?.isLGBTI && (
-                <div className="absolute top-4 right-4 rainbow-bg text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
+                <div className="absolute z-10 top-4 right-4 rainbow-bg text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
                   🏳️‍🌈 LGBTIQ+ Event
                 </div>
               )}
@@ -161,7 +162,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                     <p className="text-2xl font-bold text-foreground">
                       {event.quality?.price?.range ?? (event?.isFree ? 'Free' : (event?.price ?? 'See website'))}
                     </p>
-                    {event.quality?.price?.fees && <p className="text-xs text-muted-foreground mt-1">{event.quality.price.fees}</p>}
+                    {event.quality?.price?.fees && <p className="text-sm text-muted-foreground mt-1">{event.quality.price.fees}</p>}
                   </div>
 
                   {event?.ticketUrl && (

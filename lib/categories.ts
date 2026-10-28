@@ -29,6 +29,32 @@ export const SYDNEY_SUBURBS = [
   'The Rocks', 'Barangaroo', 'Sydney Olympic Park',
 ]
 
+/** Comedy, theatre and the like are Arts & Culture even when a feed files them under music. */
+export const ARTS_NOT_MUSIC_TITLE = /\b(comedy|comedian|stand[- ]?up|theatre|theater|circus|cabaret|burlesque|improv)\b/
+
+export function titleIsArtsNotMusic(title: string): boolean {
+  return ARTS_NOT_MUSIC_TITLE.test(title.toLowerCase())
+}
+
+/**
+ * Category + tags for a Music row whose title is comedy/theatre/etc.
+ * Returns null when the title should stay wherever it is. Never invents tags the classifier did not find.
+ */
+export function artsCategoryForMisfiledMusic(title: string, description: string | null): { category: 'Arts & Culture'; subTags: string[] } | null {
+  if (!titleIsArtsNotMusic(title)) return null
+  const arts = CATEGORIES.find((c) => c.name === 'Arts & Culture')
+  const text = `${title} ${description ?? ''}`.toLowerCase()
+  const subTags = (arts?.subTags ?? []).filter((tag) => {
+    const escaped = tag.toLowerCase().replace(/[.*+?^${}()|[\]\\/&]/g, '\\$&')
+    return new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`).test(text)
+  })
+  // The title rule uses a few words that are not themselves subtag labels.
+  if (/\b(comedy|comedian|stand[- ]?up)\b/.test(text) && !subTags.includes('Comedy')) subTags.push('Comedy')
+  if (/\b(theatre|theater)\b/.test(text) && !subTags.includes('Theatre')) subTags.push('Theatre')
+  if (/\bcircus\b/.test(text) && !subTags.includes('Circus')) subTags.push('Circus')
+  return { category: 'Arts & Culture', subTags }
+}
+
 export function classifyCategory(title: string, description: string, genres: string[]): { category: string; subTags: string[] } {
   const text = `${title} ${description} ${genres.join(' ')}`.toLowerCase().replace(/pop[- ]up/g, 'popup')
   const subTags: string[] = []
@@ -73,7 +99,7 @@ export function classifyCategory(title: string, description: string, genres: str
   }
 
   // Strict: a comedy/theatre show is never "Music" just because the source genre says music.
-  if (category === 'Music' && /\b(comedy|comedian|stand[- ]?up|theatre|theater|circus|cabaret|burlesque|improv)\b/.test(title.toLowerCase())) category = 'Arts & Culture'
+  if (category === 'Music' && titleIsArtsNotMusic(title)) category = 'Arts & Culture'
   // Only keep tags that belong to the final category, so the Type column matches the filter.
   const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
   return { category, subTags: [...new Set(subTags)].filter((t) => own.includes(t)) }

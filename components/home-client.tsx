@@ -180,7 +180,7 @@ export function HomeClient() {
               </label>
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} />
             </div>
-            <p className="mt-4 flex items-start gap-2 text-xs sm:text-sm text-white/70">
+            <p className="mt-4 flex items-start gap-2 text-base sm:text-sm text-white/85">
               <Info className="w-4 h-4 mt-0.5 shrink-0" />
               Event details may change. Confirm times, availability and prices with the organiser before attending.
             </p>
