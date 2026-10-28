@@ -1,7 +1,7 @@
 // Connectors for the approved public sources. Each returns datasets of observation rows; nothing is invented.
 import { prisma } from '@/lib/prisma'
 import { AGE_MEASURES, REGION_MEASURES } from './sources'
-import { fetchRetry, htmlToText, normStation, parseCsv, parseDnswHeadline, sha } from './util'
+import { fetchRetry, htmlToText, isAuAsgs, normStation, parseCsv, parseDnswHeadline, sha } from './util'
 import type { ObsRow } from './store'
 
 export type ConnectorResult = { datasets: { dataset: string; rows: ObsRow[] }[]; note?: string; attempts: number; extra?: () => Promise<number> }
@@ -16,13 +16,7 @@ async function absCsv(flow: string, key: string, params: string) {
 }
 const num = (s?: string) => { if (s == null || s === '') return null; const n = Number(s); return isFinite(n) ? n : null }
 
-/** NSW-only geography filter for ASGS codes (keeps NSW, Greater Sydney / Rest of NSW and Australia benchmarks). */
-export function isNswAsgs(regionType: string, code: string) {
-  if (regionType === 'AUS') return true
-  if (regionType === 'STE') return code === '1'
-  if (regionType === 'GCCSA') return code === '1GSYD' || code === '1RNSW'
-  return code.startsWith('1')
-}
+export { isAuAsgs } from './util'
 
 export async function absRegion(): Promise<ConnectorResult> {
   const core = ['ERP_P_20', 'ERP_21', 'ERP_23', 'ERP_17']
@@ -39,7 +33,7 @@ export async function absRegion(): Promise<ConnectorResult> {
     const r = await absCsv('ABS_REGIONAL_ASGS2021', `${g.m.join('+')}.SA2+SA3+SA4+GCCSA+STE+AUS..A`, g.params)
     attempts = Math.max(attempts, r.attempts)
     for (const x of r.rows) {
-      if (!REGION_MEASURES[x.MEASURE] || !isNswAsgs(x.REGIONTYPE, x.ASGS_2021)) continue
+      if (!REGION_MEASURES[x.MEASURE] || !isAuAsgs(x.REGIONTYPE, x.ASGS_2021)) continue
       rows.push({ measure: x.MEASURE, geoType: x.REGIONTYPE, geoCode: x.ASGS_2021, period: x.TIME_PERIOD, value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, unitMult: num(x.UNIT_MULT) ?? 0, obsStatus: x.OBS_STATUS || null })
     }
   }
@@ -53,20 +47,20 @@ export async function absRegion(): Promise<ConnectorResult> {
     attempts = Math.max(attempts, r.attempts)
     for (const x of r.rows) {
       const code = x.LGA_2021 ?? ''
-      if (!REGION_MEASURES[x.MEASURE] || !/^1\d{4}$/.test(code)) continue
+      if (!REGION_MEASURES[x.MEASURE] || !/^[1-8]\d{4}$/.test(code)) continue
       lga.push({ measure: x.MEASURE, geoType: 'LGA', geoCode: code, period: x.TIME_PERIOD, value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, unitMult: num(x.UNIT_MULT) ?? 0, obsStatus: x.OBS_STATUS || null })
     }
   }
-  if (kept.length < 1000) throw new Error(`ABS Data by Region returned too few NSW rows (${kept.length}); keeping last good data`)
+  if (kept.length < 1000) throw new Error(`ABS Data by Region returned too few rows (${kept.length}); keeping last good data`)
   return { datasets: [{ dataset: 'asgs', rows: kept }, { dataset: 'lga', rows: lga }], attempts }
 }
 
 export async function absSeifa(): Promise<ConnectorResult> {
   const flows = [
-    { flow: 'ABS_SEIFA2021_SA2', dim: 'ASGS_2021', geo: 'SA2', ok: (c: string) => /^1\d{8}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
-    { flow: 'ABS_SEIFA2021_LGA', dim: 'LGA_2021', geo: 'LGA', ok: (c: string) => /^1\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
-    { flow: 'ABS_SEIFA2021_POA', dim: 'POA', geo: 'POA', ok: (c: string) => /^2\d{3}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
-    { flow: 'ABS_SEIFA2021_SAL', dim: 'SAL', geo: 'SAL', ok: (c: string) => /^1\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD' },
+    { flow: 'ABS_SEIFA2021_SA2', dim: 'ASGS_2021', geo: 'SA2', ok: (c: string) => /^[1-8]\d{8}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
+    { flow: 'ABS_SEIFA2021_LGA', dim: 'LGA_2021', geo: 'LGA', ok: (c: string) => /^[1-8]\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
+    { flow: 'ABS_SEIFA2021_POA', dim: 'POA', geo: 'POA', ok: (c: string) => /^\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
+    { flow: 'ABS_SEIFA2021_SAL', dim: 'SAL', geo: 'SAL', ok: (c: string) => /^[1-8]\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD' },
   ]
   const datasets: ConnectorResult['datasets'] = []
   let attempts = 0
@@ -79,14 +73,14 @@ export async function absSeifa(): Promise<ConnectorResult> {
       if (!f.ok(code)) continue
       rows.push({ measure: x.SEIFA_MEASURE, category: x.SEIFAINDEXTYPE, geoType: f.geo, geoCode: code, period: x.TIME_PERIOD || '2021', value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, obsStatus: x.OBS_STATUS || null })
     }
-    if (rows.length < 100) throw new Error(`${f.flow} returned too few NSW rows (${rows.length})`)
+    if (rows.length < 100) throw new Error(`${f.flow} returned too few rows (${rows.length})`)
     datasets.push({ dataset: f.geo.toLowerCase(), rows })
   }
   return { datasets, attempts }
 }
 
 export async function absHsi(): Promise<ConnectorResult> {
-  const r = await absCsv('HSI_M', '7+8+9..CUR.10+20.1+AUS.M', 'startPeriod=2019-01')
+  const r = await absCsv('HSI_M', '7+8+9..CUR.10+20.1+2+3+4+5+6+7+8+AUS.M', 'startPeriod=2019-01')
   const rows: ObsRow[] = r.rows.map((x) => ({
     measure: x.MEASURE, category: x.CATEGORY, adjustment: x.TSEST === '20' ? 'SA' : 'ORIG', geoType: x.STATE === 'AUS' ? 'AUS' : 'STE', geoCode: x.STATE,
     period: x.TIME_PERIOD, value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, unitMult: num(x.UNIT_MULT) ?? 0, obsStatus: x.OBS_STATUS || null,

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
 import { suburbFromAddress } from '@/lib/cities'
 import { makeSeriesKey } from '@/lib/event-store'
-import { parsePriceRange } from '@/lib/quality'
+import { parsePriceRange, promoterCanEditEvent, sourceLabel } from '@/lib/quality'
 import { bestSourceUrl } from '@/lib/images/source-url'
 import { queueEventImage } from '@/lib/images/runner'
 
@@ -15,9 +15,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
   const { id } = await params
-  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, city: true, imageUrl: true } })
+  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, city: true, imageUrl: true, source: true } })
   if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   if (ev.promoterId !== me.id && me.role !== 'ADMIN') return forbidden()
+  if (!promoterCanEditEvent(ev.source)) {
+    return NextResponse.json({ error: `This listing comes from ${sourceLabel(ev.source)} and can’t be edited. Create your own event, or add a Local listing or business ad, to change details.` }, { status: 403 })
+  }
 
   const b = await req.json().catch(() => ({}))
   const title = String(b.title ?? '').trim().slice(0, 250)

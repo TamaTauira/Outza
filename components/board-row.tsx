@@ -60,7 +60,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
   const endMin = toMinutes(ev.endTime)
   const startMin = toMinutes(ev.time)
   const end = endMin !== null && startMin !== null && endMin !== startMin ? formatTime(ev.endTime) : null
-  const price = formatPrice(ev.isFree, ev.price)
+  const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const checked = checkedAgo(ev.updatedAt)
   const done = status.tone === 'done'
   const type = ev.subTags?.[0] ?? ev.category

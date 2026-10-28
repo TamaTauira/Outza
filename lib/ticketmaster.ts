@@ -1,4 +1,5 @@
 import { saveEvent, sleep } from '@/lib/event-store'
+import { moneyNumber, priceFromAmounts } from '@/lib/price'
 import { CITIES, type CityDef } from '@/lib/cities'
 
 const TM_PAGE_SIZE = 200
@@ -139,12 +140,9 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
       const pr = ranges.find((r) => /including fees/i.test(r?.type ?? '')) ?? ranges[0]
       const code = String(ev?.dates?.status?.code ?? '').toLowerCase()
       const status = code === 'cancelled' || code === 'canceled' ? 'CANCELLED' : code === 'postponed' ? 'POSTPONED' : code === 'rescheduled' ? 'RESCHEDULED' : 'SCHEDULED'
-      let price: string | null = null
-      if (pr) {
-        const min = pr.min ?? 0
-        const max = pr.max ?? 0
-        price = min === 0 && max === 0 ? 'Free' : min === max ? `$${min.toFixed(0)}` : `$${min.toFixed(0)} - $${max.toFixed(0)}`
-      }
+      const min = pr ? moneyNumber(pr.min) : null
+      const max = pr ? moneyNumber(pr.max) : null
+      const price = pr ? priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price : null
       const images: any[] = ev?.images ?? []
       // Highest-resolution artwork, never a thumbnail (largest 16:9 first - stable URL across refreshes)
       const usable = images.filter((i) => i?.url && !i?.fallback)

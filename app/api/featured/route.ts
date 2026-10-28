@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 const MIN_ITEMS = 8
 const evSelect = {
   id: true, title: true, date: true, time: true, venueName: true, suburb: true, city: true,
-  category: true, isFree: true, price: true, imageUrl: true, latitude: true, longitude: true,
+  category: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, latitude: true, longitude: true,
   promoter: { select: { id: true, orgName: true, name: true } },
   imageAsset: { select: imageAssetSelect },
 } as const

@@ -1,5 +1,6 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
 import { CITIES, type CityDef } from '@/lib/cities'
+import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 
 const UA = 'OutzaEventsBot/1.0 (+https://outza.abacusai.app)'
 
@@ -38,12 +39,12 @@ function cityFor(lat: number | null | undefined, lng: number | null | undefined,
 
 const title = (s: string) => (s === s.toUpperCase() && /[A-Z]{3}/.test(s) ? s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : s)
 
-function priceRange(prices: number[]): { price: string | null; isFree: boolean } {
-  const p = prices.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b)
-  if (!p.length) return { price: null, isFree: false }
-  const lo = Math.round(p[0])
-  const hi = Math.round(p[p.length - 1])
-  return { price: lo === hi ? `$${lo}` : `$${lo} - $${hi}`, isFree: false }
+/** Includes $0 tickets. Complimentary-only lists are free. Hidden, donation and add-on tickets are ignored. */
+function moshtixPrice(tickets: { ticketPrice?: unknown; hidden?: boolean; complimentary?: boolean; donation?: boolean; addOn?: boolean }[]): PriceRead {
+  const visible = tickets.filter((t) => !t.hidden && !t.donation && !t.addOn)
+  const nums = visible.filter((t) => !t.complimentary).map((t) => moneyNumber(t.ticketPrice)).filter((n): n is number => n != null)
+  if (!nums.length) return visible.some((t) => t.complimentary) ? readPrice(null, true) : readPrice(null)
+  return priceFromAmounts(Math.min(...nums), Math.max(...nums))
 }
 
 // ---------------- Moshtix (official open GraphQL API, public events only) ----------------
@@ -89,8 +90,7 @@ export async function fetchMoshtixEvents(): Promise<number> {
         const ed = e?.endDate ? new Date(e.endDate) : null
         const s = toSydneyParts(sd, city.tz)
         const en = ed && !isNaN(ed.getTime()) && ed > sd ? toSydneyParts(ed, city.tz) : null
-        const tickets: any[] = (e?.ticketTypes?.items ?? []).filter((t: any) => !t.hidden && !t.complimentary && !t.donation && !t.addOn)
-        const { price, isFree } = priceRange(tickets.map((t) => Number(t.ticketPrice)))
+        const priced = moshtixPrice(e?.ticketTypes?.items ?? [])
         const main = (e?.images?.items ?? []).find((i: any) => i?.type === 'MAIN' && /x\d+x\d+$/.test(i.url ?? ''))
         const venueName = String(v.name ?? 'TBA').replace(new RegExp(`,\\s*${city.name}$`, 'i'), '')
         const locality = a.locality ? title(String(a.locality)) : null
@@ -104,8 +104,8 @@ export async function fetchMoshtixEvents(): Promise<number> {
           venueName: title(venueName),
           venueAddress: [a.line1, locality, [a.region, a.postCode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
           genres: [e?.category?.name, e?.genre?.name].filter(Boolean),
-          price,
-          isFree,
+          price: priced.price,
+          isFree: priced.isFree,
           imageUrl: main ? main.url.replace(/x\d+x\d+$/, 'x600x600') : null,
           ticketUrl: e.eventUrl ?? null,
           latitude: v.location?.latitude ?? null,
@@ -155,7 +155,7 @@ const OZTIX_WINDOW = 30 * DAY
 /** ~24 months. Empty tail queries are cheap; the index simply stops returning hits. */
 const OZTIX_HORIZON = 730 * DAY
 
-const OZTIX_FIELDS = 'EventName,EventDescription,SpecialGuests,DateStartUnix,DateEndUnix,EventUrl,EventImage1,Categories,Bands,Venue,_geoloc,MinPrice,PriceFrom,IsCancelled,IsPostponed,IsRescheduled,HasEventDatePassed'
+const OZTIX_FIELDS = 'EventName,EventDescription,SpecialGuests,DateStartUnix,DateEndUnix,EventUrl,EventImage1,Categories,Bands,Venue,_geoloc,MinPrice,PriceFrom,MaxPrice,PriceTo,IsFree,IsCancelled,IsPostponed,IsRescheduled,HasEventDatePassed'
 
 async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<string>): Promise<number> {
   const r = await oztixQuery(
@@ -182,7 +182,10 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
       const tz = v.Timezone || city.tz
       const s = toSydneyParts(new Date(e.DateStartUnix * 1000), tz)
       const en = e.DateEndUnix > e.DateStartUnix ? toSydneyParts(new Date(e.DateEndUnix * 1000), tz) : null
-      const from = Number(e.PriceFrom ?? e.MinPrice)
+      const from = moneyNumber(e.PriceFrom ?? e.MinPrice)
+      const to = moneyNumber(e.MaxPrice ?? e.PriceTo)
+      const oztixFree = e.IsFree === true || e.IsFree === 'true'
+      const oztixPrice = oztixFree && from == null && to == null ? readPrice(null, true) : priceFromAmounts(from, to, { fromOnly: from != null && to == null && from > 0 })
       const status = e.IsCancelled ? 'CANCELLED' : e.IsPostponed ? 'POSTPONED' : e.IsRescheduled ? 'RESCHEDULED' : 'SCHEDULED'
       const guests = e.SpecialGuests ? `With ${e.SpecialGuests}. ` : ''
       const ok = await saveEvent({
@@ -195,7 +198,8 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
         venueName: v.Name ?? 'TBA',
         venueAddress: [v.Address, v.Locality, [v.State, v.Postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
         genres: [...(e.Categories ?? []), ...(e.Bands?.length ? ['Music'] : [])],
-        price: from > 0 ? `From $${Math.round(from)}` : null,
+        price: oztixPrice.price,
+        isFree: oztixPrice.isFree,
         imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=1200&height=600') : null,
         ticketUrl: e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null,
         latitude: e._geoloc?.lat ?? null,
@@ -238,14 +242,35 @@ export async function fetchOztixEvents(): Promise<number> {
 
 type Row = Record<string, unknown>
 
-function field(row: Row, ...names: string[]): string | null {
+function rawField(row: Row, ...names: string[]): unknown {
   const keys = Object.keys(row)
   for (const n of names) {
     const k = keys.find((x) => x.toLowerCase().replace(/[^a-z0-9]/g, '') === n)
-    const v = k ? row[k] : null
-    if (v != null && typeof v !== 'object' && String(v).trim()) return String(v).trim()
+    if (!k) continue
+    const v = row[k]
+    if (v != null && !(typeof v === 'string' && !String(v).trim())) return v
   }
   return null
+}
+
+function field(row: Row, ...names: string[]): string | null {
+  const v = rawField(row, ...names)
+  if (v == null || typeof v === 'object') return null
+  const s = String(v).trim()
+  return s || null
+}
+
+function ticketekPrice(row: Row): PriceRead {
+  const min = moneyNumber(rawField(row, 'minprice', 'pricefrom', 'lowprice', 'minimumprice'))
+  const max = moneyNumber(rawField(row, 'maxprice', 'priceto', 'highprice', 'maximumprice'))
+  if (min != null || max != null) return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 })
+  for (const name of ['currentprice', 'price', 'originalprice', 'saleprice', 'displayprice', 'cost']) {
+    const read = readPrice(rawField(row, name))
+    if (read.price) return read
+  }
+  const free = rawField(row, 'isfree', 'freeevent', 'free')
+  if (free === true || free === 'true' || free === '1' || (typeof free === 'string' && /^free$/i.test(free))) return readPrice(null, true)
+  return readPrice(null)
 }
 
 /** Local date/time for a feed value: naive "YYYY-MM-DD HH:MM" is already local; offsets/unix are converted. */
@@ -334,7 +359,7 @@ export async function fetchTicketekEvents(): Promise<number> {
       if (!s) continue
       const en = localParts(field(r, 'enddate', 'enddatetime', 'expirationdate'), city.tz)
       const status = field(r, 'status', 'eventstatus')?.toLowerCase() ?? ''
-      const price = Number(field(r, 'minprice', 'pricefrom', 'currentprice', 'price'))
+      const ticketPrice = ticketekPrice(r)
       const ok = await saveEvent({
         title: title(name),
         description: field(r, 'description', 'summary', 'teaser'),
@@ -345,7 +370,8 @@ export async function fetchTicketekEvents(): Promise<number> {
         venueName: title(field(r, 'venuename', 'venue', 'location') ?? 'TBA'),
         venueAddress: field(r, 'venueaddress', 'address', 'streetaddress'),
         genres: [field(r, 'category', 'genre', 'subcategory')].filter((g): g is string => !!g),
-        price: price > 0 ? `From $${Math.round(price)}` : null,
+        price: ticketPrice.price,
+        isFree: ticketPrice.isFree,
         imageUrl: images ? field(r, 'imageurl', 'image', 'eventimage') : null,
         ticketUrl: field(r, 'url', 'eventurl', 'producturl', 'link', 'deeplink'),
         latitude: hasGeo ? lat : null,

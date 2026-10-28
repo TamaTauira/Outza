@@ -7,6 +7,10 @@ import { writeDataset } from './store'
 import { googleConfigured, syncAllConnections } from './google'
 import { sha } from './util'
 
+/** Bump when an import must be re-run so newly covered states replace the old NSW-only snapshot. */
+const NATIONAL_COVERAGE = 'au-cities-v1'
+const NATIONAL_SOURCES = new Set(['abs_region', 'abs_seifa', 'abs_hsi'])
+
 const RUNNERS: Record<Exclude<SourceKey, 'google_bp'>, (cfg: Record<string, string> | null) => Promise<ConnectorResult>> = {
   abs_region: () => absRegion(), abs_seifa: () => absSeifa(), abs_hsi: () => absHsi(), tfnsw: () => tfnsw(), dnsw: (cfg) => dnsw(cfg),
 }
@@ -51,7 +55,8 @@ export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 
     const versionHash = sha(versions.join('|'))
     const status = changed ? 'ok' : 'unchanged'
     const message = [`${rows.toLocaleString('en-AU')} observations${extraRows ? ` + ${extraRows} stop locations` : ''}`, changed ? 'new version imported' : 'no change since last import', result.note].filter(Boolean).join('; ')
-    await prisma.intelSource.update({ where: { key }, data: { status, lastSuccessAt: new Date(), ...(changed ? { lastChangeAt: new Date() } : {}), versionHash, latestPeriod: latest, obsCount: rows, lastError: null, failCount: 0 } })
+    const prevCfg = src?.config && typeof src.config === 'object' && !Array.isArray(src.config) ? src.config as Record<string, unknown> : {}
+    await prisma.intelSource.update({ where: { key }, data: { status, lastSuccessAt: new Date(), ...(changed ? { lastChangeAt: new Date() } : {}), versionHash, latestPeriod: latest, obsCount: rows, lastError: null, failCount: 0, ...(NATIONAL_SOURCES.has(key) ? { config: { ...prevCfg, coverage: NATIONAL_COVERAGE } } : {}) } })
     await prisma.intelIngestJob.update({ where: { id: job.id }, data: { status, endedAt: new Date(), rows, attempts: result.attempts, versionHash, message } })
     if (changed) await prisma.intelCache.deleteMany({})
     return { status, message }
@@ -74,7 +79,9 @@ export async function runDueSources() {
     if (!def) continue
     const last = s.lastCheckedAt?.getTime() ?? 0
     const interval = s.status === 'failed' ? Math.min(def.scheduleHours, s.failCount >= 3 ? 6 : 1) : def.scheduleHours
-    if (Date.now() - last < interval * 3600_000) continue
+    const cfg = s.config && typeof s.config === 'object' && !Array.isArray(s.config) ? s.config as Record<string, unknown> : {}
+    const staleCoverage = NATIONAL_SOURCES.has(s.key) && cfg.coverage !== NATIONAL_COVERAGE
+    if (!staleCoverage && Date.now() - last < interval * 3600_000) continue
     const r = await runSource(s.key as SourceKey, 'schedule')
     out[s.key] = r.status
   }

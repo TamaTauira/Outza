@@ -5,19 +5,20 @@ import { sydneyToday } from '@/lib/event-store'
 import { addDays, sydneyNow, toMinutes } from '@/lib/board'
 import { CATEGORIES } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
+import { interpretQuery, type AiFilters } from '@/lib/ai-search-parse'
 
 export const dynamic = 'force-dynamic'
+export type { AiFilters }
 
 const MODEL = 'gpt-5.4-mini'
 const RESULTS = 8
-const MAX_DAYS = 60
 const CAT_NAMES = CATEGORIES.map((c) => c.name)
-const TIMES = ['morning', 'afternoon', 'evening', 'any'] as const
-type TimeOfDay = (typeof TIMES)[number]
 
-export interface AiFilters {
-  dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
-  lgbtiq: boolean; timeOfDay: TimeOfDay; suburb: string; keywords: string[]; soon: boolean
+function weekend(today: string): [string, string] {
+  const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
+  if (dow === 0) return [today, today]
+  if (dow === 6) return [today, addDays(today, 1)]
+  return [addDays(today, 6 - dow), addDays(today, 7 - dow)]
 }
 
 /** Quick-question picks from the search bar. They override whatever the text implies. */
@@ -33,67 +34,16 @@ function applyHints(f: AiFilters, h: any, today: string) {
   return f
 }
 
-const GENERIC = new Set(['live', 'music', 'live music', 'event', 'events', 'things', 'fun', 'stuff', 'show', 'shows', 'activities'])
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 const clean = (s: unknown, n = 40) => (typeof s === 'string' ? s.replace(/[^\p{L}\p{N} '&-]/gu, '').trim().slice(0, n) : '')
-
-function weekend(today: string): [string, string] {
-  const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
-  if (dow === 0) return [today, today]
-  if (dow === 6) return [today, addDays(today, 1)]
-  return [addDays(today, 6 - dow), addDays(today, 7 - dow)]
-}
-
-/** Validates whatever the model (or the fallback) produced into safe, bounded filters. */
-function normalise(raw: any, today: string): AiFilters {
-  let from = DAY_RE.test(raw?.dateFrom) ? raw.dateFrom : today
-  let to = DAY_RE.test(raw?.dateTo) ? raw.dateTo : addDays(from, 13)
-  if (from < today) from = today
-  if (to < from) to = from
-  if (to > addDays(today, MAX_DAYS)) to = addDays(today, MAX_DAYS)
-  const keywords = (Array.isArray(raw?.keywords) ? raw.keywords : []).map((k: unknown) => clean(k, 30)).filter((k: string) => k.length > 1 && !GENERIC.has(k.toLowerCase())).slice(0, 4)
-  const maxPrice = Number(raw?.maxPrice)
-  return {
-    dateFrom: from, dateTo: to,
-    category: CAT_NAMES.includes(raw?.category) ? raw.category : '',
-    isFree: raw?.isFree === true,
-    maxPrice: Number.isFinite(maxPrice) && maxPrice > 0 ? Math.min(maxPrice, 2000) : null,
-    lgbtiq: raw?.lgbtiq === true,
-    timeOfDay: TIMES.includes(raw?.timeOfDay) ? raw.timeOfDay : 'any',
-    suburb: clean(raw?.suburb),
-    keywords,
-    soon: false,
-  }
-}
-
-/** Keyword parser used when the AI is unavailable. */
-function fallbackParse(q: string, today: string) {
-  const s = q.toLowerCase()
-  const out: any = { keywords: [] as string[] }
-  if (/\btonight\b/.test(s)) { out.dateFrom = out.dateTo = today; out.timeOfDay = 'evening' }
-  else if (/\btoday\b/.test(s)) out.dateFrom = out.dateTo = today
-  else if (/\btomorrow\b/.test(s)) out.dateFrom = out.dateTo = addDays(today, 1)
-  else if (/\bweekend\b/.test(s)) [out.dateFrom, out.dateTo] = weekend(today)
-  if (/\bfree\b/.test(s)) out.isFree = true
-  if (/\b(lgbt|queer|gay|pride)/.test(s)) out.lgbtiq = true
-  const m = s.match(/(?:under|below|less than)\s*\$?(\d+)/)
-  if (m) out.maxPrice = Number(m[1])
-  const cat = CATEGORIES.find((c) => s.includes(c.name.toLowerCase().split(' ')[0]) || c.subTags.some((t) => s.includes(t.toLowerCase())))
-  if (cat) out.category = cat.name
-  if (/\b(gig|band|concert|live music)\b/.test(s)) out.category = 'Music'
-  const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'tonight', 'today', 'tomorrow', 'weekend', 'free', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music'])
-  out.keywords = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w) && !(cat && cat.name.toLowerCase().includes(w))).slice(0, 3)
-  return out
-}
 
 async function aiParse(q: string, today: string, city: string) {
   const key = process.env.ABACUSAI_API_KEY
   if (!key) return null
   const dow = new Date(`${today}T00:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' })
   const system = `You turn an event-search request into JSON filters for an Australian events site. Today is ${dow} ${today}${city ? ` and the user is browsing ${city}` : ''}.
-Return ONLY JSON: {"dateFrom":"YYYY-MM-DD","dateTo":"YYYY-MM-DD","category":one of ${JSON.stringify(CAT_NAMES)} or "","isFree":bool,"maxPrice":number|null,"lgbtiq":bool,"timeOfDay":"morning"|"afternoon"|"evening"|"any","suburb":string,"keywords":[up to 3 short search words such as a genre, artist, venue or activity]}.
+Return ONLY JSON: {"dateFrom":"YYYY-MM-DD","dateTo":"YYYY-MM-DD","category":one of ${JSON.stringify(CAT_NAMES)} or "","isFree":bool,"maxPrice":number|null,"lgbtiq":bool,"timeOfDay":"morning"|"afternoon"|"evening"|"any","suburb":string,"city":one of ${JSON.stringify(CITY_NAMES)} or "","keywords":[up to 3 short search words such as a genre, artist, venue or activity]}.
 Categories and their sub-types: ${CATEGORIES.map((c) => `${c.name} (${c.subTags.join(', ')})`).join('; ')}. Pick the category whose sub-types contain what the user asked for (e.g. comedy = Arts & Culture, markets = Community).
-Rules: "this weekend" = the current or coming Saturday and Sunday (if today is Saturday, it is today and tomorrow); "tonight" = today with evening; no date mentioned = today to 13 days ahead. Set timeOfDay only if the user mentions a time of day. Only set suburb if a suburb/area is named. Do not invent anything the user did not ask for. Keywords must come from the request, must not repeat the category name ("live music" with Music needs no keyword), and leave out generic words (event, things, fun).`
+Rules: "this weekend" = the current or coming Saturday and Sunday (if today is Saturday, it is today and tomorrow); "tonight" = today with evening; no date mentioned = today to 13 days ahead. A named year (2027) is 1 January through 31 December of that year. A named month and year (January 2027) is that whole month. Words like "upcoming" do not replace a named year. If the user names a city (${CITY_NAMES.join(', ')}), set "city" to that exact name. Set timeOfDay only if the user mentions a time of day. Only set suburb if a suburb/area is named. Do not invent anything the user did not ask for. Keywords must come from the request, must not repeat the category name, the year, or the city, and leave out generic words (event, things, fun, upcoming).`
   try {
     const res = await fetch('https://apps.abacus.ai/v1/chat/completions', {
       method: 'POST',
@@ -128,17 +78,15 @@ export async function POST(req: NextRequest) {
 
     const today = sydneyToday().toISOString().slice(0, 10)
     const parsed = q.length >= 2 ? await aiParse(q, today, city) : null
-    // Relative dates are resolved in code so "this weekend" or "tonight" can never drift.
-    const fb: any = q.length >= 2 ? fallbackParse(q, today) : {}
-    const merged = parsed && fb.dateFrom && !/\bnext\b/i.test(q) ? { ...parsed, dateFrom: fb.dateFrom, dateTo: fb.dateTo, timeOfDay: fb.timeOfDay ?? parsed.timeOfDay } : parsed
-    const filters = applyHints(normalise(merged ?? fb, today), hints, today)
+    const filters = applyHints(interpretQuery(q, today, parsed), hints, today)
+    const searchCity = filters.city || city
     const now = sydneyNow()
 
     const base: Prisma.EventWhereInput = {
       date: { gte: new Date(`${filters.dateFrom}T00:00:00.000Z`), lte: new Date(`${filters.dateTo}T00:00:00.000Z`) },
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
-      ...(city ? { city } : {}),
+      ...(searchCity ? { city: searchCity } : {}),
       ...(filters.category ? { category: filters.category } : {}),
       ...(filters.isFree ? { isFree: true } : {}),
       ...(filters.lgbtiq ? { isLGBTI: true } : {}),

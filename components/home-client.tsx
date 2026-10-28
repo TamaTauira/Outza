@@ -8,7 +8,7 @@ import { EventList } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
 import { MapView } from '@/components/map-view';
 import { Footer } from '@/components/footer';
-import { CATEGORIES } from '@/lib/categories';
+import { CATEGORIES, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
 import { ArrowRight, CalendarDays, Check, Info, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
@@ -25,8 +25,9 @@ import { useBackState } from '@/lib/scroll-memory';
 const CITY_KEY = 'se-city-v1';
 
 const EMPTY_FILTERS: FilterState = {
-  category: '', subTag: '', suburb: '', isFree: false, isLGBTI: false, dateFrom: '', dateTo: '', datePreset: ''
+  category: '', categories: [], subTag: '', suburb: '', isFree: false, isLGBTI: false, dateFrom: '', dateTo: '', datePreset: ''
 };
+const CAT_KEY = 'se-categories-v1';
 const DAYS_AHEAD = 30;
 
 const WINDOWS: {key: TimeWindow;label: string;todayOnly?: boolean;}[] = [
@@ -53,10 +54,28 @@ export function HomeClient() {
   // Opens on what's on now and next, not on the earlier, already-ended part of the day.
   const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'now');
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
+  const [catsHydrated, setCatsHydrated] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const { saved } = useSaved();
   const boardRef = useRef<HTMLDivElement>(null);
   const setCity = (c: string) => {setCityState(c);try {localStorage.setItem(CITY_KEY, c);} catch {}};
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CAT_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setFilters((f) => withCategories(f, parsed));
+      }
+    } catch {}
+    setCatsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!catsHydrated) return;
+    const list = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
+    try { localStorage.setItem(CAT_KEY, JSON.stringify(list)); } catch {}
+  }, [catsHydrated, filters.categories, filters.category]);
 
   useEffect(() => {
     try {
@@ -114,6 +133,7 @@ export function HomeClient() {
   const isToday = !!day && day === today;
   const update = (p: Partial<FilterState>) => setFilters((f) => ({ ...f, ...p }));
   const advancedCount = [filters.subTag, filters.suburb, filters.dateFrom || filters.dateTo].filter(Boolean).length;
+  const picked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
 
   const goBoard = (fn: () => void) => () => {fn();if (view !== 'board') goView('board');else window.scrollTo({ top: 0, behavior: 'smooth' });};
   // Hero AI search → open the same filters on the full board
@@ -121,7 +141,17 @@ export function HomeClient() {
     setDay(f.dateFrom);
     setTimeWindow(f.soon ? 'now' : f.timeOfDay === 'evening' ? 'evening' : 'all');
     setSearchInput(f.keywords.join(' '));
-    setFilters({ ...EMPTY_FILTERS, category: f.category, isFree: f.isFree, isLGBTI: f.lgbtiq, suburb: f.suburb });
+    setFilters({
+      ...EMPTY_FILTERS,
+      categories: f.category ? [f.category] : [],
+      category: f.category,
+      isFree: f.isFree,
+      isLGBTI: f.lgbtiq,
+      suburb: f.suburb,
+      dateFrom: f.dateFrom,
+      dateTo: f.dateTo,
+    });
+    if (f.city) setCity(f.city);
     requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   const quickLinks = [
@@ -130,7 +160,7 @@ export function HomeClient() {
   { label: 'This weekend', onClick: goBoard(() => {const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6);if (sat) setDay(sat);setTimeWindow('all');}) },
   { label: 'Free events', onClick: goBoard(() => update({ isFree: true })) },
   { label: 'LGBTIQ+ events', onClick: goBoard(() => update({ isLGBTI: true })) },
-  { label: 'Live music', onClick: goBoard(() => update({ category: 'Music', subTag: '' })) }];
+  { label: 'Live music', onClick: goBoard(() => setFilters((f) => withCategories(f, ['Music']))) }];
 
 
   return (
@@ -281,12 +311,12 @@ export function HomeClient() {
               {/* Categories + search + toggles */}
               <div className="flex flex-col lg:flex-row lg:items-center gap-3 px-3 sm:px-4 py-3 border-b border-border">
                 <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-1 px-1 lg:flex-1 min-w-0">
-                  <CategoryChip active={!filters.category} onClick={() => update({ category: '', subTag: '' })} label="All events" Icon={LayoutGrid} />
+                  <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All events" Icon={LayoutGrid} />
                   {CATEGORIES.map((c) =>
                 <CategoryChip
                   key={c.name}
-                  active={filters.category === c.name}
-                  onClick={() => update({ category: filters.category === c.name ? '' : c.name, subTag: '' })}
+                  active={picked.includes(c.name)}
+                  onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))}
                   label={c.name}
                   Icon={categoryIcon(c.name)}
                   color={c.color} />
@@ -307,9 +337,9 @@ export function HomeClient() {
                 </div>
               </div>
 
-              {filters.category &&
+              {picked.length === 1 &&
             <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] px-3 sm:px-4 py-2 border-b border-border">
-                  {(CATEGORIES.find((c) => c.name === filters.category)?.subTags ?? []).map((t) =>
+                  {(CATEGORIES.find((c) => c.name === picked[0])?.subTags ?? []).map((t) =>
               <button
                 key={t}
                 onClick={() => update({ subTag: filters.subTag === t ? '' : t })}
@@ -328,12 +358,10 @@ export function HomeClient() {
             filters={filters}
             searchQuery={searchQuery}
             day={day}
-            days={days}
             today={today}
             nowMinutes={now?.minutes ?? 0}
             timeWindow={timeWindow}
             onWindowChange={setTimeWindow}
-            onDayChange={setDay}
             city={city} />
 
           }
@@ -361,6 +389,8 @@ export function HomeClient() {
 function CategoryChip({ active, onClick, label, Icon, color }: {active: boolean;onClick: () => void;label: string;Icon: typeof LayoutGrid;color?: string;}) {
   return (
     <button
+      type="button"
+      aria-pressed={active}
       onClick={onClick}
       className={cn(
         'shrink-0 flex items-center gap-2 px-3 h-9 rounded-full text-sm transition-colors',

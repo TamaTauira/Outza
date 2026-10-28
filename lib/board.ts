@@ -36,9 +36,11 @@ export function addDays(key: string, n: number): string {
 }
 export const utcDay = (key: string) => new Date(`${key}T00:00:00Z`)
 
-export function dayLabel(key: string, today: string | null): string {
+export function dayLabel(key: string, today?: string | null): string {
   const d = utcDay(key)
-  const base = `${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+  const year = key.slice(0, 4)
+  const showYear = !!today && !today.startsWith(year)
+  const base = `${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${showYear ? ` ${year}` : ''}`
   if (today && key === today) return `Today · ${base}`
   if (today && key === addDays(today, 1)) return `Tomorrow · ${base}`
   return base
@@ -58,20 +60,7 @@ export function formatTime(t: string | null): { hm: string; ampm: string } {
   return { hm: `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')}`, ampm: h < 12 ? 'am' : 'pm' }
 }
 
-/** Returns a short label and optional "from" prefix for a price string. */
-export function formatPrice(isFree: boolean, price: string | null): { prefix: string; value: string; kind: 'free' | 'paid' | 'unknown' } {
-  if (isFree || (price && /^free$/i.test(price.trim()))) return { prefix: '', value: 'Free', kind: 'free' }
-  if (!price) return { prefix: '', value: 'Price TBA', kind: 'unknown' }
-  const nums = (price.match(/\$?\s?(\d+(?:[.,]\d+)?)/g) ?? []).map((n) => n.replace(/[^\d.,]/g, ''))
-  if (!nums.length) return { prefix: '', value: price, kind: 'paid' }
-  const lo = nums[0]
-  const hi = nums.length > 1 ? nums[nums.length - 1] : null
-  if (hi && hi !== lo) {
-    if (parseFloat(lo) === 0) return { prefix: 'free –', value: `$${hi}`, kind: 'paid' }
-    return { prefix: '', value: `$${lo}–$${hi}`, kind: 'paid' }
-  }
-  return { prefix: '', value: `$${lo}`, kind: 'paid' }
-}
+export { formatPrice } from '@/lib/price'
 
 /** "5 min ago" style label for when a listing's price was last refreshed. */
 export function checkedAgo(iso?: string | null, now = Date.now()): string | null {

@@ -15,7 +15,7 @@ export const INTEL_SOURCES: Record<SourceKey, SourceDef> = {
     url: 'https://www.abs.gov.au/methodologies/data-region-methodology', licence: 'CC BY 4.0',
     attribution: 'Source: Australian Bureau of Statistics, Data by Region (ABS Data API, ABS_REGIONAL_ASGS2021 / ABS_REGIONAL_LGA2021).',
     scheduleHours: 24 * 7, scheduleLabel: 'Checked weekly (ABS updates annually)',
-    scope: 'NSW SA2, SA3, SA4, Greater Sydney, Rest of NSW, NSW, Australia and NSW LGAs',
+    scope: 'SA2, SA3, SA4, greater capital cities and rest-of-state regions, states and Australia, plus LGAs, for every state and territory',
     limitations: 'Annual official statistics with a lag of one to two years. Census-based measures (household income, education, unemployment, rent, birthplace) are 2016/2021 Census values. Figures describe people who live in an area, not people who attend events there.',
   },
   abs_seifa: {
@@ -23,7 +23,7 @@ export const INTEL_SOURCES: Record<SourceKey, SourceDef> = {
     url: 'https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/2021',
     licence: 'CC BY 4.0', attribution: 'Source: Australian Bureau of Statistics, Socio-Economic Indexes for Areas (SEIFA) 2021.',
     scheduleHours: 24 * 30, scheduleLabel: 'Checked monthly (SEIFA is released once per Census)',
-    scope: 'NSW SA2, suburbs and localities (SAL), postal areas (POA) and LGAs',
+    scope: 'SA2, suburbs and localities (SAL), postal areas (POA) and LGAs in every state and territory',
     limitations: 'SEIFA ranks areas, not people. It summarises the area as a whole in 2021 and says nothing about any individual, a household’s spending or anyone’s willingness to pay.',
   },
   abs_hsi: {
@@ -31,7 +31,7 @@ export const INTEL_SOURCES: Record<SourceKey, SourceDef> = {
     url: 'https://www.abs.gov.au/statistics/economy/finance/monthly-household-spending-indicator', licence: 'CC BY 4.0',
     attribution: 'Source: Australian Bureau of Statistics, Monthly Household Spending Indicator (HSI_M).',
     scheduleHours: 24, scheduleLabel: 'Checked daily (ABS releases monthly)',
-    scope: 'New South Wales and Australia only',
+    scope: 'Each state and territory, plus Australia',
     limitations: 'State and national totals in current prices (not adjusted for inflation). It is not suburb-level or venue-level card spend, and it does not measure ticket sales.',
   },
   tfnsw: {
@@ -92,7 +92,7 @@ export const SEIFA_INDEXES: Record<string, { label: string; meaning: string }> =
   IER: { label: 'Economic resources', meaning: 'Area-level household income, housing and assets indicators.' },
   IEO: { label: 'Education and occupation', meaning: 'Area-level qualifications and skilled occupations.' },
 }
-export const SEIFA_MEASURES: Record<string, string> = { SCORE: 'Score', RWAD: 'Australian decile', RWSD: 'NSW decile', RWAP: 'Australian percentile', RWSP: 'NSW percentile' }
+export const SEIFA_MEASURES: Record<string, string> = { SCORE: 'Score', RWAD: 'Australian decile', RWSD: 'State decile', RWAP: 'Australian percentile', RWSP: 'State percentile' }
 
 export const HSI_CATEGORIES: Record<string, string> = {
   TOT: 'Total household spending', '1': 'Goods', '2': 'Services', '3': 'Discretionary', '4': 'Non-discretionary', '10': 'Food',
@@ -102,7 +102,7 @@ export const HSI_CATEGORIES: Record<string, string> = {
 export const HSI_MEASURES: Record<string, string> = { '7': 'Household spending ($m)', '8': 'Change from previous month (%)', '9': 'Change from same month last year (%)' }
 
 export const GEO_LABELS: Record<string, string> = {
-  SA2: 'Venue area (ABS SA2)', SA3: 'District (ABS SA3)', SA4: 'Region (ABS SA4)', GCCSA: 'Greater Sydney', STE: 'New South Wales', AUS: 'Australia',
+  SA2: 'Venue area (ABS SA2)', SA3: 'District (ABS SA3)', SA4: 'Region (ABS SA4)', GCCSA: 'Greater capital city', STE: 'State', AUS: 'Australia',
   LGA: 'Council area (LGA)', POA: 'Postcode area (POA)', SAL: 'Suburb (ABS SAL)', STATION: 'Station', TOURISM: 'Tourism region',
 }
 export const GSYD = '1GSYD'

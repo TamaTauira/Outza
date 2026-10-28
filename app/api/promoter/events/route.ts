@@ -21,7 +21,7 @@ export async function GET() {
       where: { promoterId: me.id },
       orderBy: { date: 'asc' },
       select: {
-        id: true, title: true, date: true, time: true, venueName: true, city: true, price: true, isFree: true, category: true,
+        id: true, title: true, date: true, time: true, venueName: true, city: true, price: true, isFree: true, category: true, source: true,
         views: true, ticketClicks: true,
         endTime: true, venueAddress: true, ticketUrl: true, imageUrl: true, description: true, organiserName: true, organiserUrl: true,
         accessibilityInfo: true, ageRestriction: true, transportInfo: true, organiserEditedAt: true,

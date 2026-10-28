@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
+import { formatPrice } from '@/lib/board'
 
 interface EventData {
   id: string
@@ -23,6 +24,8 @@ interface EventData {
   isLGBTI: boolean
   isFree: boolean
   price: string | null
+  priceMin?: number | null
+  priceMax?: number | null
   imageUrl: string | null
   imageAsset?: ClientImage | null
   ticketUrl: string | null
@@ -33,6 +36,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
   const day = dateObj.getUTCDate()
   const month = dateObj.toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' })
   const catDef = CATEGORIES.find((c) => c.name === event.category)
+  const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
 
   return (
     <motion.div
@@ -114,7 +118,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             {/* Price + CTA */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
               <span className="text-sm font-semibold text-foreground">
-                {event.isFree ? 'Free' : (event.price ?? 'See website')}
+                {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
               </span>
               <span className="flex items-center gap-1 text-xs font-medium text-primary group-hover:gap-2 transition-all">
                 Get Tickets <ExternalLink className="w-3 h-3" />

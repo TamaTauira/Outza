@@ -1,5 +1,56 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { CITIES } from '@/lib/cities'
+import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
+
+function offerList(raw: unknown): any[] {
+  if (!raw) return []
+  return Array.isArray(raw) ? raw : [raw]
+}
+
+/** Schema.org Offer / AggregateOffer on a Frontier date, when the page actually publishes one. */
+function frontierPrice(it: any) {
+  if (it?.isAccessibleForFree === true) return readPrice(null, true)
+  const offers = [...offerList(it?.offers), ...offerList(it?.subEvent).flatMap((s) => offerList(s?.offers))]
+  const nums: number[] = []
+  for (const o of offers) {
+    for (const k of ['lowPrice', 'highPrice', 'price', 'minPrice', 'maxPrice']) {
+      const n = moneyNumber(o?.[k])
+      if (n != null) nums.push(n)
+    }
+  }
+  if (!nums.length) return readPrice(null)
+  return priceFromAmounts(Math.min(...nums), Math.max(...nums))
+}
+
+function priceFromCosData(raw: unknown): string | null {
+  if (raw == null || raw === '') return null
+  if (typeof raw === 'string') {
+    const text = raw.trim()
+    if (text.startsWith('[') || text.startsWith('{')) {
+      try { return priceFromCosData(JSON.parse(text)) } catch { return readPrice(text).price }
+    }
+    return readPrice(text).price
+  }
+  if (Array.isArray(raw)) return readPriceRows(raw).price
+  return readPrice(raw).price
+}
+
+const cosPriceCache = new Map<string, string | null>()
+
+/** City of Sydney publishes priceData on the event page, not on the search hit. */
+async function lookupCosPrice(h: any): Promise<string | null> {
+  const direct = priceFromCosData(h.priceData ?? h.cost ?? h.price)
+  if (direct) return direct
+  if (h.freeEvent === 'true' || h.freeEvent === true) return null
+  const slug = String(h.slug ?? '').replace(/^\/+|\/+$/g, '')
+  if (!slug) return null
+  if (cosPriceCache.has(slug)) return cosPriceCache.get(slug) ?? null
+  const html = await fetchHtml(`${COS_ORIGIN}/events/${slug}`)
+  const raw = (html ? extractNextData(html) : null)?.props?.pageProps?.eventData?.priceData
+  const price = priceFromCosData(raw)
+  cosPriceCache.set(slug, price)
+  return price
+}
 
 /** Frontier Touring – schema.org MusicEvent JSON-LD for every tour date nationally. */
 export async function fetchFrontierEvents(): Promise<number> {
@@ -19,6 +70,7 @@ export async function fetchFrontierEvents(): Promise<number> {
       const loc: string = it?.location?.name ?? ''
       const city = CITIES.find((c) => c.match.test(loc))
       if (!/Event$/.test(it?.['@type'] ?? '') || !city) continue
+      const offer = frontierPrice(it)
       const ok = await saveEvent({
         title: String(it.name ?? '').replace(/\s+20\d\d$/, ''),
         description: it.description || `${it?.performer?.name ?? it.name} live in ${city.name}, presented by Frontier Touring.`,
@@ -29,6 +81,8 @@ export async function fetchFrontierEvents(): Promise<number> {
         genres: ['Music', 'Concert'],
         imageUrl: it.image ?? null,
         ticketUrl: it.url ?? null,
+        price: offer.price,
+        isFree: offer.isFree,
         source: 'frontier',
       }).catch(() => false)
       if (ok) saved++
@@ -67,6 +121,8 @@ function cosSpan(a: string, b: string): number {
 
 async function saveCosHit(h: any): Promise<boolean> {
   const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
+  const free = h.freeEvent === 'true' || h.freeEvent === true
+  const price = free ? null : await lookupCosPrice(h)
   return saveEvent({
     title: h.name,
     description: h.strapline,
@@ -76,7 +132,8 @@ async function saveCosHit(h: any): Promise<boolean> {
     venueName: h.venueName ?? 'Sydney',
     venueAddress: h.suburbName ? `${h.suburbName}, NSW` : null,
     genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
-    isFree: h.freeEvent === 'true' || h.freeEvent === true,
+    isFree: free,
+    price,
     imageUrl: h.tileImageCloudinary?.[0]?.secure_url ?? null,
     ticketUrl: `${COS_ORIGIN}/events/${h.slug}`,
     source: 'cityofsydney',
@@ -164,9 +221,9 @@ export async function fetchHumanitixEvents(): Promise<number> {
       const ed = e?.date?.endDate ? new Date(e.date.endDate) : null
       const s = toSydneyParts(sd, city.tz)
       const en = ed && !isNaN(ed.getTime()) ? toSydneyParts(ed, city.tz) : null
-      const min = e?.pricing?.minimumPrice ?? null
-      const max = e?.pricing?.maximumPrice ?? null
-      const price = min === null ? null : max === 0 ? 'Free' : min === max ? `$${min}` : `$${min} - $${max}`
+      const min = moneyNumber(e?.pricing?.minimumPrice ?? e?.pricing?.minPrice)
+      const max = moneyNumber(e?.pricing?.maximumPrice ?? e?.pricing?.maxPrice)
+      const priced = priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 })
       const ok = await saveEvent({
         title: e.name,
         description: e.description ?? e.summary ?? null,
@@ -177,8 +234,9 @@ export async function fetchHumanitixEvents(): Promise<number> {
         venueName: e?.eventLocation?.venueName ?? 'TBA',
         venueAddress: e?.eventLocation?.address ?? null,
         genres: [e?.category, e?.subcategory, path === '/music' ? 'Music' : ''].filter(Boolean),
-        price,
-        isFree: max === 0,
+        price: priced.price,
+        isFree: priced.isFree,
+        feesIncluded: e?.pricing?.plusBuyerFee === true ? false : e?.pricing?.plusBuyerFee === false ? true : null,
         imageUrl: e?.bannerImage?.handle ? `https://images.humanitix.com/i/${e.bannerImage.handle}@original` : null,
         ticketUrl: `${e.hostname ?? 'https://events.humanitix.com/'}${e.slug}`,
         source: 'humanitix',

@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { X, Filter, ChevronDown, ChevronUp, Flag } from 'lucide-react'
-import { CATEGORIES, SYDNEY_SUBURBS } from '@/lib/categories'
+import { CATEGORIES, SYDNEY_SUBURBS, knownCategories, withCategories } from '@/lib/categories'
 import { cn } from '@/lib/utils'
 
 export interface FilterState {
   category: string
+  categories: string[]
   subTag: string
   suburb: string
   isFree: boolean
@@ -32,13 +33,14 @@ export function FilterPanel({ filters, onChange, onClose, isMobile }: FilterPane
 
   const clearAll = () => {
     onChange({
-      category: '', subTag: '', suburb: '',
+      category: '', categories: [], subTag: '', suburb: '',
       isFree: false, isLGBTI: false,
       dateFrom: '', dateTo: '', datePreset: '',
     })
   }
 
-  const activeCount = [filters.category, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI, filters.datePreset || filters.dateFrom].filter(Boolean).length
+  const picked = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : [])
+  const activeCount = [picked.length ? 'types' : '', filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI, filters.datePreset || filters.dateFrom].filter(Boolean).length
 
   const setDatePreset = (preset: string) => {
     const now = new Date()
@@ -159,17 +161,14 @@ export function FilterPanel({ filters, onChange, onClose, isMobile }: FilterPane
             <div key={cat.name}>
               <button
                 onClick={() => {
-                  if (filters.category === cat.name) {
-                    update({ category: '', subTag: '' })
-                    setExpandedCat('')
-                  } else {
-                    update({ category: cat.name, subTag: '' })
-                    setExpandedCat(cat.name)
-                  }
+                  const next = picked.includes(cat.name) ? picked.filter((n) => n !== cat.name) : [...picked, cat.name]
+                  onChange(withCategories(filters, next))
+                  setExpandedCat(next.length === 1 && next[0] === cat.name ? cat.name : '')
                 }}
+                aria-pressed={picked.includes(cat.name)}
                 className={cn(
                   'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all',
-                  filters.category === cat.name
+                  picked.includes(cat.name)
                     ? 'bg-primary/15 text-primary'
                     : 'hover:bg-muted text-foreground'
                 )}
@@ -179,11 +178,11 @@ export function FilterPanel({ filters, onChange, onClose, isMobile }: FilterPane
                   {cat.name}
                 </span>
                 {cat.subTags.length > 0 && (
-                  filters.category === cat.name ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                  picked.length === 1 && picked[0] === cat.name ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                 )}
               </button>
 
-              {filters.category === cat.name && expandedCat === cat.name && (
+              {picked.length === 1 && picked[0] === cat.name && expandedCat === cat.name && (
                 <div className="pl-5 pt-1 pb-1 flex flex-wrap gap-1">
                   {cat.subTags.map((tag) => (
                     <button
