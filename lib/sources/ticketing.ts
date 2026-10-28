@@ -48,7 +48,11 @@ function priceRange(prices: number[]): { price: string | null; isFree: boolean }
 
 // ---------------- Moshtix (official open GraphQL API, public events only) ----------------
 
-const MOSHTIX_QUERY = `query($page: Int, $from: Date) { viewer { getEvents(pageIndex: $page, pageSize: 200, publicOnly: true, searchableOnly: true, excludeClosed: true, sortBy: STARTDATE, sortByDirection: ASC, eventStartDateFrom: $from) {
+const MOSHTIX_PAGE_SIZE = 200
+/** Runaway guard only. Pages stop when totalCount is exhausted or a page comes back short. */
+const MOSHTIX_MAX_PAGES = 100
+
+const MOSHTIX_QUERY = `query($page: Int, $from: Date) { viewer { getEvents(pageIndex: $page, pageSize: ${MOSHTIX_PAGE_SIZE}, publicOnly: true, searchableOnly: true, excludeClosed: true, sortBy: STARTDATE, sortByDirection: ASC, eventStartDateFrom: $from) {
   totalCount items { id name startDate endDate eventUrl teaser description ageRestriction status
     category { name } genre { name }
     venue { name address { line1 locality region postCode } location { latitude longitude } }
@@ -59,7 +63,8 @@ export async function fetchMoshtixEvents(): Promise<number> {
   const from = new Date(Date.now() - 6 * 3600000).toISOString()
   let saved = 0
   let total = Infinity
-  for (let page = 0; page * 200 < total && page < 30; page++) {
+  let page = 0
+  for (; page < MOSHTIX_MAX_PAGES && page * MOSHTIX_PAGE_SIZE < total; page++) {
     const res = await fetch('https://api.moshtix.com/v1/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': UA },
@@ -71,7 +76,9 @@ export async function fetchMoshtixEvents(): Promise<number> {
     const conn = json?.data?.viewer?.getEvents
     if (!conn) throw new Error(json?.errors?.[0]?.message ?? 'Moshtix API returned no data')
     total = conn.totalCount ?? 0
-    for (const e of conn.items ?? []) {
+    const items: any[] = conn.items ?? []
+    if (items.length === 0) break
+    for (const e of items) {
       try {
         if (e?.status && e.status !== 'LIVE') continue
         const v = e?.venue ?? {}
@@ -114,6 +121,9 @@ export async function fetchMoshtixEvents(): Promise<number> {
     }
     await sleep(1000)
   }
+  if (total > MOSHTIX_MAX_PAGES * MOSHTIX_PAGE_SIZE) {
+    console.warn(`[moshtix] stopped at ${MOSHTIX_MAX_PAGES} pages; totalCount=${total}`)
+  }
   console.log(`[moshtix] saved ${saved} events`)
   return saved
 }
@@ -139,58 +149,79 @@ async function oztixQuery(params: string): Promise<any> {
   return res.json()
 }
 
+const OZTIX_HITS = 1000
+/** Algolia will not return past this many hits per query, so a full window is split. */
+const OZTIX_WINDOW = 30 * DAY
+/** ~24 months. Empty tail queries are cheap; the index simply stops returning hits. */
+const OZTIX_HORIZON = 730 * DAY
+
+const OZTIX_FIELDS = 'EventName,EventDescription,SpecialGuests,DateStartUnix,DateEndUnix,EventUrl,EventImage1,Categories,Bands,Venue,_geoloc,MinPrice,PriceFrom,IsCancelled,IsPostponed,IsRescheduled,HasEventDatePassed'
+
+async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<string>): Promise<number> {
+  const r = await oztixQuery(
+    `query=&hitsPerPage=${OZTIX_HITS}&aroundLatLng=${city.lat},${city.lng}&aroundRadius=${city.radiusKm * 1000}` +
+    `&filters=${encodeURIComponent(`DateStartUnix >= ${a} AND DateStartUnix < ${b}`)}&attributesToRetrieve=${OZTIX_FIELDS}&attributesToHighlight=`,
+  )
+  await sleep(300)
+  const hits: any[] = r?.hits ?? []
+  const nb = Number(r?.nbHits ?? hits.length)
+  // A full page may be capped nbHits as well as a short `hits` array, so split whenever the page is full.
+  if (hits.length >= OZTIX_HITS && b - a > DAY) {
+    const mid = a + Math.floor((b - a) / 2)
+    const left = await fetchOztixSpan(city, a, mid, seen)
+    const right = await fetchOztixSpan(city, mid, b, seen)
+    return left + right
+  }
+  if (hits.length >= OZTIX_HITS) console.warn(`[oztix] ${city.name} day still over the ${OZTIX_HITS}-hit cap (${nb})`)
+  let saved = 0
+  for (const e of hits) {
+    try {
+      if (seen.has(e.objectID) || e.HasEventDatePassed) continue
+      seen.add(e.objectID)
+      const v = e.Venue ?? {}
+      const tz = v.Timezone || city.tz
+      const s = toSydneyParts(new Date(e.DateStartUnix * 1000), tz)
+      const en = e.DateEndUnix > e.DateStartUnix ? toSydneyParts(new Date(e.DateEndUnix * 1000), tz) : null
+      const from = Number(e.PriceFrom ?? e.MinPrice)
+      const status = e.IsCancelled ? 'CANCELLED' : e.IsPostponed ? 'POSTPONED' : e.IsRescheduled ? 'RESCHEDULED' : 'SCHEDULED'
+      const guests = e.SpecialGuests ? `With ${e.SpecialGuests}. ` : ''
+      const ok = await saveEvent({
+        title: String(e.EventName ?? ''),
+        description: `${guests}${e.EventDescription ?? ''}`.trim() || null,
+        date: s.date,
+        time: s.time,
+        endDate: en && en.date !== s.date ? en.date : null,
+        endTime: en?.time,
+        venueName: v.Name ?? 'TBA',
+        venueAddress: [v.Address, v.Locality, [v.State, v.Postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
+        genres: [...(e.Categories ?? []), ...(e.Bands?.length ? ['Music'] : [])],
+        price: from > 0 ? `From $${Math.round(from)}` : null,
+        imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=1200&height=600') : null,
+        ticketUrl: e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null,
+        latitude: e._geoloc?.lat ?? null,
+        longitude: e._geoloc?.lng ?? null,
+        status,
+        source: 'oztix',
+        city: city.name,
+      })
+      if (ok) saved++
+    } catch (err: any) {
+      console.error(`[oztix] event error: ${err?.message}`)
+    }
+  }
+  return saved
+}
+
 export async function fetchOztixEvents(): Promise<number> {
   if (!process.env.OZTIX_ALGOLIA_KEY) throw new Error('OZTIX_ALGOLIA_KEY is not set')
   const now = Math.floor(Date.now() / 1000)
-  const fields = 'EventName,EventDescription,SpecialGuests,DateStartUnix,DateEndUnix,EventUrl,EventImage1,Categories,Bands,Venue,_geoloc,MinPrice,PriceFrom,IsCancelled,IsPostponed,IsRescheduled,HasEventDatePassed'
+  const horizon = now + OZTIX_HORIZON
   let saved = 0
   for (const city of CITIES) {
     const seen = new Set<string>()
-    // 30-day windows keep every query under the search engine's 1,000-hit cap
-    for (let w = 0; w < 12; w++) {
-      const a = now + w * 30 * DAY
-      const b = a + 30 * DAY
-      const r = await oztixQuery(
-        `query=&hitsPerPage=1000&aroundLatLng=${city.lat},${city.lng}&aroundRadius=${city.radiusKm * 1000}` +
-        `&filters=${encodeURIComponent(`DateStartUnix >= ${a} AND DateStartUnix < ${b}`)}&attributesToRetrieve=${fields}&attributesToHighlight=`,
-      )
-      for (const e of r?.hits ?? []) {
-        try {
-          if (seen.has(e.objectID) || e.HasEventDatePassed) continue
-          seen.add(e.objectID)
-          const v = e.Venue ?? {}
-          const tz = v.Timezone || city.tz
-          const s = toSydneyParts(new Date(e.DateStartUnix * 1000), tz)
-          const en = e.DateEndUnix > e.DateStartUnix ? toSydneyParts(new Date(e.DateEndUnix * 1000), tz) : null
-          const from = Number(e.PriceFrom ?? e.MinPrice)
-          const status = e.IsCancelled ? 'CANCELLED' : e.IsPostponed ? 'POSTPONED' : e.IsRescheduled ? 'RESCHEDULED' : 'SCHEDULED'
-          const guests = e.SpecialGuests ? `With ${e.SpecialGuests}. ` : ''
-          const ok = await saveEvent({
-            title: String(e.EventName ?? ''),
-            description: `${guests}${e.EventDescription ?? ''}`.trim() || null,
-            date: s.date,
-            time: s.time,
-            endDate: en && en.date !== s.date ? en.date : null,
-            endTime: en?.time,
-            venueName: v.Name ?? 'TBA',
-            venueAddress: [v.Address, v.Locality, [v.State, v.Postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
-            genres: [...(e.Categories ?? []), ...(e.Bands?.length ? ['Music'] : [])],
-            price: from > 0 ? `From $${Math.round(from)}` : null,
-            imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=1200&height=600') : null,
-            ticketUrl: e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null,
-            latitude: e._geoloc?.lat ?? null,
-            longitude: e._geoloc?.lng ?? null,
-            status,
-            source: 'oztix',
-            city: city.name,
-          })
-          if (ok) saved++
-        } catch (err: any) {
-          console.error(`[oztix] event error: ${err?.message}`)
-        }
-      }
-      if ((r?.nbHits ?? 0) === 0 && w > 5) break
-      await sleep(300)
+    for (let a = now; a < horizon; a += OZTIX_WINDOW) {
+      const b = Math.min(a + OZTIX_WINDOW, horizon)
+      saved += await fetchOztixSpan(city, a, b, seen)
     }
   }
   console.log(`[oztix] saved ${saved} events`)
@@ -253,8 +284,11 @@ async function ticketekRows(): Promise<Row[] | null> {
   if (sid && token && catalog) {
     const auth = `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`
     const rows: Row[] = []
+    // PageSize 1000 is the catalog max. The page ceiling is only a runaway guard.
+    const TICKETEK_MAX_PAGES = 200
     let next: string | null = `/Mediapartners/${sid}/Catalogs/${catalog}/Items?PageSize=1000`
-    for (let n = 0; next && n < 50; n++) {
+    let pages = 0
+    for (; next && pages < TICKETEK_MAX_PAGES; pages++) {
       const res: Response = await fetch(`https://api.impact.com${next}`, { headers: { Authorization: auth, Accept: 'application/json', 'User-Agent': UA }, signal: AbortSignal.timeout(60000) })
       if (!res.ok) throw new Error(`impact.com catalog ${res.status}`)
       const j: any = await res.json()
@@ -262,6 +296,7 @@ async function ticketekRows(): Promise<Row[] | null> {
       next = j?.['@nextpageuri'] || null
       await sleep(500)
     }
+    if (next) console.warn(`[ticketek] stopped at ${TICKETEK_MAX_PAGES} catalog pages; feed still has another page`)
     return rows
   }
   const url = process.env.TICKETEK_FEED_URL

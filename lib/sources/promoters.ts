@@ -1,4 +1,4 @@
-import { fetchHtml, saveEvent, extractNextData, toSydneyParts } from '@/lib/event-store'
+import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { CITIES } from '@/lib/cities'
 
 /** Frontier Touring – schema.org MusicEvent JSON-LD for every tour date nationally. */
@@ -46,44 +46,111 @@ function parse12h(s: string): string | null {
   return `${String(h).padStart(2, '0')}:${m[2] ?? '00'}`
 }
 
-/** City of Sydney "What's On" guide – includes many free community events. */
+const COS_ORIGIN = 'https://whatson.cityofsydney.nsw.gov.au'
+const COS_DELAY_MS = 1500
+/**
+ * The public search embeds at most 300 hits and ignores a page number.
+ * A mid-2028 window came back empty; ~21 months covers the dates the index still lists (into late 2027).
+ */
+const COS_HORIZON_DAYS = 640
+const COS_WINDOW_DAYS = 7
+
+function cosAddDays(ymd: string, n: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+function cosSpan(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000)
+}
+
+async function saveCosHit(h: any): Promise<boolean> {
+  const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
+  return saveEvent({
+    title: h.name,
+    description: h.strapline,
+    date: h.upcomingDate ?? h.dates?.[0],
+    time: start ? parse12h(start) : null,
+    endTime: end ? parse12h(end) : null,
+    venueName: h.venueName ?? 'Sydney',
+    venueAddress: h.suburbName ? `${h.suburbName}, NSW` : null,
+    genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
+    isFree: h.freeEvent === 'true' || h.freeEvent === true,
+    imageUrl: h.tileImageCloudinary?.[0]?.secure_url ?? null,
+    ticketUrl: `${COS_ORIGIN}/events/${h.slug}`,
+    source: 'cityofsydney',
+  }).catch(() => false)
+}
+
+/** City of Sydney "What's On" guide – homepage sections plus every date the public search will return. */
 export async function fetchCityOfSydneyEvents(): Promise<number> {
-  const html = await fetchHtml('https://whatson.cityofsydney.nsw.gov.au/')
-  const data = html ? extractNextData(html) : null
-  if (!data) return 0
-  const hits = new Map<string, any>()
-  const walk = (o: any) => {
-    if (Array.isArray(o)) o.forEach(walk)
-    else if (o && typeof o === 'object') {
-      if (o.type === 'Event' && o.objectID && Array.isArray(o.dates)) hits.set(o.objectID, o)
-      Object.values(o).forEach(walk)
+  let saved = 0
+  const seen = new Set<string>()
+  const consider = async (hits: Iterable<any>) => {
+    for (const h of hits) {
+      const id = h?.objectID ? String(h.objectID) : ''
+      if (id && seen.has(id)) continue
+      if (id) seen.add(id)
+      if (await saveCosHit(h)) saved++
     }
   }
-  walk(data?.props?.pageProps?.sectionAdditionalData)
-  let saved = 0
-  for (const h of hits.values()) {
-    const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
-    const ok = await saveEvent({
-      title: h.name,
-      description: h.strapline,
-      date: h.upcomingDate ?? h.dates?.[0],
-      time: start ? parse12h(start) : null,
-      endTime: end ? parse12h(end) : null,
-      venueName: h.venueName ?? 'Sydney',
-      venueAddress: h.suburbName ? `${h.suburbName}, NSW` : null,
-      genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
-      isFree: h.freeEvent === 'true' || h.freeEvent === true,
-      imageUrl: h.tileImageCloudinary?.[0]?.secure_url ?? null,
-      ticketUrl: `https://whatson.cityofsydney.nsw.gov.au/events/${h.slug}`,
-      source: 'cityofsydney',
-    }).catch(() => false)
-    if (ok) saved++
+
+  const home = await fetchHtml(`${COS_ORIGIN}/`)
+  const homeData = home ? extractNextData(home) : null
+  if (homeData) {
+    const hits = new Map<string, any>()
+    const walk = (o: any) => {
+      if (Array.isArray(o)) o.forEach(walk)
+      else if (o && typeof o === 'object') {
+        if (o.type === 'Event' && o.objectID && Array.isArray(o.dates)) hits.set(o.objectID, o)
+        Object.values(o).forEach(walk)
+      }
+    }
+    walk(homeData?.props?.pageProps?.sectionAdditionalData)
+    await consider(hits.values())
   }
+
+  const search = async (start: string, end: string): Promise<{ hits: any[]; truncated: boolean } | null> => {
+    const html = await fetchHtml(`${COS_ORIGIN}/?dates=${start},${end}`)
+    const sr = (html ? extractNextData(html) : null)?.props?.pageProps?.searchResults
+    await sleep(COS_DELAY_MS)
+    if (!sr) return null
+    const hits: any[] = sr.hits ?? []
+    const nbHits = Number(sr.nbHits ?? hits.length)
+    const nbPages = Number(sr.nbPages ?? (hits.length ? 1 : 0))
+    return { hits, truncated: nbPages > 1 || nbHits > hits.length }
+  }
+
+  const ingest = async (start: string, end: string) => {
+    const page = await search(start, end)
+    if (!page) return
+    if (page.truncated && start < end) {
+      const leftEnd = cosAddDays(start, Math.floor(cosSpan(start, end) / 2))
+      if (leftEnd >= start && leftEnd < end) {
+        await ingest(start, leftEnd)
+        await ingest(cosAddDays(leftEnd, 1), end)
+        return
+      }
+    }
+    if (page.truncated) console.warn(`[cityofsydney] ${start} still truncated at ${page.hits.length} hits`)
+    await consider(page.hits)
+  }
+
+  const today = toSydneyParts(new Date(), 'Australia/Sydney').date
+  const horizon = cosAddDays(today, COS_HORIZON_DAYS)
+  for (let start = today; start <= horizon;) {
+    const windowEnd = cosAddDays(start, COS_WINDOW_DAYS - 1)
+    const end = windowEnd > horizon ? horizon : windowEnd
+    await ingest(start, end)
+    start = cosAddDays(end, 1)
+  }
+
   console.log(`[cityofsydney] saved ${saved} events`)
   return saved
 }
 
-/** Humanitix – featured events per city (location + music listing pages). */
+/** Humanitix – featured events per city. The public city page only embeds that featured set; it has no page parameter to follow. */
 export async function fetchHumanitixEvents(): Promise<number> {
   let saved = 0
   for (const city of CITIES) for (const path of ['', '/music']) {
