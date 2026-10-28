@@ -17,7 +17,7 @@ Read [docs/handover.md](docs/handover.md) before changing the product. It covers
 - Stripe (checkouts stay in test mode until `STRIPE_SECRET_KEY` is set)
 - Leaflet maps, sharp for images, S3 for uploads
 
-Hosting and deploys are on Vercel. The public origin is [https://outza-outza.vercel.app](https://outza-outza.vercel.app) unless `NEXT_PUBLIC_SITE_URL` names a custom domain. LLM calls go through Vercel AI Gateway (OIDC on Vercel, `AI_GATEWAY_API_KEY` locally). Outbound email is turned off. See the handover for the app rules (async `params` / `cookies()` / `headers()`, no `middleware.ts`, no `webpack` key in `next.config.js`, additive Prisma changes only).
+Hosting and deploys are on Vercel. The public origin is [https://outza-outza.vercel.app](https://outza-outza.vercel.app) unless `NEXT_PUBLIC_SITE_URL` names a custom domain. LLM calls go through Vercel AI Gateway (OIDC on Vercel, `AI_GATEWAY_API_KEY` locally). Outbound email uses Resend when `RESEND_API_KEY` is set (`RESEND_FROM_EMAIL` is optional; that domain must be verified in Resend) and stays off otherwise. See the handover for the app rules (async `params` / `cookies()` / `headers()`, no `middleware.ts`, no `webpack` key in `next.config.js`, additive Prisma changes only).
 
 ## Local setup
 
