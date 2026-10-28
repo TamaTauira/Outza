@@ -66,14 +66,6 @@ export default function RootLayout({
   return (
     <html lang="en-AU" suppressHydrationWarning>
       <body className={`${dmSans.variable} ${jakartaSans.variable} ${jetbrainsMono.variable} font-sans`}>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          name: 'Outza',
-          url: siteUrl(),
-          inLanguage: 'en-AU',
-          description: 'Events, gigs, markets and things to do across Australian cities.',
-        }).replace(/</g, '\\u003c') }} />
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

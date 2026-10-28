@@ -1,22 +1,10 @@
 import { cache } from 'react'
-import { headers } from 'next/headers'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
-import { siteUrl } from '@/lib/site-url'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type TopicDef, type TopicKey } from '@/lib/seo'
 import { addDaysStr, localDupKey, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
-
-/** Public origin of the current request (works on every deployed hostname). */
-export async function requestOrigin(): Promise<string> {
-  try {
-    const h = await headers()
-    const host = h.get('x-forwarded-host') ?? h.get('host')
-    if (host && !/^localhost|127\.0\.0\.1/.test(host)) return `${h.get('x-forwarded-proto') ?? 'https'}://${host}`
-  } catch {}
-  return siteUrl()
-}
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 

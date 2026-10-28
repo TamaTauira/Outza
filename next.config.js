@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
+const { CANONICAL_SITE_URL, LEGACY_SITE_HOSTS } = require('./lib/canonical-host');
 
 const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
@@ -11,6 +12,29 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: { unoptimized: true },
+  // 308 the legacy production alias onto the canonical host. Vercel serves this
+  // same deployment on outza-sepia.vercel.app (that name is
+  // VERCEL_PROJECT_PRODUCTION_URL). Prefer the same 308 in the Vercel project
+  // (Settings → Domains → outza-sepia.vercel.app → redirect to
+  // https://outza-outza.vercel.app) so the alias never reaches the app. This
+  // rule covers the alias when that domain redirect is not set. Preview and
+  // git hostnames are left alone.
+  async redirects() {
+    return LEGACY_SITE_HOSTS.flatMap((host) => [
+      {
+        source: '/',
+        has: [{ type: 'host', value: host }],
+        destination: `${CANONICAL_SITE_URL}/`,
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: host }],
+        destination: `${CANONICAL_SITE_URL}/:path*`,
+        permanent: true,
+      },
+    ]);
+  },
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
     const csp = [
