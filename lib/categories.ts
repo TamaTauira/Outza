@@ -1,3 +1,4 @@
+import { suburbFromAddress } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
 
 export interface CategoryDef {
@@ -112,7 +113,10 @@ export function withCategories<T extends { category?: string; categories?: strin
   return { ...f, categories: next, category: single, subTag: keepSub ? (f.subTag ?? '') : '' }
 }
 
-export function guessSuburb(venueName: string, address: string): string {
+export function guessSuburb(venueName: string, address: string): string | null {
+  // A parsed "Coogee" / "Bankstown" beats a CBD keyword. Unknown places stay blank — never default to CBD.
+  const parsed = suburbFromAddress(address)
+  if (parsed) return parsed
   const text = `${venueName} ${address}`.toLowerCase()
   if (/\b(opera house|circular quay|the rocks|barangaroo)\b/.test(text)) return 'Circular Quay'
   if (/\b(darling harbour|icc|convention|tumbalong)\b/.test(text)) return 'Darling Harbour'
@@ -120,6 +124,14 @@ export function guessSuburb(venueName: string, address: string): string {
   if (/\b(surry hills)\b/.test(text)) return 'Surry Hills'
   if (/\b(paddington|oxford st)\b/.test(text)) return 'Paddington'
   if (/\b(bondi)\b/.test(text)) return 'Bondi'
+  if (/\b(coogee|bronte|randwick|maroubra)\b/.test(text)) return 'Eastern Suburbs'
+  if (/\b(bankstown|liverpool|parramatta|blacktown|penrith|campbelltown)\b/.test(text)) {
+    if (/\bbankstown\b/.test(text)) return 'Bankstown'
+    if (/\bliverpool\b/.test(text)) return 'Liverpool'
+    if (/\bblacktown\b/.test(text)) return 'Blacktown'
+    if (/\bpenrith\b/.test(text)) return 'Penrith'
+    if (/\bcampbelltown\b/.test(text)) return 'Campbelltown'
+  }
   if (/\b(manly)\b/.test(text)) return 'Manly'
   if (/\b(parramatta)\b/.test(text)) return 'Parramatta'
   if (/\b(homebush|olympic park|sydney showground)\b/.test(text)) return 'Sydney Olympic Park'
@@ -137,6 +149,6 @@ export function guessSuburb(venueName: string, address: string): string {
   if (/\b(darlinghurst)\b/.test(text)) return 'Darlinghurst'
   if (/\b(haymarket|chinatown)\b/.test(text)) return 'Haymarket'
   if (/\b(luna park|milsons point)\b/.test(text)) return 'North Shore'
-  if (/\b(cbd|george st|pitt st|town hall|martin place|wynyard|museum)\b/.test(text)) return 'CBD'
-  return 'CBD'
+  if (/\b(cbd|george st|pitt st|town hall|martin place|wynyard)\b/.test(text)) return 'CBD'
+  return null
 }

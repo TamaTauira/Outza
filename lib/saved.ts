@@ -20,6 +20,7 @@ export interface SavedEvent {
   price: string | null
   priceMin?: number | null
   priceMax?: number | null
+  venueAddress?: string | null
   ticketUrl: string | null
   updatedAt?: string
   city?: string

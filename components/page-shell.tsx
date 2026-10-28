@@ -8,7 +8,7 @@ import { useSaved } from '@/lib/saved'
 export function PageShell({ children }: { children: React.ReactNode }) {
   const { saved } = useSaved()
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-clip">
       <Navbar savedCount={saved.length} />
       {children}
       <Footer lastRefresh={null} />

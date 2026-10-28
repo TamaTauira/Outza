@@ -5,7 +5,7 @@ import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { isPastEvent } from '@/lib/seo'
-import { confidence, priceSummary, statusInfo, sourceLabel, RECURRENCE_LABEL, type Recurrence } from '@/lib/quality'
+import { activityTitle, confidence, priceSummary, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, type Recurrence } from '@/lib/quality'
 
 /**
  * Full event detail payload shared by the event page (server-rendered) and GET /api/events/[id].
@@ -24,18 +24,29 @@ export async function getEventDetail(id: string, opts: { countView?: boolean } =
     prisma.event.update({ where: { id: event.id }, data: { views: { increment: 1 } }, select: { id: true } }).catch((e) => console.error('view count failed', e?.message))
   }
 
-  const related = await prisma.event.findMany({
+  const relatedRows = await prisma.event.findMany({
     where: {
       id: { not: event.id },
       city: event.city,
       date: { gte: sydneyToday() },
       duplicateOfId: null,
       OR: [{ category: event.category }, { venueName: event.venueName }],
+      ...(event.seriesKey ? { NOT: { seriesKey: event.seriesKey } } : {}),
     },
-    take: 6,
+    take: 24,
     orderBy: { date: 'asc' },
     include: { imageAsset: { select: imageAssetSelect } },
   })
+  const ownActivity = activityTitle(event.title)
+  const related = relatedRows.filter((r) => {
+    const ts = similarity(normalizeTitle(event.title), normalizeTitle(r.title))
+    const vs = similarity(normalizeVenue(event.venueName), normalizeVenue(r.venueName))
+    if (ts >= 0.8 && vs >= 0.34) return false
+    if (vs >= 0.8 && ts >= 0.55) return false
+    const other = activityTitle(r.title)
+    if (ownActivity && other && ownActivity === other && vs >= 0.34) return false
+    return true
+  }).slice(0, 6)
 
   const me = await getSessionUser().catch(() => null)
   const [tiers, friends, mine, following] = await Promise.all([

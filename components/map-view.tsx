@@ -9,8 +9,11 @@ import { CATEGORIES, knownCategories } from '@/lib/categories'
 import { cityDef } from '@/lib/cities'
 import { formatPrice } from '@/lib/board'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
-
-declare const L: any
+import { loadLeaflet } from '@/lib/load-leaflet'
+import { isPaidListing } from '@/lib/quality'
+import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
 interface MapViewProps {
   filters: FilterState
@@ -31,7 +34,7 @@ function popupHtml(e: any, tier?: string) {
     <a href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
 }
 
-function markerIcon(color: string, letter: string, tier?: string) {
+function markerIcon(L: any, color: string, letter: string, tier?: string) {
   const size = tier === 'GOLD' ? 44 : tier === 'BRONZE' ? 36 : 26
   const bg = tier === 'GOLD' ? '#F5B700' : color
   return L.divIcon({
@@ -56,13 +59,18 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
   const [loading, setLoading] = useState(true)
   const [ready, setReady] = useState(false)
   const youRef = useRef<any>(null)
+  const Lref = useRef<any>(null)
+  const fetchSeq = useRef(0)
   const [loc, setLoc] = useState<LocState>('idle')
   const { resolvedTheme } = useTheme()
   const dark = resolvedTheme !== 'light'
 
   const fetchEvents = useCallback(async () => {
+    const seq = ++fetchSeq.current
     try {
       setLoading(true)
+      setEvents([])
+      setFeatured([])
       const params = new URLSearchParams()
       params.set('limit', '300')
       if (city) params.set('city', city)
@@ -80,12 +88,14 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         fetch(`/api/events?${params.toString()}`).then((r) => r.json()),
         fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((r) => r.json()).catch(() => ({ items: [] })),
       ])
-      setEvents(res?.events ?? [])
+      if (seq !== fetchSeq.current) return
+      const list = (res?.events ?? []).filter((ev: { price?: string | null; priceMin?: number | null }) => !filters.isFree || !isPaidListing(ev))
+      setEvents(list)
       setFeatured(feat?.items ?? [])
     } catch (err) {
       console.error('Failed to fetch events for map:', err)
     } finally {
-      setLoading(false)
+      if (seq === fetchSeq.current) setLoading(false)
     }
   }, [searchQuery, filters, city])
 
@@ -93,23 +103,27 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
 
   // Create the map once Leaflet has loaded
   useEffect(() => {
-    let tries = 0
-    const init = () => {
-      if (!mapRef.current || mapInstanceRef.current) return
-      if (typeof L === 'undefined') { if (tries++ < 50) setTimeout(init, 200); return }
-      const map = L.map(mapRef.current, { zoomControl: false }).setView([-33.8688, 151.2093], 12)
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
+    let cancelled = false
+    ;(async () => {
+      const Leaflet = await loadLeaflet()
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return
+      Lref.current = Leaflet
+      const map = Leaflet.map(mapRef.current, { zoomControl: false }).setView([-33.8688, 151.2093], 12)
+      Leaflet.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
       setReady(true)
+    })()
+    return () => {
+      cancelled = true
+      if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null }
     }
-    init()
-    return () => { if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null } }
   }, [])
 
   // Theme-aware CARTO basemap
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!ready || !map) return
+    const L = Lref.current
+    if (!ready || !map || !L) return
     if (tileRef.current) map.removeLayer(tileRef.current)
     tileRef.current = L.tileLayer(TILE(dark), {
       attribution: MAP_ATTRIBUTION,
@@ -136,6 +150,8 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         if (!map) return
         const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude]
         if (youRef.current) map.removeLayer(youRef.current)
+        const L = Lref.current
+        if (!L) return
         youRef.current = L.marker(ll, {
           icon: L.divIcon({ className: 'se-you-wrap', html: '<div style="width:18px;height:18px;border-radius:9999px;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 6px rgba(59,130,246,.25)"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
           zIndexOffset: 2000, keyboard: false,
@@ -163,7 +179,8 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
 
   useEffect(() => {
     const map = mapInstanceRef.current
-    if (!ready || !map) return
+    const L = Lref.current
+    if (!ready || !map || !L) return
     if (markersRef.current) map.removeLayer(markersRef.current)
     if (goldRef.current) map.removeLayer(goldRef.current)
 
@@ -181,14 +198,14 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       const tier = e.promoTier ?? tierById.get(e.id)
       if (tier === 'GOLD') continue // gold rendered separately, always visible
       const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#f9652a'
-      const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(color, e?.category?.[0] ?? 'E', tier), zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
+      const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(L, color, e?.category?.[0] ?? 'E', tier), zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
         .bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
       if (tier === 'BRONZE') gold.addLayer(m)
       else mcg.addLayer(m)
     }
     for (const f of featured) {
       if (f.tier !== 'GOLD' || !f.latitude || !f.longitude) continue
-      gold.addLayer(L.marker([f.latitude, f.longitude], { icon: markerIcon('#F5B700', '★', 'GOLD'), zIndexOffset: 1000 })
+      gold.addLayer(L.marker([f.latitude, f.longitude], { icon: markerIcon(L, '#F5B700', '★', 'GOLD'), zIndexOffset: 1000 })
         .bindPopup(popupHtml(f, 'GOLD'), { className: 'se-popup', maxWidth: 280 }))
     }
     map.addLayer(mcg)
@@ -207,7 +224,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       )}
       <div ref={mapRef} className="se-map w-full h-full rounded-2xl overflow-hidden" />
       <div className="absolute top-4 left-4 z-[500] rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg">
-        <span className="text-primary font-bold">{count}</span> events on map
+        {loading ? <span>Loading map…</span> : <><span className="text-primary font-bold">{count}</span> events on map</>}
       </div>
       {ready && (
         <button
@@ -221,7 +238,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         </button>
       )}
       {loc === 'asking' && (
-        <div className="absolute left-4 right-4 bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4">
+        <div className="absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4">
           <button onClick={declineLocation} className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
             <X className="w-4 h-4" />
           </button>
@@ -235,7 +252,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         </div>
       )}
       {(loc === 'denied' || loc === 'unavailable') && (
-        <div className="absolute left-4 right-4 bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-xl bg-card text-card-foreground shadow-xl ring-1 ring-border p-3 pr-9 text-sm">
+        <div className="absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-xl bg-card text-card-foreground shadow-xl ring-1 ring-border p-3 pr-9 text-sm">
           <button onClick={() => setLoc('idle')} className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
             <X className="w-4 h-4" />
           </button>

@@ -47,7 +47,7 @@ export interface TopicDef {
 
 export const TOPICS: TopicDef[] = [
   { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `Gigs, shows, markets and festivals: every upcoming thing to do in ${c}, sorted by date.` },
-  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on today`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `Last-minute plans, sorted. Gigs, shows, trivia and late-night fun happening in ${c} today.` },
+  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on from 5pm`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `Evening plans only. Gigs, shows, trivia and late sessions in ${c} starting from 5pm, plus all-day listings still on tonight.` },
   { key: 'this-weekend', label: 'This weekend', title: (c) => `What’s on in ${c} this weekend`, heading: (c) => `Things to do in ${c} this weekend`, blurb: (c) => `Friday to Sunday sorted: live music, markets, theatre, sport and family days out in ${c}.` },
   { key: 'free-events', label: 'Free events', heading: (c) => `Free events in ${c}`, blurb: (c) => `Zero dollars, full fun: free festivals, markets, talks and exhibitions in ${c}.` },
   { key: 'live-music', label: 'Live music', title: (c) => `Live music & gigs in ${c}`, heading: (c) => `Live music in ${c}`, blurb: (c) => `From sticky-floor pub gigs to arena tours, here’s every upcoming show in ${c}.` },
@@ -61,6 +61,109 @@ export const TOPICS: TopicDef[] = [
   { key: 'community-events', label: 'Community', local: 'COMMUNITY', title: (c) => `Community events in ${c}: fetes, fundraisers & meetups`, heading: (c) => `Community events in ${c}`, blurb: (c) => `School fetes, fundraisers, swaps and neighbourhood get-togethers around ${c}.` },
 ]
 export const topicDef = (key: string) => TOPICS.find((t) => t.key === key)
+
+export interface GuideFact {
+  question: string
+  answer: string
+}
+
+/**
+ * Short answers a city guide can actually stand behind: the page's own rules, the live count,
+ * and the next listing already on the page. Nothing here is a claim about an event we haven't loaded.
+ */
+export function guideFacts(input: {
+  city: string
+  topicKey?: TopicKey | null
+  suburb?: string | null
+  total: number
+  freeShown?: number
+  weekendLabel?: string | null
+  next?: { title: string; venue?: string | null; when?: string | null } | null
+}): GuideFact[] {
+  const where = input.suburb ? `${input.suburb}, ${input.city}` : input.city
+  const out: GuideFact[] = []
+  const count = input.total > 0
+    ? `Outza currently lists ${input.total} upcoming ${input.total === 1 ? 'listing' : 'listings'} for this page.`
+    : 'New listings are added as organisers and ticket sites publish them.'
+  switch (input.topicKey) {
+    case 'tonight':
+      out.push({
+        question: `What is on tonight in ${input.city}?`,
+        answer: `Tonight means events in ${where} that start at 5pm or later, plus all-day listings still on. Morning times stay on the full events guide. ${count}`,
+      })
+      break
+    case 'this-weekend':
+      out.push({
+        question: `What’s on in ${input.city} this weekend?`,
+        answer: `${input.weekendLabel ? `This page covers ${input.weekendLabel}. ` : 'This page covers Friday to Sunday in the city’s local time. '}${count}`,
+      })
+      break
+    case 'free-events':
+      out.push({
+        question: `Are there free events in ${input.city}?`,
+        answer: `This guide only includes listings marked free. Paid tickets are left on the main ${input.city} events page. ${count}`,
+      })
+      break
+    case 'markets':
+      out.push({
+        question: `Where are the markets in ${input.city}?`,
+        answer: `This page lists upcoming markets in ${where}: farmers, night, makers and food markets, including community market listings. ${count}`,
+      })
+      break
+    case 'live-music':
+      out.push({
+        question: `Where can I find live music in ${input.city}?`,
+        answer: `These are upcoming music listings in ${where}, from pub gigs to larger shows. ${count}`,
+      })
+      break
+    case 'family':
+      out.push({
+        question: `What are family-friendly things to do in ${input.city}?`,
+        answer: `These are upcoming listings filed under family in ${where}. ${count}`,
+      })
+      break
+    case 'lgbtiq':
+      out.push({
+        question: `What LGBTIQ+ events are on in ${input.city}?`,
+        answer: `These are upcoming listings tagged LGBTIQ+ in ${where}. ${count}`,
+      })
+      break
+    case 'community-events':
+      out.push({
+        question: `What community events are on in ${input.city}?`,
+        answer: `These are fetes, fundraisers, swaps and neighbourhood listings in ${where}. ${count}`,
+      })
+      break
+    case 'events':
+      out.push({
+        question: `What is there to do in ${where}?`,
+        answer: `This is the full upcoming guide for ${where}: gigs, markets, shows and the rest, sorted by date. ${count}`,
+      })
+      break
+    default:
+      if (!input.topicKey) {
+        out.push({
+          question: `What events are on in ${where}?`,
+          answer: count,
+        })
+      }
+      break
+  }
+  if (input.topicKey && input.topicKey !== 'free-events' && (input.freeShown ?? 0) > 0) {
+    out.push({
+      question: `How many free events are shown for ${where}?`,
+      answer: `${input.freeShown} of the events shown on this page ${input.freeShown === 1 ? 'is' : 'are'} listed as free. That count is only the events on this page, not every free event in ${input.city}.`,
+    })
+  }
+  if (input.next?.title) {
+    const bits = [input.next.when, input.next.venue].filter(Boolean).join(' at ')
+    out.push({
+      question: `What’s the next listing in ${where}?`,
+      answer: `${input.next.title}${bits ? ` — ${bits}` : ''}. Times and prices can change, so confirm with the organiser before you go.`,
+    })
+  }
+  return out
+}
 
 export const cityPath = (city: string | CityDef, topic: TopicKey = 'events') => `/${citySlug(city)}/${topic}`
 export const suburbPath = (city: string | CityDef, suburb: string) => `/${citySlug(city)}/${slugify(suburb)}`
@@ -112,6 +215,20 @@ export function weekendRange(city: CityDef, now = new Date()): { from: string; t
   if (dow === 5) return { from: today, to: addDaysKey(today, 2) }
   const fri = addDaysKey(today, 5 - dow)
   return { from: fri, to: addDaysKey(fri, 2) }
+}
+
+/** Tonight is 5pm onward (or still running then). Untimed all-day listings stay. 5:45am does not. */
+export function isTonightSlot(time: string | null | undefined, endTime?: string | null): boolean {
+  const mins = (t?: string | null) => {
+    if (!t) return null
+    const [h, m] = t.split(':').map((n) => parseInt(n, 10))
+    return Number.isFinite(h) ? h * 60 + (Number.isFinite(m) ? m : 0) : null
+  }
+  const start = mins(time)
+  if (start === null) return true
+  if (start >= 17 * 60) return true
+  const end = mins(endTime)
+  return end !== null && end >= 17 * 60 && end > start
 }
 
 /** "+11:00" style UTC offset for a timezone on a given local date. */

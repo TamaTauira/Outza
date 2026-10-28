@@ -22,6 +22,30 @@ export const SOURCES: Record<string, { label: string; kind: 'organiser' | 'offic
 }
 export const sourceLabel = (s?: string | null) => (s && SOURCES[s]?.label) || s || 'a listing site'
 
+/** Confidence line. Curated listings must not read "From the official the organiser's…". */
+export function sourceReason(source?: string | null): string {
+  if (source === 'curated') return 'From the organiser’s official schedule'
+  const src = source ? SOURCES[source] : undefined
+  if (!src) return `From ${sourceLabel(source)}`
+  if (src.kind === 'organiser') return src.label === 'the organiser' ? 'Listed directly by the organiser' : `Listed directly by ${src.label}`
+  if (src.kind === 'official') return `From the official ${src.label} guide`
+  return `From ${src.label}`
+}
+
+/** True when a listing has a real price, even if isFree was set by mistake. */
+export function isPaidListing(ev: { price?: string | null; priceMin?: number | null }): boolean {
+  if (typeof ev.priceMin === 'number' && ev.priceMin > 0.009) return true
+  const p = (ev.price ?? '').replace(/,/g, '').trim()
+  if (!p) return false
+  if (/^(free|complimentary|no charge|gratis|\$0(?:\.00)?|0(?:\.00)?)$/i.test(p)) return false
+  return /\$\s*[1-9]/.test(p)
+}
+
+/** "Run" and "Run/Walk" are the same listing once the activity words are stripped. */
+export function activityTitle(t: string): string {
+  return normalizeTitle(t).replace(/\b(run|walk|running|walking)\b/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 /** Listings hidden because they were merged into another listing. */
 export const LISTABLE = { duplicateOfId: null } as const
 
@@ -86,6 +110,9 @@ export function isSameEvent(a: Listing, b: Listing): boolean {
   const tb = mins(b.time)
   const timeOk = ta === null || tb === null || Math.abs(ta - tb) <= 45
   if (!timeOk) return false
+  const aa = activityTitle(a.title)
+  const bb = activityTitle(b.title)
+  if (aa && aa === bb && (vs >= 0.34 || !normalizeVenue(a.venueName) || !normalizeVenue(b.venueName))) return true
   if (a.source && a.source === b.source) {
     const exactTitle = normalizeTitle(a.title) === normalizeTitle(b.title) && a.title.trim().toLowerCase() === b.title.trim().toLowerCase()
     return exactTitle && vs >= 0.5 && ta === tb
@@ -158,9 +185,7 @@ export function confidence(ev: ConfidenceInput, now = Date.now()): Confidence {
   const reasons: string[] = []
   const src = SOURCES[ev.source]
   let score = src?.trust ?? 20
-  reasons.push(
-    src?.kind === 'organiser' ? `Listed directly by ${src.label}` : src?.kind === 'official' ? `From the official ${src.label} guide` : `From ${sourceLabel(ev.source)}`,
-  )
+  reasons.push(sourceReason(ev.source))
   if (ev.source === 'promoter' && ev.promoterVerified) { score += 5; reasons.push('Organiser is verified') }
 
   const seen = ev.lastVerifiedAt ?? ev.updatedAt

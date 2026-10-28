@@ -37,7 +37,9 @@ export async function GET(req: Request) {
   const when = u.searchParams.get('when') ?? '30'
   const validCity = CITIES.some((c) => c.name === city)
   const { from, to } = range(cityDef(validCity ? city : 'Sydney').tz, when)
-  const rows = await prisma.localListing.findMany({
+  let rows: Awaited<ReturnType<typeof prisma.localListing.findMany<{ select: typeof PUBLIC }>>> = []
+  try {
+  rows = await prisma.localListing.findMany({
     where: { status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(validCity ? { city } : {}), ...(category ? { category } : {}) },
     select: PUBLIC, take: 600,
   })
@@ -50,6 +52,10 @@ export async function GET(req: Request) {
   const counted = new Set<string>()
   items.forEach((i) => { const k = `${i.category}|${localDupKey(i)}`; if (!counted.has(k)) { counted.add(k); counts[i.category] = (counts[i.category] ?? 0) + 1 } })
   return NextResponse.json({ from, to, items: items.slice(0, 300), counts })
+  } catch (err) {
+    console.error('Local listings failed:', err)
+    return NextResponse.json({ from, to, items: [], counts: {}, notice: 'Listings are unavailable right now.' })
+  }
 }
 
 export async function POST(req: Request) {

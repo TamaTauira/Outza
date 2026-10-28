@@ -57,7 +57,20 @@ export async function GET(request: NextRequest) {
     }
 
     if (isFree) {
-      where.isFree = true
+      const extra = Array.isArray(where.AND) ? where.AND : []
+      where.AND = [
+        ...extra,
+        { OR: [{ isFree: true }, { price: { equals: 'Free', mode: 'insensitive' } }] },
+        { OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] },
+        {
+          OR: [
+            { price: null },
+            { price: { equals: 'Free', mode: 'insensitive' } },
+            { price: { in: ['$0', '$0.00', '0', '0.00'] } },
+            { NOT: { price: { contains: '$' } } },
+          ],
+        },
+      ]
     }
 
     if (isLGBTI) {

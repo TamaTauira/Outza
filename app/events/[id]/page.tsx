@@ -6,6 +6,7 @@ import { getEventDetail } from '@/lib/event-detail'
 import { cityDef } from '@/lib/cities'
 import { eventPath, idFromEventParam, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString, requestOrigin } from '@/lib/seo-server'
+import { siteUrl } from '@/lib/site-url'
 import { EventDetailClient } from './_components/event-detail-client'
 import { classifyReferral, recordReferral } from '@/lib/referrals'
 import { getSessionUser } from '@/lib/session'
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const where = [ev.venueName, ev.suburb && ev.suburb !== ev.city ? ev.suburb : null, ev.city].filter(Boolean).join(', ')
   const status = ev.status === 'CANCELLED' ? 'Cancelled: ' : ev.status === 'POSTPONED' ? 'Postponed: ' : ''
   const desc = `${status}${ev.title} on ${dateLabel}${ev.time ? ` at ${ev.time}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
-  const origin = await requestOrigin()
+  const origin = siteUrl()
   const image = eventImageUrl(ev, origin)
   return {
     title: `${status}${ev.title} | ${dateLabel} | ${ev.city} | Outza`,
@@ -51,6 +52,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: eventPath(canonicalTarget ?? ev) },
     robots: ev.duplicateOfId ? { index: false, follow: true } : undefined,
     openGraph: { title: ev.title, description: desc.slice(0, 200), type: 'website', url: eventPath(ev), ...(image ? { images: [image] } : {}) },
+    twitter: {
+      card: 'summary_large_image',
+      title: ev.title,
+      description: desc.slice(0, 200),
+      images: image ? [image] : ['/og-image.png'],
+    },
   }
 }
 

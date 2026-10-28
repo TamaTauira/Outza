@@ -10,6 +10,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
+import { displaySuburb } from '@/lib/cities'
 
 interface EventData {
   id: string
@@ -28,6 +29,8 @@ interface EventData {
   priceMax?: number | null
   imageUrl: string | null
   imageAsset?: ClientImage | null
+  venueAddress?: string | null
+  city?: string | null
   ticketUrl: string | null
 }
 
@@ -37,6 +40,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
   const month = dateObj.toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' })
   const catDef = CATEGORIES.find((c) => c.name === event.category)
   const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
+  const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
 
   return (
     <motion.div
@@ -103,8 +107,8 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                {event.venueName}
-                {event.suburb && <span className="text-muted-foreground/60">· {event.suburb}</span>}
+                {event.venueName && event.city && event.venueName.trim().toLowerCase() === event.city.trim().toLowerCase() ? (suburb || event.venueName) : event.venueName}
+                {suburb && <span className="text-muted-foreground/60">· {suburb}</span>}
               </span>
             </div>
 

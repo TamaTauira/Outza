@@ -11,10 +11,56 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: { unoptimized: true },
-  // Dev chunk URLs are not content-hashed, so a cached copy outlives an edit.
   async headers() {
-    if (process.env.NODE_ENV !== 'development') return [];
-    return [{ source: '/_next/static/:path*', headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }] }];
+    const isProd = process.env.NODE_ENV === 'production';
+    const csp = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'self'",
+      "object-src 'none'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: wss:",
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
+      isProd ? 'upgrade-insecure-requests' : '',
+    ].filter(Boolean).join('; ');
+    const security = [
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self), interest-cohort=()' },
+      { key: 'Content-Security-Policy', value: csp },
+      // Public pages are indexable. A later rule noindexes private areas only.
+      { key: 'X-Robots-Tag', value: 'index, follow' },
+    ];
+    if (isProd) security.push({ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' });
+    const noindex = { key: 'X-Robots-Tag', value: 'noindex, nofollow' };
+    const privatePaths = [
+      '/admin', '/admin/:path*',
+      '/api', '/api/:path*',
+      '/account', '/account/:path*',
+      '/login', '/signup',
+      '/promoter', '/promoter/:path*',
+      '/itinerary', '/itinerary/:path*',
+      '/unsubscribe',
+      '/saved',
+    ];
+    const rules = [
+      { source: '/:path*', headers: security },
+      ...privatePaths.map((source) => ({ source, headers: [noindex] })),
+      { source: '/sitemap.xml', headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' }, { key: 'X-Robots-Tag', value: 'index, follow' }] },
+      { source: '/sitemaps/:path*', headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' }, { key: 'X-Robots-Tag', value: 'index, follow' }] },
+      { source: '/robots.txt', headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600' }, { key: 'X-Robots-Tag', value: 'index, follow' }] },
+    ];
+    if (!isProd) {
+      rules.push({ source: '/_next/static/:path*', headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }] });
+    }
+    return rules;
   },
   // Next 16 BLOCKS unlisted origins on /_next/* and /__nextjs* in dev — including the /_next/hmr
   // WEBSOCKET upgrade, and Turbopack gates client module wiring on that socket, so a blocked origin
