@@ -1,9 +1,8 @@
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { completeJson, gatewayModel, llmConfigured } from '@/lib/llm'
 import { priceSummary } from '@/lib/quality'
 import type { NlEvent } from './rank'
-
-const MODEL = 'gpt-5.4-mini'
 export const SUBJECT_STYLES = ['playful', 'curious', 'event-led'] as const
 export type SubjectStyle = (typeof SUBJECT_STYLES)[number]
 export interface SubjectLine { style: SubjectStyle; subject: string; preview: string }
@@ -106,24 +105,15 @@ function fallbackSubject(style: SubjectStyle, city: string, top: NlEvent | null,
   return { style, subject: fill(pick.subject), preview: fill(pick.preview, 110) }
 }
 
-async function llm(messages: { role: string; content: string }[]) {
-  const key = process.env.ABACUSAI_API_KEY
-  if (!key) throw new Error('LLM not configured')
-  let res: Response | null = null
-  // Busy or rate-limited: back off and retry so subscribers get fresh AI subjects rather than fallbacks.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: MODEL, messages, temperature: 0.7, max_tokens: 1800, response_format: { type: 'json_object' } }),
-      signal: AbortSignal.timeout(45000),
-    })
-    if (res.ok || (res.status !== 429 && res.status < 500)) break
-    await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt))
-  }
-  if (!res?.ok) throw new Error(`LLM HTTP ${res?.status}`)
-  const j = await res.json()
-  return JSON.parse(j?.choices?.[0]?.message?.content ?? '{}')
+async function llm(messages: { role: 'system' | 'user'; content: string }[]) {
+  if (!llmConfigured()) throw new Error('LLM not configured')
+  return completeJson({
+    messages,
+    temperature: 0.7,
+    maxOutputTokens: 1800,
+    timeoutMs: 45_000,
+    maxRetries: 2,
+  })
 }
 
 const SYSTEM = `You are the editor of OUTZA, an Australian events newsletter. Voice: energetic, witty, confident, modern, adventurous, distinctly Australian - but no heavy slang, no forced jokes, no clichés repeated between items.
@@ -178,7 +168,7 @@ JSON shape: {"headline":"max 45 chars","intro":"one or two sentences, max 170 ch
       const t = out.blurbs?.[f.id]
       if (typeof t === 'string' && t.length >= 20 && t.length <= 180 && !BANNED.test(t)) {
         blurbs[f.id] = t.trim()
-        await prisma.eventBlurb.upsert({ where: { eventId: f.id }, create: { eventId: f.id, text: t.trim(), model: MODEL, factsHash: hashFacts(f) }, update: { text: t.trim(), model: MODEL, factsHash: hashFacts(f), createdAt: new Date() } })
+        await prisma.eventBlurb.upsert({ where: { eventId: f.id }, create: { eventId: f.id, text: t.trim(), model: gatewayModel(), factsHash: hashFacts(f) }, update: { text: t.trim(), model: gatewayModel(), factsHash: hashFacts(f), createdAt: new Date() } })
       }
     }
     if (Array.isArray(out.subjects)) {

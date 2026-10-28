@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { emailSendingEnabled } from '@/lib/email'
 import { sendNewsletter } from '@/lib/newsletter'
 
 const INTERVAL_MS: Record<string, number> = { daily: 22 * 3600e3, weekly: 6.5 * 86400e3, monthly: 29 * 86400e3 }
@@ -13,6 +14,7 @@ export async function sendDigest(userId: string, opts: { test?: boolean } = {}) 
 
 /** Sends newsletters to every opted-in user whose frequency interval has elapsed (unchanged schedule logic). */
 export async function runDueDigests() {
+  if (!emailSendingEnabled()) return { checked: 0, sent: 0, skipped: 0, blocked: 0 }
   const now = Date.now()
   const users = await prisma.user.findMany({ where: { emailOptIn: true }, select: { id: true, emailFrequency: true, lastDigestAt: true } })
   let sent = 0, skipped = 0, blocked = 0

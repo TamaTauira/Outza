@@ -22,7 +22,7 @@ export async function notifyPromotionPurchased(promotionId: string, orderId?: st
       <p><strong>Campaign length:</strong> ${p.days ?? 30} days · runs until ${p.endsAt?.toISOString().slice(0, 10) ?? '—'}</p>
     </div>
   </div>`
-  const r = await sendEmail({ notificationId: process.env.NOTIF_ID_PROMOTION_PURCHASED, to: OWNER_EMAIL, subject: `New promotion (${formatAud(total)}): ${p.event.title.slice(0, 60)}`, html })
+  const r = await sendEmail({ to: OWNER_EMAIL, subject: `New promotion (${formatAud(total)}): ${p.event.title.slice(0, 60)}`, html })
   if (!r.ok) console.error('Promotion email failed:', r.error)
 }
 
@@ -38,6 +38,6 @@ export async function notifyProPurchased(passId: string) {
       <p><strong>Pro until:</strong> ${p.endsAt?.toISOString().slice(0, 10) ?? '—'}</p>
     </div>
   </div>`
-  const r = await sendEmail({ notificationId: process.env.NOTIF_ID_PROMOTION_PURCHASED, to: OWNER_EMAIL, subject: `New ${PRO_PLAN.name} membership: ${p.user.orgName || p.user.name || p.user.email}`, html })
+  const r = await sendEmail({ to: OWNER_EMAIL, subject: `New ${PRO_PLAN.name} membership: ${p.user.orgName || p.user.name || p.user.email}`, html })
   if (!r.ok) console.error('Pro email failed:', r.error)
 }

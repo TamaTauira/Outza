@@ -18,7 +18,6 @@ export function classifyReferral(referer: string | null, ownHost: string | null,
   let host = ''
   try { host = new URL(referer).hostname.toLowerCase() } catch { return 'OTHER' }
   if (ownHost && host === ownHost.toLowerCase().split(':')[0]) return 'OUTZA'
-  if (/\.abacusai\.app$/.test(host) && /outza|sydneyupcoming/.test(host)) return 'OUTZA'
   if (SEARCH.test(host)) return 'SEARCH'
   if (SOCIAL.test(host)) return 'SOCIAL'
   if (MAIL.test(host)) return 'EMAIL'

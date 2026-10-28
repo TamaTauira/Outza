@@ -6,11 +6,11 @@ import { addDays, sydneyNow, toMinutes } from '@/lib/board'
 import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, type AiFilters } from '@/lib/ai-search-parse'
+import { completeJson, llmConfigured } from '@/lib/llm'
 
 export const dynamic = 'force-dynamic'
 export type { AiFilters }
 
-const MODEL = 'gpt-5.4-mini'
 const RESULTS = 8
 const CAT_NAMES = CATEGORIES.map((c) => c.name)
 
@@ -37,23 +37,19 @@ function applyHints(f: AiFilters, h: any, today: string) {
 const clean = (s: unknown, n = 40) => (typeof s === 'string' ? s.replace(/[^\p{L}\p{N} '&-]/gu, '').trim().slice(0, n) : '')
 
 async function aiParse(q: string, today: string, city: string) {
-  const key = process.env.ABACUSAI_API_KEY
-  if (!key) return null
+  if (!llmConfigured()) return null
   const dow = new Date(`${today}T00:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' })
   const system = `You turn an event-search request into JSON filters for an Australian events site. Today is ${dow} ${today}${city ? ` and the user is browsing ${city}` : ''}.
 Return ONLY JSON: {"dateFrom":"YYYY-MM-DD","dateTo":"YYYY-MM-DD","category":one of ${JSON.stringify(CAT_NAMES)} or "","isFree":bool,"maxPrice":number|null,"lgbtiq":bool,"timeOfDay":"morning"|"afternoon"|"evening"|"any","suburb":string,"city":one of ${JSON.stringify(CITY_NAMES)} or "","keywords":[up to 3 short search words such as a genre, artist, venue or activity]}.
 Categories and their sub-types: ${CATEGORIES.map((c) => `${c.name} (${c.subTags.join(', ')})`).join('; ')}. Pick the category whose sub-types contain what the user asked for (e.g. comedy = Arts & Culture, markets = Community).
 Rules: "this weekend" = the current or coming Saturday and Sunday (if today is Saturday, it is today and tomorrow); "tonight" = today with evening; no date mentioned = today to 13 days ahead. A named year (2027) is 1 January through 31 December of that year. A named month and year (January 2027) is that whole month. Words like "upcoming" do not replace a named year. If the user names a city (${CITY_NAMES.join(', ')}), set "city" to that exact name. Set timeOfDay only if the user mentions a time of day. Only set suburb if a suburb/area is named. Do not invent anything the user did not ask for. Keywords must come from the request, must not repeat the category name, the year, or the city, and leave out generic words (event, things, fun, upcoming).`
   try {
-    const res = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: MODEL, temperature: 0, max_tokens: 300, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content: q }] }),
-      signal: AbortSignal.timeout(12000),
+    return await completeJson({
+      messages: [{ role: 'system', content: system }, { role: 'user', content: q }],
+      temperature: 0,
+      maxOutputTokens: 300,
+      timeoutMs: 12000,
     })
-    if (!res.ok) throw new Error(`LLM HTTP ${res.status}`)
-    const j = await res.json()
-    return JSON.parse(j?.choices?.[0]?.message?.content ?? '{}')
   } catch (e: any) {
     console.error('ai-search parse failed', e?.message)
     return null

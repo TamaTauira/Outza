@@ -46,6 +46,6 @@ export async function notifyTrustTeam(subject: string, rows: [string, string | n
     </div>
     <p style="color:#666;font-size:12px;">Review it in Admin → Trust & listings (/admin/trust).</p>
   </div>`
-  const sent = await sendEmail({ notificationId: process.env.NOTIF_ID_LISTING_REPORT_OR_CLAIM, to: OWNER_EMAIL, subject, html })
+  const sent = await sendEmail({ to: OWNER_EMAIL, subject, html })
   if (!sent.ok) console.error('Trust notification failed:', sent.error)
 }

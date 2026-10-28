@@ -123,7 +123,7 @@ export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'tes
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
   const to = opts.to || user!.email
-  const res = await sendEmail({ notificationId: process.env.NOTIF_ID_EVENT_DIGEST, to, subject: built.subject, html: built.html })
+  const res = await sendEmail({ to, subject: built.subject, html: built.html })
   await prisma.newsletterSend.update({
     where: { id: built.sendId },
     data: { ...base, status: res.ok ? (opts.mode === 'test' ? 'TEST' : 'SENT') : 'FAILED', error: res.ok ? null : res.error ?? 'send failed', sentAt: new Date() },

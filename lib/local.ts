@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/db'
+import { completeJson, llmConfigured } from '@/lib/llm'
 import { CITIES, cityDef } from '@/lib/cities'
 import {
   LOCAL_CATEGORIES, RECURRENCES, MAX_AHEAD_DAYS, MAX_RECUR_DAYS, MAX_SPAN_DAYS,
@@ -99,24 +100,17 @@ export function hardBlock(i: LocalInput): string | null {
 
 /** Optional AI moderation pass. Never rewrites content; only says whether a human should look. Fails open to "review" only on explicit concerns. */
 export async function aiModeration(i: LocalInput): Promise<string | null> {
-  const key = process.env.ABACUSAI_API_KEY
-  if (!key) return null
+  if (!llmConfigured()) return null
   try {
-    const res = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: 'gpt-5.4-mini', temperature: 0, max_tokens: 120, response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: 'You moderate public community listings (garage sales, clearance sales, markets, community activities) for an Australian events site. Reply JSON {"ok": boolean, "reason": string}. ok=false if the listing is spam, a scam, hateful, sexual, illegal goods, a private/invitation-only event, a job ad, a rental/real-estate ad, or not a real-world public event or sale. Otherwise ok=true and reason "".' },
-          { role: 'user', content: JSON.stringify({ title: i.title, category: i.category, description: i.description, organiser: i.organiserName }) },
-        ],
-      }),
-      signal: AbortSignal.timeout(12000),
+    const out = await completeJson({
+      temperature: 0,
+      maxOutputTokens: 120,
+      timeoutMs: 12000,
+      messages: [
+        { role: 'system', content: 'You moderate public community listings (garage sales, clearance sales, markets, community activities) for an Australian events site. Reply JSON {"ok": boolean, "reason": string}. ok=false if the listing is spam, a scam, hateful, sexual, illegal goods, a private/invitation-only event, a job ad, a rental/real-estate ad, or not a real-world public event or sale. Otherwise ok=true and reason "".' },
+        { role: 'user', content: JSON.stringify({ title: i.title, category: i.category, description: i.description, organiser: i.organiserName }) },
+      ],
     })
-    if (!res.ok) return null
-    const j = await res.json()
-    const out = JSON.parse(j?.choices?.[0]?.message?.content ?? '{}')
     return out.ok === false ? clean(out.reason, 200) || 'Flagged by automated moderation' : null
   } catch (e: any) {
     console.error('Local AI moderation skipped:', e?.message)

@@ -1,7 +1,9 @@
 import { lookup } from 'dns/promises'
 import { isIP } from 'net'
 import { CITIES } from '@/lib/cities'
+import { completeJson, llmConfigured } from '@/lib/llm'
 import { LOCAL_CATEGORIES, RECURRENCES, isDateStr, isTimeStr } from '@/lib/local-shared'
+import { siteUrl } from '@/lib/site-url'
 
 /** Fields the submit form can be prefilled with. Anything the source doesn't state stays empty. */
 export interface ExtractedListing {
@@ -31,7 +33,7 @@ export async function readPage(raw: string): Promise<{ text: string; url: string
 
   const res = await fetch(u, {
     redirect: 'follow', signal: AbortSignal.timeout(12000),
-    headers: { 'User-Agent': 'OutzaBot/1.0 (+https://outza.abacusai.app/how-listings-work)', Accept: 'text/html,application/xhtml+xml' },
+    headers: { 'User-Agent': `OutzaBot/1.0 (+${siteUrl()}/how-listings-work)`, Accept: 'text/html,application/xhtml+xml' },
   }).catch(() => null)
   if (!res || !res.ok) throw new ExtractError(`We couldn’t open that page${res ? ` (error ${res.status})` : ''}. Try uploading the flyer instead.`)
   if (res.url && BLOCKED_HOSTS.test(new URL(res.url).hostname)) throw new ExtractError('We don’t read Facebook or Instagram pages. Upload the flyer or paste the details instead.')
@@ -71,20 +73,25 @@ If a date has no year, use the next upcoming occurrence after today. If the sour
 
 /** Sends page text, document text or a PDF to the LLM and returns validated fields + the list of required fields still missing. */
 export async function extractListing(input: { text?: string; pdfBase64?: string; filename?: string }, today: string): Promise<ExtractedListing> {
-  const key = process.env.ABACUSAI_API_KEY
-  if (!key) throw new ExtractError('Import is not available right now. Please fill in the form manually.')
+  if (!llmConfigured()) throw new ExtractError('Import is not available right now. Please fill in the form manually.')
   const content = input.pdfBase64
-    ? [{ type: 'file', file: { filename: input.filename || 'flyer.pdf', file_data: `data:application/pdf;base64,${input.pdfBase64}` } }, { type: 'text', text: 'Extract the event details from this document.' }]
+    ? [
+        { type: 'file' as const, data: `data:application/pdf;base64,${input.pdfBase64}`, mediaType: 'application/pdf', filename: input.filename || 'flyer.pdf' },
+        { type: 'text' as const, text: 'Extract the event details from this document.' },
+      ]
     : `Here is the content:\n\n${input.text}`
-  const res = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: 'gpt-5.4-mini', temperature: 0, max_tokens: 1500, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: SYSTEM(today) }, { role: 'user', content }] }),
-    signal: AbortSignal.timeout(60000),
-  }).catch((e) => { console.error('Local extract LLM request failed:', e?.message); return null })
-  if (!res || !res.ok) throw new ExtractError('Reading the details failed at the AI step. Please try again or fill in the form manually.')
-  let raw: Record<string, unknown> = {}
-  try { raw = JSON.parse((await res.json())?.choices?.[0]?.message?.content ?? '{}') } catch { throw new ExtractError('We couldn’t read the details from that source. Please fill in the form manually.') }
+  let raw: Record<string, unknown>
+  try {
+    raw = await completeJson({
+      messages: [{ role: 'system', content: SYSTEM(today) }, { role: 'user', content }],
+      temperature: 0,
+      maxOutputTokens: 1500,
+      timeoutMs: 60_000,
+    })
+  } catch (e: any) {
+    console.error('Local extract LLM request failed:', e?.message)
+    throw new ExtractError('Reading the details failed at the AI step. Please try again or fill in the form manually.')
+  }
   return sanitise(raw)
 }
 

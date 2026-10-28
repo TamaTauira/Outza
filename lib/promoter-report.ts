@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { sendEmail, escapeHtml, siteUrl } from '@/lib/email'
+import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl } from '@/lib/email'
 import { REFERRAL_LABELS, REFERRAL_SOURCES, type ReferralSource } from '@/lib/referrals'
 import { eventPath } from '@/lib/seo'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
@@ -69,7 +69,7 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
   <p style="font-size:11px;color:#999">You're receiving this because you requested a report or turned on weekly reports in your promoter dashboard. You can switch weekly reports off there at any time.</p>
 </div>`
 
-  const res = await sendEmail({ notificationId: process.env.NOTIF_ID_PROMOTER_PERFORMANCE_REPORT, to: user.email, subject: 'Your Outza event performance report', html })
+  const res = await sendEmail({ to: user.email, subject: 'Your Outza event performance report', html })
   if (!res.ok) return { ok: false, error: res.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastReportAt: new Date() } })
   return { ok: true, events: events.length }
@@ -77,6 +77,7 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
 
 /** Sends weekly reports to opted-in promoters whose last report is at least 7 days old. */
 export async function runWeeklyPromoterReports() {
+  if (!emailSendingEnabled()) return { candidates: 0, sent: 0, skipped: 0 }
   const cutoff = new Date(Date.now() - 7 * 86400000 + 3600000)
   const users = await prisma.user.findMany({
     where: { weeklyReport: true, role: { in: ['PROMOTER', 'ADMIN'] }, OR: [{ lastReportAt: null }, { lastReportAt: { lt: cutoff } }] },
