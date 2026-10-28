@@ -114,10 +114,22 @@ export function Navbar({ savedCount }: NavbarProps) {
             </DropdownMenu>
           ) : (
             <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="lg:hidden w-10 h-10 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90" aria-label="For promoters, sign in, and sign up">
+                    <User className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem asChild><Link href="/promoters"><Megaphone className="w-4 h-4 mr-2" />For promoters</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/login">Sign In</Link></DropdownMenuItem>
+                  <DropdownMenuItem asChild><Link href="/signup"><User className="w-4 h-4 mr-2" />Sign Up</Link></DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Link href="/promoters" className="hidden lg:inline-flex h-10 items-center gap-1.5 px-3 text-sm text-muted-foreground hover:text-foreground"><Megaphone className="w-4 h-4" />For promoters</Link>
-              <Link href="/login" className="hidden md:inline-flex h-10 items-center px-3 text-sm text-muted-foreground hover:text-foreground">Sign In</Link>
-              <Link href="/signup" className="inline-flex h-10 items-center gap-1.5 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
-                <User className="w-4 h-4" /><span className="hidden sm:inline">Sign Up</span>
+              <Link href="/login" className="hidden lg:inline-flex h-10 items-center px-3 text-sm text-muted-foreground hover:text-foreground">Sign In</Link>
+              <Link href="/signup" className="hidden lg:inline-flex h-10 items-center gap-1.5 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
+                <User className="w-4 h-4" />Sign Up
               </Link>
             </>
           ))}

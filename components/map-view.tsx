@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import { FilterState } from '@/components/filter-panel'
 import { Loader2, LocateFixed, X } from 'lucide-react'
@@ -195,10 +196,18 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
     goldRef.current = gold
   }, [events, featured, ready])
 
+  useEffect(() => {
+    if (ready && !loading) mapInstanceRef.current?.invalidateSize?.()
+  }, [ready, loading])
+
   const count = events.filter((e: any) => e?.latitude && e?.longitude).length
+  const showSkeleton = !ready || (loading && events.length === 0)
+  const listed = events.filter((e: any) => e?.id && e?.title).slice(0, 30)
   return (
-    <div className="relative w-full" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
-      {loading && (
+    <div className="space-y-3">
+    <div className="relative w-full" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }} aria-busy={showSkeleton || undefined}>
+      {showSkeleton && <div className="absolute inset-0 z-[450] rounded-2xl bg-muted animate-pulse" aria-hidden />}
+      {loading && !showSkeleton && (
         <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/40">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -225,7 +234,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
           </button>
           <p className="font-display font-bold text-lg leading-tight pr-6">Where you at?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">Share your location and we'll zoom straight to the action around you.</p>
-          <p className="mt-2 text-xs text-muted-foreground">Your location is only used in your browser to centre the map. We don't store it.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Your location is only used in your browser to centre the map. We don't store it.</p>
           <div className="mt-3 flex gap-2">
             <button onClick={locate} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Share My Location</button>
             <button onClick={declineLocation} className="h-10 px-4 rounded-lg border border-border text-sm font-medium hover:bg-muted">Not Now</button>
@@ -242,6 +251,28 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
             : 'We couldn\'t pin you down just now. Give Near Me another tap in a moment.'}
         </div>
       )}
+    </div>
+    {showSkeleton && (
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <p className="px-4 py-3 text-base text-muted-foreground" role="status">Loading the map. You can browse the list below.</p>
+        {listed.length === 0 ? (
+          <div className="space-y-2 p-4" aria-hidden>
+            {Array.from({ length: 6 }, (_, i) => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}
+          </div>
+        ) : (
+          <ul className="divide-y divide-border">
+            {listed.map((e: any) => (
+              <li key={e.id}>
+                <Link href={eventPath({ id: String(e.id), title: e.title })} className="block px-4 py-3 hover:bg-muted/60">
+                  <span className="block font-semibold text-base leading-snug line-clamp-2 break-words">{e.title}</span>
+                  <span className="mt-0.5 block text-sm text-muted-foreground">{e.venueName}{e.suburb ? ` · ${e.suburb}` : ''}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )}
     </div>
   )
 }

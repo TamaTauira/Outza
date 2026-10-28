@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { Store, Tag, Warehouse, ShoppingBasket, Users, Plus, ShieldCheck, Trash2, MousePointerClick } from 'lucide-react'
+import { Store, Tag, Warehouse, ShoppingBasket, Users, Plus, ShieldCheck, Trash2, MousePointerClick, Loader2 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { useSaved } from '@/lib/saved'
@@ -35,8 +35,18 @@ export function LocalClient() {
   const params = useSearchParams()
   const { saved, isSaved, toggle } = useSaved()
   const { data: session } = useSession() || {}
-  const tab = (TABS.find((t) => t.key === params.get('tab'))?.key ?? 'browse') as (typeof TABS)[number]['key']
-  const setTab = (t: string) => router.replace(t === 'browse' ? '/local' : `/local?tab=${t}`, { scroll: false })
+  const tabParam = params.get('tab') ?? ''
+  const urlTab = (TABS.find((t) => t.key === tabParam)?.key ?? 'browse') as (typeof TABS)[number]['key']
+  // Optimistic tab so the first tap shows the panel and a spinner before the URL catches up.
+  const [pending, setPending] = useState<(typeof TABS)[number]['key'] | null>(null)
+  const tab = pending ?? urlTab
+  const tabBusy = pending !== null && pending !== urlTab
+  useEffect(() => { setPending(null) }, [tabParam])
+  const setTab = (t: string) => {
+    const next = (TABS.find((x) => x.key === t)?.key ?? 'browse') as (typeof TABS)[number]['key']
+    setPending(next)
+    router.replace(next === 'browse' ? '/local' : `/local?tab=${next}`, { scroll: false })
+  }
 
   const [city, setCity] = useState(DEFAULT_CITY)
   const [category, setCategory] = useState('')
@@ -85,13 +95,16 @@ export function LocalClient() {
           <p className="mt-3 text-muted-foreground sm:text-lg">Garage sales, warehouse clearances, markets and community happenings: the good stuff that never makes the big posters. Listing’s free.</p>
         </header>
 
-        <div className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border">
+        <nav className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border" aria-label="OUTZA Local" aria-busy={tabBusy || undefined}>
           {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative px-4 py-3 text-sm whitespace-nowrap', tab === t.key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
-              {t.label}{tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
-            </button>
+              <Link key={t.key} href={t.key === 'browse' ? '/local' : `/local?tab=${t.key}`} scroll={false} onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return; setPending(t.key) }} aria-current={tab === t.key ? 'page' : undefined} className={cn('relative px-4 py-3 text-sm whitespace-nowrap', tab === t.key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
+              {t.label}
+              {tabBusy && pending === t.key && <Loader2 className="inline w-3.5 h-3.5 ml-1.5 animate-spin" aria-hidden />}
+              {tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
+            </Link>
           ))}
-        </div>
+        </nav>
+        {tabBusy && <p className="sr-only" role="status">Loading {TABS.find((t) => t.key === pending)?.label}</p>}
 
         {tab === 'browse' && (
           <section className="mt-8">
@@ -126,7 +139,7 @@ export function LocalClient() {
                 <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"><MousePointerClick className="w-3 h-3" /> Tap a row for the goods</span>
               </div>
               <BoardHeadings />
-              {!data && <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading local listings…</p>}
+              {!data && <p className="px-5 py-16 text-center text-base text-muted-foreground flex items-center justify-center gap-2" role="status"><Loader2 className="w-4 h-4 animate-spin" aria-hidden />Loading local listings…</p>}
               {data && !days.length && (
                 <div className="p-8 text-center">
                   <Store className="w-8 h-8 mx-auto text-muted-foreground" />
@@ -166,7 +179,7 @@ export function LocalClient() {
                 {mine.map((l) => (
                   <div key={l.id} className="rounded-2xl bg-card shadow-sm p-5 flex items-start gap-4">
                     <div className="flex-1 min-w-0">
-                      {l.status === 'APPROVED' ? <Link href={localPath(l)} className="font-display font-bold hover:text-primary">{l.title}</Link> : <p className="font-display font-bold">{l.title}</p>}
+                      {l.status === 'APPROVED' ? <Link href={localPath(l)} className="font-display font-bold hover:text-primary line-clamp-2 break-words">{l.title}</Link> : <p className="font-display font-bold line-clamp-2 break-words">{l.title}</p>}
                       <p className="text-sm text-muted-foreground">{l.schedule} · from {fmtDay(l.startDate)} · {fmtTime(l.startTime)}–{fmtTime(l.endTime)} · {l.suburb}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Shows until {new Date(l.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' })}</p>
                       <span className={cn('mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', l.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : l.status === 'PENDING' ? 'bg-amber-100 text-amber-900' : 'bg-red-100 text-red-800')}>

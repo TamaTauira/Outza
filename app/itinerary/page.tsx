@@ -18,7 +18,7 @@ const needsGeo = (i: ItineraryItem) => !hasGeo(i) && !i.geoFailed && (i.kind ===
 
 /** Travel estimate between two consecutive stops on the same day. */
 function TravelLeg({ from, to, locating }: { from: ItineraryItem; to: ItineraryItem; locating: boolean }) {
-  const box = 'ml-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground py-1'
+  const box = 'ml-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground py-1'
   if (!hasGeo(from) || !hasGeo(to)) {
     if (locating) return <div className={box}><Loader2 className="w-3.5 h-3.5 animate-spin" />Working out travel time…</div>
     const missing = !hasGeo(from) ? from : to

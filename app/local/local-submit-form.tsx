@@ -26,7 +26,8 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
   })
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     if (!startedAt.current) startedAt.current = Date.now()
-    setF({ ...f, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value })
+    const raw = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value
+    setF({ ...f, [k]: k === 'title' && typeof raw === 'string' ? raw.slice(0, 100) : raw })
   }
   // After an import, required fields still empty get an orange ring until the lister fills them.
   const needs = (k: keyof typeof f) => !!imported && (REQUIRED as readonly string[]).includes(k) && !String(f[k]).trim()
@@ -39,6 +40,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
     if (!r.fields.startTime) next.startTime = ''
     if (!r.fields.endTime) next.endTime = ''
     if (r.fields.endDate && next.recurrence === 'NONE') next.endDate = r.fields.endDate
+    next.title = next.title.slice(0, 100)
     setF(next)
     setImported(r)
   }
@@ -64,13 +66,14 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
   }
 
   return (
-    <form onSubmit={submit} className="mt-8 max-w-3xl space-y-6">
-      <div className="rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
+    <div className="mt-8 max-w-3xl space-y-6">
+      <div className="rounded-2xl bg-muted/60 p-4 text-base sm:text-sm text-muted-foreground">
         Free for everyone. {signedIn ? 'Listings from signed-in accounts that pass our automatic checks go live straight away.' : <>Listings without an account are checked by a person first. <Link href="/login?next=/local?tab=submit" className="text-primary underline">Sign in</Link> to go live faster and manage your listings.</>}
       </div>
 
       <LocalImportCard city={f.city} onImported={applyImport} result={imported} />
 
+      <form onSubmit={submit} className="space-y-6">
       <div className="rounded-2xl bg-card shadow-sm p-6 space-y-4">
         <h2 className="font-display text-xl font-bold">What is it?</h2>
         <div className="grid sm:grid-cols-2 gap-2">
@@ -81,7 +84,13 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
             </label>
           ))}
         </div>
-        <div><label className={label} htmlFor="l-title">Title</label><input id="l-title" className={field('title')} value={f.title} onChange={set('title')} maxLength={100} placeholder="e.g. Big family moving sale — furniture & kids’ toys" required /></div>
+        <div>
+          <div className="flex items-baseline justify-between gap-3 mb-1.5">
+            <label className="text-sm font-semibold" htmlFor="l-title">Title</label>
+            <span id="l-title-count" className="text-sm tabular-nums text-muted-foreground">{f.title.length}/100</span>
+          </div>
+          <input id="l-title" className={field('title')} value={f.title} onChange={set('title')} maxLength={100} aria-describedby="l-title-count" placeholder="e.g. Big family moving sale — furniture & kids’ toys" required />
+        </div>
         <div><label className={label} htmlFor="l-desc">Description</label><textarea id="l-desc" className={`${field('description')} h-28 py-2`} value={f.description} onChange={set('description')} maxLength={1500} placeholder="What’s on offer, parking, cash or card, accessibility…" required /></div>
         <div><label className={label} htmlFor="l-price">Price or entry (optional)</label><input id="l-price" className={field('priceNote')} value={f.priceNote} onChange={set('priceNote')} maxLength={80} placeholder="e.g. Free entry · cash only" /></div>
       </div>
@@ -98,7 +107,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
             <div><label className={label} htmlFor="l-city">City</label><select id="l-city" className={field('city')} value={f.city} onChange={set('city')}>{CITY_NAMES.map((c) => <option key={c}>{c}</option>)}</select></div>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">We check the address against OpenStreetMap. The address is shown publicly so people can find you.</p>
+        <p className="text-sm text-muted-foreground">We check the address against OpenStreetMap. The address is shown publicly so people can find you.</p>
       </div>
 
       <div className="rounded-2xl bg-card shadow-sm p-6 space-y-4">
@@ -140,6 +149,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
       <button type="submit" disabled={busy} className="h-12 px-8 rounded-full bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 disabled:opacity-60">
         {busy && <Loader2 className="w-4 h-4 animate-spin" />}{busy ? 'Checking your listing…' : 'Publish free listing'}
       </button>
-    </form>
+      </form>
+    </div>
   )
 }

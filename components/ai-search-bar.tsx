@@ -82,8 +82,8 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
   }, [hintsKey, city])
 
   const setHint = <K extends keyof Hints>(k: K, v: Hints[K]) => setHints((h) => ({ ...h, [k]: h[k] === v && k !== 'area' ? '' : v }))
-  const chip = (on: boolean) => cn('h-8 rounded-full px-3 text-xs sm:text-sm ring-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
-    on ? 'bg-primary text-primary-foreground ring-primary font-medium' : 'bg-white/[0.06] text-white/85 ring-white/10 hover:bg-white/[0.12] hover:text-white')
+  const chip = (on: boolean) => cn('h-8 rounded-full px-3 text-sm ring-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+    on ? 'bg-primary text-primary-foreground ring-primary font-medium' : 'bg-white/[0.06] text-white/90 ring-white/15 hover:bg-white/[0.12] hover:text-white')
 
   return (
     <div className="flex-1 min-w-0">
@@ -105,13 +105,13 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="Quick picks">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="When?">
-          <span className="text-xs sm:text-sm text-white/60 mr-0.5">When?</span>
+          <span className="text-sm text-white/80 mr-0.5">When?</span>
           {WHEN_OPTS.map((o) => (
             <button key={o.key} type="button" title={o.hint} aria-pressed={hints.when === o.key} onClick={() => setHint('when', o.key)} className={chip(hints.when === o.key)}>{o.label}</button>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Budget">
-          <span className="text-xs sm:text-sm text-white/60 mr-0.5">Budget</span>
+          <span className="text-sm text-white/80 mr-0.5">Budget</span>
           {BUDGET_OPTS.map((o) => (
             <button key={o.key} type="button" aria-pressed={hints.budget === o.key} onClick={() => setHint('budget', o.key)} className={chip(hints.budget === o.key)}>{o.label}</button>
           ))}
@@ -128,33 +128,35 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
           <span className="relative">
             <MapPin className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/60" />
             <input value={hints.area} onChange={(e) => setHint('area', e.target.value)} maxLength={40} aria-label="Suburb or area"
-              placeholder="Any suburb" className={cn(chip(!!hints.area.trim()), 'w-36 pl-7 placeholder:text-white/50')} />
+              placeholder="Any suburb" className={cn(chip(!!hints.area.trim()), 'w-36 pl-7 placeholder:text-white/75')} />
           </span>
           {hasHints && (
-            <button type="button" onClick={() => setHints(NO_HINTS)} className="h-8 px-2 text-xs sm:text-sm text-white/70 hover:text-white underline-offset-2 hover:underline">Clear Picks</button>
+            <button type="button" onClick={() => setHints(NO_HINTS)} className="h-8 px-2 text-sm text-white/80 hover:text-white underline-offset-2 hover:underline">Clear Picks</button>
           )}
         </div>
       </div>
 
+      {/* Fixed height so opening results does not push the board. Longer lists scroll inside. */}
+      <div className="mt-3 h-64 sm:h-72 overflow-y-auto" aria-live="polite">
       {!data && !hasHints && (
-        <div className="mt-3 flex flex-wrap gap-2" aria-label="Try asking">
+        <div className="flex flex-wrap gap-2" aria-label="Try asking">
           {SUGGESTIONS.map((s) => (
-            <button key={s} type="button" onClick={() => search(s)} disabled={busy} className="rounded-full bg-white/[0.06] px-3 py-1.5 text-xs sm:text-sm text-white/85 ring-1 ring-white/10 hover:bg-white/[0.12] hover:text-white disabled:opacity-60">
+            <button key={s} type="button" onClick={() => search(s)} disabled={busy} className="rounded-full bg-white/[0.06] px-3 py-1.5 text-sm text-white/90 ring-1 ring-white/15 hover:bg-white/[0.12] hover:text-white disabled:opacity-60">
               {s}
             </button>
           ))}
         </div>
       )}
 
-      {error && <p role="alert" className="mt-3 text-sm text-[#ffb4a6]">{error}</p>}
+      {error && <p role="alert" className="text-base sm:text-sm text-[#ffb4a6]">{error}</p>}
 
       {data && (
-        <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
-          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span className="text-white/60">{data.ai ? 'Outza AI understood:' : 'Searching for:'}</span>
+        <div className="rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-white/80">{data.ai ? 'Outza AI understood:' : 'Searching for:'}</span>
             {understood(data.filters, today).map((c) => <span key={c} className="rounded-full bg-primary/15 text-[#ffb4a6] px-2.5 py-0.5 ring-1 ring-primary/30">{c}</span>)}
           </div>
-          {data.relaxed && <p className="mt-2 text-xs sm:text-sm text-white/70">Couldn’t nail every word, but these tick most of your boxes.</p>}
+          {data.relaxed && <p className="mt-2 text-sm text-white/85">Couldn’t nail every word, but these tick most of your boxes.</p>}
 
           {data.results.length ? (
             <ul className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -167,7 +169,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
                       <span className="mt-0.5 grid place-items-center w-9 h-9 rounded-md bg-primary/15 text-primary shrink-0"><Icon className="w-4 h-4" /></span>
                       <span className="min-w-0">
                         <span className="block font-semibold leading-snug line-clamp-2 group-hover:underline">{e.title}</span>
-                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/70">
+                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-white/80">
                           <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{dayLabel(e.date, today)}{e.time ? ` · ${t.hm}${t.ampm}` : ''}</span>
                           <span className="inline-flex items-center gap-1 min-w-0"><MapPin className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{e.venueName}{e.suburb ? `, ${e.suburb}` : ''}</span></span>
                           {e.isFree && <span className="rounded bg-emerald-400/15 text-emerald-300 px-1.5">Free</span>}
@@ -179,11 +181,11 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/80">Nothing on Outza matches that yet{city ? ` in ${city}` : ''}. Try different dates, a wider area or fewer details.</p>
+            <p className="mt-3 text-base sm:text-sm text-white/90">Nothing on Outza matches that yet{city ? ` in ${city}` : ''}. Try different dates, a wider area or fewer details.</p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-white/55">Real listings only. Our AI reads your request; it never makes events up.</p>
+            <p className="text-sm text-white/80">Real listings only. Our AI reads your request; it never makes events up.</p>
             <div className="flex gap-2">
               <button type="button" onClick={() => { reqId.current++; setBusy(false); setData(null); setQ(''); setHints(NO_HINTS); setError(''); inputRef.current?.focus() }} className="rounded-lg px-3 h-9 text-sm text-white/80 hover:text-white hover:bg-white/[0.06]">New Search</button>
               {data.total > 0 && (
@@ -195,6 +197,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

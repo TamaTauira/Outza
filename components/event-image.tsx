@@ -18,6 +18,8 @@ interface Props {
   /** Compact fallback (small cards) */
   compact?: boolean
   className?: string
+  /** Detail hero with no artwork: category colour and the event title. */
+  fallback?: { color: string; title: string }
 }
 
 /**
@@ -25,7 +27,7 @@ interface Props {
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
  * otherwise a clearly labelled Outza placeholder.
  */
-export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, className }: Props) {
+export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, className, fallback }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
   const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
   const m = image?.variants ?? null
@@ -66,6 +68,25 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
           onError={() => setStage('none')}
         />
       </>
+    )
+  }
+
+  if (fallback) {
+    const color = /^#[0-9a-fA-F]{3,8}$/.test(fallback.color) ? fallback.color : '#f9652a'
+    return (
+      <div className="absolute inset-0" role="img" aria-label={alt} style={{ backgroundColor: color }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/20" />
+        <div className="absolute inset-x-0 bottom-0 z-10 p-6 md:p-10 text-white">
+          <div className="mb-3 inline-flex items-center gap-2">
+            <OutzaMark className="w-8 h-8" />
+            <span className="flex flex-col leading-none">
+              <span className="font-display font-extrabold tracking-tight text-base">OUTZA<span className="text-[#f9652a]">.</span></span>
+              <span className="mt-1 font-mono uppercase tracking-[0.16em] text-sm text-white/90">{OUTZA_TAGLINE}</span>
+            </span>
+          </div>
+          <p className="font-display text-2xl md:text-4xl font-bold leading-tight line-clamp-3">{fallback.title}</p>
+        </div>
+      </div>
     )
   }
 
