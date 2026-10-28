@@ -2,6 +2,7 @@
 // tenant-isolated storage. Nothing here is simulated: if Google refuses access we record that status.
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
+import { siteUrl } from '@/lib/site-url'
 import { GBP_METRICS } from './sources'
 
 export const GBP_SCOPE = 'https://www.googleapis.com/auth/business.manage'
@@ -25,7 +26,7 @@ export function decryptSecret(blob: string) {
 }
 
 export const googleConfigured = () => !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET
-export const callbackUrl = () => `${(process.env.NEXTAUTH_URL ?? '').replace(/\/$/, '')}${GBP_CALLBACK_PATH}`
+export const callbackUrl = () => `${siteUrl()}${GBP_CALLBACK_PATH}`
 
 export function authUrl(state: string) {
   const p = new URLSearchParams({

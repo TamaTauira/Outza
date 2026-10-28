@@ -17,22 +17,21 @@ Read [docs/handover.md](docs/handover.md) before changing the product. It covers
 - Stripe (checkouts stay in test mode until `STRIPE_SECRET_KEY` is set)
 - Leaflet maps, sharp for images, S3 for uploads
 
-Hosting, the database, and deploys are managed on the Abacus.AI app platform. See the handover for the platform rules (async `params` / `cookies()` / `headers()`, no `middleware.ts`, no `webpack` key in `next.config.js`, additive Prisma changes only).
+Hosting and deploys are on Vercel. The public origin is [https://outza-outza.vercel.app](https://outza-outza.vercel.app) unless `NEXT_PUBLIC_SITE_URL` names a custom domain. LLM calls go through Vercel AI Gateway (OIDC on Vercel, `AI_GATEWAY_API_KEY` locally). Outbound email is turned off. See the handover for the app rules (async `params` / `cookies()` / `headers()`, no `middleware.ts`, no `webpack` key in `next.config.js`, additive Prisma changes only).
 
 ## Local setup
 
 You need:
 
-- Node.js 20.9 or newer (see `engines` in `package.json`)
-- Yarn 4.10 (Berry). The lockfile is Yarn metadata version 8. Corepack ships with Node 20.
+- Node.js 22 or newer (see `engines` in `package.json`)
+- Yarn 4.10 (Berry). The lockfile is Yarn metadata version 8. Corepack ships with Node.
 - PostgreSQL
-- A `.env` file. Copy the names from `.env.example` and fill in values locally. The owner holds the real values. Leave `NEXTAUTH_URL` unset; the platform injects it.
+- A `.env` file. Copy the names from `.env.example` and fill in values locally. The owner holds the real values.
 
 ```bash
 cp .env.example .env
 corepack enable
 corepack prepare yarn@4.10.3 --activate
-export YARN_GLOBAL_FOLDER="${YARN_GLOBAL_FOLDER:-$HOME/.yarn/berry}"
 yarn install
 yarn prisma generate
 yarn dev
@@ -47,8 +46,6 @@ yarn prisma db push
 ```
 
 Use a local `DATABASE_URL`. Preview and production share one database, so a casual local session must stay off that URL. Schema changes have to stay additive. Do not pass `--accept-data-loss` or `--force-reset`.
-
-`.yarnrc.yml` is the Abacus Yarn config and stays as it is. It stores the package cache under `/opt/hostedapp/node/yarn/global`, which a normal machine cannot create. `YARN_GLOBAL_FOLDER` points that cache at a writable directory for the session and does not change the committed file.
 
 `scripts/seed.ts` upserts an admin user and will not run unless `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are set in the environment. Those names are intentionally absent from `.env.example`. Do not commit them, and do not run the seed against the shared database.
 

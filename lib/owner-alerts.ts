@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
-import { sendEmail, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
+import { sendEmail, emailSendingEnabled, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
 
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
 const MAX_FAULT_EMAILS_PER_HOUR = 10
@@ -22,7 +22,7 @@ export async function reportFault(opts: { area: string; title: string; detail?: 
       update: { count: { increment: 1 }, lastSeen: now, detail },
     })
     // Faults are recorded everywhere, but only the live site emails (keeps preview/dev noise out of your inbox).
-    if (process.env.NODE_ENV !== 'production') return
+    if (process.env.NODE_ENV !== 'production' || !emailSendingEnabled()) return
     if (row.lastEmailedAt && now.getTime() - row.lastEmailedAt.getTime() < FAULT_REEMAIL_MS) return
     const recent = await prisma.ownerAlert.count({ where: { kind: 'FAULT', lastEmailedAt: { gte: new Date(now.getTime() - 3600_000) } } })
     if (recent >= MAX_FAULT_EMAILS_PER_HOUR) return
@@ -44,7 +44,7 @@ export async function reportFault(opts: { area: string; title: string; detail?: 
     ${detail ? `<pre style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(detail)}</pre>` : ''}
     <p style="color:#666;font-size:12px;">Site: ${escapeHtml(siteUrl())}. Repeats of this same fault are bundled: you'll get at most one email about it every 6 hours.</p>
   </div>`
-    const res = await sendEmail({ notificationId: process.env.NOTIF_ID_SERIOUS_FAULT_ALERT, to: OWNER_EMAIL, subject: `[Outza fault] ${title.slice(0, 90)}`, html })
+    const res = await sendEmail({ to: OWNER_EMAIL, subject: `[Outza fault] ${title.slice(0, 90)}`, html })
     if (!res.ok) {
       console.error('[alerts] fault email failed:', res.error)
       await prisma.ownerAlert.update({ where: { id: row.id }, data: { lastEmailedAt: row.lastEmailedAt } }).catch(() => {})
@@ -74,6 +74,7 @@ export async function runHealthChecks() {
 
 /** Fortnightly ideas summary: only sends when there are new suggestions and 14+ days have passed since the last one. */
 export async function runIdeasDigest(opts: { force?: boolean } = {}) {
+  if (!emailSendingEnabled()) return { sent: false, reason: 'email off' }
   const marker = await prisma.ownerAlert.findUnique({ where: { key: DIGEST_KEY } })
   const now = new Date()
   if (!marker) {
@@ -98,7 +99,7 @@ export async function runIdeasDigest(opts: { force?: boolean } = {}) {
     <p style="color:#444;margin-top:0;">${ideas.length} new idea${ideas.length === 1 ? '' : 's'} (${promoters} from promoters, ${ideas.length - promoters} from event-goers) since the last summary.</p>
     ${rows}
   </div>`
-  const res = await sendEmail({ notificationId: process.env.NOTIF_ID_IDEAS_SUMMARY_FORTNIGHTLY, to: OWNER_EMAIL, subject: `Outza ideas: ${ideas.length} new suggestion${ideas.length === 1 ? '' : 's'} this fortnight`, html })
+  const res = await sendEmail({ to: OWNER_EMAIL, subject: `Outza ideas: ${ideas.length} new suggestion${ideas.length === 1 ? '' : 's'} this fortnight`, html })
   if (!res.ok) {
     await reportFault({ area: 'Owner emails', key: 'ideas-digest-failed', title: 'Fortnightly ideas summary failed to send', detail: res.error })
     return { sent: false, reason: res.error }

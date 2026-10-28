@@ -10,21 +10,18 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 
 - **What:** OUTZA is an Australian "what's on" events website. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary and ask an AI search for ideas. It also has community listings ("OUTZA Local"), a promoter dashboard with paid promotions, and a weekly email newsletter ("THE WEEKENDER").
 - **Brand:** "OUTZA." (orange dot) + tagline **"Get out. Get amongst it."** Fun, energetic, witty copy. Dark charcoal + orange (#f9652a / #e8553f).
-- **Live:** https://outza.abacusai.app (production) and https://outza-fix.abacusai.app (second host on the same deploy).
-- **Stack:** Next.js **16** (App Router, Turbopack), React, TypeScript, Tailwind 3.4 + shadcn/Radix UI, Prisma + PostgreSQL, Auth.js / next-auth **v5 beta** (credentials + Google), Stripe (currently **not configured → test mode**), Leaflet maps (Esri tiles), sharp for images, S3 for uploads.
-- **Hosting:** Abacus.AI app platform. Hosting, database, checkpoints and deploys are managed there (see §2 — this matters for how you work).
+- **Live:** https://outza-outza.vercel.app. `https://outza-sepia.vercel.app` 308-redirects there. Set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
+- **Stack:** Next.js **16** (App Router, Turbopack), React, TypeScript, Tailwind 3.4 + shadcn/Radix UI, Prisma + PostgreSQL, Auth.js / next-auth **v5 beta** (credentials + Google), Stripe (currently **not configured → test mode**), Leaflet maps (Esri tiles), sharp for images, S3 for uploads. LLM calls use Vercel AI Gateway. Outbound email is turned off.
+- **Hosting:** Vercel. Deploys come from this git repository.
 - **Owner:** the site owner (Sydney, AEST/AEDT). The owner admin account is `owner@outza.app` (role ADMIN). The password is **not** in this document; ask the owner.
 
 ---
 
 ## 1. How you (Claude) will work with this code
 
-1. **Getting the code:** the owner downloads `outza_source.zip` (prepared alongside this file). It contains the app source with secrets and build output removed. There's no git remote, and the hosting platform forbids connecting one.
-2. **Running locally:** you need Node 20+, yarn, a Postgres database and a `.env` (see §6 for variable names; the owner holds the values). Then `yarn install`, `yarn prisma generate`, `yarn dev`. **Never** point local dev at the production `DATABASE_URL` without care: dev and prod share **one** database.
-3. **Getting changes live:** deployment happens on the Abacus.AI platform, not from your machine. The owner either (a) pastes your changed files back into the Abacus agent conversation and asks it to deploy, or (b) uploads them there. So:
-   - Produce **complete files or precise diffs**, with file paths relative to `nextjs_space/`.
-   - Keep changes small and self-contained. Say exactly which files changed.
-   - Don't add packages casually; the platform installs from a shared baseline (`package.json` / `yarn.lock` are platform-managed symlinks). If you need a new package, name it and the exact version.
+1. **Getting the code:** clone this git repository. Do not depend on an Abacus download or an Abacus agent conversation.
+2. **Running locally:** you need Node 22+, yarn, a Postgres database and a `.env` (see §6 for variable names; the owner holds the values). Then `yarn install`, `yarn prisma generate`, `yarn dev`. **Never** point local dev at the production `DATABASE_URL` without care: dev and prod share **one** database.
+3. **Getting changes live:** open a pull request. Vercel deploys from git. Do not paste files into an Abacus conversation and do not call `apps.abacus.ai`.
 4. **Before handing back a change:** make sure `yarn tsc --noEmit` and `yarn build` pass. There's also an SSR-safety lint: `yarn eslint --no-config-lookup --config eslint.ssr.config.mjs .` (blocks hydration mistakes: see §7).
 
 ### Platform rules you must not break
@@ -37,9 +34,8 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 - **Prisma:** never hand-edit the `generator client` block in `prisma/schema.prisma` (the platform rewrites it). Import from `@prisma/client`. Schema changes must be **additive/compatible** (`prisma db push` without `--accept-data-loss`). Never `--force-reset`.
 - **Database is shared by preview and production.** Never delete rows in scripts or seeds. Soft-remove via `status` (e.g. `REMOVED`) or `duplicateOfId`. Limits: 25 connections, **5-second statement timeout**, short idle timeout. Reuse the single Prisma client (`lib/db.ts` / `lib/prisma.ts`).
 - Files: never write uploads to local disk; use S3 (`lib/s3.ts`, `lib/aws-config.ts`). Store `cloud_storage_path` only.
-- Root layout must keep `<script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>`.
-- Don't set `X-Frame-Options` (the platform previews the site in an iframe).
-- Anything reading `process.env.NEXTAUTH_URL` needs `export const dynamic = "force-dynamic"` (the URL differs between build and runtime). Never set `NEXTAUTH_URL` yourself.
+- Do not add `https://apps.abacus.ai/chatllm/appllm-lib.js` or any other Abacus script. Client crashes go through `components/report-crash.ts`.
+- Public links use `siteUrl()` (`lib/site-url.ts`). Do not hard-code an `abacusai.app` host.
 - No system binaries in production (no python, ffmpeg, LibreOffice, Playwright). Pure Node packages only.
 - Never use `\uXXXX` escapes for non-ASCII characters in source; write the real character.
 
@@ -47,7 +43,7 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 
 ## 2. Release state right now (important)
 
-The Abacus platform has **checkpoints** (saved builds shown in the preview) and **deploys** (published to the live hosts). Several finished changes are saved but **not yet deployed**:
+This table is the import-time preview list. Hosting is Vercel now; it is not an Abacus checkpoint list. Several finished changes were saved but not yet on the old hosts when this note was written:
 
 | State | Change |
 |---|---|
@@ -178,11 +174,11 @@ Rules: no mock data; never present LGA/state figures as suburb figures; SEIFA is
 `lib/images/*`: non-generative pipeline (Lanczos upscale + integrity checks). Never crop poster text (contain over a blurred extension). A failed enhancement never replaces a usable original. Admin `/admin/images`. **Never republish images without permission** (imports from Local sources carry no images).
 
 ### 4.14 Background jobs (`instrumentation.ts`)
-On the Node runtime: refresh every 2h (startup if stale), digests hourly, owner jobs hourly (`lib/owner-alerts.ts`: fortnightly ideas summary when there are new suggestions; health checks), Intelligence ingest hourly. `onRequestError` emails the owner on uncaught server errors (production only, deduped, max 10/h). Cron endpoints accept header `x-cron-secret: $CRON_SECRET` or an ADMIN session: `/api/cron/digest`, `/api/cron/owner-alerts`, `/api/cron/promoter-reports`, `/api/cron/intel`.
+On the Node runtime: refresh every 2h (startup if stale), digests hourly, owner jobs hourly (`lib/owner-alerts.ts`: fortnightly ideas summary when there are new suggestions; health checks), Intelligence ingest hourly. `onRequestError` records uncaught server errors for the owner (production only, deduped). Email delivery is off, so those jobs record the fault and do not send. Cron endpoints accept header `x-cron-secret: $CRON_SECRET` or an ADMIN session: `/api/cron/digest`, `/api/cron/owner-alerts`, `/api/cron/promoter-reports`, `/api/cron/intel`.
 
-### 4.15 Email + AI services (Abacus.AI APIs)
-- Email: `lib/email.ts` → `https://apps.abacus.ai/api/sendNotificationEmail` with `ABACUSAI_API_KEY`, `WEB_APP_ID` and a per-type `NOTIF_ID_*` env var. New notification types must be registered on the platform (ask the owner / Abacus agent); you can't invent IDs.
-- LLM: OpenAI-compatible `https://apps.abacus.ai/v1/chat/completions` with `Bearer ABACUSAI_API_KEY` (used in ai-search, local moderation/extract, newsletter copy, intel). PDFs go to the LLM as base64 files; don't add PDF-parsing libraries.
+### 4.15 Email + AI
+- Email: `lib/email.ts` `sendEmail` is turned off (`emailSendingEnabled()` is false). It does not call a mail API. Scheduled digests, weekly promoter reports, and owner mail skip the send. Do not point this at Abacus.
+- LLM: `lib/llm.ts` calls Vercel AI Gateway with the `ai` package (`generateText` + `Output.json()`). On Vercel the deployment's OIDC token authenticates the request. Locally set `AI_GATEWAY_API_KEY`. Model id is `AI_GATEWAY_MODEL`, or `openai/gpt-5.4-mini` when that is unset. Used by ai-search, local moderation, flyer/page extract, newsletter copy, and the Destination NSW PDF extract. PDFs go to the model as file parts; don't add PDF-parsing libraries.
 
 ---
 
@@ -199,9 +195,10 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 **Prisma models:** Event, ImageAsset, ImageHistory, ImageRun, RefreshLog, User, Account, Session, VerificationToken, SavedEvent, Attendance, EventSignal, Friendship, PromoterFollow, Promotion, LocalAd, ProPass, Suggestion, OwnerAlert, EventReport, EventReferral, EventClaim, NewsletterSend, NewsletterClick, EventBlurb, LocalListing, IntelSource, IntelIngestJob, IntelDataset, IntelObservation, IntelArea, IntelTransportStop, IntelVenueGeo, IntelCache, GoogleBusinessConnection, GoogleBusinessMetric, GoogleBusinessKeyword, IntelAuditLog. Read `prisma/schema.prisma` for fields. (Event has no `sourceUrl` field; `ticketUrl` + `source` carry provenance.)
 
 **Environment variables (names only; the owner holds values):**
-- Set today: `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `ABACUSAI_API_KEY`, `WEB_APP_ID`, `TICKETMASTER_API_KEY`, `OZTIX_ALGOLIA_KEY`, `AWS_PROFILE`, `AWS_REGION`, `AWS_BUCKET_NAME`, `AWS_FOLDER_PREFIX`, `NOTIF_ID_PROMOTION_PURCHASED`, `NOTIF_ID_EVENT_DIGEST`, `NOTIF_ID_NEW_SUGGESTION`, `NOTIF_ID_LISTING_REPORT_OR_CLAIM`, `NOTIF_ID_PROMOTER_PERFORMANCE_REPORT`, `NOTIF_ID_IDEAS_SUMMARY_FORTNIGHTLY`.
-- Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (→ cron endpoints only work for ADMIN sessions), `NOTIF_ID_SERIOUS_FAULT_ALERT` (→ fault emails can't send until registered), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars, `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
-- `NEXTAUTH_URL` is injected by the platform; don't set it.
+- Set today: `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TICKETMASTER_API_KEY`, `OZTIX_ALGOLIA_KEY`, `AWS_PROFILE`, `AWS_REGION`, `AWS_BUCKET_NAME`, `AWS_FOLDER_PREFIX`.
+- AI Gateway: `AI_GATEWAY_API_KEY` for local/non-Vercel calls. Vercel deploys use `VERCEL_OIDC_TOKEN`. Optional `AI_GATEWAY_MODEL` (a `provider/model` id). There is no `ABACUSAI_API_KEY` or `WEB_APP_ID`.
+- Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (→ cron endpoints only work for ADMIN sessions), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars, `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
+- `NEXT_PUBLIC_SITE_URL` is the public origin override. Do not set it to an Abacus host.
 
 ---
 

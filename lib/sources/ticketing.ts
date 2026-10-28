@@ -1,8 +1,9 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
+import { siteUrl } from '@/lib/site-url'
 
-const UA = 'OutzaEventsBot/1.0 (+https://outza.abacusai.app)'
+const UA = () => `OutzaEventsBot/1.0 (+${siteUrl()})`
 
 /** Metro postcode ranges, used when a feed gives a postcode but no coordinates. */
 const POSTCODES: Record<string, [number, number][]> = {
@@ -68,7 +69,7 @@ export async function fetchMoshtixEvents(): Promise<number> {
   for (; page < MOSHTIX_MAX_PAGES && page * MOSHTIX_PAGE_SIZE < total; page++) {
     const res = await fetch('https://api.moshtix.com/v1/graphql', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': UA },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': UA() },
       body: JSON.stringify({ query: MOSHTIX_QUERY, variables: { page, from } }),
       signal: AbortSignal.timeout(30000),
     })
@@ -140,7 +141,7 @@ async function oztixQuery(params: string): Promise<any> {
       'X-Algolia-Application-Id': OZTIX_APP,
       'X-Algolia-API-Key': process.env.OZTIX_ALGOLIA_KEY ?? '',
       'Content-Type': 'application/json',
-      'User-Agent': UA,
+      'User-Agent': UA(),
     },
     body: JSON.stringify({ params }),
     signal: AbortSignal.timeout(30000),
@@ -314,7 +315,7 @@ async function ticketekRows(): Promise<Row[] | null> {
     let next: string | null = `/Mediapartners/${sid}/Catalogs/${catalog}/Items?PageSize=1000`
     let pages = 0
     for (; next && pages < TICKETEK_MAX_PAGES; pages++) {
-      const res: Response = await fetch(`https://api.impact.com${next}`, { headers: { Authorization: auth, Accept: 'application/json', 'User-Agent': UA }, signal: AbortSignal.timeout(60000) })
+      const res: Response = await fetch(`https://api.impact.com${next}`, { headers: { Authorization: auth, Accept: 'application/json', 'User-Agent': UA() }, signal: AbortSignal.timeout(60000) })
       if (!res.ok) throw new Error(`impact.com catalog ${res.status}`)
       const j: any = await res.json()
       rows.push(...(j?.Items ?? []))
@@ -326,7 +327,7 @@ async function ticketekRows(): Promise<Row[] | null> {
   }
   const url = process.env.TICKETEK_FEED_URL
   if (!url) return null
-  const headers: Record<string, string> = { Accept: 'application/json, text/csv', 'User-Agent': UA }
+  const headers: Record<string, string> = { Accept: 'application/json, text/csv', 'User-Agent': UA() }
   if (process.env.TICKETEK_FEED_AUTH) headers.Authorization = process.env.TICKETEK_FEED_AUTH
   const res = await fetch(url, { headers, signal: AbortSignal.timeout(120000) })
   if (!res.ok) throw new Error(`Ticketek feed ${res.status}`)
