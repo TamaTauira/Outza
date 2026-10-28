@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Brain, Building2, ChevronDown, Info, Lightbulb, Loader2, MapPin, Plane, ShieldCheck, ShoppingBag, TrainFront, Users } from 'lucide-react'
 import type { Insight, VenueIntel } from '@/lib/intel/analytics'
-import { CONFIDENCE_LABEL, INTEL_SOURCES } from '@/lib/intel/sources'
+import { CONFIDENCE_LABEL, INSIGHT_SOURCE_LABEL } from '@/lib/intel/sources'
+import { intelOwnerVoice } from '@/lib/intel/voice'
 import { cn } from '@/lib/utils'
 
-type Ev = { id: string; title: string; date: string; venueName: string }
+type Ev = { id: string; title: string; date: string; venueName: string; source?: string | null }
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const period = (p?: string | null) => { if (!p) return ''; const m = p.match(/^(YE-)?(\d{4})-(\d{2})$/); return m ? `${m[1] ? 'YE ' : ''}${MON[Number(m[3]) - 1]} ${m[2]}` : p }
@@ -29,13 +30,24 @@ function Section({ title, Icon, sub, children }: { title: string; Icon: typeof B
 
 function InsightCard({ i }: { i: Insight }) {
   return (
-    <li className="rounded-lg bg-background border border-border p-4">
+    <li className={cn('rounded-lg bg-background border border-border p-4', i.highlight && 'md:col-span-2 border-primary/40 bg-primary/5')}>
+      {i.highlight && <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1">LGBTIQ+</p>}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="font-semibold text-sm">{i.title}</p>
         <span className={cn('text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0', CONF_STYLE[i.confidence])}>Confidence: {CONFIDENCE_LABEL[i.confidence]}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-1.5">{i.detail}</p>
-      <p className="text-[11px] text-muted-foreground mt-2">{KIND[i.kind]} · {i.sources.map((s) => INTEL_SOURCES[s].name).join(', ')}</p>
+      {!!i.links?.length && (
+        <ul className="mt-3 space-y-2">
+          {i.links.map((l) => (
+            <li key={l.url} className="text-sm">
+              <a href={l.url} className="font-medium text-primary hover:underline" {...(l.url.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{l.name}</a>
+              <span className="text-muted-foreground"> — {l.note}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-[11px] text-muted-foreground mt-2">{KIND[i.kind]} · {i.sources.map((s) => INSIGHT_SOURCE_LABEL[s] ?? s).join(', ')}</p>
     </li>
   )
 }
@@ -62,19 +74,21 @@ export function IntelTab({ events }: { events: Ev[] }) {
       <div className={cn(card, 'text-center py-12')}>
         <Brain className="w-8 h-8 text-primary mx-auto" />
         <p className="font-semibold mt-3">No events, no intel (yet)</p>
-        <p className="text-sm text-muted-foreground mt-1">Claim or list an event and we&apos;ll size up the neighbourhood around your venue.</p>
+        <p className="text-sm text-muted-foreground mt-1">Claim or list an event and we&apos;ll size up who lives near the venue, what else is on that night, and where the ad should go.</p>
       </div>
     )
   }
 
   const g = data?.geo
+  const owned = data ? data.voice.owned : intelOwnerVoice(events.find((e) => e.id === eventId)?.source)
+  const venueWord = owned ? 'your venue' : 'the venue'
   return (
     <div className="space-y-6">
       <div className={card}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="font-display text-xl font-bold flex items-center gap-2"><Brain className="w-5 h-5 text-primary" />OUTZA Intelligence</h2>
-            <p className="text-sm text-muted-foreground mt-1">Know your patch before you push the button. Official stats about the area around your venue, with the fine print left in.</p>
+            <p className="text-sm text-muted-foreground mt-1">Know the patch around {venueWord} before the push. Who is nearby, where to advertise, and whether this night is crowded — with the fine print left in.</p>
           </div>
           <label className="text-sm w-full sm:w-80">
             <span className="text-xs text-muted-foreground">Event</span>
@@ -83,7 +97,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
             </select>
           </label>
         </div>
-        <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />These figures describe the people who live in an area and statewide trends. They are not your audience, ticket sales or attendance, and nothing here is estimated by Outza.</p>
+        <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />Area figures describe people who live there. Spending and tourism are statewide. Catalogue counts are Outza listings. None of it is ticket sales, foot traffic or attendance, and nothing is estimated.</p>
       </div>
 
       {loading && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Reading the neighbourhood… (first look at a venue can take ~20 seconds)</p>}
@@ -91,17 +105,31 @@ export function IntelTab({ events }: { events: Ev[] }) {
 
       {data && (
         <>
+          <p className="text-sm text-muted-foreground">{[data.event.dateLabel, data.event.category, data.event.queer ? 'LGBTIQ+' : ''].filter(Boolean).join(' · ')}</p>
           {g && <p className="text-sm flex flex-wrap items-center gap-x-2 gap-y-1"><MapPin className="w-4 h-4 text-primary" /><b>{data.event.venueName}</b><span className="text-muted-foreground">· {[g.salName && `Suburb: ${g.salName}`, g.sa2Name && `Venue area: ${g.sa2Name}`, g.lgaName && `Council: ${g.lgaName}`, g.poa && `Postcode ${g.poa}`].filter(Boolean).join(' · ')}</span></p>}
           {data.message && <p className="text-sm rounded-lg bg-muted/60 px-4 py-3 flex gap-2"><Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />{data.message}</p>}
 
           {data.insights.length > 0 && (
-            <Section title="What it could mean for you" Icon={Lightbulb} sub="Rule-based pointers from the figures below. Each one shows how sure we are and where it comes from.">
+            <Section title="What to do with this event" Icon={Lightbulb} sub="Tied to this listing: suburb, category, night and price. Catalogue counts are Outza listings, not sales or foot traffic.">
               <ul className="grid md:grid-cols-2 gap-3">{data.insights.map((i) => <InsightCard key={i.title} i={i} />)}</ul>
             </Section>
           )}
 
+          {(data.gaps?.length ?? 0) > 0 && (
+            <Section title="Not in this report" Icon={Info} sub="These would help the promo plan. They are not imported, so there is no number here.">
+              <ul className="space-y-3">
+                {data.gaps.map((gap) => (
+                  <li key={gap.title} className="text-sm">
+                    <p className="font-semibold">{gap.title}</p>
+                    <p className="text-muted-foreground mt-0.5">{gap.detail}</p>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
           {data.area.length > 0 && (
-            <Section title="Who lives around your venue" Icon={Building2} sub="ABS Data by Region. Venue area = ABS SA2 containing the venue. Census figures are from 2021.">
+            <Section title={`Who lives around ${data.voice?.venue ?? venueWord}`} Icon={Building2} sub="ABS Data by Region. Venue area = ABS SA2 containing the venue. Census figures are from 2021.">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[560px]">
                   <thead><tr className="text-xs text-muted-foreground text-left"><th className="py-2 pr-3 font-medium">Measure</th><th className="py-2 px-3 font-medium text-right">Venue area</th><th className="py-2 px-3 font-medium text-right">Council</th><th className="py-2 px-3 font-medium text-right">{data.benchLabel}</th><th className="py-2 pl-3 font-medium text-right">Year</th></tr></thead>

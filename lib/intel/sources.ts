@@ -115,3 +115,16 @@ export const GBP_METRICS: Record<string, string> = {
 }
 
 export const CONFIDENCE_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low', insufficient: 'Insufficient data' }
+
+/** Official imports, plus counts taken live from Outza listings (nothing to import). */
+export type InsightSource = SourceKey | 'outza_catalogue'
+
+export const INSIGHT_SOURCE_LABEL: Record<InsightSource, string> = {
+  abs_region: INTEL_SOURCES.abs_region.name,
+  abs_seifa: INTEL_SOURCES.abs_seifa.name,
+  abs_hsi: INTEL_SOURCES.abs_hsi.name,
+  tfnsw: INTEL_SOURCES.tfnsw.name,
+  dnsw: INTEL_SOURCES.dnsw.name,
+  google_bp: INTEL_SOURCES.google_bp.name,
+  outza_catalogue: 'Outza event listings',
+}

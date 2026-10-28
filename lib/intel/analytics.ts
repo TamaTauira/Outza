@@ -1,22 +1,32 @@
-// OUTZA Intelligence: venue report for one event, built only from imported official data. Nothing is estimated or invented.
+// OUTZA Intelligence: one event's reach report. Official imports plus counts of Outza listings. Nothing is estimated or invented.
 import { prisma } from '@/lib/prisma'
 import { resolveVenueGeo } from './geo'
 import { readObs } from './store'
 import { CITIES } from '@/lib/cities'
-import { AGE_MEASURES, HSI_CATEGORIES, INTEL_SOURCES, REGION_MEASURES, type DataKind, type SourceKey } from './sources'
+import { checkLGBTI } from '@/lib/categories'
+import { isPaidListing, parsePriceRange } from '@/lib/quality'
+import { AGE_MEASURES, HSI_CATEGORIES, INTEL_SOURCES, REGION_MEASURES, type SourceKey } from './sources'
 import { loadSeifaIndexes, seifaCandidates } from './seifa'
-import { confidenceFor, haversineKm, normStation, pctChange, ptsDiff } from './util'
+import { haversineKm, normStation, pctChange } from './util'
+import { intelOwnerVoice, voiceFor, type Voice } from './voice'
+import {
+  CATALOGUE_RADIUS_DAYS, DOW, addUtcDays, buildCatalogueSnapshot, composeInsights, listedPrice, priceBand, reachGoal, shareSum, utcMidnight,
+  type AreaSignals, type CatalogueSnapshot, type EventFacts, type Gap, type Insight, type PriceBandId,
+} from './reach'
 
+export type { Gap, Insight, Voice }
 export type Confidence = 'high' | 'medium' | 'low' | 'insufficient'
+export { fmtPeriod } from './reach'
 export type AreaStat = { code: string; label: string; unit: string; decimals: number; meaning: string; limitation?: string; census: boolean; venue: number | null; venuePeriod: string | null; council: number | null; bench: number | null; benchPeriod: string | null }
 export type AgeBand = { band: string; venue: number; bench: number | null }
 export type Station = { name: string; modes: string; distanceKm: number; month: string | null; entries: number | null; exits: number | null; yoyPct: number | null; accessible: boolean }
 export type SpendRow = { category: string; label: string; month: string; valueM: number | null; yoyPct: number | null; momPct: number | null }
-export type Insight = { title: string; detail: string; kind: DataKind; confidence: Confidence; sources: SourceKey[] }
 export type SourceStatus = { key: SourceKey; name: string; status: string; lastSuccessAt: string | null; latestPeriod: string | null; attribution: string; licence: string; limitations: string; url: string }
 
 export type VenueIntel = {
-  event: { id: string; title: string; venueName: string; suburb: string | null; city: string; date: string }
+  event: { id: string; title: string; venueName: string; suburb: string | null; city: string; date: string; category: string; dateLabel: string; queer: boolean }
+  voice: Voice
+  gaps: Gap[]
   status: 'ok' | 'no_location' | 'outside_au' | 'no_data'
   benchLabel: string
   spendLabel: string
@@ -45,14 +55,7 @@ const STE_OF: Record<string, string> = { NSW: '1', VIC: '2', QLD: '3', SA: '4', 
 const stateCodeForCity = (city: string) => STE_OF[CITIES.find((c) => c.name === city)?.state ?? ''] ?? null
 const inAustralia = (lat: number, lng: number) => lat < -9 && lat > -45 && lng > 112 && lng < 155
 const latest = <T extends { period: string }>(rows: T[]) => rows.reduce<T | null>((m, r) => (!m || r.period > m.period ? r : m), null)
-const yearsOld = (period: string | null) => (period ? new Date().getUTCFullYear() - Number(period.slice(0, 4)) : 99)
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-/** "2026-09" → "Sep 2026", "YE-2026-06" → "year ending Jun 2026", "2024" stays. */
-export const fmtPeriod = (p?: string | null) => {
-  if (!p) return ''
-  const m = p.match(/^(YE-)?(\d{4})-(\d{2})$/)
-  return m ? `${m[1] ? 'year ending ' : ''}${MON[Number(m[3]) - 1]} ${m[2]}` : p
-}
+const GOING_OUT = ['Food & Drink', 'Nightlife']
 const scaled = (v: number | null, mult: number) => (v == null ? null : v * 10 ** mult)
 
 async function geocode(q: string): Promise<{ lat: number; lng: number } | null> {
@@ -114,46 +117,137 @@ async function stationsNear(lat: number, lng: number): Promise<Station[]> {
   })
 }
 
-function buildInsights(r: VenueIntel): Insight[] {
-  const out: Insight[] = []
-  const area = r.geo?.sa2Name ?? 'the venue area'
-  // Age skew
-  if (r.ages.length) {
-    const diffs = r.ages.filter((a) => a.bench != null).map((a) => ({ ...a, d: ptsDiff(a.venue, a.bench) ?? 0 })).sort((a, b) => b.d - a.d)
-    const top = diffs[0]
-    if (top && top.d >= 2) out.push({ title: `Residents aged ${top.band} are over-represented locally`, detail: `${top.venue.toFixed(1)}% of ${area} residents are aged ${top.band}, versus ${top.bench!.toFixed(1)}% across ${r.benchLabel} (${r.agePeriod}). Worth testing artwork, line-ups and price points that speak to this age group in local promotion.`, kind: 'derived', confidence: confidenceFor({ hasData: true, geoPrecise: true, ageYears: yearsOld(r.agePeriod) }), sources: ['abs_region'] })
+type ListedEvent = {
+  id: string; title: string; venueName: string; suburb: string | null; city: string; date: Date
+  source: string; category: string; subTags: string[]; isLGBTI: boolean; isFree: boolean
+  price: string | null; priceMin: number | null; priceMax: number | null; description: string | null
+}
+
+function pricingOf(ev: ListedEvent) {
+  const paid = isPaidListing({ price: ev.price, priceMin: ev.priceMin })
+  const parsed = ev.priceMin != null ? { min: ev.priceMin, max: ev.priceMax ?? ev.priceMin } : parsePriceRange(ev.isFree, ev.price)
+  const isFreeListing = !paid && (ev.isFree || parsed.min === 0)
+  const band = priceBand(isFreeListing, isFreeListing ? 0 : (parsed.min ?? null))
+  return { paid, parsed, isFreeListing, band, priceLabel: listedPrice(isFreeListing, parsed.min, parsed.max, ev.price) }
+}
+
+function paidPriceFilter(id: PriceBandId) {
+  switch (id) {
+    case 'under30': return { gt: 0, lt: 30 }
+    case '30-79': return { gte: 30, lt: 80 }
+    case '80-149': return { gte: 80, lt: 150 }
+    case '150+': return { gte: 150 }
+    default: return null
   }
-  // Hospitality density
-  const food = r.area.find((a) => a.code === 'CABEE_17')
-  const pop = r.area.find((a) => a.code === 'ERP_P_20')
-  if (food?.venue != null && pop?.venue && food.bench != null && r.area.find((a) => a.code === 'ERP_P_20')?.bench) {
-    const local = (food.venue / pop.venue) * 1000, bench = (food.bench / pop.bench!) * 1000
-    if (local > bench * 1.5) out.push({ title: 'Lots of places to eat and drink nearby', detail: `${area} has about ${local.toFixed(1)} registered accommodation and food businesses per 1,000 residents, versus ${bench.toFixed(1)} across ${r.benchLabel}. That points to a going-out precinct where pre- and post-event food and drink partnerships could work. Registrations are not foot traffic.`, kind: 'derived', confidence: confidenceFor({ hasData: true, geoPrecise: true, ageYears: yearsOld(food.venuePeriod), proxy: true }), sources: ['abs_region'] })
+}
+
+/** Counts of other Outza listings. Exact counts, not a sample treated as a total. Titles are a short sample of those counts. */
+async function loadCatalogue(ev: ListedEvent, band: ReturnType<typeof priceBand>): Promise<CatalogueSnapshot> {
+  const day = utcMidnight(ev.date)
+  const start = addUtcDays(day, -CATALOGUE_RADIUS_DAYS)
+  const end = addUtcDays(day, CATALOGUE_RADIUS_DAYS + 1)
+  const alive = { city: ev.city, duplicateOfId: null, id: { not: ev.id } }
+  const inWindow = { ...alive, date: { gte: start, lt: end } }
+  const night = { ...alive, date: { gte: day, lt: addUtcDays(day, 1) } }
+  const suburb = ev.suburb?.trim() ? { suburb: { equals: ev.suburb.trim(), mode: 'insensitive' as const } } : null
+  const paidFilter = band && band.id !== 'free' ? paidPriceFilter(band.id) : null
+  const freeWhere = { AND: [{ OR: [{ isFree: true }, { priceMin: { lte: 0 } }] }, { NOT: { priceMin: { gt: 0 } } }] }
+  const [grouped, nightTotal, nightCategory, nightSuburb, goingCity, goingSuburb, sameCatTitles, otherTitles, priced, freeCount] = await Promise.all([
+    prisma.event.groupBy({ by: ['date'], where: { ...inWindow, category: ev.category }, _count: { _all: true } }),
+    prisma.event.count({ where: night }),
+    prisma.event.count({ where: { ...night, category: ev.category } }),
+    suburb ? prisma.event.count({ where: { ...night, ...suburb } }) : Promise.resolve(null),
+    prisma.event.count({ where: { ...inWindow, category: { in: GOING_OUT } } }),
+    suburb ? prisma.event.count({ where: { ...inWindow, category: { in: GOING_OUT }, ...suburb } }) : Promise.resolve(null),
+    prisma.event.findMany({ where: { ...night, category: ev.category }, select: { title: true, venueName: true, category: true }, orderBy: { title: 'asc' }, take: 12 }),
+    prisma.event.findMany({ where: { ...night, NOT: { category: ev.category } }, select: { title: true, venueName: true, category: true }, orderBy: { title: 'asc' }, take: 6 }),
+    paidFilter ? prisma.event.aggregate({ where: { ...inWindow, category: ev.category, priceMin: paidFilter }, _min: { priceMin: true }, _max: { priceMin: true }, _count: { _all: true } }) : Promise.resolve(null),
+    band?.id === 'free' ? prisma.event.count({ where: { ...inWindow, category: ev.category, ...freeWhere } }) : Promise.resolve(null),
+  ])
+  const comps = band?.id === 'free' ? freeCount : priced ? priced._count._all : null
+  return buildCatalogueSnapshot({
+    eventDate: day.toISOString().slice(0, 10),
+    windowStart: start.toISOString().slice(0, 10),
+    windowEnd: addUtcDays(day, CATALOGUE_RADIUS_DAYS).toISOString().slice(0, 10),
+    category: ev.category,
+    suburb: ev.suburb,
+    venueName: ev.venueName,
+    bandLabel: band?.label ?? null,
+    countsByDay: grouped.map((g) => ({ day: g.date.toISOString().slice(0, 10), n: g._count._all })),
+    nightTitles: [...sameCatTitles, ...otherTitles],
+    sameNightTotal: nightTotal,
+    sameNightCategory: nightCategory,
+    sameNightSuburb: nightSuburb,
+    goingOutSuburb: goingSuburb,
+    goingOutCity: goingCity,
+    comps,
+    compsMin: priced?._min.priceMin ?? null,
+    compsMax: priced?._max.priceMin ?? null,
+  })
+}
+
+function advise(base: VenueIntel, ev: ListedEvent, catalogue: CatalogueSnapshot, under15: AreaSignals['under15'], stateCode: string | null, price: ReturnType<typeof pricingOf>): VenueIntel {
+  const voice = voiceFor(intelOwnerVoice(ev.source), ev.venueName)
+  const queer = ev.isLGBTI || checkLGBTI(ev.title, `${ev.description ?? ''} ${(ev.subTags ?? []).join(' ')}`)
+  const day = utcMidnight(ev.date)
+  const facts: EventFacts = {
+    venueName: ev.venueName, suburb: ev.suburb, city: ev.city, category: ev.category, subTags: ev.subTags ?? [],
+    dateLabel: ev.date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    dowName: DOW[day.getUTCDay()],
+    dow: day.getUTCDay(), goal: reachGoal(ev.category, price.paid), queer,
+    priceLabel: price.priceLabel, bandLabel: price.band?.label ?? null, stateCode, stateName: base.stateName,
   }
-  // Transport
-  const st = r.stations.find((s) => s.entries != null)
-  if (st) out.push({ title: `${st.name} is ${st.distanceKm < 1 ? `${Math.round(st.distanceKm * 1000)} m` : `${st.distanceKm.toFixed(1)} km`} away`, detail: `It logged ${st.entries!.toLocaleString('en-AU')} Opal tap-ons in ${fmtPeriod(st.month)}${st.yoyPct != null ? ` (${st.yoyPct >= 0 ? '+' : ''}${st.yoyPct.toFixed(1)}% on the same month last year)` : ''}. Put public transport directions up front in your listing. Straight-line distance; taps are not attendance.`, kind: 'observed', confidence: confidenceFor({ hasData: true, geoPrecise: true, ageYears: 0 }), sources: ['tfnsw'] })
-  else if (r.transportCovered && r.status === 'ok' && !r.stations.length) out.push({ title: 'No train, metro or light rail within 2 km', detail: 'Bus stops are not in this dataset yet, so check bus routes before you tell people it is hard to reach. Consider parking, rideshare or shuttle info in your listing.', kind: 'observed', confidence: 'medium', sources: ['tfnsw'] })
-  // Spending trend
-  const rec = r.spending.find((s) => s.category === '50'), hosp = r.spending.find((s) => s.category === '60')
-  if (rec?.yoyPct != null || hosp?.yoyPct != null) {
-    const parts = [rec?.yoyPct != null ? `recreation and culture ${rec.yoyPct >= 0 ? 'up' : 'down'} ${Math.abs(rec.yoyPct).toFixed(1)}%` : null, hosp?.yoyPct != null ? `hotels, cafes and restaurants ${hosp.yoyPct >= 0 ? 'up' : 'down'} ${Math.abs(hosp.yoyPct).toFixed(1)}%` : null].filter(Boolean)
-    out.push({ title: `${r.spendLabel} going-out spending trend`, detail: `In ${fmtPeriod((rec ?? hosp)!.month)}, ${r.spendLabel} household spending was ${parts.join(' and ')} on a year earlier (current prices, not adjusted for inflation). This is statewide, not your venue or ticket sales.`, kind: 'observed', confidence: confidenceFor({ hasData: true, geoPrecise: false, ageYears: 0 }), sources: ['abs_hsi'] })
+  const born = base.area.find((a) => a.code === 'CENSUS_13')
+  const food = base.area.find((a) => a.code === 'CABEE_17')
+  const pop = base.area.find((a) => a.code === 'ERP_P_20')
+  const st = base.stations.find((s) => s.entries != null) ?? null
+  const rec = base.spending.find((s) => s.category === '50')
+  const hosp = base.spending.find((s) => s.category === '60')
+  const alc = base.spending.find((s) => s.category === '15')
+  const ier = base.seifa.find((s) => s.index === 'IER' && s.nswDecile != null)
+  const signals: AreaSignals = {
+    status: base.status, areaName: base.geo?.sa2Name ?? 'the venue area', benchLabel: base.benchLabel, stateName: base.stateName, spendLabel: base.spendLabel,
+    transportCovered: base.transportCovered, ages: base.ages, agePeriod: base.agePeriod, under15,
+    bornOverseas: born?.venue != null ? { local: born.venue, bench: born.bench, period: born.venuePeriod ?? born.benchPeriod } : null,
+    food: food?.venue != null && food.bench != null && pop?.venue && pop.bench ? { businesses: food.venue, benchBusinesses: food.bench, pop: pop.venue, benchPop: pop.bench, period: food.venuePeriod } : null,
+    station: st ? { name: st.name, distanceKm: st.distanceKm, entries: st.entries!, month: st.month, yoyPct: st.yoyPct } : null,
+    stationsWithoutTaps: base.stations.length > 0 && !st,
+    recreationYoy: rec?.yoyPct ?? null, hospitalityYoy: hosp?.yoyPct ?? null, alcoholYoy: alc?.yoyPct ?? null,
+    spendMonth: (rec ?? hosp ?? alc)?.month ?? null,
+    tourism: base.tourismTitle && base.tourism.intlYoyPct != null && base.tourism.intlVisitors != null
+      ? { title: base.tourismTitle, period: base.tourism.period, intlVisitors: base.tourism.intlVisitors, yoyPct: base.tourism.intlYoyPct } : null,
+    seifa: ier?.nswDecile != null ? { area: ier.area, decile: ier.nswDecile } : null,
+    areaLoaded: base.area.some((a) => a.venue != null) || base.ages.length > 0,
   }
-  // Tourism
-  if (r.tourismTitle && r.tourism.intlYoyPct != null && r.tourism.intlVisitors != null) out.push({ title: `International visitors ${r.tourism.intlYoyPct >= 0 ? 'up' : 'down'} ${Math.abs(r.tourism.intlYoyPct).toFixed(1)}%`, detail: `${(r.tourism.intlVisitors / 1e6).toFixed(2)} million international visitors in the ${fmtPeriod(r.tourism.period)} (${r.tourismTitle}). If your event suits visitors, consider an English-friendly, map-ready listing and hotel-area promotion. Region-wide survey estimate, not venue-level.`, kind: 'observed', confidence: confidenceFor({ hasData: true, geoPrecise: false, ageYears: 1 }), sources: ['dnsw'] })
-  // SEIFA
-  const ier = r.seifa.find((s) => s.index === 'IER')
-  if (ier?.nswDecile != null) out.push({ title: `Economic resources: ${r.stateName} decile ${ier.nswDecile} of 10`, detail: `${ier.area} ranks in decile ${ier.nswDecile} for area-level economic resources within ${r.stateName} (SEIFA 2021, 10 = most resources). It describes the area as a whole, not your audience, so treat it as one input for pricing, never the answer.`, kind: 'hypothesis', confidence: confidenceFor({ hasData: true, geoPrecise: true, ageYears: 5, proxy: true }), sources: ['abs_seifa'] })
-  return out
+  if (base.status === 'no_location') {
+    base.message = voice.owned
+      ? 'We could not pin your venue on the map yet. Add a full street address and the local area report will appear.'
+      : 'This venue is not pinned on the map yet, so there is no suburb-level area report. The reach notes use the city on the listing.'
+  }
+  const built = composeInsights(voice, facts, signals, catalogue)
+  base.voice = voice
+  base.gaps = built.gaps
+  base.insights = built.insights
+  base.event = { ...base.event, category: ev.category, dateLabel: facts.dateLabel, queer }
+  return base
 }
 
 export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
-  const ev = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, title: true, venueName: true, venueAddress: true, suburb: true, city: true, date: true, latitude: true, longitude: true } })
+  const ev = await prisma.event.findUnique({
+    where: { id: eventId },
+    select: {
+      id: true, title: true, venueName: true, venueAddress: true, suburb: true, city: true, date: true, latitude: true, longitude: true,
+      source: true, category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true, description: true,
+    },
+  })
   if (!ev) throw new Error('Event not found')
   const cityState = stateCodeForCity(ev.city)
+  const price = pricingOf(ev)
+  const cataloguePromise = loadCatalogue(ev, price.band)
+  const voice = voiceFor(intelOwnerVoice(ev.source), ev.venueName)
   const base: VenueIntel = {
-    event: { id: ev.id, title: ev.title, venueName: ev.venueName, suburb: ev.suburb, city: ev.city, date: ev.date.toISOString() },
+    event: { id: ev.id, title: ev.title, venueName: ev.venueName, suburb: ev.suburb, city: ev.city, date: ev.date.toISOString(), category: ev.category, dateLabel: '', queer: ev.isLGBTI },
+    voice, gaps: [],
     status: 'ok', area: [], ages: [], agePeriod: null, seifa: [], stations: [], spending: [], insights: [],
     tourism: { period: null, visitors: null, nights: null, spend: null, intlVisitors: null, intlYoyPct: null, intlPrevPeriod: null },
     tourismTitle: null,
@@ -174,12 +268,18 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     base.tourism = await tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW')
     base.tourismTitle = ev.city === 'Sydney' ? 'Visitors to Sydney' : 'Visitors to New South Wales'
   }
-  if (lat == null || lng == null) return { ...base, status: 'no_location', message: 'We could not pin this venue on the map yet. Add a full street address and the local area report will appear.', insights: buildInsights(base) }
-  if (!inAustralia(lat, lng)) return { ...base, status: 'outside_au', message: 'This venue sits outside Australia, so local area statistics are not available.', insights: buildInsights(base) }
+  let under15: AreaSignals['under15'] = null
+  let stateCode = cityState
+  if (lat == null || lng == null) base.status = 'no_location'
+  else if (!inAustralia(lat, lng)) {
+    base.status = 'outside_au'
+    base.message = 'This venue sits outside Australia, so local area statistics are not available.'
+  } else {
 
-  const g = await resolveVenueGeo(lat, lng)
+  const g = await resolveVenueGeo(lat!, lng!)
   base.geo = { sa2Name: g.sa2Name, sa3Name: g.sa3Name, lgaName: g.lgaName, salName: g.salName, poa: g.poa }
   const ste = g.state && STE_NAME[g.state] ? g.state : cityState
+  if (ste) stateCode = ste
   if (ste && STE_NAME[ste]) {
     base.stateName = STE_NAME[ste]
     base.spendLabel = STE_NAME[ste]
@@ -212,6 +312,10 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
   base.agePeriod = latest(ageRows)?.period ?? null
   if (base.agePeriod) {
     const lower = (band: string) => Number(band.replace('+', '').split('-')[0])
+    const childCodes = AGE_MEASURES.filter((a) => lower(a.band) < 15).map((a) => a.code)
+    const at = (rows: typeof sa2, code: string) => rows.find((x) => x.measure === code && x.period === base.agePeriod && x.value != null)?.value ?? null
+    const localKids = shareSum(childCodes.map((c) => at(sa2, c)))
+    if (localKids != null) under15 = { local: localKids, bench: shareSum(childCodes.map((c) => at(gsyd, c))) }
     base.ages = GROUPS.map(([label, lo, hi]) => {
       const ms = AGE_MEASURES.filter((a) => lower(a.band) >= lo && lower(a.band) <= hi).map((a) => a.code)
       const s = (rows: typeof sa2) => { const r = rows.filter((x) => ms.includes(x.measure) && x.period === base.agePeriod && x.value != null); return r.length ? r.reduce((t, x) => t + (x.value ?? 0), 0) : null }
@@ -223,16 +327,16 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
   // SEIFA preference order: suburb (SAL), then venue SA2 when SAL is missing or has no deciles.
   base.seifa = await loadSeifaIndexes(seifaCandidates(g), (area) => readObs('abs_seifa', area.ds, { geoType: area.geo, geoCode: area.code }))
 
-  base.stations = base.transportCovered ? await stationsNear(lat, lng) : []
+  base.stations = base.transportCovered ? await stationsNear(lat!, lng!) : []
   if (!base.area.length && !base.stations.length && !base.seifa.length) base.status = 'no_data'
-  base.insights = buildInsights(base)
-  return base
+  }
+  return advise(base, ev, await cataloguePromise, under15, stateCode, price)
 }
 
 /** Cached for 12h per event; the cache is cleared whenever a source imports a new version. */
 export async function getVenueIntelCached(eventId: string) {
-  // au3 drops reports cached before SAL → SA2 fallback, which otherwise stay empty for 12h.
-  const key = `venue:au3:${eventId}`
+  // au4 drops reports cached before per-event reach cards and venue voice.
+  const key = `venue:au4:${eventId}`
   const hit = await prisma.intelCache.findUnique({ where: { key } })
   if (hit && Date.now() - hit.createdAt.getTime() < 12 * 3600_000) return hit.data as unknown as VenueIntel
   const data = await getVenueIntel(eventId)
