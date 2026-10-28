@@ -1,6 +1,8 @@
 /**
  * SEO helpers shared by server pages and client links. Pure functions only (client-safe).
- * URL scheme: /<city>/<topic> landing pages, /<city>/<suburb> suburb pages, /events/<title-slug>-<id> event pages.
+ * URL scheme: /<city>/<topic> landing pages, /<city>/<suburb> suburb pages,
+ * inventory-gated combinations under /<city>/<suburb>/<activity>, /<city>/<activity>/<when>
+ * and /<city>/<suburb>/<activity>/<when>, plus /events/<title-slug>-<id> event pages.
  */
 import { CITIES, type CityDef } from '@/lib/cities'
 import { toSydneyParts } from '@/lib/event-store-parts'
@@ -31,6 +33,10 @@ export type TopicKey =
 
 /** A landing page is only indexed (and listed in the sitemap / guide links) with at least this many genuine listings. */
 export const MIN_INDEX = 5
+
+/** Date facets that can combine with a city, suburb, or activity. Weekday keys are reserved so they cannot be suburb slugs. */
+export type WhenKey = 'tonight' | 'this-weekend' | 'friday' | 'saturday' | 'sunday'
+export const WHEN_KEYS: readonly WhenKey[] = ['tonight', 'this-weekend', 'friday', 'saturday', 'sunday']
 
 export interface TopicDef {
   key: TopicKey
@@ -134,6 +140,12 @@ export function guideFacts(input: {
         answer: `These are fetes, fundraisers, swaps and neighbourhood listings in ${where}. ${count}`,
       })
       break
+    case 'garage-sales':
+      out.push({
+        question: `Where can I find garage sales near me in ${input.city}?`,
+        answer: `This page lists public garage, moving and car boot sales in ${where}. Choose a suburb with its own garage-sale guide to see sales in that neighbourhood. There is no separate near-me page, because it would repeat these listings. ${count}`,
+      })
+      break
     case 'events':
       out.push({
         question: `What is there to do in ${where}?`,
@@ -173,7 +185,7 @@ const ROAD = /\d|^cnr\b|\b(st|rd|dr|tce|pl|ave|hwy|pde|ln|lane|cres|cct|blvd|str
 export function isLandingSuburb(suburb: string | null | undefined, city: CityDef): suburb is string {
   if (!suburb || suburb.trim().length < 3 || ROAD.test(suburb.trim())) return false
   const s = slugify(suburb)
-  if (s === citySlug(city) || TOPICS.some((t) => t.key === s)) return false
+  if (s === citySlug(city) || TOPICS.some((t) => t.key === s) || (WHEN_KEYS as readonly string[]).includes(s)) return false
   return !CITIES.some((c) => citySlug(c) === s)
 }
 

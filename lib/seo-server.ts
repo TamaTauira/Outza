@@ -3,46 +3,45 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
-import { conflictsWithMusicIntent, presentListing } from '@/lib/categories'
-import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type TopicDef, type TopicKey } from '@/lib/seo'
-import { addDaysStr, localDupKey, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
+import { presentListing } from '@/lib/categories'
+import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
+import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
+import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
 const landingSelect = {
-  id: true, title: true, description: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
-  category: true, subTags: true, isLGBTI: true, isFree: true, price: true, imageUrl: true, ticketUrl: true, status: true,
+  id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
+  category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, status: true,
+  latitude: true, longitude: true, organiserName: true, organiserUrl: true, city: true,
   imageAsset: { select: imageAssetSelect },
 } satisfies Prisma.EventSelect
 
 export type LandingEvent = Prisma.EventGetPayload<{ select: typeof landingSelect }>
 
-const MARKET_RE = /\bmarkets?\b/i
-const POPUP_RE = /pop[- ]?up.{0,25}\b(sale|market|shop|store|stall|bazaar)s?\b/i
-const WAREHOUSE_RE = /\b(warehouse|sample|clearance|stock|factory)\s+(sale|sell[- ]?off)s?\b/i
-const GARAGE_RE = /\b(garage|yard|moving|car[- ]?boot|boot)\s+sales?\b/i
-const COMMUNITY_RE = /\b(fete|fundraiser|fund[- ]raiser|swap|car[- ]?boot|school fair|working bee|street party)\b/i
 const normTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 const ci = (s: string) => ({ title: { contains: s, mode: 'insensitive' as const } })
+const POST_FILTER = new Set<TopicKey>(['markets', 'pop-up-sales', 'warehouse-sales', 'garage-sales', 'community-events', 'live-music'])
 
 /** Title-pattern topics need an in-code filter after the DB query, so their totals come from the filtered rows. */
 const TOPIC_FILTER: Partial<Record<TopicKey, (e: { title: string; subTags: string[] }) => boolean>> = {
-  markets: (e) => MARKET_RE.test(e.title) || e.subTags.some((t) => /^markets?$/i.test(t)),
-  'pop-up-sales': (e) => POPUP_RE.test(e.title),
-  'warehouse-sales': (e) => WAREHOUSE_RE.test(e.title),
-  'garage-sales': (e) => GARAGE_RE.test(e.title),
-  'community-events': (e) => COMMUNITY_RE.test(e.title),
+  markets: (e) => matchesMarketTitle(e.title, e.subTags),
+  'pop-up-sales': (e) => matchesPopup(e.title),
+  'warehouse-sales': (e) => matchesWarehouse(e.title),
+  'garage-sales': (e) => matchesGarage(e.title),
+  'community-events': (e) => matchesCommunity(e.title),
 }
 
 /** Upcoming, non-duplicate, non-cancelled events for a landing page. */
-export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; suburb?: string }, take = 60) {
+export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; suburb?: string; when?: WhenKey }, take = 60) {
   const today = cityToday(city)
   let from = today
   let to: string | null = null
   const where: Prisma.EventWhereInput = { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' } }
+  if (opts.when) ({ from, to } = whenRange(city, opts.when))
   switch (opts.topic) {
-    case 'tonight': to = today; break
-    case 'this-weekend': ({ from, to } = weekendRange(city)); break
+    case 'tonight': if (!opts.when) to = today; break
+    case 'this-weekend': if (!opts.when) ({ from, to } = weekendRange(city)); break
     case 'free-events': where.isFree = true; break
     case 'live-music': where.category = 'Music'; break
     case 'family': where.category = 'Family'; break
@@ -57,19 +56,18 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
     case 'garage-sales': where.OR = [ci('garage sale'), ci('yard sale'), ci('moving sale'), ci('boot sale')]; break
     case 'community-events': where.OR = [ci('fete'), ci('fundraiser'), ci('swap'), ci('boot sale'), ci('school fair'), ci('street party')]; break
   }
-  if (opts.suburb) where.suburb = opts.suburb
+  if (opts.suburb) where.suburb = { equals: opts.suburb, mode: 'insensitive' }
   where.date = to ? { gte: day(from), lte: day(to) } : { gte: day(from), lte: day(addDaysKey(today, 120)) }
 
-  const filter = opts.topic ? TOPIC_FILTER[opts.topic] : undefined
-  const tonight = opts.topic === 'tonight'
-  const liveMusic = opts.topic === 'live-music'
-  const rows = await prisma.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: filter || tonight || liveMusic ? 500 : take * 2 })
+  const post = !!(opts.topic && POST_FILTER.has(opts.topic))
+  const tonight = opts.when === 'tonight' || (!opts.when && opts.topic === 'tonight')
+  const rows = await prisma.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: post || tonight ? 500 : take * 2 })
   let clean = rows
-    .filter((e) => !addressInOtherState(e.venueAddress, city) && (!filter || filter(e)))
+    .filter((e) => !addressInOtherState(e.venueAddress, city))
     .map((e) => presentListing(e))
+  if (post && opts.topic) clean = clean.filter((e) => matchesTopic(e, opts.topic!))
   if (tonight) clean = clean.filter((e) => isTonightSlot(e.time, e.endTime))
-  if (liveMusic) clean = clean.filter((e) => e.category === 'Music' && !conflictsWithMusicIntent(e.title, e.description ?? '', e.subTags ?? []))
-  const total = filter || tonight || liveMusic ? clean.length : await prisma.event.count({ where })
+  const total = post || tonight ? clean.length : await prisma.event.count({ where })
   return { events: clean.slice(0, take), total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
 }
 
@@ -103,19 +101,26 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
 export type LandingData = { events: LandingEvent[]; local: LandingLocal[]; total: number; from: string; to: string | null }
 
 /** Everything a city/topic page shows: board events plus matching OUTZA Local listings. */
-export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60): Promise<LandingData> {
-  const ev = await landingEvents(city, { topic: topic?.key, suburb }, take)
-  const dated = topic?.key === 'tonight' || topic?.key === 'this-weekend'
-  const raw = suburb
-    ? []
-    : topic?.local
-      ? await landingLocal(city, topic)
-      : dated
-        ? await landingLocal(city, null, { from: ev.from, to: ev.to ?? ev.from, ownOnly: true })
-        : []
+export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60, when?: WhenKey): Promise<LandingData> {
+  const ev = await landingEvents(city, { topic: topic?.key, suburb, when }, take)
+  const datedTopic = !when && (topic?.key === 'tonight' || topic?.key === 'this-weekend')
+  const activity = !!topic && topic.key !== 'events' && topic.key !== 'tonight' && topic.key !== 'this-weekend'
+  let raw: LandingLocal[] = []
+  if (topic?.local) {
+    raw = await landingLocal(city, topic, {
+      ...(suburb ? { suburb } : {}),
+      ...(when ? { from: ev.from, to: ev.to ?? ev.from } : {}),
+    })
+  } else if (!activity && (when || datedTopic)) {
+    raw = await landingLocal(city, null, { from: ev.from, to: ev.to ?? ev.from, ownOnly: true, ...(suburb ? { suburb } : {}) })
+  } else if (!topic && !when && suburb) {
+    // Organiser-submitted sales and gatherings that never arrived via a ticket feed.
+    raw = await landingLocal(city, null, { suburb, ownOnly: true, from: ev.from, to: addDaysKey(ev.from, 60) })
+  }
   // Imported community listings mirror board events; never show the same thing twice.
   // Tonight uses the same 5pm start rule as the board events above it.
-  const local = raw.filter((l) => !ev.titles.has(normTitle(l.title)) && (topic?.key !== 'tonight' || isTonightSlot(l.startTime, l.endTime)))
+  const night = when === 'tonight' || (!when && topic?.key === 'tonight')
+  const local = raw.filter((l) => !ev.titles.has(normTitle(l.title)) && (!night || isTonightSlot(l.startTime, l.endTime)))
   return { events: ev.events, from: ev.from, to: ev.to, local, total: ev.total + local.length }
 })
 
@@ -254,3 +259,153 @@ export function eventJsonLd(ev: JsonLdEvent, origin: string) {
 
 /** Safe JSON for a <script type="application/ld+json"> tag. */
 export const jsonLdString = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u003c')
+
+function localTopics(l: { category: string; title: string; description: string }): TopicKey[] {
+  if (l.category === 'GARAGE') return ['garage-sales']
+  if (l.category === 'WAREHOUSE') return ['warehouse-sales']
+  if (l.category === 'MARKET') return matchesPopup(`${l.title} ${l.description}`) ? ['markets', 'pop-up-sales'] : ['markets']
+  if (l.category === 'COMMUNITY') return ['community-events']
+  return []
+}
+
+async function loadGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
+  const until = addDaysKey(today, 120)
+  const localUntil = addDaysKey(today, 60)
+  const [events, locals] = await Promise.all([
+    prisma.event.findMany({
+      where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) } },
+      select: {
+        id: true, title: true, description: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
+        category: true, subTags: true, isFree: true, isLGBTI: true,
+      },
+    }),
+    prisma.localListing.findMany({
+      where: { city: city.name, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() } },
+      select: { id: true, title: true, description: true, category: true, suburb: true, address: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, sourceName: true },
+    }),
+  ])
+  const eventRows: InvRow[] = []
+  const titles = new Set<string>()
+  for (const raw of events) {
+    if (addressInOtherState(raw.venueAddress, city)) continue
+    const shown = presentListing({ ...raw, city: city.name })
+    const suburb = raw.suburb?.trim() || null
+    titles.add(normTitle(shown.title))
+    eventRows.push({
+      id: raw.id,
+      dates: [raw.date.toISOString().slice(0, 10)],
+      time: raw.time,
+      endTime: raw.endTime,
+      suburb,
+      suburbSlug: suburb && isLandingSuburb(suburb, city) ? slugify(suburb) : null,
+      source: 'event',
+      topics: ACTIVITY_TOPICS.map((t) => t.key).filter((key) => matchesTopic(shown, key)),
+      organiserSubmitted: false,
+    })
+  }
+  const localRows: InvRow[] = []
+  for (const l of locals) {
+    if (addressInOtherState(l.address, city) || titles.has(normTitle(l.title))) continue
+    const dates = occurrences(l, today, localUntil)
+    if (!dates.length) continue
+    const suburb = l.suburb?.trim() || null
+    localRows.push({
+      id: `local-${l.id}`,
+      dates,
+      time: l.startTime,
+      endTime: l.endTime,
+      suburb,
+      suburbSlug: suburb && isLandingSuburb(suburb, city) ? slugify(suburb) : null,
+      source: 'local',
+      topics: localTopics(l),
+      organiserSubmitted: !l.sourceName,
+    })
+  }
+  return [...eventRows, ...localRows]
+}
+
+export interface CityGuideModel {
+  ok: boolean
+  decisions: GuideDecision[]
+  suburbs: { name: string; slug: string; count: number }[]
+}
+
+const modelCache = new Map<string, { at: number; model: CityGuideModel }>()
+
+async function loadCityGuideModel(city: CityDef): Promise<CityGuideModel> {
+  const today = cityToday(city)
+  const key = `${city.name}|${today}`
+  const hit = modelCache.get(key)
+  if (hit && Date.now() - hit.at < 10 * 60_000) return hit.model
+  try {
+    const rows = await loadGuideRows(city, today)
+    const model: CityGuideModel = { ok: true, decisions: evaluateGuides(city, rows), suburbs: suburbDirectory(city, rows) }
+    modelCache.set(key, { at: Date.now(), model })
+    return model
+  } catch (err) {
+    console.error('guide inventory failed', city.name, err)
+    return { ok: false, decisions: [], suburbs: [] }
+  }
+}
+
+/** Cached inventory gates for one city. `ok: false` means the count could not be loaded. */
+export const cityGuideModel = cache(loadCityGuideModel)
+
+function withoutContext(node: Record<string, unknown>) {
+  const rest = { ...node }
+  delete rest['@context']
+  return rest
+}
+
+/**
+ * ItemList of real Event entities for a guide. Only listings passed in are described.
+ */
+export function guideStructuredData(input: {
+  origin: string
+  path: string
+  heading: string
+  description: string
+  city: CityDef
+  crumbs: { name: string; url: string }[]
+  events: LandingEvent[]
+  local: LandingLocal[]
+  total: number
+  refreshed: Date | null
+  facts: GuideFact[]
+}) {
+  const items = [
+    ...input.events.slice(0, 24).map((e) => withoutContext(eventJsonLd({ ...e, city: e.city || input.city.name }, input.origin))),
+    ...input.local.slice(0, 12).map((l) => {
+      const start = l.startTime && /^\d{2}:\d{2}/.test(l.startTime) ? `${l.date}T${l.startTime.slice(0, 5)}:00${tzOffset(input.city.tz, l.date)}` : l.date
+      return {
+        '@type': 'Event',
+        name: l.title,
+        url: `${input.origin}${localPath(l, l.date)}`,
+        startDate: start,
+        eventStatus: 'https://schema.org/EventScheduled',
+        eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+        location: {
+          '@type': 'Place',
+          name: l.suburb,
+          address: { '@type': 'PostalAddress', streetAddress: l.address, addressLocality: l.suburb, addressRegion: input.city.state, addressCountry: 'AU' },
+        },
+        ...(l.description ? { description: l.description.slice(0, 500) } : {}),
+        ...(l.organiserName ? { organizer: { '@type': 'Organization', name: l.organiserName } } : {}),
+        ...(l.endTime && /^\d{2}:\d{2}/.test(l.endTime) ? { endDate: `${l.date}T${l.endTime.slice(0, 5)}:00${tzOffset(input.city.tz, l.date)}` } : {}),
+      }
+    }),
+  ]
+  return [
+    { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: input.crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })) },
+    {
+      '@context': 'https://schema.org', '@type': 'CollectionPage', name: input.heading, url: `${input.origin}${input.path}`, description: input.description, inLanguage: 'en-AU',
+      ...(input.refreshed ? { dateModified: input.refreshed.toISOString() } : {}),
+      about: { '@type': 'City', name: input.city.name, containedInPlace: { '@type': 'Country', name: 'Australia' } },
+      ...(items.length ? { mainEntity: { '@type': 'ItemList', name: input.heading, numberOfItems: input.total, itemListElement: items.map((item, i) => ({ '@type': 'ListItem', position: i + 1, item })) } } : {}),
+    },
+    ...(input.facts.length ? [{
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: input.facts.map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })),
+    }] : []),
+  ]
+}
