@@ -3,7 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { resolveVenueGeo } from './geo'
 import { readObs } from './store'
 import { CITIES } from '@/lib/cities'
-import { AGE_MEASURES, HSI_CATEGORIES, INTEL_SOURCES, REGION_MEASURES, SEIFA_INDEXES, type DataKind, type SourceKey } from './sources'
+import { AGE_MEASURES, HSI_CATEGORIES, INTEL_SOURCES, REGION_MEASURES, type DataKind, type SourceKey } from './sources'
+import { loadSeifaIndexes, seifaCandidates } from './seifa'
 import { confidenceFor, haversineKm, normStation, pctChange, ptsDiff } from './util'
 
 export type Confidence = 'high' | 'medium' | 'low' | 'insufficient'
@@ -219,12 +220,8 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     }).filter((x): x is AgeBand => !!x)
   }
 
-  // SEIFA: suburb (SAL) first, venue SA2 as fallback
-  const seifaArea = g.sal ? { ds: 'sal', geo: 'SAL', code: g.sal, name: g.salName ?? 'Suburb' } : g.sa2 ? { ds: 'sa2', geo: 'SA2', code: g.sa2, name: g.sa2Name ?? 'Venue area' } : null
-  if (seifaArea) {
-    const s = await readObs('abs_seifa', seifaArea.ds, { geoType: seifaArea.geo, geoCode: seifaArea.code })
-    base.seifa = Object.entries(SEIFA_INDEXES).map(([k, d]) => ({ index: k, label: d.label, meaning: d.meaning, area: seifaArea.name, nswDecile: s.find((x) => x.category === k && x.measure === 'RWSD')?.value ?? null, ausDecile: s.find((x) => x.category === k && x.measure === 'RWAD')?.value ?? null })).filter((x) => x.nswDecile != null || x.ausDecile != null)
-  }
+  // SEIFA preference order: suburb (SAL), then venue SA2 when SAL is missing or has no deciles.
+  base.seifa = await loadSeifaIndexes(seifaCandidates(g), (area) => readObs('abs_seifa', area.ds, { geoType: area.geo, geoCode: area.code }))
 
   base.stations = base.transportCovered ? await stationsNear(lat, lng) : []
   if (!base.area.length && !base.stations.length && !base.seifa.length) base.status = 'no_data'
@@ -234,7 +231,8 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
 
 /** Cached for 12h per event; the cache is cleared whenever a source imports a new version. */
 export async function getVenueIntelCached(eventId: string) {
-  const key = `venue:au2:${eventId}`
+  // au3 drops reports cached before SAL → SA2 fallback, which otherwise stay empty for 12h.
+  const key = `venue:au3:${eventId}`
   const hit = await prisma.intelCache.findUnique({ where: { key } })
   if (hit && Date.now() - hit.createdAt.getTime() < 12 * 3600_000) return hit.data as unknown as VenueIntel
   const data = await getVenueIntel(eventId)

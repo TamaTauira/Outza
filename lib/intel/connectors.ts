@@ -1,7 +1,7 @@
 // Connectors for the approved public sources. Each returns datasets of observation rows; nothing is invented.
 import { prisma } from '@/lib/prisma'
-import { AGE_MEASURES, REGION_MEASURES } from './sources'
-import { fetchRetry, htmlToText, isAuAsgs, normStation, parseCsv, parseDnswHeadline, sha } from './util'
+import { mapChunkRows, type AbsChunk } from './abs-plan'
+import { fetchRetry, htmlToText, normStation, parseCsv, parseDnswHeadline, sha } from './util'
 import type { ObsRow } from './store'
 
 export type ConnectorResult = { datasets: { dataset: string; rows: ObsRow[] }[]; note?: string; attempts: number; extra?: () => Promise<number> }
@@ -10,73 +10,28 @@ const ABS = 'https://data.api.abs.gov.au/rest/data'
 const SDMX_CSV = { Accept: 'application/vnd.sdmx.data+csv' }
 const UA = { 'User-Agent': 'Mozilla/5.0 (compatible; OUTZA-Intelligence/1.0; +https://outza.abacusai.app)' }
 
-async function absCsv(flow: string, key: string, params: string) {
-  const { res, attempts } = await fetchRetry(`${ABS}/ABS,${flow}/${key}?${params}`, { headers: SDMX_CSV })
-  return { rows: parseCsv(await res.text()), attempts }
+async function absCsv(flow: string, key: string, params: string, attempts = 3, timeoutMs = 90_000) {
+  const { res, attempts: used } = await fetchRetry(`${ABS}/ABS,${flow}/${key}?${params}`, { headers: SDMX_CSV }, attempts, timeoutMs)
+  return { rows: parseCsv(await res.text()), attempts: used }
 }
 const num = (s?: string) => { if (s == null || s === '') return null; const n = Number(s); return isFinite(n) ? n : null }
 
 export { isAuAsgs } from './util'
 
-export async function absRegion(): Promise<ConnectorResult> {
-  const core = ['ERP_P_20', 'ERP_21', 'ERP_23', 'ERP_17']
-  const census = ['EQUIV_2', 'INCOME_2', 'LF_4', 'LF_5', 'SCHOOL_3', 'SCHOOL_5', 'HHTYPE_6', 'RENT_4', 'CENSUS_13']
-  const biz = ['CABEE_5', 'CABEE_17', 'CABEE_20']
-  const ages = AGE_MEASURES.map((a) => a.code)
-  const groups: { m: string[]; params: string }[] = [
-    { m: core, params: 'startPeriod=2016' }, { m: census, params: 'startPeriod=2016' },
-    { m: biz, params: 'startPeriod=2019' }, { m: ages, params: 'startPeriod=2022' },
-  ]
-  const rows: ObsRow[] = []
-  let attempts = 0
-  for (const g of groups) {
-    const r = await absCsv('ABS_REGIONAL_ASGS2021', `${g.m.join('+')}.SA2+SA3+SA4+GCCSA+STE+AUS..A`, g.params)
-    attempts = Math.max(attempts, r.attempts)
-    for (const x of r.rows) {
-      if (!REGION_MEASURES[x.MEASURE] || !isAuAsgs(x.REGIONTYPE, x.ASGS_2021)) continue
-      rows.push({ measure: x.MEASURE, geoType: x.REGIONTYPE, geoCode: x.ASGS_2021, period: x.TIME_PERIOD, value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, unitMult: num(x.UNIT_MULT) ?? 0, obsStatus: x.OBS_STATUS || null })
+/** One fetcher per import run. State slices of the same SDMX query share a single download. */
+export function createAbsFetcher() {
+  const cache = new Map<string, Promise<{ rows: Record<string, string>[]; attempts: number }>>()
+  return async (chunk: AbsChunk) => {
+    const cacheKey = `${chunk.flow}\n${chunk.key}\n${chunk.params}`
+    let pending = cache.get(cacheKey)
+    if (!pending) {
+      // Two short tries, not 3×90s, so one stuck call cannot burn the whole 300s invocation.
+      pending = absCsv(chunk.flow, chunk.key, chunk.params, 2, 40_000)
+      cache.set(cacheKey, pending)
     }
+    const { rows, attempts } = await pending
+    return { rows: mapChunkRows(chunk, rows), attempts }
   }
-  // age bands: keep only the latest year per area to stay lean
-  const latestAge = rows.filter((r) => r.measure.startsWith('ERP_P_') && r.measure !== 'ERP_P_20').reduce((m, r) => (r.period > m ? r.period : m), '')
-  const kept = rows.filter((r) => !(r.measure.startsWith('ERP_P_') && r.measure !== 'ERP_P_20') || r.period === latestAge)
-  // NSW LGAs (same measures, LGA flow)
-  const lga: ObsRow[] = []
-  for (const g of groups.slice(0, 3)) {
-    const r = await absCsv('ABS_REGIONAL_LGA2021', `${g.m.join('+')}...A`, g.params)
-    attempts = Math.max(attempts, r.attempts)
-    for (const x of r.rows) {
-      const code = x.LGA_2021 ?? ''
-      if (!REGION_MEASURES[x.MEASURE] || !/^[1-8]\d{4}$/.test(code)) continue
-      lga.push({ measure: x.MEASURE, geoType: 'LGA', geoCode: code, period: x.TIME_PERIOD, value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, unitMult: num(x.UNIT_MULT) ?? 0, obsStatus: x.OBS_STATUS || null })
-    }
-  }
-  if (kept.length < 1000) throw new Error(`ABS Data by Region returned too few rows (${kept.length}); keeping last good data`)
-  return { datasets: [{ dataset: 'asgs', rows: kept }, { dataset: 'lga', rows: lga }], attempts }
-}
-
-export async function absSeifa(): Promise<ConnectorResult> {
-  const flows = [
-    { flow: 'ABS_SEIFA2021_SA2', dim: 'ASGS_2021', geo: 'SA2', ok: (c: string) => /^[1-8]\d{8}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
-    { flow: 'ABS_SEIFA2021_LGA', dim: 'LGA_2021', geo: 'LGA', ok: (c: string) => /^[1-8]\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
-    { flow: 'ABS_SEIFA2021_POA', dim: 'POA', geo: 'POA', ok: (c: string) => /^\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD+RWAP+RWSP' },
-    { flow: 'ABS_SEIFA2021_SAL', dim: 'SAL', geo: 'SAL', ok: (c: string) => /^[1-8]\d{4}$/.test(c), m: 'SCORE+RWAD+RWSD' },
-  ]
-  const datasets: ConnectorResult['datasets'] = []
-  let attempts = 0
-  for (const f of flows) {
-    const r = await absCsv(f.flow, `.IRSAD+IRSD+IER+IEO.${f.m}`, 'detail=dataonly')
-    attempts = Math.max(attempts, r.attempts)
-    const rows: ObsRow[] = []
-    for (const x of r.rows) {
-      const code = x[f.dim] ?? ''
-      if (!f.ok(code)) continue
-      rows.push({ measure: x.SEIFA_MEASURE, category: x.SEIFAINDEXTYPE, geoType: f.geo, geoCode: code, period: x.TIME_PERIOD || '2021', value: num(x.OBS_VALUE), unit: x.UNIT_MEASURE || null, obsStatus: x.OBS_STATUS || null })
-    }
-    if (rows.length < 100) throw new Error(`${f.flow} returned too few rows (${rows.length})`)
-    datasets.push({ dataset: f.geo.toLowerCase(), rows })
-  }
-  return { datasets, attempts }
 }
 
 export async function absHsi(): Promise<ConnectorResult> {

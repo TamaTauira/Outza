@@ -5,6 +5,7 @@ import { ensureSources, runSource } from '@/lib/intel/ingest'
 import { SOURCE_KEYS, type SourceKey } from '@/lib/intel/sources'
 
 export const dynamic = 'force-dynamic'
+// Chunked ABS imports stop around 200s so this limit can save a resume cursor.
 export const maxDuration = 300
 
 export async function GET() {
