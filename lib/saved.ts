@@ -18,6 +18,8 @@ export interface SavedEvent {
   isLGBTI: boolean
   isFree: boolean
   price: string | null
+  priceMin?: number | null
+  venueAddress?: string | null
   ticketUrl: string | null
   updatedAt?: string
   city?: string

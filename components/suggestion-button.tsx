@@ -32,7 +32,7 @@ export function SuggestionButton() {
   const field = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40'
   return (
     <>
-      <button onClick={() => setOpen(true)} className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 h-11 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-xl hover:opacity-90">
+      <button onClick={() => setOpen(true)} className="fixed bottom-4 left-4 z-40 flex items-center gap-2 px-3 sm:px-4 h-11 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-xl hover:opacity-90">
         <Lightbulb className="w-4 h-4" /> Suggest an Idea
       </button>
       <Dialog open={open} onOpenChange={setOpen}>

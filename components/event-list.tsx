@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { FilterState } from '@/components/filter-panel'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
 import { DAY_PARTS, dayLabel, toMinutes, type TimeWindow } from '@/lib/board'
+import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
 import { Loader2, CalendarDays, Sparkles, ChevronRight, MousePointerClick } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,11 +19,12 @@ interface EventListProps {
   nowMinutes: number
   timeWindow: TimeWindow
   onWindowChange?: (w: TimeWindow) => void
+  windowPinned?: boolean
   onDayChange: (day: string) => void
   city?: string
 }
 
-export function EventList({ filters, searchQuery, day, days, today, nowMinutes, timeWindow, onWindowChange, onDayChange, city }: EventListProps) {
+export function EventList({ filters, searchQuery, day, days, today, nowMinutes, timeWindow, onWindowChange, windowPinned, onDayChange, city }: EventListProps) {
   const [events, setEvents] = useState<BoardEvent[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -35,8 +37,10 @@ export function EventList({ filters, searchQuery, day, days, today, nowMinutes, 
   const [closed, setClosed] = useBackState<Record<string, boolean>>('board:closed', {})
   const [allDayOpen, setAllDayOpen] = useBackState('board:allDayOpen', false)
   const { isSaved, toggle } = useSaved()
+  const fetchSeq = useRef(0)
 
   const fetchDay = useCallback(async (d: string, pageNum: number, append: boolean) => {
+    const seq = ++fetchSeq.current
     try {
       if (append) setLoadingMore(true)
       else setLoading(true)
@@ -50,15 +54,18 @@ export function EventList({ filters, searchQuery, day, days, today, nowMinutes, 
       if (filters.isLGBTI) params.set('isLGBTI', 'true')
       const res = await fetch(`/api/events?${params.toString()}`)
       const data = await res.json()
-      const list: BoardEvent[] = data?.events ?? []
+      if (seq !== fetchSeq.current) return
+      const list: BoardEvent[] = (data?.events ?? []).filter((ev: BoardEvent) => !filters.isFree || !isPaidListing(ev))
       setEvents((prev) => (append ? [...prev, ...list] : list))
       setTotal(data?.total ?? 0)
       setTotalPages(data?.totalPages ?? 1)
     } catch (err) {
       console.error('Failed to fetch events:', err)
     } finally {
-      setLoading(false)
-      setLoadingMore(false)
+      if (seq === fetchSeq.current) {
+        setLoading(false)
+        setLoadingMore(false)
+      }
     }
   }, [searchQuery, city, filters.category, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI])
 
@@ -69,7 +76,37 @@ export function EventList({ filters, searchQuery, day, days, today, nowMinutes, 
   }, [day, fetchDay])
 
   const isToday = !!day && day === today
-  const effectiveWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'
+  const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'
+
+  const countFor = (list: BoardEvent[], w: TimeWindow) => {
+    let n = 0
+    for (const ev of list) {
+      const start = toMinutes(ev.time)
+      if (start === null) { n++; continue }
+      if (isToday) {
+        const end = toMinutes(ev.endTime)
+        const effectiveEnd = end != null && end > start ? end : start + 180
+        if (nowMinutes >= effectiveEnd) continue
+      }
+      if (w === 'now' && !(start <= nowMinutes || (start >= nowMinutes && start - nowMinutes <= 180))) continue
+      if (w === 'hour' && !(start >= nowMinutes && start - nowMinutes <= 60)) continue
+      if (w === 'evening' && start < 17 * 60) continue
+      n++
+    }
+    return n
+  }
+
+  const effectiveWindow: TimeWindow = useMemo(() => {
+    if (windowPinned || loading) return requestedWindow
+    if (countFor(events, requestedWindow) > 0) return requestedWindow
+    if (countFor(events, 'evening') > 0) return 'evening'
+    if (countFor(events, 'all') > 0) return 'all'
+    return requestedWindow
+  }, [windowPinned, loading, requestedWindow, events, nowMinutes])
+
+  useEffect(() => {
+    if (!windowPinned && !loading && effectiveWindow !== timeWindow) onWindowChange?.(effectiveWindow)
+  }, [windowPinned, loading, effectiveWindow, timeWindow, onWindowChange])
 
   const { timed, untimed, endedCount } = useMemo(() => {
     const t: { ev: BoardEvent; status: ReturnType<typeof getStatus>; start: number }[] = []

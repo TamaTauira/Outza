@@ -3,20 +3,22 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import { CITIES, type CityDef } from '@/lib/cities'
-import { TOPICS, MIN_INDEX, topicDef, cityFromSlug, cityPath, suburbPath, eventPath, type TopicDef } from '@/lib/seo'
-import { citySuburbs, jsonLdString, landingData, lastRefreshAt, requestOrigin, topicTotal, topicTotals, type LandingEvent } from '@/lib/seo-server'
+import { TOPICS, MIN_INDEX, guideFacts, topicDef, cityFromSlug, cityPath, suburbPath, eventPath, type TopicDef } from '@/lib/seo'
+import { cityEventCounts, citySuburbs, jsonLdString, landingData, lastRefreshAt, topicTotals, type LandingEvent } from '@/lib/seo-server'
+import { siteUrl } from '@/lib/site-url'
 import { localPath } from '@/lib/local-shared'
 import { PageShell } from '@/components/page-shell'
 import { EventCard } from '@/components/event-card'
 import { LocalListingCards } from '@/components/local-listing-cards'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 300
 
 type Props = { params: Promise<{ city: string; topic: string }> }
 
 type Resolved = { city: CityDef; topic: TopicDef | null; suburb: string | null; suburbs: Awaited<ReturnType<typeof citySuburbs>> }
 
 async function resolve(citySlug: string, topicSlug: string): Promise<Resolved | null> {
+  if (citySlug.includes('.') || topicSlug.includes('.')) return null
   const city = cityFromSlug(citySlug)
   if (!city) return null
   const topic = topicDef(topicSlug) ?? null
@@ -54,8 +56,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: path },
-    robots: thin ? { index: false, follow: true } : undefined,
+    robots: thin ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: { title, description, url: path, images: ['/og-image.png'] },
+    twitter: { card: 'summary_large_image', title, description, images: ['/og-image.png'] },
   }
 }
 
@@ -72,13 +75,14 @@ export default async function LandingPage({ params }: Props) {
   const r = await resolve(citySlug, topicSlug)
   if (!r) notFound()
   const { city, topic, suburb, suburbs } = r
-  const [{ events, local, total, from, to }, totals, refreshed, otherCities] = await Promise.all([
+  const [{ events, local, total, from, to }, totals, refreshed, counts] = await Promise.all([
     landingData(city, topic, suburb ?? undefined),
     topicTotals(city),
     lastRefreshAt(),
-    Promise.all(CITIES.filter((c) => c.name !== city.name).map(async (c) => ({ c, n: await topicTotal(c, topic ?? TOPICS[0]) }))),
+    cityEventCounts(),
   ])
-  const origin = await requestOrigin()
+  const otherCities = CITIES.filter((c) => c.name !== city.name && (counts[c.name] ?? 0) >= MIN_INDEX).map((c) => ({ c, n: counts[c.name] ?? 0 }))
+  const origin = siteUrl()
   const guides = TOPICS.filter((t) => t.key === topic?.key || t.key === 'events' || totals[t.key] >= MIN_INDEX)
   const path = topic ? cityPath(city, topic.key) : suburbPath(city, suburb!)
   const heading = headingFor(r)
@@ -89,14 +93,31 @@ export default async function LandingPage({ params }: Props) {
     byDay.set(k, [...(byDay.get(k) ?? []), e])
   }
   const cats = topCounts(events, 'category').filter((c) => c !== 'Community' || topic?.key !== 'live-music')
-  const venues = topCounts(events, 'venueName')
-  const freeCount = events.filter((e) => e.isFree).length
+  const venues = topCounts(events, 'venueName').filter((v) => {
+    const n = v.trim().toLowerCase()
+    return n && n !== city.name.toLowerCase() && n !== 'tba'
+  })
+  const freeShown = events.filter((e) => e.isFree && !/\$\s*[1-9]/.test(e.price ?? '')).length
 
   const crumbs = [
     { name: 'Outza', url: `${origin}/` },
     { name: city.name, url: `${origin}${cityPath(city)}` },
     ...(topic?.key === 'events' ? [] : [{ name: topic ? topic.label : suburb!, url: `${origin}${path}` }]),
   ]
+  const nextEv = events[0]
+  const facts = guideFacts({
+    city: city.name,
+    topicKey: topic?.key ?? null,
+    suburb,
+    total,
+    freeShown,
+    weekendLabel: topic?.key === 'this-weekend' && to ? `${fmtDay(from)} – ${fmtDay(to)}` : null,
+    next: nextEv ? {
+      title: nextEv.title,
+      venue: nextEv.venueName,
+      when: fmtDay(nextEv.date.toISOString().slice(0, 10), { weekday: 'long', day: 'numeric', month: 'long' }),
+    } : null,
+  })
   const listed = [
     ...events.slice(0, 30).map((e) => ({ url: `${origin}${eventPath(e)}`, name: e.title })),
     ...local.slice(0, 20).map((l) => ({ url: `${origin}${localPath(l)}`, name: l.title })),
@@ -109,6 +130,10 @@ export default async function LandingPage({ params }: Props) {
       about: { '@type': 'City', name: city.name, containedInPlace: { '@type': 'Country', name: 'Australia' } },
       ...(listed.length ? { mainEntity: { '@type': 'ItemList', name: heading, numberOfItems: total, itemListElement: listed.map((x, i) => ({ '@type': 'ListItem', position: i + 1, ...x })) } } : {}),
     },
+    ...(facts.length ? [{
+      '@context': 'https://schema.org', '@type': 'FAQPage',
+      mainEntity: facts.map((f) => ({ '@type': 'Question', name: f.question, acceptedAnswer: { '@type': 'Answer', text: f.answer } })),
+    }] : []),
   ]
 
   return (
@@ -132,11 +157,15 @@ export default async function LandingPage({ params }: Props) {
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{blurbFor(r)}</p>
           {total > 0 && (
             <p className="mt-3 text-muted-foreground leading-relaxed">
-              We currently list <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
-              {suburb ? ` in ${suburb}` : ` in ${city.name}`}{topic?.key === 'this-weekend' ? ' this weekend' : ''}.
-              {cats.length > 0 && topic?.key !== 'live-music' && ` The most common categories are ${list(cats).toLowerCase()}.`}
-              {venues.length > 0 && ` Venues with the most listings include ${list(venues)}.`}
-              {freeCount > 0 && topic?.key !== 'free-events' && ` ${freeCount} of the events below are listed as free.`}
+              {topic?.key === 'tonight' ? (
+                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}, plus all-day listings. Early-morning times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
+              ) : (
+                <>We currently list <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
+                {suburb ? ` in ${suburb}` : ` in ${city.name}`}{topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
+              )}
+              {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && ` The most common categories on this page are ${list(cats).toLowerCase()}.`}
+              {venues.length > 0 && ` Venues with the most listings on this page include ${list(venues)}.`}
+              {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} of the events shown here ${freeShown === 1 ? 'is' : 'are'} listed as free.`}
               {local.length > 0 && ` ${local.length} ${local.length === 1 ? 'is a community listing' : 'are community listings'} from OUTZA Local.`}
             </p>
           )}
@@ -211,6 +240,20 @@ export default async function LandingPage({ params }: Props) {
             ))}
           </div>
         </section>
+
+        {facts.length > 0 && (
+          <section className="mt-12 max-w-3xl" aria-labelledby="guide-facts">
+            <h2 id="guide-facts" className="font-display text-xl font-bold mb-3">Good to know</h2>
+            <dl className="space-y-3">
+              {facts.map((f) => (
+                <div key={f.question}>
+                  <dt className="font-semibold">{f.question}</dt>
+                  <dd className="text-sm text-muted-foreground mt-0.5">{f.answer}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
 
         <p className="mt-12 text-xs text-muted-foreground max-w-3xl">
           Listings are gathered from organisers, official guides and ticketing sites and re-checked regularly. Times, prices and availability can change, so always confirm with the organiser before you go. Sponsored placements are always labelled.

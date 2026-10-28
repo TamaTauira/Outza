@@ -70,7 +70,12 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const description = cleanText(ev.description)
   const date = new Date(`${ev.date}T00:00:00.000Z`)
   if (date < sydneyToday()) return false
-  const venueName = cleanText(ev.venueName, 200) || 'TBA'
+  const cityName = ev.city
+  let venueName = cleanText(ev.venueName, 200) || 'TBA'
+  if (cityName && venueName.toLowerCase() === cityName.toLowerCase()) {
+    const named = suburbFromAddress(ev.venueAddress)
+    if (named) venueName = named
+  }
   const { category, subTags } = classifyCategory(title, description, ev.genres ?? [])
   const isLGBTI = checkLGBTI(title, `${description} ${(ev.genres ?? []).join(' ')}`)
   const isFree = Boolean(ev.isFree) || checkFree(ev.price)
@@ -148,9 +153,9 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     data: {
       ...data, title, date, venueName,
       venueAddress: ev.venueAddress ?? null,
-      suburb: city === DEFAULT_CITY
+      suburb: (city === DEFAULT_CITY
         ? guessSuburb(venueName, ev.venueAddress ?? '')
-        : suburbFromAddress(ev.venueAddress) ?? city,
+        : suburbFromAddress(ev.venueAddress)) || null,
       source: ev.source, sources: [ev.source], dedupeHash, city,
       seriesKey: makeSeriesKey(title, venueName, city),
     },

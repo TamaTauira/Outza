@@ -21,8 +21,7 @@ import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { useBackState } from '@/lib/scroll-memory';
-
-const CITY_KEY = 'se-city-v1';
+import { readCity, writeCity } from '@/lib/city-pref';
 
 const EMPTY_FILTERS: FilterState = {
   category: '', subTag: '', suburb: '', isFree: false, isLGBTI: false, dateFrom: '', dateTo: '', datePreset: ''
@@ -52,17 +51,20 @@ export function HomeClient() {
   const [day, setDay] = useBackState<string | null>('home:day', null);
   // Opens on what's on now and next, not on the earlier, already-ended part of the day.
   const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'now');
+  const [windowPinned, setWindowPinned] = useState(false);
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
   const [calOpen, setCalOpen] = useState(false);
   const { saved } = useSaved();
   const boardRef = useRef<HTMLDivElement>(null);
-  const setCity = (c: string) => {setCityState(c);try {localStorage.setItem(CITY_KEY, c);} catch {}};
+  const setCity = (c: string) => { setCityState(c); writeCity(c); };
+  const pinWindow = (w: TimeWindow) => { setWindowPinned(true); setTimeWindow(w); };
 
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search).get('city');
-      if (q && CITIES.some((x) => x.name === q)) {setCity(q);return;}
-      const c = localStorage.getItem(CITY_KEY);if (c !== null && (c === '' || CITIES.some((x) => x.name === c))) setCityState(c);
+      if (q && CITIES.some((x) => x.name === q)) { setCity(q); return; }
+      const c = readCity();
+      if (c !== null) setCityState(c);
     } catch {}
   }, []);
 
@@ -115,7 +117,12 @@ export function HomeClient() {
   const update = (p: Partial<FilterState>) => setFilters((f) => ({ ...f, ...p }));
   const advancedCount = [filters.subTag, filters.suburb, filters.dateFrom || filters.dateTo].filter(Boolean).length;
 
-  const goBoard = (fn: () => void) => () => {fn();if (view !== 'board') goView('board');else window.scrollTo({ top: 0, behavior: 'smooth' });};
+  const goBoard = (fn: () => void) => () => {
+    fn();
+    setWindowPinned(true);
+    if (view !== 'board') goView('board');
+    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
   // Hero AI search → open the same filters on the full board
   const applyAiSearch = (f: AiSearchFilters) => {
     setDay(f.dateFrom);
@@ -125,12 +132,12 @@ export function HomeClient() {
     requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   const quickLinks = [
-  { label: 'Today', onClick: goBoard(() => {setDay(today);setTimeWindow('all');}) },
-  { label: 'Tonight', onClick: goBoard(() => {setDay(today);setTimeWindow('evening');}) },
-  { label: 'This weekend', onClick: goBoard(() => {const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6);if (sat) setDay(sat);setTimeWindow('all');}) },
-  { label: 'Free events', onClick: goBoard(() => update({ isFree: true })) },
-  { label: 'LGBTIQ+ events', onClick: goBoard(() => update({ isLGBTI: true })) },
-  { label: 'Live music', onClick: goBoard(() => update({ category: 'Music', subTag: '' })) }];
+  { label: 'Today', active: day === today && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && !filters.category, onClick: goBoard(() => { setDay(today); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'Tonight', active: day === today && timeWindow === 'evening' && !filters.isFree && !filters.isLGBTI && !filters.category, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'This weekend', active: !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && !filters.category, onClick: goBoard(() => { const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6); if (sat) setDay(sat); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'Free events', active: filters.isFree, onClick: goBoard(() => update({ isFree: !filters.isFree })) },
+  { label: 'LGBTIQ+ events', active: filters.isLGBTI, onClick: goBoard(() => update({ isLGBTI: !filters.isLGBTI })) },
+  { label: 'Live music', active: filters.category === 'Music', onClick: goBoard(() => update({ category: filters.category === 'Music' ? '' : 'Music', subTag: '' })) }];
 
 
   return (
@@ -260,7 +267,7 @@ export function HomeClient() {
                   return (
                     <button
                       key={w.key}
-                      onClick={() => setTimeWindow(w.key)}
+                      onClick={() => pinWindow(w.key)}
                       disabled={disabled}
                       title={w.todayOnly && !isToday ? 'Only available for today' : undefined}
                       className={cn(
@@ -333,6 +340,7 @@ export function HomeClient() {
             nowMinutes={now?.minutes ?? 0}
             timeWindow={timeWindow}
             onWindowChange={setTimeWindow}
+            windowPinned={windowPinned}
             onDayChange={setDay}
             city={city} />
 
@@ -347,7 +355,22 @@ export function HomeClient() {
       <div className="fixed inset-0 z-[60]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilters(false)} />
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-[380px] overflow-auto bg-background border-l border-border p-4">
-            <FilterPanel filters={filters} onChange={setFilters} onClose={() => setShowFilters(false)} isMobile />
+            <FilterPanel
+              filters={filters}
+              onChange={setFilters}
+              onClose={() => setShowFilters(false)}
+              isMobile
+              when={day === today ? (timeWindow === 'evening' ? 'tonight' : timeWindow === 'now' || timeWindow === 'hour' ? 'soon' : timeWindow === 'all' ? 'today' : '') : ''}
+              onWhen={(w) => {
+                if (!today) return;
+                setDay(today);
+                setWindowPinned(true);
+                setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                pinWindow(w === 'tonight' ? 'evening' : w === 'soon' ? 'now' : 'all');
+                setShowFilters(false);
+                requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+              }}
+            />
           </div>
         </div>
       }

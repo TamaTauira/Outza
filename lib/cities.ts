@@ -47,14 +47,29 @@ export function custodiansLine(name: string | null | undefined): string {
     : 'Events across Australia take place on the lands of many Aboriginal and Torres Strait Islander nations. We pay our respects to their Elders past and present.'
 }
 
-/** Best-effort suburb from an address like "12 Smith St, Fitzroy, VIC 3065". */
+const GENERIC_PLACE = /^(australia|cbd|city|inner city|sydney|melbourne|brisbane|perth|adelaide|hobart|canberra|darwin|gold coast|newcastle|nsw|vic|qld|wa|sa|tas|act|nt)$/i
+const STREET = /\b(st|rd|dr|ave|hwy|pde|ln|lane|cres|cct|blvd|street|road|drive|terrace|place|avenue|parade|way|court|close)\b\.?$/i
+
+/** Best-effort suburb from an address like "12 Smith St, Coogee NSW 2034" or "Fitzroy, VIC 3065". */
 export function suburbFromAddress(address: string | null | undefined): string | null {
   if (!address) return null
   const parts = address.split(',').map((p) => p.trim()).filter(Boolean)
   for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i]
-    if (/\d/.test(p) || /^(australia|nsw|vic|qld|wa|sa|tas|act|nt)$/i.test(p)) continue
-    return p.replace(/\s+(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)$/i, '')
+    let p = parts[i].replace(/\b\d{4}\b/g, ' ').replace(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Australia)\b/ig, ' ').replace(/\s+/g, ' ').trim()
+    if (!p || /\d/.test(p) || GENERIC_PLACE.test(p) || STREET.test(p)) continue
+    return p
   }
   return null
+}
+
+/**
+ * Suburb to show. Stored "CBD" / the city name is a bad default when the address names a real suburb
+ * (Coogee, Bankstown, …).
+ */
+export function displaySuburb(suburb: string | null | undefined, address: string | null | undefined, city?: string | null): string | null {
+  const parsed = suburbFromAddress(address)
+  const stored = suburb?.trim() || ''
+  const generic = !stored || GENERIC_PLACE.test(stored) || (!!city && stored.toLowerCase() === city.trim().toLowerCase())
+  if (parsed && (generic || /^cbd$/i.test(stored))) return parsed
+  return stored || null
 }

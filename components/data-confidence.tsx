@@ -55,7 +55,7 @@ export function DataConfidence({ quality }: { quality: EventQuality }) {
       </div>
       <p className="flex items-center gap-1.5 text-sm text-foreground mb-2">
         <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
-        Last verified <span className="font-medium">{ago ?? '…'}</span>
+        Last verified <span className="font-medium">{ago ?? 'recently'}</span>
       </p>
       {quality.recurrence && (
         <p className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">

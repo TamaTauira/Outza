@@ -1,10 +1,11 @@
+import { cache } from 'react'
 import { headers } from 'next/headers'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { cityDef, type CityDef } from '@/lib/cities'
+import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
-import { siteUrl } from '@/lib/email'
-import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, slugify, tzOffset, weekendRange, TOPICS, type TopicDef, type TopicKey } from '@/lib/seo'
+import { siteUrl } from '@/lib/site-url'
+import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type TopicDef, type TopicKey } from '@/lib/seo'
 import { addDaysStr, localDupKey, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
 
 /** Public origin of the current request (works on every deployed hostname). */
@@ -71,9 +72,11 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   where.date = to ? { gte: day(from), lte: day(to) } : { gte: day(from), lte: day(addDaysKey(today, 120)) }
 
   const filter = opts.topic ? TOPIC_FILTER[opts.topic] : undefined
-  const rows = await prisma.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: filter ? 400 : take * 2 })
-  const clean = rows.filter((e) => !addressInOtherState(e.venueAddress, city) && (!filter || filter(e)))
-  const total = filter ? clean.length : await prisma.event.count({ where })
+  const tonight = opts.topic === 'tonight'
+  const rows = await prisma.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: filter || tonight ? 500 : take * 2 })
+  let clean = rows.filter((e) => !addressInOtherState(e.venueAddress, city) && (!filter || filter(e)))
+  if (tonight) clean = clean.filter((e) => isTonightSlot(e.time, e.endTime))
+  const total = filter || tonight ? clean.length : await prisma.event.count({ where })
   return { events: clean.slice(0, take), total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
 }
 
@@ -107,7 +110,7 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
 export type LandingData = { events: LandingEvent[]; local: LandingLocal[]; total: number; from: string; to: string | null }
 
 /** Everything a city/topic page shows: board events plus matching OUTZA Local listings. */
-export async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60): Promise<LandingData> {
+export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60): Promise<LandingData> {
   const ev = await landingEvents(city, { topic: topic?.key, suburb }, take)
   const dated = topic?.key === 'tonight' || topic?.key === 'this-weekend'
   const raw = suburb
@@ -120,35 +123,53 @@ export async function landingData(city: CityDef, topic: TopicDef | null, suburb?
   // Imported community listings mirror board events; never show the same thing twice
   const local = raw.filter((l) => !ev.titles.has(normTitle(l.title)))
   return { events: ev.events, from: ev.from, to: ev.to, local, total: ev.total + local.length }
-}
+})
 
 const totalsCache = new Map<string, { at: number; n: number }>()
 
-/** Listing count for one city/topic page (cached 10 minutes). Drives indexing, guide links and the sitemap. */
-export async function topicTotal(city: CityDef, topic: TopicDef): Promise<number> {
+/** Listing count for one city/topic page (cached 10 minutes). Count queries, not a full page render. */
+export const topicTotal = cache(async function topicTotal(city: CityDef, topic: TopicDef): Promise<number> {
   const k = `${city.name}|${topic.key}`
   const hit = totalsCache.get(k)
   if (hit && Date.now() - hit.at < 10 * 60_000) return hit.n
-  const n = (await landingData(city, topic, undefined, 1)).total
+  const events = (await landingEvents(city, { topic: topic.key }, 1)).total
+  const local = topic.local
+    ? await prisma.localListing.count({
+        where: { city: city.name, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, category: topic.local },
+      }).catch(() => 0)
+    : 0
+  const n = events + local
   totalsCache.set(k, { at: Date.now(), n })
   return n
+})
+
+/** Listing counts for every topic in a city, in parallel. */
+export async function topicTotals(city: CityDef): Promise<Record<TopicKey, number>> {
+  const pairs = await Promise.all(TOPICS.map(async (t) => [t.key, await topicTotal(city, t)] as const))
+  return Object.fromEntries(pairs) as Record<TopicKey, number>
 }
 
-/** Listing counts for every topic in a city. */
-export async function topicTotals(city: CityDef): Promise<Record<TopicKey, number>> {
-  const out = {} as Record<TopicKey, number>
-  for (const t of TOPICS) out[t.key] = await topicTotal(city, t)
+/** Upcoming listing counts per city. One grouped query for the "other cities" links. */
+export const cityEventCounts = cache(async function cityEventCounts(): Promise<Record<string, number>> {
+  const earliest = CITIES.map((c) => cityToday(c)).sort()[0]
+  const rows = await prisma.event.groupBy({
+    by: ['city'],
+    where: { duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(earliest), lte: day(addDaysKey(earliest, 120)) } },
+    _count: { _all: true },
+  }).catch(() => [])
+  const out: Record<string, number> = {}
+  for (const r of rows) out[r.city] = r._count._all
   return out
-}
+})
 
 /** When listings were last refreshed from sources (for visible "updated" lines and dateModified). */
-export async function lastRefreshAt(): Promise<Date | null> {
+export const lastRefreshAt = cache(async function lastRefreshAt(): Promise<Date | null> {
   const r = await prisma.refreshLog.findFirst({ where: { status: 'completed' }, orderBy: { startedAt: 'desc' }, select: { endedAt: true, startedAt: true } }).catch(() => null)
   return r ? r.endedAt ?? r.startedAt : null
-}
+})
 
 /** Suburbs in a city with enough upcoming listings to merit their own page. */
-export async function citySuburbs(city: CityDef, min = 3): Promise<{ name: string; slug: string; count: number }[]> {
+export const citySuburbs = cache(async function citySuburbs(city: CityDef, min = 3): Promise<{ name: string; slug: string; count: number }[]> {
   const today = cityToday(city)
   const rows = await prisma.event.findMany({
     where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null } },
@@ -162,7 +183,7 @@ export async function citySuburbs(city: CityDef, min = 3): Promise<{ name: strin
     counts.set(slug, { name: cur?.name ?? r.suburb!, count: (cur?.count ?? 0) + 1 })
   }
   return [...counts].filter(([, v]) => v.count >= min).sort((a, b) => b[1].count - a[1].count).map(([slug, v]) => ({ name: v.name, slug, count: v.count }))
-}
+})
 
 export function eventImageUrl(ev: { imageUrl?: string | null; imageAsset?: { variants?: unknown; status?: string } | null }, origin: string): string | null {
   const m = ev.imageAsset?.variants as VariantManifest | null | undefined

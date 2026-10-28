@@ -22,6 +22,7 @@ const POPULAR_GUIDES: [string, (c: string) => string, TopicKey][] = [
 export interface QuickLink {
   label: string
   onClick: () => void
+  active?: boolean
 }
 
 interface FooterProps {
@@ -53,36 +54,40 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
         {quickLinks.length > 0 && (
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground md:max-w-[340px] md:justify-end">
             {quickLinks.map((l) => (
-              <button key={l.label} onClick={l.onClick} className="hover:text-foreground transition-colors">{l.label}</button>
+              <button key={l.label} onClick={l.onClick} aria-pressed={!!l.active} className={l.active ? 'text-foreground font-semibold underline underline-offset-4' : 'hover:text-foreground transition-colors'}>{l.label}</button>
             ))}
           </nav>
         )}
       </div>
-      <nav aria-label="Events by city" className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">What's on by city</p>
-        <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-muted-foreground">
+      <nav aria-label="Events by city" className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Cities</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]">
           {CITIES.map((c) => (
-            <Link key={c.name} href={cityPath(c)} className="hover:text-foreground transition-colors">Events in {c.name}</Link>
+            <Link key={c.name} href={cityPath(c)} className="text-muted-foreground hover:text-foreground transition-colors">{c.name}</Link>
           ))}
         </div>
       </nav>
-      <nav aria-label="Popular guides by city" className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Popular guides</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-5">
+      {/* Closed by default so the footer stays quiet. The links stay in the HTML for crawlers and for anyone who opens Guides. */}
+      <details className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-6">
+        <summary className="cursor-pointer select-none text-sm text-muted-foreground hover:text-foreground w-fit">
+          City guides
+          <span className="text-muted-foreground/80"> — tonight, free, markets and the rest</span>
+        </summary>
+        <nav aria-label="Popular guides by city" className="mt-3 space-y-2">
           {CITIES.map((c) => (
-            <div key={c.name}>
-              <p className="text-[13px] font-semibold text-foreground mb-1.5">{c.name}</p>
-              <ul className="flex flex-col gap-1 text-[13px] text-muted-foreground">
-                {POPULAR_GUIDES.map(([label, title, topic]) => (
-                  <li key={topic}>
-                    <Link href={cityPath(c, topic)} title={title(c.name)} aria-label={title(c.name)} className="hover:text-foreground transition-colors">{label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <p key={c.name} className="text-[13px] leading-relaxed">
+              <Link href={cityPath(c)} className="font-semibold text-foreground hover:text-primary">{c.name}</Link>
+              <span className="text-muted-foreground"> · </span>
+              {POPULAR_GUIDES.map(([label, title, topic], i) => (
+                <span key={topic}>
+                  {i > 0 && <span className="text-muted-foreground"> · </span>}
+                  <Link href={cityPath(c, topic)} title={title(c.name)} className="text-muted-foreground hover:text-foreground">{label}</Link>
+                </span>
+              ))}
+            </p>
           ))}
-        </div>
-      </nav>
+        </nav>
+      </details>
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-10">
         <div className="rounded-xl bg-card/60 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
           <svg className="shrink-0 w-12 h-8 rounded-sm" viewBox="0 0 30 20" role="img" aria-label="Australian Aboriginal flag">

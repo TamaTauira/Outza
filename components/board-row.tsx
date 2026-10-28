@@ -12,6 +12,7 @@ import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
 import { statusInfo } from '@/lib/quality'
+import { displaySuburb } from '@/lib/cities'
 
 export type BoardEvent = SavedEvent
 
@@ -64,6 +65,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
   const checked = checkedAgo(ev.updatedAt)
   const done = status.tone === 'done'
   const type = ev.subTags?.[0] ?? ev.category
+  const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
+  const venue = ev.venueName && ev.city && ev.venueName.trim().toLowerCase() === ev.city.trim().toLowerCase() ? (suburb || ev.venueName) : ev.venueName
   const reported = statusInfo(ev.status, ev.statusSource)
   const itinerary = useItinerary()
   const inIt = itinerary.has(ev.id)
@@ -143,10 +146,10 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
       {/* Venue / suburb */}
       <div className="col-start-2 col-span-2 xl:col-span-1 xl:col-start-auto min-w-0 leading-tight">
         <div className="text-sm text-foreground/90 truncate" title={ev.venueName}>
-          {ev.venueName}
-          <span className="xl:hidden text-muted-foreground">{ev.suburb ? ` · ${ev.suburb}` : ''}</span>
+          {venue}
+          <span className="xl:hidden text-muted-foreground">{suburb ? ` · ${suburb}` : ''}</span>
         </div>
-        {ev.suburb && <div className="hidden xl:block text-sm text-muted-foreground truncate mt-0.5">{ev.suburb}</div>}
+        {suburb && <div className="hidden xl:block text-sm text-muted-foreground truncate mt-0.5">{suburb}</div>}
       </div>
 
       {/* Type */}

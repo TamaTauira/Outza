@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Loader2, MapPinOff } from 'lucide-react'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
-
-declare const L: any
+import { loadLeaflet } from '@/lib/load-leaflet'
+import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
 type Geo = { lat: number; lng: number }
 
@@ -17,6 +19,7 @@ export function VenueMap({ lat, lng, query, city, color = '#f9652a', letter = 'â
   const mapRef = useRef<any>(null)
   const tileRef = useRef<any>(null)
   const markerRef = useRef<any>(null)
+  const Lref = useRef<any>(null)
   const [ready, setReady] = useState(false)
   const [geo, setGeo] = useState<Geo | null>(lat != null && lng != null ? { lat, lng } : null)
   const [failed, setFailed] = useState(false)
@@ -37,30 +40,36 @@ export function VenueMap({ lat, lng, query, city, color = '#f9652a', letter = 'â
 
   useEffect(() => {
     if (!geo) return
-    let tries = 0
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const init = () => {
-      if (!elRef.current || mapRef.current) return
-      if (typeof L === 'undefined') { if (tries++ < 50) timer = setTimeout(init, 200); else setFailed(true); return }
-      const map = L.map(elRef.current, { zoomControl: false, scrollWheelZoom: false }).setView([geo.lat, geo.lng], 15)
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
-      mapRef.current = map
-      setReady(true)
-    }
-    init()
-    return () => { if (timer) clearTimeout(timer); if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; setReady(false) } }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const Leaflet = await loadLeaflet()
+        if (cancelled || !elRef.current || mapRef.current) return
+        Lref.current = Leaflet
+        const map = Leaflet.map(elRef.current, { zoomControl: false, scrollWheelZoom: false }).setView([geo.lat, geo.lng], 15)
+        Leaflet.control.zoom({ position: 'bottomright' }).addTo(map)
+        mapRef.current = map
+        setReady(true)
+      } catch (err) {
+        console.error('Map failed to load:', err)
+        if (!cancelled) setFailed(true)
+      }
+    })()
+    return () => { cancelled = true; if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; setReady(false) } }
   }, [geo])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!ready || !map) return
+    const L = Lref.current
+    if (!ready || !map || !L) return
     if (tileRef.current) map.removeLayer(tileRef.current)
     tileRef.current = L.tileLayer(MAP_TILE(dark), { attribution: MAP_ATTRIBUTION, maxZoom: MAP_MAX_ZOOM }).addTo(map)
   }, [ready, dark])
 
   useEffect(() => {
     const map = mapRef.current
-    if (!ready || !map || !geo) return
+    const L = Lref.current
+    if (!ready || !map || !geo || !L) return
     if (markerRef.current) map.removeLayer(markerRef.current)
     const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
     markerRef.current = L.marker([geo.lat, geo.lng], {

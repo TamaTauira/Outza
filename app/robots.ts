@@ -1,17 +1,20 @@
 import type { MetadataRoute } from 'next'
-import { requestOrigin } from '@/lib/seo-server'
+import { siteUrl } from '@/lib/site-url'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 3600
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-  const origin = await requestOrigin()
+/**
+ * Public pages are allowed. /promoters is explicitly allowed so it is not swallowed by /promoter.
+ * No Host: line — that directive is not part of the robots standard and was pointing at the wrong site.
+ */
+export default function robots(): MetadataRoute.Robots {
+  const origin = siteUrl()
   return {
-    rules: [{
+    rules: {
       userAgent: '*',
-      allow: '/',
-      disallow: ['/api/', '/admin', '/account', '/promoter$', '/promoter?', '/itinerary', '/unsubscribe', '/login', '/signup'],
-    }],
+      allow: ['/promoters', '/'],
+      disallow: ['/api/', '/admin', '/account', '/promoter', '/itinerary', '/unsubscribe', '/login', '/signup', '/saved'],
+    },
     sitemap: `${origin}/sitemap.xml`,
-    host: origin,
   }
 }
