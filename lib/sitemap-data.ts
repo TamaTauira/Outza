@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef } from '@/lib/cities'
-import { TOPICS, MIN_INDEX, addDaysKey, cityPath, cityToday, eventPath, isLandingSuburb, suburbPath } from '@/lib/seo'
+import { addDaysKey, cityToday, eventPath } from '@/lib/seo'
+import { cityGuideModel } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
 import { addDaysStr, localPath, occurrences, todayIn, MAX_AHEAD_DAYS } from '@/lib/local-shared'
 
@@ -64,36 +65,26 @@ export function guidesSitemapXml() {
   return cached('guides', async () => {
     const origin = siteUrl()
     const now = new Date()
-    const where = eventWhere()
     const urls: { loc: string; lastmod?: Date | null }[] = [
       { loc: `${origin}/`, lastmod: now },
       { loc: `${origin}/promoters` },
       { loc: `${origin}/local`, lastmod: now },
       { loc: `${origin}/how-listings-work` },
     ]
-    const [byCity, suburbs, locals] = await Promise.all([
-      prisma.event.groupBy({ by: ['city'], where, _count: { _all: true } }).catch(() => []),
-      prisma.event.groupBy({
-        by: ['city', 'suburb'],
-        where: { ...where, suburb: { not: null } },
-        _count: { _all: true },
-      }).catch(() => []),
+    const [locals, models] = await Promise.all([
       prisma.localListing.findMany({
         where: { status: 'APPROVED', expiresAt: { gte: now }, duplicateOfId: null },
         select: { id: true, title: true, city: true, updatedAt: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true },
         take: 2000,
       }).catch(() => []),
+      Promise.all(CITIES.map((city) => cityGuideModel(city))),
     ])
-    const live = new Set(byCity.filter((r) => r._count._all >= MIN_INDEX).map((r) => r.city))
-    for (const city of CITIES) {
-      if (!live.has(city.name)) continue
-      for (const t of TOPICS) urls.push({ loc: `${origin}${cityPath(city, t.key)}`, lastmod: now })
-    }
-    for (const row of suburbs) {
-      if (!row.suburb || row._count._all < 3) continue
-      const city = CITIES.find((c) => c.name === row.city)
-      if (!city || !isLandingSuburb(row.suburb, city)) continue
-      urls.push({ loc: `${origin}${suburbPath(city, row.suburb)}`, lastmod: now })
+    for (const model of models) {
+      if (!model.ok) continue
+      for (const guide of model.decisions) {
+        if (!guide.index) continue
+        urls.push({ loc: `${origin}${guide.path}`, lastmod: now })
+      }
     }
     for (const l of locals) {
       const today = todayIn(cityDef(l.city).tz)

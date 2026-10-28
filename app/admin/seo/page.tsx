@@ -33,7 +33,7 @@ export default async function AdminSeoPage() {
     )
   }
   const r = await getSeoReport()
-  const sitemapTotal = r.sitemap.static + r.sitemap.guides + r.sitemap.suburbs + r.sitemap.events + r.sitemap.local
+  const sitemapTotal = r.sitemap.static + r.sitemap.guides + r.sitemap.suburbs + r.sitemap.combos + r.sitemap.events + r.sitemap.local
   const cities = [...new Set(r.pages.map((p) => p.city))]
   const topics = [...new Map(r.pages.map((p) => [p.topic, p.label])).entries()]
   const totalVisits = r.referrals.reduce((s, x) => s + x.visits, 0)
@@ -56,7 +56,7 @@ export default async function AdminSeoPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card title="Sitemap" sub="URLs currently listed in /sitemap.xml">
           <table className="w-full text-sm"><tbody>
-            {[['Core pages', r.sitemap.static], ['City & topic guides', r.sitemap.guides], ['Suburb pages', r.sitemap.suburbs], ['Upcoming events', r.sitemap.events], ['OUTZA Local listings', r.sitemap.local]].map(([k, v]) => (
+            {[['Core pages', r.sitemap.static], ['City & topic guides', r.sitemap.guides], ['Suburb pages', r.sitemap.suburbs], ['Local combinations', r.sitemap.combos], ['Upcoming events', r.sitemap.events], ['OUTZA Local listings', r.sitemap.local]].map(([k, v]) => (
               <tr key={k as string} className="border-b border-border/40"><td className="py-1.5">{k}</td><td className="py-1.5 text-right font-mono">{v}</td></tr>
             ))}
             <tr><td className="py-1.5 font-semibold">Total</td><td className="py-1.5 text-right font-mono font-semibold">{sitemapTotal}</td></tr>
@@ -128,6 +128,7 @@ export default async function AdminSeoPage() {
                 </tr>
               ))}
               <tr className="border-t border-border/40"><td className="py-1.5 pr-3">Suburb pages</td>{r.suburbs.map((s) => <td key={s.city} className="px-2 py-1.5 text-right font-mono">{s.count}</td>)}</tr>
+              <tr className="border-t border-border/40"><td className="py-1.5 pr-3">Indexable combinations</td>{r.combos.map((s) => <td key={s.city} className="px-2 py-1.5 text-right font-mono">{s.indexable}</td>)}</tr>
             </tbody>
           </table>
         </div>
