@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store, Users, Sparkles } from 'lucide-react'
+import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store, Users, Sparkles, ShieldCheck } from 'lucide-react'
+import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useSession, signOut } from 'next-auth/react'
@@ -111,6 +112,11 @@ export function Navbar({ savedCount }: NavbarProps) {
                 {isPromoter
                   ? <DropdownMenuItem asChild><Link href="/promoter"><Megaphone className="w-4 h-4 mr-2" />Promoter dashboard</Link></DropdownMenuItem>
                   : <DropdownMenuItem asChild><Link href="/promoters"><Megaphone className="w-4 h-4 mr-2" />For promoters</Link></DropdownMenuItem>}
+                {user.role === 'ADMIN' && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/trust"><ShieldCheck className="w-4 h-4 mr-2" />Trust & listings <TrustCount className="ml-auto" /></Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut({ redirectTo: '/' })}><LogOut className="w-4 h-4 mr-2" />Sign out</DropdownMenuItem>
               </DropdownMenuContent>

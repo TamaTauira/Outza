@@ -817,12 +817,16 @@ model WatchNotice {
 
 /// Audit trail for duplicate merges and expired-listing checks. Rows are never deleted by the quality pass.
 model QualityAudit {
-  id        String   @id @default(cuid())
-  eventId   String?
-  action    String // DUPLICATE_MERGED | DUPLICATE_FLAGGED | EXPIRED_HIDDEN
-  detail    String?  @db.Text
-  createdAt DateTime @default(now())
+  id         String    @id @default(cuid())
+  eventId    String?
+  action     String // DUPLICATE_MERGED | DUPLICATE_FLAGGED | EXPIRED_HIDDEN | ADMIN_APPROVED | ADMIN_DISMISSED
+  detail     String?   @db.Text
+  /// null = log only. OPEN needs a decision. APPROVED or DISMISSED is closed.
+  status     String?
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([action, createdAt])
   @@index([eventId])
+  @@index([status, action])
 }
