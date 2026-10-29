@@ -6,7 +6,7 @@ import { CATEGORIES } from '@/lib/categories'
 import type { NlEvent } from './rank'
 import { exploreUrl, openPixelUrl, trackUrl, unsubscribeUrl, type Placement, type UtmCtx } from './links'
 import { emailLockup } from '@/lib/email-brand'
-import { BRAND_TAGLINE, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
+import { BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
 
 const C = { ink: '#1c1c1e', head: '#141414', accent: '#FF4E6A', page: '#f6f2ec', card: '#ffffff', muted: '#6b6b6b', line: '#ebe5dc', spons: '#f1ece4' }
 const FONT = `'Helvetica Neue',Helvetica,Arial,sans-serif`
@@ -58,7 +58,7 @@ function fallbackArt(category: string, h: number, w: number | '100%') {
   const cat = CATEGORIES.find((c) => c.name === category)
   const wordH = h > 150 ? 22 : 14
   const wordW = Math.round((wordH * BRAND_WORDMARK_WIDTH) / BRAND_WORDMARK_HEIGHT)
-  const lockup = `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#FBF8F3" style="background:#FBF8F3;border-radius:4px;padding:3px 6px;line-height:0;"><img src="${siteUrl()}${BRAND_WORDMARK_SRC}" width="${wordW}" height="${wordH}" alt="VibePeep" style="display:block;width:${wordW}px;height:${wordH}px;border:0;"/></td></tr></table>`
+  const lockup = `<img src="${siteUrl()}${BRAND_WORDMARK_DARK_SRC}" width="${wordW}" height="${wordH}" alt="VibePeep" style="display:block;width:${wordW}px;height:${wordH}px;border:0;"/>`
   return `<table role="presentation" width="${w}" cellpadding="0" cellspacing="0" border="0" style="width:${w === '100%' ? '100%' : `${w}px`};"><tr>
 <td height="${h}" bgcolor="${C.head}" valign="bottom" style="height:${h}px;background:${C.head};border-radius:14px;padding:${h > 150 ? 22 : 12}px;border-bottom:4px solid ${cat?.color ?? C.accent};">
 ${lockup}
@@ -139,7 +139,7 @@ body{margin:0;padding:0;-webkit-text-size-adjust:100%;}
 
 <tr><td class="px" bgcolor="${C.head}" style="background:${C.head};border-radius:20px 20px 0 0;padding:28px 32px 34px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-<td><a href="${siteUrl()}" style="text-decoration:none;color:inherit;">${emailLockup({ dark: true })}</a></td>
+<td><a href="${siteUrl()}" style="text-decoration:none;color:inherit;">${emailLockup({ dark: true, quip: 'Two eyes on your city.' })}</a></td>
 <td align="right" style="font-family:${FONT};font-size:11px;letter-spacing:3px;font-weight:800;color:${C.accent};">${x(ed)}</td></tr></table>
 <div style="font-family:${FONT};font-size:12px;letter-spacing:2px;color:#a3a3a3;padding-top:26px;text-transform:uppercase;">${x(r.city)} &nbsp;·&nbsp; ${x(range)}</div>
 <div class="h1" style="font-family:${FONT};font-size:36px;line-height:1.08;font-weight:900;color:#ffffff;padding-top:10px;letter-spacing:-0.5px;">${x(r.headline)}</div>
