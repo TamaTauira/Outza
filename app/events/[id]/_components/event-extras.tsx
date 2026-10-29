@@ -110,7 +110,7 @@ export function EventExtras({ event }: { event: any }) {
       <section>
         <h2 className="font-display font-semibold text-lg mb-3 flex items-center gap-2"><MapIcon className="w-5 h-5 text-primary" />Location</h2>
         <div className="relative aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden bg-muted">
-          <VenueMap lat={precise ? event.latitude : null} lng={precise ? event.longitude : null} query={place} city={event.city} color={cat?.color ?? '#f9652a'} letter={event.category?.[0] ?? 'E'} label={event.venueName || event.title} />
+          <VenueMap lat={precise ? event.latitude : null} lng={precise ? event.longitude : null} query={place} city={event.city} color={cat?.color ?? '#FF7A1A'} letter={event.category?.[0] ?? 'E'} label={event.venueName || event.title} />
         </div>
         <p className="text-sm text-muted-foreground mt-2">{place}</p>
       </section>

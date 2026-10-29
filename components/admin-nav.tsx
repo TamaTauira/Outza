@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
 
 const LINKS = [
   { href: '/admin', label: 'Dashboard', exact: true },
@@ -37,6 +38,9 @@ export function AdminNav() {
   return (
     <nav aria-label="Admin" className="border-b border-border bg-background/95 sticky top-0 z-40">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-12 flex items-center gap-1 overflow-x-auto [scrollbar-width:none]">
+        <Link href="/" aria-label="VibePeep home" className="mr-2 shrink-0">
+          <VibePeepLogo size="sm" showTagline={false} />
+        </Link>
         {LINKS.map((link) => {
           const on = link.exact ? pathname === link.href : pathname === link.href || pathname?.startsWith(`${link.href}/`)
           return (

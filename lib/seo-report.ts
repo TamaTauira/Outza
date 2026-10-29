@@ -6,7 +6,7 @@ import { TOPICS, MIN_INDEX, cityPath, cityToday, addDaysKey, type TopicKey } fro
 import { cityGuideModel, lastRefreshAt, topicTotal } from '@/lib/seo-server'
 
 /**
- * Admin SEO report built ONLY from data Outza actually holds (database + page rules).
+ * Admin SEO report built ONLY from data VibePeep actually holds (database + page rules).
  * Search Console / Bing metrics (impressions, clicks, rankings, queries) are not available until an API
  * connection exists, so they are reported as "not connected" rather than estimated.
  */

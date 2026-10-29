@@ -179,7 +179,7 @@ test('a pinned venue with no ABS rows says the profile needs an import', () => {
   assert.ok(gaps.some((g) => g.title === 'Resident profile needs an import'))
 })
 
-test('queer listings get an Outza line plus real channels, and no made-up audience size', () => {
+test('queer listings get an VibePeep line plus real channels, and no made-up audience size', () => {
   const cities = ['Sydney', 'Melbourne', 'Brisbane', 'Gold Coast', 'Perth', 'Adelaide', 'Canberra', 'Hobart', 'Darwin', 'Newcastle'] as const
   const must: Record<string, string[]> = {
     Sydney: ['starobserver.com.au', 'mardigras.org.au', 'stonewallhotel.com', '/sydney/lgbtiq'],

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { OutzaMark } from '@/components/outza-mark'
-import { OUTZA_TAGLINE } from '@/components/outza-logo'
+import { VibePeepMark } from '@/components/vibepeep-mark'
+import { VibePeepWordmark, VIBEPEEP_TAGLINE } from '@/components/vibepeep-logo'
 import { srcSet, variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import { cn } from '@/lib/utils'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
@@ -23,7 +23,7 @@ interface Props {
 /**
  * Fills its (fixed-aspect, relative) parent. Uses the optimised AVIF/WebP variants when processed,
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
- * otherwise a clearly labelled Outza placeholder.
+ * otherwise a clearly labelled VibePeep placeholder.
  */
 export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
@@ -75,10 +75,10 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#161616] via-[#101010] to-[#1f1410] text-center" role="img" aria-label={alt}>
-      <OutzaMark className={compact ? 'w-7 h-7' : 'w-10 h-10'} />
-      <span className="flex flex-col items-center leading-none">
-        <span className={cn('font-display font-extrabold tracking-tight text-white', compact ? 'text-[11px]' : 'text-base')}>OUTZA<span className="text-primary">.</span></span>
-        <span className={cn('mt-1 font-mono uppercase tracking-[0.18em] text-white/70', compact ? 'text-[7px]' : 'text-[9px]')}>{OUTZA_TAGLINE}</span>
+      <VibePeepMark className={compact ? 'w-7 h-7' : 'w-10 h-10'} />
+      <span className="flex flex-col items-center leading-none text-white">
+        <VibePeepWordmark tone="on-dark" className={compact ? 'h-3.5 w-auto' : 'h-5 w-auto'} />
+        {!compact && <span className="mt-1 max-w-[9rem] text-[9px] font-medium leading-tight text-white/70">{VIBEPEEP_TAGLINE}</span>}
       </span>
     </div>
   )

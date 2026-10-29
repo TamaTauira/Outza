@@ -4,7 +4,7 @@ import { CITIES, cityDef } from '@/lib/cities'
 import { addDaysStr, diffDays, isTimeStr, lastDate, localDupKey, occurrences, todayIn, MAX_SPAN_DAYS, type RecurringShape } from '@/lib/local-shared'
 
 /**
- * Fills OUTZA Local from public listings Outza already ingests for the main board
+ * Fills VibePeep Local from public listings VibePeep already ingests for the main board
  * (official market/organiser sites, City of Sydney What's On, Eventbrite, Humanitix, Moshtix, Oztix).
  * Facts only (title, date, time, place, price, original link) — no images, no private events.
  * Every imported row keeps its source and links back to the original listing.

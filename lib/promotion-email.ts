@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
 import { formatAud, productName, PRO_PLAN } from '@/lib/tiers'
+import { emailLockup } from '@/lib/email-brand'
 
 export async function notifyPromotionPurchased(promotionId: string, orderId?: string) {
   const p = await prisma.promotion.findUnique({
@@ -13,7 +14,8 @@ export async function notifyPromotionPurchased(promotionId: string, orderId?: st
   const items = lines.map((l) => `${productName(l.tier)} (${formatAud(l.amountCents)})`).join(', ')
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <h2 style="color:#f9652a;">New promotion purchase${p.paymentMode === 'test' ? ' (test mode — no payment taken)' : ''}</h2>
+    ${emailLockup()}
+    <h2 style="color:#FF7A1A;">New promotion purchase${p.paymentMode === 'test' ? ' (test mode — no payment taken)' : ''}</h2>
     <div style="background:#f6f6f6;padding:16px;border-radius:8px;">
       <p><strong>Event:</strong> <a href="${siteUrl()}/events/${p.event.id}">${escapeHtml(p.event.title)}</a> (${escapeHtml(p.event.city)})</p>
       <p><strong>Promoter:</strong> ${escapeHtml(p.promoter.orgName || p.promoter.name)} (${escapeHtml(p.promoter.email)})</p>
@@ -31,7 +33,8 @@ export async function notifyProPurchased(passId: string) {
   if (!p) return
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <h2 style="color:#f9652a;">New ${PRO_PLAN.name} membership${p.paymentMode === 'test' ? ' (test mode — no payment taken)' : ''}</h2>
+    ${emailLockup()}
+    <h2 style="color:#FF7A1A;">New ${PRO_PLAN.name} membership${p.paymentMode === 'test' ? ' (test mode — no payment taken)' : ''}</h2>
     <div style="background:#f6f6f6;padding:16px;border-radius:8px;">
       <p><strong>Promoter:</strong> ${escapeHtml(p.user.orgName || p.user.name)} (${escapeHtml(p.user.email)})</p>
       <p><strong>Amount:</strong> ${formatAud(p.amountCents)} AUD</p>

@@ -127,7 +127,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
               <h1 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-3">{event?.title}</h1>
               {event.quality?.verified?.ok && (
                 <p className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-3 py-1 text-sm font-semibold" title="Recent source refresh, required details present, not a duplicate, and no open correction report for the date, venue, or cancellation.">
-                  <BadgeCheck className="w-4 h-4" />Outza Verified
+                  <BadgeCheck className="w-4 h-4" />VibePeep Verified
                 </p>
               )}
               <VerifiedLine event={event} />

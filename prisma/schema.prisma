@@ -510,7 +510,7 @@ model EventBlurb {
   createdAt DateTime @default(now())
 }
 
-/// OUTZA Local: community-submitted public listings (garage sales, clearances, markets, community activities).
+/// VibePeep Local: community-submitted public listings (garage sales, clearances, markets, community activities).
 /// Recurring listings are stored once and expanded into occurrences at read time.
 model LocalListing {
   id              String    @id @default(cuid())
@@ -558,7 +558,7 @@ model LocalListing {
   @@index([imageAssetId])
 }
 
-/// OUTZA Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, Google Business Profile)
+/// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, Google Business Profile)
 model IntelSource {
   key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | google_bp
   enabled       Boolean   @default(true)

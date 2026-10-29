@@ -1,4 +1,4 @@
-/** Pure helpers for Outza Together. Safe to import from tests and the client. */
+/** Pure helpers for VibePeep Together. Safe to import from tests and the client. */
 import { directionsUrl, fmtKm, fmtMin, planLeg, type TravelStop } from '@/lib/travel'
 
 export function newPlanToken(): string {

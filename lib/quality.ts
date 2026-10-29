@@ -2,7 +2,7 @@
  * Event data-quality rules shared by ingestion, ranking and the UI.
  * Pure functions only, so the module is safe to import on the client.
  *
- * Outza Verified is defined in `outzaVerified` below. The badge is shown only
+ * VibePeep Verified is defined in `outzaVerified` below. The badge is shown only
  * when that function returns ok. It is never a decoration.
  */
 import { CITIES } from '@/lib/cities'
@@ -222,7 +222,7 @@ export function popularity(ev: { saves?: number; attendees?: number; views?: num
 }
 
 /**
- * Outza Verified standard. Every line must be true. If a check cannot be run
+ * VibePeep Verified standard. Every line must be true. If a check cannot be run
  * (for example open reports were not loaded), the listing is not verified.
  *
  * 1. Not linked as a duplicate (`duplicateOfId` is empty).
@@ -231,7 +231,7 @@ export function popularity(ev: { saves?: number; attendees?: number; views?: num
  * 4. `lastVerifiedAt` is within the last 7 days. Ingest refreshes and organiser edits set this.
  * 5. Required fields: title, date, a start time, a specific venue name (not the city or "TBA"),
  *    city, a price or an explicit free flag, and an http(s) organiser or ticket link.
- * 6. `source` is a known Outza source (organiser, official guide, or ticketing partner).
+ * 6. `source` is a known VibePeep source (organiser, official guide, or ticketing partner).
  * 7. No OPEN correction report for duplicate, wrong date, wrong venue, or cancelled.
  *    Wrong price, broken link, and "something else" do not by themselves remove the badge.
  */
@@ -284,7 +284,7 @@ export function outzaVerified(ev: VerifiedInput, now = Date.now()): { ok: boolea
   if (!priced) missing.push('Price is not listed and the event is not marked free')
   const link = ev.organiserUrl || ev.ticketUrl || ''
   if (!/^https?:\/\//i.test(link)) missing.push('No organiser or ticket link')
-  if (!ev.source || !SOURCES[ev.source]) missing.push('Source is not a known Outza source')
+  if (!ev.source || !SOURCES[ev.source]) missing.push('Source is not a known VibePeep source')
   if (!Array.isArray(ev.openReportReasons)) missing.push('Open correction reports were not checked')
   else if (ev.openReportReasons.some((r) => (VERIFIED_BLOCKING_REPORTS as readonly string[]).includes(r))) missing.push('An open correction report is blocking verification')
   return { ok: missing.length === 0, missing }
@@ -306,7 +306,7 @@ export function scheduleCue(ev: { time?: string | null; endTime?: string | null 
 export function availabilityLine(status?: string | null, statusSource?: string | null): { label: string; note: string } {
   const reported = statusInfo(status, statusSource)
   if (reported) return { label: reported.label, note: reported.note }
-  return { label: 'Not confirmed live', note: 'Outza does not show live ticket availability. Check the organiser or ticket seller before you go.' }
+  return { label: 'Not confirmed live', note: 'VibePeep does not show live ticket availability. Check the organiser or ticket seller before you go.' }
 }
 
 /** Short, honest status wording. Availability is always attributed and never presented as live. */

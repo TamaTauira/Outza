@@ -24,7 +24,7 @@ const sample = {
 }
 const now = Date.parse('2026-10-29T01:00:00.000Z')
 
-test('Outza Verified stays off unless every check passes', () => {
+test('VibePeep Verified stays off unless every check passes', () => {
   assert.equal(outzaVerified(sample, now).ok, true)
   assert.equal(outzaVerified({ ...sample, openReportReasons: undefined }, now).ok, false)
   assert.equal(outzaVerified({ ...sample, openReportReasons: ['DUPLICATE'] }, now).ok, false)

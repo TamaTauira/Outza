@@ -101,7 +101,7 @@ export async function POST(req: Request) {
     })
     if (imagePath) queueLocalImage(row.id)
     if (status === 'PENDING') {
-      await notifyTrustTeam(`OUTZA Local listing to review: ${i.title.slice(0, 60)}`, [
+      await notifyTrustTeam(`VibePeep Local listing to review: ${i.title.slice(0, 60)}`, [
         ['Listing', `${i.title} (${localCategoryLabel(i.category)}, ${i.suburb} ${i.city})`], ['When', `${i.startDate} ${i.startTime}–${i.endTime} · ${recurrenceLabel(i)}`],
         ['Flags', flags.map((f) => LOCAL_FLAG_LABEL[f] ?? f).join(', ')], ['Organiser', `${i.organiserName} <${i.contactEmail}>`], ['Review', '/admin/local'],
       ])

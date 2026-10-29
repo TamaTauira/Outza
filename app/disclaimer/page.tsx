@@ -4,16 +4,16 @@ import { Footer } from '@/components/footer'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 
 export const metadata = {
-  title: 'Disclaimer — Outza',
-  description: 'Why Outza exists, what it is (and isn’t), and the limits of our responsibility.',
+  title: 'Disclaimer — VibePeep',
+  description: 'Why VibePeep exists, what it is (and isn’t), and the limits of our responsibility.',
 }
 
 const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '1. Why this site exists',
     body: [
-      'Outza was born out of a simple need: there was no easy, single place to see what’s on, sorted by when it starts. This website exists purely to help people find events more easily. It is an independent, non-official listings guide and discovery tool.',
-      'Outza does not organise, host, run, promote (other than through clearly labelled paid placements), sell tickets for, or have any control over the events shown on this website.',
+      'VibePeep was born out of a simple need: there was no easy, single place to see what’s on, sorted by when it starts. This website exists purely to help people find events more easily. It is an independent, non-official listings guide and discovery tool.',
+      'VibePeep does not organise, host, run, promote (other than through clearly labelled paid placements), sell tickets for, or have any control over the events shown on this website.',
     ],
   },
   {
@@ -42,7 +42,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '5. Limitation of liability',
     body: [
-      'To the maximum extent permitted by law, Outza and its owner, operators, contributors and anyone involved in creating or running this website (including in their personal capacity) will not be liable to you or anyone else for any loss, damage, cost, injury or expense of any kind — whether direct, indirect, incidental, special, consequential or otherwise, and including loss of money, tickets, travel or accommodation costs, time, data, opportunity or enjoyment — arising out of or in connection with your use of, or reliance on, this website, any information on it, any linked third-party website, or any event listed.',
+      'To the maximum extent permitted by law, VibePeep and its owner, operators, contributors and anyone involved in creating or running this website (including in their personal capacity) will not be liable to you or anyone else for any loss, damage, cost, injury or expense of any kind — whether direct, indirect, incidental, special, consequential or otherwise, and including loss of money, tickets, travel or accommodation costs, time, data, opportunity or enjoyment — arising out of or in connection with your use of, or reliance on, this website, any information on it, any linked third-party website, or any event listed.',
       'This applies however the loss arises, whether in contract, tort (including negligence), statute or otherwise, and even if we were advised of the possibility of that loss.',
       'Where liability cannot lawfully be excluded but can be limited, our total liability is limited, at our option, to resupplying the relevant service or paying the cost of having it resupplied. For paid promoter placements, our liability is limited to a refund of the fee paid for the affected placement.',
     ],
@@ -56,7 +56,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '7. Your responsibility and indemnity',
     body: [
-      'By using this website you agree that you use it at your own risk and that you are responsible for checking any information before relying on it. To the extent permitted by law, you agree to indemnify Outza and its owner and operators against any claim, loss or cost arising from your misuse of the website, any content you submit, or your breach of this disclaimer.',
+      'By using this website you agree that you use it at your own risk and that you are responsible for checking any information before relying on it. To the extent permitted by law, you agree to indemnify VibePeep and its owner and operators against any claim, loss or cost arising from your misuse of the website, any content you submit, or your breach of this disclaimer.',
     ],
   },
   {
@@ -89,7 +89,7 @@ export default function DisclaimerPage() {
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Disclaimer</h1>
         <p className="mt-4 text-muted-foreground leading-relaxed">
-          Please read this disclaimer carefully. By accessing or using Outza you acknowledge that you have read, understood and agree to it. If you do not agree, please do not use this website.
+          Please read this disclaimer carefully. By accessing or using VibePeep you acknowledge that you have read, understood and agree to it. If you do not agree, please do not use this website.
         </p>
         <div className="mt-10 space-y-6">
           {SECTIONS.map((s) => (

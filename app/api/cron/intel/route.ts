@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 // Chunked ABS imports stop around 200s so this limit can save a resume cursor.
 export const maxDuration = 300
 
-/** Runs any OUTZA Intelligence source that is due. Vercel Cron calls GET with Authorization: Bearer CRON_SECRET. */
+/** Runs any VibePeep Intelligence source that is due. Vercel Cron calls GET with Authorization: Bearer CRON_SECRET. */
 async function run(req: Request) {
   const secret = process.env.CRON_SECRET
   const bearer = req.headers.get('authorization')

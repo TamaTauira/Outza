@@ -30,12 +30,12 @@ async function resolveId(param: string): Promise<string | null> {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id: param } = await params
   const id = await resolveId(param)
-  if (!id) return { title: 'Event not found | Outza', robots: { index: false } }
+  if (!id) return { title: 'Event not found | VibePeep', robots: { index: false } }
   const ev = await prisma.event.findUnique({
     where: { id },
     select: { id: true, title: true, description: true, date: true, endDate: true, time: true, venueName: true, suburb: true, city: true, imageUrl: true, duplicateOfId: true, status: true, imageAsset: { select: { variants: true, status: true } } },
   })
-  if (!ev || isPast(ev)) return { title: 'Event not found | Outza', robots: { index: false } }
+  if (!ev || isPast(ev)) return { title: 'Event not found | VibePeep', robots: { index: false } }
   // Merged duplicates point search engines at the listing they were merged into
   const canonicalTarget = ev.duplicateOfId
     ? await prisma.event.findUnique({ where: { id: ev.duplicateOfId }, select: { id: true, title: true } })
@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const origin = siteUrl()
   const image = eventImageUrl(ev, origin)
   return {
-    title: `${status}${ev.title} | ${dateLabel} | ${ev.city} | Outza`,
+    title: `${status}${ev.title} | ${dateLabel} | ${ev.city} | VibePeep`,
     description: desc.slice(0, 300),
     alternates: { canonical: eventPath(canonicalTarget ?? ev) },
     robots: ev.duplicateOfId ? { index: false, follow: true } : undefined,

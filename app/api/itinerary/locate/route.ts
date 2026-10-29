@@ -11,7 +11,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const ok = (lat: number | null | undefined, lng: number | null | undefined): Geo => (lat != null && lng != null ? { lat, lng } : null)
 
-/** Resolves coordinates for itinerary stops: Outza events and Local listings from the database, custom stops by address. */
+/** Resolves coordinates for itinerary stops: VibePeep events and Local listings from the database, custom stops by address. */
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))

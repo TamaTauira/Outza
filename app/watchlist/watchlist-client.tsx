@@ -52,13 +52,13 @@ export function WatchlistClient() {
         id: ev.id, title: ev.title, date: ev.date, endDate: ev.endDate, time: ev.time, endTime: ev.endTime,
         venueName: ev.venueName, city: ev.city,
         url: ev.href?.startsWith('http') ? ev.href : `${window.location.origin}${ev.href ?? eventPath(ev)}`,
-      })), { calendarName: 'My Outza' })
+      })), { calendarName: 'My VibePeep' })
     }
     const blob = new Blob([body], { type: 'text/calendar' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'my-outza.ics'
+    a.download = 'my-vibepeep.ics'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -81,7 +81,7 @@ export function WatchlistClient() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary">My Outza</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-primary">My VibePeep</p>
       <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Your keepers, plus what you follow.</h1>
       <p className="mt-3 text-muted-foreground">Saves belong to your account, so sign in to keep them. Follow a venue or an interest and we can email new matches. Reminders are a separate opt-in.</p>
 
@@ -152,7 +152,7 @@ export function WatchlistClient() {
                 const next = e.target.checked
                 if (await patchMe({ emailOptIn: next })) setEmailOptIn(next)
               }} />
-              <span>Send a watchlist digest ({emailFrequency}). It lists upcoming saves and new events at venues you follow. Interest picks also feed the usual Outza newsletter.</span>
+              <span>Send a watchlist digest ({emailFrequency}). It lists upcoming saves and new events at venues you follow. Interest picks also feed the usual VibePeep newsletter.</span>
             </label>
             <label className="flex items-start gap-3 text-sm">
               <input type="checkbox" className="mt-1 accent-[hsl(var(--primary))]" checked={reminderOptIn} onChange={async (e) => {

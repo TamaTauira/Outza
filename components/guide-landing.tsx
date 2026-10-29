@@ -84,7 +84,7 @@ export function GuideLanding(props: {
               {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` The most common categories on this page are ${list(cats).toLowerCase()}.`}
               {venues.length > 0 && ` Venues with the most listings on this page include ${list(venues)}.`}
               {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} of the events shown here ${freeShown === 1 ? 'is' : 'are'} listed as free.`}
-              {local.length > 0 && ` ${local.length} ${local.length === 1 ? 'is a community listing' : 'are community listings'} from OUTZA Local.`}
+              {local.length > 0 && ` ${local.length} ${local.length === 1 ? 'is a community listing' : 'are community listings'} from VibePeep Local.`}
             </p>
           )}
           {refreshed && (
@@ -131,7 +131,7 @@ export function GuideLanding(props: {
             ))}
             {local.length > 0 && (
               <section aria-labelledby="local-listings">
-                <h2 id="local-listings" className="font-display text-xl font-bold mb-1">From OUTZA Local</h2>
+                <h2 id="local-listings" className="font-display text-xl font-bold mb-1">From VibePeep Local</h2>
                 <p className="text-sm text-muted-foreground mb-4">Public community listings added by organisers. <Link href="/local?tab=submit" className="text-primary underline">List yours free</Link>.</p>
                 <LocalListingCards items={local.slice(0, 30)} />
               </section>

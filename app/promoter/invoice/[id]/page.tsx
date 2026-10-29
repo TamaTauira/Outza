@@ -5,11 +5,11 @@ import { ArrowLeft } from 'lucide-react'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { PRO_PLAN, formatAud, productName } from '@/lib/tiers'
-import { OutzaLogo } from '@/components/outza-logo'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { PrintButton } from './print-button'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Invoice | Outza', robots: { index: false } }
+export const metadata: Metadata = { title: 'Invoice | VibePeep', robots: { index: false } }
 
 const fmt = (d: Date) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' })
 
@@ -51,7 +51,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   const total = lines.reduce((s, l) => s + l.cents, 0)
   const gst = Math.round(total / 11)
-  const number = `OUTZA-${(issued ?? new Date()).toISOString().slice(0, 10).replace(/-/g, '')}-${id.slice(-6).toUpperCase()}`
+  const number = `VIBEPEEP-${(issued ?? new Date()).toISOString().slice(0, 10).replace(/-/g, '')}-${id.slice(-6).toUpperCase()}`
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 print:py-0">
@@ -61,7 +61,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       </div>
       <article className="mt-6 rounded-xl bg-white text-neutral-900 shadow-sm border border-neutral-200 p-8 print:shadow-none print:border-0 print:mt-0">
         <header className="flex flex-wrap items-start justify-between gap-6">
-          <OutzaLogo />
+          <VibePeepLogo />
           <div className="text-right">
             <p className="text-2xl font-bold">Invoice / receipt</p>
             <p className="text-sm text-neutral-600 mt-1">No. {number}</p>
@@ -71,7 +71,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </header>
         {test && <p className="mt-6 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-900">Test-mode purchase: no card was charged. This document is for your records only.</p>}
         <section className="mt-8 grid sm:grid-cols-2 gap-6 text-sm">
-          <div><p className="text-xs uppercase tracking-wider text-neutral-500">From</p><p className="font-semibold mt-1">Outza</p><p className="text-neutral-600">Event promotion services</p></div>
+          <div><p className="text-xs uppercase tracking-wider text-neutral-500">From</p><p className="font-semibold mt-1">VibePeep</p><p className="text-neutral-600">Event promotion services</p></div>
           <div><p className="text-xs uppercase tracking-wider text-neutral-500">Billed to</p><p className="font-semibold mt-1">{buyer.name || buyer.email}</p>{buyer.name && <p className="text-neutral-600">{buyer.email}</p>}</div>
         </section>
         <table className="mt-8 w-full text-sm">

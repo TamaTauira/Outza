@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useMounted } from '@/components/client-only'
 import { ACKNOWLEDGEMENT_OF_COUNTRY, CITIES } from '@/lib/cities'
 import { cityPath, type TopicKey } from '@/lib/seo'
-import { OutzaLogo } from '@/components/outza-logo'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
 
 /** Crawlable links to the evergreen guides, repeated for every city. [short label, full anchor title, topic] */
 const POPULAR_GUIDES: [string, (c: string) => string, TopicKey][] = [
@@ -44,8 +44,8 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
     <footer className="mt-10">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-10 grid gap-8 md:grid-cols-[auto_1fr_auto] md:items-center">
         <div className="flex flex-col gap-2">
-          <OutzaLogo size="sm" />
-          <span className="text-[11px] text-muted-foreground">Your city. Your events. Your next adventure.</span>
+          <VibePeepLogo size="sm" />
+          <span className="text-[11px] text-muted-foreground">Events · Experiences · Local discoveries.</span>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed md:px-8">
           Listings refreshed {refreshed} (AEST/AEDT) from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring and City of Sydney.
@@ -98,11 +98,11 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
           </p>
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
-          <span>Outza is an independent listings guide — information only, no warranties.</span>
+          <span>VibePeep is an independent listings guide — information only, no warranties.</span>
           <span className="flex gap-4">
             <Link href="/outings" className="hover:text-foreground underline underline-offset-2">Day and night plans</Link>
             <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>
-            <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My Outza</Link>
+            <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My VibePeep</Link>
             <Link href="/how-listings-work" className="hover:text-foreground underline underline-offset-2">How listings work</Link>
             <Link href="/terms" className="hover:text-foreground underline underline-offset-2">Terms</Link>
             <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">Privacy</Link>

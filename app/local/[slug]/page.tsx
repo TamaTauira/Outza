@@ -32,10 +32,10 @@ const load = cache(async (param: string): Promise<LocalDetail | null> => {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const l = await load((await params).slug)
-  if (!l) return { title: 'Listing not found | Outza', robots: { index: false } }
+  if (!l) return { title: 'Listing not found | VibePeep', robots: { index: false } }
   const desc = `${localCategoryLabel(l.category)} in ${l.suburb}, ${l.city} · ${l.schedule}. ${l.description.replace(/\s+/g, ' ').slice(0, 120)}…`
   return {
-    title: `${l.title} · ${l.suburb} | OUTZA Local`,
+    title: `${l.title} · ${l.suburb} | VibePeep Local`,
     description: desc,
     alternates: { canonical: localPath(l) },
     openGraph: { title: l.title, description: desc.slice(0, 200), type: 'website', url: localPath(l), ...(l.imageUrl ? { images: [l.imageUrl] } : {}) },

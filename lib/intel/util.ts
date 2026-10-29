@@ -1,4 +1,4 @@
-// Pure helpers for OUTZA Intelligence (no DB access; unit-tested).
+// Pure helpers for VibePeep Intelligence (no DB access; unit-tested).
 import { createHash } from 'crypto'
 
 /** RFC-4180-ish CSV parser (handles quoted fields with commas/quotes/newlines). */
@@ -102,7 +102,7 @@ export function parseDnswHeadline(text: string): DnswHeadline | null {
 }
 
 /**
- * Australian geography for the cities Outza lists (every state and territory).
+ * Australian geography for the cities VibePeep lists (every state and territory).
  * ASGS codes start with the state digit 1–8; Australia-wide rows are kept as the national benchmark.
  */
 export function isAuAsgs(regionType: string, code: string) {

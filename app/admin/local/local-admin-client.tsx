@@ -33,7 +33,7 @@ export function LocalAdminClient() {
   return (
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-10">
       <header>
-        <h1 className="font-display text-3xl font-bold">OUTZA Local moderation</h1>
+        <h1 className="font-display text-3xl font-bold">VibePeep Local moderation</h1>
         <p className="text-muted-foreground mt-1">Community submissions flagged by duplicate, address, spam or content checks, plus visitor reports.</p>
       </header>
       <section>

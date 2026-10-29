@@ -1,8 +1,8 @@
-# OUTZA
+# VibePeep
 
-OUTZA is an Australian "what's on" events site. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary, and ask an AI search for ideas. It also has community listings (OUTZA Local), a promoter dashboard with paid promotions, and a weekly email newsletter (THE WEEKENDER).
+VibePeep is an Australian "what's on" events site. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary, and ask an AI search for ideas. It also has community listings (VibePeep Local), a promoter dashboard with paid promotions, and a weekly email newsletter (THE WEEKENDER).
 
-Brand lockup: **OUTZA.** (orange dot). Tagline: **Get out. Get amongst it.**
+Brand lockup: **VibePeep** (Vibe in black, Peep in an orange-to-pink gradient) with the peeking-eyes icon. Tagline: **Take a peep at what's happening.** Sub-line: **Events · Experiences · Local discoveries.**
 
 Live site: [https://outza-outza.vercel.app](https://outza-outza.vercel.app). `https://outza-sepia.vercel.app` is a legacy Vercel alias and 308-redirects to that host. Set `NEXT_PUBLIC_SITE_URL` only for a custom domain that replaces it.
 
@@ -17,7 +17,7 @@ Read [docs/handover.md](docs/handover.md) before changing the product. It covers
 - Stripe (checkouts stay in test mode until `STRIPE_SECRET_KEY` is set)
 - Leaflet maps, sharp for images, S3 for uploads
 
-Hosting and deploys are on Vercel. The public origin is [https://outza-outza.vercel.app](https://outza-outza.vercel.app) unless `NEXT_PUBLIC_SITE_URL` names another public host. An `abacusai.app` value is ignored. LLM calls go through Vercel AI Gateway (OIDC on Vercel, `AI_GATEWAY_API_KEY` locally). Outbound email uses Resend when `RESEND_API_KEY` is set. `RESEND_FROM_EMAIL` is optional and defaults to `Outza <onboarding@resend.dev>` (no custom domain). Sending stays off when the key is missing. See the handover for the app rules (async `params` / `cookies()` / `headers()`, no `middleware.ts`, no `webpack` key in `next.config.js`, additive Prisma changes only).
+Hosting and deploys are on Vercel. The public origin is [https://outza-outza.vercel.app](https://outza-outza.vercel.app) unless `NEXT_PUBLIC_SITE_URL` names another public host. An `abacusai.app` value is ignored. LLM calls go through Vercel AI Gateway (OIDC on Vercel, `AI_GATEWAY_API_KEY` locally). Outbound email uses Resend when `RESEND_API_KEY` is set. `RESEND_FROM_EMAIL` is optional and defaults to `VibePeep <onboarding@resend.dev>` (no custom domain). Sending stays off when the key is missing. See the handover for the app rules (async `params` / `cookies()` / `headers()`, no `middleware.ts`, no `webpack` key in `next.config.js`, additive Prisma changes only).
 
 ## Local setup
 

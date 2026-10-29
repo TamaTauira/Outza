@@ -65,7 +65,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
       <Navbar savedCount={saved.length} />
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8">
         <Link href="/local" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to OUTZA Local
+          <ArrowLeft className="w-4 h-4" /> Back to VibePeep Local
         </Link>
 
         <div className="bg-card rounded-xl overflow-hidden border border-border">
@@ -168,7 +168,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
             )}
 
             <div className="border-t border-border pt-6 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground max-w-2xl">{l.sourceName ? `This listing was imported from ${l.sourceName}; no images were copied.` : 'Community listings come from their organisers.'} Details can change, so confirm with the organiser before you go. Outza doesn&apos;t sell or guarantee anything at this listing. See our <Link href="/disclaimer" className="underline">disclaimer</Link>.</p>
+              <p className="text-xs text-muted-foreground max-w-2xl">{l.sourceName ? `This listing was imported from ${l.sourceName}; no images were copied.` : 'Community listings come from their organisers.'} Details can change, so confirm with the organiser before you go. VibePeep doesn&apos;t sell or guarantee anything at this listing. See our <Link href="/disclaimer" className="underline">disclaimer</Link>.</p>
               <button onClick={report} className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border text-sm hover:bg-muted"><Flag className="w-4 h-4" />Report this listing</button>
             </div>
           </div>

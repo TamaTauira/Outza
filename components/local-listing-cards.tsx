@@ -7,7 +7,7 @@ export type LocalCardItem = {
   priceNote: string | null; date: string; schedule: string; recurring: boolean
 }
 
-/** Server-rendered, crawlable cards for public OUTZA Local listings on guide pages. */
+/** Server-rendered, crawlable cards for public VibePeep Local listings on guide pages. */
 export function LocalListingCards({ items }: { items: LocalCardItem[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -44,7 +44,7 @@ export function LocalImageField({ image, onChange, rights, onRights }: { image: 
             <button type="button" onClick={() => { onChange(null); onRights(false) }} className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-black/70 text-white inline-flex items-center justify-center" aria-label="Remove photo"><X className="w-4 h-4" /></button>
           </div>
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={rights} onChange={(e) => onRights(e.target.checked)} className="mt-1 h-4 w-4 accent-[#e8553f]" />
+            <input type="checkbox" checked={rights} onChange={(e) => onRights(e.target.checked)} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
             <span>I took this photo or own this image, or I have permission to use it. It doesn't show private information or people who haven't agreed to be shown.</span>
           </label>
         </div>

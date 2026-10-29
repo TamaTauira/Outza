@@ -3,7 +3,7 @@ import { CITIES, type CityDef } from '@/lib/cities'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
 
-const UA = () => `OutzaEventsBot/1.0 (+${siteUrl()})`
+const UA = () => `VibePeepEventsBot/1.0 (+${siteUrl()})`
 
 /** Metro postcode ranges, used when a feed gives a postcode but no coordinates. */
 const POSTCODES: Record<string, [number, number][]> = {
@@ -26,7 +26,7 @@ function km(aLat: number, aLng: number, bLat: number, bLng: number) {
   return Math.sqrt(x * x + y * y) * 6371
 }
 
-/** Which Outza city a venue belongs to (coordinates first, then postcode). */
+/** Which VibePeep city a venue belongs to (coordinates first, then postcode). */
 function cityFor(lat: number | null | undefined, lng: number | null | undefined, postcode?: string | null): CityDef | null {
   if (lat != null && lng != null && (lat || lng)) {
     const hit = CITIES.find((c) => km(lat, lng, c.lat, c.lng) <= c.radiusKm)
@@ -234,7 +234,7 @@ export async function fetchOztixEvents(): Promise<number> {
 }
 
 // ---------------- Ticketek (licensed partner / affiliate feed only, never the website) ----------------
-// Ticketek has no public API and its site terms forbid automated access, so nothing is fetched until Outza
+// Ticketek has no public API and its site terms forbid automated access, so nothing is fetched until VibePeep
 // holds a licence. Two licensed routes are supported:
 //  1. impact.com affiliate catalog: IMPACT_ACCOUNT_SID + IMPACT_AUTH_TOKEN + IMPACT_TICKETEK_CATALOG_ID
 //  2. Direct partner feed/API from Ticketek: TICKETEK_FEED_URL (JSON or CSV) + optional TICKETEK_FEED_AUTH

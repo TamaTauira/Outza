@@ -39,7 +39,7 @@ export interface SavedEvent {
   lastVerifiedAt?: string | null
   organiserUrl?: string | null
   confidenceLevel?: 'high' | 'medium' | 'low'
-  /** Detail link for non-board items (e.g. OUTZA Local listings); defaults to the event page. */
+  /** Detail link for non-board items (e.g. VibePeep Local listings); defaults to the event page. */
   href?: string
 }
 

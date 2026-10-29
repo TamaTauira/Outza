@@ -10,19 +10,19 @@
     --card-foreground: 105 17% 9%;
     --popover: 0 0% 100%;
     --popover-foreground: 105 17% 9%;
-    --primary: 19 88% 40%;
+    --primary: 16 84% 42%;
     --primary-foreground: 0 0% 100%;
     --secondary: 50 12% 91%;
     --secondary-foreground: 105 17% 9%;
     --muted: 50 14% 92%;
     --muted-foreground: 140 5% 34%;
-    --accent: 19 88% 40%;
+    --accent: 348 72% 46%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
     --border: 50 10% 85%;
     --input: 50 10% 85%;
-    --ring: 19 88% 40%;
+    --ring: 348 78% 48%;
     --free: 160 78% 24%;
     --radius: 0.625rem;
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
@@ -40,19 +40,19 @@
     --card-foreground: 60 29% 93%;
     --popover: 150 10% 9%;
     --popover-foreground: 60 29% 93%;
-    --primary: 17 94% 57%;
+    --primary: 18 100% 62%;
     --primary-foreground: 20 70% 6%;
     --secondary: 150 9% 12%;
     --secondary-foreground: 60 29% 93%;
     --muted: 150 9% 11%;
     --muted-foreground: 138 6% 65%;
-    --accent: 17 94% 57%;
-    --accent-foreground: 20 70% 6%;
+    --accent: 348 92% 68%;
+    --accent-foreground: 340 40% 8%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
     --border: 150 8% 15%;
     --input: 150 8% 18%;
-    --ring: 17 94% 57%;
+    --ring: 348 90% 66%;
     --free: 158 34% 70%;
   }
 }
@@ -94,7 +94,7 @@
   width: 40px; height: 40px; border-radius: 9999px; display: flex; align-items: center; justify-content: center;
   font-size: 13px; font-weight: 600; color: #111; background: rgba(255,255,255,.85);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 0 0 5px rgba(249,101,42,.25), 0 6px 16px rgba(0,0,0,.18);
+  box-shadow: 0 0 0 5px rgba(255,122,26,.25), 0 6px 16px rgba(0,0,0,.18);
 }
 .dark .se-cluster { background: rgba(30,30,32,.85); color: #fff; }
 .se-popup .leaflet-popup-content-wrapper {
@@ -111,7 +111,7 @@
 .se-pop-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
 .se-pop-price { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 600; }
 .se-pop-price.free { color: #16a34a; }
-.se-pop-row a { color: #f9652a; font-size: 12px; font-weight: 600; text-decoration: none; }
+.se-pop-row a { color: #FF7A1A; font-size: 12px; font-weight: 600; text-decoration: none; }
 .se-pop-tier { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; color: #111; margin-bottom: 6px; }
 .se-gold { background: #F5B700; } .se-bronze { background: #CD7F32; } .se-silver { background: #C0C7D1; }
 .se-map .leaflet-control-zoom { border: 0 !important; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.18) !important; }
@@ -149,4 +149,20 @@
 .animate-shimmer {
   background-size: 200% 100%;
   animation: shimmer 3s ease-in-out infinite;
+}
+
+.text-brand-gradient {
+  background-image: linear-gradient(90deg, #FF8A1A 0%, #FF6A3C 42%, #FF4E6A 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-brand-gradient {
+  background-image: linear-gradient(105deg, #FF8A1A 0%, #FF4E6A 100%);
+}
+
+/* Default theme is dark: primary fills carry the orange-to-pink mark. */
+.dark .bg-primary {
+  background-image: linear-gradient(105deg, #FF8A1A 0%, #FF4E6A 100%);
 }

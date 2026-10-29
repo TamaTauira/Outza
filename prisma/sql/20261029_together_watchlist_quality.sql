@@ -1,4 +1,4 @@
--- Additive tables for Outza Together, watchlist reminders, and quality audit.
+-- Additive tables for VibePeep Together, watchlist reminders, and quality audit.
 -- The project applies schema with `yarn prisma db push` (no --accept-data-loss).
 -- This file is the same change, for a manual apply. It does not drop or rewrite existing tables.
 

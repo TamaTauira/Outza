@@ -1,4 +1,4 @@
-// OUTZA Intelligence: client-safe registry of the six approved sources and the measures we use.
+// VibePeep Intelligence: client-safe registry of the six approved sources and the measures we use.
 // Plain-English meaning and limitation text lives here so every card shows the same caveats.
 
 export type SourceKey = 'abs_region' | 'abs_seifa' | 'abs_hsi' | 'tfnsw' | 'dnsw' | 'google_bp'
@@ -116,7 +116,7 @@ export const GBP_METRICS: Record<string, string> = {
 
 export const CONFIDENCE_LABEL: Record<string, string> = { high: 'High', medium: 'Medium', low: 'Low', insufficient: 'Insufficient data' }
 
-/** Official imports, plus counts taken live from Outza listings (nothing to import). */
+/** Official imports, plus counts taken live from VibePeep listings (nothing to import). */
 export type InsightSource = SourceKey | 'outza_catalogue'
 
 export const INSIGHT_SOURCE_LABEL: Record<InsightSource, string> = {
@@ -126,5 +126,5 @@ export const INSIGHT_SOURCE_LABEL: Record<InsightSource, string> = {
   tfnsw: INTEL_SOURCES.tfnsw.name,
   dnsw: INTEL_SOURCES.dnsw.name,
   google_bp: INTEL_SOURCES.google_bp.name,
-  outza_catalogue: 'Outza event listings',
+  outza_catalogue: 'VibePeep event listings',
 }

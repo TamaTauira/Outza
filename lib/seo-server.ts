@@ -80,7 +80,7 @@ export type LandingLocal = {
   priceNote: string | null; date: string; schedule: string; recurring: boolean; organiserName: string
 }
 
-/** Approved OUTZA Local listings for a topic page: one row per listing (its next date), within 60 days. */
+/** Approved VibePeep Local listings for a topic page: one row per listing (its next date), within 60 days. */
 export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: { suburb?: string; from?: string; to?: string; ownOnly?: boolean } = {}): Promise<LandingLocal[]> {
   if (!topic?.local && opts.suburb == null && !opts.from) return []
   const today = todayIn(city.tz)
@@ -104,7 +104,7 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
 
 export type LandingData = { events: LandingEvent[]; local: LandingLocal[]; total: number; from: string; to: string | null }
 
-/** Everything a city/topic page shows: board events plus matching OUTZA Local listings. */
+/** Everything a city/topic page shows: board events plus matching VibePeep Local listings. */
 export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60, when?: WhenKey): Promise<LandingData> {
   const ev = await landingEvents(city, { topic: topic?.key, suburb, when }, take)
   const datedTopic = !when && (topic?.key === 'tonight' || topic?.key === 'this-weekend')

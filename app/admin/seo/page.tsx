@@ -5,11 +5,11 @@ import { getSeoReport } from '@/lib/seo-report'
 import { MIN_INDEX, eventPath } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'SEO & organic discovery — Outza admin', robots: { index: false } }
+export const metadata = { title: 'SEO & organic discovery — VibePeep admin', robots: { index: false } }
 
 const fmt = (d: string | null) => d ? new Date(d).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'never'
 const pct = (a: number, b: number) => (b > 0 ? `${((a / b) * 100).toFixed(1)}%` : '—')
-const SOURCE_LABEL: Record<string, string> = { SEARCH: 'Search engines (organic)', OUTZA: 'Inside Outza', SOCIAL: 'Social', EMAIL: 'Email', DIRECT: 'Direct / unknown', OTHER: 'Other websites' }
+const SOURCE_LABEL: Record<string, string> = { SEARCH: 'Search engines (organic)', OUTZA: 'Inside VibePeep', SOCIAL: 'Social', EMAIL: 'Email', DIRECT: 'Direct / unknown', OTHER: 'Other websites' }
 
 function Card({ title, children, sub }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
@@ -42,7 +42,7 @@ export default async function AdminSeoPage() {
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
       <header>
         <h1 className="font-display text-3xl font-bold">SEO & organic discovery</h1>
-        <p className="text-muted-foreground mt-1">Built only from Outza’s own data. Nothing here is estimated. Generated {fmt(r.generatedAt)} · listings last refreshed {fmt(r.lastRefresh)}.</p>
+        <p className="text-muted-foreground mt-1">Built only from VibePeep’s own data. Nothing here is estimated. Generated {fmt(r.generatedAt)} · listings last refreshed {fmt(r.lastRefresh)}.</p>
       </header>
 
       <Card title="Search Console & Bing Webmaster" sub="Impressions, clicks, average position and top queries come from the search engines themselves.">
@@ -56,7 +56,7 @@ export default async function AdminSeoPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card title="Sitemap" sub="URLs currently listed in /sitemap.xml">
           <table className="w-full text-sm"><tbody>
-            {[['Core pages', r.sitemap.static], ['City & topic guides', r.sitemap.guides], ['Suburb pages', r.sitemap.suburbs], ['Local combinations', r.sitemap.combos], ['Upcoming events', r.sitemap.events], ['OUTZA Local listings', r.sitemap.local]].map(([k, v]) => (
+            {[['Core pages', r.sitemap.static], ['City & topic guides', r.sitemap.guides], ['Suburb pages', r.sitemap.suburbs], ['Local combinations', r.sitemap.combos], ['Upcoming events', r.sitemap.events], ['VibePeep Local listings', r.sitemap.local]].map(([k, v]) => (
               <tr key={k as string} className="border-b border-border/40"><td className="py-1.5">{k}</td><td className="py-1.5 text-right font-mono">{v}</td></tr>
             ))}
             <tr><td className="py-1.5 font-semibold">Total</td><td className="py-1.5 text-right font-mono font-semibold">{sitemapTotal}</td></tr>
@@ -103,7 +103,7 @@ export default async function AdminSeoPage() {
         </Card>
       </div>
 
-      <Card title="Opportunities" sub={`Guides close to the ${MIN_INDEX}-listing index threshold. More genuine listings (organiser submissions, OUTZA Local) would make them indexable.`}>
+      <Card title="Opportunities" sub={`Guides close to the ${MIN_INDEX}-listing index threshold. More genuine listings (organiser submissions, VibePeep Local) would make them indexable.`}>
         {r.opportunities.length === 0 ? <p className="text-sm text-muted-foreground">Every guide with listings is already indexable.</p> : (
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1.5 text-sm">
             {r.opportunities.slice(0, 30).map((o) => (

@@ -67,7 +67,7 @@ export function DataConfidence({ quality }: { quality: EventQuality }) {
       )}
       {quality.verified && (
         <p className={cn('text-sm font-semibold mb-2', quality.verified.ok ? 'text-primary' : 'text-muted-foreground')}>
-          {quality.verified.ok ? 'Outza Verified' : 'Not Outza Verified'}
+          {quality.verified.ok ? 'VibePeep Verified' : 'Not VibePeep Verified'}
         </p>
       )}
       {quality.schedule && <p className="text-sm text-foreground mb-1"><span className="font-medium">{quality.schedule.label}.</span> {quality.schedule.detail}</p>}

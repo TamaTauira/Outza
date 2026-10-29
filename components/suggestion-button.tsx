@@ -42,7 +42,7 @@ export function SuggestionButton() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Got a bright idea?</DialogTitle>
-            <DialogDescription>Tell us what would make Outza even better. Event-goers and promoters welcome.</DialogDescription>
+            <DialogDescription>Tell us what would make VibePeep even better. Event-goers and promoters welcome.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-3">
             <div className="flex gap-2">

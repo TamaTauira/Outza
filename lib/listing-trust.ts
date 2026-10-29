@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { outzaVerified, VERIFIED_BLOCKING_REPORTS, type VerifiedInput } from '@/lib/quality'
 
-/** Looks up open blocking reports and applies the Outza Verified standard. Missing report data never counts as verified. */
+/** Looks up open blocking reports and applies the VibePeep Verified standard. Missing report data never counts as verified. */
 export async function verifiedFlags<T extends VerifiedInput & { id: string }>(events: T[]): Promise<Map<string, boolean>> {
   const out = new Map<string, boolean>()
   if (!events.length) return out

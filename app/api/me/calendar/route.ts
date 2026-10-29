@@ -24,11 +24,11 @@ export async function GET() {
     ...ev,
     url: `${siteUrl()}${eventPath(ev)}`,
   }))
-  const body = eventsToIcs(events, { calendarName: 'My Outza' })
+  const body = eventsToIcs(events, { calendarName: 'My VibePeep' })
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="my-outza.ics"',
+      'Content-Disposition': 'attachment; filename="my-vibepeep.ics"',
     },
   })
 }

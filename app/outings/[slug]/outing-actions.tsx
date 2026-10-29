@@ -25,7 +25,7 @@ export function OutingActions({ plan }: { plan: { title: string; city: string; d
       return
     }
     for (const ev of plan.events) if (!isSaved(ev.id)) toggle(asSaved(ev))
-    toast.success('Saved to My Outza', { action: { label: 'View', onClick: () => router.push('/watchlist') } })
+    toast.success('Saved to My VibePeep', { action: { label: 'View', onClick: () => router.push('/watchlist') } })
   }
   const toPlan = async () => {
     setBusy(true)
@@ -44,7 +44,7 @@ export function OutingActions({ plan }: { plan: { title: string; city: string; d
   }
   return (
     <div className="mt-6 flex flex-col sm:flex-row gap-2">
-      <button type="button" onClick={saveAll} className="h-11 px-4 rounded-md bg-primary text-primary-foreground font-semibold">Save to My Outza</button>
+      <button type="button" onClick={saveAll} className="h-11 px-4 rounded-md bg-primary text-primary-foreground font-semibold">Save to My VibePeep</button>
       <button type="button" disabled={busy} onClick={toPlan} className="h-11 px-4 rounded-md border border-border font-semibold disabled:opacity-60">Add Stops to a Plan</button>
     </div>
   )

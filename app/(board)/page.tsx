@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { jsonLdString } from '@/lib/seo-server'
+import { BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
 export const metadata: Metadata = { alternates: { canonical: '/' } }
@@ -12,17 +13,17 @@ export default function Page() {
     '@graph': [
       {
         '@type': 'WebSite',
-        name: 'Outza',
+        name: BRAND_NAME,
         url: `${origin}/`,
         inLanguage: 'en-AU',
-        description: 'Events, gigs, markets and things to do across Australian cities.',
+        description: `${BRAND_SUBLINE} Gigs, markets and things to do across Australian cities.`,
       },
       {
         '@type': 'Organization',
-        name: 'Outza',
+        name: BRAND_NAME,
         url: `${origin}/`,
-        logo: `${origin}/outza-icon.svg`,
-        slogan: 'Get out. Get amongst it.',
+        logo: `${origin}/vibepeep-icon.svg`,
+        slogan: BRAND_TAGLINE,
       },
     ],
   }

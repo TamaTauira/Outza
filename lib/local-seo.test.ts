@@ -93,7 +93,7 @@ test('copy names the place, the date intent and a real venue', () => {
   })
   assert.equal(copy.h1, 'Markets in Newtown, Sydney on Sunday')
   assert.match(copy.title, /Markets in Newtown, Sydney on Sunday/)
-  assert.match(copy.title, /Outza/)
+  assert.match(copy.title, /VibePeep/)
   assert.match(copy.description, /6 upcoming markets in Newtown, Sydney on Sunday/)
   assert.match(copy.description, /Carriageworks/)
   assert.doesNotMatch(copy.description, /On this page: Sydney/)

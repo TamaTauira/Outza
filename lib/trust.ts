@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, OWNER_EMAIL, escapeHtml } from '@/lib/email'
+import { emailLockup } from '@/lib/email-brand'
 
 const FREE_MAIL = /^(gmail|googlemail|outlook|hotmail|live|yahoo|icloud|me|aol|proton|protonmail|bigpond|optusnet|tpg|iinet|internode)\./
 /** Hosts that sell or list other people's events; an email at these domains does not prove you run the event. */
@@ -40,7 +41,8 @@ export async function approveClaim(claimId: string, note?: string) {
 export async function notifyTrustTeam(subject: string, rows: [string, string | null | undefined][]) {
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    <h2 style="color:#e8553f;">${escapeHtml(subject)}</h2>
+    ${emailLockup()}
+    <h2 style="color:#FF4E6A;">${escapeHtml(subject)}</h2>
     <div style="background:#f6f6f6;padding:16px;border-radius:8px;">
       ${rows.filter(([, v]) => v).map(([k, v]) => `<p style="white-space:pre-wrap;"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</p>`).join('')}
     </div>

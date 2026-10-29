@@ -3,7 +3,7 @@ import { PageShell } from '@/components/page-shell'
 import { TogetherHome } from './together-home'
 
 export const metadata: Metadata = {
-  title: 'Outza Together',
+  title: 'VibePeep Together',
   description: 'Shortlist events with friends and vote on the plan.',
   robots: { index: false, follow: false },
 }

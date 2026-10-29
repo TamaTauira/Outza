@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { isPastEvent } from '@/lib/seo'
 import { GUEST_ITINERARY_KEY, LEGACY_ITINERARY_KEY, itineraryStorageKey, shouldClearGuestItinerary } from '@/lib/itinerary-scope'
 
-/** One stop in the visitor's itinerary: an Outza event or their own custom stop (dinner, meet-up…). */
+/** One stop in the visitor's itinerary: an VibePeep event or their own custom stop (dinner, meet-up…). */
 export interface ItineraryItem {
   id: string // event id, or `custom-…`
   kind: 'event' | 'custom'
@@ -16,7 +16,7 @@ export interface ItineraryItem {
   suburb: string | null
   note: string | null
   addedAt: number
-  /** Detail link for non-board stops (e.g. OUTZA Local listings); defaults to the event page. */
+  /** Detail link for non-board stops (e.g. VibePeep Local listings); defaults to the event page. */
   href?: string | null
   /** Full address / place text, used for maps and travel times. */
   place?: string | null

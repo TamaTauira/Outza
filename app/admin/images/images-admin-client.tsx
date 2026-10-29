@@ -135,7 +135,7 @@ export function ImagesAdminClient() {
       </section>
 
       <section className={card}>
-        <h2 className="font-semibold">OUTZA Local photos to check</h2>
+        <h2 className="font-semibold">VibePeep Local photos to check</h2>
         <p className="text-sm text-muted-foreground mb-2">Organiser-uploaded photos that are small, soft or couldn't be enhanced safely. The original is still shown. Email the organiser for a better image.</p>
         <div className="divide-y divide-border">
           {stats?.localReview?.length ? stats.localReview.map((l) => (
@@ -143,7 +143,7 @@ export function ImagesAdminClient() {
               <span className="font-medium">{l.title}</span>
               <span className="text-xs font-mono uppercase text-muted-foreground">{l.imageAsset?.status}{l.imageAsset?.width ? ` · ${l.imageAsset.width}px` : ''}</span>
               {l.imageAsset?.note && <span className="text-xs text-muted-foreground">{l.imageAsset.note}</span>}
-              <a className="text-xs text-primary underline ml-auto" href={`mailto:${l.contactEmail}?subject=${encodeURIComponent(`A better photo for ${l.title} on OUTZA Local`)}`}>Email {l.organiserName}</a>
+              <a className="text-xs text-primary underline ml-auto" href={`mailto:${l.contactEmail}?subject=${encodeURIComponent(`A better photo for ${l.title} on VibePeep Local`)}`}>Email {l.organiserName}</a>
             </div>
           )) : <p className="text-sm text-muted-foreground py-4">Nothing to check.</p>}
         </div>

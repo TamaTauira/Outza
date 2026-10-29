@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 type PlanRow = { token: string; name: string; city: string | null; items: number }
 
-/** Adds one event to an Outza Together plan. Anyone with the invite link can vote. */
+/** Adds one event to an VibePeep Together plan. Anyone with the invite link can vote. */
 export function AddToPlanButton({ eventId, city, className }: { eventId: string; city?: string | null; className?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)

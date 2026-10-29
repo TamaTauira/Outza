@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { Providers } from '@/components/providers'
+import { BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' })
@@ -14,32 +15,32 @@ const theme = '#0c0f0e'
 
 export const metadata = {
   metadataBase: new URL(siteUrl()),
-  title: 'Outza — Get out. Get amongst it.',
-  description: 'Your city. Your events. Your next adventure. A board of gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save events, follow promoters and get email picks.',
-  applicationName: 'Outza',
+  title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
+  description: `${BRAND_SUBLINE} A board of gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save events, follow promoters and get email picks.`,
+  applicationName: BRAND_NAME,
   manifest: '/manifest.webmanifest',
   robots: { index: true, follow: true },
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: '32x32' },
       { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/outza-icon.svg', type: 'image/svg+xml' },
+      { url: '/vibepeep-icon.svg', type: 'image/svg+xml' },
     ],
     shortcut: '/favicon.ico',
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'Outza — Get out. Get amongst it.',
-    description: 'Your city. Your events. Your next adventure.',
+    title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
+    description: BRAND_SUBLINE,
     images: ['/og-image.png'],
-    siteName: 'Outza',
+    siteName: BRAND_NAME,
     locale: 'en_AU',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Outza — Get out. Get amongst it.',
-    description: 'Your city. Your events. Your next adventure.',
+    title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
+    description: BRAND_SUBLINE,
     images: ['/og-image.png'],
   },
   // Search Console / Bing Webmaster ownership tags — only rendered once the codes are set in the environment.
