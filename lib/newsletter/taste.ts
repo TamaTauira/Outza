@@ -26,24 +26,8 @@ const FRIENDLY: Record<string, string> = {
   Comedy: 'comedy',
 }
 
-const VIBE_BIT: Record<string, string> = {
-  'Partying & clubbing': 'clubbing',
-  'Live gigs': 'live gigs',
-  'Shopping & markets': 'markets',
-  'Foodie adventures': 'food',
-  'Bars & cocktails': 'bars',
-  'Arts & theatre': 'theatre',
-  Comedy: 'comedy',
-  'Chill hangs': 'chill hangs',
-  Outdoorsy: 'the outdoors',
-  'Sport fan': 'sport',
-  Wellness: 'wellness',
-  'Learning & workshops': 'workshops',
-  'Family fun': 'family outings',
-  'LGBTIQ+ scene': 'LGBTIQ+ nights',
-}
-
 const PERSONAL_WHY = new Set(['saved-like', 'viewed', 'viewed-category', 'interest', 'vibe', 'venue', 'clicked', 'lgbtiq', 'family', 'together', 'itinerary'])
+const COMEDY_KEYS = new Set(['comedy', 'stand-up', 'standup', 'stand up'])
 
 export interface DigestEvent {
   id: string
@@ -177,12 +161,12 @@ function joinBits(bits: string[]): string {
 export function digestIntro(profile: { thin: boolean; city: string; homeArea: string | null; tasteBits: string[] }): string {
   if (profile.thin) {
     const place = profile.homeArea ? `${profile.city} (${profile.homeArea})` : profile.city
-    return `You're new on our radar, so this drop is what people in ${place} are actually peeping at. Save a few, follow a venue, and the next one gets dangerously you.`
+    return `You're new on our radar in ${place}. Follow a category or a venue, save something you like, and the next one gets dangerously you.`
   }
   if (!profile.tasteBits.length) {
-    return `${profile.city} has a good week on. We lined this up from the little you've told us, with a bit of variety so it doesn't all sound the same.`
+    return `${profile.city} has a good week on. We lined this up from the categories, venues and saves you asked to be emailed about.`
   }
-  return `You've been peeping at ${joinBits(profile.tasteBits)}, so this one's lined up around that. A little variety sneaks in, because a one-note week is a waste of a good city.`
+  return `You've been peeping at ${joinBits(profile.tasteBits)}, so this one's lined up around that.`
 }
 
 function spendCap(spend: string | undefined): { freeOnly: boolean; max: number | null } {
@@ -217,11 +201,6 @@ function topKey(map: Map<string, number>): string | null {
   let n = 0
   for (const [k, v] of map) if (v > n) { best = k; n = v }
   return best
-}
-
-function prettyPlace(raw: string | null): string | null {
-  if (!raw) return null
-  return raw.trim()
 }
 
 export interface TasteSource {
@@ -263,22 +242,17 @@ function remember(weights: Map<string, number>, labels: Map<string, string>, raw
   labels.set(pretty.toLowerCase(), pretty)
 }
 
-function tasteBits(vibeLabels: string[], suburb: string | null, categories: Map<string, number>, categoryLabels: Map<string, string>, venues: string[]): string[] {
+/** Intro bits name only what this person asked to be emailed about. */
+function emailTasteBits(interests: string[], venues: string[], suburb: string | null): string[] {
   const bits: string[] = []
-  const wantsBars = vibeLabels.includes('Bars & cocktails') || vibeLabels.includes('Partying & clubbing')
-  for (const label of vibeLabels) {
-    if (label === 'Bars & cocktails' || label === 'Partying & clubbing') {
-      pushBit(bits, suburb && wantsBars ? `${prettyPlace(suburb)} bars` : 'bars')
-      continue
-    }
-    const bit = VIBE_BIT[label]
-    if (bit) pushBit(bits, bit)
-    if (bits.length >= 3) break
+  for (const interest of interests) {
+    const key = interest.trim()
+    if (!key) continue
+    pushBit(bits, key.toLowerCase() === 'comedy' ? 'comedy' : friendlyCategory(key))
+    if (bits.length >= 2) break
   }
-  if (suburb && bits.length < 2 && !bits.some((b) => b.toLowerCase().includes(suburb.toLowerCase()))) pushBit(bits, prettyPlace(suburb)!)
-  const cat = displayKey(categories, categoryLabels)
-  if (cat && bits.length < 2) pushBit(bits, friendlyCategory(cat))
-  if (venues[0] && bits.length < 2) pushBit(bits, venues[0])
+  if (bits.length < 2 && venues[0]?.trim()) pushBit(bits, venues[0].trim())
+  if (bits.length < 2 && suburb) pushBit(bits, suburb)
   return bits.slice(0, 2)
 }
 
@@ -289,6 +263,53 @@ function becauseHeading(anchors: TasteAnchor[]): string | null {
   if (comedy) return 'Because you liked comedy'
   if (anchor.category === 'Music') return 'Because you liked that gig'
   return `Because you liked ${friendlyCategory(anchor.category)}`
+}
+
+function hasInterest(profile: TasteProfile, name: string): boolean {
+  const key = name.trim().toLowerCase()
+  if (!key) return false
+  for (const raw of profile.interests) if (raw.trim().toLowerCase() === key) return true
+  return false
+}
+
+function comedyOptIn(profile: TasteProfile): boolean {
+  for (const raw of profile.interests) if (COMEDY_KEYS.has(raw.trim().toLowerCase())) return true
+  return false
+}
+
+export interface ScopeEvent {
+  id: string
+  title: string
+  description: string | null
+  category: string
+  subTags: string[]
+  venueName: string
+}
+
+/**
+ * An event may appear only when the recipient asked to be emailed about it:
+ * a digest category or followed interest, a followed venue, or that exact saved event.
+ * Views, vibe answers and lookalike saves can re-rank inside that set. They cannot add a category.
+ */
+export function inDigestScope(event: ScopeEvent, profile: TasteProfile): boolean {
+  if (profile.savedIds.has(event.id)) return true
+  if (venueHit(event.venueName, profile.venueNames)) return true
+  return matchesExplicitInterest(event, profile)
+}
+
+function matchesExplicitInterest(event: ScopeEvent, profile: TasteProfile): boolean {
+  if (hasInterest(profile, event.category)) return true
+  if (comedyOptIn(profile) && comedyish(event)) return true
+  return false
+}
+
+function askedWhy(event: ScopeEvent, profile: TasteProfile): string {
+  if (profile.savedIds.has(event.id)) return 'On your watchlist'
+  const venue = venueHit(event.venueName, profile.venueNames)
+  if (venue) return `Because you follow ${event.venueName}`
+  if (comedyOptIn(profile) && comedyish(event)) return 'Because you follow comedy'
+  if (hasInterest(profile, event.category)) return `Because you follow ${event.category}`
+  return `Worth a peep in ${profile.city}`
 }
 
 export function buildProfile(src: TasteSource): TasteProfile {
@@ -338,7 +359,7 @@ export function buildProfile(src: TasteSource): TasteProfile {
   const thin = signals === 0
   const homeArea = areaForPostcode(src.homePostcode)
   const suburb = displayKey(suburbWeights, suburbLabels)
-  const bits = tasteBits(vibeLabels, suburb, categoryWeights, categoryLabels, src.venueNames)
+  const bits = emailTasteBits(src.preferredCategories, src.venueNames, suburb)
   const savedComedy = [...src.saved, ...(src.attended ?? [])].some((row) => /comedy|stand-?up/i.test(`${row.category} ${row.title} ${row.subTags.join(' ')}`))
   const greeting = digestGreeting(src.name)
   const intro = digestIntro({ thin, city: src.city, homeArea, tasteBits: bits })
@@ -385,7 +406,7 @@ export function trustLine(source: string | null | undefined, updated: Date | nul
   return `${label} · Updated ${when}`
 }
 
-function hay(e: DigestEvent): string {
+function hay(e: { category: string; subTags: string[]; title: string; description: string | null }): string {
   return `${e.category} ${e.subTags.join(' ')} ${e.title} ${e.description ?? ''}`.toLowerCase()
 }
 
@@ -393,7 +414,7 @@ function adultsOnly(e: DigestEvent): boolean {
   return ADULTS.test(`${e.ageRestriction ?? ''} ${hay(e)}`)
 }
 
-function comedyish(e: DigestEvent): boolean {
+function comedyish(e: { category: string; subTags: string[]; title: string; description: string | null }): boolean {
   return /comedy|stand-?up/.test(hay(e))
 }
 
@@ -426,9 +447,10 @@ export function scoreEvent<T extends DigestEvent>(event: T, profile: TasteProfil
   if (profile.itineraryIds.has(event.id)) add('itinerary', 30, 'You popped this on an itinerary')
   const venue = venueHit(event.venueName, profile.venueNames)
   if (venue) add('venue', 36, `Because you follow ${event.venueName}`)
-  if (profile.interests.has(event.category)) add('interest', 22, `Because you follow ${event.category}`)
-  if (profile.vibeLabels.includes('Comedy') && comedyish(event)) add('vibe', 24, 'Because you follow comedy')
-  else if (profile.vibeCategories.has(event.category)) add('vibe', 16, `Because you're into ${friendlyCategory(event.category)}`)
+  if (comedyOptIn(profile) && comedyish(event)) add('interest', 24, 'Because you follow comedy')
+  else if (hasInterest(profile, event.category)) add('interest', 22, `Because you follow ${event.category}`)
+  if (profile.vibeLabels.includes('Comedy') && comedyish(event)) add('vibe', 14, 'Lines up with your comedy vibe')
+  else if (profile.vibeCategories.has(event.category)) add('vibe', 12, `Lines up with your ${friendlyCategory(event.category)} vibe`)
   if (profile.lgbtiq && event.isLGBTI) add('lgbtiq', 12, 'Because you follow the LGBTIQ+ scene')
   if (profile.viewedIds.has(event.id)) add('viewed', 26, 'You peeped at this')
   if (!profile.viewedIds.has(event.id) && !profile.savedIds.has(event.id) && weight(profile.viewedCategories, event.category) > 0) {
@@ -454,7 +476,7 @@ export function scoreEvent<T extends DigestEvent>(event: T, profile: TasteProfil
   if (profile.maxPrice != null && event.priceMin != null && event.priceMin > profile.maxPrice * 1.25) score -= 12
   if ((profile.minor || profile.family) && adultsOnly(event)) score -= 40
   const line = [...reasons].filter((r) => r.line).sort((a, b) => b.points - a.points)[0]
-  const whyLine = line?.line ?? (profile.thin ? `Popular in ${profile.city}` : `Worth a peep in ${profile.city}`)
+  const whyLine = line?.line ?? askedWhy(event, profile)
   return { ...event, score, why: reasons.map((r) => r.code), whyLine, travel: null }
 }
 
@@ -550,9 +572,32 @@ function cheapEnough(e: DigestEvent, profile: TasteProfile): boolean {
   return e.priceMin <= 30
 }
 
+function becauseTitleFor(event: DigestEvent, profile: TasteProfile): string {
+  if (comedyish(event) && (comedyOptIn(profile) || hasInterest(profile, event.category) || hasInterest(profile, 'Arts & Culture'))) {
+    return 'Because you liked comedy'
+  }
+  if (hasInterest(profile, event.category)) return `Because you follow ${friendlyCategory(event.category)}`
+  const venue = venueHit(event.venueName, profile.venueNames)
+  if (venue) return `Because you follow ${event.venueName}`
+  if (profile.savedIds.has(event.id)) return 'Still on your list'
+  return profile.becauseTitle ?? 'Picked for you'
+}
+
+function hasEmailAsk(profile: TasteProfile): boolean {
+  return profile.interests.size > 0 || profile.savedIds.size > 0 || profile.venueNames.some((v) => v.trim().length >= 4)
+}
+
 export function rankDigest<T extends DigestEvent>(events: T[], profile: TasteProfile, opts: RankOpts): DigestSelection<T> {
+  const empty: DigestSelection<T> = {
+    hero: null, weekend: [], because: [], saved: [], free: [], popular: [], usedIds: [],
+    nearTitle: 'Coming up near you', becauseTitle: null, greeting: profile.greeting, intro: profile.intro, thin: profile.thin,
+  }
+  // No category, venue or save to honour: send nothing rather than a city-wide mix.
+  if (!hasEmailAsk(profile)) return empty
+
   const scored = events.map((e) => scoreEvent(e, profile)).sort(byScore)
-  const editorial = scored.filter((e) => eligible(e, profile, opts, false))
+  // Editorial slots stay inside followed categories and followed venues. A save does not open its category.
+  const editorial = scored.filter((e) => eligible(e, profile, opts, false) && (matchesExplicitInterest(e, profile) || !!venueHit(e.venueName, profile.venueNames)))
   const used = new Set<string>()
   const series = new Set<string>()
 
@@ -579,11 +624,7 @@ export function rankDigest<T extends DigestEvent>(events: T[], profile: TastePro
   let nearTitle = weekend.length ? 'This weekend near you' : 'Coming up near you'
 
   const because = profile.thin ? [] : takeVaried(editorial, 3, used, series, (e) => e.why.some((w) => PERSONAL_WHY.has(w)))
-  const popular = profile.thin
-    ? takeVaried([...editorial].sort((a, b) => b.popularity - a.popularity || byScore(a, b)), 3, used, series, () => true)
-      .map((e) => ({ ...e, whyLine: `Popular in ${profile.city}`, why: [...e.why, 'popular'] }))
-    : []
-
+  const popular: Scored<T>[] = []
   const free = profile.freeRelevant ? takeVaried(editorial, 3, used, series, (e) => cheapEnough(e, profile)) : []
 
   if (!weekend.length && !profile.thin) {
@@ -591,30 +632,12 @@ export function rankDigest<T extends DigestEvent>(events: T[], profile: TastePro
     if (weekend.length) nearTitle = 'Coming up near you'
   }
 
-  if (!profile.thin) {
-    const familiar = new Set<string>([
-      ...profile.interests,
-      ...profile.vibeCategories,
-      ...(hero ? [hero.category] : []),
-      ...weekend.map((e) => e.category),
-      ...because.map((e) => e.category),
-    ])
-    const wild = editorial.find((e) => !used.has(e.id) && !series.has(titleKey(e.title)) && !familiar.has(e.category) && e.hasImage && !opts.promoIds.has(e.id))
-    if (wild) {
-      const picked = { ...wild, whyLine: "A little variety, so the week isn't one note.", why: [...wild.why, 'variety'] }
-      if (because.length) because.push(picked)
-      else weekend.push(picked)
-      used.add(picked.id)
-      series.add(titleKey(picked.title))
-    }
-  }
-
   const placed = [hero, ...weekend, ...because, ...saved, ...free, ...popular].filter((e): e is Scored<T> => !!e)
   applyTravel(placed, profile)
 
   return {
     hero, weekend, because, saved, free, popular, usedIds: [...used],
-    nearTitle, becauseTitle: because.length ? profile.becauseTitle : null,
+    nearTitle, becauseTitle: because.length ? becauseTitleFor(because[0], profile) : null,
     greeting: profile.greeting, intro: profile.intro, thin: profile.thin,
   }
 }

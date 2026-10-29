@@ -69,7 +69,7 @@ function input(): RenderInput {
     from: new Date('2026-10-29T00:00:00.000Z'),
     to: new Date('2026-11-05T00:00:00.000Z'),
     greeting: 'Hey Sam,',
-    intro: "You've been peeping at comedy and Newtown bars, so this one's lined up around that. A little variety sneaks in, because a one-note week is a waste of a good city.",
+    intro: "You've been peeping at comedy and Newtown bars, so this one's lined up around that.",
     preview: "Hey Sam — You've been peeping at comedy and Newtown bars, so this one's lined up around that.",
     subject: 'Sam, Newtown is doing the most',
     cta: 'A',
@@ -100,21 +100,32 @@ test('the digest html is personal, table-based, and Gmail-safe', () => {
   assert.match(html, /Saved events coming up/)
   assert.match(html, /Reminder: you asked for a nudge/)
   assert.match(html, /About 18 min walk from The Imperial/)
-  assert.match(html, /Free and cheap picks/)
+  assert.match(html, /Free or cheap/)
   assert.match(html, /Because you follow comedy/)
+  assert.match(html, /Why you're seeing this/)
   assert.match(html, /Ticketmaster · Updated 28 Oct/)
   assert.match(html, /Manage preferences/)
   assert.match(html, /Unsubscribe/)
   assert.match(html, /vibepeep-wordmark-ondark\.png/)
   assert.match(html, /vibepeep-mascot-email\.png/)
   assert.match(html, /alt="VibePeep mascot"/)
-  assert.match(html, /alt="Cheap laughs at/)
+  assert.match(html, /Cheap laughs/)
+  assert.match(html, /Arts &amp; Culture/)
+  assert.match(html, /background-size:cover/)
+  assert.match(html, /prefers-color-scheme:\s*dark/)
+  assert.match(html, /color-scheme" content="light dark"/)
+  assert.match(html, /class="heroimg"[^>]*width="552" height="311"/)
   assert.equal(html.includes('data:image'), false)
   assert.equal(/\.svg(\?|")/.test(html), false)
   assert.equal(/\bVerified\b/.test(html), false)
   assert.equal(/confidence/i.test(html), false)
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0])
   assert.ok(imgs.length >= 4)
+  assert.equal(imgs.filter((tag) => tag.includes('vibepeep-mascot')).length, 1)
+  const thumbs = [...html.matchAll(/class="thumbimg"[^>]*width="(\d+)" height="(\d+)"/g)]
+  assert.equal(thumbs.length, 2)
+  for (const thumb of thumbs) assert.equal(`${thumb[1]}x${thumb[2]}`, '104x104')
+  assert.doesNotMatch(html, /\.thumbimg\{[^}]*height:\s*auto/)
   for (const tag of imgs) {
     const src = /src="([^"]+)"/.exec(tag)?.[1] ?? ''
     assert.match(src, /^https:\/\/outza-outza\.vercel\.app\//)
@@ -127,6 +138,8 @@ test('the digest html is personal, table-based, and Gmail-safe', () => {
   assert.match(text, /Hey Sam,/)
   assert.match(text, /Unsubscribe:/)
   assert.match(text, /About 18 min walk/)
+  assert.match(text, /Why you're seeing this: Because you follow Music/)
+  assert.match(text, /FREE OR CHEAP/)
   const qa = runQa({
     html, text, subject: 'Sam, Newtown is doing the most', preview: input().preview,
     sections: [], sponsored: false,
