@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
-  lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
+  lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; subTag?: string; paidOnly?: boolean; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
 }
 type When = '' | 'soon' | 'tonight' | 'weekend'
 type Budget = '' | 'free' | '30' | '75'

@@ -23,6 +23,11 @@ export async function POST(req: Request) {
   const origin = req.headers.get('origin') || new URL(req.url).origin
 
   if (body?.plan === 'PRO') {
+    const recent = await prisma.proPass.findFirst({
+      where: { userId: me.id, createdAt: { gt: new Date(Date.now() - 90_000) }, status: { in: ['PENDING', 'ACTIVE'] } },
+      select: { id: true },
+    })
+    if (recent) return NextResponse.json({ error: 'A Pro purchase just went through. Check billing before buying again.' }, { status: 409 })
     const pass = await prisma.proPass.create({ data: { userId: me.id, amountCents: PRO_PLAN.priceCents, paymentMode: secretKey ? 'stripe' : 'test' } })
     if (!secretKey) {
       await activateProPass(pass.id)
@@ -56,6 +61,11 @@ export async function POST(req: Request) {
   if (event.promoterId !== me.id && me.role !== 'ADMIN') return NextResponse.json({ error: 'Add this event to your dashboard first' }, { status: 403 })
 
   const user = await prisma.user.findUnique({ where: { id: me.id }, select: { proUntil: true } })
+  const recentOrder = await prisma.promotion.findFirst({
+    where: { promoterId: me.id, eventId: event.id, tier, createdAt: { gt: new Date(Date.now() - 90_000) }, status: { in: ['PENDING', 'ACTIVE'] } },
+    select: { id: true },
+  })
+  if (recentOrder) return NextResponse.json({ error: 'That campaign was just purchased. Refresh before buying it again.' }, { status: 409 })
   const q = quote(tier, days, addons, isProActive(user?.proUntil))
   const orderId = crypto.randomUUID()
   const paymentMode = secretKey ? 'stripe' : 'test'

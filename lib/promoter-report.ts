@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl } from '@/lib/email'
+import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl, DEFAULT_FROM_EMAIL } from '@/lib/email'
 import { REFERRAL_LABELS, REFERRAL_SOURCES, type ReferralSource } from '@/lib/referrals'
 import { eventPath } from '@/lib/seo'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
@@ -12,6 +12,11 @@ const n = (v: number) => v.toLocaleString('en-AU')
 export async function sendPromoterReport(userId: string): Promise<{ ok: boolean; error?: string; events?: number }> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, orgName: true, proUntil: true } })
   if (!user?.email) return { ok: false, error: 'No email address on this account' }
+  const from = process.env.RESEND_FROM_EMAIL?.trim() || DEFAULT_FROM_EMAIL
+  // Resend's shared onboarding sender can only mail the account that owns the API key.
+  if (/onboarding@resend\.dev/i.test(from)) {
+    return { ok: false, error: 'testing emails only: verify a domain and set RESEND_FROM_EMAIL' }
+  }
   const pro = !!user.proUntil && user.proUntil > new Date()
   const since = new Date(Date.now() - 60 * 86400000)
   const events = await prisma.event.findMany({

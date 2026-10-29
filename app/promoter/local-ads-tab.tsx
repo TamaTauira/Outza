@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { Loader2, MousePointerClick, Eye, Store } from 'lucide-react'
 import { LOCAL_AD, formatAud } from '@/lib/tiers'
 import { kindLabel } from '@/lib/local-ads-shared'
@@ -11,12 +12,20 @@ const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-AU', 
 
 export function LocalAdsTab() {
   const [ads, setAds] = useState<Ad[] | null>(null)
-  useEffect(() => {
+  const load = () => {
     fetch('/api/local-ads/mine')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((d) => setAds(d.ads ?? []))
       .catch((e) => { console.error('Failed to load local ads:', e); setAds([]) })
-  }, [])
+  }
+  useEffect(() => { load() }, [])
+  const cancel = async (ad: Ad) => {
+    if (!window.confirm(`Cancel “${ad.businessName}”? It leaves the event page. This does not refund the ${formatAud(ad.amountCents)}.`)) return
+    const res = await fetch(`/api/local-ads/${ad.id}`, { method: 'DELETE' })
+    if (!res.ok) { toast.error('Could not cancel that ad'); return }
+    toast.success('Recommendation cancelled')
+    load()
+  }
 
   return (
     <div className="space-y-6">
@@ -55,7 +64,7 @@ export function LocalAdsTab() {
                         <td className="px-3 py-3">{live ? <span className="text-emerald-700 dark:text-emerald-400 font-medium">Live until {fmt(a.endsAt)}</span> : a.status === 'PENDING' ? <span className="text-amber-700 dark:text-amber-400">Awaiting payment</span> : <span className="text-muted-foreground">Ended</span>}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{a.views.toLocaleString('en-AU')}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{a.clicks.toLocaleString('en-AU')}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{formatAud(a.amountCents)}{a.paymentMode === 'test' && <span className="block text-[11px] text-muted-foreground">test mode</span>}</td>
+                        <td className="px-5 py-3 text-right tabular-nums">{formatAud(a.amountCents)}{a.paymentMode === 'test' && <span className="block text-[11px] text-muted-foreground">test mode</span>}{live && <button type="button" onClick={() => cancel(a)} className="block ml-auto mt-1 text-[11px] text-muted-foreground underline">Cancel</button>}</td>
                       </tr>
                     )
                   })}

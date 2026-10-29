@@ -10,7 +10,7 @@ import { Prisma } from '@prisma/client'
 export const dynamic = 'force-dynamic'
 
 const SELECT = {
-  id: true, name: true, email: true, role: true, orgName: true, bio: true, website: true, homeCity: true,
+  id: true, name: true, email: true, image: true, role: true, orgName: true, bio: true, website: true, homeCity: true,
   preferredCategories: true, preferredCities: true, emailOptIn: true, emailFrequency: true, lastDigestAt: true,
   reminderOptIn: true, lastWatchDigestAt: true,
   birthDate: true, homePostcode: true, vibeProfile: true,
@@ -37,7 +37,16 @@ export async function PATCH(req: Request) {
   if (typeof b.name === 'string') data.name = b.name.trim().slice(0, 80) || null
   if (typeof b.orgName === 'string') data.orgName = b.orgName.trim().slice(0, 120) || null
   if (typeof b.bio === 'string') data.bio = b.bio.trim().slice(0, 1000) || null
-  if (typeof b.website === 'string') data.website = b.website.trim().slice(0, 300) || null
+  if (typeof b.website === 'string') {
+    const site = b.website.trim().slice(0, 300)
+    if (site && !/^https:\/\//i.test(site)) return NextResponse.json({ error: 'Website must start with https://' }, { status: 400 })
+    data.website = site || null
+  }
+  if (typeof b.image === 'string') {
+    const img = b.image.trim().slice(0, 500)
+    if (img && !/^https:\/\//i.test(img)) return NextResponse.json({ error: 'Logo link must start with https://' }, { status: 400 })
+    data.image = img || null
+  }
   if (typeof b.homeCity === 'string' && CITY_NAMES.includes(b.homeCity)) data.homeCity = b.homeCity
   if (Array.isArray(b.preferredCategories)) data.preferredCategories = b.preferredCategories.filter((c: unknown) => typeof c === 'string' && catNames.has(c))
   if (Array.isArray(b.preferredCities)) data.preferredCities = b.preferredCities.filter((c: unknown) => typeof c === 'string' && CITY_NAMES.includes(c))

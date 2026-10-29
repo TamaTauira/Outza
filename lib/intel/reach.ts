@@ -37,7 +37,7 @@ export const fmtPeriod = (p?: string | null) => {
 const yearsOld = (period: string | null) => (period ? new Date().getUTCFullYear() - Number(period.slice(0, 4)) : 99)
 const aud = (n: number) => `$${Number.isInteger(n) ? n.toLocaleString('en-AU') : n.toFixed(2)}`
 const nfmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-const things = (n: number, one: string, many: string) => `${n.toLocaleString('en-AU')} ${n === 1 ? one : many}`
+const things = (n: number, one: string, many: string) => (n === 0 ? `No ${many}` : `${n.toLocaleString('en-AU')} ${n === 1 ? one : many}`)
 
 /** Sum of shares. A missing band returns null so we never treat a hole as zero. */
 export function shareSum(values: (number | null | undefined)[]): number | null {
@@ -251,7 +251,8 @@ function sameNight(voice: Voice, f: EventFacts, c: CatalogueSnapshot): Insight {
   if (c.sameNightTotal === 0) {
     detail = `No other listing in ${f.city} falls on ${f.dateLabel} in the VibePeep catalogue. That is this catalogue, not every event in town.`
   } else {
-    detail = `${things(c.sameNightTotal, 'other listing', 'other listings')} in ${f.city} on ${f.dateLabel}, ${c.sameNightCategory} of them ${f.category}.`
+    const ofThem = c.sameNightCategory === 0 ? `none of them ${f.category}` : `${c.sameNightCategory} of them ${f.category}`
+    detail = `${things(c.sameNightTotal, 'other listing', 'other listings')} in ${f.city} on ${f.dateLabel}, ${ofThem}.`
     if (c.sameNightSuburb != null && f.suburb?.trim()) detail += ` ${c.sameNightSuburb} in ${f.suburb.trim()}.`
     if (c.otherNightTitles.length) detail += ` On VibePeep that day: ${c.otherNightTitles.join('; ')}.`
     if (c.sameNightMore > 0) detail += ` And ${c.sameNightMore} more.`

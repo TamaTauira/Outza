@@ -82,6 +82,8 @@ export const isAddon = (a: unknown): a is Addon => a === 'SPOTLIGHT' || a === 'F
 export const isDuration = (d: unknown): d is Duration => d === 7 || d === 14 || d === 30
 export const productName = (key: string) => tierDef(key)?.name ?? addonDef(key)?.name ?? key
 export const formatAud = (cents: number) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`
+/** Invoices always show cents, including whole-dollar amounts. */
+export const formatAudCents = (cents: number) => `$${(cents / 100).toFixed(2)}`
 export const applyPro = (cents: number, pro: boolean) => (pro ? Math.round(cents * (1 - PRO_PLAN.discountPct / 100)) : cents)
 
 /** Price breakdown for a campaign. All amounts in cents. */
