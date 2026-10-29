@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
-import { EventList } from '@/components/event-list';
+import { EventList, type BoardSeed } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
-import { MapView } from '@/components/map-view';
 import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
@@ -25,6 +25,10 @@ import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { VibePeepMascot } from '@/components/vibepeep-mascot';
 import { useBackState } from '@/lib/scroll-memory';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
+const MapView = dynamic(() => import('@/components/map-view').then((m) => m.MapView), {
+  ssr: false,
+  loading: () => <div className="flex h-[70vh] items-center justify-center text-sm text-muted-foreground">Loading the map…</div>,
+});
 
 const EMPTY_FILTERS: FilterState = {
   category: '', categories: [], subTag: '', suburb: '', isFree: false, isLGBTI: false, dateFrom: '', dateTo: '', datePreset: ''
@@ -40,7 +44,7 @@ const WINDOWS: {key: TimeWindow;label: string;todayOnly?: boolean;}[] = [
 { key: 'all', label: 'Full day' }];
 
 
-export function HomeClient() {
+export function HomeClient({ initialNow, initialBoard = null }: { initialNow: SydneyNow; initialBoard?: BoardSeed | null }) {
   // Board, Map and Saved are real addresses (/, /map, /saved) sharing this layout.
   // City is shared. Category, date and area filters are per view, so Music on the board does not filter the map.
   const router = useRouter();
@@ -56,8 +60,8 @@ export function HomeClient() {
   const [mapFilters, setMapFilters] = useBackState<FilterState>('map:filters', EMPTY_FILTERS);
   const filters = view === 'map' ? mapFilters : boardFilters;
   const setFilters = view === 'map' ? setMapFilters : setBoardFilters;
-  const [now, setNow] = useState<SydneyNow | null>(null);
-  const [day, setDay] = useBackState<string | null>('home:day', null);
+  const [now, setNow] = useState<SydneyNow | null>(initialNow);
+  const [day, setDay] = useBackState<string | null>('home:day', initialNow.date);
   // Full day matches the "Today" date chip. Ended rows stay hidden until "Show ended".
   const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'all');
   const [windowPinned, setWindowPinned] = useState(false);
@@ -302,7 +306,7 @@ export function HomeClient() {
                 <p className="mt-3 text-base sm:text-xl text-white/80 leading-snug">Gigs, pop-ups, markets and hidden gems, all happening near you and all in one spot.</p>
               </div>
               <figure className="w-[4.75rem] shrink-0 sm:w-40 lg:w-48">
-                <VibePeepMascot priority onDark className="w-full" alt="VibePeep, a round black robot with orange and pink eyes, mid-jump and waving hello" />
+                <VibePeepMascot priority onDark className="w-full" sizes="(min-width: 1024px) 192px, (min-width: 640px) 160px, 76px" alt="VibePeep, a round black robot with orange and pink eyes, mid-jump and waving hello" />
                 <figcaption className="mt-1 text-center text-[10px] leading-tight text-white/70 sm:text-xs">I&apos;ll keep an eye out.</figcaption>
               </figure>
             </div>
@@ -476,7 +480,8 @@ export function HomeClient() {
             timeWindow={timeWindow}
             onWindowChange={setTimeWindow}
             windowPinned={windowPinned}
-            city={city} />
+            city={city}
+            initialBoard={initialBoard} />
 
           }
           {view === 'map' && <div className="p-3"><MapView filters={filters} searchQuery={searchQuery} city={city} /></div>}
