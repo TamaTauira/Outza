@@ -112,13 +112,13 @@ export function refreshSources(opts: RefreshSourcesOptions = {}): Promise<Refres
     if (errors.length) {
       const { reportFault } = await import('@/lib/owner-alerts')
       if (selected.length === SOURCES.length && sourceFailed === SOURCES.length) {
-        await reportFault({ area: 'Event refresh', key: 'refresh-all-failed', title: 'Every listings source failed this run', detail: errors.join('\n') })
+        await reportFault({ area: 'Event refresh', key: 'refresh-all-failed', route: '/api/cron/refresh', title: 'Every listings source failed this run', detail: errors.join('\n') })
       } else {
         const prev = await prisma.refreshLog.findFirst({ where: { id: { not: log.id }, endedAt: { not: null } }, orderBy: { startedAt: 'desc' }, select: { errors: true } })
         for (const err of errors) {
           const name = err.split(':')[0]
           if (prev?.errors?.includes(`${name}:`)) {
-            await reportFault({ area: 'Event refresh', key: `refresh-${name}`, title: `${name} failed two refreshes in a row`, detail: err })
+            await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: err })
           }
         }
       }

@@ -8,7 +8,10 @@ export async function onRequestError(err: unknown, request: { path: string; meth
     await reportFault({
       area: 'Server error',
       key: `server-${route}-${(e?.message ?? '').slice(0, 120)}`,
+      route,
       title: `${request.method} ${route}: ${(e?.message ?? 'Unknown error').slice(0, 120)}`,
+      error: e?.message,
+      stack: e?.stack,
       detail: `Path: ${request.path.split('?')[0]}\nType: ${context?.routeType ?? 'unknown'}${e?.digest ? `\nDigest: ${e.digest}` : ''}\n\n${(e?.stack ?? '').slice(0, 3000)}`,
     })
   } catch {}
