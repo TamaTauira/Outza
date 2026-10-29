@@ -61,7 +61,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
   const canBuy = promoter && slotsLeft > 0 && !youHaveOne
 
   return (
-    <section className="mt-12" aria-labelledby="local-recs">
+    <section className="mt-8" aria-labelledby="local-recs">
       <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
           <h2 id="local-recs" className="font-display text-xl font-bold">Make a night of it</h2>
