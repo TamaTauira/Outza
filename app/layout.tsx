@@ -1,9 +1,11 @@
 import { DM_Sans, Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import '@/components/vibepeep-mascot.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { Providers } from '@/components/providers'
+import { VibePeepBuddySlot } from '@/components/vibepeep-buddy-slot'
 import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_OG_IMAGE, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
@@ -74,6 +76,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Providers>{children}</Providers>
+          <VibePeepBuddySlot />
           <Toaster />
           <ChunkLoadErrorHandler />
         </ThemeProvider>
