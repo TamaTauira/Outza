@@ -7,7 +7,7 @@ type ListingStatus = { label: string; tone: 'bad' | 'warn'; note: string } | nul
 export function StatusBanner({ status }: { status: ListingStatus }) {
   if (!status) return null
   return (
-    <div className={cn('flex items-start gap-3 rounded-lg px-4 py-3 mb-5', status.tone === 'bad' ? 'bg-red-500/10 text-red-700 dark:text-red-300' : 'bg-amber-500/10 text-amber-800 dark:text-amber-300')}>
+    <div className={cn('flex items-start gap-2.5 rounded-lg px-3 py-2.5', status.tone === 'bad' ? 'bg-red-500/10 text-red-700 dark:text-red-300' : 'bg-amber-500/10 text-amber-800 dark:text-amber-300')}>
       <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
       <div>
         <p className="font-semibold">{status.label}</p>

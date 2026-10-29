@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { venueKey } from '@/lib/together'
 
 /** Follow an interest tag (stored with account categories) or a venue. Signed-in only. */
-export function FollowListing({ category, venueName, city }: { category?: string | null; venueName?: string | null; city?: string | null }) {
+export function FollowListing({ category, venueName, city, className }: { category?: string | null; venueName?: string | null; city?: string | null; className?: string }) {
   const { data: session, status } = useSession() || {}
   const router = useRouter()
   const [tags, setTags] = useState<string[]>([])
@@ -42,12 +42,12 @@ export function FollowListing({ category, venueName, city }: { category?: string
     toast.success(on ? 'Removed from My VibePeep' : 'Following. New matches can land in your email if you opt in.')
   }
 
-  if (status === 'loading') return null
+  if (status === 'loading' || (!category && !venueName)) return null
   const tagOn = !!category && tags.includes(category)
   const venueOn = !!key && venues.includes(key)
 
   return (
-    <div className="flex flex-wrap gap-2 mt-4">
+    <div className={cn('flex flex-wrap gap-2', className)}>
       {category && (
         <button type="button" onClick={() => toggle('tag', category, tagOn)} aria-pressed={tagOn}
           className={cn('inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-sm font-semibold', tagOn ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted')}>
