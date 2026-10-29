@@ -55,7 +55,7 @@ export const PRO_PLAN = {
   priceCents: 2900,
   days: 30,
   discountPct: 15,
-  perks: ['15% off every package and add-on', 'Verified promoter tick on your events', 'Views & ticket-click analytics on all your events'],
+  perks: ['15% off every package and add-on', 'Promoter Pro on your account', 'Views & ticket-click analytics on all your events'],
 }
 
 /** Monthly business subscriptions (proposed — not yet purchasable; visitors can register interest). */

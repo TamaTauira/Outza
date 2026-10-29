@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import { Accessibility, Baby, Bus, Building2, ExternalLink, RefreshCw, Share2, Map as MapIcon } from 'lucide-react'
+import { Accessibility, Baby, Bus, Building2, ExternalLink, Share2, Map as MapIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { checkedAgo } from '@/lib/board'
 import { sourceLabel } from '@/lib/quality'
@@ -58,12 +58,13 @@ export function EventGallery({ event, children }: { event: any; children: React.
   )
 }
 
-/** "Last verified … from X · View original listing" + share. */
+/** One muted line: source link and when the listing was updated. */
 export function VerifiedLine({ event }: { event: any }) {
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => { setNow(Date.now()) }, [])
-  const checked = event?.quality?.checkedAt
-  const original = event?.organiserUrl || event?.ticketUrl
+  const ago = now && event?.quality?.checkedAt ? checkedAgo(event.quality.checkedAt, now) : null
+  const href = event?.organiserUrl || event?.ticketUrl
+  const label = event?.organiserName || event?.promoter?.orgName || event?.promoter?.name || sourceLabel(event?.source)
   const share = async () => {
     const url = window.location.href
     fetch(`/api/events/${event.id}/signal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'SHARE' }), keepalive: true }).catch((err) => console.error('Share count failed:', err))
@@ -73,11 +74,15 @@ export function VerifiedLine({ event }: { event: any }) {
     } catch (err: any) { if (err?.name !== 'AbortError') console.error('Share failed:', err) }
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-sm text-muted-foreground">
-      {checked && <span className="inline-flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" />{now && checkedAgo(checked, now) ? `Last verified ${checkedAgo(checked, now)}` : 'Last verified'} from {sourceLabel(event.source)}</span>}
-      {original && event.source !== 'promoter' && <a href={original} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">View original listing <ExternalLink className="w-3.5 h-3.5" /></a>}
-      <button onClick={share} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 hover:bg-muted text-foreground"><Share2 className="w-3.5 h-3.5" />Share</button>
-    </div>
+    <p className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      <span>
+        Source: {href
+          ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{label}</a>
+          : label}
+        {ago ? ` · Updated ${ago}` : ''}
+      </span>
+      <button type="button" onClick={share} className="inline-flex items-center gap-1 hover:text-foreground"><Share2 className="w-3 h-3" />Share</button>
+    </p>
   )
 }
 

@@ -33,7 +33,7 @@ export async function approveClaim(claimId: string, note?: string) {
     prisma.eventClaim.update({ where: { id: c.id }, data: { status: 'APPROVED', reviewedAt: new Date(), reviewNote: note ?? null } }),
     prisma.event.update({ where: { id: c.eventId }, data: { promoterId: c.userId } }),
     ...(c.user.role === 'CONSUMER' ? [prisma.user.update({ where: { id: c.userId }, data: { role: 'PROMOTER', orgName: c.orgName } })] : []),
-    prisma.eventClaim.updateMany({ where: { eventId: c.eventId, status: 'PENDING', id: { not: c.id } }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: 'Another organiser was verified for this listing' } }),
+    prisma.eventClaim.updateMany({ where: { eventId: c.eventId, status: 'PENDING', id: { not: c.id } }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: 'Another organiser already manages this listing' } }),
   ])
   return c
 }

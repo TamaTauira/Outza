@@ -124,7 +124,7 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 
 ### 4.5 Event detail (`app/events/[id]`)
 - `lib/event-detail.ts` `getEventDetail` returns null for past events (→ 404). Canonical URL `eventPath()` = `/events/<slug>-<id>`.
-- `_components/event-detail-client.tsx` + `event-extras.tsx` (gallery, last verified + original listing link + share, map via `components/venue-map.tsx`, getting there, organiser, accessibility, age). These fields come from sources or the promoter form only; **never infer them** (show "The organiser hasn't listed…").
+- `_components/event-detail-client.tsx` + `event-extras.tsx` (gallery, one muted line `Source: … · Updated …`, share, map via `components/venue-map.tsx`, getting there, organiser, accessibility, age). These fields come from sources or the promoter form only; **never infer them** (show "The organiser hasn't listed…"). Do not show a Verified badge, a confidence score, or an “Availability: Not confirmed live” paragraph. The “Event details may change…” line lives next to the price. “Report a problem” stays a small link.
 - Images: always `components/event-image.tsx` (`EventImage`) with the API's `imageAsset` payload. Badges over images need `z-10`.
 - Trust: `components/listing-trust-actions.tsx` (Report/Claim, anchors `#report`/`#claim`), `lib/trust.ts`, `lib/claims.ts`; admin `/admin/trust`.
 - Follow promoter: `components/follow-promoter-button.tsx` → `/api/promoters/[id]/follow` (PromoterFollow).
@@ -143,7 +143,7 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 
 ### 4.8 Promoters and money
 - Dashboard `/promoter` (`app/promoter/promoter-client.tsx`) tabs: Overview, Intelligence, Promote an event, My events, Local business ads, Pro & billing.
-- Pricing in **`lib/tiers.ts` only** (server-side `quote()`): Boost $19/7d, Spotlight $49/14d, Headliner $99/30d (DB keys SILVER/BRONZE/GOLD). Add-ons FRONTROW and SPOTLIGHT (shown as "Newsletter boost"). Promoter Pro (ProPass + `User.proUntil`, 15% off, verified badge, analytics). Local business ad $59 flat (`LOCAL_AD`).
+- Pricing in **`lib/tiers.ts` only** (server-side `quote()`): Boost $19/7d, Spotlight $49/14d, Headliner $99/30d (DB keys SILVER/BRONZE/GOLD). Add-ons FRONTROW and SPOTLIGHT (shown as "Newsletter boost"). Promoter Pro (ProPass + `User.proUntil`, 15% off, analytics). Local business ad $59 flat (`LOCAL_AD`). Do not show a Verified badge on listings or promoters.
 - BUSINESS_PLANS (Free / Local Pro $39 / Growth $99 / Venue Plus $199 monthly) are "Coming soon" with Register interest until recurring billing exists.
 - Checkout: `/api/promotions/checkout`, `/api/local-ads/checkout`, webhook `/api/webhooks/stripe`, activation in `lib/promotions.ts`. **`STRIPE_SECRET_KEY` is not set, so checkouts activate instantly in "test mode" (free).** Going live needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`.
 - Invoices `/promoter/invoice/[id]` (GST shown as 1/11, no invented ABN).
