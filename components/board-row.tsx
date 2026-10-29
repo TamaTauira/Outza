@@ -11,7 +11,7 @@ import { categoryIcon, checkedAgo, formatPrice, formatTime, toMinutes } from '@/
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
-import { sourceLabel, statusInfo } from '@/lib/quality'
+import { statusInfo } from '@/lib/quality'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 
 export type BoardEvent = SavedEvent
@@ -121,13 +121,12 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
           <Icon className="w-3.5 h-3.5" />
         </span>
-        <Link href={href} className="font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
+        <Link href={href} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {ev.title}
         </Link>
         {ev.promoTier && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={`${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement`}>SPONSORED</span>}
         {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-[10px] font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
         {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
-        {ev.source && <span className="relative hidden xl:inline shrink-0 text-[10px] text-muted-foreground truncate max-w-[9rem]" title="Source">{sourceLabel(ev.source)}</span>}
         {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-[9px] font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
       </div>
 

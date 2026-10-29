@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { CampaignBuilder } from './campaign-builder'
 import { LocalAdsTab } from './local-ads-tab'
 import { EditEventPanel } from './edit-event-panel'
-import { promoterCanEditEvent, sourceLabel } from '@/lib/quality'
+import { promoterCanEditEvent } from '@/lib/quality'
 import { AudienceCard } from './audience-card'
 import { IntelTab } from './intel-tab'
 
@@ -468,7 +468,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                         <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>
                         <p className="text-xs text-muted-foreground">{fmt(ev.date)} · {ev.venueName}{ev.city ? ` · ${ev.city}` : ''}</p>
                         {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
-                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">From {sourceLabel(ev.source)} · details stay as published</p>}
+                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">Details stay as published</p>}
                       </td>
                       <td className="px-3 py-3">
                         {ev.status === 'CANCELLED' ? <span className="text-xs text-muted-foreground">Unpublished</span> : past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (
