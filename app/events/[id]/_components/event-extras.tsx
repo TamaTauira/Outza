@@ -94,8 +94,6 @@ function Info({ icon: Icon, title, children }: { icon: typeof Bus; title: string
     </div>
   )
 }
-const NotStated = ({ what }: { what: string }) => <p>The organiser hasn&apos;t listed {what}. Check the original listing or contact the organiser before you go.</p>
-
 /** Map, getting there, organiser, accessibility and age details. */
 export function EventExtras({ event }: { event: any }) {
   const place = placeLine(event)
@@ -134,12 +132,16 @@ export function EventExtras({ event }: { event: any }) {
           <p className="text-foreground">{organiser ?? `Listed via ${sourceLabel(event.source)}`}</p>
           {organiserLink && <a href={organiserLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">Visit the original organiser listing <ExternalLink className="w-3.5 h-3.5" /></a>}
         </Info>
-        <Info icon={Accessibility} title="Accessibility">
-          {acc ? <p className="text-foreground">{acc}</p> : <NotStated what="accessibility details" />}
-        </Info>
-        <Info icon={Baby} title="Age restrictions">
-          {age ? <p className="text-foreground">{age}</p> : <NotStated what="an age restriction" />}
-        </Info>
+        {acc && (
+          <Info icon={Accessibility} title="Accessibility">
+            <p className="text-foreground">{acc}</p>
+          </Info>
+        )}
+        {age && (
+          <Info icon={Baby} title="Age restrictions">
+            <p className="text-foreground">{age}</p>
+          </Info>
+        )}
       </div>
     </div>
   )

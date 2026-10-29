@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { ArrowLeft, BadgeCheck, BarChart3, CalendarPlus, Car, Check, Compass, CreditCard, Eye, Mail, Megaphone, ShieldCheck, Sparkles, Star, Utensils, Wine } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, BarChart3, CalendarPlus, Car, Check, Compass, Mail, Megaphone, Sparkles, Star, Utensils, Wine } from 'lucide-react'
 import { auth } from '@/auth'
 import { ADDONS, BUSINESS_PLANS, DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 import { Footer } from '@/components/footer'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { SiteHeader } from '@/components/site-header'
 import { PlanInterest } from './plan-interest'
 import { DashboardPreview } from './dashboard-preview'
 
@@ -26,37 +27,46 @@ export default async function PromotersPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SiteHeader />
       <main>
         <section className="relative overflow-hidden border-b border-border">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,122,26,0.22),transparent_60%)]" />
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
-            <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
-            <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For promoters, venues & organisers</p>
-            <h1 className="mt-3 font-display text-4xl sm:text-6xl font-bold tracking-tight max-w-3xl leading-[1.02]">Get on the radar of people planning their next night out.</h1>
-            <p className="mt-5 text-muted-foreground max-w-2xl">List for free. Boost when you’re ready. Zero lock-in.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={primary.href} className="h-12 px-6 rounded-md bg-primary text-primary-foreground font-semibold flex items-center">{primary.label}</Link>
-              {!session?.user && <Link href="/login?next=/promoter" className="h-12 px-6 rounded-md border border-border font-semibold flex items-center hover:bg-muted">Promoter Sign In</Link>}
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+            <div>
+              <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
+              <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For promoters, venues & organisers</p>
+              <h1 className="mt-3 font-display text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05]">Get on the radar of people planning their next night out.</h1>
+              <p className="mt-4 text-muted-foreground max-w-xl">List for free. Boost when you’re ready. Zero lock-in.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href={primary.href} className="h-12 px-6 rounded-md bg-primary text-primary-foreground font-semibold flex items-center">{primary.label}</Link>
+                {!session?.user && <Link href="/login?next=/promoter" className="h-12 px-6 rounded-md border border-border font-semibold flex items-center hover:bg-muted">Promoter Sign In</Link>}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-border bg-card shadow-lg overflow-hidden max-w-sm w-full lg:justify-self-end">
+              <div className="relative aspect-[16/9] bg-gradient-to-br from-[#F5B700] via-[#c2410c] to-[#1a120c]">
+                <span className="absolute top-3 left-3 rounded bg-black px-2 py-0.5 text-[10px] font-bold text-white">SPONSORED</span>
+                <span className="absolute bottom-3 right-3 rounded bg-black/70 px-2 py-0.5 font-mono text-xs text-white">$25</span>
+              </div>
+              <div className="p-4">
+                <p className="text-[11px] font-mono uppercase tracking-wide text-muted-foreground">Hot right now</p>
+                <p className="mt-1 font-semibold">Your event, labelled and up front</p>
+                <p className="text-sm text-muted-foreground">Fri · 8:00 pm · Your venue</p>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <h2 className="font-display text-2xl sm:text-3xl font-bold">How it works</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Claim your event, confirm it’s yours, pick a package, preview it, pay, and get a performance report.</p>
-          <ol className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ol className="mt-5 grid gap-3 md:grid-cols-3">
             {[
-              { Icon: CalendarPlus, t: 'Claim your event', b: 'Already on our board? Claim it in one click. Otherwise create it in under a minute — free.' },
-              { Icon: ShieldCheck, t: 'Confirm it’s yours', b: 'A claim is accepted straight away when your email domain matches the event’s website; otherwise our team checks it by hand before the listing is yours.' },
-              { Icon: Megaphone, t: 'Select a package', b: 'Boost, Spotlight or Headliner — or tap “Promote this event” right on your own listing.' },
-              { Icon: Eye, t: 'Preview placement', b: 'The campaign builder shows a preview of your sponsored card and where it can appear before you pay.' },
-              { Icon: CreditCard, t: 'Pay', b: 'One-off secure payment. Your campaign starts as soon as payment is confirmed.' },
-              { Icon: BarChart3, t: 'Get your performance report', b: 'Views, ticket clicks, saves, RSVPs and traffic sources are live in your dashboard. Get a report emailed on demand, or weekly.' },
+              { Icon: CalendarPlus, t: 'Claim', b: 'Claim a listing already on the board, or create one free. A matching email domain is accepted straight away; otherwise we check the claim by hand.' },
+              { Icon: Megaphone, t: 'Boost', b: 'Pick Boost, Spotlight or Headliner, preview the sponsored card, and pay once. It starts as soon as payment is confirmed.' },
+              { Icon: BarChart3, t: 'Report', b: 'Views, ticket clicks, saves and traffic sources sit in your dashboard. Email a report when you want one, or weekly.' },
             ].map((s, i) => (
-              <li key={s.t} className="rounded-xl bg-card border border-border p-6 shadow-sm">
-                <div className="flex items-center gap-2"><span className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center">{i + 1}</span><s.Icon className="w-5 h-5 text-primary" /></div>
-                <p className="mt-4 font-semibold">{s.t}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{s.b}</p>
+              <li key={s.t} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{i + 1}</span><s.Icon className="h-5 w-5 text-primary" /><p className="font-semibold">{s.t}</p></div>
+                <p className="mt-2 text-sm text-muted-foreground">{s.b}</p>
               </li>
             ))}
           </ol>

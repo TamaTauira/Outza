@@ -33,8 +33,8 @@ export function SuggestionButton() {
   return (
     <>
       {/* In the page flow on small screens so it does not cover Hot Right Now or the map loading label. */}
-      <div className="px-4 pb-8 sm:contents">
-        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 px-4 h-11 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-xl hover:opacity-90 sm:fixed sm:bottom-4 sm:left-4 sm:z-40">
+      <div className="px-4 pb-8">
+        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 px-4 h-11 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:opacity-90">
           <Lightbulb className="w-4 h-4" /> Suggest an Idea
         </button>
       </div>

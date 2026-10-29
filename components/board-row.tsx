@@ -95,11 +95,38 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
     </button>
   )
 
+  const meta = [venue, suburb].filter(Boolean).join(' · ')
   return (
+    <>
     <div
       onClick={openRow}
       className={cn(
-        'group relative cursor-pointer grid grid-cols-[72px_minmax(0,1fr)_auto] gap-x-3 gap-y-1 items-center px-3 sm:px-5 py-3 xl:py-2 xl:min-h-[60px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
+        'xl:hidden group relative cursor-pointer grid grid-cols-[52px_40px_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-2.5 border-b border-border hover:bg-muted/60',
+        done && 'opacity-75',
+      )}
+    >
+      <div>
+        <span className="font-mono text-sm tabular-nums">{t.hm}</span>
+        <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{t.ampm}</span>
+      </div>
+      <span className="flex h-10 w-10 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
+        <Icon className="w-4 h-4" />
+      </span>
+      <div className="min-w-0">
+        <Link href={href} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
+        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
+      </div>
+      <div className="relative z-20 flex items-center">
+        <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+          <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
+        </button>
+        {itButton('')}
+      </div>
+    </div>
+    <div
+      onClick={openRow}
+      className={cn(
+        'hidden xl:grid group relative cursor-pointer gap-x-3 gap-y-1 items-center px-5 py-2 min-h-[60px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
         BOARD_COLS,
         done && 'opacity-75',
       )}
@@ -189,6 +216,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         {itButton('hover:bg-background')}
       </div>
     </div>
+    </>
   )
 }
 

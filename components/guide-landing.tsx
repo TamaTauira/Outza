@@ -5,7 +5,7 @@ import { formatGuideDay, whenPhrase } from '@/lib/local-seo'
 import { cityPath, suburbPath, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
 import { PageShell } from '@/components/page-shell'
-import { EventCard } from '@/components/event-card'
+import { EventCard, GuideEventRow } from '@/components/event-card'
 import { LocalListingCards } from '@/components/local-listing-cards'
 
 function topCounts(events: LandingEvent[], key: 'category' | 'venueName', n = 3) {
@@ -72,9 +72,9 @@ export function GuideLanding(props: {
           {showRange && (
             <p className="mt-2 text-primary font-semibold">{formatGuideDay(from)}{from !== to ? ` – ${formatGuideDay(to!)}` : ''}</p>
           )}
-          <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{blurb}</p>
+          <p className="mt-4 text-lg text-muted-foreground leading-relaxed line-clamp-3 md:line-clamp-none">{blurb}</p>
           {total > 0 && (
-            <p className="mt-3 text-muted-foreground leading-relaxed">
+            <p className="mt-3 hidden text-muted-foreground leading-relaxed md:block">
               {topic?.key === 'tonight' || when === 'tonight' ? (
                 <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}, plus all-day listings. Early-morning times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
               ) : (
@@ -94,17 +94,26 @@ export function GuideLanding(props: {
           )}
         </header>
 
-        <nav aria-label={`${city.name} guides`} className="mt-6 flex flex-wrap gap-2">
+        <div className="sticky top-14 z-30 -mx-4 mt-6 space-y-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:top-16 sm:-mx-6 sm:px-6">
+        <nav aria-label={`${city.name} guides`} className="flex gap-2 overflow-x-auto [scrollbar-width:thin]">
           {guides.map((t) => {
             const active = activeGuide === t.key
             return (
               <Link key={t.key} href={cityPath(city, t.key)} aria-current={active ? 'page' : undefined}
-                className={active ? 'px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold' : 'px-3.5 py-1.5 rounded-full bg-card shadow-sm text-sm hover:bg-muted transition-colors'}>
+                className={active ? 'shrink-0 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold' : 'shrink-0 px-3.5 py-1.5 rounded-full bg-card shadow-sm text-sm hover:bg-muted transition-colors'}>
                 {t.key === 'events' ? `All ${city.name} events` : t.label}
               </Link>
             )
           })}
         </nav>
+        {byDay.size > 1 && (
+          <nav aria-label="Jump to a day" className="flex gap-1.5 overflow-x-auto [scrollbar-width:thin]">
+            {[...byDay.keys()].map((key) => (
+              <a key={key} href={`#d-${key}`} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs font-semibold hover:bg-muted">{formatGuideDay(key)}</a>
+            ))}
+          </nav>
+        )}
+        </div>
         <p className="mt-4 text-sm text-muted-foreground">
           Plan the day in {city.name}:{' '}
           <Link href={`/outings/saturday-date-night?city=${encodeURIComponent(city.name)}`} className="text-primary underline">Saturday date night</Link>
@@ -122,9 +131,12 @@ export function GuideLanding(props: {
         ) : (
           <div className="mt-10 space-y-10">
             {[...byDay].map(([key, evs]) => (
-              <section key={key} aria-labelledby={`d-${key}`}>
+              <section key={key} aria-labelledby={`d-${key}`} className="scroll-mt-32">
                 <h2 id={`d-${key}`} className="font-display text-xl font-bold mb-4">{formatGuideDay(key)}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
+                  {evs.map((e) => <GuideEventRow key={e.id} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
+                </div>
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {evs.map((e, i) => <EventCard key={e.id} index={i} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
                 </div>
               </section>
@@ -135,6 +147,17 @@ export function GuideLanding(props: {
                 <p className="text-sm text-muted-foreground mb-4">Public community listings added by organisers. <Link href="/local?tab=submit" className="text-primary underline">List yours free</Link>.</p>
                 <LocalListingCards items={local.slice(0, 30)} />
               </section>
+            )}
+            {total > 0 && (
+              <p className="text-sm leading-relaxed text-muted-foreground md:hidden">
+                {topic?.key === 'tonight' || when === 'tonight' ? (
+                  <>Tonight covers 5pm onwards in {city.name}, plus all-day listings.</>
+                ) : (
+                  <>{total} upcoming {total === 1 ? 'event' : 'events'}{suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
+                )}
+                {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` Most common: ${list(cats).toLowerCase()}.`}
+                {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} listed as free.`}
+              </p>
             )}
             {total > events.length + local.length && (
               <p className="text-center text-muted-foreground">Showing the next {events.length} of {total}. <Link href="/" className="text-primary underline">Open the full board</Link> to filter by date, category and price.</p>

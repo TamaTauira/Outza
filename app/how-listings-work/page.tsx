@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { PageShell } from '@/components/page-shell'
 import { ANALYTICS_DATA } from '@/lib/trust-shared'
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 
 export default function HowListingsWorkPage() {
   return (
+    <PageShell>
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">How VibePeep listings work</h1>
@@ -62,5 +64,6 @@ export default function HowListingsWorkPage() {
       </div>
       <p className="mt-10 text-xs text-muted-foreground">See also our <Link href="/privacy" className="underline underline-offset-2">privacy policy</Link> and <Link href="/disclaimer" className="underline underline-offset-2">disclaimer</Link>.</p>
     </main>
+    </PageShell>
   )
 }
