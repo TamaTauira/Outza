@@ -27,6 +27,13 @@ test('decorative images with an empty alt attribute do not block a digest', () =
   assert.equal(qa.pass, true)
 })
 
+test('svg and data-uri images block a digest', () => {
+  const html = `${unsub}<img src="data:image/png;base64,aaaa" alt="x" width="10" height="10" /><img src="https://vibepeep.example/icon.svg" alt="x" width="10" height="10" />`
+  const qa = report(html)
+  assert.equal(qa.pass, false)
+  assert.match(qa.errors.join(' '), /https PNG\/JPG/)
+})
+
 test('an image with no alt attribute still blocks a digest', () => {
   const html = `${unsub}<img src="https://vibepeep.example/photo.png" width="120" height="120" />`
   const qa = report(html)

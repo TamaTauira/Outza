@@ -14,7 +14,7 @@ export function verify(sig: string | null | undefined, ...parts: string[]) {
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
-export type Placement = 'hero' | 'picks' | 'wildcard' | 'sponsored' | 'explore' | 'footer'
+export type Placement = 'hero' | 'picks' | 'weekend' | 'because' | 'saved' | 'free' | 'popular' | 'wildcard' | 'sponsored' | 'explore' | 'footer'
 export type Target = 'detail' | 'ticket' | 'explore' | 'prefs'
 
 export interface UtmCtx { sendId: string; edition: string; issueDate: string; city: string }
