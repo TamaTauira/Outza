@@ -3,7 +3,7 @@ import { redactEmails, sendEmail } from '@/lib/email'
 import { recordMailDelivery } from '@/lib/mail-log'
 import { pickEvents, MAX_SPONSORED, type NlEvent } from './rank'
 import { issueCopy, SUBJECT_STYLES, type SubjectLine, type SubjectStyle } from './copy'
-import { emailImage, imageLoads, type EmailKind } from './images'
+import { emailImageSrc, type EmailKind } from './images'
 import { renderHtml, renderText, type CtaVariant, type Slot } from './render'
 import { runQa, type QaReport } from './qa'
 
@@ -25,7 +25,7 @@ export interface BuiltNewsletter {
   eventIds: string[]
   city: string
   edition: string
-  sections: { placement: string; eventId: string; title: string; category: string; why: string[]; score: number; image: string | null; blurb: string }[]
+  sections: { placement: string; eventId: string; title: string; category: string; why: string[]; whyLine: string; score: number; image: string | null; blurb: string }[]
 }
 
 /** Epsilon-greedy pick of the subject style with the best unique-click rate over the last 90 days. */
@@ -40,10 +40,14 @@ async function chooseStyle(): Promise<SubjectStyle> {
   return [...SUBJECT_STYLES].sort((a, b) => st[b].c / st[b].n - st[a].c / st[a].n)[0]
 }
 
-async function slot(ev: NlEvent, kind: EmailKind, blurb: string, warnings: string[]): Promise<Slot> {
-  let img = await emailImage(ev, kind)
-  if (img && !(await imageLoads(img))) { warnings.push(`Image failed to load, fallback used: ${ev.title}`); img = null }
-  return { ev, img, blurb }
+function slot(ev: NlEvent, kind: EmailKind, blurb: string): Slot {
+  return { ev, img: emailImageSrc(ev, kind), blurb }
+}
+
+const clipPreview = (s: string, n = 90) => {
+  const t = s.replace(/\s+/g, ' ').trim()
+  if (t.length <= n) return t
+  return `${t.slice(0, n - 1).replace(/\s+\S*$/, '')}…`
 }
 
 export async function buildNewsletter(userId: string, opts: { mode: Mode; city?: string; edition?: string }): Promise<{ skip: string } | BuiltNewsletter> {
@@ -53,7 +57,7 @@ export async function buildNewsletter(userId: string, opts: { mode: Mode; city?:
   const picked = await pickEvents(userId, { city: opts.city, edition })
   if (!picked?.hero) return { skip: `No upcoming events that meet the quality bar in ${picked?.city ?? 'this city'}` }
 
-  const all = [picked.hero, ...picked.picks, ...(picked.wildcard ? [picked.wildcard] : []), ...picked.sponsored]
+  const all = [picked.hero, ...picked.weekend, ...picked.because, ...picked.saved, ...picked.free, ...picked.popular, ...picked.sponsored].filter((e): e is NlEvent => !!e)
   const recent = await prisma.newsletterSend.findMany({ where: { userId, status: { in: ['SENT', 'TEST'] } }, orderBy: { sentAt: 'desc' }, take: 12, select: { headline: true, subject: true } })
   const [style, copy] = await Promise.all([
     chooseStyle(),
@@ -66,43 +70,53 @@ export async function buildNewsletter(userId: string, opts: { mode: Mode; city?:
   const cta: CtaVariant = Math.random() < 0.5 ? 'A' : 'B'
   const sponsoredPos = Math.random() < 0.5 ? 'mid' : 'end'
 
+  const preview = clipPreview(`${picked.greeting.replace(/,$/, '')} — ${picked.intro}`)
   const sendId = opts.mode === 'preview'
     ? 'preview'
-    : (await prisma.newsletterSend.create({ data: { userId, city: picked.city, edition, subject: chosen.subject, preview: chosen.preview, variant: chosen.style, cta, headline: copy.headline, status: 'PENDING' } })).id
+    : (await prisma.newsletterSend.create({ data: { userId, city: picked.city, edition, subject: chosen.subject, preview, variant: chosen.style, cta, headline: picked.greeting, status: 'PENDING' } })).id
 
-  const imgWarnings: string[] = []
-  const [hero, picks, wildcard, sponsored] = await Promise.all([
-    slot(picked.hero, 'hero', copy.blurbs[picked.hero.id], imgWarnings),
-    Promise.all(picked.picks.map((e) => slot(e, 'thumb', copy.blurbs[e.id], imgWarnings))),
-    picked.wildcard ? slot(picked.wildcard, 'hero', copy.blurbs[picked.wildcard.id], imgWarnings) : null,
-    Promise.all(picked.sponsored.map((e) => slot(e, 'thumb', copy.blurbs[e.id], imgWarnings))),
-  ])
+  const hero = slot(picked.hero, 'hero', copy.blurbs[picked.hero.id] ?? '')
+  const pack = (rows: NlEvent[], kind: EmailKind = 'thumb') => rows.map((e) => slot(e, kind, copy.blurbs[e.id] ?? ''))
+  const weekend = pack(picked.weekend)
+  const because = pack(picked.because)
+  const saved = pack(picked.saved)
+  const free = pack(picked.free)
+  const popular = pack(picked.popular)
+  const sponsored = pack(picked.sponsored)
   const issueDate = picked.from.toISOString().slice(0, 10)
   const input = {
     ctx: { sendId, edition, issueDate, city: picked.city }, userId, email: user.email, editionKey: edition, city: picked.city,
-    from: picked.from, to: picked.to, headline: copy.headline, intro: copy.intro, preview: chosen.preview, subject: chosen.subject,
-    cta, hero, picks, wildcard, sponsored, sponsoredPos, trackOpens: opts.mode === 'send',
+    from: picked.from, to: picked.to, greeting: picked.greeting, intro: picked.intro, preview, subject: chosen.subject,
+    cta, nearTitle: picked.nearTitle, becauseTitle: picked.becauseTitle, reminderOptIn: picked.reminderOptIn,
+    hero, weekend, because, saved, free, popular, sponsored, sponsoredPos, trackOpens: opts.mode === 'send',
   } as const
   const html = renderHtml(input)
   const text = renderText(input)
   const placed = [
-    { placement: 'hero', s: hero }, ...picks.map((s) => ({ placement: 'picks', s })),
-    ...(wildcard ? [{ placement: 'wildcard', s: wildcard }] : []), ...sponsored.map((s) => ({ placement: 'sponsored', s })),
+    { placement: 'hero', s: hero },
+    ...weekend.map((s) => ({ placement: 'weekend', s })),
+    ...because.map((s) => ({ placement: 'because', s })),
+    ...saved.map((s) => ({ placement: 'saved', s })),
+    ...free.map((s) => ({ placement: 'free', s })),
+    ...popular.map((s) => ({ placement: 'popular', s })),
+    ...sponsored.map((s) => ({ placement: 'sponsored', s })),
   ]
   const qa = runQa({
-    html, text, subject: chosen.subject, preview: chosen.preview, sponsored: sponsored.length > 0, from: picked.from, to: picked.to,
+    html, text, subject: chosen.subject, preview, sponsored: sponsored.length > 0, from: picked.from, to: picked.to,
     optedIn: user.emailOptIn, realSend: opts.mode === 'send', sections: placed.map((p) => ({ placement: p.placement, ev: p.s.ev, img: p.s.img })),
   })
-  qa.warnings.unshift(...imgWarnings)
-  if (sponsored.length) qa.checks.push(`Paid placements included: ${sponsored.map((s) => `${s.ev.title} (${(s.ev as any).tier === 'SPOTLIGHT' ? 'Newsletter boost' : 'Headliner'})`).join(', ')}`)
+  const missingArt = placed.filter((p) => !p.s.img)
+  for (const p of missingArt) qa.warnings.push(`No usable image, mascot placeholder used: ${p.s.ev.title} (${p.placement})`)
+  if (sponsored.length) qa.checks.push(`Paid placements included: ${sponsored.map((s) => `${s.ev.title} (${(s.ev as { tier?: string }).tier === 'SPOTLIGHT' ? 'Newsletter boost' : 'Headliner'})`).join(', ')}`)
   if (picked.missedBoosts) qa.warnings.push(`${picked.missedBoosts} active Newsletter boost(s) in ${picked.city} didn't fit this issue (max ${MAX_SPONSORED}); they rotate in first next issue`)
-  if (picks.length < 3) qa.warnings.push(`Shorter edition: only ${picks.length} pick(s) met the quality bar`)
+  const editorial = weekend.length + because.length + free.length + popular.length
+  if (editorial < 3) qa.warnings.push(`Shorter edition: only ${editorial} pick(s) met the quality bar`)
   if (copy.source !== 'ai') qa.warnings.push(`Editorial copy used ${copy.source === 'fallback' ? 'fallback lines only' : 'some fallback lines'}`)
 
   return {
-    sendId, html, text, subject: chosen.subject, preview: chosen.preview, subjects: copy.subjects, chosen: chosen.style, cta, sponsoredPos,
-    headline: copy.headline, copySource: copy.source, qa, eventIds: all.map((e) => e.id), city: picked.city, edition,
-    sections: placed.map((p) => ({ placement: p.placement, eventId: p.s.ev.id, title: p.s.ev.title, category: p.s.ev.category, why: p.s.ev.why, score: Math.round(p.s.ev.score), image: p.s.img, blurb: p.s.blurb })),
+    sendId, html, text, subject: chosen.subject, preview, subjects: copy.subjects, chosen: chosen.style, cta, sponsoredPos,
+    headline: picked.greeting, copySource: copy.source, qa, eventIds: all.map((e) => e.id), city: picked.city, edition,
+    sections: placed.map((p) => ({ placement: p.placement, eventId: p.s.ev.id, title: p.s.ev.title, category: p.s.ev.category, why: p.s.ev.why, whyLine: p.s.ev.whyLine, score: Math.round(p.s.ev.score), image: p.s.img, blurb: p.s.blurb })),
   }
 }
 

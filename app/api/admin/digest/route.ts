@@ -52,7 +52,7 @@ export async function GET() {
   })
 }
 
-/** Sends a watchlist digest and a newsletter digest to the signed-in admin. Does not move their schedule. */
+/** Sends a watchlist digest and a newsletter digest built from the signed-in admin's own signals. Does not move their schedule. */
 export async function POST() {
   const g = await admin()
   if (g.err) return g.err

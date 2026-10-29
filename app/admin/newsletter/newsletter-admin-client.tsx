@@ -8,7 +8,7 @@ type Built = {
   headline: string; copySource: string; city: string; edition: string
   subjects: { style: string; subject: string; preview: string }[]
   qa: { pass: boolean; errors: string[]; warnings: string[]; checks: string[] }
-  sections: { placement: string; eventId: string; title: string; category: string; why: string[]; score: number; image: string | null }[]
+  sections: { placement: string; eventId: string; title: string; category: string; why: string[]; whyLine?: string; score: number; image: string | null }[]
 }
 type Row = { key: string; [k: string]: string | number }
 type Stats = { totals: Record<string, number>; byPlacement: Row[]; byCategory: Row[]; bySubjectStyle: Row[]; byCta: Row[]; byCity: Row[]; bySponsoredPosition: Row[]; recent: { id: string; sentAt: string | null; city: string; status: string; subject: string; variant: string | null; clicks: number; opened: boolean; error: string | null }[] }
@@ -71,7 +71,8 @@ function DigestMailPanel() {
           {busy ? 'Sending…' : 'Send test digest'}
         </button>
       </div>
-      <p className="text-sm text-muted-foreground">Sends a watchlist digest and a newsletter digest to you. Neither one moves the schedule.</p>
+      <p className="text-sm text-muted-foreground">Sends a watchlist digest and a newsletter digest to you, using your own name, city, follows, saves, views and Together plans. Neither one moves the schedule.</p>
+      <p className="text-sm"><a className="underline font-semibold" href="/admin/digest/preview" target="_blank" rel="noreferrer">Open HTML preview</a></p>
       {info?.testSender && <p className="text-sm text-amber-800 dark:text-amber-300" role="status">{info.blocker}</p>}
       {info && !info.sendingEnabled && <p className="text-sm text-red-600 dark:text-red-400" role="status">Email sending is off until SMTP or Resend is configured.</p>}
       {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} role="status">{msg.text}</p>}
@@ -201,6 +202,7 @@ export function NewsletterAdminClient() {
                   <span className="text-xs uppercase tracking-wide text-[#FF4E6A] mr-2">{s.placement}</span>
                   <a href={`/events/${s.eventId}`} target="_blank" rel="noreferrer" className="underline">{s.title}</a>
                   <span className="text-xs text-muted-foreground"> · {s.category} · score {s.score}{s.image ? '' : ' · fallback art'}</span>
+                  {s.whyLine && <div className="text-xs">{s.whyLine}</div>}
                   {s.why.length > 0 && <div className="text-xs text-muted-foreground">{s.why.join(' · ')}</div>}
                 </li>))}</ul>
             </div>
