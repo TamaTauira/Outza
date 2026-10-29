@@ -93,15 +93,16 @@ async function dnswSydneySeries(html: string, headline: { period: string; intlVi
   const url = pdfOverride || (html.match(/https:\/\/cdn\.sanity\.io\/files\/[^"'\s]+Travel to Sydney Time Series[^"']*?\.pdf/i)?.[0] ?? null)
   if (!url) return { rows: [], note: 'Time-series PDF link not found on the page' }
   if (!llmConfigured()) return { rows: [], note: 'AI Gateway is not configured; time series skipped' }
-  const { res } = await fetchRetry(encodeURI(decodeURI(url)), { headers: UA() })
+  // Headline totals are saved by the caller. A slow PDF must not burn the function before those rows are written.
+  const { res } = await fetchRetry(encodeURI(decodeURI(url)), { headers: UA() }, 1, 12_000)
   const b64 = Buffer.from(await res.arrayBuffer()).toString('base64')
   const prompt = 'This is the official Destination NSW "Travel to Sydney Time Series" PDF. Extract ONLY the INTERNATIONAL visitors table values for each year ending (YE) column exactly as printed. Return JSON {"rows":[{"ye":"YYYY-MM","visitors_000":number|null,"nights_000":number|null,"spend_m":number|null}]}. Use null for n/p or blank cells. Never estimate or fill gaps.'
   let parsed: { rows?: { ye?: string; visitors_000?: number | null; nights_000?: number | null; spend_m?: number | null }[] }
   try {
     parsed = await completeJson({
       temperature: 0,
-      timeoutMs: 120_000,
-      maxRetries: 1,
+      timeoutMs: 15_000,
+      maxRetries: 0,
       messages: [{
         role: 'user',
         content: [

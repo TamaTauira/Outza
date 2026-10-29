@@ -567,9 +567,9 @@ model LocalListing {
   @@index([imageAssetId])
 }
 
-/// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, Google Business Profile)
+/// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, TRA, pedestrian counts, Google Business Profile)
 model IntelSource {
-  key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | google_bp
+  key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | tra | footfall | google_bp
   enabled       Boolean   @default(true)
   status        String    @default("never_run") // never_run | ok | unchanged | running | partial | failed | needs_config
   lastCheckedAt DateTime?

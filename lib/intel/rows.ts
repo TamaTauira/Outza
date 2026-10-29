@@ -20,6 +20,11 @@ export function versionOf(rows: ObsRow[]) {
   return sha(keyed.join('\n'))
 }
 
+const DATED = /^(?:YE-)?\d{4}(?:-\d{2}|-Q[1-4])?$/
+
 export function latestPeriod(rows: ObsRow[]) {
-  return rows.reduce<string | null>((m, r) => (!m || r.period > m ? r.period : m), null)
+  return rows.reduce<string | null>((m, r) => {
+    if (!DATED.test(r.period)) return m
+    return !m || r.period > m ? r.period : m
+  }, null)
 }
