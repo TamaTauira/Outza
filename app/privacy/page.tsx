@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { PageShell } from '@/components/page-shell'
 
 export const metadata = { title: 'Privacy policy — VibePeep', description: 'What VibePeep collects, why, and the choices you have.' }
 
@@ -13,7 +14,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
     'What you do on VibePeep: events you save or mark as going, and, when you’re signed in, the events you view, share, add to your itinerary or tap through to tickets. Also the promoters you follow and friend connections you create.',
     'Newsletter interactions: which links in our emails you click, and whether an email appears to have been opened (via a small image). Open data is approximate because many email apps block or pre-load images.',
     'Promoters: business details and the events and promotions you create and purchase.',
-    'Reports and claims: if you report incorrect event details we store your report and, if you give it, your email so we can reply. If you claim a listing we store your organisation, role and the evidence you provide so we can verify you.',
+    'Reports and claims: if you report incorrect event details we store your report and, if you give it, your email so we can reply. If you claim a listing we store your organisation, role and the evidence you provide so we can check the claim.',
   ] },
   { title: 'How we use it', body: [
     'To run your account and show you events in your city.',
@@ -61,6 +62,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
 
 export default function PrivacyPage() {
   return (
+    <PageShell>
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">Privacy policy</h1>
@@ -77,5 +79,6 @@ export default function PrivacyPage() {
       </div>
       <p className="mt-10 text-xs text-muted-foreground">See also <Link href="/how-listings-work" className="underline underline-offset-2">how listings work</Link> and our <Link href="/disclaimer" className="underline underline-offset-2">disclaimer</Link>.</p>
     </main>
+    </PageShell>
   )
 }

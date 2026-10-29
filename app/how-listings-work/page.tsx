@@ -2,34 +2,30 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { PageShell } from '@/components/page-shell'
 import { ANALYTICS_DATA } from '@/lib/trust-shared'
 
 export const metadata: Metadata = {
-  title: 'How VibePeep listings work — sources, verification and sponsored content',
-  description: 'Where VibePeep event listings come from, how we verify and merge them, how sponsored placements are labelled, and exactly what we measure for organisers.',
+  title: 'How VibePeep listings work — sources, checks and sponsored content',
+  description: 'Where VibePeep event listings come from, how we check and merge them, how sponsored placements are labelled, and exactly what we measure for organisers.',
   alternates: { canonical: '/how-listings-work' },
 }
 
 const SECTIONS: { title: string; body: string[] }[] = [
   { title: 'Where listings come from', body: [
     'We collect public event information from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring, City of Sydney and official venue and market websites, and from organisers who list events with us directly.',
-    'Every listing keeps its original source, a link to the original listing and the time we last successfully checked it. You’ll see “Last verified … from …” and “View original listing” on each event page.',
+    'Each event page has one short line: the source, linked when we have a page, and when the listing was updated, next to the event’s times.',
   ] },
   { title: 'What we never make up', body: [
     'We never invent prices, dates or ticket availability. If a source doesn’t publish a price we say so. Accessibility, age and transport details appear only when the organiser or source provides them.',
-    'Ticket status (for example sold out) is shown only when the source reports it, with the source named. It is not live availability; always check with the ticket seller.',
-    'Cancelled, postponed and rescheduled events are flagged when the source reports it. Past and cancelled events are removed from city guides and from search-engine sitemaps.',
-  ] },
-  { title: 'VibePeep Verified', body: [
-    'The VibePeep Verified badge is not decoration. A listing gets it only when all of these are true: it is not marked as a duplicate; its status is still scheduled (not cancelled, postponed, rescheduled, or reported sold out); it has not passed in its own city; we re-confirmed it in the last 7 days; it has a title, date, start time, a specific venue, a city, a price or a free flag, and a link to the organiser or ticket page; the source is one we already ingest; and there is no open correction report for a duplicate, a wrong date, a wrong venue, or a cancellation.',
-    'If any of those checks cannot be run, the badge stays off. Availability is still not live: the page says when a source reported a status, and otherwise says availability is not confirmed live.',
+    'Sold out, cancelled, postponed and rescheduled are shown only when the source reports that status. Past and cancelled events drop off city guides and search-engine sitemaps.',
   ] },
   { title: 'Duplicates', body: [
     'The same event often appears on several ticketing sites. We merge these into one listing and keep every source attached, so you can still see where the information came from.',
   ] },
   { title: 'Found a mistake?', body: [
-    'Use "Something not right? Tell us" on any event page. We check reports against the original source before changing anything.',
-    'Organisers can claim their listing for free. If your account email uses the same domain as the event’s website you’re verified straight away; otherwise our team reviews the claim. Verified organisers can correct details and promote the event.',
+    'Use the small “Report a problem” link on any event page. We check reports against the original source before changing anything.',
+    'Organisers can claim their listing for free. If your account email uses the same domain as the event’s website, the claim is accepted straight away; otherwise our team reviews it. Once the claim is accepted, you can correct details and promote the event.',
   ] },
   { title: 'Sponsored placements', body: [
     'Organisers and local businesses can pay for extra visibility. Paid placements are always labelled “Sponsored” or “Featured”, in the newsletter too. Payment never changes the facts shown about an event, and we never promise guaranteed sales, impressions or clicks.',
@@ -42,6 +38,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 
 export default function HowListingsWorkPage() {
   return (
+    <PageShell>
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">How VibePeep listings work</h1>
@@ -67,5 +64,6 @@ export default function HowListingsWorkPage() {
       </div>
       <p className="mt-10 text-xs text-muted-foreground">See also our <Link href="/privacy" className="underline underline-offset-2">privacy policy</Link> and <Link href="/disclaimer" className="underline underline-offset-2">disclaimer</Link>.</p>
     </main>
+    </PageShell>
   )
 }

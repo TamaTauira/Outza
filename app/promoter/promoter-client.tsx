@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { CampaignBuilder } from './campaign-builder'
 import { LocalAdsTab } from './local-ads-tab'
 import { EditEventPanel } from './edit-event-panel'
-import { promoterCanEditEvent, sourceLabel } from '@/lib/quality'
+import { promoterCanEditEvent } from '@/lib/quality'
 import { AudienceCard } from './audience-card'
 import { IntelTab } from './intel-tab'
 
@@ -113,7 +113,6 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">Promoter dashboard</p>
           <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1 flex items-center gap-2">
             {account.displayName ? account.displayName : 'Promoter dashboard'}
-            {account.pro && <BadgeCheck className="w-7 h-7 text-primary" aria-label="Verified promoter" />}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Your events, your campaigns, your results. No spreadsheet required.</p>
         </div>
@@ -407,7 +406,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
     const res = await fetch('/api/promoter/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId }) })
     const d = await res.json().catch(() => ({}))
     if (res.ok) {
-      toast.success(d?.status === 'APPROVED' ? 'Verified. Event added to your dashboard' : 'Claim sent. It stays under Pending claims until we verify you.')
+      toast.success(d?.status === 'APPROVED' ? 'Event added to your dashboard' : 'Claim sent. It stays under Pending claims until we review it.')
       setResults((r) => r.filter((x) => x.id !== eventId)); reload()
     } else {
       const message = d?.error ?? 'Could not claim event'
@@ -445,7 +444,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
             <p className="text-sm font-medium">Pending claims</p>
             <ul className="mt-2 space-y-1.5">
               {pendingClaims.map((c) => (
-                <li key={c.id} className="text-sm text-muted-foreground">{c.event.title} · {fmt(c.event.date)} · {c.event.city} · <span className="text-foreground">Waiting for verification</span></li>
+                <li key={c.id} className="text-sm text-muted-foreground">{c.event.title} · {fmt(c.event.date)} · {c.event.city} · <span className="text-foreground">Waiting for review</span></li>
               ))}
             </ul>
           </div>
@@ -469,7 +468,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                         <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>
                         <p className="text-xs text-muted-foreground">{fmt(ev.date)} · {ev.venueName}{ev.city ? ` · ${ev.city}` : ''}</p>
                         {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
-                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">From {sourceLabel(ev.source)} · details stay as published</p>}
+                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">Details stay as published</p>}
                       </td>
                       <td className="px-3 py-3">
                         {ev.status === 'CANCELLED' ? <span className="text-xs text-muted-foreground">Unpublished</span> : past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (

@@ -20,6 +20,8 @@ interface MapViewProps {
   filters: FilterState
   searchQuery: string
   city?: string
+  /** Fill the parent. Desktop gets a side list; mobile gets a card strip. */
+  bleed?: boolean
 }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
@@ -49,11 +51,12 @@ function markerIcon(L: any, color: string, letter: string, tier?: string) {
 const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coordinates are never stored)
 type LocState = 'idle' | 'asking' | 'locating' | 'found' | 'denied' | 'unavailable'
 
-export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
+export function MapView({ filters, searchQuery, city = '', bleed = false }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileRef = useRef<any>(null)
   const markersRef = useRef<any>(null)
+  const markerById = useRef<Map<string, any>>(new Map())
   const goldRef = useRef<any>(null)
   const [events, setEvents] = useState<any[]>([])
   const [featured, setFeatured] = useState<any[]>([])
@@ -186,6 +189,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
     if (goldRef.current) map.removeLayer(goldRef.current)
 
     const tierById = new Map<string, string>(featured.map((f: any) => [f.id, f.tier]))
+    markerById.current = new Map()
     const mcg = L.markerClusterGroup
       ? L.markerClusterGroup({
           showCoverageOnHover: false,
@@ -201,13 +205,16 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A1A'
       const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(L, color, e?.category?.[0] ?? 'E', tier), zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
         .bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
+      markerById.current.set(e.id, m)
       if (tier === 'BRONZE') gold.addLayer(m)
       else mcg.addLayer(m)
     }
     for (const f of featured) {
       if (f.tier !== 'GOLD' || !f.latitude || !f.longitude) continue
-      gold.addLayer(L.marker([f.latitude, f.longitude], { icon: markerIcon(L, '#F5B700', '★', 'GOLD'), zIndexOffset: 1000 })
-        .bindPopup(popupHtml(f, 'GOLD'), { className: 'se-popup', maxWidth: 280 }))
+      const goldMarker = L.marker([f.latitude, f.longitude], { icon: markerIcon(L, '#F5B700', '★', 'GOLD'), zIndexOffset: 1000 })
+        .bindPopup(popupHtml(f, 'GOLD'), { className: 'se-popup', maxWidth: 280 })
+      markerById.current.set(f.id, goldMarker)
+      gold.addLayer(goldMarker)
     }
     map.addLayer(mcg)
     map.addLayer(gold)
@@ -216,15 +223,49 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
   }, [events, featured, ready])
 
   const count = events.filter((e: any) => e?.latitude && e?.longitude).length
+  const pinned = events.filter((e: any) => e?.latitude && e?.longitude).slice(0, 40)
+  const focus = (e: any) => {
+    const map = mapInstanceRef.current
+    if (!map || !e?.latitude || !e?.longitude) return
+    map.setView([e.latitude, e.longitude], 15)
+    markerById.current.get(e.id)?.openPopup()
+  }
+  useEffect(() => {
+    if (!ready) return
+    const map = mapInstanceRef.current
+    const id = requestAnimationFrame(() => map?.invalidateSize())
+    return () => cancelAnimationFrame(id)
+  }, [ready, bleed, pinned.length])
   return (
-    <div className="relative w-full h-[70vh] min-h-[420px] sm:h-[calc(100vh-200px)] sm:min-h-[500px]">
+    <div className={bleed ? 'relative flex h-full min-h-0 w-full' : 'relative w-full h-[70vh] min-h-[420px] sm:h-[calc(100vh-200px)] sm:min-h-[500px]'}>
+      {bleed && (
+        <aside className="hidden h-full w-80 shrink-0 flex-col border-r border-border bg-background lg:flex">
+          <div className="border-b border-border px-4 py-3">
+            <p className="font-display text-lg font-bold">In view</p>
+            <p className="text-xs text-muted-foreground">{loading ? 'Loading pins…' : `${count} events with a pin`}</p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {pinned.map((e) => {
+              const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
+              return (
+                <button key={e.id} type="button" onClick={() => focus(e)} className="block w-full border-b border-border px-4 py-3 text-left hover:bg-muted">
+                  <span className="block truncate font-semibold">{e.title}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{e.time || 'All day'} · {e.venueName} · {price.value}</span>
+                </button>
+              )
+            })}
+            {!loading && pinned.length === 0 && <p className="px-4 py-8 text-sm text-muted-foreground">No pins match these filters.</p>}
+          </div>
+        </aside>
+      )}
+      <div className="relative min-h-0 min-w-0 flex-1">
       {loading && (
         <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/40">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
-      <div ref={mapRef} className="se-map w-full h-full rounded-2xl overflow-hidden" />
-      <div className="absolute top-4 left-1/2 z-[500] max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg sm:left-4 sm:max-w-none sm:translate-x-0">
+      <div ref={mapRef} className={bleed ? 'se-map h-full w-full overflow-hidden' : 'se-map w-full h-full rounded-2xl overflow-hidden'} />
+      <div className={bleed ? 'absolute top-16 left-3 z-[500] max-w-[calc(100%-8rem)] truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg lg:hidden' : 'absolute top-4 left-1/2 z-[500] max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg sm:left-4 sm:max-w-none sm:translate-x-0'}>
         {loading ? <span>Loading map…</span> : <><span className="text-primary font-bold">{count}</span> events on map</>}
       </div>
       {!loading && count === 0 && (
@@ -240,7 +281,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         <button
           onClick={locate}
           disabled={loc === 'locating'}
-          className="absolute top-4 right-4 z-[500] inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-white/90 text-neutral-900 dark:bg-neutral-900/80 dark:text-white backdrop-blur-xl shadow-lg hover:bg-white dark:hover:bg-neutral-900 disabled:opacity-60"
+          className={bleed ? 'absolute top-16 right-3 z-[500] inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-white/90 text-neutral-900 dark:bg-neutral-900/80 dark:text-white backdrop-blur-xl shadow-lg lg:top-4' : 'absolute top-4 right-4 z-[500] inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-white/90 text-neutral-900 dark:bg-neutral-900/80 dark:text-white backdrop-blur-xl shadow-lg hover:bg-white dark:hover:bg-neutral-900 disabled:opacity-60'}
           aria-label="Zoom to my location"
         >
           {loc === 'locating' ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <LocateFixed className="w-4 h-4 text-primary" />}
@@ -248,7 +289,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         </button>
       )}
       {loc === 'asking' && (
-        <div className="absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4">
+        <div className={bleed ? 'absolute left-4 right-4 bottom-36 z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4 lg:bottom-4 lg:left-auto lg:right-4 lg:w-[340px]' : 'absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4'}>
           <button onClick={declineLocation} className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
             <X className="w-4 h-4" />
           </button>
@@ -262,7 +303,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
         </div>
       )}
       {(loc === 'denied' || loc === 'unavailable') && (
-        <div className="absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-xl bg-card text-card-foreground shadow-xl ring-1 ring-border p-3 pr-9 text-sm">
+        <div className={bleed ? 'absolute left-4 right-4 bottom-36 z-[600] rounded-xl bg-card p-3 pr-9 text-sm shadow-xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-4 lg:w-[340px]' : 'absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-xl bg-card text-card-foreground shadow-xl ring-1 ring-border p-3 pr-9 text-sm'}>
           <button onClick={() => setLoc('idle')} className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
             <X className="w-4 h-4" />
           </button>
@@ -271,6 +312,21 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
             : 'We couldn\'t pin you down just now. Give Near Me another tap in a moment.'}
         </div>
       )}
+      {bleed && (
+        <div className="absolute inset-x-0 bottom-0 z-[550] flex gap-2 overflow-x-auto px-3 pb-3 pt-6 [scrollbar-width:none] lg:hidden bg-gradient-to-t from-background/80 to-transparent">
+          {pinned.slice(0, 12).map((e) => {
+            const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
+            return (
+              <button key={e.id} type="button" onClick={() => focus(e)} className="w-44 shrink-0 rounded-xl border border-border bg-card p-3 text-left shadow-lg">
+                <span className="block truncate text-sm font-semibold">{e.title}</span>
+                <span className="block truncate text-xs text-muted-foreground">{e.venueName}</span>
+                <span className="mt-1 block font-mono text-xs">{price.value}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      </div>
     </div>
   )
 }

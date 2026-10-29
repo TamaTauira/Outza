@@ -18,7 +18,7 @@ export function LocalAdminClient() {
   const Card = ({ l, pending }: { l: L; pending: boolean }) => (
     <div className="rounded-xl bg-card shadow-sm p-4 space-y-2">
       <p className="font-semibold">{l.title} <span className="font-normal text-muted-foreground text-sm">· {localCategoryLabel(l.category)} · {l.city}</span></p>
-      <p className="text-sm text-muted-foreground">{l.address}, {l.suburb} {l.postcode} {l.addressVerified ? '✓ address verified' : '⚠ address unverified'} · {l.schedule} from {l.startDate} · {fmtTime(l.startTime)}–{fmtTime(l.endTime)}</p>
+      <p className="text-sm text-muted-foreground">{l.address}, {l.suburb} {l.postcode} {l.addressVerified ? '✓ address checked' : '⚠ address not checked'} · {l.schedule} from {l.startDate} · {fmtTime(l.startTime)}–{fmtTime(l.endTime)}</p>
       <p className="text-sm whitespace-pre-wrap">{l.description}</p>
       <p className="text-xs text-muted-foreground">{l.organiserName} · {l.contactEmail} · {l.userId ? 'account' : 'no account'}{l.websiteUrl ? ` · ${l.websiteUrl}` : ''}{l.reportCount ? ` · ${l.reportCount} reports` : ''}</p>
       {l.flags.length > 0 && <div className="flex flex-wrap gap-1">{l.flags.map((f) => <span key={f} className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-xs">{LOCAL_FLAG_LABEL[f] ?? f}</span>)}</div>}

@@ -32,7 +32,6 @@ export function FeaturedTurnstile({ city }: { city: string }) {
   }, [city])
 
   const cards = [...items.map((it) => <FeaturedCard key={it.id} it={it} />), <PromoteCard key="cta" />]
-  const loop = items.length >= 2
 
   return (
     // Full-bleed band: breaks out of the 1280px page container to span the whole viewport
@@ -47,11 +46,11 @@ export function FeaturedTurnstile({ city }: { city: string }) {
         </div>
         <Link href="/promoters" className="text-xs font-semibold text-primary hover:underline">Feature Your Event →</Link>
       </div>
-      <div className="relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_3%,black_97%,transparent)]">
-        <div className={loop ? 'flex w-max gap-3 px-3 animate-turnstile hover:[animation-play-state:paused]' : 'flex gap-3 px-4 sm:px-6 overflow-x-auto [scrollbar-width:none]'}>
+      <div className="relative">
+        <div className="flex gap-3 overflow-x-auto px-4 pb-1 sm:px-6 scroll-pl-4 sm:scroll-pl-6 snap-x [scrollbar-width:thin]">
           {cards}
-          {loop && items.map((it) => <FeaturedCard key={`dup-${it.id}`} it={it} hidden />)}
         </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card/80 to-transparent" aria-hidden />
       </div>
     </section>
   )
@@ -65,9 +64,9 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const time = formatTime(it.time)
   const date = new Date(it.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
   return (
-    <Link href={eventPath(it)} aria-hidden={hidden} tabIndex={hidden ? -1 : undefined} className="shrink-0 w-[260px] rounded-xl bg-card border border-border overflow-hidden shadow-md hover:-translate-y-0.5 hover:shadow-lg transition">
+    <Link href={eventPath(it)} aria-hidden={hidden} tabIndex={hidden ? -1 : undefined} className="shrink-0 w-[260px] snap-start rounded-xl bg-card border border-border overflow-hidden shadow-md hover:-translate-y-0.5 hover:shadow-lg transition">
       <div className="relative aspect-[16/9] overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
-        <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="260px" compact />
+        <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="260px" compact crop accent={color} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <span title={it.tier === 'HOT' ? 'Popular on VibePeep' : `${t?.name ?? 'Promoted'} placement`} className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
           {it.tier === 'HOT' && <Flame className="w-2.5 h-2.5" />}{badge.label}

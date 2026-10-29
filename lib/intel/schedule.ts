@@ -11,7 +11,7 @@ export const IMPORT_BUDGET_MS = 200_000
 export const MIN_CHUNK_MS = 20_000
 
 export const NATIONAL_COVERAGE = 'au-cities-v1'
-export const NATIONAL_SOURCES = new Set(['abs_region', 'abs_seifa', 'abs_hsi'])
+export const NATIONAL_SOURCES = new Set(['abs_region', 'abs_seifa', 'abs_hsi', 'tra', 'footfall'])
 
 export const STALE_RUNNING_ERROR = `Import was still marked running after ${STALE_RUNNING_MS / 60000} minutes, so it was marked failed and can be retried. The last good dataset is still being served.`
 
@@ -56,6 +56,8 @@ export function sourceIsDue(s: DueSource, scheduleHours: number, now = Date.now(
 /** Chunked ABS work that has not succeeded yet runs before the daily sources, so the time budget is spent on it. */
 export function sourceRunRank(s: DueSource) {
   const cfg = asConfig(s.config)
+  const crowd = s.key === 'tra' || s.key === 'footfall'
+  if (crowd && (s.status === 'partial' || s.lastSuccessAt == null || cfg.retryNow === true || isOpenImport(cfg.import))) return -1
   const abs = s.key === 'abs_region' || s.key === 'abs_seifa'
   const urgent = abs && (s.status === 'partial' || s.status === 'failed' || s.status === 'running' || s.lastSuccessAt == null || cfg.retryNow === true || isOpenImport(cfg.import))
   if (urgent) return 0

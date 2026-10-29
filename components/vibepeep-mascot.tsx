@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { BRAND_MASCOT_HEIGHT, BRAND_MASCOT_SRC, BRAND_MASCOT_WEBP, BRAND_MASCOT_WIDTH } from '@/lib/brand'
+import Image from 'next/image'
+import { BRAND_MASCOT_HEIGHT, BRAND_MASCOT_SRC, BRAND_MASCOT_WIDTH } from '@/lib/brand'
 
 export type MascotBubble = 'center' | 'start'
 
@@ -10,31 +11,28 @@ function mascotLabel(alt?: string) {
   return `${name}. Press for a surprise.`
 }
 
-function MascotArt({ priority, onDark }: { priority: boolean; onDark: boolean }) {
+function MascotArt({ priority, onDark, sizes }: { priority: boolean; onDark: boolean; sizes: string }) {
   const rim = onDark
     ? 'drop-shadow-[0_0_12px_rgba(255,255,255,0.42)]'
     : 'dark:drop-shadow-[0_0_12px_rgba(255,255,255,0.42)]'
   return (
-    <picture className="block w-full">
-      <source srcSet={BRAND_MASCOT_WEBP} type="image/webp" />
-      <img
-        src={BRAND_MASCOT_SRC}
-        alt=""
-        width={BRAND_MASCOT_WIDTH}
-        height={BRAND_MASCOT_HEIGHT}
-        draggable={false}
-        decoding="async"
-        loading={priority ? 'eager' : 'lazy'}
-        fetchPriority={priority ? 'high' : 'auto'}
-        className={`pointer-events-none h-auto w-full select-none ${rim}`}
-      />
-    </picture>
+    <Image
+      src={BRAND_MASCOT_SRC}
+      alt=""
+      width={BRAND_MASCOT_WIDTH}
+      height={BRAND_MASCOT_HEIGHT}
+      sizes={sizes}
+      priority={priority}
+      draggable={false}
+      className={`pointer-events-none h-auto w-full select-none ${rim}`}
+    />
   )
 }
 
 /**
  * The existing mascot bitmap, with idle life and click reactions.
  * The image is in the first paint. Behaviour loads on idle so it stays off the LCP path.
+ * `sizes` tells the image optimiser the displayed width. The source file is 1104px.
  */
 export function VibePeepMascot({
   className = 'w-32',
@@ -43,12 +41,14 @@ export function VibePeepMascot({
   /** The hero is dark in both themes, so the silhouette needs a rim there too. */
   onDark = false,
   bubble = 'center',
+  sizes = '(max-width: 640px) 112px, 192px',
 }: {
   className?: string
   alt?: string
   priority?: boolean
   onDark?: boolean
   bubble?: MascotBubble
+  sizes?: string
 }) {
   const slotRef = useRef<HTMLSpanElement>(null)
 
@@ -100,7 +100,7 @@ export function VibePeepMascot({
           <span className="vp-bob">
             <span className="vp-look">
               <span className="vp-act">
-                <MascotArt priority={priority} onDark={onDark} />
+                <MascotArt priority={priority} onDark={onDark} sizes={sizes} />
                 <span className="vp-lid vp-lid-l" aria-hidden="true" />
                 <span className="vp-lid vp-lid-r" aria-hidden="true" />
                 <span className="vp-blush vp-blush-l" aria-hidden="true" />

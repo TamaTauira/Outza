@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 type PlanRow = { token: string; name: string; city: string | null; items: number }
 
 /** Adds one event to an VibePeep Together plan. Anyone with the invite link can vote. */
-export function AddToPlanButton({ eventId, city, className }: { eventId: string; city?: string | null; className?: string }) {
+export function AddToPlanButton({ eventId, city, className, icon = false }: { eventId: string; city?: string | null; className?: string; icon?: boolean }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [plans, setPlans] = useState<PlanRow[]>([])
@@ -57,12 +57,12 @@ export function AddToPlanButton({ eventId, city, className }: { eventId: string;
   }
 
   return (
-    <div className={className}>
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-border font-semibold hover:bg-muted">
-        <Users className="w-4 h-4" />{open ? 'Close Plan' : 'Add to a Plan'}
+    <div className={cn(icon && 'relative', className)}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Add to a plan" className={icon ? 'flex h-10 w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-border text-[10px] font-semibold hover:bg-muted' : 'flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-border font-semibold hover:bg-muted'}>
+        <Users className="w-4 h-4" />{icon ? 'Plan' : (open ? 'Close Plan' : 'Add to a Plan')}
       </button>
       {open && (
-        <div className="mt-3 rounded-lg border border-border bg-muted/40 p-3 space-y-3">
+        <div className={cn('rounded-lg border border-border bg-card p-3 space-y-3 shadow-lg', icon ? 'absolute right-0 top-12 z-30 w-72' : 'mt-3 bg-muted/40')}>
           <p className="text-sm text-muted-foreground">Shortlist it with friends. They open your link and vote. No friend list required.</p>
           {plans.map((plan) => (
             <button key={plan.token} type="button" disabled={busy} onClick={() => addTo(plan.token)} className={cn('w-full text-left rounded-md bg-card px-3 py-2 text-sm hover:bg-background', busy && 'opacity-60')}>

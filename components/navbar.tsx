@@ -53,8 +53,8 @@ export function Navbar({ savedCount }: NavbarProps) {
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
-                <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
-                  <Store className="w-4 h-4" /><span className="hidden sm:inline">Local</span>
+                <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
+                  <Store className="w-4 h-4" /><span>Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
               )
@@ -67,21 +67,21 @@ export function Navbar({ savedCount }: NavbarProps) {
                 aria-current={view === key ? 'page' : undefined}
                 aria-label={key === 'saved' ? `Saved (${mounted ? savedCount : 0})` : label}
                 className={cn(
-                  'relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm transition-colors',
+                  'relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm transition-colors',
                   view === key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{label}</span>
+                <span>{label}</span>
                 {key === 'saved' && (
-                  <span className="hidden sm:inline min-w-[20px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{mounted ? savedCount : 0}</span>
+                  <span className="min-w-[18px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{mounted ? savedCount : 0}</span>
                 )}
                 {view === key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
               </Link>
             )
           })}
-          <Link href="/itinerary" className={cn('relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
-            <CalendarRange className="w-4 h-4" /><span className="hidden md:inline">Itinerary</span>
+          <Link href="/itinerary" className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
+            <CalendarRange className="w-4 h-4" /><span className="sm:hidden">Plan</span><span className="hidden sm:inline">Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
         </nav>

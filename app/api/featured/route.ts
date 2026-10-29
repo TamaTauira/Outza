@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
@@ -5,6 +6,7 @@ import { activePromoWhere } from '@/lib/promotions'
 import { TIER_KEYS, TIER_RANK, type Tier } from '@/lib/tiers'
 import { CITY_NAMES } from '@/lib/cities'
 import { imageAssetSelect } from '@/lib/images/spec'
+import { publicCacheHeaders } from '@/lib/http-cache'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,11 +23,8 @@ const evSelect = {
  * 1) Paid promotions: Front-row add-on first (nationwide), then Premium/GOLD (nationwide), Spotlight/BRONZE, Featured/SILVER (selected city).
  * 2) Topped up with the most-saved / most-attended upcoming events ("HOT").
  */
-export async function GET(req: NextRequest) {
-  try {
-    const city = req.nextUrl.searchParams.get('city') ?? ''
-    const validCity = CITY_NAMES.includes(city) ? city : ''
-    const today = sydneyToday()
+async function queryFeatured(validCity: string, day: string) {
+    const today = new Date(`${day}T00:00:00.000Z`)
     const promos = await prisma.promotion.findMany({
       where: {
         ...activePromoWhere(),
@@ -68,7 +67,18 @@ export async function GET(req: NextRequest) {
       })
       items.push(...hot.map((e) => ({ ...e, tier: 'HOT', frontRow: false })))
     }
-    return NextResponse.json({ items })
+    return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
+}
+
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v1'], { revalidate: 60 })
+
+export async function GET(req: NextRequest) {
+  try {
+    const city = req.nextUrl.searchParams.get('city') ?? ''
+    const validCity = CITY_NAMES.includes(city) ? city : ''
+    const day = sydneyToday().toISOString().slice(0, 10)
+    const body = await cachedFeatured(validCity, day)
+    return NextResponse.json(body, { headers: publicCacheHeaders(60) })
   } catch (e: any) {
     console.error('featured error', e?.message)
     return NextResponse.json({ items: [] }, { status: 500 })

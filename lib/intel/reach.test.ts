@@ -24,6 +24,7 @@ function area(over: Partial<AreaSignals> = {}): AreaSignals {
     station: { name: 'Newtown Station', distanceKm: 0.4, entries: 12345, month: '2026-03', yoyPct: 2.5 },
     stationsWithoutTaps: false, recreationYoy: 3.2, hospitalityYoy: -1.1, alcoholYoy: 4, spendMonth: '2026-03',
     tourism: { title: 'Visitors to Sydney', period: 'YE-2026-06', intlVisitors: 4_200_000, yoyPct: 6.5 },
+    visitor: null, weekend: null, marketId: 'Sydney',
     seifa: { area: 'Newtown', decile: 8 }, areaLoaded: true, ...over,
   }
 }

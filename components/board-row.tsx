@@ -11,7 +11,7 @@ import { categoryIcon, checkedAgo, formatPrice, formatTime, toMinutes } from '@/
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
-import { sourceLabel, statusInfo } from '@/lib/quality'
+import { statusInfo } from '@/lib/quality'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 
 export type BoardEvent = SavedEvent
@@ -95,11 +95,38 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
     </button>
   )
 
+  const meta = [venue, suburb].filter(Boolean).join(' · ')
   return (
+    <>
     <div
       onClick={openRow}
       className={cn(
-        'group relative cursor-pointer grid grid-cols-[72px_minmax(0,1fr)_auto] gap-x-3 gap-y-1 items-center px-3 sm:px-5 py-3 xl:py-2 xl:min-h-[60px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
+        'xl:hidden group relative cursor-pointer grid grid-cols-[52px_40px_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-2.5 border-b border-border hover:bg-muted/60',
+        done && 'opacity-75',
+      )}
+    >
+      <div>
+        <span className="font-mono text-sm tabular-nums">{t.hm}</span>
+        <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{t.ampm}</span>
+      </div>
+      <span className="flex h-10 w-10 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
+        <Icon className="w-4 h-4" />
+      </span>
+      <div className="min-w-0">
+        <Link href={href} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
+        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
+      </div>
+      <div className="relative z-20 flex items-center">
+        <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+          <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
+        </button>
+        {itButton('')}
+      </div>
+    </div>
+    <div
+      onClick={openRow}
+      className={cn(
+        'hidden xl:grid group relative cursor-pointer gap-x-3 gap-y-1 items-center px-5 py-2 min-h-[60px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
         BOARD_COLS,
         done && 'opacity-75',
       )}
@@ -121,15 +148,12 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
           <Icon className="w-3.5 h-3.5" />
         </span>
-        <Link href={href} className="font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
+        <Link href={href} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {ev.title}
         </Link>
         {ev.promoTier && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={`${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement`}>SPONSORED</span>}
         {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-[10px] font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
         {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
-        {ev.verified && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[10px] font-semibold" title="VibePeep Verified: recent refresh, required details, not a duplicate, no open date or venue report.">VibePeep Verified</span>}
-        {!reported && !ev.verified && ev.confidenceLevel === 'low' && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-medium" title="Low data confidence: not re-confirmed recently or details are missing. Check with the ticket seller.">Unconfirmed</span>}
-        {ev.source && <span className="relative hidden xl:inline shrink-0 text-[10px] text-muted-foreground truncate max-w-[9rem]" title={ev.lastVerifiedAt ? `Last verified ${ev.lastVerifiedAt}` : undefined}>{sourceLabel(ev.source)}</span>}
         {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-[9px] font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
       </div>
 
@@ -192,6 +216,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         {itButton('hover:bg-background')}
       </div>
     </div>
+    </>
   )
 }
 

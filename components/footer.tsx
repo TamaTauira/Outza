@@ -104,9 +104,9 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
             <span className="font-semibold text-foreground">Acknowledgement of Country. </span>{ACKNOWLEDGEMENT_OF_COUNTRY}
           </p>
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <div className="mt-4 flex flex-col gap-3 text-[11px] text-muted-foreground sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <span>VibePeep is an independent listings guide — information only, no warranties.</span>
-          <span className="flex gap-4">
+          <span className="flex max-w-full flex-wrap gap-x-3 gap-y-2">
             <Link href="/outings" className="hover:text-foreground underline underline-offset-2">Day and night plans</Link>
             <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>
             <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My VibePeep</Link>

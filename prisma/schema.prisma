@@ -83,6 +83,8 @@ model Event {
   @@index([isLGBTI])
   @@index([suburb])
   @@index([city, date])
+  @@index([city, date, status])
+  @@index([city, category, date])
   @@index([promoterId])
   @@index([dedupeHash])
   @@index([seriesKey])
@@ -162,6 +164,8 @@ model RefreshLog {
   status    String   @default("running")
   eventsAdded Int    @default(0)
   errors    String?
+
+  @@index([status, endedAt])
 }
 
 model User {
@@ -435,6 +439,7 @@ model EventReport {
 
   @@index([status, createdAt])
   @@index([eventId])
+  @@index([eventId, status])
 }
 
 /// Where event-page visits came from (counted per traffic source), for promoter referral reporting.
@@ -567,9 +572,9 @@ model LocalListing {
   @@index([imageAssetId])
 }
 
-/// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, Google Business Profile)
+/// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, TRA, pedestrian counts, Google Business Profile)
 model IntelSource {
-  key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | google_bp
+  key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | tra | footfall | google_bp
   enabled       Boolean   @default(true)
   status        String    @default("never_run") // never_run | ok | unchanged | running | partial | failed | needs_config
   lastCheckedAt DateTime?
@@ -821,6 +826,21 @@ model VenueFollow {
 
   @@id([userId, venueKey])
   @@index([city])
+}
+
+/// One attempt to send a digest, watchlist note, or reminder, plus cron run summaries.
+/// `error` is redacted before it is stored. This is the last-send record for admin.
+/// `quota` rows count Yahoo SMTP sends toward the daily cap and are hidden from that list.
+model MailDelivery {
+  id        String   @id @default(cuid())
+  kind      String // newsletter | watchlist | reminder | newsletter-run | watchlist-run | quota
+  userId    String?
+  status    String // sent | test | failed | restricted | disabled | blocked | skipped | ok
+  error     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([userId, createdAt])
 }
 
 /// Sent watchlist reminder (or match note) so the same event is not emailed twice.

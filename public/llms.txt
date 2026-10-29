@@ -19,14 +19,14 @@ VibePeep is an independent Australian listings guide for events, experiences and
 ## Good to know
 
 - Listings come from organisers and public ticketing sources. VibePeep does not invent prices, dates or ticket availability.
-- VibePeep Verified means a listing passed a fixed set of freshness and completeness checks. It is not a promise that tickets are still on sale.
+- Each event page shows one short line: the source and when the listing was updated. That is not a promise that tickets are still on sale.
 - Sponsored and featured placements are labelled. Payment does not change the facts on a listing.
 - Canonical site: https://outza-outza.vercel.app
 
 ## Key pages
 
 - / — the events board
-- /how-listings-work — sources, verification and sponsored content
+- /how-listings-work — sources, checks and sponsored content
 - /local — VibePeep Local
 - /together — VibePeep Together
 - /privacy

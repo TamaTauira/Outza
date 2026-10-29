@@ -25,8 +25,9 @@ export function runQa(input: {
     const e = s.ev
     if (ids.has(e.id)) errors.push(`Duplicate event across sections: ${e.title}`)
     ids.add(e.id)
-    // Newsletter boosts ride every issue while active, so a sponsored event may be later than this issue's window.
-    if (e.date < input.from || (s.placement !== 'sponsored' && e.date > input.to)) errors.push(`Out-of-window or expired date: ${e.title}`)
+    // Newsletter boosts ride every issue while active. Saved reminders can sit a little past this edition's window.
+    const horizon = s.placement === 'saved' ? new Date(input.from.getTime() + 21 * 86400e3) : input.to
+    if (e.date < input.from || (s.placement !== 'sponsored' && e.date > horizon)) errors.push(`Out-of-window or expired date: ${e.title}`)
     if (!BOOKABLE.includes(e.status)) errors.push(`Not bookable (${e.status}): ${e.title}`)
     if (e.duplicateOfId) errors.push(`Merged duplicate listing: ${e.title}`)
     if (!e.title.trim() || !e.venueName.trim()) errors.push(`Missing title or venue: ${e.id}`)
@@ -49,9 +50,18 @@ export function runQa(input: {
   checks.push(`${hrefs.length} links are absolute and well-formed`)
 
   const imgs = [...input.html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0])
-  const noAlt = imgs.filter((t) => !/width="1"/.test(t) && !/alt="[^"]+"/.test(t))
-  if (noAlt.length) errors.push(`${noAlt.length} image(s) without alt text`)
-  checks.push('All content images have alt text')
+  // Empty alt is valid for decorative art (the wordmark already names VibePeep). A missing attribute is not.
+  const noAlt = imgs.filter((t) => !/width="1"/.test(t) && !/\balt="/i.test(t))
+  if (noAlt.length) errors.push(`${noAlt.length} image(s) without an alt attribute`)
+  const badImg = imgs.filter((t) => {
+    if (/width="1"/.test(t)) return false
+    const src = /src="([^"]+)"/i.exec(t)?.[1]?.replace(/&amp;/g, '&') ?? ''
+    if (!src.startsWith('https://') || src.startsWith('data:') || /\.svg(\?|$)/i.test(src)) return true
+    return !/\bwidth="\d+"/.test(t) || !/\bheight="\d+"/.test(t)
+  })
+  if (badImg.length) errors.push(`${badImg.length} image(s) are not absolute https PNG/JPG with width and height`)
+  checks.push('Content images include an alt attribute')
+  checks.push('Images are absolute https PNG or JPG with width and height')
 
   if (!/\/unsubscribe\?/.test(input.html) || !/Unsubscribe:/.test(input.text)) errors.push('Unsubscribe link missing')
   checks.push('Unsubscribe link present in HTML and plain text')

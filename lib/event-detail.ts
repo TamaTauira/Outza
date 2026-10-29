@@ -1,44 +1,70 @@
+import { unstable_cache } from 'next/cache'
+import { after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { activeTierMap } from '@/lib/promotions'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { imageAssetSelect } from '@/lib/images/spec'
-import { isPastEvent } from '@/lib/seo'
+import { idFromEventParam, isPastEvent } from '@/lib/seo'
 import { activityTitle, availabilityLine, confidence, outzaVerified, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, VERIFIED_BLOCKING_REPORTS, type Recurrence } from '@/lib/quality'
+import { recordReferral, type ReferralSource } from '@/lib/referrals'
+import { recordSignal } from '@/lib/event-signals'
 
-/**
- * Full event detail payload shared by the event page (server-rendered) and GET /api/events/[id].
- * Returns null when the event doesn't exist.
- */
-export async function getEventDetail(id: string, opts: { countView?: boolean; prefetch?: boolean } = {}) {
+const RELATED_SELECT = {
+  id: true, title: true, date: true, endDate: true, time: true, endTime: true,
+  venueName: true, venueAddress: true, suburb: true, city: true,
+  category: true, subTags: true, isLGBTI: true, isFree: true,
+  price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, source: true,
+  latitude: true, longitude: true, seriesKey: true,
+  imageAsset: { select: imageAssetSelect },
+} as const
+
+type DetailOpts = { countView?: boolean; prefetch?: boolean; referral?: ReferralSource | null }
+
+async function resolveEventId(param: string): Promise<string | null> {
+  const raw = decodeURIComponent(param)
+  const direct = await prisma.event.findUnique({ where: { id: raw }, select: { id: true } })
+  if (direct) return direct.id
+  const tail = idFromEventParam(raw)
+  if (!tail || tail === raw) return null
+  const viaSlug = await prisma.event.findUnique({ where: { id: tail }, select: { id: true } })
+  return viaSlug?.id ?? null
+}
+
+const cachedResolve = unstable_cache(resolveEventId, ['event-resolve-v1'], { revalidate: 300 })
+
+async function queryEventCore(id: string) {
   const event = await prisma.event.findUnique({
     where: { id },
     include: { promoter: { select: { id: true, name: true, orgName: true, proUntil: true } }, _count: { select: { attendees: true } }, imageAsset: { select: imageAssetSelect } },
   })
-  // Past events are never shown (the page and API answer "not found")
   if (!event || isPastEvent(event)) return null
 
-  const meEarly = opts.countView ? await getSessionUser().catch(() => null) : null
-  // One count per real visit. Prefetch and the promoter opening their own page are not audience.
-  const ownerView = !!meEarly && meEarly.id === event.promoterId
-  if (opts.countView && !opts.prefetch && !ownerView) {
-    prisma.event.update({ where: { id: event.id }, data: { views: { increment: 1 } }, select: { id: true } }).catch((e) => console.error('view count failed', e?.message))
-  }
+  const [relatedRows, tiers, openReports, duplicateTarget] = await Promise.all([
+    prisma.event.findMany({
+      where: {
+        id: { not: event.id },
+        city: event.city,
+        date: { gte: sydneyToday() },
+        duplicateOfId: null,
+        OR: [{ category: event.category }, { venueName: event.venueName }],
+        ...(event.seriesKey ? { NOT: { seriesKey: event.seriesKey } } : {}),
+      },
+      take: 24,
+      orderBy: { date: 'asc' },
+      select: RELATED_SELECT,
+    }),
+    activeTierMap([event.id]),
+    prisma.eventReport.findMany({
+      where: { eventId: event.id, status: 'OPEN', reason: { in: [...VERIFIED_BLOCKING_REPORTS] } },
+      select: { reason: true },
+    }),
+    event.duplicateOfId
+      ? prisma.event.findUnique({ where: { id: event.duplicateOfId }, select: { id: true, title: true } })
+      : Promise.resolve(null),
+  ])
 
-  const relatedRows = await prisma.event.findMany({
-    where: {
-      id: { not: event.id },
-      city: event.city,
-      date: { gte: sydneyToday() },
-      duplicateOfId: null,
-      OR: [{ category: event.category }, { venueName: event.venueName }],
-      ...(event.seriesKey ? { NOT: { seriesKey: event.seriesKey } } : {}),
-    },
-    take: 24,
-    orderBy: { date: 'asc' },
-    include: { imageAsset: { select: imageAssetSelect } },
-  })
   const ownActivity = activityTitle(event.title)
   const related = relatedRows.filter((r) => {
     const ts = similarity(normalizeTitle(event.title), normalizeTitle(r.title))
@@ -50,9 +76,80 @@ export async function getEventDetail(id: string, opts: { countView?: boolean; pr
     return true
   }).slice(0, 6)
 
-  const me = meEarly ?? await getSessionUser().catch(() => null)
-  const [tiers, friends, mine, following] = await Promise.all([
-    activeTierMap([event.id]),
+  const { _count, promoter, views: _v, ticketClicks: _c, ...rest } = event
+  const promoterVerified = !!promoter?.proUntil && promoter.proUntil > new Date()
+  const payload = {
+    event: {
+      ...rest,
+      promoter: promoter ? { id: promoter.id, name: promoter.name, orgName: promoter.orgName, verified: promoterVerified } : null,
+      attendeeCount: _count.attendees,
+      promoTier: tiers[event.id] ?? null,
+      quality: {
+        confidence: confidence({ ...event, promoterVerified }),
+        status: statusInfo(event.status, event.statusSource),
+        price: priceSummary(event),
+        recurrence: event.recurrence ? RECURRENCE_LABEL[event.recurrence as Recurrence] ?? null : null,
+        sources: [...new Set([event.source, ...(event.sources ?? [])])].map(sourceLabel),
+        checkedAt: (event.lastVerifiedAt ?? event.updatedAt).toISOString(),
+        verified: outzaVerified({ ...event, openReportReasons: openReports.map((r) => r.reason) }),
+        schedule: scheduleCue(event),
+        availability: availabilityLine(event.status, event.statusSource),
+      },
+    },
+    related,
+    duplicateTarget,
+  }
+  return JSON.parse(JSON.stringify(payload)) as typeof payload
+}
+
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v1'], { revalidate: 120 })
+
+export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
+
+/** Shared by the event page and its metadata. Null when the listing is missing or already over. */
+export async function getPublicEvent(idOrParam: string): Promise<PublicEvent | null> {
+  const id = await cachedResolve(idOrParam)
+  if (!id) return null
+  return cachedCore(id)
+}
+
+function reviveEvent<T extends { date: string | Date; endDate?: string | Date | null; lastVerifiedAt?: string | Date | null; updatedAt?: string | Date | null }>(event: T) {
+  const at = (value: string | Date | null | undefined) => (value == null ? null : new Date(value))
+  return {
+    ...event,
+    date: new Date(event.date),
+    endDate: at(event.endDate),
+    lastVerifiedAt: at(event.lastVerifiedAt),
+    updatedAt: event.updatedAt ? new Date(event.updatedAt) : event.updatedAt,
+  }
+}
+
+/**
+ * Public listing plus the signed-in visitor's flags.
+ * View counts, referrals and signals run after the response is sent.
+ */
+export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {}) {
+  const event = reviveEvent(core.event)
+  const me = await getSessionUser().catch(() => null)
+  const ownerView = !!me && me.id === event.promoterId
+  const countView = !!opts.countView && !opts.prefetch && !ownerView
+  const signalView = !!me && !!opts.countView && !opts.prefetch
+  if (countView || opts.referral || signalView) {
+    const eventId = event.id
+    const referral = opts.referral ?? null
+    const userId = me?.id
+    after(() => {
+      const jobs: Promise<unknown>[] = []
+      if (countView) {
+        jobs.push(prisma.event.update({ where: { id: eventId }, data: { views: { increment: 1 } }, select: { id: true } }).catch((e) => console.error('view count failed', e?.message)))
+      }
+      if (referral) recordReferral(eventId, referral)
+      if (signalView && userId) jobs.push(recordSignal(userId, eventId, 'VIEW'))
+      return Promise.all(jobs)
+    })
+  }
+
+  const [friends, mine, following] = await Promise.all([
     me ? friendsGoing(me.id, [event.id]) : Promise.resolve({} as Record<string, string[]>),
     me ? prisma.attendance.findUnique({ where: { userId_eventId: { userId: me.id, eventId: event.id } } }) : Promise.resolve(null),
     me && event.promoterId
@@ -60,38 +157,24 @@ export async function getEventDetail(id: string, opts: { countView?: boolean; pr
       : Promise.resolve(null),
   ])
 
-  const { _count, promoter, views: _v, ticketClicks: _c, ...rest } = event
-  const promoterVerified = !!promoter?.proUntil && promoter.proUntil > new Date()
-  const openReports = await prisma.eventReport.findMany({
-    where: { eventId: event.id, status: 'OPEN', reason: { in: [...VERIFIED_BLOCKING_REPORTS] } },
-    select: { reason: true },
-  })
-  const quality = {
-    confidence: confidence({ ...event, promoterVerified }),
-    status: statusInfo(event.status, event.statusSource),
-    price: priceSummary(event),
-    recurrence: event.recurrence ? RECURRENCE_LABEL[event.recurrence as Recurrence] ?? null : null,
-    sources: [...new Set([event.source, ...(event.sources ?? [])])].map(sourceLabel),
-    checkedAt: (event.lastVerifiedAt ?? event.updatedAt).toISOString(),
-    verified: outzaVerified({ ...event, openReportReasons: openReports.map((r) => r.reason) }),
-    schedule: scheduleCue(event),
-    availability: availabilityLine(event.status, event.statusSource),
-  }
   return {
     event: {
-      ...rest,
-      promoter: promoter ? { id: promoter.id, name: promoter.name, orgName: promoter.orgName, verified: promoterVerified } : null,
-      attendeeCount: _count.attendees,
-      promoTier: tiers[event.id] ?? null,
+      ...event,
       friendsGoing: friends[event.id] ?? [],
       going: !!mine,
       followingPromoter: !!following,
       isMine: !!me && !!event.promoterId && event.promoterId === me.id,
-      quality,
     },
-    related,
+    related: core.related,
     signedIn: !!me,
   }
+}
+
+/** Full event detail payload shared by the event page and GET /api/events/[id]. */
+export async function getEventDetail(idOrParam: string, opts: DetailOpts = {}) {
+  const core = await getPublicEvent(idOrParam)
+  if (!core) return null
+  return personalizeEvent(core, opts)
 }
 
 export type EventDetailPayload = NonNullable<Awaited<ReturnType<typeof getEventDetail>>>

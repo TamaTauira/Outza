@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
+import { EmptyState } from '@/components/empty-state'
 import { CITIES } from '@/lib/cities'
 import { outingCity, outingsForCity } from '@/lib/outings-data'
 
@@ -29,6 +30,14 @@ export default async function OutingsPage({ searchParams }: { searchParams: Prom
             </Link>
           ))}
         </div>
+        {!plans.length && (
+          <EmptyState
+            title="Nothing lined up here yet."
+            lede="Day and night plans are built from real listings. Try another city, or browse the board."
+            action={{ href: '/', label: 'Browse events' }}
+            examples={['Saturday date night', 'Family Sunday under $50', 'A free afternoon']}
+          />
+        )}
         <ul className="mt-6 space-y-3">
           {plans.map((plan) => (
             <li key={plan.slug}>

@@ -50,6 +50,7 @@ export function VibePeepBuddy() {
         <div className="pointer-events-auto relative">
           <VibePeepMascot
             className={onMap ? 'w-12' : 'w-14 sm:w-16'}
+            sizes={onMap ? '48px' : '64px'}
             bubble="start"
             alt="VibePeep"
           />

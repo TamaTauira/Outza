@@ -1,7 +1,7 @@
 // VibePeep Intelligence: client-safe registry of the six approved sources and the measures we use.
 // Plain-English meaning and limitation text lives here so every card shows the same caveats.
 
-export type SourceKey = 'abs_region' | 'abs_seifa' | 'abs_hsi' | 'tfnsw' | 'dnsw' | 'google_bp'
+export type SourceKey = 'abs_region' | 'abs_seifa' | 'abs_hsi' | 'tfnsw' | 'dnsw' | 'tra' | 'footfall' | 'google_bp'
 export type DataKind = 'observed' | 'derived' | 'modelled' | 'hypothesis'
 
 export type SourceDef = {
@@ -41,6 +41,23 @@ export const INTEL_SOURCES: Record<SourceKey, SourceDef> = {
     scheduleHours: 24, scheduleLabel: 'Checked daily (monthly datasets)',
     scope: 'NSW train, metro and light rail stations, ferry wharves and coach stops with published facilities',
     limitations: 'Station entries and exits are monthly totals of Opal taps. They are not event attendance and riders are not customers. Distances are straight-line from the venue, not travel times. Bus stops need a TfNSW API key (GTFS) and are not included yet.',
+  },
+  tra: {
+    key: 'tra', name: 'Tourism Research Australia visitor surveys', publisher: 'Australian Trade and Investment Commission (Tourism Research Australia)',
+    url: 'https://www.tra.gov.au/en/tourism-statistics/domestic-tourism-statistics-results', licence: 'CC BY 4.0',
+    attribution: 'Source: Tourism Research Australia, National Visitor Survey, Domestic Tourism Statistics and International Visitor Survey. © Commonwealth of Australia, licensed under CC BY 4.0.',
+    scheduleHours: 24 * 7, scheduleLabel: 'Checked weekly (TRA releases quarterly)',
+    scope: 'Tourism regions in every state and territory, plus quarterly state totals',
+    limitations: 'Domestic overnight trips by tourism region are year-ending December figures from the final National Visitor Survey (to December 2024). From 2025 the free quarterly workbook publishes state and territory totals, not a quarter for each region. International figures are year-ending June trips for regions in the published International Visitor Survey workbook. Survey estimates for a region, not a venue. A 2024 region total and a 2026 state quarter are different series.',
+  },
+  footfall: {
+    key: 'footfall', name: 'Weekend pedestrian counts', publisher: 'City of Melbourne, City of Sydney and Brisbane City Council',
+    url: 'https://data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-monthly-counts-per-hour/information/',
+    licence: 'City of Sydney and Brisbane City Council: CC BY 4.0. City of Melbourne: open data (Victorian catalogue id other-open; the dataset record does not name a Creative Commons deed).',
+    attribution: 'Source: City of Melbourne Pedestrian Counting System. City of Sydney Automatic Hourly Pedestrian Count (CC BY 4.0). Brisbane City Council pedestrian movement counts (CC BY 4.0).',
+    scheduleHours: 24 * 7, scheduleLabel: 'Checked weekly',
+    scope: 'Melbourne CBD sensors (ongoing). Sydney CBD sensors on Elizabeth, Market, Park and Bridge streets (trial ended June 2025). Brisbane mall sensors at Queen Street, Brunswick Street and Chinatown.',
+    limitations: 'Counts are movements past a sensor, not attendance and not ticket sales. Melbourne is a mean across CBD sensors, or the nearest sensor within 1 km. Sydney is July 2024–June 2025, not a live feed. Brisbane hours under 25 movements are not published, and the sensor cannot tell a person from a trolley. No free day-of-week pedestrian series is published for the other cities and regions; those reports say so instead of borrowing another city.',
   },
   dnsw: {
     key: 'dnsw', name: 'Destination NSW insights', publisher: 'Destination NSW',
@@ -124,6 +141,8 @@ export const INSIGHT_SOURCE_LABEL: Record<InsightSource, string> = {
   abs_seifa: INTEL_SOURCES.abs_seifa.name,
   abs_hsi: INTEL_SOURCES.abs_hsi.name,
   tfnsw: INTEL_SOURCES.tfnsw.name,
+  tra: INTEL_SOURCES.tra.name,
+  footfall: INTEL_SOURCES.footfall.name,
   dnsw: INTEL_SOURCES.dnsw.name,
   google_bp: INTEL_SOURCES.google_bp.name,
   outza_catalogue: 'VibePeep event listings',

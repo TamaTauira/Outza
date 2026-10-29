@@ -11,7 +11,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  images: { unoptimized: true },
+  serverExternalPackages: ['nodemailer'],
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
   // 308 the legacy production alias onto the canonical host. Vercel serves this
   // same deployment on outza-sepia.vercel.app (that name is
   // VERCEL_PROJECT_PRODUCTION_URL). Prefer the same 308 in the Vercel project

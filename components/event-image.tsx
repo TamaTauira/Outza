@@ -17,6 +17,10 @@ interface Props {
   priority?: boolean
   /** Compact fallback (small cards) */
   compact?: boolean
+  /** Fill the frame edge to edge. Used by cards and the short event hero. */
+  crop?: boolean
+  /** Category colour for the branded placeholder when there is no image. */
+  accent?: string
   className?: string
 }
 
@@ -25,7 +29,7 @@ interface Props {
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
  * otherwise a clearly labelled VibePeep placeholder.
  */
-export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, className }: Props) {
+export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, crop, accent, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
   const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
   const m = image?.variants ?? null
@@ -33,12 +37,14 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
   const [stage, setStage] = useState<'variant' | 'source' | 'none'>(hasVariants ? 'variant' : src ? 'source' : 'none')
   const loading = priority ? 'eager' : 'lazy'
 
+  const frame = cn('absolute inset-0 w-full h-full', crop ? 'object-cover' : 'object-contain', className)
+
   if (stage === 'variant' && m && hasVariants) {
     const widths = m.sizes[kind]!
     const full = variantUrl(m, kind, widths[widths.length - 1], 'webp')
     return (
       <>
-        <img src={full} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />
+        {!crop && <img src={full} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}
         <picture>
           <source type="image/avif" srcSet={srcSet(m, kind, 'avif') ?? undefined} sizes={sizes} />
           <source type="image/webp" srcSet={srcSet(m, kind, 'webp') ?? undefined} sizes={sizes} />
@@ -48,7 +54,7 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
             loading={loading}
             decoding="async"
             fetchPriority={priority ? 'high' : 'auto'}
-            className={cn('absolute inset-0 w-full h-full object-contain', className)}
+            className={frame}
             onError={() => setStage(src ? 'source' : 'none')}
           />
         </picture>
@@ -59,14 +65,14 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
   if (stage === 'source' && src) {
     return (
       <>
-        <img src={src} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />
+        {!crop && <img src={src} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}
         <img
           src={src}
           alt={alt}
           loading={loading}
           decoding="async"
           fetchPriority={priority ? 'high' : 'auto'}
-          className={cn('absolute inset-0 w-full h-full object-contain', className)}
+          className={frame}
           onError={() => setStage('none')}
         />
       </>
@@ -74,7 +80,12 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
   }
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#161616] via-[#101010] to-[#1f1410] text-center" role="img" aria-label={alt}>
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
+      style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #1a120c 72%)` : 'linear-gradient(145deg, #2a211c, #141414)' }}
+      role="img"
+      aria-label={alt}
+    >
       <VibePeepMark className={compact ? 'w-7 h-7' : 'w-10 h-10'} decorative />
       <span className="flex flex-col items-center leading-none text-white">
         <VibePeepWordmark tone="on-dark" decorative className={compact ? 'h-3.5 w-auto' : 'h-5 w-auto'} />

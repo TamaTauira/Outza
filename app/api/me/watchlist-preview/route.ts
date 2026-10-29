@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { publicEmailError } from '@/lib/email'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { sendWatchDigest } from '@/lib/watch-mail'
 
@@ -9,9 +10,10 @@ export async function POST() {
   if (!me) return unauthorized()
   const result = await sendWatchDigest(me.id, { test: true })
   if (!result.ok) {
-    if ('disabled' in result && result.disabled) return NextResponse.json({ error: 'Email sending is turned off until RESEND_API_KEY is set.' }, { status: 503 })
+    if ('disabled' in result && result.disabled) return NextResponse.json({ error: 'Email sending is turned off.' }, { status: 503 })
     if ('skipped' in result && result.skipped) return NextResponse.json({ error: 'Save an event or follow a venue first, so the preview has something to say.' }, { status: 422 })
-    return NextResponse.json({ error: 'Could not send the preview.' }, { status: 502 })
+    const restricted = 'restricted' in result && result.restricted
+    return NextResponse.json({ error: publicEmailError('error' in result ? result.error : undefined), restricted }, { status: restricted ? 403 : 502 })
   }
   return NextResponse.json({ ok: true })
 }

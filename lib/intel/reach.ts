@@ -5,6 +5,8 @@ import { normalizeVenue } from '@/lib/quality'
 import type { DataKind, InsightSource } from './sources'
 import type { Voice } from './voice'
 import { confidenceFor, ptsDiff } from './util'
+import { visitorCopy, weekendCopy, type VisitorSignal, type WeekendSignal } from './crowd-shape'
+import { footfallMissingDetail, footfallSeriesReady } from './markets'
 
 export type Confidence = 'high' | 'medium' | 'low' | 'insufficient'
 export type InsightLink = { name: string; url: string; note: string }
@@ -27,9 +29,11 @@ export const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fri
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** "2026-09" → "Sep 2026", "YE-2026-06" → "year ending Jun 2026". */
+/** "2026-09" → "Sep 2026", "YE-2026-06" → "year ending Jun 2026", "2025-Q4" → "Dec quarter 2025". */
 export const fmtPeriod = (p?: string | null) => {
   if (!p) return ''
+  const q = p.match(/^(\d{4})-Q([1-4])$/)
+  if (q) return `${['Mar', 'Jun', 'Sep', 'Dec'][Number(q[2]) - 1]} quarter ${q[1]}`
   const m = p.match(/^(YE-)?(\d{4})-(\d{2})$/)
   return m ? `${m[1] ? 'year ending ' : ''}${MON[Number(m[3]) - 1]} ${m[2]}` : p
 }
@@ -220,7 +224,11 @@ export type AreaSignals = {
   hospitalityYoy: number | null
   alcoholYoy: number | null
   spendMonth: string | null
-  tourism: { title: string; period: string | null; intlVisitors: number; yoyPct: number } | null
+  tourism: { title: string; period: string | null; intlVisitors: number; yoyPct: number | null } | null
+  visitor: VisitorSignal | null
+  weekend: WeekendSignal | null
+  /** Resolved market (Sydney, Cairns, Launceston, …), which can be finer than the catalogue city. */
+  marketId: string
   seifa: { area: string; decile: number; advantageDecile?: number | null } | null
   areaLoaded: boolean
 }
@@ -398,9 +406,27 @@ function spending(voice: Voice, f: EventFacts, a: AreaSignals): Insight | null {
     `In ${fmtPeriod(a.spendMonth)}, ${a.spendLabel} household spending was ${bits.join(', ')} on a year earlier (current prices, not adjusted for inflation). ${action}`)
 }
 
+function visitorInsight(voice: Voice, f: EventFacts, a: AreaSignals): Insight | null {
+  if (!a.visitor) return null
+  const copy = visitorCopy(a.visitor, f.dowName, voice.venue)
+  return cat(['tra'], 'observed', confidenceFor({ hasData: true, geoPrecise: false, ageYears: 1 }), copy.title, copy.detail)
+}
+
+function weekendInsight(voice: Voice, f: EventFacts, a: AreaSignals): Insight | null {
+  if (!a.weekend) return null
+  const copy = weekendCopy(a.weekend, f.dowName, f.dow, voice.venue)
+  return cat(['footfall'], 'derived', confidenceFor({ hasData: true, geoPrecise: false, ageYears: 1 }), copy.title, copy.detail)
+}
+
 function tourismInsight(voice: Voice, f: EventFacts, a: AreaSignals): Insight | null {
+  if (a.visitor) return null
   const t = a.tourism
   if (!t) return null
+  if (t.yoyPct == null) {
+    return cat(['dnsw'], 'observed', confidenceFor({ hasData: true, geoPrecise: false, ageYears: 1 }),
+      'International visitors, no earlier year stored',
+      `${(t.intlVisitors / 1e6).toFixed(2)} million international visitors in the ${fmtPeriod(t.period)} (${t.title}). No earlier year is stored, so this is not a rise or a fall. For this ${f.dowName} ${f.category} in ${f.city}, a map-ready listing is the practical move if visitors are part of the plan. Region-wide survey estimate, not ${voice.venue}.`)
+  }
   const dir = t.yoyPct >= 0 ? 'up' : 'down'
   return cat(['dnsw'], 'observed', confidenceFor({ hasData: true, geoPrecise: false, ageYears: 1 }),
     `International visitors ${dir} ${Math.abs(t.yoyPct).toFixed(1)}%`,
@@ -531,7 +557,7 @@ function queerInsight(f: EventFacts): Insight | null {
 const outdoor = (f: EventFacts) =>
   f.category === 'Sports' || f.category === 'Family' || f.subTags.some((t) => /market|festival|parade|fair|outdoor/i.test(t))
 
-function gapsFor(voice: Voice, f: EventFacts, a: AreaSignals): Gap[] {
+function gapsFor(_voice: Voice, f: EventFacts, a: AreaSignals): Gap[] {
   const gaps: Gap[] = []
   const pinned = a.status === 'ok' || a.status === 'no_data'
   if (pinned && !a.areaLoaded) {
@@ -540,10 +566,10 @@ function gapsFor(voice: Voice, f: EventFacts, a: AreaSignals): Gap[] {
       detail: 'ABS Data by Region figures for this venue area are not in the database, so there is no age mix, income or business count yet. No estimate is filled in.',
     })
   }
-  if (f.dow === 0 || f.dow === 5 || f.dow === 6) {
+  if ((f.dow === 0 || f.dow === 5 || f.dow === 6) && !a.weekend) {
     gaps.push({
-      title: 'Weekend footfall needs an import',
-      detail: `There is no Friday-versus-Sunday crowd count in this report. Opal figures, when shown, are monthly station totals, not a day of the week, and no other footfall series is imported. Do not read taps as weekend trade at ${voice.venue}.`,
+      title: footfallSeriesReady(a.marketId) ? 'Weekend footfall needs an import' : 'No day-of-week footfall for this city',
+      detail: footfallMissingDetail(a.marketId),
     })
   }
   if (outdoor(f)) {
@@ -552,12 +578,12 @@ function gapsFor(voice: Voice, f: EventFacts, a: AreaSignals): Gap[] {
       detail: `Bureau of Meteorology climate averages are not imported, so this report does not say whether ${f.dowName}s around this date are usually wet or hot. Check the Bureau before an outdoor ${f.category} plan. No temperature is estimated here.`,
     })
   }
-  if (f.stateCode === '1' && !a.tourism) {
+  if (!a.visitor && f.stateCode === '1' && !a.tourism) {
     gaps.push({
       title: 'Tourism figures need an import',
       detail: `Destination NSW visitor totals are not in the database yet, so this report does not show a tourism peak for ${f.city}.`,
     })
-  } else if (f.stateCode && f.stateCode !== '1') {
+  } else if (!a.visitor && f.stateCode && f.stateCode !== '1') {
     gaps.push({
       title: 'Tourism peaks for this state need an import',
       detail: `Destination NSW is the only visitor survey imported, and it covers Sydney and New South Wales. Nothing from Tourism Research Australia is loaded for ${f.stateName}, so there is no tourism peak for ${f.city} here.`,
@@ -580,6 +606,8 @@ export function composeInsights(voice: Voice, facts: EventFacts, area: AreaSigna
     foodRegs(voice, facts, area),
     transport(voice, area),
     spending(voice, facts, area),
+    visitorInsight(voice, facts, area),
+    weekendInsight(voice, facts, area),
     tourismInsight(voice, facts, area),
     seifaInsight(facts, area),
   ].filter((x): x is Insight => !!x)

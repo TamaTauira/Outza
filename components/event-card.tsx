@@ -11,8 +11,6 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
-import { sourceLabel } from '@/lib/quality'
-
 interface EventData {
   id: string
   title: string
@@ -54,13 +52,15 @@ export function EventCard({ event, index }: { event: EventData; index: number })
       <Link href={eventPath(event)} className="block group">
         <div className="bg-card rounded-xl overflow-hidden shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] transition-all duration-300 group-hover:-translate-y-1">
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+          <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A1A'}, #1a120c)` }}>
             <EventImage
               image={event.imageAsset}
               src={event.imageUrl}
               kind="card"
               alt={event.title}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              crop
+              accent={catDef?.color}
             />
 
             {/* Date badge */}
@@ -106,13 +106,6 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             <h3 className="font-display font-semibold text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors">
               {event.title}
             </h3>
-            {(event.verified || event.source) && (
-              <p className="text-[11px] text-muted-foreground">
-                {event.verified && <span className="font-semibold text-primary">VibePeep Verified</span>}
-                {event.verified && event.source ? ' · ' : ''}
-                {event.source ? `From ${sourceLabel(event.source)}` : ''}
-              </p>
-            )}
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -142,5 +135,27 @@ export function EventCard({ event, index }: { event: EventData; index: number })
         </div>
       </Link>
     </motion.div>
+  )
+}
+
+/** Two-line city-guide row used under the desktop card breakpoint. */
+export function GuideEventRow({ event }: { event: EventData }) {
+  const catDef = CATEGORIES.find((c) => c.name === event.category)
+  const color = catDef?.color ?? '#FF7A1A'
+  const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
+  const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
+  return (
+    <Link href={eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
+        <EventImage image={event.imageAsset} src={event.imageUrl} kind="card" alt="" sizes="64px" compact crop accent={color} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-semibold leading-snug">{event.title}</p>
+        <p className="truncate text-sm text-muted-foreground">
+          {event.time ?? 'All day'} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
+        </p>
+      </div>
+      <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{price.value}</span>
+    </Link>
   )
 }

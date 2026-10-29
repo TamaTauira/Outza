@@ -81,7 +81,9 @@ export function AccountClient() {
   }
   const preview = async () => {
     const res = await fetch('/api/me/digest-preview', { method: 'POST' })
-    if (res.ok) toast.success('Preview sent to your inbox'); else toast.error('Could not send preview')
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) toast.success('Preview sent to your inbox')
+    else toast.error(typeof data?.error === 'string' ? data.error : 'Could not send preview')
   }
 
   if (!me) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
@@ -129,7 +131,7 @@ export function AccountClient() {
         <button onClick={preview} className="mt-4 h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Show Me a Sneak Peek</button>
         <label className="flex items-start gap-3 text-sm mt-4 cursor-pointer">
           <input type="checkbox" checked={!!me.reminderOptIn} onChange={(e) => save({ reminderOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
-          <span>Remind me by email when a saved event is coming up. This stays off until you tick it, and it only sends when Resend is configured.</span>
+          <span>Remind me by email when a saved event is coming up. This stays off until you tick it, and it only sends when email is configured.</span>
         </label>
         <p className="mt-3 text-sm text-muted-foreground">Saves, venue follows and the calendar file live on <Link href="/watchlist" className="text-primary underline">My VibePeep</Link>.</p>
       </section>

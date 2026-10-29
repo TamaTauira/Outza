@@ -1,30 +1,35 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
-import { EventList } from '@/components/event-list';
+import { EventList, type BoardSeed } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
-import { MapView } from '@/components/map-view';
 import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
-import { ArrowRight, CalendarDays, Check, Info, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
+import { CalendarDays, Check, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
+import { HomeRails } from '@/components/home-rails';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { VibePeepMascot } from '@/components/vibepeep-mascot';
 import { useBackState } from '@/lib/scroll-memory';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
+const MapView = dynamic(() => import('@/components/map-view').then((m) => m.MapView), {
+  ssr: false,
+  loading: () => <div className="flex h-full min-h-[50vh] items-center justify-center text-sm text-muted-foreground">Loading the map…</div>,
+});
 
 const EMPTY_FILTERS: FilterState = {
   category: '', categories: [], subTag: '', suburb: '', isFree: false, isLGBTI: false, dateFrom: '', dateTo: '', datePreset: ''
@@ -40,7 +45,7 @@ const WINDOWS: {key: TimeWindow;label: string;todayOnly?: boolean;}[] = [
 { key: 'all', label: 'Full day' }];
 
 
-export function HomeClient() {
+export function HomeClient({ initialNow, initialBoard = null }: { initialNow: SydneyNow; initialBoard?: BoardSeed | null }) {
   // Board, Map and Saved are real addresses (/, /map, /saved) sharing this layout.
   // City is shared. Category, date and area filters are per view, so Music on the board does not filter the map.
   const router = useRouter();
@@ -56,13 +61,14 @@ export function HomeClient() {
   const [mapFilters, setMapFilters] = useBackState<FilterState>('map:filters', EMPTY_FILTERS);
   const filters = view === 'map' ? mapFilters : boardFilters;
   const setFilters = view === 'map' ? setMapFilters : setBoardFilters;
-  const [now, setNow] = useState<SydneyNow | null>(null);
-  const [day, setDay] = useBackState<string | null>('home:day', null);
+  const [now, setNow] = useState<SydneyNow | null>(initialNow);
+  const [day, setDay] = useBackState<string | null>('home:day', initialNow.date);
   // Full day matches the "Today" date chip. Ended rows stay hidden until "Show ended".
   const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'all');
   const [windowPinned, setWindowPinned] = useState(false);
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
   const [catsHydrated, setCatsHydrated] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState<Date | undefined>(undefined);
   const { saved } = useSaved();
@@ -265,75 +271,91 @@ export function HomeClient() {
     <div className="min-h-screen bg-background text-foreground overflow-x-clip">
       <Navbar savedCount={saved.length} />
 
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 pt-5">
+      <main className={view === 'map' ? 'relative h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>
             <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">All your bookmarks in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My VibePeep</Link> also keeps follows, reminders and a calendar file.</p>
           </div>
-        ) : view === 'map' ? (
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-            <div>
-              <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">Map it out.</h1>
-              <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">Every pin's a plan waiting to happen.</p>
-            </div>
-            <label className="inline-flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 h-12 sm:w-[230px] shrink-0">
-              <MapPin className="w-5 h-5 text-primary shrink-0" />
-              <span className="sr-only">Choose a city</span>
-              <select value={city} onChange={(e) => setCity(e.target.value)} className="flex-1 min-w-0 bg-transparent font-medium text-base pr-1 focus:outline-none cursor-pointer" aria-label="Choose a city">
-                <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
-                {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
-              </select>
-            </label>
-          </div>
-        ) : (
-          <section className="mb-5 rounded-2xl bg-[#0c0f0e] text-white px-5 py-6 sm:px-8 sm:py-7 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-            <div className="flex items-start gap-3 sm:gap-6">
+        ) : view === 'board' ? (
+          <section className="mb-4 rounded-2xl bg-[#0c0f0e] text-white px-4 py-4 sm:px-6 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
+            <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <p className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold tracking-wide">
-                    <span className="w-2.5 h-2.5 rounded-full bg-brand-gradient" aria-hidden />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-xs font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-brand-gradient" aria-hidden />
                     <span className="text-brand-gradient">Take a peep at what&apos;s happening.</span>
                   </p>
                   <LocalClock city={city} className="text-right" />
                 </div>
-                <p className="mt-2 text-xs sm:text-sm text-white/60">Events · Experiences · Local discoveries.</p>
-                <h1 className="mt-3 font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
-                <p className="mt-3 text-base sm:text-xl text-white/80 leading-snug">Gigs, pop-ups, markets and hidden gems, all happening near you and all in one spot.</p>
+                <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
               </div>
-              <figure className="w-[4.75rem] shrink-0 sm:w-40 lg:w-48">
-                <VibePeepMascot priority onDark className="w-full" alt="VibePeep, a round black robot with orange and pink eyes, mid-jump and waving hello" />
-                <figcaption className="mt-1 text-center text-[10px] leading-tight text-white/70 sm:text-xs">I&apos;ll keep an eye out.</figcaption>
+              <figure className="w-14 shrink-0 sm:w-24">
+                <VibePeepMascot priority onDark className="w-full" sizes="(min-width: 640px) 96px, 56px" alt="VibePeep, a round black robot with orange and pink eyes, mid-jump and waving hello" />
               </figure>
             </div>
-            <div className="mt-5 flex flex-col sm:flex-row sm:items-start gap-3">
-              <label className="inline-flex items-center gap-2.5 rounded-xl border border-primary/40 bg-white/[0.03] px-4 h-14 sm:w-[230px] shrink-0">
-                <MapPin className="w-5 h-5 text-primary shrink-0" />
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+              <label className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3 sm:w-[200px]">
+                <MapPin className="w-4 h-4 text-primary shrink-0" />
                 <span className="sr-only">Choose a city</span>
-                <select value={city} onChange={(e) => setCity(e.target.value)} className="flex-1 min-w-0 bg-transparent text-white font-medium text-base sm:text-lg pr-1 focus:outline-none cursor-pointer" aria-label="Choose a city">
+                <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent pr-1 font-medium text-white focus:outline-none" aria-label="Choose a city">
                   <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} />
             </div>
-            <p className="mt-4 flex items-start gap-2 text-xs sm:text-sm text-white/70">
-              <Info className="w-4 h-4 mt-0.5 shrink-0" />
-              Event details may change. Confirm times, availability and prices with the organiser before attending.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-              <Link href={`/outings?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white underline underline-offset-4">Plan a day or night</Link>
-              <Link href={`/outings/saturday-date-night?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Saturday date night</Link>
-              <Link href={`/outings/family-sunday?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Family Sunday</Link>
-              <Link href={`/outings/free-afternoon?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Free afternoon</Link>
-            </div>
           </section>
+        ) : null}
+
+        {view === 'board' && <FeaturedTurnstile city={city} />}
+        {view === 'board' && today && (
+          <HomeRails
+            city={city}
+            today={today}
+            onSeeAll={(kind) => {
+              setBoardOpen(true);
+              if (kind === 'free') setBoardFilters((f) => ({ ...f, isFree: true }));
+              if (kind === 'tonight' && today) { setDay(today); pinWindow('evening'); }
+              if (kind === 'weekend') {
+                const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6);
+                if (sat) setDay(sat);
+                pinWindow('all');
+              }
+              requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+            }}
+          />
+        )}
+        {view === 'map' && (
+          <>
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[700] flex flex-col gap-2 p-3">
+              <div className="pointer-events-auto flex gap-2">
+                <label className="inline-flex h-11 w-[46%] max-w-[220px] items-center gap-2 rounded-full border border-border bg-background/95 px-3 shadow-lg backdrop-blur sm:w-[200px]">
+                  <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                  <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 bg-transparent text-sm font-medium focus:outline-none" aria-label="Choose a city">
+                    <option value="">All of Australia</option>
+                    {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </select>
+                </label>
+                <div className="pointer-events-auto relative min-w-0 flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                  <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search the map" aria-label="Search events" className="h-11 w-full rounded-full border border-border bg-background/95 pl-9 pr-3 text-sm shadow-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+              </div>
+              <div className="pointer-events-auto flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+                <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
+                {CATEGORIES.map((c) => (
+                  <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
+                ))}
+                <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
+              </div>
+            </div>
+            <MapView filters={filters} searchQuery={searchQuery} city={city} bleed />
+          </>
         )}
 
-        {view !== 'saved' && <FeaturedTurnstile city={city} />}
-
-        <div ref={boardRef} className="scroll-mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
-          {view !== 'saved' &&
+        {view !== 'map' && <div ref={boardRef} className="scroll-mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+          {view === 'board' &&
           <>
               {/* Big search */}
               <div className="px-3 sm:px-4 pt-4 pb-3 border-b border-border space-y-3">
@@ -477,6 +499,8 @@ export function HomeClient() {
           }
 
           {view === 'board' &&
+          <>
+          <div className={cn(!boardOpen && 'max-lg:max-h-[32rem] max-lg:overflow-hidden')}>
           <EventList
             filters={filters}
             searchQuery={searchQuery}
@@ -486,12 +510,18 @@ export function HomeClient() {
             timeWindow={timeWindow}
             onWindowChange={setTimeWindow}
             windowPinned={windowPinned}
-            city={city} />
-
+            city={city}
+            initialBoard={initialBoard} />
+          </div>
+          <div className="flex justify-center border-t border-border px-4 py-3 lg:hidden">
+            <button type="button" onClick={() => setBoardOpen((open) => !open)} className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">
+              {boardOpen ? 'Show less' : 'See all events'}
+            </button>
+          </div>
+          </>
           }
-          {view === 'map' && <div className="p-3"><MapView filters={filters} searchQuery={searchQuery} city={city} /></div>}
           {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
-        </div>
+        </div>}
       </main>
 
       {/* Filters drawer */}

@@ -12,8 +12,9 @@ import { useSaved } from '@/lib/saved'
 import { CITY_NAMES, DEFAULT_CITY, cityDef } from '@/lib/cities'
 import { readCity, writeCity } from '@/lib/city-pref'
 import { LOCAL_CATEGORIES, LOCAL_SOURCES, fmtDay, fmtTime, localPath, localToBoard } from '@/lib/local-shared'
-import { BoardRow, BoardHeadings, GroupBar, getStatus } from '@/components/board-row'
+import { GroupBar } from '@/components/board-row'
 import { dayLabel } from '@/lib/board'
+import { Bookmark } from 'lucide-react'
 import { LocalSubmitForm } from './local-submit-form'
 import { cn } from '@/lib/utils'
 import { citySlug } from '@/lib/seo'
@@ -22,7 +23,7 @@ type Item = { id: string; title: string; category: string; description: string; 
 type Mine = Omit<Item, 'date' | 'recurring'> & { status: string; expiresAt: string; flags: string[]; reviewNote: string | null; startDate: string }
 
 const ICON: Record<string, typeof Store> = { GARAGE: Tag, WAREHOUSE: Warehouse, MARKET: ShoppingBasket, COMMUNITY: Users }
-const TABS = [{ key: 'browse', label: 'What’s on nearby' }, { key: 'submit', label: 'List something' }, { key: 'mine', label: 'My listings' }, { key: 'how', label: 'How VibePeep Local works' }] as const
+const TABS = [{ key: 'browse', label: 'What’s on nearby', short: 'Nearby' }, { key: 'submit', label: 'List something', short: 'List' }, { key: 'mine', label: 'My listings', short: 'Mine' }, { key: 'how', label: 'How VibePeep Local works', short: 'How' }] as const
 const WHEN = [{ key: 'today', label: 'Today' }, { key: 'weekend', label: 'This weekend' }, { key: '7', label: 'Next 7 days' }, { key: '30', label: 'Next 30 days' }]
 function nowIn(tz: string) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
@@ -98,45 +99,50 @@ export function LocalClient() {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-clip">
+    <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
       <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10">
-        <header className="max-w-3xl">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">VibePeep Local</p>
-          <h1 className="mt-2 font-display text-3xl sm:text-5xl font-bold tracking-tight">Your neighbourhood, unlocked.</h1>
-          <p className="mt-3 text-muted-foreground sm:text-lg">Garage sales, warehouse clearances, markets and community happenings: the good stuff that never makes the big posters. Listing’s free.</p>
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div className="max-w-3xl">
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">VibePeep Local</p>
+            <h1 className="mt-2 font-display text-3xl sm:text-5xl font-bold tracking-tight">Your neighbourhood, unlocked.</h1>
+            <p className="mt-3 text-muted-foreground sm:text-lg">Garage sales, warehouse clearances, markets and community happenings: the good stuff that never makes the big posters. Listing’s free.</p>
+          </div>
+          <button type="button" onClick={() => setTab('submit')} className="inline-flex h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground"><Plus className="h-4 w-4" />List something</button>
         </header>
 
-        <div className="mt-8 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border max-w-full min-w-0">
-          {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative px-4 py-3 text-sm whitespace-nowrap', tab === t.key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
-              {t.label}{tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
-            </button>
-          ))}
+        <div className="relative mt-8 min-w-0">
+          <div className="flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:thin]">
+            {TABS.map((t) => (
+              <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative shrink-0 px-3 py-3 text-sm whitespace-nowrap sm:px-4', tab === t.key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
+                <span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span>
+                {tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
+              </button>
+            ))}
+          </div>
         </div>
 
         {tab === 'browse' && (
           <section className="mt-8">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
               {LOCAL_CATEGORIES.map((c) => {
                 const Icon = ICON[c.key]
                 const on = category === c.key
                 return (
-                  <button key={c.key} onClick={() => setCategory(on ? '' : c.key)} className={cn('text-left rounded-2xl p-4 shadow-sm transition-all', on ? 'bg-primary text-primary-foreground' : 'bg-card hover:shadow-md')}>
-                    <Icon className="w-5 h-5" />
-                    <p className="mt-2 font-display font-bold">{c.label}</p>
-                    <p className={cn('mt-1 text-xs leading-relaxed', on ? 'text-primary-foreground/85' : 'text-muted-foreground')}>{c.blurb}</p>
-                    <p className="mt-2 font-mono text-[11px]">{data ? `${data.counts[c.key] ?? 0} listed` : '…'}</p>
+                  <button key={c.key} onClick={() => setCategory(on ? '' : c.key)} className={cn('inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 text-sm', on ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted')}>
+                    <Icon className="h-4 w-4" />
+                    <span>{c.short}</span>
+                    <span className="font-mono text-[11px] opacity-80">{data ? data.counts[c.key] ?? 0 : '…'}</span>
                   </button>
                 )
               })}
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-2">
-              <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="City" className="h-9 rounded-full border border-border bg-background px-3 text-sm">
+            <div className="mt-4 flex min-w-0 items-center gap-2">
+              <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="City" className="h-9 shrink-0 rounded-full border border-border bg-background px-3 text-sm">
                 {CITY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <div className="flex gap-2 overflow-x-auto">{WHEN.map((w) => <button key={w.key} onClick={() => setWhen(w.key)} className={pill(when === w.key)}>{w.label}</button>)}</div>
+              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:thin]">{WHEN.map((w) => <button key={w.key} onClick={() => setWhen(w.key)} className={cn(pill(when === w.key), 'shrink-0')}>{w.label}</button>)}</div>
             </div>
 
             <div className="mt-6 rounded-xl bg-card border border-border overflow-hidden">
@@ -147,7 +153,6 @@ export function LocalClient() {
                 </div>
                 <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"><MousePointerClick className="w-3 h-3" /> Tap a row for the goods</span>
               </div>
-              <BoardHeadings />
               {!data && !loadError && <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading local listings…</p>}
               {loadError && (
                 <div className="p-8 text-center">
@@ -171,9 +176,29 @@ export function LocalClient() {
                 return (
                   <section key={day}>
                     <GroupBar label={dayLabel(day, now?.date ?? null)} count={rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [day]: open }))} />
-                    {open && rows.map((ev) => (
-                      <BoardRow key={ev.id} ev={ev} status={getStatus(ev, day, now?.date ?? null, now?.minutes ?? 0)} saved={isSaved(ev.id)} onToggleSave={toggle} />
-                    ))}
+                    {open && (
+                      <div className="grid gap-3 p-3 sm:grid-cols-2">
+                        {rows.map((ev) => {
+                          const free = ev.isFree || /free/i.test(ev.price ?? '')
+                          return (
+                            <div key={ev.id} className="rounded-xl border border-border bg-background p-4">
+                              <div className="flex items-start justify-between gap-2">
+                                <Link href={ev.href ?? `/local`} className="font-semibold leading-snug hover:text-primary">{ev.title}</Link>
+                                <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('shrink-0', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
+                                  <Bookmark className={cn('h-4 w-4', isSaved(ev.id) && 'fill-current')} />
+                                </button>
+                              </div>
+                              <p className="mt-1 text-sm text-muted-foreground">{[ev.suburb, ev.time].filter(Boolean).join(' · ')}</p>
+                              <div className="mt-2 flex items-center gap-2 text-xs">
+                                {free && <span className="rounded-full bg-emerald-700 px-2 py-0.5 font-bold text-white">Free</span>}
+                                {!free && ev.price && <span className="font-mono">{ev.price}</span>}
+                                <span className="text-muted-foreground">{ev.category}</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </section>
                 )
               })}

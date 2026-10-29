@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useSaved } from '@/lib/saved'
 import { eventsToIcs } from '@/lib/ics'
 import { eventPath } from '@/lib/seo'
+import { EmptyState } from '@/components/empty-state'
 
 type Venue = { venueKey: string; venueName: string; city: string | null }
 
@@ -95,8 +96,14 @@ export function WatchlistClient() {
 
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold mb-3">Saved events</h2>
-        {!saved.length && (
-          <p className="text-sm text-muted-foreground">{status === 'authenticated' ? 'Nothing saved yet. Use the bookmark on the board or an event page.' : 'Sign in to see the events saved on your account.'}</p>
+        {!saved.length && status !== 'loading' && (
+          <EmptyState
+            title={status === 'authenticated' ? 'Nothing saved yet' : 'Sign in to see your saved events'}
+            lede={status === 'authenticated' ? 'Use the bookmark on the board or an event page.' : 'Saves, follows and reminders belong to your account.'}
+            action={status === 'authenticated' ? { href: '/', label: 'Browse events' } : { href: '/login?next=/watchlist', label: 'Sign in' }}
+            secondary={status === 'authenticated' ? undefined : { href: '/', label: 'Browse events' }}
+            examples={['Friday · Outdoor yoga · Rose Bay', 'Saturday · Live music · The Rocks', 'Sunday · Market · Bondi']}
+          />
         )}
         <ul className="space-y-2">
           {saved.map((ev) => (
@@ -144,7 +151,7 @@ export function WatchlistClient() {
 
       <section className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5 space-y-3">
         <h2 className="font-display text-xl font-bold">Email</h2>
-        <p className="text-sm text-muted-foreground">No app notifications. Mail goes out through Resend only when you opt in and a key is configured.</p>
+        <p className="text-sm text-muted-foreground">No app notifications. Mail goes out only when you opt in and email is configured.</p>
         {status === 'authenticated' ? (
           <>
             <label className="flex items-start gap-3 text-sm">
