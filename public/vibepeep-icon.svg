@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="116" fill="#111111"/>
+  <rect x="2.5" y="2.5" width="507" height="507" rx="113.5" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
+  <defs>
+    <mask id="rings" maskUnits="userSpaceOnUse">
+      <rect width="512" height="512" fill="#000"/>
+      <circle cx="178" cy="256" r="116" fill="#fff"/>
+      <circle cx="334" cy="256" r="116" fill="#fff"/>
+      <circle cx="178" cy="256" r="70" fill="#000"/>
+      <circle cx="334" cy="256" r="70" fill="#000"/>
+    </mask>
+    <linearGradient id="pink" x1="300" y1="150" x2="460" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFA3BE"/>
+      <stop offset="0.42" stop-color="#FF5C8A"/>
+      <stop offset="1" stop-color="#FF3A72"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="70" y1="140" x2="280" y2="390" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFC56A"/>
+      <stop offset="0.45" stop-color="#FF8C22"/>
+      <stop offset="1" stop-color="#F06412"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="256" y1="140" x2="256" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="pupil" cx="38%" cy="34%" r="68%">
+      <stop offset="0" stop-color="#3a3a3a"/>
+      <stop offset="0.55" stop-color="#141414"/>
+      <stop offset="1" stop-color="#050505"/>
+    </radialGradient>
+  </defs>
+  <circle cx="178" cy="256" r="72" fill="#fff"/>
+  <circle cx="334" cy="256" r="72" fill="#fff"/>
+  <g mask="url(#rings)">
+    <rect width="512" height="512" fill="url(#pink)"/>
+    <circle cx="178" cy="256" r="116" fill="url(#orange)"/>
+    <rect width="512" height="250" fill="url(#gloss)"/>
+  </g>
+  <circle cx="178" cy="258" r="46" fill="url(#pupil)"/>
+  <circle cx="334" cy="258" r="46" fill="url(#pupil)"/>
+  <ellipse cx="196" cy="238" rx="13" ry="16" fill="#fff"/>
+  <ellipse cx="352" cy="238" rx="13" ry="16" fill="#fff"/>
+  <ellipse cx="160" cy="276" rx="5.5" ry="6.5" fill="#fff"/>
+  <ellipse cx="316" cy="276" rx="5.5" ry="6.5" fill="#fff"/>
+</svg>

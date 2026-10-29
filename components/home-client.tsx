@@ -22,6 +22,7 @@ import { FeaturedTurnstile } from '@/components/featured-turnstile';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
+import { VibePeepMascot } from '@/components/vibepeep-mascot';
 import { useBackState } from '@/lib/scroll-memory';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
 
@@ -268,16 +269,24 @@ export function HomeClient() {
           </div>
         ) : (
           <section className="mb-5 rounded-2xl bg-[#0c0f0e] text-white px-5 py-6 sm:px-8 sm:py-7 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold tracking-wide">
-                <span className="w-2.5 h-2.5 rounded-full bg-brand-gradient" aria-hidden />
-                <span className="text-brand-gradient">Take a peep at what&apos;s happening.</span>
-              </p>
-              <LocalClock className="text-right" />
+            <div className="flex items-start gap-3 sm:gap-6">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <p className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold tracking-wide">
+                    <span className="w-2.5 h-2.5 rounded-full bg-brand-gradient" aria-hidden />
+                    <span className="text-brand-gradient">Take a peep at what&apos;s happening.</span>
+                  </p>
+                  <LocalClock className="text-right" />
+                </div>
+                <p className="mt-2 text-xs sm:text-sm text-white/60">Events · Experiences · Local discoveries.</p>
+                <h1 className="mt-3 font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
+                <p className="mt-3 text-base sm:text-xl text-white/80 leading-snug">Gigs, pop-ups, markets and hidden gems, all happening near you and all in one spot.</p>
+              </div>
+              <figure className="w-[4.75rem] shrink-0 sm:w-40 lg:w-48">
+                <VibePeepMascot priority onDark className="w-full" alt="VibePeep, a round black robot with orange and pink eyes, mid-jump and waving hello" />
+                <figcaption className="mt-1 text-center text-[10px] leading-tight text-white/70 sm:text-xs">I&apos;ll keep an eye out.</figcaption>
+              </figure>
             </div>
-            <p className="mt-2 text-xs sm:text-sm text-white/60">Events · Experiences · Local discoveries.</p>
-            <h1 className="mt-3 font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
-            <p className="mt-3 text-base sm:text-xl text-white/80 leading-snug">Gigs, pop-ups, markets and hidden gems, all happening near you and all in one spot.</p>
             <div className="mt-5 flex flex-col sm:flex-row sm:items-start gap-3">
               <label className="inline-flex items-center gap-2.5 rounded-xl border border-primary/40 bg-white/[0.03] px-4 h-14 sm:w-[230px] shrink-0">
                 <MapPin className="w-5 h-5 text-primary shrink-0" />

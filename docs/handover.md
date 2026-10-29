@@ -210,7 +210,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 - **Scroll memory:** `lib/scroll-memory.ts`: `installScrollMemory()` (in `components/providers.tsx`) restores scroll on Back/Forward; `useBackState(key, initial)` keeps filters/expanded sections across Back. New list/filter pages should use it. `/`, `/map`, `/saved` count as list pages.
 - **Images:** next/image with `fill` inside a `relative` fixed-aspect container; meaningful alt text; error fallback.
 - **UI:** reuse shadcn components in `components/ui` and `STYLE_GUIDE.md`. Shadows over heavy borders, generous whitespace, mobile-first. Body text ≥14px (16px on mobile), WCAG AA 4.5:1 contrast.
-- **Logo:** `components/vibepeep-logo.tsx` (VibePeepLogo lockup + `VIBEPEEP_TAGLINE`), mark `components/vibepeep-mark.tsx`. Artwork is the supplied PNG crops: `/vibepeep-wordmark.png` and `/vibepeep-icon.png`.
+- **Logo:** `components/vibepeep-logo.tsx` (VibePeepLogo lockup + `VIBEPEEP_TAGLINE`), mark `components/vibepeep-mark.tsx`, mascot `components/vibepeep-mascot.tsx`. Icon is `/vibepeep-icon.svg` (transparent outside the rounded square). Wordmark is `/vibepeep-wordmark.png` on light and `/vibepeep-wordmark-ondark.png` (white Vibe) on dark — no cream plate. Mascot is `/vibepeep-mascot.webp`.
 - **Files in `public/`:** never overwrite in place; add under a new name or bump `?v=N` (browsers cache).
 - No unused imports, no placeholder code, no dead links. Header/footer links only to pages that exist.
 

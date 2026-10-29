@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { FilterState } from '@/components/filter-panel'
 import { knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
@@ -10,6 +10,7 @@ import { useSaved } from '@/lib/saved'
 import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBackState } from '@/lib/scroll-memory'
+import { VibePeepMascot } from '@/components/vibepeep-mascot'
 
 interface EventListProps {
   filters: FilterState
@@ -155,14 +156,12 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       <BoardHeadings />
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-7 h-7 animate-spin text-primary" />
+        <div className="flex flex-col items-center justify-center gap-2 py-16" aria-live="polite">
+          <VibePeepMascot className="w-20" alt="" />
+          <p className="text-sm text-muted-foreground">Having a peep…</p>
         </div>
       ) : span?.spanning && timed.length === 0 ? (
-        <div className="text-center py-20 px-4">
-          <p className="font-semibold mb-1">Crickets…</p>
-          <p className="text-sm text-muted-foreground">Nothing in that date range. Widen the dates or loosen your filters.</p>
-        </div>
+        <PeepEmpty title="Crickets. I checked twice." body="Nothing in that date range. Widen the dates or loosen your filters." />
       ) : span?.spanning ? (
         [...timed.reduce((map, row) => map.set(row.date, [...(map.get(row.date) ?? []), row]), new Map<string, typeof timed>())].map(([date, rows]) => (
           <section key={date}>
@@ -173,15 +172,13 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           </section>
         ))
       ) : groups.length === 0 ? (
-        <div className="text-center py-20 px-4">
-          <p className="font-semibold mb-1">Crickets…</p>
-          <p className="text-sm text-muted-foreground">
-            {effectiveWindow !== 'all' ? 'Nothing in this window. Hit “Full day”, pick another date or loosen your filters.' : 'Try widening the dates: pick another date or loosen your filters.'}
-          </p>
-          {effectiveWindow !== 'all' && onWindowChange && (
+        <PeepEmpty
+          title="Crickets. I checked twice."
+          body={effectiveWindow !== 'all' ? 'Nothing in this window. Hit “Full day”, pick another date or loosen your filters.' : 'Try widening the dates: pick another date or loosen your filters.'}
+          action={effectiveWindow !== 'all' && onWindowChange ? (
             <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show Full Day</button>
-          )}
-        </div>
+          ) : null}
+        />
       ) : (
         groups.map((g) => {
           const open = !closed[g.key]
@@ -223,6 +220,17 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function PeepEmpty({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
+  return (
+    <div className="px-4 py-16 text-center">
+      <VibePeepMascot className="mx-auto w-24 sm:w-28" alt="" />
+      <p className="mb-1 mt-3 font-semibold">{title}</p>
+      <p className="mx-auto max-w-sm text-sm text-muted-foreground">{body}</p>
+      {action}
     </div>
   )
 }

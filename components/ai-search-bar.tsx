@@ -7,6 +7,7 @@ import { categoryIcon, dayLabel, formatTime } from '@/lib/board'
 import { CATEGORIES } from '@/lib/categories'
 import { eventPath } from '@/lib/seo'
 import { cn } from '@/lib/utils'
+import { VibePeepMascot } from '@/components/vibepeep-mascot'
 
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
@@ -306,6 +307,13 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
 
       {!open && errorEl}
 
+      {busy && !data && (
+        <div className="mt-4 flex items-center gap-3" aria-live="polite">
+          <VibePeepMascot onDark className="w-14 shrink-0" alt="" />
+          <p className="text-sm text-white/80">Having a peep…</p>
+        </div>
+      )}
+
       {data && (
         <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
@@ -337,7 +345,10 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/80">Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
+            <div className="mt-3 flex items-center gap-3">
+              <VibePeepMascot onDark className="w-16 shrink-0" alt="" />
+              <p className="text-sm text-white/80">I had a proper look. Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
+            </div>
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

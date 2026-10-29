@@ -11,6 +11,7 @@ import { formatPrice } from '@/lib/board'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
+import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -229,7 +230,8 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       {!loading && count === 0 && (
         <div className="absolute inset-0 z-[450] flex items-center justify-center p-6 pointer-events-none">
           <div className="pointer-events-auto max-w-sm rounded-2xl bg-card/95 text-card-foreground shadow-xl ring-1 ring-border px-5 py-4 text-center">
-            <p className="font-display font-bold text-lg">No events on the map</p>
+            <VibePeepMascot className="mx-auto mb-2 w-20" alt="" />
+            <p className="font-display font-bold text-lg">No pins from up here.</p>
             <p className="mt-1 text-sm text-muted-foreground">{searchQuery ? `Nothing matches “${searchQuery}” here. Try another city, or clear the search.` : 'Nothing with a map pin matches these filters. Try another city or loosen the filters.'}</p>
           </div>
         </div>
