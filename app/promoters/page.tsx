@@ -76,7 +76,7 @@ export default async function PromotersPage() {
                   <p className="mt-4 text-4xl font-bold">{formatAud(t.prices[t.headlineDays])}<span className="text-sm font-normal text-muted-foreground"> / {t.headlineDays} days</span></p>
                   <p className="mt-1 text-xs text-muted-foreground">Also: {DURATIONS.filter((d) => d.days !== t.headlineDays).map((d) => `${formatAud(t.prices[d.days])} for ${d.label}`).join(' · ')}</p>
                   <ul className="mt-5 space-y-2 flex-1">{t.perks.map((p) => <li key={p} className="flex gap-2 text-sm"><Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />{p}</li>)}</ul>
-                  <Link href={primary.href} className={`mt-6 h-11 rounded-md font-semibold text-sm flex items-center justify-center ${t.key === 'BRONZE' ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-muted'}`}>Choose {t.name}</Link>
+                  <Link href={isPromoter ? `/promoter?tab=promote&tier=${t.key}` : `/signup?role=promoter&next=${encodeURIComponent(`/promoter?tab=promote&tier=${t.key}`)}`} className={`mt-6 h-11 rounded-md font-semibold text-sm flex items-center justify-center ${t.key === 'BRONZE' ? 'bg-primary text-primary-foreground' : 'border border-border hover:bg-muted'}`}>Choose {t.name}</Link>
                 </div>
               ))}
             </div>

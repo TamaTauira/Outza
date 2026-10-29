@@ -22,7 +22,7 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { FollowPromoterButton } from '@/components/follow-promoter-button'
 import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
-import { displaySuburb } from '@/lib/cities'
+import { cityDef, displaySuburb } from '@/lib/cities'
 import { placeLine } from '@/lib/place'
 
 export function EventDetailClient({ eventId, initial }: { eventId: string; initial?: { event: any; related: any[]; signedIn?: boolean } }) {
@@ -139,7 +139,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
               )}
               {event?.promoter && (
                 <p className="-mt-2 mb-5 text-sm text-muted-foreground flex flex-wrap items-center gap-1.5">
-                  Presented by <span className="font-medium text-foreground">{event.promoter.orgName || event.promoter.name || 'a local promoter'}</span>
+                  Presented by <Link href={`/organisers/${event.promoter.id}`} className="font-medium text-foreground underline underline-offset-2">{event.promoter.orgName || event.promoter.name || 'a local promoter'}</Link>
                   {event.promoter.verified && <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2 py-0.5 text-xs font-semibold"><BadgeCheck className="w-3.5 h-3.5" />Verified promoter</span>}
                   {!event.isMine && <FollowPromoterButton promoterId={event.promoter.id} initialFollowing={!!event.followingPromoter} signedIn={signedIn} />}
                 </p>
@@ -154,7 +154,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   {event?.time && (
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <Clock className="w-5 h-5 text-primary" />
-                      <span>{event.time}{event?.endTime ? ` – ${event.endTime}` : ''}</span>
+                      <span>{event.time}{event?.endTime ? ` – ${event.endTime}` : ''}{event.quality?.schedule?.label === 'Runs past midnight' ? ' (next day)' : ''} <span className="text-xs">{cityDef(event.city).name} time</span></span>
                     </div>
                   )}
                   <div className="flex items-center gap-3 text-muted-foreground">

@@ -70,7 +70,8 @@ export default async function EventPage({ params, searchParams }: Props) {
   const h = await headers()
   const ua = h.get('user-agent') ?? ''
   const isHuman = !/bot|crawl|spider|slurp|preview|facebookexternalhit|embedly/i.test(ua)
-  const data = await getEventDetail(id, { countView: isHuman })
+  const prefetch = /prefetch/i.test(h.get('purpose') ?? '') || /prefetch/i.test(h.get('sec-purpose') ?? '') || h.get('next-router-prefetch') === '1'
+  const data = await getEventDetail(id, { countView: isHuman, prefetch })
   if (!data) notFound()
   if (isHuman) {
     const sp = await searchParams

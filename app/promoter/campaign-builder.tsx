@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Loader2, Lock, Sparkles } from 'lucide-react'
-import { ADDONS, DURATIONS, PRO_PLAN, TIERS, formatAud, quote, type Addon, type Duration, type Tier } from '@/lib/tiers'
+import { campaignEndsBeforeEvent } from '@/lib/promoter-listing'
+import { ADDONS, DURATIONS, PRO_PLAN, TIERS, formatAud, quote, tierDef, type Addon, type Duration, type Tier } from '@/lib/tiers'
 import { cn } from '@/lib/utils'
 import { PlacementPreview } from './placement-preview'
 
@@ -23,13 +24,16 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   )
 }
 
-export function CampaignBuilder({ events, pro, stripeEnabled, eventId, onEventChange, onDone }: {
-  events: Ev[]; pro: boolean; stripeEnabled: boolean; eventId: string; onEventChange: (id: string) => void; onDone: () => void
+export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTier, onEventChange, onDone }: {
+  events: Ev[]; pro: boolean; stripeEnabled: boolean; eventId: string; initialTier?: string; onEventChange: (id: string) => void; onDone: () => void
 }) {
-  const [tier, setTier] = useState<Tier>('BRONZE')
-  const [days, setDays] = useState<Duration>(30)
+  const startTier: Tier = initialTier === 'SILVER' || initialTier === 'GOLD' || initialTier === 'BRONZE' ? initialTier : 'BRONZE'
+  const [tier, setTier] = useState<Tier>(startTier)
+  const [days, setDays] = useState<Duration>(tierDef(startTier)?.headlineDays ?? 14)
   const [addons, setAddons] = useState<Addon[]>([])
   const [busy, setBusy] = useState(false)
+  const [review, setReview] = useState(false)
+  const [placed, setPlaced] = useState(false)
   const [now, setNow] = useState(0)
   useEffect(() => { setNow(Date.now()) }, [])
   const upcoming = useMemo(() => (now ? events.filter((e) => new Date(e.date).getTime() >= now - 86400000) : events), [events, now])
@@ -39,8 +43,10 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, onEventCh
   const selected = upcoming.find((e) => e.id === eventId)
   const toggleAddon = (a: Addon) => setAddons((cur) => (cur.includes(a) ? cur.filter((x) => x !== a) : [...cur, a]))
 
+  const early = selected ? campaignEndsBeforeEvent(selected.date, days, now || Date.now()) : false
   const checkout = async () => {
     if (!selected) { toast.error('Choose an event to promote'); return }
+    if (!review) { setReview(true); return }
     setBusy(true)
     try {
       const res = await fetch('/api/promotions/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: selected.id, tier, days, addons }) })
@@ -49,6 +55,8 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, onEventCh
       if (d.url) { window.location.href = d.url; return }
       toast.success('Campaign is live (test mode — no card charged)')
       setAddons([])
+      setReview(false)
+      setPlaced(true)
       onDone()
     } catch (err) {
       console.error('Checkout failed:', err)
@@ -74,7 +82,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, onEventCh
             {TIERS.map((t) => {
               const on = tier === t.key
               return (
-                <button key={t.key} type="button" onClick={() => setTier(t.key)} aria-pressed={on}
+                <button key={t.key} type="button" onClick={() => { setTier(t.key); setDays(t.headlineDays); setReview(false) }} aria-pressed={on}
                   className={cn('relative text-left rounded-xl border p-4 transition-all bg-background', on ? 'border-primary ring-2 ring-primary/40 shadow-md' : 'border-border hover:border-muted-foreground/40')}>
                   {t.key === 'BRONZE' && <span className="absolute -top-2 right-3 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">POPULAR</span>}
                   <span className="block h-1.5 w-10 rounded-full mb-3" style={{ backgroundColor: t.color }} />
@@ -137,10 +145,14 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, onEventCh
           <span className="font-semibold">Total</span>
           <span className="text-2xl font-bold tabular-nums">{formatAud(q.total)}</span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment — no lock-in.</p>
+        <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment — no lock-in. Placements are labelled Sponsored.</p>
+        {early && <p className="mt-3 text-xs text-amber-700 dark:text-amber-400" role="status">This campaign ends before the event date, so it will not still be running on the day.</p>}
+        {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}
         <button onClick={checkout} disabled={busy || !selected} className="mt-4 w-full h-11 rounded-md bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}{stripeEnabled ? 'Continue to secure checkout' : 'Activate campaign (test mode)'}
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+          {review ? (stripeEnabled ? `Confirm ${formatAud(q.total)} and pay` : `Confirm and activate ${formatAud(q.total)}`) : 'Review campaign'}
         </button>
+        {review && <button type="button" onClick={() => setReview(false)} className="mt-2 w-full text-xs text-muted-foreground underline">Back to the package</button>}
         {!pro && (
           <p className="mt-3 text-xs text-muted-foreground flex gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary shrink-0 mt-px" />With {PRO_PLAN.name} you&apos;d pay {formatAud(quote(tier, days, addons, true).total)} for this campaign.</p>
         )}

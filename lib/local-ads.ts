@@ -38,12 +38,13 @@ export async function validateLocalAd(body: any, promoterId: string) {
   if (!event || event.duplicateOfId) return { error: 'Event not found', status: 404 }
   const endsAt = adEndsAt(event)
   if (endsAt <= new Date() || !BOOKABLE.includes(event.status)) return { error: 'This event has finished or isn’t going ahead, so it can’t take recommendations', status: 409 }
+  const recentPending = { status: 'PENDING' as const, createdAt: { gt: new Date(Date.now() - 15 * 60_000) } }
   const [count, mine] = await Promise.all([
-    prisma.localAd.count({ where: activeAdWhere(event.id) }),
-    prisma.localAd.count({ where: { ...activeAdWhere(event.id), promoterId } }),
+    prisma.localAd.count({ where: { eventId: event.id, OR: [activeAdWhere(event.id), recentPending] } }),
+    prisma.localAd.count({ where: { eventId: event.id, promoterId, OR: [activeAdWhere(event.id), recentPending] } }),
   ])
-  if (mine) return { error: 'You already have a recommendation running on this event', status: 409 }
-  if (count >= MAX_ADS_PER_EVENT) return { error: 'All recommendation spots for this event are taken', status: 409 }
+  if (mine) return { error: 'You already have a recommendation on this event. Edit or cancel it from Local business ads.', status: 409 }
+  if (count >= MAX_ADS_PER_EVENT) return { error: 'This event already has a local recommendation. Only one can run at a time.', status: 409 }
   return { data: { kind, businessName, blurb, address: address || null, url }, event, endsAt }
 }
 

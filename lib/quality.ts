@@ -42,6 +42,7 @@ export function isPaidListing(ev: { price?: string | null; priceMin?: number | n
   if (typeof ev.priceMin === 'number' && ev.priceMin > 0.009) return true
   const p = (ev.price ?? '').replace(/,/g, '').trim()
   if (!p) return false
+  if (/^\s*[-−]/.test(p)) return false
   if (/^(free|complimentary|no charge|gratis|\$0(?:\.00)?|0(?:\.00)?)$/i.test(p)) return false
   return /\$\s*[1-9]/.test(p)
 }
@@ -140,11 +141,12 @@ export function promoterCanEditEvent(source: string | null | undefined): boolean
 
 const money = (n: number) => (n === 0 ? 'Free' : `$${Number.isInteger(n) ? n : n.toFixed(2)}`)
 
-/** Human price range plus an honest note about booking fees. */
+/** Human price range plus an honest note about booking fees. Free entry, 0 and $0 are free — no booking-fee line. */
 export function priceSummary(ev: { isFree: boolean; price?: string | null; priceMin?: number | null; priceMax?: number | null; feesIncluded?: boolean | null }) {
-  if (ev.isFree) return { range: 'Free', fees: null as string | null }
-  const r = ev.priceMin != null ? { min: ev.priceMin, max: ev.priceMax ?? ev.priceMin } : parsePriceRange(false, ev.price)
-  if (r.min == null) return { range: ev.price || 'Price not published', fees: null }
+  const paid = isPaidListing(ev)
+  if (!paid && (ev.isFree || (ev.priceMin != null && ev.priceMin <= 0) || readPrice(ev.price).isFree)) return { range: 'Free', fees: null as string | null }
+  const r = ev.priceMin != null && ev.priceMin > 0 ? { min: ev.priceMin, max: ev.priceMax ?? ev.priceMin } : parsePriceRange(false, ev.price)
+  if (r.min == null || r.min <= 0) return { range: ev.price || 'Price not published', fees: null }
   const range = r.max != null && r.max !== r.min ? `${money(r.min)} – ${money(r.max)}` : money(r.min)
   const fees = ev.feesIncluded === true ? 'Includes booking fees' : 'Booking fees may apply at checkout'
   return { range, fees }
@@ -285,16 +287,32 @@ export function outzaVerified(ev: VerifiedInput, now = Date.now()): { ok: boolea
   const link = ev.organiserUrl || ev.ticketUrl || ''
   if (!/^https?:\/\//i.test(link)) missing.push('No organiser or ticket link')
   if (!ev.source || !SOURCES[ev.source]) missing.push('Source is not a known VibePeep source')
+  // A listing the organiser just typed has not been re-checked against a source feed.
+  if (ev.source === 'promoter') missing.push('Organiser-submitted listings are not VibePeep Verified')
   if (!Array.isArray(ev.openReportReasons)) missing.push('Open correction reports were not checked')
   else if (ev.openReportReasons.some((r) => (VERIFIED_BLOCKING_REPORTS as readonly string[]).includes(r))) missing.push('An open correction report is blocking verification')
   return { ok: missing.length === 0, missing }
 }
 
-/** What we can honestly say about the schedule. Missing times stay missing. */
-export function scheduleCue(ev: { time?: string | null; endTime?: string | null }): { label: string; detail: string } {
+const minsOf = (t?: string | null) => {
+  const m = t?.match(/^(\d{1,2}):(\d{2})/)
+  return m ? +m[1] * 60 + +m[2] : null
+}
+
+/** What we can honestly say about the schedule. Missing times stay missing. A finish before the start runs into the next day. */
+export function scheduleCue(ev: { time?: string | null; endTime?: string | null; endDate?: Date | string | null; date?: Date | string | null }): { label: string; detail: string } {
   const start = ev.time && /^\d{1,2}:\d{2}/.test(ev.time)
   const end = ev.endTime && /^\d{1,2}:\d{2}/.test(ev.endTime)
+  const startKey = ev.date ? (typeof ev.date === 'string' ? ev.date : ev.date.toISOString()).slice(0, 10) : ''
+  const endKey = ev.endDate ? (typeof ev.endDate === 'string' ? ev.endDate : ev.endDate.toISOString()).slice(0, 10) : ''
+  const multi = !!(startKey && endKey && endKey > startKey)
+  const overnight = !!(start && end && (minsOf(ev.endTime) ?? 0) < (minsOf(ev.time) ?? 0))
+  if (start && end && (overnight || multi)) {
+    const tail = overnight ? `${ev.time} – ${ev.endTime} the next day` : `${ev.time} – ${ev.endTime}`
+    return { label: multi ? 'More than one day' : 'Runs past midnight', detail: `${tail}. Confirm the finish with the organiser if the time looks off.` }
+  }
   if (start && end) return { label: 'Start and finish listed', detail: `${ev.time} – ${ev.endTime}. Confirm with the organiser if the time looks off.` }
+  if (multi) return { label: 'More than one day', detail: `Runs from ${startKey} to ${endKey}.` }
   if (start) return { label: 'Start time listed', detail: `${ev.time}. A finish time was not on the source listing.` }
   return { label: 'Start time not listed', detail: 'The source did not include a start time. Check the organiser before you go.' }
 }

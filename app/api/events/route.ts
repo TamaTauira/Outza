@@ -7,8 +7,11 @@ import { sydneyToday } from '@/lib/event-store'
 import { activeTierMap } from '@/lib/promotions'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
-import { CITY_NAMES } from '@/lib/cities'
+import { CITY_NAMES, cityDef } from '@/lib/cities'
 import { knownCategories, presentListing } from '@/lib/categories'
+import { addressInOtherState } from '@/lib/seo'
+import { coordsFitCity } from '@/lib/travel'
+import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { confidence } from '@/lib/quality'
 import { verifiedFlags } from '@/lib/listing-trust'
@@ -33,17 +36,25 @@ export async function GET(request: NextRequest) {
     const where: Prisma.EventWhereInput = {
       date: { gte: sydneyToday() },
       duplicateOfId: null,
+      NOT: { status: 'CANCELLED', statusSource: 'promoter' },
     }
 
     if (city && CITY_NAMES.includes(city)) where.city = city
     if (promoterId) where.promoterId = promoterId
 
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { venueName: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ]
+      const words = search.split(/\s+/).map((w) => w.trim()).filter((w) => w.length > 1).slice(0, 6)
+      const clauses = words.map((w) => ({
+        OR: [
+          { title: { contains: w, mode: 'insensitive' as const } },
+          { venueName: { contains: w, mode: 'insensitive' as const } },
+          { description: { contains: w, mode: 'insensitive' as const } },
+          { suburb: { contains: w, mode: 'insensitive' as const } },
+          { venueAddress: { contains: w, mode: 'insensitive' as const } },
+        ],
+      }))
+      const extra = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []
+      where.AND = [...extra, ...clauses]
     }
 
     const categories = knownCategories([...(category ? [category] : []), ...(sp.get('categories') ?? '').split(',')])
@@ -68,19 +79,18 @@ export async function GET(request: NextRequest) {
     }
 
     if (isFree) {
-      const extra = Array.isArray(where.AND) ? where.AND : []
+      const extra = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []
       where.AND = [
         ...extra,
-        { OR: [{ isFree: true }, { price: { equals: 'Free', mode: 'insensitive' } }] },
-        { OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] },
         {
           OR: [
-            { price: null },
-            { price: { equals: 'Free', mode: 'insensitive' } },
-            { price: { in: ['$0', '$0.00', '0', '0.00'] } },
-            { NOT: { price: { contains: '$' } } },
+            { isFree: true },
+            { priceMin: { lte: 0 } },
+            { price: { contains: 'free', mode: 'insensitive' } },
+            { price: { in: ['0', '0.00', '$0', '$0.00'] } },
           ],
         },
+        { OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] },
       ]
     }
 
@@ -110,7 +120,21 @@ export async function GET(request: NextRequest) {
       prisma.event.count({ where }),
     ])
 
-    let shown = events.map((e) => presentListing(e))
+    let shown = events.map((e) => {
+      const listed = presentListing(e)
+      const place = placeFromText({ venueAddress: listed.venueAddress, venueName: listed.venueName, suburb: listed.suburb, city: listed.city })
+      const pin = correctPin(listed.latitude, listed.longitude, place, listed.city)
+      return { ...listed, suburb: place.suburb ?? listed.suburb, latitude: pin.lat, longitude: pin.lng }
+    })
+    if (city && CITY_NAMES.includes(city)) {
+      const def = cityDef(city)
+      shown = shown.filter((e) => {
+        const blob = [e.venueAddress, e.venueName, e.suburb].filter(Boolean).join(' ')
+        if (addressInOtherState(blob, def)) return false
+        if (e.latitude != null && e.longitude != null && !coordsFitCity(e.latitude, e.longitude, city)) return false
+        return true
+      })
+    }
     if (categories.length) shown = shown.filter((e) => categories.includes(e.category))
     if (suburb) {
       const want = suburb.toLowerCase()

@@ -160,8 +160,26 @@ export function HomeClient() {
   useEffect(() => {
     setNow(sydneyNow());
     const id = setInterval(() => setNow(sydneyNow()), 1000);
-    const v = new URLSearchParams(window.location.search).get('view');
+    const p = new URLSearchParams(window.location.search);
+    const v = p.get('view');
     if (v === 'map' || v === 'saved') router.replace(`/${v}`);
+    const patch: Partial<FilterState> = {};
+    const category = p.get('category') || '';
+    const subTag = p.get('subTag') || p.get('subtag') || '';
+    const suburb = p.get('suburb') || '';
+    const dateFrom = p.get('dateFrom') || p.get('date') || '';
+    const dateTo = p.get('dateTo') || '';
+    if (category) { patch.category = category; patch.categories = [category]; }
+    if (subTag) patch.subTag = subTag;
+    if (suburb) patch.suburb = suburb;
+    if (p.get('free') === '1' || p.get('isFree') === 'true') patch.isFree = true;
+    if (p.get('lgbtiq') === '1' || p.get('isLGBTI') === 'true') patch.isLGBTI = true;
+    if (dateFrom) patch.dateFrom = dateFrom;
+    if (dateTo) patch.dateTo = dateTo;
+    if (Object.keys(patch).length) setBoardFilters((f) => ({ ...f, ...patch }));
+    if (dateFrom) setDay(dateFrom);
+    const q = p.get('q') || p.get('search') || '';
+    if (q) setSearchInput(q);
     return () => clearInterval(id);
   }, []);
 
@@ -224,6 +242,7 @@ export function HomeClient() {
       isFree: f.isFree,
       isLGBTI: f.lgbtiq,
       suburb: f.suburb,
+      subTag: f.subTag || '',
       dateFrom: f.dateFrom,
       dateTo: f.dateTo,
     });
@@ -273,7 +292,7 @@ export function HomeClient() {
                 <span className="w-2.5 h-2.5 rounded-full bg-brand-gradient" aria-hidden />
                 <span className="text-brand-gradient">Take a peep at what&apos;s happening.</span>
               </p>
-              <LocalClock className="text-right" />
+              <LocalClock city={city} className="text-right" />
             </div>
             <p className="mt-2 text-xs sm:text-sm text-white/60">Events · Experiences · Local discoveries.</p>
             <h1 className="mt-3 font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
@@ -492,7 +511,7 @@ export function HomeClient() {
         </div>
       }
 
-      <Footer lastRefresh={lastRefresh} quickLinks={quickLinks} />
+      <Footer lastRefresh={lastRefresh} quickLinks={quickLinks} city={city} />
       <SuggestionButton />
     </div>);
 

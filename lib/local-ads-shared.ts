@@ -10,6 +10,6 @@ export type LocalAdKind = (typeof LOCAL_AD_KINDS)[number]['key']
 export const isLocalAdKind = (k: unknown): k is LocalAdKind => LOCAL_AD_KINDS.some((x) => x.key === k)
 export const kindLabel = (k: string) => LOCAL_AD_KINDS.find((x) => x.key === k)?.label ?? 'Local pick'
 
-/** Most recommendations shown beneath any one event, so the section stays useful rather than an ad wall. */
-export const MAX_ADS_PER_EVENT = 6
+/** One live recommendation per event. A second purchase is refused so ads cannot stack on the same listing. */
+export const MAX_ADS_PER_EVENT = 1
 export const LIMITS = { businessName: 60, blurb: 160, address: 120, url: 300 }

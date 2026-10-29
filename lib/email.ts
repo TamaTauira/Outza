@@ -55,6 +55,23 @@ export async function sendEmail(opts: {
   }
 }
 
+const EMAIL_IN_TEXT = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi
+
+/**
+ * What a signed-in person may see when mail fails.
+ * Provider bodies often name the account that owns the API key. That address stays in the server log only.
+ */
+export function publicEmailError(raw?: string | null): string {
+  const msg = String(raw ?? '')
+  const redacted = msg.replace(EMAIL_IN_TEXT, '[redacted]')
+  if (redacted && redacted !== msg) console.error('[email]', redacted)
+  if (/turned off/i.test(msg)) return 'Email sending is turned off on this site.'
+  if (/testing emails|verify a domain|domain is not verified|not verified|onboarding@resend|can only send/i.test(msg)) {
+    return 'We couldn’t email that report. Sending is still on Resend’s test sender, which cannot mail promoters. Set RESEND_FROM_EMAIL to an address on a domain verified in Resend, then try again.'
+  }
+  return 'We couldn’t send that email just now. Please try again in a few minutes.'
+}
+
 export const OWNER_EMAIL = 'tama.tauira@gmail.com'
 
 export function escapeHtml(s: string | null | undefined) {

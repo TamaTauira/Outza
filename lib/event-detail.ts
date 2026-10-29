@@ -11,7 +11,7 @@ import { activityTitle, availabilityLine, confidence, outzaVerified, priceSummar
  * Full event detail payload shared by the event page (server-rendered) and GET /api/events/[id].
  * Returns null when the event doesn't exist.
  */
-export async function getEventDetail(id: string, opts: { countView?: boolean } = {}) {
+export async function getEventDetail(id: string, opts: { countView?: boolean; prefetch?: boolean } = {}) {
   const event = await prisma.event.findUnique({
     where: { id },
     include: { promoter: { select: { id: true, name: true, orgName: true, proUntil: true } }, _count: { select: { attendees: true } }, imageAsset: { select: imageAssetSelect } },
@@ -19,8 +19,10 @@ export async function getEventDetail(id: string, opts: { countView?: boolean } =
   // Past events are never shown (the page and API answer "not found")
   if (!event || isPastEvent(event)) return null
 
-  // Count a listing view (used in promoter analytics); never block the response on it
-  if (opts.countView !== false) {
+  const meEarly = opts.countView ? await getSessionUser().catch(() => null) : null
+  // One count per real visit. Prefetch and the promoter opening their own page are not audience.
+  const ownerView = !!meEarly && meEarly.id === event.promoterId
+  if (opts.countView && !opts.prefetch && !ownerView) {
     prisma.event.update({ where: { id: event.id }, data: { views: { increment: 1 } }, select: { id: true } }).catch((e) => console.error('view count failed', e?.message))
   }
 
@@ -48,7 +50,7 @@ export async function getEventDetail(id: string, opts: { countView?: boolean } =
     return true
   }).slice(0, 6)
 
-  const me = await getSessionUser().catch(() => null)
+  const me = meEarly ?? await getSessionUser().catch(() => null)
   const [tiers, friends, mine, following] = await Promise.all([
     activeTierMap([event.id]),
     me ? friendsGoing(me.id, [event.id]) : Promise.resolve({} as Record<string, string[]>),

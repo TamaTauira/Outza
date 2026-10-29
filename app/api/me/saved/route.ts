@@ -49,12 +49,13 @@ export async function POST(req: Request) {
   if (!me) return unauthorized()
   const b = await req.json().catch(() => ({}))
   if (Array.isArray(b.ids)) {
-    const removed: string[] = Array.isArray(b.removed) ? b.removed.filter((x: unknown) => typeof x === 'string').slice(0, 500) : []
-    if (removed.length) await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: { in: removed } } })
-  } else if (typeof b.eventId === 'string') {
+    return NextResponse.json({ error: 'Save one event at a time.' }, { status: 400 })
+  }
+  if (typeof b.eventId === 'string') {
     if (b.saved) {
       const ev = await prisma.event.findUnique({ where: { id: b.eventId }, select: { id: true } })
-      if (ev) await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
+      if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+      await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
     } else {
       await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: b.eventId } })
     }
