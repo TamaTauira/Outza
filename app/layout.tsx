@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { Providers } from '@/components/providers'
-import { BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_OG_IMAGE, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' })
@@ -22,17 +22,17 @@ export const metadata = {
   robots: { index: true, follow: true },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: '32x32' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/vibepeep-icon.svg', type: 'image/svg+xml' },
+      { url: BRAND_FAVICON, sizes: '48x48' },
+      { url: BRAND_ICON_192, sizes: '192x192', type: 'image/png' },
+      { url: BRAND_ICON_512, sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: '/favicon.ico',
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: BRAND_FAVICON,
+    apple: [{ url: BRAND_APPLE_TOUCH, sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
     title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
     description: BRAND_SUBLINE,
-    images: ['/og-image.png'],
+    images: [BRAND_OG_IMAGE],
     siteName: BRAND_NAME,
     locale: 'en_AU',
     type: 'website',
@@ -41,7 +41,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
     description: BRAND_SUBLINE,
-    images: ['/og-image.png'],
+    images: [BRAND_OG_IMAGE],
   },
   // Search Console / Bing Webmaster ownership tags — only rendered once the codes are set in the environment.
   verification: {

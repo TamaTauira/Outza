@@ -8,6 +8,7 @@ import {
 } from '@/lib/local-seo'
 import { MIN_INDEX, TOPICS, cityFromSlug, cityPath, slugify, suburbPath, type TopicDef, type WhenKey } from '@/lib/seo'
 import { cityEventCounts, cityGuideModel, citySuburbs, landingData, lastRefreshAt, type LandingEvent } from '@/lib/seo-server'
+import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
 function venuesOf(events: LandingEvent[]) {
@@ -64,8 +65,8 @@ export async function comboMetadata(citySlug: string, segments: string[]): Promi
     description: copy.description,
     alternates: { canonical: path },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title: copy.title, description: copy.description, url: path, images: ['/og-image.png'] },
-    twitter: { card: 'summary_large_image', title: copy.title, description: copy.description, images: ['/og-image.png'] },
+    openGraph: { title: copy.title, description: copy.description, url: path, images: [BRAND_OG_IMAGE] },
+    twitter: { card: 'summary_large_image', title: copy.title, description: copy.description, images: [BRAND_OG_IMAGE] },
   }
 }
 

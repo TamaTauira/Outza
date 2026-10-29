@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { jsonLdString } from '@/lib/seo-server'
-import { BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
 export const metadata: Metadata = { alternates: { canonical: '/' } }
@@ -22,7 +22,7 @@ export default function Page() {
         '@type': 'Organization',
         name: BRAND_NAME,
         url: `${origin}/`,
-        logo: `${origin}/vibepeep-icon.svg`,
+        logo: `${origin}${BRAND_ICON_512}`,
         slogan: BRAND_TAGLINE,
       },
     ],

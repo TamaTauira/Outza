@@ -6,6 +6,7 @@ import { getEventDetail } from '@/lib/event-detail'
 import { cityDef } from '@/lib/cities'
 import { eventPath, idFromEventParam, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
+import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 import { EventDetailClient } from './_components/event-detail-client'
 import { classifyReferral, recordReferral } from '@/lib/referrals'
@@ -56,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: ev.title,
       description: desc.slice(0, 200),
-      images: image ? [image] : ['/og-image.png'],
+      images: image ? [image] : [BRAND_OG_IMAGE],
     },
   }
 }

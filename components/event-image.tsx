@@ -75,7 +75,7 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#161616] via-[#101010] to-[#1f1410] text-center" role="img" aria-label={alt}>
-      <VibePeepMark className={compact ? 'w-7 h-7' : 'w-10 h-10'} />
+      <VibePeepMark className={compact ? 'w-7 h-7' : 'w-10 h-10'} tone="on-dark" />
       <span className="flex flex-col items-center leading-none text-white">
         <VibePeepWordmark tone="on-dark" className={compact ? 'h-3.5 w-auto' : 'h-5 w-auto'} />
         {!compact && <span className="mt-1 max-w-[9rem] text-[9px] font-medium leading-tight text-white/70">{VIBEPEEP_TAGLINE}</span>}

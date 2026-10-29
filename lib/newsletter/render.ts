@@ -6,6 +6,7 @@ import { CATEGORIES } from '@/lib/categories'
 import type { NlEvent } from './rank'
 import { exploreUrl, openPixelUrl, trackUrl, unsubscribeUrl, type Placement, type UtmCtx } from './links'
 import { emailLockup } from '@/lib/email-brand'
+import { BRAND_TAGLINE, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
 
 const C = { ink: '#1c1c1e', head: '#141414', accent: '#FF4E6A', page: '#f6f2ec', card: '#ffffff', muted: '#6b6b6b', line: '#ebe5dc', spons: '#f1ece4' }
 const FONT = `'Helvetica Neue',Helvetica,Arial,sans-serif`
@@ -55,10 +56,13 @@ function button(href: string, label: string, solid = true) {
 
 function fallbackArt(category: string, h: number, w: number | '100%') {
   const cat = CATEGORIES.find((c) => c.name === category)
+  const wordH = h > 150 ? 22 : 14
+  const wordW = Math.round((wordH * BRAND_WORDMARK_WIDTH) / BRAND_WORDMARK_HEIGHT)
+  const lockup = `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#FBF8F3" style="background:#FBF8F3;border-radius:4px;padding:3px 6px;line-height:0;"><img src="${siteUrl()}${BRAND_WORDMARK_SRC}" width="${wordW}" height="${wordH}" alt="VibePeep" style="display:block;width:${wordW}px;height:${wordH}px;border:0;"/></td></tr></table>`
   return `<table role="presentation" width="${w}" cellpadding="0" cellspacing="0" border="0" style="width:${w === '100%' ? '100%' : `${w}px`};"><tr>
 <td height="${h}" bgcolor="${C.head}" valign="bottom" style="height:${h}px;background:${C.head};border-radius:14px;padding:${h > 150 ? 22 : 12}px;border-bottom:4px solid ${cat?.color ?? C.accent};">
-<div style="font-family:${FONT};font-size:${h > 150 ? 16 : 12}px;letter-spacing:-0.3px;font-weight:800;color:#ffffff;">Vibe<span style="color:${C.accent}">Peep</span></div>
-<div style="font-family:${FONT};font-size:${h > 150 ? 10 : 8}px;color:#a3a3a3;padding-bottom:${h > 150 ? 8 : 4}px;">Take a peep at what's happening.</div>
+${lockup}
+<div style="font-family:${FONT};font-size:${h > 150 ? 10 : 8}px;color:#a3a3a3;padding-top:6px;padding-bottom:${h > 150 ? 8 : 4}px;">${BRAND_TAGLINE}</div>
 <div style="font-family:${FONT};font-size:${h > 150 ? 30 : 15}px;line-height:1.1;font-weight:800;color:#ffffff;">${x(category)}</div></td></tr></table>`
 }
 
