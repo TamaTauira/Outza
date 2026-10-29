@@ -11,8 +11,6 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
-import { sourceLabel } from '@/lib/quality'
-
 interface EventData {
   id: string
   title: string
@@ -106,9 +104,6 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             <h3 className="font-display font-semibold text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors">
               {event.title}
             </h3>
-            {event.source && (
-              <p className="text-[11px] text-muted-foreground">Source: {sourceLabel(event.source)}</p>
-            )}
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
