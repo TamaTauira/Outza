@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { BRAND_MASCOT_SRC, BRAND_MASCOT_WEBP } from '@/lib/brand'
+import { BRAND_MASCOT_SRC } from '@/lib/brand'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
+import { attachRoam } from '@/components/vibepeep-roam'
+import './vibepeep-roam.css'
 
 const KEY = 'vibepeep-buddy-minimised'
 
@@ -15,13 +17,13 @@ function readMinimised() {
   }
 }
 
-/** Small corner mascot on pages that don't already feature him in the hero. */
+/** Roaming mascot on every page. The hero art stays put; this one walks the viewport. */
 export function VibePeepBuddy() {
   const path = usePathname()
-  const [minimised, setMinimised] = useState(() => readMinimised())
-  if (path === '/') return null
-
   const onMap = path === '/map'
+  const [minimised, setMinimised] = useState(() => readMinimised())
+  const rootRef = useRef<HTMLDivElement>(null)
+
   const save = (next: boolean) => {
     setMinimised(next)
     try {
@@ -29,28 +31,43 @@ export function VibePeepBuddy() {
     } catch { /* private mode */ }
   }
 
-  return (
-    <div className={`vp-buddy pointer-events-none ${onMap ? 'vp-buddy-map' : ''}`}>
-      {minimised ? (
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || minimised) return
+    return attachRoam(root)
+  }, [minimised, onMap])
+
+  if (minimised) {
+    return (
+      <div key="parked" className={`vp-roam vp-roam-parked pointer-events-none ${onMap ? 'vp-roam-map' : ''}`}>
         <button
           type="button"
-          className="vp-buddy-mini"
+          className="vp-buddy-mini vp-roam-show"
           aria-label="Show VibePeep"
           aria-expanded={false}
           onClick={() => save(false)}
         >
-          <span className="vp-bob">
-            <picture>
-              <source srcSet={BRAND_MASCOT_WEBP} type="image/webp" />
-              <img src={BRAND_MASCOT_SRC} alt="" width={48} height={48} draggable={false} />
-            </picture>
-          </span>
+          <img src={BRAND_MASCOT_SRC} alt="" width={40} height={40} draggable={false} />
+          <span>VibePeep</span>
         </button>
-      ) : (
-        <div className="pointer-events-auto relative">
+      </div>
+    )
+  }
+
+  return (
+    <div
+      key="roam"
+      ref={rootRef}
+      className={`vp-roam pointer-events-none ${onMap ? 'vp-roam-map' : ''}`}
+      data-map={onMap ? '1' : undefined}
+      data-face="right"
+    >
+      <div className="vp-roam-body">
+        <span className="vp-shadow" aria-hidden="true" />
+        <div className="vp-actor">
           <VibePeepMascot
-            className={onMap ? 'w-12' : 'w-14 sm:w-16'}
-            sizes={onMap ? '48px' : '64px'}
+            className="w-full"
+            sizes={onMap ? '48px' : '(max-width: 639px) 56px, 72px'}
             bubble="start"
             alt="VibePeep"
           />
@@ -58,7 +75,7 @@ export function VibePeepBuddy() {
             <span aria-hidden="true">×</span>
           </button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

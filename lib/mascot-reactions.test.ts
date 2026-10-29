@@ -21,6 +21,11 @@ test('mascot reactions are distinct, witty, and never say verified', () => {
   }
   assert.equal(REACTION_LINES.wink, 'Take a peep!')
   assert.match(REACTION_LINES.giggle, /something’s on tonight/)
+  assert.match(REACTION_LINES.giggle, /Hehe/)
+  assert.match(REACTION_LINES.sneeze, /Achoo/)
+  assert.match(REACTION_LINES.wave, /G’day/)
+  assert.match(REACTION_LINES.tickle, /tickle/i)
+  assert.match(REACTION_LINES.delighted, /came back/)
 })
 
 test('pickReaction never repeats the reaction that just played', () => {
@@ -35,6 +40,11 @@ test('pickReaction never repeats the reaction that just played', () => {
     assert.notEqual(pickReaction(id, () => 0.999), id)
   }
   assert.equal(pickReaction(null, () => 0), REACTION_IDS[0])
+  for (let i = 0; i < 24; i++) {
+    const id = pickReaction(null, () => i / 24)
+    assert.notEqual(id, 'tickle')
+    assert.notEqual(id, 'delighted')
+  }
 })
 
 test('five clicks inside the window starts party mode', () => {
