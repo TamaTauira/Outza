@@ -73,7 +73,7 @@ function DigestMailPanel() {
       </div>
       <p className="text-sm text-muted-foreground">Sends a watchlist digest and a newsletter digest to you. Neither one moves the schedule.</p>
       {info?.testSender && <p className="text-sm text-amber-800 dark:text-amber-300" role="status">{info.blocker}</p>}
-      {info && !info.sendingEnabled && <p className="text-sm text-red-600 dark:text-red-400" role="status">Email sending is off until RESEND_API_KEY is set.</p>}
+      {info && !info.sendingEnabled && <p className="text-sm text-red-600 dark:text-red-400" role="status">Email sending is off until SMTP or Resend is configured.</p>}
       {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} role="status">{msg.text}</p>}
       {info && info.newsletter.length > 0 && (
         <p className="text-xs text-muted-foreground">Latest newsletter issue: {info.newsletter[0].status}{info.newsletter[0].error ? ` — ${info.newsletter[0].error}` : ''}</p>

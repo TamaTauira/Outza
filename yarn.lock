@@ -4387,6 +4387,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/nodemailer@npm:8.0.2":
+  version: 8.0.2
+  resolution: "@types/nodemailer@npm:8.0.2"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/1ad3f83ac130cf9af65ce9eb7985b08b27b4723316c2be621522effc31c63d7d2d76880815490499fbe8b1aff3da889d24b54b3db892526d1166b12702404ff0
+  languageName: node
+  linkType: hard
+
 "@types/parse-json@npm:^4.0.0":
   version: 4.0.2
   resolution: "@types/parse-json@npm:4.0.2"
@@ -5284,6 +5293,7 @@ __metadata:
     "@types/leaflet": "npm:^1.9.22"
     "@types/leaflet.markercluster": "npm:^1.5.6"
     "@types/node": "npm:22.0.0"
+    "@types/nodemailer": "npm:8.0.2"
     "@types/plotly.js": "npm:2.35.5"
     "@types/react": "npm:19.2.18"
     "@types/react-dom": "npm:19.2.4"
@@ -5322,6 +5332,7 @@ __metadata:
     next: "npm:16.4.1"
     next-auth: "npm:5.0.0-beta.32"
     next-themes: "npm:0.4.0"
+    nodemailer: "npm:8.0.11"
     plotly.js: "npm:2.35.3"
     postcss: "npm:8.4.47"
     prisma: "npm:6.7.0"
@@ -10173,6 +10184,13 @@ __metadata:
   version: 2.0.53
   resolution: "node-releases@npm:2.0.53"
   checksum: 10c0/db9fb29b21ec12e223ead8bd9406100ff14fce01678a9a4865e288098456b84869431421a739f216aa520b6f57d9425f6537662501ae8a2d9e1771bfa87751bc
+  languageName: node
+  linkType: hard
+
+"nodemailer@npm:8.0.11":
+  version: 8.0.11
+  resolution: "nodemailer@npm:8.0.11"
+  checksum: 10c0/19229216c63a32eae59d7b39f3dffeba20be317f2335d08d86fb70bd01845a1bf108fecd019c0e90ef186e3d9177cf478192b333cf38620ad0f8c7a6e1e5ae05
   languageName: node
   linkType: hard
 

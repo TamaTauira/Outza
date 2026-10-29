@@ -11,6 +11,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ['nodemailer'],
   images: {
     formats: ['image/avif', 'image/webp'],
   },

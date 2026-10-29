@@ -830,9 +830,10 @@ model VenueFollow {
 
 /// One attempt to send a digest, watchlist note, or reminder, plus cron run summaries.
 /// `error` is redacted before it is stored. This is the last-send record for admin.
+/// `quota` rows count Yahoo SMTP sends toward the daily cap and are hidden from that list.
 model MailDelivery {
   id        String   @id @default(cuid())
-  kind      String // newsletter | watchlist | reminder | newsletter-run | watchlist-run
+  kind      String // newsletter | watchlist | reminder | newsletter-run | watchlist-run | quota
   userId    String?
   status    String // sent | test | failed | restricted | disabled | blocked | skipped | ok
   error     String?  @db.Text

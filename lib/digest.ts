@@ -20,8 +20,8 @@ export async function sendDigest(userId: string, opts: { test?: boolean } = {}) 
  */
 export async function runDueDigests() {
   if (!emailSendingEnabled()) {
-    console.error('[digest] skipped: RESEND_API_KEY is not set')
-    await recordMailDelivery({ kind: 'newsletter-run', status: 'disabled', error: 'RESEND_API_KEY is not set' })
+    console.error('[digest] skipped: email sending is turned off')
+    await recordMailDelivery({ kind: 'newsletter-run', status: 'disabled', error: 'Email sending is turned off' })
     return { checked: 0, sent: 0, skipped: 0, blocked: 0, failed: 0, disabled: true }
   }
   const now = Date.now()

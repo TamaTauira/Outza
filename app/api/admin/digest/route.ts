@@ -32,6 +32,7 @@ export async function GET() {
   if (g.err) return g.err
   const [deliveries, newsletter] = await Promise.all([
     prisma.mailDelivery.findMany({
+      where: { kind: { not: 'quota' } },
       orderBy: { createdAt: 'desc' },
       take: 15,
       select: { kind: true, status: true, error: true, createdAt: true },
