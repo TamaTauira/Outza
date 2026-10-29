@@ -4,6 +4,7 @@
  */
 import { cityDef } from '@/lib/cities'
 import { isPaidListing } from '@/lib/quality'
+import { togetherLeg } from '@/lib/together'
 
 export type OutingEvent = {
   id: string
@@ -19,6 +20,8 @@ export type OutingEvent = {
   price?: string | null
   priceMin?: number | null
   ticketUrl?: string | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export type OutingStop =
@@ -119,6 +122,23 @@ export type BuiltOuting = {
   eventIds: string[]
 }
 
+export type PlanLeg = { fromId: string; toId: string; kind: string; text: string; href: string }
+
+/** Straight-line hop between consecutive event stops. Always one line per hop, even when the pins are missing. */
+export function legsBetween(events: OutingEvent[]): PlanLeg[] {
+  const legs: PlanLeg[] = []
+  for (let i = 1; i < events.length; i++) {
+    const from = events[i - 1]
+    const to = events[i]
+    const leg = togetherLeg(
+      { title: from.title, venueName: from.venueName, suburb: from.suburb, city: from.city, lat: from.latitude ?? null, lng: from.longitude ?? null },
+      { title: to.title, venueName: to.venueName, suburb: to.suburb, city: to.city, lat: to.latitude ?? null, lng: to.longitude ?? null },
+    )
+    legs.push({ fromId: from.id, toId: to.id, kind: leg.kind, text: leg.text, href: leg.href })
+  }
+  return legs
+}
+
 /** Picks real events for one template. Returns an empty stop list when nothing fits. Never invents a listing. */
 export function buildOuting(template: OutingTemplate, events: OutingEvent[], city: string): BuiltOuting {
   const pool = events.filter((ev) => {
@@ -180,7 +200,7 @@ function withTips(template: OutingTemplate, events: OutingEvent[], city: string)
     kind: 'tip',
     tip: 'transport',
     text: events.length > 1
-      ? `Getting between ${between}: open ${planner.name}. Travel time is not estimated here.`
+      ? `Getting between ${between}: open ${planner.name} for a live route. The time between stops is a straight-line estimate, not a timetable.`
       : `Getting to ${first.venueName}: open ${planner.name}.`,
     href: planner.url,
   }

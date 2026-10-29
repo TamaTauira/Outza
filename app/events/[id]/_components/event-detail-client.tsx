@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { EventImage } from '@/components/event-image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, BadgeCheck, Megaphone, Users } from 'lucide-react'
+import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, BadgeCheck, Megaphone, Users, Info } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { useSaved } from '@/lib/saved'
 import { cn } from '@/lib/utils'
@@ -180,6 +180,11 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                     {event.quality?.price?.fees && <p className="text-xs text-muted-foreground mt-1">{event.quality.price.fees}</p>}
                     {event.quality?.availability && <p className="text-xs text-muted-foreground mt-2">Availability: {event.quality.availability.label}. {event.quality.availability.note}</p>}
                   </div>
+
+                  <p className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2.5 text-xs leading-snug text-muted-foreground">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <span>Event details may change. Confirm times, availability and prices with the organiser before attending.</span>
+                  </p>
 
                   {event?.ticketUrl && (
                     <a

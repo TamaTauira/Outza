@@ -23,7 +23,7 @@ export async function loadOutingEvents(city: string): Promise<OutingEvent[]> {
     take: 400,
     select: {
       id: true, title: true, date: true, time: true, endTime: true, venueName: true, suburb: true, city: true,
-      category: true, isFree: true, price: true, priceMin: true, ticketUrl: true,
+      category: true, isFree: true, price: true, priceMin: true, ticketUrl: true, latitude: true, longitude: true,
     },
   })
   return rows.map((row) => ({ ...row, date: row.date.toISOString().slice(0, 10) }))
