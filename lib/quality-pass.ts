@@ -3,9 +3,13 @@ import { makeSeriesKey, sydneyToday } from '@/lib/event-store'
 import { reconcileSuburb, refineStoredCategory } from '@/lib/categories'
 import { tidyVenueName } from '@/lib/cities'
 import { SOURCES, inferRecurrence, isSameEvent, parsePriceRange } from '@/lib/quality'
+import { yieldIfBudget } from '@/lib/source-budget'
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
-  for (let i = 0; i < items.length; i += size) await Promise.all(items.slice(i, i + size).map(fn))
+  for (let i = 0; i < items.length; i += size) {
+    if (yieldIfBudget('quality pass')) return
+    await Promise.all(items.slice(i, i + size).map(fn))
+  }
 }
 
 /**
@@ -30,6 +34,11 @@ export async function runQualityPass() {
       data: { seriesKey: e.seriesKey ?? makeSeriesKey(e.title, e.venueName, e.city), priceMin: r.min, priceMax: r.max },
     })
   })
+
+  if (yieldIfBudget('quality pass')) {
+    console.log('[quality] stopped at time budget')
+    return { backfilled: missing.length, merged: 0, recurringSeries: 0, places: 0, categories: 0, audited: 0, expiredHidden: 0 }
+  }
 
   // 2) Merge duplicates (same city + date, fuzzy title/venue/time match)
   const rows = await prisma.event.findMany({
@@ -107,6 +116,11 @@ export async function runQualityPass() {
     if (g.current.size !== 1 || !g.current.has(rec)) updates.push([key, rec])
   }
   await inBatches(updates, 20, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
+
+  if (yieldIfBudget('quality pass')) {
+    console.log('[quality] stopped at time budget')
+    return { backfilled: missing.length, merged, recurringSeries: recurring, places: 0, categories: 0, audited: 0, expiredHidden: 0 }
+  }
 
   // 4) Correct dump-bucket suburbs, city-as-venue names, and known category mistags.
   // Organiser edits are left alone. The same rules run at ingest; this catches rows already stored.

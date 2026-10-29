@@ -1,6 +1,7 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { CITIES } from '@/lib/cities'
 import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
+import { noteSourceSaved, remainingBudgetMs, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 
 function offerList(raw: unknown): any[] {
   if (!raw) return []
@@ -42,6 +43,8 @@ async function lookupCosPrice(h: any): Promise<string | null> {
   const direct = priceFromCosData(h.priceData ?? h.cost ?? h.price)
   if (direct) return direct
   if (h.freeEvent === 'true' || h.freeEvent === true) return null
+  // A price page is another fetch. Near the budget, keep the listing and skip it.
+  if (sourceOverBudget() || remainingBudgetMs(20_000) < 8_000) return null
   const slug = String(h.slug ?? '').replace(/^\/+|\/+$/g, '')
   if (!slug) return null
   if (cosPriceCache.has(slug)) return cosPriceCache.get(slug) ?? null
@@ -120,6 +123,7 @@ function cosSpan(a: string, b: string): number {
 }
 
 async function saveCosHit(h: any): Promise<boolean> {
+  if (yieldIfBudget('event pages')) return false
   const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
   const free = h.freeEvent === 'true' || h.freeEvent === true
   const price = free ? null : await lookupCosPrice(h)
@@ -142,14 +146,17 @@ async function saveCosHit(h: any): Promise<boolean> {
 
 /** City of Sydney "What's On" guide – homepage sections plus every date the public search will return. */
 export async function fetchCityOfSydneyEvents(): Promise<number> {
+  console.log('[cityofsydney] starting')
   let saved = 0
   const seen = new Set<string>()
   const consider = async (hits: Iterable<any>) => {
     for (const h of hits) {
+      if (yieldIfBudget('search hits')) break
       const id = h?.objectID ? String(h.objectID) : ''
       if (id && seen.has(id)) continue
       if (id) seen.add(id)
       if (await saveCosHit(h)) saved++
+      noteSourceSaved(saved)
     }
   }
 
@@ -180,6 +187,7 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
   }
 
   const ingest = async (start: string, end: string) => {
+    if (yieldIfBudget('date windows')) return
     const page = await search(start, end)
     if (!page) return
     if (page.truncated && start < end) {
@@ -196,10 +204,15 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
 
   const today = toSydneyParts(new Date(), 'Australia/Sydney').date
   const horizon = cosAddDays(today, COS_HORIZON_DAYS)
+  let windows = 0
   for (let start = today; start <= horizon;) {
+    if (yieldIfBudget('date windows')) break
+    windows++
+    if (windows === 1 || windows % 10 === 0) console.log(`[cityofsydney] window ${start} (${windows}, saved ${saved})`)
     const windowEnd = cosAddDays(start, COS_WINDOW_DAYS - 1)
     const end = windowEnd > horizon ? horizon : windowEnd
     await ingest(start, end)
+    noteSourceSaved(saved)
     start = cosAddDays(end, 1)
   }
 
@@ -211,6 +224,11 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
 export async function fetchHumanitixEvents(): Promise<number> {
   let saved = 0
   for (const city of CITIES) for (const path of ['', '/music']) {
+    if (yieldIfBudget('city pages')) {
+      noteSourceSaved(saved)
+      console.log(`[humanitix] saved ${saved} events`)
+      return saved
+    }
     const html = await fetchHtml(`https://humanitix.com/au/events/${city.humanitix}${path}`)
     const data = html ? extractNextData(html) : null
     const f = data?.props?.pageProps?.featuredCarouselEntries ?? {}
@@ -243,6 +261,7 @@ export async function fetchHumanitixEvents(): Promise<number> {
         city: city.name,
       }).catch(() => false)
       if (ok) saved++
+      noteSourceSaved(saved)
     }
   }
   console.log(`[humanitix] saved ${saved} events`)

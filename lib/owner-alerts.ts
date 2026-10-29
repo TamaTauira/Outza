@@ -171,7 +171,12 @@ export async function reportFault(opts: FaultReport) {
   }
 }
 
-/** Hourly health checks for faults that don't throw (stalled refreshes, failing newsletter sends). */
+/**
+ * Hourly health checks for faults that don't throw (stalled refreshes, failing newsletter sends).
+ * `completed` is the cycle log written after every chunk has finished. A source that failed
+ * or stopped at its time budget does not flip that to failed, so this only fires when a
+ * whole cycle never finished.
+ */
 export async function runHealthChecks() {
   const now = Date.now()
   const lastOk = await prisma.refreshLog.findFirst({ where: { status: 'completed' }, orderBy: { startedAt: 'desc' } })
