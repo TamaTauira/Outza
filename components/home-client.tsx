@@ -13,7 +13,7 @@ import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
-import { ArrowRight, CalendarDays, Check, Info, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
+import { CalendarDays, Check, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -320,16 +320,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 </select>
               </label>
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} />
-            </div>
-            <p className="mt-4 flex items-start gap-2 text-xs sm:text-sm text-white/70">
-              <Info className="w-4 h-4 mt-0.5 shrink-0" />
-              Event details may change. Confirm times, availability and prices with the organiser before attending.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-              <Link href={`/outings?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white underline underline-offset-4">Plan a day or night</Link>
-              <Link href={`/outings/saturday-date-night?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Saturday date night</Link>
-              <Link href={`/outings/family-sunday?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Family Sunday</Link>
-              <Link href={`/outings/free-afternoon?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Free afternoon</Link>
             </div>
           </section>
         )}

@@ -98,7 +98,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                   <div>
                     <span className="font-medium text-foreground">{l.address}</span>
                     <p className="text-sm">{l.suburb} {l.postcode}</p>
-                    {!l.addressVerified && <p className="text-xs">{l.sourceName ? 'Address from the original listing and not map-verified.' : 'Address supplied by the organiser and not map-verified.'}</p>}
+                    {!l.addressVerified && <p className="text-xs">{l.sourceName ? 'Address from the original listing and not checked on a map.' : 'Address supplied by the organiser and not checked on a map.'}</p>}
                   </div>
                 </div>
               </div>

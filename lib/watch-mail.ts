@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
-import { emailSendingEnabled, sendEmail, siteUrl } from '@/lib/email'
+import { emailSendingEnabled, redactEmails, sendEmail, siteUrl } from '@/lib/email'
+import { recordMailDelivery } from '@/lib/mail-log'
 import { eventPath } from '@/lib/seo'
 import { isPastEvent } from '@/lib/seo'
 import { composeWatchEmail, inReminderWindow, mailDue, type MailEvent } from '@/lib/watch-shared'
@@ -70,15 +71,26 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
   const savedMail = saved.slice(0, 8).map(toMail)
   const mail = composeWatchEmail({ saved: savedMail, matches: matches.map(toMail) })
   if (!mail) return { ok: false as const, skipped: true as const, reason: 'empty' }
-  if (!emailSendingEnabled()) return { ok: false as const, disabled: true as const, error: 'Email sending is turned off' }
+  if (!emailSendingEnabled()) {
+    console.error('[watchlist] digest skipped: RESEND_API_KEY is not set')
+    await recordMailDelivery({ kind: 'watchlist', userId: user.id, status: 'disabled', error: 'RESEND_API_KEY is not set' })
+    return { ok: false as const, disabled: true as const, error: 'Email sending is turned off' }
+  }
   const sent = await sendEmail({ to: user.email, subject: opts.test ? `[Preview] ${mail.subject}` : mail.subject, html: mail.html, text: mail.text })
-  if (!sent.ok) return sent
+  if (!sent.ok) {
+    const status = sent.restricted ? 'restricted' : 'failed'
+    const safe = redactEmails(sent.error)
+    console.error(`[watchlist] digest user=${user.id} status=${status} ${safe}`)
+    await recordMailDelivery({ kind: 'watchlist', userId: user.id, status, error: safe })
+    return { ...sent, error: safe }
+  }
+  await recordMailDelivery({ kind: 'watchlist', userId: user.id, status: opts.test ? 'test' : 'sent' })
   if (!opts.test) await prisma.user.update({ where: { id: user.id }, data: { lastWatchDigestAt: new Date() } })
   return { ok: true as const }
 }
 
 export async function sendDueReminders() {
-  if (!emailSendingEnabled()) return { checked: 0, sent: 0, skipped: 0 }
+  if (!emailSendingEnabled()) return { checked: 0, sent: 0, skipped: 0, failed: 0 }
   const users = await prisma.user.findMany({
     where: { reminderOptIn: true },
     select: { id: true, email: true },
@@ -86,6 +98,7 @@ export async function sendDueReminders() {
   })
   let sent = 0
   let skipped = 0
+  let failed = 0
   for (const user of users) {
     const saved = await savedUpcoming(user.id)
     const due = saved.filter((ev) => inReminderWindow(ev.date.toISOString().slice(0, 10), ev.time, ev.city))
@@ -100,18 +113,36 @@ export async function sendDueReminders() {
     const mail = composeWatchEmail({ saved: fresh.map(toMail), matches: [], reminders: true })
     if (!mail) { skipped++; continue }
     const result = await sendEmail({ to: user.email, subject: mail.subject, html: mail.html, text: mail.text })
-    if (!result.ok) { skipped++; continue }
+    if (!result.ok) {
+      failed++
+      const status = result.restricted ? 'restricted' : 'failed'
+      const safe = redactEmails(result.error)
+      console.error(`[watchlist] reminder user=${user.id} status=${status} ${safe}`)
+      await recordMailDelivery({ kind: 'reminder', userId: user.id, status, error: safe })
+      continue
+    }
     await prisma.watchNotice.createMany({
       data: fresh.map((ev) => ({ userId: user.id, kind: 'REMINDER', eventId: ev.id })),
       skipDuplicates: true,
     })
+    await recordMailDelivery({ kind: 'reminder', userId: user.id, status: 'sent' })
     sent++
   }
-  return { checked: users.length, sent, skipped }
+  return { checked: users.length, sent, skipped, failed }
 }
 
 export async function runWatchMail() {
-  if (!emailSendingEnabled()) return { digests: { checked: 0, sent: 0, skipped: 0 }, reminders: { checked: 0, sent: 0, skipped: 0 } }
+  if (!emailSendingEnabled()) {
+    console.error('[watchlist] skipped: RESEND_API_KEY is not set')
+    await recordMailDelivery({ kind: 'watchlist-run', status: 'disabled', error: 'RESEND_API_KEY is not set' })
+    return {
+      disabled: true,
+      digests: { checked: 0, sent: 0, skipped: 0, failed: 0 },
+      reminders: { checked: 0, sent: 0, skipped: 0, failed: 0 },
+    }
+  }
+  // Opted-in accounts only. Category follows stay on the newsletter; this mail needs a save or a venue follow.
+  // Frequency is elapsed time from lastWatchDigestAt. Reminder windows use the event city's timezone separately.
   const users = await prisma.user.findMany({
     where: { emailOptIn: true },
     select: { id: true, emailFrequency: true, lastWatchDigestAt: true, venueFollows: { select: { userId: true }, take: 1 }, saved: { select: { userId: true }, take: 1 } },
@@ -119,18 +150,29 @@ export async function runWatchMail() {
   })
   let sent = 0
   let skipped = 0
+  let failed = 0
   for (const user of users) {
     if (!mailDue(user.lastWatchDigestAt, user.emailFrequency)) { skipped++; continue }
     if (!user.saved.length && !user.venueFollows.length) { skipped++; continue }
     try {
       const result = await sendWatchDigest(user.id)
       if (result.ok) sent++
-      else skipped++
+      else if ('skipped' in result && result.skipped) skipped++
+      else failed++
     } catch (err) {
-      skipped++
-      console.error('[watchlist]', err instanceof Error ? err.message : err)
+      failed++
+      const safe = redactEmails(err instanceof Error ? err.message : 'send failed')
+      console.error(`[watchlist] digest user=${user.id} ${safe}`)
+      await recordMailDelivery({ kind: 'watchlist', userId: user.id, status: 'failed', error: safe })
     }
   }
   const reminders = await sendDueReminders()
-  return { digests: { checked: users.length, sent, skipped }, reminders }
+  const summary = { digests: { checked: users.length, sent, skipped, failed }, reminders }
+  console.log('[watchlist] done', summary)
+  await recordMailDelivery({
+    kind: 'watchlist-run',
+    status: failed || reminders.failed ? 'failed' : 'ok',
+    error: `digests sent=${sent} skipped=${skipped} failed=${failed}; reminders sent=${reminders.sent} skipped=${reminders.skipped} failed=${reminders.failed}`,
+  })
+  return summary
 }

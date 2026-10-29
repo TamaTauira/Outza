@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { DEFAULT_FROM_EMAIL, emailSendingEnabled, sendEmail } from './email'
+import { DEFAULT_FROM_EMAIL, emailSendingEnabled, publicEmailError, sendEmail } from './email'
 
 function restoreEnv(name: string, value: string | undefined) {
   if (value === undefined) delete process.env[name]
@@ -88,6 +88,36 @@ test('RESEND_FROM_EMAIL overrides the default From address', async () => {
     assert.equal(body.from, 'VibePeep <news@example.com>')
   } finally {
     globalThis.fetch = originalFetch
+    restoreEnv('RESEND_API_KEY', key)
+    restoreEnv('RESEND_FROM_EMAIL', from)
+  }
+})
+
+test('a Resend 403 from the onboarding sender is logged as a domain restriction', async () => {
+  const key = process.env.RESEND_API_KEY
+  const from = process.env.RESEND_FROM_EMAIL
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  const logs: unknown[][] = []
+  process.env.RESEND_API_KEY = 're_test_key'
+  process.env.RESEND_FROM_EMAIL = 'VibePeep <onboarding@resend.dev>'
+  console.error = (...args: unknown[]) => { logs.push(args) }
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    message: 'You can only send testing emails to your own email address (owner@example.com). To send emails to other recipients, please verify a domain at resend.com/domains.',
+  }), { status: 403 })
+  try {
+    const result = await sendEmail({ to: 'person@example.com', subject: 'Hello', html: '<p>Hi</p>' })
+    assert.equal(result.ok, false)
+    assert.equal(result.restricted, true)
+    assert.equal(result.error?.includes('@'), false)
+    assert.match(result.error ?? '', /testing emails/)
+    assert.match(publicEmailError(result.error), /RESEND_FROM_EMAIL/)
+    assert.equal(publicEmailError(result.error).includes('@'), false)
+    assert.equal(logs.some((line) => String(line).includes('verified sending domain')), true)
+    assert.equal(logs.some((line) => String(line).includes('owner@example.com')), false)
+  } finally {
+    globalThis.fetch = originalFetch
+    console.error = originalError
     restoreEnv('RESEND_API_KEY', key)
     restoreEnv('RESEND_FROM_EMAIL', from)
   }

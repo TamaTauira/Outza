@@ -49,9 +49,10 @@ export function runQa(input: {
   checks.push(`${hrefs.length} links are absolute and well-formed`)
 
   const imgs = [...input.html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0])
-  const noAlt = imgs.filter((t) => !/width="1"/.test(t) && !/alt="[^"]+"/.test(t))
-  if (noAlt.length) errors.push(`${noAlt.length} image(s) without alt text`)
-  checks.push('All content images have alt text')
+  // Empty alt is valid for decorative art (the wordmark already names VibePeep). A missing attribute is not.
+  const noAlt = imgs.filter((t) => !/width="1"/.test(t) && !/\balt="/i.test(t))
+  if (noAlt.length) errors.push(`${noAlt.length} image(s) without an alt attribute`)
+  checks.push('Content images include an alt attribute')
 
   if (!/\/unsubscribe\?/.test(input.html) || !/Unsubscribe:/.test(input.text)) errors.push('Unsubscribe link missing')
   checks.push('Unsubscribe link present in HTML and plain text')

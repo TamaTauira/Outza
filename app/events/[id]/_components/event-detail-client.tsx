@@ -5,14 +5,14 @@ import { motion } from 'framer-motion'
 import { EventImage } from '@/components/event-image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, BadgeCheck, Megaphone, Users } from 'lucide-react'
+import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, Megaphone, Users, Info } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { useSaved } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { Footer } from '@/components/footer'
 import { EventCard } from '@/components/event-card'
 import { CATEGORIES } from '@/lib/categories'
-import { DataConfidence, StatusBanner } from '@/components/data-confidence'
+import { StatusBanner } from '@/components/data-confidence'
 import { LocalRecommendations } from '@/components/local-recommendations'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { EventExtras, EventGallery, VerifiedLine } from './event-extras'
@@ -125,11 +125,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
 
               <StatusBanner status={event.quality?.status ?? null} />
               <h1 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-3">{event?.title}</h1>
-              {event.quality?.verified?.ok && (
-                <p className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-3 py-1 text-sm font-semibold" title="Recent source refresh, required details present, not a duplicate, and no open correction report for the date, venue, or cancellation.">
-                  <BadgeCheck className="w-4 h-4" />VibePeep Verified
-                </p>
-              )}
               <VerifiedLine event={event} />
               <FollowListing category={event.category} venueName={event.venueName} city={event.city} />
               {event?.isMine && (
@@ -140,7 +135,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
               {event?.promoter && (
                 <p className="-mt-2 mb-5 text-sm text-muted-foreground flex flex-wrap items-center gap-1.5">
                   Presented by <Link href={`/organisers/${event.promoter.id}`} className="font-medium text-foreground underline underline-offset-2">{event.promoter.orgName || event.promoter.name || 'a local promoter'}</Link>
-                  {event.promoter.verified && <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2 py-0.5 text-xs font-semibold"><BadgeCheck className="w-3.5 h-3.5" />Verified promoter</span>}
                   {!event.isMine && <FollowPromoterButton promoterId={event.promoter.id} initialFollowing={!!event.followingPromoter} signedIn={signedIn} />}
                 </p>
               )}
@@ -178,8 +172,12 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                       {event.quality?.price?.range ?? (event?.isFree ? 'Free' : (event?.price ?? 'See website'))}
                     </p>
                     {event.quality?.price?.fees && <p className="text-xs text-muted-foreground mt-1">{event.quality.price.fees}</p>}
-                    {event.quality?.availability && <p className="text-xs text-muted-foreground mt-2">Availability: {event.quality.availability.label}. {event.quality.availability.note}</p>}
                   </div>
+
+                  <p className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2.5 text-xs leading-snug text-muted-foreground">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <span>Event details may change. Confirm times, availability and prices with the organiser before attending.</span>
+                  </p>
 
                   {event?.ticketUrl && (
                     <a
@@ -201,7 +199,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                     <Bookmark className={cn('w-4 h-4', isSaved(event.id) && 'fill-current')} />
                     {isSaved(event.id) ? 'Saved to favourites' : 'Save to favourites'}
                   </button>
-                  {event.quality && <DataConfidence quality={event.quality} />}
                 </div>
               </div>
 

@@ -13,7 +13,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
     'What you do on VibePeep: events you save or mark as going, and, when you’re signed in, the events you view, share, add to your itinerary or tap through to tickets. Also the promoters you follow and friend connections you create.',
     'Newsletter interactions: which links in our emails you click, and whether an email appears to have been opened (via a small image). Open data is approximate because many email apps block or pre-load images.',
     'Promoters: business details and the events and promotions you create and purchase.',
-    'Reports and claims: if you report incorrect event details we store your report and, if you give it, your email so we can reply. If you claim a listing we store your organisation, role and the evidence you provide so we can verify you.',
+    'Reports and claims: if you report incorrect event details we store your report and, if you give it, your email so we can reply. If you claim a listing we store your organisation, role and the evidence you provide so we can check the claim.',
   ] },
   { title: 'How we use it', body: [
     'To run your account and show you events in your city.',

@@ -19,6 +19,79 @@ const TOTAL_LABELS: Record<string, string> = {
   skipped: 'Skipped (thin)', blocked: 'QA blocked', failed: 'Failed', tests: 'Tests',
 }
 
+type Delivery = { kind: string; status: string; error: string | null; createdAt: string }
+type DigestInfo = {
+  sendingEnabled: boolean
+  testSender: boolean
+  blocker: string | null
+  deliveries: Delivery[]
+  newsletter: { status: string; error: string | null; sentAt: string; edition: string }[]
+}
+type TestPart = { ok: boolean; error?: string; restricted?: boolean }
+
+function DigestMailPanel() {
+  const [info, setInfo] = useState<DigestInfo | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const load = () => fetch('/api/admin/digest').then(async (r) => {
+    if (!r.ok) throw new Error(`Digest status failed (${r.status})`)
+    setInfo(await r.json())
+  }).catch((e) => console.error('[digest-admin]', e))
+
+  useEffect(() => { load() }, [])
+
+  async function sendTest() {
+    setBusy(true)
+    setMsg(null)
+    try {
+      const r = await fetch('/api/admin/digest', { method: 'POST' })
+      const j = await r.json().catch(() => ({}))
+      const part = (label: string, value: TestPart | undefined) => value ? `${label}: ${value.ok ? 'sent' : (value.error ?? 'failed')}` : `${label}: no result`
+      const text = [part('Watchlist', j.watchlist), part('Newsletter', j.newsletter)].join(' ')
+      if (!r.ok && !j.watchlist && !j.newsletter) {
+        console.error('[digest-admin]', j)
+        setMsg({ ok: false, text: j.error ?? `Request failed (${r.status})` })
+        return
+      }
+      console.info('[digest-admin] test', { ok: j.ok, watchlist: j.watchlist, newsletter: j.newsletter })
+      setMsg({ ok: !!j.ok, text })
+      load()
+    } catch (e) {
+      console.error('[digest-admin]', e)
+      setMsg({ ok: false, text: 'Network error — please try again.' })
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <section className="rounded-2xl bg-card shadow-sm p-5 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-bold">Event digests</h2>
+        <button type="button" onClick={sendTest} disabled={busy} className="rounded-full bg-[#FF4E6A] text-white px-5 py-2 text-sm font-semibold disabled:opacity-50">
+          {busy ? 'Sending…' : 'Send test digest'}
+        </button>
+      </div>
+      <p className="text-sm text-muted-foreground">Sends a watchlist digest and a newsletter digest to you. Neither one moves the schedule.</p>
+      {info?.testSender && <p className="text-sm text-amber-800 dark:text-amber-300" role="status">{info.blocker}</p>}
+      {info && !info.sendingEnabled && <p className="text-sm text-red-600 dark:text-red-400" role="status">Email sending is off until RESEND_API_KEY is set.</p>}
+      {msg && <p className={`text-sm ${msg.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} role="status">{msg.text}</p>}
+      {info && info.newsletter.length > 0 && (
+        <p className="text-xs text-muted-foreground">Latest newsletter issue: {info.newsletter[0].status}{info.newsletter[0].error ? ` — ${info.newsletter[0].error}` : ''}</p>
+      )}
+      {info && info.deliveries.length > 0 && (
+        <ul className="text-xs space-y-1">
+          {info.deliveries.map((row, index) => (
+            <li key={`${row.kind}-${row.createdAt}-${index}`} className="text-muted-foreground">
+              <span className="text-foreground">{new Date(row.createdAt).toISOString().slice(0, 16).replace('T', ' ')}</span>
+              {' '}{row.kind} · {row.status}{row.error ? ` — ${row.error}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 function Table({ title, rows }: { title: string; rows: Row[] }) {
   if (!rows?.length) return null
   const cols = Object.keys(rows[0]).filter((k) => k !== 'key')
@@ -76,6 +149,8 @@ export function NewsletterAdminClient() {
         <h1 className="font-display text-3xl font-bold">The Weekender — newsletter</h1>
         <p className="text-muted-foreground text-sm mt-1">Preview any subscriber’s issue, run QA, send yourself a test, and track performance.</p>
       </header>
+
+      <DigestMailPanel />
 
       <section className="rounded-2xl bg-card shadow-sm p-5 grid gap-4 md:grid-cols-4 items-end">
         <label className="text-sm md:col-span-2">Subscriber email <span className="text-muted-foreground">(blank = you)</span>

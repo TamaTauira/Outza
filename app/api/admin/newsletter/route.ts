@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSessionUser, unauthorized, forbidden } from '@/lib/session'
+import { publicEmailError } from '@/lib/email'
 import { buildNewsletter, sendNewsletter } from '@/lib/newsletter'
 
 export const dynamic = 'force-dynamic'
@@ -83,8 +84,13 @@ export async function POST(req: Request) {
   try {
     if (b.action === 'test') {
       const r = await sendNewsletter(user.id, { mode: 'test', to: g.me!.email, city, edition })
-      if (!r.ok) return NextResponse.json({ error: r.error ?? 'Send failed', qa: (r as any).qa }, { status: 422 })
-      return NextResponse.json({ ok: true, to: g.me!.email, subject: (r as any).subject, disabled: !!(r as any).disabled })
+      if (!r.ok) {
+        const blocked = 'blocked' in r && r.blocked
+        const restricted = 'restricted' in r && r.restricted
+        const error = blocked || ('skipped' in r && r.skipped) ? (r.error ?? 'Send failed') : publicEmailError(r.error)
+        return NextResponse.json({ error, restricted, qa: (r as { qa?: unknown }).qa }, { status: restricted ? 403 : 422 })
+      }
+      return NextResponse.json({ ok: true, to: g.me!.email, subject: (r as { subject?: string }).subject, disabled: 'disabled' in r && !!r.disabled })
     }
     const built = await buildNewsletter(user.id, { mode: 'preview', city, edition })
     if ('skip' in built) return NextResponse.json({ error: built.skip }, { status: 422 })
