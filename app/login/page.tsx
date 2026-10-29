@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { establishSession } from '@/lib/establish-session'
 import { Loader2, Megaphone, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
@@ -19,18 +19,19 @@ function LoginForm() {
   const nextParam = params.get('next')
   const [mode, setMode] = useState<'CONSUMER' | 'PROMOTER'>(params.get('as') === 'promoter' || nextParam?.startsWith('/promoter') ? 'PROMOTER' : 'CONSUMER')
   const next = nextParam || (mode === 'PROMOTER' ? '/promoter' : '/')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => params.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const created = params.get('created') === '1'
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const res = await signIn('credentials', { email, password, redirect: false })
+    const ok = await establishSession(email.trim().toLowerCase(), password)
     setLoading(false)
-    if (!res || res.error) { setError('Invalid email or password'); return }
+    if (!ok) { setError('That email or password didn’t match. Try again.'); return }
     router.replace(next)
   }
 
@@ -62,6 +63,7 @@ function LoginForm() {
         <Label htmlFor="password">Password</Label>
         <Input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
       </div>
+      {created && !error && <p className="text-sm text-foreground" role="status">Account created. Sign in with the email and password you just chose.</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{mode === 'PROMOTER' ? 'Sign In to Promoter Dashboard' : 'Sign In'}

@@ -5,7 +5,8 @@ import { sydneyToday } from '@/lib/event-store'
 import { addDays, sydneyNow, toMinutes } from '@/lib/board'
 import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
-import { interpretQuery, type AiFilters } from '@/lib/ai-search-parse'
+import { interpretQuery, keywordRelaxAllowed, type AiFilters } from '@/lib/ai-search-parse'
+import { nearestCity } from '@/lib/travel'
 import { completeJson, llmConfigured } from '@/lib/llm'
 
 export const dynamic = 'force-dynamic'
@@ -75,7 +76,17 @@ export async function POST(req: NextRequest) {
     const today = sydneyToday().toISOString().slice(0, 10)
     const parsed = q.length >= 2 ? await aiParse(q, today, city) : null
     const filters = applyHints(interpretQuery(q, today, parsed), hints, today)
-    const searchCity = filters.city || city
+    const lat = Number(body?.lat)
+    const lng = Number(body?.lng)
+    let searchCity = filters.city || city
+    if (filters.nearMe && !filters.city) {
+      const located = Number.isFinite(lat) && Number.isFinite(lng) ? nearestCity(lat, lng) : null
+      if (!located) {
+        return NextResponse.json({ filters, ai: !!parsed, relaxed: false, total: 0, results: [], needsLocation: true })
+      }
+      searchCity = located
+      filters.city = located
+    }
     const now = sydneyNow()
 
     const base: Prisma.EventWhereInput = {
@@ -132,7 +143,7 @@ export async function POST(req: NextRequest) {
       rows = focusMusic((await run({ AND: [noCategory, kw] })).map((e) => presentListing(e)))
       if (rows.length) filters.category = ''
     }
-    if (!rows.length && filters.keywords.length && !musicIntent) {
+    if (!rows.length && keywordRelaxAllowed(filters) && !musicIntent) {
       rows = focusMusic((await run(base)).map((e) => presentListing(e)))
       relaxed = rows.length > 0
     }

@@ -86,7 +86,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
   const itButton = (extra: string) => (
     <button
       onClick={toggleItinerary}
-      className={cn('relative z-10 p-1.5 rounded-md', inIt ? 'text-primary' : 'text-muted-foreground hover:text-foreground', extra)}
+      className={cn('relative z-20 p-1.5 rounded-md', inIt ? 'text-primary' : 'text-muted-foreground hover:text-foreground', extra)}
       aria-label={itLabel}
       aria-pressed={inIt}
       title={inIt ? 'In my itinerary' : 'Add to my itinerary'}
@@ -121,7 +121,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
           <Icon className="w-3.5 h-3.5" />
         </span>
-        <Link href={href} className="font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
+        <Link href={href} className="font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {ev.title}
         </Link>
         {ev.promoTier && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title="Promoted event">{(tierDef(ev.promoTier)?.name ?? 'Featured').toUpperCase()}</span>}
@@ -132,10 +132,10 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
       </div>
 
       {/* Save + itinerary (mobile top-right) */}
-      <div className="xl:hidden justify-self-end flex items-center">
+      <div className="xl:hidden justify-self-end flex items-center shrink-0">
         <button
           onClick={() => onToggleSave(ev)}
-          className={cn('relative z-10 p-1.5 rounded-md hover:bg-muted', saved ? 'text-primary' : 'text-muted-foreground')}
+          className={cn('relative z-20 p-1.5 rounded-md hover:bg-muted', saved ? 'text-primary' : 'text-muted-foreground')}
           aria-label={saved ? 'Remove from saved' : 'Save event'}
         >
           <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
@@ -181,7 +181,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
         <button
           onClick={() => onToggleSave(ev)}
-          className={cn('relative z-10 p-1.5 rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
+          className={cn('relative z-20 shrink-0 p-1.5 rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
           aria-label={saved ? 'Remove from saved' : 'Save event'}
           title={saved ? 'Saved' : 'Save'}
         >

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { coordsFitCity } from '@/lib/travel'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
     let lookups = 0
     for (const s of stops) {
       let geo: Geo = s.id.startsWith('local-') ? loMap.get(s.id.split('-')[1]) ?? null : evMap.get(s.id) ?? null
+      if (geo && !coordsFitCity(geo.lat, geo.lng, s.city)) geo = null
       const q = typeof s.query === 'string' ? s.query.trim().slice(0, 200) : ''
       if (!geo && q && lookups < 8) {
         const full = s.city && !q.toLowerCase().includes(s.city.toLowerCase()) ? `${q}, ${s.city}` : q

@@ -8,25 +8,32 @@ import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { useSaved } from '@/lib/saved'
 import { useItinerary, sortItinerary, clashMap, type ItineraryItem } from '@/lib/itinerary'
-import { estimateLeg, fmtKm, fmtMin, directionsUrl } from '@/lib/travel'
+import { coordsFitCity, directionsUrl, fmtKm, fmtMin, planLeg } from '@/lib/travel'
 import { StopForm, emptyStop, type StopFormValues } from './stop-form'
 import { RoutePicks, pickStopId, slotBetween, type RoutePick } from './route-picks'
 const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
 const toMin = (t: string | null) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null)
-const hasGeo = (i: ItineraryItem) => i.lat != null && i.lng != null
-const needsGeo = (i: ItineraryItem) => !hasGeo(i) && !i.geoFailed && (i.kind === 'event' || !!(i.place || i.venueName))
+const believable = (i: ItineraryItem) => i.lat != null && i.lng != null && coordsFitCity(i.lat, i.lng, i.city)
+const needsGeo = (i: ItineraryItem) => !believable(i) && !i.geoFailed && (i.kind === 'event' || !!(i.place || i.venueName))
 
 /** Travel estimate between two consecutive stops on the same day. */
 function TravelLeg({ from, to, locating }: { from: ItineraryItem; to: ItineraryItem; locating: boolean }) {
   const box = 'ml-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground py-1'
-  if (!hasGeo(from) || !hasGeo(to)) {
+  const planned = planLeg(from, to)
+  if (planned.kind === 'same') return <div className={box}><MapPin className="w-3.5 h-3.5" />Same location</div>
+  if (planned.kind === 'different-city') {
+    return <div className={box}><Navigation className="w-3.5 h-3.5" />These stops are in {planned.fromCity} and {planned.toCity}. No travel time — they are not one trip unless you mean them to be.</div>
+  }
+  if (planned.kind === 'unreliable') {
+    return <div className={box}><Navigation className="w-3.5 h-3.5" />Same city, but the map pins are too far apart to trust. Open the venue for directions rather than using this estimate.</div>
+  }
+  if (planned.kind === 'missing') {
     if (locating) return <div className={box}><Loader2 className="w-3.5 h-3.5 animate-spin" />Working out travel time…</div>
-    const missing = !hasGeo(from) ? from : to
+    const missing = from.lat == null || from.lng == null ? from : to
     return <div className={box}><Navigation className="w-3.5 h-3.5" />{missing.kind === 'custom' && !missing.place && !missing.venueName ? `Add a location to “${missing.title}” to see travel time` : `Couldn’t map “${missing.title}”, so no travel time`}</div>
   }
+  const leg = planned.leg
   const a = { lat: from.lat!, lng: from.lng! }, b = { lat: to.lat!, lng: to.lng! }
-  const leg = estimateLeg(a, b)
-  if (leg.km < 0.05) return <div className={box}><MapPin className="w-3.5 h-3.5" />Same location</div>
   const leave = toMin(from.endTime), arrive = toMin(to.time)
   const gap = leave !== null && arrive !== null ? arrive - leave : null
   const tight = gap !== null && gap >= 0 && gap < leg.recommendedMin
@@ -63,7 +70,8 @@ export default function ItineraryPage() {
       .then((data) => {
         for (const i of todo) {
           const g = data?.locations?.[i.id]
-          update(i.id, g ? { lat: g.lat, lng: g.lng } : { geoFailed: true })
+          const fit = g && coordsFitCity(g.lat, g.lng, i.city)
+          update(i.id, fit ? { lat: g.lat, lng: g.lng, geoFailed: false } : { lat: null, lng: null, geoFailed: true })
         }
       })
       .catch((err) => console.error('Could not locate itinerary stops:', err))
@@ -114,7 +122,7 @@ export default function ItineraryPage() {
           <h1 className="font-display text-3xl font-bold flex items-center gap-3"><CalendarRange className="w-7 h-7 text-primary" />Itinerary</h1>
           {items.length > 0 && <button onClick={() => { if (confirm('Clear your whole itinerary?')) clear() }} className="text-sm text-muted-foreground hover:text-foreground">Clear all</button>}
         </div>
-        <p className="text-muted-foreground mb-8">Your game plan. Tap <span className="font-semibold text-foreground">+ Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. Your itinerary is kept on this device. It is separate from your saved favourites.</p>
+        <p className="text-muted-foreground mb-8">Your game plan. Tap <span className="font-semibold text-foreground">+ Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. Your itinerary is kept on this device for the account you are signed in with, and clears from view when you sign out. It is separate from your saved favourites.</p>
 
         {!sorted.length ? (
           <div className="rounded-xl bg-card shadow-[var(--shadow-md)] p-8 text-center">

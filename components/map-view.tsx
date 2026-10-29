@@ -226,6 +226,14 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       <div className="absolute top-4 left-1/2 z-[500] max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg sm:left-4 sm:max-w-none sm:translate-x-0">
         {loading ? <span>Loading map…</span> : <><span className="text-primary font-bold">{count}</span> events on map</>}
       </div>
+      {!loading && count === 0 && (
+        <div className="absolute inset-0 z-[450] flex items-center justify-center p-6 pointer-events-none">
+          <div className="pointer-events-auto max-w-sm rounded-2xl bg-card/95 text-card-foreground shadow-xl ring-1 ring-border px-5 py-4 text-center">
+            <p className="font-display font-bold text-lg">No events on the map</p>
+            <p className="mt-1 text-sm text-muted-foreground">{searchQuery ? `Nothing matches “${searchQuery}” here. Try another city, or clear the search.` : 'Nothing with a map pin matches these filters. Try another city or loosen the filters.'}</p>
+          </div>
+        </div>
+      )}
       {ready && (
         <button
           onClick={locate}

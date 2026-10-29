@@ -32,21 +32,14 @@ export async function GET() {
   return list(me.id)
 }
 
-/** body: { eventId, saved } toggles one; body: { ids: [] } merges a local list */
+/** body: { eventId, saved } toggles one. A bulk { ids } list is not imported — that copied one account's device cache onto the next person. */
 export async function POST(req: Request) {
   const me = await getSessionUser()
   if (!me) return unauthorized()
   const b = await req.json().catch(() => ({}))
   if (Array.isArray(b.ids)) {
-    // Removals made on a device before it was linked to the account
     const removed: string[] = Array.isArray(b.removed) ? b.removed.filter((x: unknown) => typeof x === 'string').slice(0, 500) : []
     if (removed.length) await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: { in: removed } } })
-    const gone = new Set(removed)
-    const ids: string[] = b.ids.filter((x: unknown) => typeof x === 'string' && !gone.has(x)).slice(0, 500)
-    const existing = ids.length ? await prisma.event.findMany({ where: { id: { in: ids } }, select: { id: true } }) : []
-    if (existing.length) {
-      await prisma.savedEvent.createMany({ data: existing.map((e) => ({ userId: me.id, eventId: e.id })), skipDuplicates: true })
-    }
   } else if (typeof b.eventId === 'string') {
     if (b.saved) {
       const ev = await prisma.event.findUnique({ where: { id: b.eventId }, select: { id: true } })
