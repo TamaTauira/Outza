@@ -81,7 +81,9 @@ export function AccountClient() {
   }
   const preview = async () => {
     const res = await fetch('/api/me/digest-preview', { method: 'POST' })
-    if (res.ok) toast.success('Preview sent to your inbox'); else toast.error('Could not send preview')
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) toast.success('Preview sent to your inbox')
+    else toast.error(typeof data?.error === 'string' ? data.error : 'Could not send preview')
   }
 
   if (!me) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
