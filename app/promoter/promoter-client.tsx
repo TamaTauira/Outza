@@ -22,7 +22,7 @@ type Promo = { id: string; tier: string; days?: number | null; orderId?: string 
 type MyEvent = {
   id: string; title: string; date: string; endDate?: string | null; city?: string; venueName: string; suburb?: string | null; views?: number; ticketClicks?: number; promotions?: Promo[]; _count?: { savedBy: number; attendees: number }
   time?: string | null; endTime?: string | null; venueAddress?: string | null; price?: string | null; isFree?: boolean; isLGBTI?: boolean; category?: string; subTags?: string[]; ticketUrl?: string | null; imageUrl?: string | null; description?: string | null
-  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; organiserEditedAt?: string | null; source?: string | null; status?: string | null
+  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null; organiserEditedAt?: string | null; source?: string | null; status?: string | null
   referrals?: { source: string; count: number }[]
 }
 type Pass = { id: string; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
@@ -371,7 +371,7 @@ function TierBadge({ tier }: { tier: string }) {
 const blankListing = (city: string) => ({
   title: '', date: '', endDate: '', time: '', endTime: '', venueName: '', venueAddress: '', city, category: 'Community', subTag: '',
   price: '', isFree: false, isLGBTI: false, ticketUrl: '', imageUrl: '', description: '', galleryUrls: '', organiserName: '', organiserUrl: '',
-  accessibilityInfo: '', ageRestriction: '', transportInfo: '',
+  accessibilityInfo: '', ageRestriction: '', transportInfo: '', capacity: '',
 })
 
 function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { events: MyEvent[]; claims: ClaimRow[]; pro: boolean; homeCity: string; onPromote: (id: string) => void; reload: () => void }) {
@@ -541,7 +541,8 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
             <select value={form.subTag} onChange={set('subTag')} className={field} aria-label="Subtag"><option value="">Subtag (optional)</option>{subTags.map((t) => <option key={t}>{t}</option>)}</select>
             <input value={form.price} onChange={set('price')} placeholder="Price e.g. $25 or Free" disabled={form.isFree} className={field} />
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isFree} onChange={set('isFree')} /> Free event</label>
-            <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={form.isLGBTI} onChange={set('isLGBTI')} /> LGBTIQ+ event</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isLGBTI} onChange={set('isLGBTI')} /> LGBTIQ+ event</label>
+            <input value={form.capacity} onChange={set('capacity')} inputMode="numeric" placeholder="Capacity (optional)" aria-label="Capacity" className={field} />
             <input value={form.ticketUrl} onChange={set('ticketUrl')} placeholder="Ticket link (https://...)" className={`${field} sm:col-span-2`} />
             <input value={form.imageUrl} onChange={set('imageUrl')} placeholder="Image link (https://...) — optional" className={`${field} sm:col-span-2`} />
             <textarea value={form.description} onChange={set('description')} placeholder="Description" rows={3} className="sm:col-span-2 rounded-md border border-border bg-background px-3 py-2 text-sm" />

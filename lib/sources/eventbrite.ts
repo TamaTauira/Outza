@@ -1,6 +1,8 @@
 import { fetchHtml, saveEvent, sleep, toSydneyParts } from '@/lib/event-store'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
+import { distanceKm } from '@/lib/travel'
+import { addressInTasmania, coordsInTasmania } from '@/lib/tas-retag'
 
 function parseServerData(html: string): any | null {
   const marker = 'window.__SERVER_DATA__ = '
@@ -100,6 +102,17 @@ function listingTruncated(page: ListingPage): boolean {
   return page.pageCount >= EB_PAGE_WALL && page.results.length >= size
 }
 
+/** Keep a venue in the city it actually sits in. A Tasmanian address found on a Perth search is filed under Hobart. */
+function filedCity(search: CityDef, lat: number, lng: number, address?: string | null): string | null {
+  const has = Number.isFinite(lat) && Number.isFinite(lng) && !!(lat || lng)
+  if (has && coordsInTasmania(lat, lng)) return 'Hobart'
+  if (addressInTasmania(address) && (!has || distanceKm({ lat, lng }, search) > search.radiusKm + 40)) return 'Hobart'
+  if (!has) return search.name
+  if (distanceKm({ lat, lng }, search) <= search.radiusKm + 40) return search.name
+  const nearer = CITIES.find((c) => distanceKm({ lat, lng }, c) <= c.radiusKm)
+  return nearer?.name ?? null
+}
+
 async function storeResults(city: CityDef, results: any[], forceFree: boolean): Promise<number> {
   let saved = 0
   const needPrice = results.filter((e) => !e?.ticket_availability && e?.id).map((e) => String(e.id))
@@ -107,6 +120,10 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
   for (const e of results) {
     try {
       if (e?.is_online_event) continue
+      const lat = parseFloat(e?.primary_venue?.address?.latitude)
+      const lng = parseFloat(e?.primary_venue?.address?.longitude)
+      const place = filedCity(city, lat, lng, e?.primary_venue?.address?.localized_address_display)
+      if (!place) continue
       const status = e?.is_cancelled ? 'CANCELLED' : e?.ticket_availability?.is_sold_out ? 'SOLD_OUT' : 'SCHEDULED'
       const v = e?.primary_venue
       const genres = (e?.tags ?? []).map((t: any) => t?.display_name).filter(Boolean)
@@ -128,7 +145,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
         longitude: parseFloat(v?.address?.longitude) || null,
         source: 'eventbrite',
         status,
-        city: city.name,
+        city: place,
       })
       if (ok) saved++
     } catch (err: any) {

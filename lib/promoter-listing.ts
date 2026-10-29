@@ -39,6 +39,7 @@ export interface ParsedListing {
   accessibilityInfo: string | null
   ageRestriction: string | null
   transportInfo: string | null
+  capacity: number | null
 }
 
 export type ParseResult = { ok: true; listing: ParsedListing } | { ok: false; error: string }
@@ -109,6 +110,14 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
     }
     imageUrl = image.url ? bestSourceUrl(image.url) : null
   }
+  let capacity: number | null = null
+  const capRaw = b.capacity
+  if (capRaw !== undefined && capRaw !== null && String(capRaw).trim() !== '') {
+    const n = Number(String(capRaw).trim())
+    if (!Number.isInteger(n) || n < 1 || n > 500000) return { ok: false, error: 'Capacity must be a whole number of at least 1' }
+    capacity = n
+  }
+
   const organiser = httpsUrl(b.organiserUrl, 'Organiser website')
   if ('error' in organiser) return { ok: false, error: organiser.error }
   const galleryUrls = String(b.galleryUrls ?? '').split(/[\s,]+/).flatMap((u) => {
@@ -144,6 +153,7 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
       accessibilityInfo: txt(b.accessibilityInfo, 1000),
       ageRestriction: txt(b.ageRestriction, 120),
       transportInfo: txt(b.transportInfo, 1000),
+      capacity,
     },
   }
 }

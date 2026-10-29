@@ -56,6 +56,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       accessibilityInfo: listing.accessibilityInfo,
       ageRestriction: listing.ageRestriction,
       transportInfo: listing.transportInfo,
+      capacity: listing.capacity,
       galleryUrls: listing.galleryUrls,
       seriesKey: makeSeriesKey(listing.title, listing.venueName, listing.city),
       ...(listing.imageUrl && listing.imageUrl !== ev.imageUrl ? { imageUrl: listing.imageUrl, imageAssetId: null } : listing.imageUrl === null ? { imageUrl: null, imageAssetId: null } : {}),

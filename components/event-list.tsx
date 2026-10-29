@@ -155,8 +155,16 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       <BoardHeadings />
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-7 h-7 animate-spin text-primary" />
+        <div className="divide-y divide-border" aria-busy="true" aria-label="Loading events">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} className="px-5 py-4 flex gap-4">
+              <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : span?.spanning && timed.length === 0 ? (
         <div className="text-center py-20 px-4">

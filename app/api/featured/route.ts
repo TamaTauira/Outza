@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         ...activePromoWhere(),
         tier: { in: [...TIER_KEYS, 'FRONTROW'] },
         event: { date: { gte: today } },
-        ...(validCity ? { OR: [{ tier: { in: ['GOLD', 'FRONTROW'] } }, { event: { city: validCity } }] } : {}),
+        ...(validCity ? { OR: [{ tier: 'FRONTROW' }, { event: { city: validCity } }] } : {}),
       },
       select: { tier: true, eventId: true, event: { select: evSelect } },
       take: 300,
