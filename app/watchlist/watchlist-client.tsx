@@ -144,7 +144,7 @@ export function WatchlistClient() {
 
       <section className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5 space-y-3">
         <h2 className="font-display text-xl font-bold">Email</h2>
-        <p className="text-sm text-muted-foreground">No app notifications. Mail goes out through Resend only when you opt in and a key is configured.</p>
+        <p className="text-sm text-muted-foreground">No app notifications. Mail goes out only when you opt in and email is configured.</p>
         {status === 'authenticated' ? (
           <>
             <label className="flex items-start gap-3 text-sm">

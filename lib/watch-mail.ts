@@ -72,8 +72,8 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
   const mail = composeWatchEmail({ saved: savedMail, matches: matches.map(toMail) })
   if (!mail) return { ok: false as const, skipped: true as const, reason: 'empty' }
   if (!emailSendingEnabled()) {
-    console.error('[watchlist] digest skipped: RESEND_API_KEY is not set')
-    await recordMailDelivery({ kind: 'watchlist', userId: user.id, status: 'disabled', error: 'RESEND_API_KEY is not set' })
+    console.error('[watchlist] digest skipped: email sending is turned off')
+    await recordMailDelivery({ kind: 'watchlist', userId: user.id, status: 'disabled', error: 'Email sending is turned off' })
     return { ok: false as const, disabled: true as const, error: 'Email sending is turned off' }
   }
   const sent = await sendEmail({ to: user.email, subject: opts.test ? `[Preview] ${mail.subject}` : mail.subject, html: mail.html, text: mail.text })
@@ -133,8 +133,8 @@ export async function sendDueReminders() {
 
 export async function runWatchMail() {
   if (!emailSendingEnabled()) {
-    console.error('[watchlist] skipped: RESEND_API_KEY is not set')
-    await recordMailDelivery({ kind: 'watchlist-run', status: 'disabled', error: 'RESEND_API_KEY is not set' })
+    console.error('[watchlist] skipped: email sending is turned off')
+    await recordMailDelivery({ kind: 'watchlist-run', status: 'disabled', error: 'Email sending is turned off' })
     return {
       disabled: true,
       digests: { checked: 0, sent: 0, skipped: 0, failed: 0 },
