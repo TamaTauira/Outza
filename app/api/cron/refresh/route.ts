@@ -1,20 +1,15 @@
-import { NextResponse } from 'next/server'
-import { refreshAllSources } from '@/lib/refresh'
-import { getSessionUser } from '@/lib/session'
+import { handleRefreshRequest } from '@/lib/cron-refresh'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-/** Refreshes listings off the request path. Vercel Cron calls GET with Authorization: Bearer CRON_SECRET. */
+/**
+ * Manual refresh. Runs the first chunk in this invocation (under the 300s Pro limit)
+ * and dispatches the rest. Scheduled chunks are `/api/cron/refresh/<id>`.
+ */
 async function run(req: Request) {
-  const secret = process.env.CRON_SECRET
-  const bearer = req.headers.get('authorization')
-  const header = req.headers.get('x-cron-secret')
-  const me = await getSessionUser().catch(() => null)
-  const authed = !!secret && (bearer === `Bearer ${secret}` || header === secret)
-  if (!authed && me?.role !== 'ADMIN') return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
-  const { eventsAdded } = await refreshAllSources()
-  return NextResponse.json({ eventsAdded })
+  const chunk = new URL(req.url).searchParams.get('chunk')
+  return handleRefreshRequest(req, chunk)
 }
 
 export async function GET(req: Request) { return run(req) }
