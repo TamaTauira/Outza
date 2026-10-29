@@ -167,7 +167,7 @@ export default async function PromotersPage() {
             {[
               ['Is listing free?', 'Yes. Creating or claiming an event is always free. You only pay when you choose to promote it.'],
               ['When does my campaign start?', 'Straight away, as soon as payment is confirmed. If you buy again for the same event, the new time is added on to the end.'],
-              ['Where does my event appear?', 'Boost and Spotlight show in the Featured band for your event’s city, and Spotlight adds a highlighted map pin. Headliner and Front-row placement show in every city, and Headliner events are eligible for subscriber newsletters. All placements are labelled as sponsored.'],
+              ['Where does my event appear?', 'Boost, Spotlight and Headliner show in the Featured band for your event’s city. Headliner ranks above Spotlight, which ranks above Boost. Front-row placement is the add-on that can show in every city. Headliner events are eligible for subscriber newsletters. Every placement is labelled Sponsored.'],
               ['Is there a contract?', 'No. Every package is a one-off payment. Promoter Pro is a 30-day pass you can extend whenever you like.'],
             ].map(([q, a]) => (
               <div key={q} className="rounded-xl bg-card border border-border p-5">

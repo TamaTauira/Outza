@@ -100,7 +100,12 @@ export function IntelTab({ events }: { events: Ev[] }) {
         <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />Area figures describe people who live there. Spending and tourism are statewide. Catalogue counts are VibePeep listings. None of it is ticket sales, foot traffic or attendance, and nothing is estimated.</p>
       </div>
 
-      {loading && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Reading the neighbourhood… (first look at a venue can take ~20 seconds)</p>}
+      {loading && (
+        <div className="space-y-4" aria-busy="true" aria-label="Loading intelligence">
+          <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Reading the neighbourhood…</p>
+          {Array.from({ length: 3 }, (_, i) => <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />)}
+        </div>
+      )}
       {error && <p className="text-sm rounded-lg bg-muted/60 px-4 py-3">{error}</p>}
 
       {data && (
@@ -165,11 +170,11 @@ export function IntelTab({ events }: { events: Ev[] }) {
               </Section>
             )}
             {data.seifa.length > 0 && (
-              <Section title="Area socio-economic ranking" Icon={MapPin} sub={`ABS SEIFA 2021 for ${data.seifa[0].area}. Deciles 1–10 rank the area, never a person.`}>
+              <Section title="Area socio-economic ranking" Icon={MapPin} sub={`ABS SEIFA 2021 for ${data.seifa[0].area}. Each index is its own ranking. A high advantage decile and a low economic-resources decile can both be true. Deciles rank the area, never a person.`}>
                 <ul className="space-y-3">
                   {data.seifa.map((s) => (
                     <li key={s.index} className="text-sm">
-                      <div className="flex justify-between gap-3"><span>{s.label}</span><span className="tabular-nums font-semibold shrink-0">{data.stateName} decile {s.nswDecile ?? '—'}</span></div>
+                      <div className="flex justify-between gap-3"><span>{s.index} · {s.label}</span><span className="tabular-nums font-semibold shrink-0 text-right">State {s.nswDecile ?? '—'} · Australia {s.ausDecile ?? '—'}</span></div>
                       <p className="text-[11px] text-muted-foreground">{s.meaning}</p>
                     </li>
                   ))}

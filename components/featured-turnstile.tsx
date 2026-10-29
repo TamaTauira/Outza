@@ -25,7 +25,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
       .then((d) => {
         if (!live) return
         const rows: FeaturedItem[] = d?.items ?? []
-        setItems(city ? rows.filter((it) => !it.city || it.city === city || it.tier === 'GOLD') : rows)
+        setItems(city ? rows.filter((it) => !it.city || it.city === city) : rows)
       })
       .catch((err) => console.error('Failed to load featured events:', err))
     return () => { live = false }

@@ -221,7 +221,7 @@ export type AreaSignals = {
   alcoholYoy: number | null
   spendMonth: string | null
   tourism: { title: string; period: string | null; intlVisitors: number; yoyPct: number } | null
-  seifa: { area: string; decile: number } | null
+  seifa: { area: string; decile: number; advantageDecile?: number | null } | null
   areaLoaded: boolean
 }
 
@@ -410,9 +410,12 @@ function tourismInsight(voice: Voice, f: EventFacts, a: AreaSignals): Insight | 
 function seifaInsight(f: EventFacts, a: AreaSignals): Insight | null {
   if (!a.seifa) return null
   const band = f.bandLabel ? ` This listing sits in the ${f.bandLabel} band.` : ''
+  const other = a.seifa.advantageDecile != null && a.seifa.advantageDecile !== a.seifa.decile
+    ? ` Advantage and disadvantage (IRSAD) is state decile ${a.seifa.advantageDecile} for the same area. The indexes measure different things, so those two numbers are not a disagreement.`
+    : ''
   return cat(['abs_seifa'], 'hypothesis', confidenceFor({ hasData: true, geoPrecise: true, ageYears: 5, proxy: true }),
-    `Economic resources: ${a.stateName} decile ${a.seifa.decile} of 10`,
-    `${a.seifa.area} ranks in decile ${a.seifa.decile} of 10 for area-level economic resources within ${a.stateName} (SEIFA 2021, 10 = most resources).${band} The decile describes the area, not the people who will turn up, so it is one input when a price is set, never the answer.`)
+    `Economic resources (IER): state decile ${a.seifa.decile} of 10`,
+    `${a.seifa.area} is state decile ${a.seifa.decile} of 10 on economic resources (IER, SEIFA 2021). 10 means the most resources. That is not a rank of the people who will turn up.${other}${band}`)
 }
 
 type Ch = InsightLink

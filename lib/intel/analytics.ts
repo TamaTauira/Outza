@@ -207,7 +207,11 @@ function advise(base: VenueIntel, ev: ListedEvent, catalogue: CatalogueSnapshot,
     spendMonth: (rec ?? hosp ?? alc)?.month ?? null,
     tourism: base.tourismTitle && base.tourism.intlYoyPct != null && base.tourism.intlVisitors != null
       ? { title: base.tourismTitle, period: base.tourism.period, intlVisitors: base.tourism.intlVisitors, yoyPct: base.tourism.intlYoyPct } : null,
-    seifa: ier?.nswDecile != null ? { area: ier.area, decile: ier.nswDecile } : null,
+    seifa: ier?.nswDecile != null ? {
+      area: ier.area,
+      decile: ier.nswDecile,
+      advantageDecile: base.seifa.find((s) => s.index === 'IRSAD' && s.nswDecile != null)?.nswDecile ?? null,
+    } : null,
     areaLoaded: base.area.some((a) => a.venue != null) || base.ages.length > 0,
   }
   if (base.status === 'no_location') {
@@ -246,8 +250,13 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     spendLabel: cityState ? STE_NAME[cityState] : 'Australia',
     stateName: cityState ? STE_NAME[cityState] : 'Australia',
     transportCovered: cityState === '1',
-    sources: await sourceStatuses(), generatedAt: new Date().toISOString(),
+    sources: [], generatedAt: new Date().toISOString(),
   }
+  const regional = Promise.all([
+    sourceStatuses(),
+    spending(cityState ?? 'AUS'),
+    cityState === '1' ? tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW') : Promise.resolve(null),
+  ])
   const hinted = placeFromText({ venueAddress: ev.venueAddress, venueName: ev.venueName, suburb: ev.suburb, city: ev.city })
   let lat = ev.latitude, lng = ev.longitude
   const dump = pinIsCityDump(lat, lng, ev.city, hinted.suburb ?? ev.suburb, hinted.postcode)
@@ -265,9 +274,11 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
       lng = null
     }
   }
-  base.spending = await spending(cityState ?? 'AUS')
-  if (cityState === '1') {
-    base.tourism = await tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW')
+  const [sources, spendRows, tourRows] = await regional
+  base.sources = sources
+  base.spending = spendRows
+  if (tourRows) {
+    base.tourism = tourRows
     base.tourismTitle = ev.city === 'Sydney' ? 'Visitors to Sydney' : 'Visitors to New South Wales'
   }
   let under15: AreaSignals['under15'] = null
@@ -286,24 +297,26 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     base.stateName = STE_NAME[ste]
     base.spendLabel = STE_NAME[ste]
     base.transportCovered = ste === '1'
-    base.spending = await spending(ste)
-    if (ste === '1') {
-      base.tourism = await tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW')
-      base.tourismTitle = ev.city === 'Sydney' ? 'Visitors to Sydney' : 'Visitors to New South Wales'
-    } else {
+    if (ste !== '1') {
       base.tourism = { period: null, visitors: null, nights: null, spend: null, intlVisitors: null, intlYoyPct: null, intlPrevPeriod: null }
       base.tourismTitle = null
     }
   }
   base.benchLabel = g.gccsaName || base.stateName
 
-  // Area profile: venue SA2 vs council (LGA) vs the venue's greater capital city (or rest-of-state region).
+  // Area profile, SEIFA and stations together. State spending is reused when the state did not change.
   const codes = [...CORE, ...AGE_MEASURES.map((a) => a.code)]
-  const [sa2, gsyd, lga] = await Promise.all([
+  const [sa2, gsyd, lga, seifaRows, stationRows, spendNext] = await Promise.all([
     g.sa2 ? readObs('abs_region', 'asgs', { geoType: 'SA2', geoCode: g.sa2, measure: { in: codes } }) : [],
     g.gccsa ? readObs('abs_region', 'asgs', { geoType: 'GCCSA', geoCode: g.gccsa, measure: { in: codes } }) : [],
     g.lga ? readObs('abs_region', 'lga', { geoType: 'LGA', geoCode: g.lga, measure: { in: CORE } }) : [],
+    loadSeifaIndexes(seifaCandidates(g), (area) => readObs('abs_seifa', area.ds, { geoType: area.geo, geoCode: area.code })),
+    base.transportCovered ? stationsNear(lat!, lng!) : Promise.resolve([]),
+    ste && ste !== (cityState ?? 'AUS') ? spending(ste) : Promise.resolve(null),
   ])
+  if (spendNext) base.spending = spendNext
+  base.seifa = seifaRows
+  base.stations = stationRows
   const pick = (rows: typeof sa2, m: string) => latest(rows.filter((r) => r.measure === m && r.value != null))
   base.area = CORE.map((m) => {
     const d = REGION_MEASURES[m], v = pick(sa2, m), b = pick(gsyd, m), c = pick(lga, m)
@@ -326,10 +339,6 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     }).filter((x): x is AgeBand => !!x)
   }
 
-  // SEIFA preference order: suburb (SAL), then venue SA2 when SAL is missing or has no deciles.
-  base.seifa = await loadSeifaIndexes(seifaCandidates(g), (area) => readObs('abs_seifa', area.ds, { geoType: area.geo, geoCode: area.code }))
-
-  base.stations = base.transportCovered ? await stationsNear(lat!, lng!) : []
   if (!base.area.length && !base.stations.length && !base.seifa.length) base.status = 'no_data'
   }
   return advise(base, ev, await cataloguePromise, under15, stateCode, price)

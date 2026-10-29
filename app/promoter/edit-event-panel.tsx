@@ -10,7 +10,7 @@ export type EditableEvent = {
   id: string; title: string; date: string; endDate?: string | null; venueName: string; city?: string
   category?: string; subTags?: string[]; isLGBTI?: boolean
   time?: string | null; endTime?: string | null; venueAddress?: string | null; price?: string | null; isFree?: boolean; ticketUrl?: string | null; imageUrl?: string | null; description?: string | null
-  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null
+  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null
 }
 
 const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm w-full'
@@ -22,7 +22,7 @@ export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEve
     title: event.title, date: event.date.slice(0, 10), endDate: event.endDate?.slice(0, 10) ?? '', time: event.time ?? '', endTime: event.endTime ?? '',
     venueName: event.venueName, venueAddress: event.venueAddress ?? '', city: event.city || 'Sydney', category: event.category || 'Community', subTag: event.subTags?.[0] ?? '',
     price: event.isFree ? '' : event.price ?? '', isFree: !!event.isFree, isLGBTI: !!event.isLGBTI, ticketUrl: event.ticketUrl ?? '', imageUrl: event.imageUrl ?? '', description: event.description ?? '',
-    organiserName: event.organiserName ?? '', organiserUrl: event.organiserUrl ?? '', accessibilityInfo: event.accessibilityInfo ?? '', ageRestriction: event.ageRestriction ?? '', transportInfo: event.transportInfo ?? '',
+    organiserName: event.organiserName ?? '', organiserUrl: event.organiserUrl ?? '', accessibilityInfo: event.accessibilityInfo ?? '', ageRestriction: event.ageRestriction ?? '', transportInfo: event.transportInfo ?? '', capacity: event.capacity ? String(event.capacity) : '',
   })
   const [busy, setBusy] = useState(false)
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -59,7 +59,8 @@ export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEve
       <select value={f.subTag} onChange={set('subTag')} className={field} aria-label="Subtag"><option value="">Subtag (optional)</option>{subTags.map((t) => <option key={t}>{t}</option>)}</select>
       <input value={f.price} onChange={set('price')} placeholder="Price e.g. $25 or Free" aria-label="Price" disabled={f.isFree} className={field} />
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isFree} onChange={set('isFree')} /> Free event</label>
-      <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={f.isLGBTI} onChange={set('isLGBTI')} /> LGBTIQ+ event</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isLGBTI} onChange={set('isLGBTI')} /> LGBTIQ+ event</label>
+      <input value={f.capacity} onChange={set('capacity')} inputMode="numeric" placeholder="Capacity (optional)" aria-label="Capacity" className={field} />
       <input value={f.ticketUrl} onChange={set('ticketUrl')} placeholder="Ticket link (https://...)" aria-label="Ticket link" className={`${field} sm:col-span-2`} />
       <input value={f.imageUrl} onChange={set('imageUrl')} placeholder="Paste an image link" aria-label="Image link" className={`${field} sm:col-span-2`} />
       <textarea value={f.description} onChange={set('description')} placeholder="Description" aria-label="Description" rows={3} className={`${area} sm:col-span-2`} />

@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { PRO_PLAN, formatAudCents, productName } from '@/lib/tiers'
+import { formatInvoiceNumber, invoiceNumberFor, proDiscountLine } from '@/lib/invoice'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { PrintButton } from './print-button'
 
@@ -21,7 +22,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const isAdmin = me.role === 'ADMIN'
 
   const buyer = { name: '', email: '' }
-  let lines: { label: string; detail: string; cents: number }[] = []
+  let lines: { label: string; detail: string; cents: number; listCents?: number | null; discountCents?: number | null }[] = []
   let issued: Date | null = null
   let test = false
   let status = ''
@@ -36,7 +37,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     if (owner !== me.id && !isAdmin) notFound()
     const u = await prisma.user.findUnique({ where: { id: owner }, select: { name: true, orgName: true, email: true } })
     buyer.name = u?.orgName || u?.name || ''; buyer.email = u?.email ?? ''
-    lines = promos.map((p) => ({ label: `${productName(p.tier)}${p.days ? ` (${p.days} days)` : ''}`, detail: p.event.title, cents: p.amountCents }))
+    lines = promos.map((p) => {
+      const discount = proDiscountLine(p.tier, p.days, p.amountCents)
+      return {
+        label: `${productName(p.tier)}${p.days ? ` (${p.days} days)` : ''}`,
+        detail: p.event.title,
+        cents: p.amountCents,
+        listCents: discount && discount.discountCents > 0 ? discount.listCents : null,
+        discountCents: discount && discount.discountCents > 0 ? discount.discountCents : null,
+      }
+    })
     issued = promos[0].createdAt; test = promos.some((p) => p.paymentMode === 'test')
     status = promos.every((p) => p.status === 'CANCELLED') ? 'Cancelled' : 'Paid'
   } else {
@@ -62,7 +72,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const gst = Math.round(total / 11)
   const abn = (process.env.BUSINESS_ABN ?? '').replace(/\s+/g, '')
   const abnLabel = /^\d{11}$/.test(abn) ? `ABN ${abn.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')}` : ''
-  const number = `VIBEPEEP-${(issued ?? new Date()).toISOString().slice(0, 10).replace(/-/g, '')}-${id.slice(-6).toUpperCase()}`
+  const seq = await invoiceNumberFor(id)
+  const number = seq != null ? formatInvoiceNumber(seq) : `VIBEPEEP-${(issued ?? new Date()).toISOString().slice(0, 10).replace(/-/g, '')}-${id.slice(-6).toUpperCase()}`
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 print:py-0">
@@ -89,7 +100,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <thead><tr className="text-left text-xs uppercase tracking-wider text-neutral-500 border-b border-neutral-200"><th className="py-2 font-medium">Item</th><th className="py-2 font-medium text-right">Amount (AUD)</th></tr></thead>
           <tbody className="divide-y divide-neutral-100">
             {lines.map((l, i) => (
-              <tr key={i}><td className="py-3"><p className="font-medium">{l.label}</p><p className="text-xs text-neutral-500">{l.detail}</p></td><td className="py-3 text-right tabular-nums">{formatAudCents(l.cents)}</td></tr>
+              <tr key={i}>
+                <td className="py-3">
+                  <p className="font-medium">{l.label}</p>
+                  <p className="text-xs text-neutral-500">{l.detail}</p>
+                  {l.listCents != null && l.discountCents ? <p className="text-xs text-neutral-500">List price {formatAudCents(l.listCents)} · Promoter Pro {PRO_PLAN.discountPct}% −{formatAudCents(l.discountCents)}</p> : null}
+                </td>
+                <td className="py-3 text-right tabular-nums">{formatAudCents(l.cents)}</td>
+              </tr>
             ))}
           </tbody>
         </table>
