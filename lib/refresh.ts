@@ -113,7 +113,7 @@ async function faultIfSourceRepeated(name: string, error: string, logId: string)
     select: { errors: true },
   })
   if (prev?.errors && !isBudgetSkip(prev.errors) && prev.errors.includes(`${name}:`)) {
-    await reportFault({ area: 'Event refresh', key: `refresh-${name}`, title: `${name} failed two refreshes in a row`, detail: error })
+    await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: error })
   }
 }
 
@@ -216,7 +216,7 @@ async function runPostSteps() {
 async function reportFullRunFaults(logId: string, selected: number, sourceFailed: number, hard: string[]) {
   const { reportFault } = await import('@/lib/owner-alerts')
   if (selected === SOURCES.length && sourceFailed === SOURCES.length) {
-    await reportFault({ area: 'Event refresh', key: 'refresh-all-failed', title: 'Every listings source failed this run', detail: hard.join('\n') })
+    await reportFault({ area: 'Event refresh', key: 'refresh-all-failed', route: '/api/cron/refresh', title: 'Every listings source failed this run', detail: hard.join('\n') })
     return
   }
   const prev = await prisma.refreshLog.findFirst({
@@ -228,7 +228,7 @@ async function reportFullRunFaults(logId: string, selected: number, sourceFailed
     const name = err.split(':')[0]
     const repeated = (prev?.errors ?? '').split('; ').some((part) => part.startsWith(`${name}:`) && !isBudgetSkip(part))
     if (repeated) {
-      await reportFault({ area: 'Event refresh', key: `refresh-${name}`, title: `${name} failed two refreshes in a row`, detail: err })
+      await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: err })
     }
   }
 }

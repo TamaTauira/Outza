@@ -21,6 +21,23 @@ export const CATEGORIES: CategoryDef[] = [
   { name: 'Education', icon: 'GraduationCap', color: '#2980B9', subTags: ['Talk', 'Tour', 'Course', 'Workshop'] },
 ]
 
+/** Solid fill for a category chip or email placeholder. Unknown names use the brand midpoint. */
+export function categoryColor(name: string): string {
+  const key = name.trim().toLowerCase()
+  return CATEGORIES.find((c) => c.name.toLowerCase() === key)?.color ?? '#FF5A3C'
+}
+
+/** Ink that stays readable on a category fill. */
+export function categoryInk(bg: string): string {
+  const h = bg.replace('#', '')
+  if (h.length < 6) return '#ffffff'
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luma > 0.64 ? '#1c1c1e' : '#ffffff'
+}
+
 export const SYDNEY_SUBURBS = [
   'CBD', 'Inner West', 'Eastern Suburbs', 'North Shore', 'Northern Beaches',
   'Western Sydney', 'Parramatta', 'South Sydney', 'Hills District',

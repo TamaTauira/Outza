@@ -106,7 +106,7 @@ export async function buildNewsletter(userId: string, opts: { mode: Mode; city?:
     optedIn: user.emailOptIn, realSend: opts.mode === 'send', sections: placed.map((p) => ({ placement: p.placement, ev: p.s.ev, img: p.s.img })),
   })
   const missingArt = placed.filter((p) => !p.s.img)
-  for (const p of missingArt) qa.warnings.push(`No usable image, mascot placeholder used: ${p.s.ev.title} (${p.placement})`)
+  for (const p of missingArt) qa.warnings.push(`No usable image, category placeholder used: ${p.s.ev.title} (${p.placement})`)
   if (sponsored.length) qa.checks.push(`Paid placements included: ${sponsored.map((s) => `${s.ev.title} (${(s.ev as { tier?: string }).tier === 'SPOTLIGHT' ? 'Newsletter boost' : 'Headliner'})`).join(', ')}`)
   if (picked.missedBoosts) qa.warnings.push(`${picked.missedBoosts} active Newsletter boost(s) in ${picked.city} didn't fit this issue (max ${MAX_SPONSORED}); they rotate in first next issue`)
   const editorial = weekend.length + because.length + free.length + popular.length

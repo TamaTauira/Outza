@@ -37,7 +37,10 @@ export async function POST(req: Request) {
   await reportFault({
     area: 'Page crash',
     key: `client-${route}-${message.slice(0, 120)}`,
+    route: route || path || '/',
     title: `${route || '/'}: ${message.slice(0, 120)}`,
+    error: message,
+    stack: String(b.stack ?? ''),
     detail: `Page: ${path}\nBrowser: ${(req.headers.get('user-agent') ?? '').slice(0, 200)}${b.digest ? `\nDigest: ${String(b.digest).slice(0, 60)}` : ''}\n\n${String(b.stack ?? '').slice(0, 3000)}`,
   })
   return NextResponse.json({ ok: true })
