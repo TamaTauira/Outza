@@ -823,6 +823,20 @@ model VenueFollow {
   @@index([city])
 }
 
+/// One attempt to send a digest, watchlist note, or reminder, plus cron run summaries.
+/// `error` is redacted before it is stored. This is the last-send record for admin.
+model MailDelivery {
+  id        String   @id @default(cuid())
+  kind      String // newsletter | watchlist | reminder | newsletter-run | watchlist-run
+  userId    String?
+  status    String // sent | test | failed | restricted | disabled | blocked | skipped | ok
+  error     String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([userId, createdAt])
+}
+
 /// Sent watchlist reminder (or match note) so the same event is not emailed twice.
 model WatchNotice {
   id        String   @id @default(cuid())

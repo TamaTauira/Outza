@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import { sendEmail } from '@/lib/email'
+import { redactEmails, sendEmail } from '@/lib/email'
+import { recordMailDelivery } from '@/lib/mail-log'
 import { pickEvents, MAX_SPONSORED, type NlEvent } from './rank'
 import { issueCopy, SUBJECT_STYLES, type SubjectLine, type SubjectStyle } from './copy'
 import { emailImage, imageLoads, type EmailKind } from './images'
@@ -118,7 +119,10 @@ export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'tes
   }
   const base = { eventIds: built.eventIds, sections: { sponsoredPos: built.sponsoredPos, items: built.sections } as any, subjects: built.subjects as any, qa: built.qa as any }
   if (!built.qa.pass) {
-    await prisma.newsletterSend.update({ where: { id: built.sendId }, data: { ...base, status: 'BLOCKED', error: built.qa.errors.join('; ').slice(0, 1000) } })
+    const error = built.qa.errors.join('; ').slice(0, 1000)
+    await prisma.newsletterSend.update({ where: { id: built.sendId }, data: { ...base, status: 'BLOCKED', error } })
+    console.error(`[digest] newsletter user=${userId} blocked: ${error}`)
+    await recordMailDelivery({ kind: 'newsletter', userId, status: 'blocked', error })
     return { ok: false, blocked: true, error: `QA blocked send: ${built.qa.errors[0]}`, qa: built.qa }
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
@@ -129,12 +133,21 @@ export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'tes
       where: { id: built.sendId },
       data: { ...base, status: 'SKIPPED', error: res.error ?? 'Email sending is turned off' },
     })
+    await recordMailDelivery({ kind: 'newsletter', userId, status: 'disabled', error: res.error })
     return { ...res, subject: built.subject, qa: built.qa, sendId: built.sendId }
   }
+  const safeError = res.ok ? null : redactEmails(res.error ?? 'send failed')
+  const status = res.ok ? (opts.mode === 'test' ? 'TEST' : 'SENT') : 'FAILED'
   await prisma.newsletterSend.update({
     where: { id: built.sendId },
-    data: { ...base, status: res.ok ? (opts.mode === 'test' ? 'TEST' : 'SENT') : 'FAILED', error: res.ok ? null : res.error ?? 'send failed', sentAt: new Date() },
+    data: { ...base, status, error: safeError, sentAt: new Date() },
   })
+  if (!res.ok) {
+    console.error(`[digest] newsletter user=${userId} ${res.restricted ? 'restricted' : 'failed'}: ${safeError}`)
+    await recordMailDelivery({ kind: 'newsletter', userId, status: res.restricted ? 'restricted' : 'failed', error: safeError })
+  } else {
+    await recordMailDelivery({ kind: 'newsletter', userId, status: opts.mode === 'test' ? 'test' : 'sent' })
+  }
   if (res.ok && opts.mode === 'send') await prisma.user.update({ where: { id: userId }, data: { lastDigestAt: new Date() } })
-  return { ...res, subject: built.subject, qa: built.qa, sendId: built.sendId }
+  return { ...res, error: safeError ?? undefined, subject: built.subject, qa: built.qa, sendId: built.sendId }
 }

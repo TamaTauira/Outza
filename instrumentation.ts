@@ -82,8 +82,12 @@ export async function register() {
     setTimeout(() => run('Startup', true), 5000)
     // Refresh listings (incl. live ticket prices) every 2 hours
     setInterval(() => run('Scheduled', false), REFRESH_MS)
-    // Check hourly for users due their daily / weekly / monthly email
-    setTimeout(digests, 60 * 1000)
-    setInterval(digests, 60 * 60 * 1000)
+    // On Vercel, Hobby cron (vercel.json) is the mail schedule: once a day, with
+    // Authorization: Bearer CRON_SECRET. An in-process timer here shares the
+    // database pool with page traffic and is not a reliable schedule.
+    if (!process.env.VERCEL) {
+      setTimeout(digests, 60 * 1000)
+      setInterval(digests, 60 * 60 * 1000)
+    }
   }
 }
