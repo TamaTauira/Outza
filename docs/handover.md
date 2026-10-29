@@ -35,7 +35,7 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 - **Database is shared by preview and production.** Never delete rows in scripts or seeds. Soft-remove via `status` (e.g. `REMOVED`) or `duplicateOfId`. Limits: 25 connections, **5-second statement timeout**, short idle timeout. Reuse the single Prisma client (`lib/db.ts` / `lib/prisma.ts`).
 - Files: never write uploads to local disk; use S3 (`lib/s3.ts`, `lib/aws-config.ts`). Store `cloud_storage_path` only.
 - Do not add `https://apps.abacus.ai/chatllm/appllm-lib.js` or any other Abacus script. Client crashes go through `components/report-crash.ts`.
-- Public links use `siteUrl()` (`lib/site-url.ts`). Do not hard-code an `abacusai.app` host.
+- Public links use `siteUrl()` (`lib/site-url.ts`). It never falls back to an `abacusai.app` host. A missing or wrong `NEXTAUTH_URL` resolves to `https://outza-outza.vercel.app`.
 - No system binaries in production (no python, ffmpeg, LibreOffice, Playwright). Pure Node packages only.
 - Never use `\uXXXX` escapes for non-ASCII characters in source; write the real character.
 
@@ -177,7 +177,7 @@ Rules: no mock data; never present LGA/state figures as suburb figures; SEIFA is
 On the Node runtime: refresh every 2h (startup if stale), digests hourly, owner jobs hourly (`lib/owner-alerts.ts`: fortnightly ideas summary when there are new suggestions; health checks), Intelligence ingest hourly. `onRequestError` records uncaught server errors for the owner (production only, deduped) and emails them when Resend is configured. Cron endpoints accept header `x-cron-secret: $CRON_SECRET` or an ADMIN session: `/api/cron/digest`, `/api/cron/owner-alerts`, `/api/cron/promoter-reports`, `/api/cron/intel`.
 
 ### 4.15 Email + AI
-- Email: `lib/email.ts` `sendEmail` POSTs to Resend (`https://api.resend.com/emails`) when `RESEND_API_KEY` is set. From is `RESEND_FROM_EMAIL`, or `Outza <noreply@outza.app>` when that is unset. The From domain must be verified in Resend. With no key, `emailSendingEnabled()` is false and `sendEmail` returns disabled without calling a mail API. Scheduled digests, weekly promoter reports, and owner mail follow that flag and keep their own skip rules (not due, no events, not production, and so on). Do not point this at Abacus.
+- Email: `lib/email.ts` `sendEmail` POSTs to Resend (`https://api.resend.com/emails`) when `RESEND_API_KEY` is set. From is `RESEND_FROM_EMAIL`, or `Outza <onboarding@resend.dev>` when that is unset. That shared sender does not need a custom domain. With no key, `emailSendingEnabled()` is false and `sendEmail` returns disabled without calling a mail API. Scheduled digests, weekly promoter reports, and owner mail follow that flag and keep their own skip rules (not due, no events, not production, and so on). Do not point this at Abacus.
 - LLM: `lib/llm.ts` calls Vercel AI Gateway with the `ai` package (`generateText` + `Output.json()`). On Vercel the deployment's OIDC token authenticates the request. Locally set `AI_GATEWAY_API_KEY`. Model id is `AI_GATEWAY_MODEL`, or `openai/gpt-5.4-mini` when that is unset. Used by ai-search, local moderation, flyer/page extract, newsletter copy, and the Destination NSW PDF extract. PDFs go to the model as file parts; don't add PDF-parsing libraries.
 
 ---
@@ -197,7 +197,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 **Environment variables (names only; the owner holds values):**
 - Set today: `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TICKETMASTER_API_KEY`, `OZTIX_ALGOLIA_KEY`, `AWS_PROFILE`, `AWS_REGION`, `AWS_BUCKET_NAME`, `AWS_FOLDER_PREFIX`.
 - AI Gateway: `AI_GATEWAY_API_KEY` for local/non-Vercel calls. Vercel deploys use `VERCEL_OIDC_TOKEN`. Optional `AI_GATEWAY_MODEL` (a `provider/model` id). There is no `ABACUSAI_API_KEY` or `WEB_APP_ID`.
-- Email: `RESEND_API_KEY` turns sending on. Optional `RESEND_FROM_EMAIL` (default `Outza <noreply@outza.app>`). The From domain must be verified in Resend.
+- Email: `RESEND_API_KEY` turns sending on. Optional `RESEND_FROM_EMAIL` (default `Outza <onboarding@resend.dev>`). Do not send from `@outza.app`.
 - Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (→ cron endpoints only work for ADMIN sessions), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars, `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
 - `NEXT_PUBLIC_SITE_URL` is the public origin override. Do not set it to an Abacus host.
 
