@@ -22,7 +22,7 @@ type Item = { id: string; title: string; category: string; description: string; 
 type Mine = Omit<Item, 'date' | 'recurring'> & { status: string; expiresAt: string; flags: string[]; reviewNote: string | null; startDate: string }
 
 const ICON: Record<string, typeof Store> = { GARAGE: Tag, WAREHOUSE: Warehouse, MARKET: ShoppingBasket, COMMUNITY: Users }
-const TABS = [{ key: 'browse', label: 'What’s on nearby' }, { key: 'submit', label: 'List something' }, { key: 'mine', label: 'My listings' }, { key: 'how', label: 'How OUTZA Local works' }] as const
+const TABS = [{ key: 'browse', label: 'What’s on nearby' }, { key: 'submit', label: 'List something' }, { key: 'mine', label: 'My listings' }, { key: 'how', label: 'How VibePeep Local works' }] as const
 const WHEN = [{ key: 'today', label: 'Today' }, { key: 'weekend', label: 'This weekend' }, { key: '7', label: 'Next 7 days' }, { key: '30', label: 'Next 30 days' }]
 function nowIn(tz: string) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
@@ -102,7 +102,7 @@ export function LocalClient() {
       <Navbar savedCount={saved.length} />
       <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10">
         <header className="max-w-3xl">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">OUTZA Local</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">VibePeep Local</p>
           <h1 className="mt-2 font-display text-3xl sm:text-5xl font-bold tracking-tight">Your neighbourhood, unlocked.</h1>
           <p className="mt-3 text-muted-foreground sm:text-lg">Garage sales, warehouse clearances, markets and community happenings: the good stuff that never makes the big posters. Listing’s free.</p>
         </header>

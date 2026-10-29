@@ -117,7 +117,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
     } finally { if (id === reqId.current) setBusy(false) }
   }
 
-  // Quick picks refine the search live. Query text waits for Ask Outza, so it is not a dependency.
+  // Quick picks refine the search live. Query text waits for Ask VibePeep, so it is not a dependency.
   const hintsKey = JSON.stringify(hints)
   const firstRun = useRef(true)
   useEffect(() => {
@@ -223,7 +223,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
             <ChevronDown className={cn('w-4 h-4 transition-transform duration-150', open && 'rotate-180')} />
           </button>
           <button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 sm:px-5 h-11 text-sm sm:text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}<span className="hidden sm:inline">Ask Outza</span><span className="sm:hidden">Go</span>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}<span className="hidden sm:inline">Ask VibePeep</span><span className="sm:hidden">Go</span>
           </button>
         </form>
 
@@ -309,7 +309,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
       {data && (
         <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span className="text-white/60">{data.ai ? 'Outza AI understood:' : 'Searching for:'}</span>
+            <span className="text-white/60">{data.ai ? 'VibePeep AI understood:' : 'Searching for:'}</span>
             {understood(data.filters, today).map((c) => <span key={c} className="rounded-full bg-primary/15 text-[#ffb4a6] px-2.5 py-0.5 ring-1 ring-primary/30">{c}</span>)}
           </div>
           {data.relaxed && <p className="mt-2 text-xs sm:text-sm text-white/70">Couldn’t nail every word, but these tick most of your boxes.</p>}
@@ -337,7 +337,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/80">Nothing on Outza matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
+            <p className="mt-3 text-sm text-white/80">Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

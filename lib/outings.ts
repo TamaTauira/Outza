@@ -1,6 +1,6 @@
 /**
- * Day and night plans assembled from real Outza listings.
- * Dining and transport are text plus a link. Outza does not book restaurants or tickets.
+ * Day and night plans assembled from real VibePeep listings.
+ * Dining and transport are text plus a link. VibePeep does not book restaurants or tickets.
  */
 import { cityDef } from '@/lib/cities'
 import { isPaidListing } from '@/lib/quality'
@@ -171,8 +171,8 @@ function withTips(template: OutingTemplate, events: OutingEvent[], city: string)
     kind: 'tip',
     tip: 'dining',
     text: template.slug === 'family-sunday'
-      ? `Pack a snack, or search for a casual bite near ${first.venueName}. Outza does not take restaurant bookings.`
-      : `Leave time for a meal near ${first.venueName}. This opens a map search. Outza does not book tables.`,
+      ? `Pack a snack, or search for a casual bite near ${first.venueName}. VibePeep does not take restaurant bookings.`
+      : `Leave time for a meal near ${first.venueName}. This opens a map search. VibePeep does not book tables.`,
     href: mapsSearch(`restaurants near ${first.venueName} ${city}`),
   }
   const between = events.length > 1 ? `${events[0].venueName} and ${events[1].venueName}` : first.venueName

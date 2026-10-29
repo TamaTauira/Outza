@@ -92,7 +92,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             <div className="flex flex-wrap items-center gap-1.5">
               <span
                 className="px-2 py-0.5 rounded-md text-[11px] font-semibold text-white"
-                style={{ backgroundColor: catDef?.color ?? '#f9652a' }}
+                style={{ backgroundColor: catDef?.color ?? '#FF7A1A' }}
               >
                 {event.category}
               </span>
@@ -108,7 +108,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             </h3>
             {(event.verified || event.source) && (
               <p className="text-[11px] text-muted-foreground">
-                {event.verified && <span className="font-semibold text-primary">Outza Verified</span>}
+                {event.verified && <span className="font-semibold text-primary">VibePeep Verified</span>}
                 {event.verified && event.source ? ' · ' : ''}
                 {event.source ? `From ${sourceLabel(event.source)}` : ''}
               </p>

@@ -11,7 +11,7 @@ export default async function AdminImagesPage() {
     return (
       <main className="max-w-xl mx-auto px-4 py-20 text-center">
         <h1 className="font-display text-2xl font-bold mb-2">Admins only</h1>
-        <p className="text-muted-foreground">This page manages event artwork across Outza.</p>
+        <p className="text-muted-foreground">This page manages event artwork across VibePeep.</p>
       </main>
     )
   }

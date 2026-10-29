@@ -1,0 +1,34 @@
+# VibePeep
+
+> Take a peep at what's happening.
+
+Events · Experiences · Local discoveries.
+
+VibePeep is an independent Australian listings guide for events, experiences and local discoveries. It does not sell tickets and it does not show live availability. Confirm times, prices and whether something is still on with the organiser or ticket seller before you go.
+
+## What you'll find
+
+- A time-sorted board of gigs, shows, markets and things to do in Australian cities
+- VibePeep Local: community listings such as garage sales, markets and local activities
+- City guides for tonight, this weekend, free events, live music, family, LGBTIQ+ and markets
+- VibePeep Together: a shared plan friends can vote on
+- Itineraries that show travel time between stops
+- Ask VibePeep: natural-language search over the listings that are actually on the board
+- My VibePeep: saves, follows, reminders and a calendar file
+
+## Good to know
+
+- Listings come from organisers and public ticketing sources. VibePeep does not invent prices, dates or ticket availability.
+- VibePeep Verified means a listing passed a fixed set of freshness and completeness checks. It is not a promise that tickets are still on sale.
+- Sponsored and featured placements are labelled. Payment does not change the facts on a listing.
+- Canonical site: https://outza-outza.vercel.app
+
+## Key pages
+
+- / — the events board
+- /how-listings-work — sources, verification and sponsored content
+- /local — VibePeep Local
+- /together — VibePeep Together
+- /privacy
+- /terms
+- /disclaimer

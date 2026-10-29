@@ -1,6 +1,6 @@
 /**
  * Ticket-seller affiliate links (client-safe).
- * Ticketek's affiliate program runs on impact.com. Once Outza is approved, paste the tracking link from the
+ * Ticketek's affiliate program runs on impact.com. Once VibePeep is approved, paste the tracking link from the
  * impact.com dashboard into NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK (e.g. https://ticketek.example/c/123/456/789)
  * and every outbound Ticketek ticket link is deep-linked through it with the `u` parameter.
  * Unset = links go straight to Ticketek, unchanged.

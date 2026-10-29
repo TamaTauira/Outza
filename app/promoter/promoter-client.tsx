@@ -350,7 +350,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
 
 function TierBadge({ tier }: { tier: string }) {
   const t = tierDef(tier)
-  return <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ backgroundColor: t?.color ?? '#f9652a' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
+  return <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ backgroundColor: t?.color ?? '#FF7A1A' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
 }
 
 function EventsTab({ events, pro, onPromote, reload }: { events: MyEvent[]; pro: boolean; onPromote: (id: string) => void; reload: () => void }) {

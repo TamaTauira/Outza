@@ -52,7 +52,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 }
 
 function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
-  const color = CATEGORIES.find((c) => c.name === it.category)?.color ?? '#f9652a'
+  const color = CATEGORIES.find((c) => c.name === it.category)?.color ?? '#FF7A1A'
   const t = tierDef(it.tier)
   const badge = it.tier === 'HOT' ? { label: 'HOT', bg: '#c2410c', fg: '#ffffff' } : { label: (t?.name ?? it.tier).toUpperCase(), bg: t?.color ?? '#C0C7D1', fg: '#000000' }
   const price = formatPrice(it.isFree, it.price, it.priceMin, it.priceMax)

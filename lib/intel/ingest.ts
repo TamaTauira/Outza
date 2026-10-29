@@ -45,7 +45,7 @@ export async function recoverStaleRunningSources(now = Date.now()) {
     })
     if (updated.failCount >= 2) {
       await reportFault({
-        area: 'OUTZA Intelligence',
+        area: 'VibePeep Intelligence',
         key: `intel-${s.key}`,
         title: `${INTEL_SOURCES[s.key as SourceKey]?.name ?? s.key} import was stuck running`,
         detail: `${STALE_RUNNING_ERROR}\n\nThe last good dataset is still being served.`,
@@ -85,7 +85,7 @@ export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 
       // Config (including a chunk cursor) is left as the last checkpoint saved it.
       const s = await prisma.intelSource.update({ where: { key }, data: { status: 'failed', lastError: msg.slice(0, 2000), failCount: { increment: 1 } } })
       await prisma.intelIngestJob.update({ where: { id: job.id }, data: { status: 'failed', endedAt: new Date(), message: `${msg.slice(0, 2000)} (last good data kept)` } })
-      if (s.failCount >= 2) await reportFault({ area: 'OUTZA Intelligence', key: `intel-${key}`, title: `${INTEL_SOURCES[key].name} import failed ${s.failCount} times in a row`, detail: `${msg}\n\nThe last good dataset is still being served.` })
+      if (s.failCount >= 2) await reportFault({ area: 'VibePeep Intelligence', key: `intel-${key}`, title: `${INTEL_SOURCES[key].name} import failed ${s.failCount} times in a row`, detail: `${msg}\n\nThe last good dataset is still being served.` })
       return { status: 'failed' as const, message: msg }
     }
   } finally { running.delete(key) }

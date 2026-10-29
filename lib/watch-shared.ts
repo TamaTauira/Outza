@@ -1,3 +1,4 @@
+import { emailLockup } from '@/lib/email-brand'
 import { cityDef } from '@/lib/cities'
 import { hhmm, zonedWallTime } from '@/lib/zoned-time'
 
@@ -32,7 +33,7 @@ export type MailEvent = { id: string; title: string; when: string; venue: string
 /** Builds the watchlist email. Returns null when there is nothing honest to send. */
 export function composeWatchEmail(input: { saved: MailEvent[]; matches: MailEvent[]; reminders?: boolean }): { subject: string; html: string; text: string } | null {
   if (!input.saved.length && !input.matches.length) return null
-  const subject = input.reminders ? 'A saved Outza event is coming up' : 'Your Outza watchlist'
+  const subject = input.reminders ? 'A saved VibePeep event is coming up' : 'Your VibePeep watchlist'
   const blocks: string[] = []
   const text: string[] = [subject, '']
   const section = (heading: string, rows: MailEvent[]) => {
@@ -49,12 +50,12 @@ export function composeWatchEmail(input: { saved: MailEvent[]; matches: MailEven
   section(input.reminders ? 'Coming up from your keepers' : 'Saved and still ahead', input.saved)
   section('New listings that match what you follow', input.matches)
   text.push('Times and prices can change. Confirm with the organiser before you go.')
-  text.push('Manage saves, follows and reminders at My Outza.')
+  text.push('Manage saves, follows and reminders at My VibePeep.')
   const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#111;">
-    <p style="font-size:13px;letter-spacing:.04em;color:#e8553f;font-weight:bold;">OUTZA</p>
+    ${emailLockup()}
     ${blocks.join('')}
-    <p style="color:#555;font-size:13px;">Times and prices can change. Confirm with the organiser before you go. Outza does not sell tickets and does not show live availability.</p>
-    <p style="color:#555;font-size:12px;">You asked for these notes. Turn them off any time from My Outza or My account.</p>
+    <p style="color:#555;font-size:13px;">Times and prices can change. Confirm with the organiser before you go. VibePeep does not sell tickets and does not show live availability.</p>
+    <p style="color:#555;font-size:12px;">You asked for these notes. Turn them off any time from My VibePeep or My account.</p>
   </div>`
   return { subject, html, text: text.join('\n') }
 }

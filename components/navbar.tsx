@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useMounted } from '@/components/client-only'
 import { cn } from '@/lib/utils'
-import { OutzaLogo } from '@/components/outza-logo'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
 
 export type AppView = 'board' | 'map' | 'saved'
 
@@ -45,15 +45,15 @@ export function Navbar({ savedCount }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md">
       <div className="max-w-[1280px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1 min-w-0 border-b border-border">
-        <a href="/" className="flex items-center gap-2.5 shrink-0" aria-label="Outza home">
-          <OutzaLogo size="md" labelClassName="hidden sm:flex" />
+        <a href="/" className="flex items-center gap-2.5 shrink-0" aria-label="VibePeep home">
+          <VibePeepLogo size="md" labelClassName="hidden sm:flex" />
         </a>
 
         <nav className="flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
-                <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="OUTZA Local">
+                <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1.5 px-2 sm:px-4 text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
                   <Store className="w-4 h-4" /><span className="hidden sm:inline">Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
@@ -105,8 +105,8 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <DropdownMenuLabel className="truncate">{user.name || user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/itinerary"><CalendarRange className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/watchlist"><Bookmark className="w-4 h-4 mr-2" />My Outza</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Outza Together</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/watchlist"><Bookmark className="w-4 h-4 mr-2" />My VibePeep</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />VibePeep Together</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/outings"><Sparkles className="w-4 h-4 mr-2" />Day and night plans</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />My account & emails</Link></DropdownMenuItem>
                 {isPromoter

@@ -6,7 +6,7 @@ import { getVenueIntelCached } from '@/lib/intel/analytics'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-/** OUTZA Intelligence venue report for one of the promoter's own events (admins can view any). */
+/** VibePeep Intelligence venue report for one of the promoter's own events (admins can view any). */
 export async function GET(req: Request) {
   const me = await getSessionUser()
   if (!me) return unauthorized()

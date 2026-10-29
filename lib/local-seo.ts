@@ -264,8 +264,8 @@ export function guideCopy(input: {
   const venueBit = venues.length ? ` On this page: ${list(venues)}.` : ''
   return {
     h1,
-    title: `${h1}${span ? ` (${span})` : ''} | Outza`,
-    description: `${countBit} in ${place}${whereBit}.${venueBit} Listings are the current Outza inventory, with times and prices from the organiser.`,
+    title: `${h1}${span ? ` (${span})` : ''} | VibePeep`,
+    description: `${countBit} in ${place}${whereBit}.${venueBit} Listings are the current VibePeep inventory, with times and prices from the organiser.`,
   }
 }
 
@@ -284,7 +284,7 @@ export function comboFacts(input: {
   const phrase = input.when ? whenPhrase(input.when) : null
   const span = input.when && input.from ? formatGuideSpan(input.from, input.to ?? null) : null
   const count = input.total > 0
-    ? `Outza currently lists ${input.total} upcoming ${input.total === 1 ? 'listing' : 'listings'} for this page.`
+    ? `VibePeep currently lists ${input.total} upcoming ${input.total === 1 ? 'listing' : 'listings'} for this page.`
     : 'New listings are added as organisers and ticket sites publish them.'
   const whenBit = span ? ` The date on this page is ${span}.` : ''
   const out = [{

@@ -38,9 +38,9 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Outza//My Outza//EN',
+    'PRODID:-//VibePeep//My VibePeep//EN',
     'CALSCALE:GREGORIAN',
-    `X-WR-CALNAME:${icsEscape(opts.calendarName ?? 'My Outza')}`,
+    `X-WR-CALNAME:${icsEscape(opts.calendarName ?? 'My VibePeep')}`,
   ]
   for (const ev of events) {
     const startKey = dateKey(ev.date)
@@ -60,7 +60,7 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
     }
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${icsEscape(ev.id)}@outza`,
+      `UID:${icsEscape(ev.id)}@vibepeep`,
       `DTSTAMP:${stamp}`,
       dtStart,
       dtEnd,

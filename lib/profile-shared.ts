@@ -6,7 +6,7 @@ export const MAX_AGE = 110
 export const MIN_GROUP = 10
 
 /** Shown wherever promoters see audience insights (dashboard and weekly report email). */
-export const AUDIENCE_DISCLAIMER = `Based on saves, "going", ticket taps, shares, itinerary adds and views by signed-in people on Outza. Outza doesn't sell tickets, so this is interest, not purchaser data. Groups under ${MIN_GROUP} people are hidden, and you never see anyone's age, birthday, postcode, name or email.`
+export const AUDIENCE_DISCLAIMER = `Based on saves, "going", ticket taps, shares, itinerary adds and views by signed-in people on VibePeep. VibePeep doesn't sell tickets, so this is interest, not purchaser data. Groups under ${MIN_GROUP} people are hidden, and you never see anyone's age, birthday, postcode, name or email.`
 
 export const AGE_BANDS = ['Under 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+'] as const
 
@@ -34,7 +34,7 @@ export function parseBirthDate(v: unknown): { date?: Date; error?: string } {
   const d = new Date(`${v}T00:00:00Z`)
   if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) return { error: 'That date doesn’t exist' }
   const age = ageOn(d)
-  if (age < MIN_AGE) return { error: `You need to be ${MIN_AGE} or older to use Outza` }
+  if (age < MIN_AGE) return { error: `You need to be ${MIN_AGE} or older to use VibePeep` }
   if (age > MAX_AGE) return { error: 'Please check the year of birth' }
   return { date: d }
 }

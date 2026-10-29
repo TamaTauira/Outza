@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { TrustAdminClient } from './trust-admin-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Trust & listings — Outza admin', robots: { index: false } }
+export const metadata = { title: 'Trust & listings — VibePeep admin', robots: { index: false } }
 
 export default async function AdminTrustPage() {
   const session = await auth()

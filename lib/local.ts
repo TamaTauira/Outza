@@ -93,7 +93,7 @@ export function spamSignals(i: LocalInput, filledMs: number | null): string[] {
 /** Hard blocks the user is told about straight away. */
 export function hardBlock(i: LocalInput): string | null {
   const text = `${i.title} ${i.description}`
-  if (PRIVATE.test(text)) return 'OUTZA Local is for events open to the public. Private or invitation-only gatherings (like birthday parties) can’t be listed.'
+  if (PRIVATE.test(text)) return 'VibePeep Local is for events open to the public. Private or invitation-only gatherings (like birthday parties) can’t be listed.'
   if (BANNED.test(text) || WEAPONS.test(text)) return 'This listing includes content we can’t accept. See our listing rules on this page.'
   return null
 }
@@ -130,11 +130,11 @@ export async function validateAddress(i: LocalInput): Promise<{ lat: number | nu
   const c = cityDef(i.city)
   try {
     const q = new URLSearchParams({ street: i.address, city: i.suburb, state: c.state, postalcode: i.postcode, country: 'Australia', format: 'json', limit: '1', countrycodes: 'au' })
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${q}`, { headers: { 'User-Agent': 'OutzaLocal/1.0 (address validation for community listings)', 'Accept-Language': 'en-AU' }, signal: AbortSignal.timeout(6000) })
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${q}`, { headers: { 'User-Agent': 'VibePeepLocal/1.0 (address validation for community listings)', 'Accept-Language': 'en-AU' }, signal: AbortSignal.timeout(6000) })
     const rows = res.ok ? await res.json() : []
     let hit = Array.isArray(rows) && rows[0] ? rows[0] : null
     if (!hit) { // fall back to suburb + postcode centre
-      const r2 = await fetch(`https://nominatim.openstreetmap.org/search?${new URLSearchParams({ city: i.suburb, state: c.state, postalcode: i.postcode, country: 'Australia', format: 'json', limit: '1' })}`, { headers: { 'User-Agent': 'OutzaLocal/1.0' }, signal: AbortSignal.timeout(6000) })
+      const r2 = await fetch(`https://nominatim.openstreetmap.org/search?${new URLSearchParams({ city: i.suburb, state: c.state, postalcode: i.postcode, country: 'Australia', format: 'json', limit: '1' })}`, { headers: { 'User-Agent': 'VibePeepLocal/1.0' }, signal: AbortSignal.timeout(6000) })
       const rr = r2.ok ? await r2.json() : []
       const sub = Array.isArray(rr) && rr[0] ? rr[0] : null
       if (!sub) return { lat: null, lng: null, verified: false, outside: false }

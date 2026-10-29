@@ -5,8 +5,9 @@ import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { CATEGORIES } from '@/lib/categories'
 import type { NlEvent } from './rank'
 import { exploreUrl, openPixelUrl, trackUrl, unsubscribeUrl, type Placement, type UtmCtx } from './links'
+import { emailLockup } from '@/lib/email-brand'
 
-const C = { ink: '#1c1c1e', head: '#141414', accent: '#e8553f', page: '#f6f2ec', card: '#ffffff', muted: '#6b6b6b', line: '#ebe5dc', spons: '#f1ece4' }
+const C = { ink: '#1c1c1e', head: '#141414', accent: '#FF4E6A', page: '#f6f2ec', card: '#ffffff', muted: '#6b6b6b', line: '#ebe5dc', spons: '#f1ece4' }
 const FONT = `'Helvetica Neue',Helvetica,Arial,sans-serif`
 
 export const EDITION_NAME: Record<string, string> = { weekly: 'THE WEEKENDER', daily: 'THE DAILY DROP', monthly: 'THE BIG MONTH' }
@@ -56,8 +57,8 @@ function fallbackArt(category: string, h: number, w: number | '100%') {
   const cat = CATEGORIES.find((c) => c.name === category)
   return `<table role="presentation" width="${w}" cellpadding="0" cellspacing="0" border="0" style="width:${w === '100%' ? '100%' : `${w}px`};"><tr>
 <td height="${h}" bgcolor="${C.head}" valign="bottom" style="height:${h}px;background:${C.head};border-radius:14px;padding:${h > 150 ? 22 : 12}px;border-bottom:4px solid ${cat?.color ?? C.accent};">
-<div style="font-family:${FONT};font-size:${h > 150 ? 11 : 9}px;letter-spacing:3px;color:${C.accent};font-weight:700;">OUTZA.</div>
-<div style="font-family:${FONT};font-size:${h > 150 ? 10 : 8}px;letter-spacing:1.5px;color:#a3a3a3;text-transform:uppercase;padding-bottom:${h > 150 ? 8 : 4}px;">Get out. Get amongst it.</div>
+<div style="font-family:${FONT};font-size:${h > 150 ? 16 : 12}px;letter-spacing:-0.3px;font-weight:800;color:#ffffff;">Vibe<span style="color:${C.accent}">Peep</span></div>
+<div style="font-family:${FONT};font-size:${h > 150 ? 10 : 8}px;color:#a3a3a3;padding-bottom:${h > 150 ? 8 : 4}px;">Take a peep at what's happening.</div>
 <div style="font-family:${FONT};font-size:${h > 150 ? 30 : 15}px;line-height:1.1;font-weight:800;color:#ffffff;">${x(category)}</div></td></tr></table>`
 }
 
@@ -134,8 +135,7 @@ body{margin:0;padding:0;-webkit-text-size-adjust:100%;}
 
 <tr><td class="px" bgcolor="${C.head}" style="background:${C.head};border-radius:20px 20px 0 0;padding:28px 32px 34px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-<td><a href="${siteUrl()}" style="font-family:${FONT};font-size:24px;font-weight:900;letter-spacing:-0.5px;color:#ffffff;text-decoration:none;">OUTZA<span style="color:${C.accent};">.</span></a>
-<div style="font-family:${FONT};font-size:10px;letter-spacing:2px;color:#a3a3a3;text-transform:uppercase;padding-top:3px;">Get out. Get amongst it.</div></td>
+<td><a href="${siteUrl()}" style="text-decoration:none;color:inherit;">${emailLockup({ dark: true })}</a></td>
 <td align="right" style="font-family:${FONT};font-size:11px;letter-spacing:3px;font-weight:800;color:${C.accent};">${x(ed)}</td></tr></table>
 <div style="font-family:${FONT};font-size:12px;letter-spacing:2px;color:#a3a3a3;padding-top:26px;text-transform:uppercase;">${x(r.city)} &nbsp;·&nbsp; ${x(range)}</div>
 <div class="h1" style="font-family:${FONT};font-size:36px;line-height:1.08;font-weight:900;color:#ffffff;padding-top:10px;letter-spacing:-0.5px;">${x(r.headline)}</div>
@@ -146,7 +146,7 @@ body{margin:0;padding:0;-webkit-text-size-adjust:100%;}
 ${r.hero ? `${kicker('THE BIG ONE')}${bigCard(r, r.hero, 'hero', cta.hero, true)}` : ''}
 ${r.picks.length ? `${kicker('PICKED FOR YOU', r.picks.length === 1 ? 'One more we reckon you’ll like' : 'A few more we reckon you’ll like')}${r.picks.map((s) => compactCard(r, s, 'picks', cta.card)).join('')}` : ''}
 ${r.sponsoredPos === 'mid' ? sponsoredBlock(r) : ''}
-${r.wildcard ? `${kicker('THE OUTZA WILDCARD', 'Something different? Don’t mind if we do.')}${bigCard(r, r.wildcard, 'wildcard', 'Try something new', false)}` : ''}
+${r.wildcard ? `${kicker('THE VIBEPEEP WILDCARD', 'Something different? Don’t mind if we do.')}${bigCard(r, r.wildcard, 'wildcard', 'Try something new', false)}` : ''}
 ${r.sponsoredPos === 'end' ? sponsoredBlock(r) : ''}
 
 <tr><td class="px" style="padding:30px 32px 34px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.ink}" style="background:${C.ink};border-radius:18px;"><tr><td align="center" style="padding:30px 24px;">
@@ -156,10 +156,9 @@ ${r.sponsoredPos === 'end' ? sponsoredBlock(r) : ''}
 </td></tr></table></td></tr>
 
 <tr><td class="px" bgcolor="${C.head}" style="background:${C.head};border-radius:0 0 20px 20px;padding:30px 32px;">
-<div style="font-family:${FONT};font-size:18px;font-weight:900;color:#ffffff;">OUTZA<span style="color:${C.accent};">.</span></div>
-<div style="font-family:${FONT};font-size:13px;color:#a3a3a3;padding-top:2px;">Get out. Get amongst it.</div>
+<div style="padding-bottom:4px;">${emailLockup({ dark: true })}</div>
 <div style="font-family:${FONT};font-size:13px;line-height:2;color:#d6d6d6;padding-top:16px;">${link(prefs, 'Manage preferences')} &nbsp;·&nbsp; ${link(prefs, 'Change frequency')} &nbsp;·&nbsp; ${link(unsub, 'Unsubscribe')} &nbsp;·&nbsp; ${link(`${siteUrl()}/privacy`, 'Privacy policy')} &nbsp;·&nbsp; ${link(`${siteUrl()}/disclaimer`, 'Disclaimer')}</div>
-<div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#9a9a9a;padding-top:14px;">You’re receiving ${x(ed.toLowerCase().replace(/^the /, 'The '))} (${x(r.editionKey)}) because you opted in to Outza emails as <span style="color:#d6d6d6;">${x(r.email)}</span>. Sent by Outza, an independent events guide. Sponsored placements are paid for by event organisers and are always labelled. Listings come from organisers and ticketing sites and can change: prices are as last listed and may exclude booking fees, so always confirm with the organiser or ticket seller before you go.</div>
+<div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#9a9a9a;padding-top:14px;">You’re receiving ${x(ed.toLowerCase().replace(/^the /, 'The '))} (${x(r.editionKey)}) because you opted in to VibePeep emails as <span style="color:#d6d6d6;">${x(r.email)}</span>. Sent by VibePeep, an independent events guide. Sponsored placements are paid for by event organisers and are always labelled. Listings come from organisers and ticketing sites and can change: prices are as last listed and may exclude booking fees, so always confirm with the organiser or ticket seller before you go.</div>
 <div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#9a9a9a;padding-top:14px;border-top:1px solid #2a2a2a;margin-top:16px;"><strong style="color:#d6d6d6;">Acknowledgement of Country.</strong> ${x(ACKNOWLEDGEMENT_OF_COUNTRY)}</div>
 </td></tr>
 </table></td></tr></table>
@@ -172,16 +171,16 @@ export function renderText(r: RenderInput): string {
   const block = (s: Slot, p: Placement) =>
     [s.ev.title, `${s.ev.category} | ${whenLine(s.ev)}`, whereLine(s.ev), priceLine(s.ev), statusNote(s.ev), s.blurb, trackUrl(r.ctx, p, 'detail', s.ev.id)].filter(Boolean).join('\n')
   const parts = [
-    `OUTZA. Get out. Get amongst it.\n${ed} - ${r.city}`,
+    `VibePeep. Take a peep at what's happening.\nEvents · Experiences · Local discoveries.\n${ed} - ${r.city}`,
     r.headline,
     r.intro,
     r.hero && `THE BIG ONE\n\n${block(r.hero, 'hero')}`,
     r.picks.length && `PICKED FOR YOU\n\n${r.picks.map((s) => block(s, 'picks')).join('\n\n')}`,
     r.sponsoredPos === 'mid' && r.sponsored.length && `HOT & PROMOTED - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
-    r.wildcard && `THE OUTZA WILDCARD - Something different? Don't mind if we do.\n\n${block(r.wildcard, 'wildcard')}`,
+    r.wildcard && `THE VIBEPEEP WILDCARD - Something different? Don't mind if we do.\n\n${block(r.wildcard, 'wildcard')}`,
     r.sponsoredPos === 'end' && r.sponsored.length && `HOT & PROMOTED - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
     `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${trackUrl(r.ctx, 'explore', 'explore')}`,
-    `---\nOUTZA. Get out. Get amongst it.\nManage preferences / change frequency: ${trackUrl(r.ctx, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to Outza emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
+    `---\nVibePeep. Take a peep at what's happening.\nManage preferences / change frequency: ${trackUrl(r.ctx, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
   ]
   return parts.filter(Boolean).join('\n\n')
 }

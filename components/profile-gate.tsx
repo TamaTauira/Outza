@@ -47,7 +47,7 @@ export function ProfileGate() {
       const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ birthDate, homePostcode }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { setError(d?.error ?? 'Could not save'); return }
-      setNeeded(false); toast.success('Sorted. Now go get amongst it!')
+      setNeeded(false); toast.success('Sorted. Now go take a peep.')
     } catch (err) { console.error('Profile save failed:', err); setError('Could not save. Please try again.') } finally { setSaving(false) }
   }
 

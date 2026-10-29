@@ -8,7 +8,7 @@ const inAu = (lat: number, lng: number) => lat > -44.5 && lat < -9 && lng > 112 
 
 async function photon(q: string): Promise<Geo> {
   const res = await fetch(`https://photon.komoot.io/api/?limit=1&lang=en&bbox=112,-44.5,154.5,-9&q=${encodeURIComponent(q)}`, {
-    headers: { 'User-Agent': 'Outza venue maps (events platform)' },
+    headers: { 'User-Agent': 'VibePeep venue maps (events platform)' },
     signal: AbortSignal.timeout(6000),
   })
   if (!res.ok) throw new Error(`Photon ${res.status}`)
@@ -18,7 +18,7 @@ async function photon(q: string): Promise<Geo> {
 
 async function nominatim(q: string): Promise<Geo> {
   const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=au&q=${encodeURIComponent(q)}`, {
-    headers: { 'User-Agent': 'Outza itinerary (events platform)', 'Accept-Language': 'en-AU' },
+    headers: { 'User-Agent': 'VibePeep itinerary (events platform)', 'Accept-Language': 'en-AU' },
     signal: AbortSignal.timeout(6000),
   })
   if (!res.ok) throw new Error(`Nominatim ${res.status}`)

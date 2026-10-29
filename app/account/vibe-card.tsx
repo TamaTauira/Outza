@@ -42,7 +42,7 @@ export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: 
         <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Optional</span>
       </div>
       <p className="text-sm text-muted-foreground mt-1">
-        Every question here is optional. Answer as many as you like to get the best experience from Outza: the more we know your vibe, the sharper your picks.
+        Every question here is optional. Answer as many as you like to get the best experience from VibePeep: the more we know your vibe, the sharper your picks.
       </p>
 
       <div className="mt-4">

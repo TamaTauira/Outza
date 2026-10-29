@@ -31,7 +31,7 @@ export function IntelAdminClient() {
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
       <header>
-        <h1 className="font-display text-3xl font-bold">OUTZA Intelligence data sources</h1>
+        <h1 className="font-display text-3xl font-bold">VibePeep Intelligence data sources</h1>
         <p className="text-muted-foreground mt-1">Official public data only. Each source runs on its own schedule (checked hourly). A failed import keeps the last good data.</p>
       </header>
       <section className="rounded-xl bg-card shadow-sm p-5 overflow-x-auto">

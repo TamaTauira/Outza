@@ -43,13 +43,13 @@ function blurbFor(r: Resolved) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city, topic } = await params
   const r = await resolve(city, topic)
-  if (!r) return { title: 'Page not found | Outza', robots: { index: false } }
+  if (!r) return { title: 'Page not found | VibePeep', robots: { index: false } }
   const [data, model] = await Promise.all([landingData(r.city, r.topic, r.suburb ?? undefined, 1), cityGuideModel(r.city)])
   const range = r.topic?.key === 'this-weekend' && data.to ? ` (${formatGuideSpan(data.from, data.to)})` : ''
   const path = r.topic ? cityPath(r.city, r.topic.key) : suburbPath(r.city, r.suburb!)
   const self = model.decisions.find((d) => d.path === path)
   const index = model.ok ? !!self?.index : data.total >= MIN_INDEX
-  const title = `${r.topic?.title?.(r.city.name) ?? headingFor(r)}${range} | Outza`
+  const title = `${r.topic?.title?.(r.city.name) ?? headingFor(r)}${range} | VibePeep`
   const description = `${blurbFor(r)} ${data.total ? `${data.total} upcoming listing${data.total === 1 ? '' : 's'}.` : ''}`.trim()
   return {
     title,
@@ -100,7 +100,7 @@ export default async function LandingPage({ params }: Props) {
     } : null,
   })
   const crumbs = [
-    { name: 'Outza', url: `${origin}/` },
+    { name: 'VibePeep', url: `${origin}/` },
     { name: city.name, url: `${origin}${cityPath(city)}` },
     ...(topic?.key === 'events' ? [] : [{ name: topic ? topic.label : suburb!, url: `${origin}${path}` }]),
   ]

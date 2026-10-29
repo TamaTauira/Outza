@@ -1,4 +1,4 @@
-// When an OUTZA Intelligence source is due. Pure so the stale-running and resume rules can be unit-tested.
+// When an VibePeep Intelligence source is due. Pure so the stale-running and resume rules can be unit-tested.
 import { isOpenImport } from './abs-plan'
 
 /** A platform kill leaves status=running. After this, cron and admin may take the source back. */

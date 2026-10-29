@@ -1,6 +1,7 @@
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
+import { emailLockup } from '@/lib/email-brand'
 
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
 const MAX_FAULT_EMAILS_PER_HOUR = 10
@@ -34,7 +35,8 @@ export async function reportFault(opts: { area: string; title: string; detail?: 
     if (!claimed.count) return
     const html = `
   <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;">
-    <h2 style="color:#d92d20;margin-bottom:4px;">Outza fault detected</h2>
+    ${emailLockup()}
+    <h2 style="color:#d92d20;margin-bottom:4px;">VibePeep fault detected</h2>
     <p style="color:#444;margin-top:0;">${escapeHtml(title)}</p>
     <div style="background:#fff4f2;border-left:4px solid #d92d20;padding:14px 16px;border-radius:6px;">
       <p style="margin:0 0 6px;"><strong>Area:</strong> ${escapeHtml(opts.area)}</p>
@@ -44,7 +46,7 @@ export async function reportFault(opts: { area: string; title: string; detail?: 
     ${detail ? `<pre style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(detail)}</pre>` : ''}
     <p style="color:#666;font-size:12px;">Site: ${escapeHtml(siteUrl())}. Repeats of this same fault are bundled: you'll get at most one email about it every 6 hours.</p>
   </div>`
-    const res = await sendEmail({ to: OWNER_EMAIL, subject: `[Outza fault] ${title.slice(0, 90)}`, html })
+    const res = await sendEmail({ to: OWNER_EMAIL, subject: `[VibePeep fault] ${title.slice(0, 90)}`, html })
     if (!res.ok) {
       console.error('[alerts] fault email failed:', res.error)
       await prisma.ownerAlert.update({ where: { id: row.id }, data: { lastEmailedAt: row.lastEmailedAt } }).catch(() => {})
@@ -95,11 +97,12 @@ export async function runIdeasDigest(opts: { force?: boolean } = {}) {
       </div>`).join('')
   const html = `
   <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;">
-    <h2 style="color:#f9652a;margin-bottom:4px;">Your fortnightly ideas summary</h2>
+    ${emailLockup()}
+    <h2 style="color:#FF7A1A;margin-bottom:4px;">Your fortnightly ideas summary</h2>
     <p style="color:#444;margin-top:0;">${ideas.length} new idea${ideas.length === 1 ? '' : 's'} (${promoters} from promoters, ${ideas.length - promoters} from event-goers) since the last summary.</p>
     ${rows}
   </div>`
-  const res = await sendEmail({ to: OWNER_EMAIL, subject: `Outza ideas: ${ideas.length} new suggestion${ideas.length === 1 ? '' : 's'} this fortnight`, html })
+  const res = await sendEmail({ to: OWNER_EMAIL, subject: `VibePeep ideas: ${ideas.length} new suggestion${ideas.length === 1 ? '' : 's'} this fortnight`, html })
   if (!res.ok) {
     await reportFault({ area: 'Owner emails', key: 'ideas-digest-failed', title: 'Fortnightly ideas summary failed to send', detail: res.error })
     return { sent: false, reason: res.error }

@@ -1,7 +1,7 @@
 // Promoter-created events and organiser-submitted Local listings can say "your venue".
 // Ingested feeds (ticketing sites, councils, claimed listings) stay "the venue" or the venue's name.
 
-/** True only when the listing was created in Outza by a promoter or a local organiser. */
+/** True only when the listing was created in VibePeep by a promoter or a local organiser. */
 export function intelOwnerVoice(source: string | null | undefined): boolean {
   return source === 'promoter' || source === 'local'
 }

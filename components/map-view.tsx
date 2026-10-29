@@ -197,7 +197,7 @@ export function MapView({ filters, searchQuery, city = '' }: MapViewProps) {
       if (!e?.latitude || !e?.longitude) continue
       const tier = e.promoTier ?? tierById.get(e.id)
       if (tier === 'GOLD') continue // gold rendered separately, always visible
-      const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#f9652a'
+      const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A1A'
       const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(L, color, e?.category?.[0] ?? 'E', tier), zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
         .bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
       if (tier === 'BRONZE') gold.addLayer(m)

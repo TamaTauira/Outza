@@ -12,7 +12,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 type Geo = { lat: number; lng: number }
 
 /** Small single-venue map using the exact same basemap and marker style as the Map page. */
-export function VenueMap({ lat, lng, query, city, color = '#f9652a', letter = '•', label }: {
+export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = '•', label }: {
   lat?: number | null; lng?: number | null; query?: string; city?: string | null; color?: string; letter?: string; label?: string
 }) {
   const elRef = useRef<HTMLDivElement>(null)

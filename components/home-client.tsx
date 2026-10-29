@@ -74,7 +74,7 @@ export function HomeClient() {
     setCityState(c);
     writeCity(c);
     writeUserCity(userId, c);
-    // Drop an area preset from the city we're leaving. Keep a free-text suburb Ask Outza set.
+    // Drop an area preset from the city we're leaving. Keep a free-text suburb Ask VibePeep set.
     const nextAreas = new Set(areasForCity(c));
     const previousAreas = new Set(areasForCity(city));
     const keep = (f: FilterState): FilterState => {
@@ -249,7 +249,7 @@ export function HomeClient() {
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>
-            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">All your bookmarks in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My Outza</Link> also keeps follows, reminders and a calendar file.</p>
+            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">All your bookmarks in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My VibePeep</Link> also keeps follows, reminders and a calendar file.</p>
           </div>
         ) : view === 'map' ? (
           <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -269,12 +269,13 @@ export function HomeClient() {
         ) : (
           <section className="mb-5 rounded-2xl bg-[#0c0f0e] text-white px-5 py-6 sm:px-8 sm:py-7 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <p className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold uppercase tracking-wide text-primary">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary" aria-hidden />
-                Discover more with Outza
+              <p className="flex items-center gap-2.5 text-xs sm:text-sm font-semibold tracking-wide">
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-gradient" aria-hidden />
+                <span className="text-brand-gradient">Take a peep at what&apos;s happening.</span>
               </p>
               <LocalClock className="text-right" />
             </div>
+            <p className="mt-2 text-xs sm:text-sm text-white/60">Events · Experiences · Local discoveries.</p>
             <h1 className="mt-3 font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
             <p className="mt-3 text-base sm:text-xl text-white/80 leading-snug">Gigs, pop-ups, markets and hidden gems, all happening near you and all in one spot.</p>
             <div className="mt-5 flex flex-col sm:flex-row sm:items-start gap-3">

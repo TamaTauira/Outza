@@ -57,7 +57,7 @@ const loadCombo = cache(async function loadCombo(citySlug: string, a: string, b:
 
 export async function comboMetadata(citySlug: string, segments: string[]): Promise<Metadata> {
   const loaded = await loadCombo(citySlug, segments[0] ?? '', segments[1] ?? '', segments[2])
-  if (!loaded) return { title: 'Page not found | Outza', robots: { index: false } }
+  if (!loaded) return { title: 'Page not found | VibePeep', robots: { index: false } }
   const { path, copy, index } = loaded
   return {
     title: copy.title,
@@ -77,7 +77,7 @@ export async function ComboPage({ citySlug, segments }: { citySlug: string; segm
   const origin = siteUrl()
   const otherTopic = activity?.key ?? (when === 'tonight' || when === 'this-weekend' ? when : 'events')
   const crumbs = [
-    { name: 'Outza', url: `${origin}/` },
+    { name: 'VibePeep', url: `${origin}/` },
     { name: city.name, url: `${origin}${cityPath(city)}` },
   ]
   if (suburb) {

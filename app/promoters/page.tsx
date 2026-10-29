@@ -10,7 +10,7 @@ import { DashboardPreview } from './dashboard-preview'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'For promoters — Outza',
+  title: 'For promoters — VibePeep',
   description: 'Promote your events to people actively looking for something to do in 10 Australian cities. Boost, Spotlight and Headliner packages from $19.',
 }
 
@@ -28,7 +28,7 @@ export default async function PromotersPage() {
     <div className="min-h-screen bg-background">
       <main>
         <section className="relative overflow-hidden border-b border-border">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(249,101,42,0.22),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,122,26,0.22),transparent_60%)]" />
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
             <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
             <p className="mt-8 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For promoters, venues & organisers</p>
@@ -82,7 +82,7 @@ export default async function PromotersPage() {
             </div>
 
             <p className="mt-5 text-xs text-muted-foreground">Placements are subject to inventory and are always clearly labelled as sponsored. We don’t guarantee impressions or clicks.</p>
-            <p className="mt-2 text-sm">Already listed your event? Open it on Outza while signed in and choose <strong>“Promote this event”</strong>.</p>
+            <p className="mt-2 text-sm">Already listed your event? Open it on VibePeep while signed in and choose <strong>“Promote this event”</strong>.</p>
 
             <h3 className="mt-14 font-display text-xl font-bold">Add-ons</h3>
             <p className="mt-1 text-sm text-muted-foreground">Add to any package. They run for the same length as your campaign.</p>
@@ -124,7 +124,7 @@ export default async function PromotersPage() {
           </div>
           <div className="mt-5 rounded-xl border-l-4 border-primary bg-primary/10 px-5 py-4">
             <p className="font-semibold">Our principle: we charge for better marketing tools, never for the basic ability to contribute quality events.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Free submissions help grow the listings that bring people to Outza — so listing stays free.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Free submissions help grow the listings that bring people to VibePeep — so listing stays free.</p>
           </div>
         </section>
 

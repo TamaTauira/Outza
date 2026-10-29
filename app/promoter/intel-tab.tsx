@@ -87,7 +87,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
       <div className={card}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="font-display text-xl font-bold flex items-center gap-2"><Brain className="w-5 h-5 text-primary" />OUTZA Intelligence</h2>
+            <h2 className="font-display text-xl font-bold flex items-center gap-2"><Brain className="w-5 h-5 text-primary" />VibePeep Intelligence</h2>
             <p className="text-sm text-muted-foreground mt-1">Know the patch around {venueWord} before the push. Who is nearby, where to advertise, and whether this night is crowded — with the fine print left in.</p>
           </div>
           <label className="text-sm w-full sm:w-80">
@@ -97,7 +97,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
             </select>
           </label>
         </div>
-        <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />Area figures describe people who live there. Spending and tourism are statewide. Catalogue counts are Outza listings. None of it is ticket sales, foot traffic or attendance, and nothing is estimated.</p>
+        <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />Area figures describe people who live there. Spending and tourism are statewide. Catalogue counts are VibePeep listings. None of it is ticket sales, foot traffic or attendance, and nothing is estimated.</p>
       </div>
 
       {loading && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Reading the neighbourhood… (first look at a venue can take ~20 seconds)</p>}
@@ -110,7 +110,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           {data.message && <p className="text-sm rounded-lg bg-muted/60 px-4 py-3 flex gap-2"><Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />{data.message}</p>}
 
           {data.insights.length > 0 && (
-            <Section title="What to do with this event" Icon={Lightbulb} sub="Tied to this listing: suburb, category, night and price. Catalogue counts are Outza listings, not sales or foot traffic.">
+            <Section title="What to do with this event" Icon={Lightbulb} sub="Tied to this listing: suburb, category, night and price. Catalogue counts are VibePeep listings, not sales or foot traffic.">
               <ul className="grid md:grid-cols-2 gap-3">{data.insights.map((i) => <InsightCard key={i.title} i={i} />)}</ul>
             </Section>
           )}

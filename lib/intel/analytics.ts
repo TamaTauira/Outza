@@ -1,4 +1,4 @@
-// OUTZA Intelligence: one event's reach report. Official imports plus counts of Outza listings. Nothing is estimated or invented.
+// VibePeep Intelligence: one event's reach report. Official imports plus counts of VibePeep listings. Nothing is estimated or invented.
 import { prisma } from '@/lib/prisma'
 import { resolveVenueGeo } from './geo'
 import { readObs } from './store'
@@ -60,7 +60,7 @@ const scaled = (v: number | null, mult: number) => (v == null ? null : v * 10 **
 
 async function geocode(q: string): Promise<{ lat: number; lng: number } | null> {
   try {
-    const res = await fetch(`https://photon.komoot.io/api/?limit=1&lang=en&bbox=112,-44,154,-10&q=${encodeURIComponent(q)}`, { headers: { 'User-Agent': 'OUTZA Intelligence (venue lookup)' }, signal: AbortSignal.timeout(8000) })
+    const res = await fetch(`https://photon.komoot.io/api/?limit=1&lang=en&bbox=112,-44,154,-10&q=${encodeURIComponent(q)}`, { headers: { 'User-Agent': 'VibePeep Intelligence (venue lookup)' }, signal: AbortSignal.timeout(8000) })
     const feature = res.ok ? (await res.json())?.features?.[0] : null
     if (feature?.properties?.countrycode && feature.properties.countrycode !== 'AU') return null
     const c = feature?.geometry?.coordinates
@@ -141,7 +141,7 @@ function paidPriceFilter(id: PriceBandId) {
   }
 }
 
-/** Counts of other Outza listings. Exact counts, not a sample treated as a total. Titles are a short sample of those counts. */
+/** Counts of other VibePeep listings. Exact counts, not a sample treated as a total. Titles are a short sample of those counts. */
 async function loadCatalogue(ev: ListedEvent, band: ReturnType<typeof priceBand>): Promise<CatalogueSnapshot> {
   const day = utcMidnight(ev.date)
   const start = addUtcDays(day, -CATALOGUE_RADIUS_DAYS)

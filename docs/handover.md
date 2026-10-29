@@ -1,4 +1,4 @@
-# OUTZA — Developer Handover (for Claude)
+# VibePeep — Developer Handover (for Claude)
 
 _Imported with `nextjs_space/` promoted to the repository root. Paths below that start with `nextjs_space/` are relative to this repo root. The handover body is otherwise unchanged._
 
@@ -8,8 +8,8 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 
 ## 0. TL;DR
 
-- **What:** OUTZA is an Australian "what's on" events website. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary and ask an AI search for ideas. It also has community listings ("OUTZA Local"), a promoter dashboard with paid promotions, and a weekly email newsletter ("THE WEEKENDER").
-- **Brand:** "OUTZA." (orange dot) + tagline **"Get out. Get amongst it."** Fun, energetic, witty copy. Dark charcoal + orange (#f9652a / #e8553f).
+- **What:** VibePeep is an Australian "what's on" events website. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary and ask an AI search for ideas. It also has community listings ("VibePeep Local"), a promoter dashboard with paid promotions, and a weekly email newsletter ("THE WEEKENDER").
+- **Brand:** wordmark **VibePeep** (Vibe in the text colour, Peep in an orange-to-pink gradient) and the peeking-eyes icon. Tagline **"Take a peep at what's happening."** Sub-line **"Events · Experiences · Local discoveries."** Fun, energetic, witty copy. Accents `#FF8A1A` to `#FF4E6A`.
 - **Live:** https://outza-outza.vercel.app. `https://outza-sepia.vercel.app` 308-redirects there. Set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
 - **Stack:** Next.js **16** (App Router, Turbopack), React, TypeScript, Tailwind 3.4 + shadcn/Radix UI, Prisma + PostgreSQL, Auth.js / next-auth **v5 beta** (credentials + Google), Stripe (currently **not configured → test mode**), Leaflet maps (Esri tiles), sharp for images, S3 for uploads. LLM calls use Vercel AI Gateway. Outbound email uses Resend when `RESEND_API_KEY` is set and stays off otherwise.
 - **Hosting:** Vercel. Deploys come from this git repository.
@@ -47,12 +47,12 @@ This table is the import-time preview list. Hosting is Vercel now; it is not an 
 
 | State | Change |
 |---|---|
-| Deployed (live) | OUTZA Local duplicate fix + "type" labels (sale vs event) |
+| Deployed (live) | VibePeep Local duplicate fix + "type" labels (sale vs event) |
 | Preview only | Past events hidden everywhere (board, event page 404, saved, itinerary) |
 | Preview only | "Back to events" restores scroll + filters |
 | Preview only | Account "vibe profile" + Follow promoter button on event pages; privacy notes removed from the account page |
 | Preview only | Suburb slug collision fix (`lib/seo-server.ts` `citySuburbs`) |
-| Preview only, **partial** | OUTZA Intelligence (promoter venue/area insights), see §4.12 |
+| Preview only, **partial** | VibePeep Intelligence (promoter venue/area insights), see §4.12 |
 | Preview only | `/map` and `/saved` real URLs, Saved-count fixes, board fixes (see §8) |
 
 If the owner hands you the downloaded source, it contains **all** of the above (the source on disk = latest preview).
@@ -71,7 +71,7 @@ nextjs_space/
       saved/page.tsx    "/saved" (returns null; HomeClient shows "The keepers")
     [city]/[topic]/     SEO landing pages (/sydney/live-music etc.); /[city] redirects
     events/[id]/        event detail (id param is "<slug>-<id>"); _components/
-    local/  local/[slug]/   OUTZA Local browse/submit/mine/how + detail
+    local/  local/[slug]/   VibePeep Local browse/submit/mine/how + detail
     itinerary/          itinerary page, stop-form.tsx, route-picks.tsx
     account/            profile, About you, vibe card, digest prefs
     promoter/           promoter dashboard (tabs) + invoice/[id]
@@ -86,7 +86,7 @@ nextjs_space/
     sources/            event feeds (curated, eventbrite, promoters, ticketing)
     newsletter/         THE WEEKENDER pipeline
     images/             image enhancement pipeline
-    intel/              OUTZA Intelligence
+    intel/              VibePeep Intelligence
   prisma/schema.prisma
   auth.ts               Auth.js v5 config (credentials + Google)
   instrumentation.ts    background schedulers (see §4.14)
@@ -107,19 +107,19 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 - Saving/dedupe: `lib/event-store.ts` (`saveEvent`), `lib/event-store-parts.ts`, `dedupeHash`. If a promoter edited a listing (`organiserEditedAt`), refreshes only touch sources/lastVerifiedAt/CANCELLED.
 - Categorising: `lib/categories.ts` `classifyCategory` (Music + comedy/theatre/circus/cabaret now → Arts & Culture; only affects new/refreshed rows), `checkLGBTI`, `checkFree`, `guessSuburb`.
 - Quality: `lib/quality.ts`, `lib/quality-pass.ts`, `PROVIDER_POLICY` (stays "Needs review" until confirmed).
-- After refresh, `lib/local-import.ts` imports public community events into OUTZA Local.
+- After refresh, `lib/local-import.ts` imports public community events into VibePeep Local.
 - **Ticketek:** never scrape or bypass blocks. `fetchTicketekEvents` runs only with impact.com affiliate env vars (`IMPACT_ACCOUNT_SID`, `IMPACT_AUTH_TOKEN`, `IMPACT_TICKETEK_CATALOG_ID`) or a partner feed (`TICKETEK_FEED_URL`, `TICKETEK_FEED_AUTH`). Images only if `TICKETEK_IMAGES_ALLOWED=1`. Affiliate deep links: `lib/affiliate.ts` `ticketHref()` + `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
 - **Ticket availability is never set from feeds or shown as live.** JSON-LD never includes availability.
 
 ### 4.3 Home board, map, saved (`app/(board)` + `components/home-client.tsx`)
 - One client component (`HomeClient`) serves `/`, `/map`, `/saved`; the view comes from `viewForPath(usePathname())` in `components/navbar.tsx`. Old `?view=map|saved` URLs redirect.
-- Board: hero with Ask Outza AI search, "Hot right now" featured band (`components/featured-turnstile.tsx`, `/api/featured`: promoted first, topped up with hot events when fewer than 8), filters (`components/filter-panel.tsx`), day/time window chips (default "Now & next"), list (`components/event-list.tsx`) of rows (`components/board-row.tsx`).
+- Board: hero with Ask VibePeep AI search, "Hot right now" featured band (`components/featured-turnstile.tsx`, `/api/featured`: promoted first, topped up with hot events when fewer than 8), filters (`components/filter-panel.tsx`), day/time window chips (default "Now & next"), list (`components/event-list.tsx`) of rows (`components/board-row.tsx`).
 - Board rows: the whole row is clickable (keyboard focus ring); title wraps to 2 lines; finish time shown smaller under the start time; Save + compact "+" itinerary button side by side. Ended events are hidden unless the user ticks "Show ended".
 - Map: `components/map-view.tsx` (Leaflet + markercluster, Esri tiles from `lib/map-style.ts`). Geolocation is opt-in; localStorage `outza-location-v1` stores **consent only, never coordinates**. Map view has a light "Map it out." header + city select, no hero.
 - Saved ("The keepers."): `components/saved-board.tsx`, `lib/saved.ts` (localStorage + account sync via `/api/me/saved`; removals tracked in `sydney-events-saved-removed-v1`, so account sync doesn't resurrect them). The navbar badge uses the same list.
 - Navbar (`components/navbar.tsx`): tabs Board · Map · Local · Saved · Itinerary (Links with aria-current). Guest Sign In / Sign Up / For promoters links hide on small screens.
 
-### 4.4 Ask Outza AI search
+### 4.4 Ask VibePeep AI search
 `components/ai-search-bar.tsx` → `POST /api/ai-search`. The LLM only converts text into filters; results are always real database listings. Relative dates are resolved in code. Quick-pick chips (When / Budget / Vibe / Suburb / Clear Picks) are sent as `hints` and override the parsed text. Keep the city select and the disclaimer under it. (This replaced a removed "Your next great night out" card. **Don't re-add that card.**)
 
 ### 4.5 Event detail (`app/events/[id]`)
@@ -148,10 +148,10 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 - Checkout: `/api/promotions/checkout`, `/api/local-ads/checkout`, webhook `/api/webhooks/stripe`, activation in `lib/promotions.ts`. **`STRIPE_SECRET_KEY` is not set, so checkouts activate instantly in "test mode" (free).** Going live needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`.
 - Invoices `/promoter/invoice/[id]` (GST shown as 1/11, no invented ABN).
 - Listing edits: `PATCH /api/promoter/events/[id]`. Referrals: `lib/referrals.ts` (EventReferral). Weekly performance report: `lib/promoter-report.ts`, `/api/promoter/report`, `/api/cron/promoter-reports`.
-- **Audience insights** (`lib/audience-insights.ts`, `app/promoter/audience-card.tsx`, `/api/promoter/insights`): grouped percentages only, **groups under 10 hidden** (`MIN_GROUP=10`), audience size rounded down to 10s, promoter's own activity excluded, never exact age/birthday/postcode/name/email. Always labelled as interest data, not purchaser data (Outza doesn't sell tickets). Signals: EventSignal (VIEW/TICKET/SHARE/ITINERARY) via `lib/event-signals.ts`.
+- **Audience insights** (`lib/audience-insights.ts`, `app/promoter/audience-card.tsx`, `/api/promoter/insights`): grouped percentages only, **groups under 10 hidden** (`MIN_GROUP=10`), audience size rounded down to 10s, promoter's own activity excluded, never exact age/birthday/postcode/name/email. Always labelled as interest data, not purchaser data (VibePeep doesn't sell tickets). Signals: EventSignal (VIEW/TICKET/SHARE/ITINERARY) via `lib/event-signals.ts`.
 - Placements are always labelled "Sponsored". Never promise guaranteed impressions or clicks.
 
-### 4.9 OUTZA Local (community listings)
+### 4.9 VibePeep Local (community listings)
 - `/local` (tabs `?tab=browse|submit|mine|how`), `/local/[slug]`, admin `/admin/local`. Server logic `lib/local.ts`, client-safe `lib/local-shared.ts`. Categories GARAGE / WAREHOUSE / MARKET / COMMUNITY. Only GARAGE/WAREHOUSE are "sales" (`isSaleCategory`).
 - Submission pipeline: honeypot, fast-fill check, rate limit (5/24h), regex hard-blocks (private/invite-only, banned items), AI moderation that only flags, Nominatim address check, duplicate detection, auto-expiry, 3 reports → back to review.
 - Recurrence stored once (weekly / fortnightly / monthly nth, max 6 months) and expanded at read time.
@@ -160,12 +160,12 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 - Imports from board sources (`lib/local-import.ts`): facts only, no images, always linked to source, never overwrite moderation. `dedupeLocalListings()` links copies via `duplicateOfId` (never deletes). Duplicate detail pages 301 to the kept listing.
 
 ### 4.10 SEO
-`lib/seo.ts` (TOPICS, `isPastEvent`, `eventPath`), `lib/seo-server.ts` (`landingData`, `citySuburbs`, `requestOrigin`, `jsonLdString`). Guides are indexed only with ≥5 live listings (suburb pages ≥3), otherwise `noindex,follow`. Dynamic `app/robots.ts` and `app/sitemap.ts`. Footer "Popular guides" has one column per city. `/admin/seo` uses only Outza's own data: **never fabricate** impressions, clicks, rankings or search volumes. Verification tags from `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION`.
+`lib/seo.ts` (TOPICS, `isPastEvent`, `eventPath`), `lib/seo-server.ts` (`landingData`, `citySuburbs`, `requestOrigin`, `jsonLdString`). Guides are indexed only with ≥5 live listings (suburb pages ≥3), otherwise `noindex,follow`. Dynamic `app/robots.ts` and `app/sitemap.ts`. Footer "Popular guides" has one column per city. `/admin/seo` uses only VibePeep's own data: **never fabricate** impressions, clicks, rankings or search volumes. Verification tags from `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION`.
 
 ### 4.11 Newsletter (THE WEEKENDER)
 `lib/newsletter/*` (rank, copy, images, render, qa, links, index); `lib/digest.ts` → `sendNewsletter`. Hourly check sends due daily/weekly/monthly digests. Admin preview/test at `/admin/newsletter`. AI copy must stay grounded; a BANNED regex blocks unverifiable claims (sold out, popular, discounts, $, %). Subjects validated by `goodSubject()` (16–60 chars, not similar to the last 12, never names sponsored events). Sponsored block: max 2 (SPOTLIGHT first, then GOLD), always labelled. QA failures block sends. Tracking: `/api/nl/o`, `/api/nl/c`, unsubscribe `/api/nl/unsubscribe`.
 
-### 4.12 OUTZA Intelligence (partial, preview only)
+### 4.12 VibePeep Intelligence (partial, preview only)
 Promoter tab "Intelligence" (`app/promoter/intel-tab.tsx` → `/api/promoter/intel?eventId=`, owner/ADMIN, audit-logged). `lib/intel/*`: official open data only (ABS census/SEIFA/regional, ABS household spending indicator, TfNSW Opal taps + stops, Destination NSW). 12h cache. NSW venues only. Admin `/admin/intel`; hourly ingest; manual `POST /api/cron/intel`.
 Rules: no mock data; never present LGA/state figures as suburb figures; SEIFA is area context; household spending indicator labelled as such; transport patronage ≠ attendance; no fabricated travel times; tourism points are hypotheses; no revenue predictions. Advisor output format: Insight / Business implication / Recommended action / Evidence / Confidence / Measurement.
 **Still to do:** deeper advisor output, acceptance tests, a sources document, Google Business Profile connection (needs Google API approval; GBP tables exist but aren't connected).
@@ -177,7 +177,7 @@ Rules: no mock data; never present LGA/state figures as suburb figures; SEIFA is
 On the Node runtime: refresh every 2h (startup if stale), digests hourly, owner jobs hourly (`lib/owner-alerts.ts`: fortnightly ideas summary when there are new suggestions; health checks), Intelligence ingest hourly. `onRequestError` records uncaught server errors for the owner (production only, deduped) and emails them when Resend is configured. Cron endpoints accept header `x-cron-secret: $CRON_SECRET` or an ADMIN session: `/api/cron/digest`, `/api/cron/owner-alerts`, `/api/cron/promoter-reports`, `/api/cron/intel`.
 
 ### 4.15 Email + AI
-- Email: `lib/email.ts` `sendEmail` POSTs to Resend (`https://api.resend.com/emails`) when `RESEND_API_KEY` is set. From is `RESEND_FROM_EMAIL`, or `Outza <onboarding@resend.dev>` when that is unset. That shared sender does not need a custom domain. With no key, `emailSendingEnabled()` is false and `sendEmail` returns disabled without calling a mail API. Scheduled digests, weekly promoter reports, and owner mail follow that flag and keep their own skip rules (not due, no events, not production, and so on). Do not point this at Abacus.
+- Email: `lib/email.ts` `sendEmail` POSTs to Resend (`https://api.resend.com/emails`) when `RESEND_API_KEY` is set. From is `RESEND_FROM_EMAIL`, or `VibePeep <onboarding@resend.dev>` when that is unset. That shared sender does not need a custom domain. With no key, `emailSendingEnabled()` is false and `sendEmail` returns disabled without calling a mail API. Scheduled digests, weekly promoter reports, and owner mail follow that flag and keep their own skip rules (not due, no events, not production, and so on). Do not point this at Abacus.
 - LLM: `lib/llm.ts` calls Vercel AI Gateway with the `ai` package (`generateText` + `Output.json()`). On Vercel the deployment's OIDC token authenticates the request. Locally set `AI_GATEWAY_API_KEY`. Model id is `AI_GATEWAY_MODEL`, or `openai/gpt-5.4-mini` when that is unset. Used by ai-search, local moderation, flyer/page extract, newsletter copy, and the Destination NSW PDF extract. PDFs go to the model as file parts; don't add PDF-parsing libraries.
 
 ---
@@ -197,7 +197,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 **Environment variables (names only; the owner holds values):**
 - Set today: `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TICKETMASTER_API_KEY`, `OZTIX_ALGOLIA_KEY`, `AWS_PROFILE`, `AWS_REGION`, `AWS_BUCKET_NAME`, `AWS_FOLDER_PREFIX`.
 - AI Gateway: `AI_GATEWAY_API_KEY` for local/non-Vercel calls. Vercel deploys use `VERCEL_OIDC_TOKEN`. Optional `AI_GATEWAY_MODEL` (a `provider/model` id). There is no `ABACUSAI_API_KEY` or `WEB_APP_ID`.
-- Email: `RESEND_API_KEY` turns sending on. Optional `RESEND_FROM_EMAIL` (default `Outza <onboarding@resend.dev>`). Do not send from `@outza.app`.
+- Email: `RESEND_API_KEY` turns sending on. Optional `RESEND_FROM_EMAIL` (default `VibePeep <onboarding@resend.dev>`). Do not send from `@outza.app`.
 - Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (→ cron endpoints only work for ADMIN sessions), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars, `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
 - `NEXT_PUBLIC_SITE_URL` is the public origin override. Do not set it to an Abacus host.
 
@@ -210,7 +210,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 - **Scroll memory:** `lib/scroll-memory.ts`: `installScrollMemory()` (in `components/providers.tsx`) restores scroll on Back/Forward; `useBackState(key, initial)` keeps filters/expanded sections across Back. New list/filter pages should use it. `/`, `/map`, `/saved` count as list pages.
 - **Images:** next/image with `fill` inside a `relative` fixed-aspect container; meaningful alt text; error fallback.
 - **UI:** reuse shadcn components in `components/ui` and `STYLE_GUIDE.md`. Shadows over heavy borders, generous whitespace, mobile-first. Body text ≥14px (16px on mobile), WCAG AA 4.5:1 contrast.
-- **Logo:** `components/outza-logo.tsx` (OutzaLogo lockup + `OUTZA_TAGLINE`), mark `components/outza-mark.tsx`, favicon `/outza-icon.svg`.
+- **Logo:** `components/vibepeep-logo.tsx` (VibePeepLogo lockup + `VIBEPEEP_TAGLINE`), mark `components/vibepeep-mark.tsx`, icon `/vibepeep-icon.svg`.
 - **Files in `public/`:** never overwrite in place; add under a new name or bump `?v=N` (browsers cache).
 - No unused imports, no placeholder code, no dead links. Header/footer links only to pages that exist.
 
@@ -219,11 +219,11 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 ## 8. Owner's rules (non-negotiable; check every change against these)
 
 1. **Never present ticket availability as live** unless it's verified. No "sold out", "selling fast", "x left".
-2. **Brand lockup:** wherever the icon + "OUTZA." appear, show "Get out. Get amongst it.". Write **LGBTIQ+** (not LGBTI/LGBTQ). Wordmark uses the black-outline font.
+2. **Brand lockup:** wherever the icon + "VibePeep." appear, show "Take a peep at what's happening.". Write **LGBTIQ+** (not LGBTI/LGBTQ). Wordmark uses the black-outline font.
 3. **Saved favourites ≠ itinerary.** Keep them separate. "Itinerary" is in the profile menu and is a top quick-link.
 4. **No scraping private social media events; no republishing images without permission.**
 5. **Copy is fun, energetic, witty.** Legal/trust copy stays plain (Acknowledgement of Country, disclaimer, privacy, listing rules, Sponsored labels, payment/test-mode notices, invoices, "confirm with organiser"). Witty copy never claims sell-outs, popularity numbers or guaranteed results, and avoids slang borrowed from First Nations culture (e.g. "walkabout").
-6. **No map/board shortcut buttons** in the toolbar (switch via navbar tabs only) and **no "Your next great night out" card** (its questions live in Ask Outza). Itinerary button sits next to Save.
+6. **No map/board shortcut buttons** in the toolbar (switch via navbar tabs only) and **no "Your next great night out" card** (its questions live in Ask VibePeep). Itinerary button sits next to Save.
 7. **Promoter data anonymised:** grouped stats only, groups under 10 hidden, never exact ages, birthdays, postcodes or addresses.
 8. **Ticketek only via lawful partner/affiliate feeds.** No loopholes, no scraping, no bypassing blocks. Same spirit for every source: official APIs/feeds only.
 9. **Preserve existing branding, functionality, dashboard, auth, payments and UX. No full redesigns.** Make the smallest change that does the job.
@@ -231,10 +231,10 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 
 More owner preferences:
 - **Copy changes need approval:** propose 3 options per area and let the owner pick before editing copy. Past picks are in `outza_copy_review.md` (not in the zip; ask the owner).
-- Copy conventions: buttons in Title Case, everything else sentence case; "Back to events"; always "Tap", never "Click"; "Promoter dashboard"; "OUTZA Local" in headings, "Local" in the navbar; saved view is "The keepers."; menu label "Itinerary".
+- Copy conventions: buttons in Title Case, everything else sentence case; "Back to events"; always "Tap", never "Click"; "Promoter dashboard"; "VibePeep Local" in headings, "Local" in the navbar; saved view is "The keepers."; menu label "Itinerary".
 - Acknowledgement of Country lives in the footer (with Aboriginal flag), auth pages and the email footer. **Don't** put the custodians line back on the home header (owner removed it).
 - Don't reintroduce old names "Aussie Events" / "Sydney Events".
-- Imported OUTZA Local listings: facts only, link to source, no images, never overwrite moderation.
+- Imported VibePeep Local listings: facts only, link to source, no images, never overwrite moderation.
 - Never fabricate data anywhere (SEO stats, audience numbers, intelligence figures, availability).
 - The owner gets frustrated when a fix is claimed but not actually working. Test the exact scenario they reported before saying it's fixed, and be honest about what you didn't test.
 
@@ -245,12 +245,12 @@ More owner preferences:
 **Done in preview, not deployed:** `/map` + `/saved` URLs (Back works, bookmarkable); Saved badge/list mismatch; board search double ×; selected Free chip readable; whole board row clickable with focus state; titles wrap to 2 lines; hide ended events by default ("Show ended" opt-in, default "Now & next"); comedy/theatre no longer classed as Music for **new** rows.
 
 **Not done yet (priority order):**
-1. **OUTZA Local "Publish free listing" is blocked** by the browser message "Please enter a URL": the import card's `required` URL input sits inside the same `<form>` as the listing form. Split them into separate forms (`app/local/local-submit-form.tsx`, `app/local/local-import-card.tsx`, `app/local/local-client.tsx`).
+1. **VibePeep Local "Publish free listing" is blocked** by the browser message "Please enter a URL": the import card's `required` URL input sits inside the same `<form>` as the listing form. Split them into separate forms (`app/local/local-submit-form.tsx`, `app/local/local-import-card.tsx`, `app/local/local-client.tsx`).
 2. Local title: add `maxLength={100}` + "n/100" counter (server already trims to 100 in `lib/local.ts` `parseLocal`).
 3. Local tab: first tap sometimes does nothing / no loading indicator (`local-client.tsx` `setTab` uses `router.replace`). Local list titles get cut off (allow 2 lines).
 4. `/login`: wrong password shows no error (`app/login/page.tsx`: `signIn(..., { redirect: false })`, then check `res?.error` and show a message). Login/signup pages have no site navigation (`components/auth-shell.tsx`).
 5. Itinerary page header: guest links (For promoters / Sign In / Sign Up) hidden on small screens. Make them reachable on mobile (e.g. in a menu) without a redesign.
-6. Ask Outza: layout shift when results open (reserve space / min-height in `components/ai-search-bar.tsx`).
+6. Ask VibePeep: layout shift when results open (reserve space / min-height in `components/ai-search-bar.tsx`).
 7. Event detail with no image: branded fallback hero (category colour + title) instead of an empty block (`event-detail-client.tsx`, `components/event-image.tsx`).
 8. Map: skeleton while loading and show the list meanwhile (`components/map-view.tsx`).
 9. "Hot right now" carousel: pause control, respect `prefers-reduced-motion`, consistent aspect ratio, subtle overlay for text legibility (`components/featured-turnstile.tsx`).
@@ -259,7 +259,7 @@ More owner preferences:
 12. Accessibility pass: text ≥14px (16px mobile), contrast 4.5:1 site-wide.
 13. Ask the owner whether past events should also be hidden on promoter/admin dashboards.
 14. `app/error.tsx` back link should use the Back-to-events component.
-15. OUTZA Intelligence remaining work (§4.12).
+15. VibePeep Intelligence remaining work (§4.12).
 16. Not yet browser-tested: adding to the itinerary while saving (should never change the Saved count).
 
 ---

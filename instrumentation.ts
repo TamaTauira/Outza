@@ -63,7 +63,7 @@ export async function register() {
         console.error('[Owner] alerts job failed:', err?.message)
       }
     }
-    // OUTZA Intelligence: import any official data source that is due (each has its own schedule)
+    // VibePeep Intelligence: import any official data source that is due (each has its own schedule)
     const intelJobs = async () => {
       try {
         const { runDueSources } = await import('@/lib/intel/ingest')

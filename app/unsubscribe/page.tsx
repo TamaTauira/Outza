@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { verify } from '@/lib/newsletter/links'
 import { UnsubscribeClient } from './unsubscribe-client'
-import { OutzaLogo } from '@/components/outza-logo'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Unsubscribe — Outza' }
+export const metadata = { title: 'Unsubscribe — VibePeep' }
 
 export default async function UnsubscribePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { u = '', k = '', s = '' } = await searchParams
@@ -12,7 +12,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
   return (
     <main className="min-h-[70vh] flex items-center justify-center px-4 py-16">
       <div className="max-w-md w-full rounded-2xl bg-card shadow-lg p-8 text-center">
-        <Link href="/" aria-label="Outza home" className="inline-flex"><OutzaLogo size="md" /></Link>
+        <Link href="/" aria-label="VibePeep home" className="inline-flex"><VibePeepLogo size="md" /></Link>
         {valid ? (
           <UnsubscribeClient u={u} k={k} s={s} />
         ) : (

@@ -1,13 +1,13 @@
 /**
  * Transactional email via the Resend HTTP API (https://api.resend.com/emails).
  * Sending is on only when RESEND_API_KEY is set. From is RESEND_FROM_EMAIL,
- * or Outza <onboarding@resend.dev> when that is unset. That shared Resend
+ * or VibePeep <onboarding@resend.dev> when that is unset. That shared Resend
  * sender does not need a custom domain. With no key, nothing is posted.
  */
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails'
 
 /** Used when RESEND_FROM_EMAIL is unset. Resend's shared sender; no custom domain. */
-export const DEFAULT_FROM_EMAIL = 'Outza <onboarding@resend.dev>'
+export const DEFAULT_FROM_EMAIL = 'VibePeep <onboarding@resend.dev>'
 
 export function emailSendingEnabled(): boolean {
   return Boolean(process.env.RESEND_API_KEY?.trim())

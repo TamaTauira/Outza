@@ -35,7 +35,7 @@ function shares(counts: Map<string, number>, order?: readonly string[]): { list:
 
 /**
  * Grouped, anonymised audience insights for one promoter's events, built from saves, "going", ticket taps, shares,
- * itinerary adds and views by signed-in people on Outza. Outza doesn't sell tickets, so this is interest, not purchasers.
+ * itinerary adds and views by signed-in people on VibePeep. VibePeep doesn't sell tickets, so this is interest, not purchasers.
  * No names, emails, exact ages, birthdays or postcodes ever leave this function; groups under MIN_GROUP people are hidden.
  */
 export async function getAudienceInsights(promoterId: string, opts: { sinceDays?: number } = {}): Promise<AudienceInsights> {

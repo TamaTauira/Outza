@@ -1,7 +1,7 @@
 {
-  "name": "Outza",
-  "short_name": "Outza",
-  "description": "Your city. Your events. Your next adventure.",
+  "name": "VibePeep",
+  "short_name": "VibePeep",
+  "description": "Events · Experiences · Local discoveries.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

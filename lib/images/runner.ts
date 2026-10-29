@@ -45,7 +45,7 @@ async function linkPending(max = 1500): Promise<number> {
   for (const [src, ids] of entries) {
     await prisma.event.updateMany({ where: { id: { in: ids } }, data: { imageAssetId: assetIdFor(src), imageUrl: src } })
   }
-  // OUTZA Local: organiser-uploaded photos go through the same pipeline
+  // VibePeep Local: organiser-uploaded photos go through the same pipeline
   const local = await prisma.localListing.findMany({
     where: { imagePath: { not: null }, imageAssetId: null, expiresAt: { gte: new Date() } },
     select: { id: true }, take: 300,
@@ -54,7 +54,7 @@ async function linkPending(max = 1500): Promise<number> {
   return rows.length + local.length
 }
 
-/** Points an OUTZA Local listing at the ImageAsset for its uploaded photo, creating the asset if needed. */
+/** Points an VibePeep Local listing at the ImageAsset for its uploaded photo, creating the asset if needed. */
 export async function linkLocalImage(listingId: string): Promise<string | null> {
   const l = await prisma.localListing.findUnique({ where: { id: listingId }, select: { imagePath: true, imageAssetId: true } })
   if (!l?.imagePath) {
@@ -147,7 +147,7 @@ export function queueEventImage(eventId: string) {
     .catch((e) => console.error('[images] queue failed:', e?.message))
 }
 
-/** Same for an OUTZA Local listing photo. */
+/** Same for an VibePeep Local listing photo. */
 export function queueLocalImage(listingId: string) {
   linkLocalImage(listingId)
     .then((id) => (id ? processAsset(id) : null))

@@ -33,7 +33,7 @@ export async function readPage(raw: string): Promise<{ text: string; url: string
 
   const res = await fetch(u, {
     redirect: 'follow', signal: AbortSignal.timeout(12000),
-    headers: { 'User-Agent': `OutzaBot/1.0 (+${siteUrl()}/how-listings-work)`, Accept: 'text/html,application/xhtml+xml' },
+    headers: { 'User-Agent': `VibePeepBot/1.0 (+${siteUrl()}/how-listings-work)`, Accept: 'text/html,application/xhtml+xml' },
   }).catch(() => null)
   if (!res || !res.ok) throw new ExtractError(`We couldn’t open that page${res ? ` (error ${res.status})` : ''}. Try uploading the flyer instead.`)
   if (res.url && BLOCKED_HOSTS.test(new URL(res.url).hostname)) throw new ExtractError('We don’t read Facebook or Instagram pages. Upload the flyer or paste the details instead.')

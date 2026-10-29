@@ -55,7 +55,7 @@ test('sendEmail posts to the Resend API when the key is set', async () => {
     const headers = captured.init.headers as Record<string, string>
     assert.equal(headers.Authorization, 'Bearer re_test_key')
     assert.equal(headers['Content-Type'], 'application/json')
-    assert.equal(DEFAULT_FROM_EMAIL, 'Outza <onboarding@resend.dev>')
+    assert.equal(DEFAULT_FROM_EMAIL, 'VibePeep <onboarding@resend.dev>')
     assert.equal(/outza\.app|abacus/i.test(DEFAULT_FROM_EMAIL), false)
     assert.deepEqual(JSON.parse(String(captured.init.body)), {
       from: DEFAULT_FROM_EMAIL,
@@ -76,7 +76,7 @@ test('RESEND_FROM_EMAIL overrides the default From address', async () => {
   const from = process.env.RESEND_FROM_EMAIL
   const originalFetch = globalThis.fetch
   process.env.RESEND_API_KEY = 're_test_key'
-  process.env.RESEND_FROM_EMAIL = 'Outza <news@example.com>'
+  process.env.RESEND_FROM_EMAIL = 'VibePeep <news@example.com>'
   let body: { from?: string } = {}
   globalThis.fetch = async (_url, init) => {
     body = JSON.parse(String(init?.body))
@@ -85,7 +85,7 @@ test('RESEND_FROM_EMAIL overrides the default From address', async () => {
   try {
     const result = await sendEmail({ to: 'person@example.com', subject: 'Hello', html: '<p>Hi</p>' })
     assert.deepEqual(result, { ok: true })
-    assert.equal(body.from, 'Outza <news@example.com>')
+    assert.equal(body.from, 'VibePeep <news@example.com>')
   } finally {
     globalThis.fetch = originalFetch
     restoreEnv('RESEND_API_KEY', key)

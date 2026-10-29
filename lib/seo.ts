@@ -43,7 +43,7 @@ export interface TopicDef {
   label: string
   /** Search-friendly <title> lead (defaults to heading) */
   title?: (city: string) => string
-  /** Which OUTZA Local category (if any) also feeds this page */
+  /** Which VibePeep Local category (if any) also feeds this page */
   local?: 'GARAGE' | 'WAREHOUSE' | 'MARKET' | 'COMMUNITY'
   /** Page heading / title builder */
   heading: (city: string) => string
@@ -89,7 +89,7 @@ export function guideFacts(input: {
   const where = input.suburb ? `${input.suburb}, ${input.city}` : input.city
   const out: GuideFact[] = []
   const count = input.total > 0
-    ? `Outza currently lists ${input.total} upcoming ${input.total === 1 ? 'listing' : 'listings'} for this page.`
+    ? `VibePeep currently lists ${input.total} upcoming ${input.total === 1 ? 'listing' : 'listings'} for this page.`
     : 'New listings are added as organisers and ticket sites publish them.'
   switch (input.topicKey) {
     case 'tonight':

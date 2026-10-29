@@ -30,7 +30,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
   }
   // After an import, required fields still empty get an orange ring until the lister fills them.
   const needs = (k: keyof typeof f) => !!imported && (REQUIRED as readonly string[]).includes(k) && !String(f[k]).trim()
-  const field = (k: keyof typeof f) => needs(k) ? `${baseField} ring-2 ring-[#e8553f] border-[#e8553f]` : baseField
+  const field = (k: keyof typeof f) => needs(k) ? `${baseField} ring-2 ring-[#FF4E6A] border-[#FF4E6A]` : baseField
   const applyImport = (r: ImportResult) => {
     if (!startedAt.current) startedAt.current = Date.now()
     const next = { ...f }
@@ -54,7 +54,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
       const res = await fetch('/api/local', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, endDate: f.endDate || null, recurUntil: f.recurUntil || null, startedAt: startedAt.current || null, imagePath: image?.path ?? null, imageRights }) })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) { toast.error(j.error ?? 'Could not save your listing'); return }
-      if (j.status === 'APPROVED') toast.success('Your listing is live on OUTZA Local')
+      if (j.status === 'APPROVED') toast.success('Your listing is live on VibePeep Local')
       else toast.message('Thanks! A person will check your listing shortly', { description: j.notes?.length ? `Why: ${j.notes.join(', ')}.` : undefined })
       onDone()
     } catch (err) {
@@ -132,7 +132,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
         </div>
         <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" value={f.company} onChange={set('company')} name="company" />
         <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" checked={f.isPublic} onChange={set('isPublic')} className="mt-1 h-4 w-4 accent-[#e8553f]" />
+          <input type="checkbox" checked={f.isPublic} onChange={set('isPublic')} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
           <span>This is open to the public (not a private or invitation-only event), the details are accurate, and I agree to the <Link href="/disclaimer" className="underline" target="_blank">disclaimer</Link>.</span>
         </label>
       </div>

@@ -46,7 +46,7 @@ export function DashboardPreview() {
       <div className="rounded-2xl bg-card border border-border p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Outza for Business</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">VibePeep for Business</p>
             <p className="mt-1 font-display text-xl font-bold">Your event performance</p>
           </div>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">Illustrative</span>

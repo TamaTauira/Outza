@@ -1,5 +1,5 @@
-// Event-specific reach notes for OUTZA Intelligence.
-// Every number comes from the caller (official imports or a count of Outza listings). Nothing is estimated.
+// Event-specific reach notes for VibePeep Intelligence.
+// Every number comes from the caller (official imports or a count of VibePeep listings). Nothing is estimated.
 import { citySlug } from '@/lib/seo'
 import { normalizeVenue } from '@/lib/quality'
 import type { DataKind, InsightSource } from './sources'
@@ -242,18 +242,18 @@ function lead(voice: Voice, f: EventFacts): Insight {
   return cat(
     ['outza_catalogue'], 'observed', 'high',
     `Reach for this ${f.dowName} ${f.category}`,
-    `${f.dateLabel}: ${f.category} at ${named} in ${where}.${priceBit} ${job} Use the cards for who lives nearby, where an ad should point, and whether this night is crowded on Outza. None of this is a sales forecast.`,
+    `${f.dateLabel}: ${f.category} at ${named} in ${where}.${priceBit} ${job} Use the cards for who lives nearby, where an ad should point, and whether this night is crowded on VibePeep. None of this is a sales forecast.`,
   )
 }
 
 function sameNight(voice: Voice, f: EventFacts, c: CatalogueSnapshot): Insight {
   let detail: string
   if (c.sameNightTotal === 0) {
-    detail = `No other listing in ${f.city} falls on ${f.dateLabel} in the Outza catalogue. That is this catalogue, not every event in town.`
+    detail = `No other listing in ${f.city} falls on ${f.dateLabel} in the VibePeep catalogue. That is this catalogue, not every event in town.`
   } else {
     detail = `${things(c.sameNightTotal, 'other listing', 'other listings')} in ${f.city} on ${f.dateLabel}, ${c.sameNightCategory} of them ${f.category}.`
     if (c.sameNightSuburb != null && f.suburb?.trim()) detail += ` ${c.sameNightSuburb} in ${f.suburb.trim()}.`
-    if (c.otherNightTitles.length) detail += ` On Outza that day: ${c.otherNightTitles.join('; ')}.`
+    if (c.otherNightTitles.length) detail += ` On VibePeep that day: ${c.otherNightTitles.join('; ')}.`
     if (c.sameNightMore > 0) detail += ` And ${c.sameNightMore} more.`
     if (c.sameVenueTitles.length) detail += ` Also at ${voice.venue} that day: ${c.sameVenueTitles.join('; ')}.`
     detail += ' Name what is different (time, price, room) so the ad is not another identical tile. Counts are listings, not ticket demand.'
@@ -265,7 +265,7 @@ function weekdayDemand(f: EventFacts, c: CatalogueSnapshot): Insight {
   const title = `${f.category} on ${f.dowName}s in ${f.city}`
   if (!c.weekdayEnough) {
     return cat(['outza_catalogue'], 'derived', 'insufficient', title,
-      `Outza has ${things(c.categoryTotal, `other ${f.category} listing`, `other ${f.category} listings`)} in ${f.city} in the 45 days either side of this date. Too few to call a ${f.dowName} hot or quiet. The count is the catalogue, not demand.`)
+      `VibePeep has ${things(c.categoryTotal, `other ${f.category} listing`, `other ${f.category} listings`)} in ${f.city} in the 45 days either side of this date. Too few to call a ${f.dowName} hot or quiet. The count is the catalogue, not demand.`)
   }
   const same = nfmt(c.weekdayMedian)
   const other = nfmt(c.otherDayMedian)
@@ -287,13 +287,13 @@ function goingOut(f: EventFacts, c: CatalogueSnapshot): Insight {
     : ['Food & Drink or Nightlife listing', 'Food & Drink or Nightlife listings']
   const place = f.suburb?.trim()
   const detail = place && c.goingOutSuburb != null
-    ? `In the 45 days either side, Outza lists ${things(c.goingOutSuburb, one, many)} in ${place}, and ${things(c.goingOutCity, 'listing', 'listings')} across ${f.city}. Listing density, not how many people are out.`
+    ? `In the 45 days either side, VibePeep lists ${things(c.goingOutSuburb, one, many)} in ${place}, and ${things(c.goingOutCity, 'listing', 'listings')} across ${f.city}. Listing density, not how many people are out.`
     : `No suburb on the listing, so this stays city-wide: ${things(c.goingOutCity, 'Food & Drink or Nightlife listing', 'Food & Drink or Nightlife listings')} in ${f.city} in the 45 days either side. Listing density, not foot traffic.`
   return cat(['outza_catalogue'], 'observed', place ? 'medium' : 'low', `Food and nightlife listings around ${place || f.city}`, detail)
 }
 
 function priceComps(voice: Voice, f: EventFacts, c: CatalogueSnapshot): Insight {
-  const title = `Similar ${f.category} prices on Outza`
+  const title = `Similar ${f.category} prices on VibePeep`
   if (!c.bandLabel || c.comps == null) {
     return cat(['outza_catalogue'], 'observed', 'insufficient', 'No price band to compare',
       `No price is published on ${voice.listing}, so it cannot be lined up with other ${f.category} listings. Nothing here is guessed.`)
@@ -301,7 +301,7 @@ function priceComps(voice: Voice, f: EventFacts, c: CatalogueSnapshot): Insight 
   const mine = f.priceLabel ? ` This one is listed at ${f.priceLabel}.` : ''
   if (c.bandLabel === 'free') {
     return cat(['outza_catalogue'], 'observed', c.comps >= 3 ? 'medium' : 'low', title,
-      `${things(c.comps, `other free ${f.category} listing`, `other free ${f.category} listings`)} in ${f.city} in the 45 days either side.${mine} That is the free set on Outza, not what people paid.`)
+      `${things(c.comps, `other free ${f.category} listing`, `other free ${f.category} listings`)} in ${f.city} in the 45 days either side.${mine} That is the free set on VibePeep, not what people paid.`)
   }
   if (c.comps === 0) {
     return cat(['outza_catalogue'], 'observed', 'low', title,
@@ -499,7 +499,7 @@ function cityChannels(city: string): Ch[] {
 /** Real publishers, radio and festivals. No rate cards and no audience sizes — we have not imported those. */
 export function queerPromoLinks(city: string, category: string): InsightLink[] {
   const outza: Ch = {
-    name: `Outza LGBTIQ+ events in ${city}`,
+    name: `VibePeep LGBTIQ+ events in ${city}`,
     url: `/${citySlug(city)}/lgbtiq`,
     note: 'The filter people use when they already want a queer night in this city. The listing is the ad. Everything else is another room for the same date.',
   }
@@ -519,7 +519,7 @@ function queerInsight(f: EventFacts): Insight | null {
   return cat(
     ['outza_catalogue'], 'hypothesis', 'medium',
     'Put it where the queer crowd is already looking',
-    'Outza is the best place to advertise this. Not as a slogan: the LGBTIQ+ filter is where people go when they already want a queer night. Start there, then take the same date to the mastheads, radio and festivals below. No audience size is shown, because we have not measured one.',
+    'VibePeep is the best place to advertise this. Not as a slogan: the LGBTIQ+ filter is where people go when they already want a queer night. Start there, then take the same date to the mastheads, radio and festivals below. No audience size is shown, because we have not measured one.',
     { highlight: true, links: queerPromoLinks(f.city, f.category) },
   )
 }

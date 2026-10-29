@@ -51,7 +51,7 @@ export function tooSimilar(a: string, recent: string[]) {
   })
 }
 
-/** A subject must be short, specific to Outza's voice, free of unverifiable claims, and fresh for this subscriber. */
+/** A subject must be short, specific to VibePeep's voice, free of unverifiable claims, and fresh for this subscriber. */
 export function goodSubject(s: string, recent: string[], avoidTitles: string[] = [], titles: string[] = []) {
   const t = s.trim()
   // ALL CAPS shouting is out, unless the caps are part of a real event name in this issue.
@@ -116,7 +116,7 @@ async function llm(messages: { role: 'system' | 'user'; content: string }[]) {
   })
 }
 
-const SYSTEM = `You are the editor of OUTZA, an Australian events newsletter. Voice: energetic, witty, confident, modern, adventurous, distinctly Australian - but no heavy slang, no forced jokes, no clichés repeated between items.
+const SYSTEM = `You are the editor of VibePeep, an Australian events newsletter. Voice: energetic, witty, confident, modern, adventurous, distinctly Australian - but no heavy slang, no forced jokes, no clichés repeated between items.
 HARD RULES:
 - Use ONLY the facts supplied. Never invent performers, line-ups, activities, food, prices, discounts, awards, popularity, demand or availability.
 - Never write "sold out", "selling fast", "trending", "popular", "limited", "last chance", dollar amounts or percentages.

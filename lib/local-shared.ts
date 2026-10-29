@@ -1,4 +1,4 @@
-/** Client-safe constants and recurrence maths for OUTZA Local. */
+/** Client-safe constants and recurrence maths for VibePeep Local. */
 
 export const LOCAL_CATEGORIES = [
   { key: 'GARAGE', label: 'Garage & moving sales', short: 'Garage sale', blurb: 'Household goods, furniture, clothing and collectibles from local sellers.' },
@@ -42,10 +42,10 @@ export const LOCAL_FLAG_LABEL: Record<string, string> = {
 }
 
 export interface LocalSource { name: string; bestFor: string; status: string; url?: string }
-/** Where OUTZA Local listings come from and what each source's status is. */
+/** Where VibePeep Local listings come from and what each source's status is. */
 export const LOCAL_SOURCES: LocalSource[] = [
   { name: 'Organiser & community submissions', bestFor: 'Garage sales, pop-ups, community activities', status: 'Live — submitted directly by organisers', url: '/local?tab=submit' },
-  { name: 'Public event listings already on Outza (official market sites, City of Sydney What’s On, Eventbrite, Humanitix, Moshtix, Oztix)', bestFor: 'Markets, swaps, sample sales, community events', status: 'Live — facts only (date, time, place, price), no images, always linked to the original listing' },
+  { name: 'Public event listings already on VibePeep (official market sites, City of Sydney What’s On, Eventbrite, Humanitix, Moshtix, Oztix)', bestFor: 'Markets, swaps, sample sales, community events', status: 'Live — facts only (date, time, place, price), no images, always linked to the original listing' },
   { name: 'Other local council event calendars', bestFor: 'Free and community events', status: 'Added council by council where a public data feed exists; councils can also submit their events', url: '/local?tab=submit' },
   { name: 'Meetup', bestFor: 'Social groups, networking and activities', status: 'Needs an approved Meetup API connection — not imported yet; group organisers can submit public events', url: '/local?tab=submit' },
   { name: 'Garage Sale Trail', bestFor: 'Garage sales, pop-ups, community shopping events', status: 'Partnership or licensed feed — not imported; hosts can submit their own sale', url: 'https://www.garagesaletrail.com.au/' },

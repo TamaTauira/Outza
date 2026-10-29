@@ -10,7 +10,7 @@ export type ConnectorResult = { datasets: { dataset: string; rows: ObsRow[] }[];
 
 const ABS = 'https://data.api.abs.gov.au/rest/data'
 const SDMX_CSV = { Accept: 'application/vnd.sdmx.data+csv' }
-const UA = () => ({ 'User-Agent': `Mozilla/5.0 (compatible; OUTZA-Intelligence/1.0; +${siteUrl()})` })
+const UA = () => ({ 'User-Agent': `Mozilla/5.0 (compatible; VibePeep-Intelligence/1.0; +${siteUrl()})` })
 
 async function absCsv(flow: string, key: string, params: string, attempts = 3, timeoutMs = 90_000) {
   const { res, attempts: used } = await fetchRetry(`${ABS}/ABS,${flow}/${key}?${params}`, { headers: SDMX_CSV }, attempts, timeoutMs)
