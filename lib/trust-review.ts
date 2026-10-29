@@ -24,7 +24,7 @@ async function applyOne(kind: QueueKind, id: string, action: QueueAction) {
     const claim = await prisma.eventClaim.findUnique({ where: { id }, select: { id: true, status: true, eventId: true } })
     if (!claim || claim.status !== 'PENDING') return false
     if (action === 'approve') {
-      const approved = await approveClaim(id, 'Verified by an admin')
+      const approved = await approveClaim(id, 'Accepted by an admin')
       if (!approved) return false
     } else {
       await prisma.eventClaim.update({ where: { id }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: 'Dismissed by an admin' } })

@@ -2,8 +2,8 @@
  * Event data-quality rules shared by ingestion, ranking and the UI.
  * Pure functions only, so the module is safe to import on the client.
  *
- * VibePeep Verified is defined in `outzaVerified` below. The badge is shown only
- * when that function returns ok. It is never a decoration.
+ * Listing completeness is `outzaVerified` below. It stays in the API for ranking
+ * and checks. Do not show it as a Verified badge.
  */
 import { CITIES } from '@/lib/cities'
 import { cityToday } from '@/lib/seo'
@@ -193,7 +193,7 @@ export function confidence(ev: ConfidenceInput, now = Date.now()): Confidence {
   const src = SOURCES[ev.source]
   let score = src?.trust ?? 20
   reasons.push(sourceReason(ev.source))
-  if (ev.source === 'promoter' && ev.promoterVerified) { score += 5; reasons.push('Organiser is verified') }
+  if (ev.source === 'promoter' && ev.promoterVerified) { score += 5; reasons.push('Promoter Pro is current') }
 
   const seen = ev.lastVerifiedAt ?? ev.updatedAt
   const ageH = seen ? (now - new Date(seen).getTime()) / 3600000 : Infinity
@@ -224,8 +224,8 @@ export function popularity(ev: { saves?: number; attendees?: number; views?: num
 }
 
 /**
- * VibePeep Verified standard. Every line must be true. If a check cannot be run
- * (for example open reports were not loaded), the listing is not verified.
+ * Completeness check used behind the scenes. Every line must be true. If a check
+ * cannot be run (for example open reports were not loaded), the check fails.
  *
  * 1. Not linked as a duplicate (`duplicateOfId` is empty).
  * 2. Status is SCHEDULED. Cancelled, postponed, rescheduled, and reported sold out fail.
@@ -235,7 +235,7 @@ export function popularity(ev: { saves?: number; attendees?: number; views?: num
  *    city, a price or an explicit free flag, and an http(s) organiser or ticket link.
  * 6. `source` is a known VibePeep source (organiser, official guide, or ticketing partner).
  * 7. No OPEN correction report for duplicate, wrong date, wrong venue, or cancelled.
- *    Wrong price, broken link, and "something else" do not by themselves remove the badge.
+ *    Wrong price, broken link, and "something else" do not by themselves fail the check.
  */
 export const VERIFIED_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -288,9 +288,9 @@ export function outzaVerified(ev: VerifiedInput, now = Date.now()): { ok: boolea
   if (!/^https?:\/\//i.test(link)) missing.push('No organiser or ticket link')
   if (!ev.source || !SOURCES[ev.source]) missing.push('Source is not a known VibePeep source')
   // A listing the organiser just typed has not been re-checked against a source feed.
-  if (ev.source === 'promoter') missing.push('Organiser-submitted listings are not VibePeep Verified')
+  if (ev.source === 'promoter') missing.push('Listed by the organiser, not re-checked against a source feed')
   if (!Array.isArray(ev.openReportReasons)) missing.push('Open correction reports were not checked')
-  else if (ev.openReportReasons.some((r) => (VERIFIED_BLOCKING_REPORTS as readonly string[]).includes(r))) missing.push('An open correction report is blocking verification')
+  else if (ev.openReportReasons.some((r) => (VERIFIED_BLOCKING_REPORTS as readonly string[]).includes(r))) missing.push('An open correction report is still open')
   return { ok: missing.length === 0, missing }
 }
 

@@ -31,7 +31,7 @@ export const MAX_SPAN_DAYS = 14
 export const MAX_AHEAD_DAYS = 365
 
 export const LOCAL_FLAG_LABEL: Record<string, string> = {
-  ADDRESS_UNVERIFIED: 'Address could not be verified',
+  ADDRESS_UNVERIFIED: 'Address could not be matched',
   OUTSIDE_CITY: 'Address looks outside the chosen city',
   POSSIBLE_DUPLICATE: 'Possible duplicate',
   SPAM_SIGNALS: 'Spam signals',

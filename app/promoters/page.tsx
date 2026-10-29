@@ -43,11 +43,11 @@ export default async function PromotersPage() {
 
         <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
           <h2 className="font-display text-2xl sm:text-3xl font-bold">How it works</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Claim your event, verify it’s yours, pick a package, preview it, pay, and get a performance report.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Claim your event, confirm it’s yours, pick a package, preview it, pay, and get a performance report.</p>
           <ol className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { Icon: CalendarPlus, t: 'Claim your event', b: 'Already on our board? Claim it in one click. Otherwise create it in under a minute — free.' },
-              { Icon: ShieldCheck, t: 'Verify ownership', b: 'Claims are verified instantly when your email domain matches the event’s website; otherwise our team checks them by hand before the listing is yours.' },
+              { Icon: ShieldCheck, t: 'Confirm it’s yours', b: 'A claim is accepted straight away when your email domain matches the event’s website; otherwise our team checks it by hand before the listing is yours.' },
               { Icon: Megaphone, t: 'Select a package', b: 'Boost, Spotlight or Headliner — or tap “Promote this event” right on your own listing.' },
               { Icon: Eye, t: 'Preview placement', b: 'The campaign builder shows a preview of your sponsored card and where it can appear before you pay.' },
               { Icon: CreditCard, t: 'Pay', b: 'One-off secure payment. Your campaign starts as soon as payment is confirmed.' },

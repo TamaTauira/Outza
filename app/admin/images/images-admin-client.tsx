@@ -98,7 +98,7 @@ export function ImagesAdminClient() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold">Event images</h1>
-          <p className="text-muted-foreground text-sm">Source artwork is imported at the highest available resolution, checked, upscaled only when needed and verified against the original.</p>
+          <p className="text-muted-foreground text-sm">Source artwork is imported at the highest available resolution, checked, upscaled only when needed and checked against the original.</p>
         </div>
         <div className="flex gap-2">
           <button className={btnGhost} onClick={load}>Refresh stats</button>
