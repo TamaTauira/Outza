@@ -49,15 +49,31 @@ export async function runQualityPass() {
   const rank = (r: (typeof rows)[number]) =>
     (r.promoterId || r._count.promotions ? 1000 : 0) + (SOURCES[r.source]?.trust ?? 20) + r._count.savedBy + r._count.attendees
   let merged = 0
+  const audits: { eventId: string; action: string; detail: string }[] = []
   for (const list of groups.values()) {
     const used = new Set<string>()
     const sorted = [...list].sort((a, b) => rank(b) - rank(a) || a.createdAt.getTime() - b.createdAt.getTime())
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
       used.add(primary.id)
+      const blocked = sorted.filter((o) => !used.has(o.id) && (o.promoterId || o._count.promotions) && isSameEvent(primary, o))
+      for (const other of blocked) {
+        audits.push({
+          eventId: other.id,
+          action: 'DUPLICATE_FLAGGED',
+          detail: `Likely duplicate of ${primary.id} (${primary.title}). Left in place because it is organiser-owned or promoted.`,
+        })
+      }
       const dups = sorted.filter((o) => !used.has(o.id) && !o.promoterId && !o._count.promotions && isSameEvent(primary, o))
       if (!dups.length) continue
       dups.forEach((d) => used.add(d.id))
+      for (const dup of dups) {
+        audits.push({
+          eventId: dup.id,
+          action: 'DUPLICATE_MERGED',
+          detail: `Linked as a duplicate of ${primary.id} (${primary.title}). The listing stays in the database and drops off public boards.`,
+        })
+      }
       const sources = [...new Set([...primary.sources, primary.source, ...dups.flatMap((d) => [d.source, ...d.sources])])]
       const fill: Record<string, unknown> = { sources }
       if (!primary.time) fill.time = dups.find((d) => d.time)?.time ?? null
@@ -121,7 +137,28 @@ export async function runQualityPass() {
   }
   await inBatches(placeUpdates, 20, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
 
-  const result = { backfilled: missing.length, merged, recurringSeries: recurring, places, categories }
+  const expired = await prisma.event.count({ where: { date: { lt: today }, duplicateOfId: null, status: 'SCHEDULED' } })
+  const since = new Date(Date.now() - 20 * 60 * 60 * 1000)
+  const recent = await prisma.qualityAudit.findMany({
+    where: { createdAt: { gte: since }, action: { in: ['DUPLICATE_MERGED', 'DUPLICATE_FLAGGED', 'EXPIRED_HIDDEN'] } },
+    select: { eventId: true, action: true },
+  })
+  const seen = new Set(recent.map((row) => `${row.action}:${row.eventId ?? ''}`))
+  const fresh = audits.filter((row) => !seen.has(`${row.action}:${row.eventId}`)).slice(0, 200)
+  if (!seen.has('EXPIRED_HIDDEN:')) {
+    fresh.push({
+      eventId: '',
+      action: 'EXPIRED_HIDDEN',
+      detail: `${expired} scheduled listings are before today. They stay in the database and are hidden from boards. Nothing was deleted.`,
+    })
+  }
+  if (fresh.length) {
+    await prisma.qualityAudit.createMany({
+      data: fresh.map((row) => ({ eventId: row.eventId || null, action: row.action, detail: row.detail })),
+    })
+  }
+
+  const result = { backfilled: missing.length, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired }
   console.log('[quality] pass complete', result)
   return result
 }

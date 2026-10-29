@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
@@ -11,7 +12,7 @@ import { ProfileFields } from '@/components/profile-fields'
 import { isPostcode, parseBirthDate } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
 
-type Me = { name?: string | null; email: string; role?: string; birthDate?: string | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string }
+type Me = { name?: string | null; email: string; role?: string; birthDate?: string | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
@@ -111,6 +112,11 @@ export function AccountClient() {
           {['daily', 'weekly', 'monthly'].map((f) => <button key={f} disabled={!me.emailOptIn} onClick={() => save({ emailFrequency: f })} className={cn(chip(me.emailFrequency?.toLowerCase() === f), 'disabled:opacity-40')}>{f[0].toUpperCase() + f.slice(1)}</button>)}
         </div>
         <button onClick={preview} className="mt-4 h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Show Me a Sneak Peek</button>
+        <label className="flex items-start gap-3 text-sm mt-4 cursor-pointer">
+          <input type="checkbox" checked={!!me.reminderOptIn} onChange={(e) => save({ reminderOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
+          <span>Remind me by email when a saved event is coming up. This stays off until you tick it, and it only sends when Resend is configured.</span>
+        </label>
+        <p className="mt-3 text-sm text-muted-foreground">Saves, venue follows and the calendar file live on <Link href="/watchlist" className="text-primary underline">My Outza</Link>.</p>
       </section>
 
       <section className={card}>

@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/intel",
       "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/quality",
+      "schedule": "30 17 * * *"
+    },
+    {
+      "path": "/api/cron/watchlist",
+      "schedule": "15 22 * * *"
     }
   ]
 }

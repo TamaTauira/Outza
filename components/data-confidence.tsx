@@ -12,6 +12,9 @@ export type EventQuality = {
   recurrence: string | null
   sources: string[]
   checkedAt: string
+  verified?: { ok: boolean; missing: string[] }
+  schedule?: { label: string; detail: string }
+  availability?: { label: string; note: string }
 }
 
 export const CONFIDENCE_META = {
@@ -62,8 +65,15 @@ export function DataConfidence({ quality }: { quality: EventQuality }) {
           <Repeat className="w-3.5 h-3.5" />{quality.recurrence} event
         </p>
       )}
+      {quality.verified && (
+        <p className={cn('text-sm font-semibold mb-2', quality.verified.ok ? 'text-primary' : 'text-muted-foreground')}>
+          {quality.verified.ok ? 'Outza Verified' : 'Not Outza Verified'}
+        </p>
+      )}
+      {quality.schedule && <p className="text-sm text-foreground mb-1"><span className="font-medium">{quality.schedule.label}.</span> {quality.schedule.detail}</p>}
+      {quality.availability && <p className="text-sm text-foreground mb-2"><span className="font-medium">Availability: {quality.availability.label}.</span> {quality.availability.note}</p>}
       <ul className="space-y-1 text-sm text-muted-foreground list-disc pl-5">
-        {c.reasons.map((r) => <li key={r}>{r}</li>)}
+        {(quality.verified && !quality.verified.ok ? quality.verified.missing : c.reasons).map((r) => <li key={r}>{r}</li>)}
       </ul>
       <p className="mt-3 text-xs text-muted-foreground">
         Details can change. Always confirm the date, price and availability with the ticket seller before you go.

@@ -20,6 +20,8 @@ import { ListingTrustActions } from '@/components/listing-trust-actions'
 import { ticketHref } from '@/lib/affiliate'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { FollowPromoterButton } from '@/components/follow-promoter-button'
+import { FollowListing } from '@/components/follow-listing'
+import { AddToPlanButton } from '@/components/add-to-plan'
 import { displaySuburb } from '@/lib/cities'
 import { placeLine } from '@/lib/place'
 
@@ -123,7 +125,13 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
 
               <StatusBanner status={event.quality?.status ?? null} />
               <h1 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-3">{event?.title}</h1>
+              {event.quality?.verified?.ok && (
+                <p className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-3 py-1 text-sm font-semibold" title="Recent source refresh, required details present, not a duplicate, and no open correction report for the date, venue, or cancellation.">
+                  <BadgeCheck className="w-4 h-4" />Outza Verified
+                </p>
+              )}
               <VerifiedLine event={event} />
+              <FollowListing category={event.category} venueName={event.venueName} city={event.city} />
               {event?.isMine && (
                 <Link href={`/promoter?tab=promote&event=${event.id}`} className="mb-5 inline-flex items-center gap-2 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
                   <Megaphone className="w-4 h-4" />Promote this event
@@ -141,7 +149,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <Calendar className="w-5 h-5 text-primary" />
-                    <span>{formattedDate}</span>
+                    <span>{formattedDate}{event.quality?.schedule ? ` · ${event.quality.schedule.label}` : ''}</span>
                   </div>
                   {event?.time && (
                     <div className="flex items-center gap-3 text-muted-foreground">
@@ -164,6 +172,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                       {event.quality?.price?.range ?? (event?.isFree ? 'Free' : (event?.price ?? 'See website'))}
                     </p>
                     {event.quality?.price?.fees && <p className="text-xs text-muted-foreground mt-1">{event.quality.price.fees}</p>}
+                    {event.quality?.availability && <p className="text-xs text-muted-foreground mt-2">Availability: {event.quality.availability.label}. {event.quality.availability.note}</p>}
                   </div>
 
                   {event?.ticketUrl && (
@@ -178,6 +187,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                     </a>
                   )}
                   <ItineraryButton event={event} />
+                  <AddToPlanButton eventId={event.id} city={event.city} />
                   <button
                     onClick={() => toggle(event)}
                     className={cn('flex items-center justify-center gap-2 w-full py-3 rounded-lg border font-semibold transition-colors', isSaved(event.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}

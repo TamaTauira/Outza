@@ -40,6 +40,13 @@ export async function register() {
         const { runDueDigests } = await import('@/lib/digest')
         const { checked, sent } = await runDueDigests()
         if (sent) console.log(`[Digest] Sent ${sent} of ${checked} opted-in users`)
+        try {
+          const { runWatchMail } = await import('@/lib/watch-mail')
+          const watch = await runWatchMail()
+          if (watch.digests.sent || watch.reminders.sent) console.log('[Watchlist]', watch)
+        } catch (err: any) {
+          console.error('[Watchlist] failed:', err?.message)
+        }
       } catch (err: any) {
         console.error('[Digest] failed:', err?.message)
       }

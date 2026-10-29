@@ -5,7 +5,7 @@ import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { isPastEvent } from '@/lib/seo'
-import { activityTitle, confidence, priceSummary, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, type Recurrence } from '@/lib/quality'
+import { activityTitle, availabilityLine, confidence, outzaVerified, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, VERIFIED_BLOCKING_REPORTS, type Recurrence } from '@/lib/quality'
 
 /**
  * Full event detail payload shared by the event page (server-rendered) and GET /api/events/[id].
@@ -60,6 +60,10 @@ export async function getEventDetail(id: string, opts: { countView?: boolean } =
 
   const { _count, promoter, views: _v, ticketClicks: _c, ...rest } = event
   const promoterVerified = !!promoter?.proUntil && promoter.proUntil > new Date()
+  const openReports = await prisma.eventReport.findMany({
+    where: { eventId: event.id, status: 'OPEN', reason: { in: [...VERIFIED_BLOCKING_REPORTS] } },
+    select: { reason: true },
+  })
   const quality = {
     confidence: confidence({ ...event, promoterVerified }),
     status: statusInfo(event.status, event.statusSource),
@@ -67,6 +71,9 @@ export async function getEventDetail(id: string, opts: { countView?: boolean } =
     recurrence: event.recurrence ? RECURRENCE_LABEL[event.recurrence as Recurrence] ?? null : null,
     sources: [...new Set([event.source, ...(event.sources ?? [])])].map(sourceLabel),
     checkedAt: (event.lastVerifiedAt ?? event.updatedAt).toISOString(),
+    verified: outzaVerified({ ...event, openReportReasons: openReports.map((r) => r.reason) }),
+    schedule: scheduleCue(event),
+    availability: availabilityLine(event.status, event.statusSource),
   }
   return {
     event: {

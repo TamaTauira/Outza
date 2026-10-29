@@ -100,6 +100,9 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
           <span>Outza is an independent listings guide — information only, no warranties.</span>
           <span className="flex gap-4">
+            <Link href="/outings" className="hover:text-foreground underline underline-offset-2">Day and night plans</Link>
+            <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>
+            <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My Outza</Link>
             <Link href="/how-listings-work" className="hover:text-foreground underline underline-offset-2">How listings work</Link>
             <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">Privacy</Link>
             <Link href="/disclaimer" className="hover:text-foreground underline underline-offset-2">Disclaimer</Link>

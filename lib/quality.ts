@@ -1,7 +1,12 @@
 /**
  * Event data-quality rules shared by ingestion, ranking and the UI.
  * Pure functions only, so the module is safe to import on the client.
+ *
+ * Outza Verified is defined in `outzaVerified` below. The badge is shown only
+ * when that function returns ok. It is never a decoration.
  */
+import { CITIES } from '@/lib/cities'
+import { cityToday } from '@/lib/seo'
 import { readPrice } from '@/lib/price'
 
 export type EventStatus = 'SCHEDULED' | 'CANCELLED' | 'POSTPONED' | 'RESCHEDULED' | 'SOLD_OUT'
@@ -214,6 +219,94 @@ export function confidence(ev: ConfidenceInput, now = Date.now()): Confidence {
 export function popularity(ev: { saves?: number; attendees?: number; views?: number; ticketClicks?: number; sources?: string[] | null; imageUrl?: string | null }) {
   return (ev.saves ?? 0) * 3 + (ev.attendees ?? 0) * 3 + Math.min(ev.ticketClicks ?? 0, 100) / 5 + Math.min(ev.views ?? 0, 200) / 20 +
     Math.max(0, (ev.sources?.length ?? 1) - 1) + (ev.imageUrl ? 1 : 0)
+}
+
+/**
+ * Outza Verified standard. Every line must be true. If a check cannot be run
+ * (for example open reports were not loaded), the listing is not verified.
+ *
+ * 1. Not linked as a duplicate (`duplicateOfId` is empty).
+ * 2. Status is SCHEDULED. Cancelled, postponed, rescheduled, and reported sold out fail.
+ * 3. The last day (end date, else start date) is still today or later in the event's city.
+ * 4. `lastVerifiedAt` is within the last 7 days. Ingest refreshes and organiser edits set this.
+ * 5. Required fields: title, date, a start time, a specific venue name (not the city or "TBA"),
+ *    city, a price or an explicit free flag, and an http(s) organiser or ticket link.
+ * 6. `source` is a known Outza source (organiser, official guide, or ticketing partner).
+ * 7. No OPEN correction report for duplicate, wrong date, wrong venue, or cancelled.
+ *    Wrong price, broken link, and "something else" do not by themselves remove the badge.
+ */
+export const VERIFIED_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+export const VERIFIED_BLOCKING_REPORTS = ['DUPLICATE', 'WRONG_DATE', 'WRONG_VENUE', 'CANCELLED'] as const
+
+const GENERIC_VENUE = /^(tba|tbc|venue tba|online|virtual|various|multiple venues|cbd|city|australia)$/i
+
+export type VerifiedInput = {
+  title?: string | null
+  date?: Date | string | null
+  endDate?: Date | string | null
+  time?: string | null
+  venueName?: string | null
+  city?: string | null
+  isFree?: boolean
+  price?: string | null
+  priceMin?: number | null
+  ticketUrl?: string | null
+  organiserUrl?: string | null
+  source?: string | null
+  status?: string | null
+  duplicateOfId?: string | null
+  lastVerifiedAt?: Date | string | null
+  /** Pass an array (possibly empty). Omit it and the listing stays unverified. */
+  openReportReasons?: string[] | null
+}
+
+export function outzaVerified(ev: VerifiedInput, now = Date.now()): { ok: boolean; missing: string[] } {
+  const missing: string[] = []
+  if (ev.duplicateOfId) missing.push('Marked as a duplicate of another listing')
+  if ((ev.status ?? 'SCHEDULED') !== 'SCHEDULED') missing.push('Status is not scheduled')
+  const last = ev.endDate ?? ev.date
+  if (!ev.date || !last) missing.push('No date')
+  else {
+    const key = (typeof last === 'string' ? last : last.toISOString()).slice(0, 10)
+    const city = CITIES.find((c) => c.name === ev.city) ?? CITIES[0]
+    if (key < cityToday(city, new Date(now))) missing.push('Listing is before today in its city')
+  }
+  const seen = ev.lastVerifiedAt ? new Date(ev.lastVerifiedAt).getTime() : NaN
+  if (!Number.isFinite(seen) || now - seen > VERIFIED_MAX_AGE_MS) missing.push('Not re-confirmed in the last 7 days')
+  if (!ev.title?.trim()) missing.push('Title is missing')
+  if (!ev.time || !/^\d{1,2}:\d{2}/.test(ev.time)) missing.push('Start time is missing')
+  const venue = (ev.venueName ?? '').trim()
+  const genericVenue = !venue || GENERIC_VENUE.test(venue) || (!!ev.city && venue.toLowerCase() === ev.city.trim().toLowerCase())
+  if (genericVenue) missing.push('Venue name is missing or too vague')
+  if (!ev.city?.trim()) missing.push('City is missing')
+  const priced = ev.isFree === true || (typeof ev.priceMin === 'number' && ev.priceMin >= 0) || !!(ev.price && ev.price.trim())
+  if (!priced) missing.push('Price is not listed and the event is not marked free')
+  const link = ev.organiserUrl || ev.ticketUrl || ''
+  if (!/^https?:\/\//i.test(link)) missing.push('No organiser or ticket link')
+  if (!ev.source || !SOURCES[ev.source]) missing.push('Source is not a known Outza source')
+  if (!Array.isArray(ev.openReportReasons)) missing.push('Open correction reports were not checked')
+  else if (ev.openReportReasons.some((r) => (VERIFIED_BLOCKING_REPORTS as readonly string[]).includes(r))) missing.push('An open correction report is blocking verification')
+  return { ok: missing.length === 0, missing }
+}
+
+/** What we can honestly say about the schedule. Missing times stay missing. */
+export function scheduleCue(ev: { time?: string | null; endTime?: string | null }): { label: string; detail: string } {
+  const start = ev.time && /^\d{1,2}:\d{2}/.test(ev.time)
+  const end = ev.endTime && /^\d{1,2}:\d{2}/.test(ev.endTime)
+  if (start && end) return { label: 'Start and finish listed', detail: `${ev.time} – ${ev.endTime}. Confirm with the organiser if the time looks off.` }
+  if (start) return { label: 'Start time listed', detail: `${ev.time}. A finish time was not on the source listing.` }
+  return { label: 'Start time not listed', detail: 'The source did not include a start time. Check the organiser before you go.' }
+}
+
+/**
+ * Availability is never presented as a live ticket count.
+ * A reported status is attributed. Otherwise we say it is not confirmed live.
+ */
+export function availabilityLine(status?: string | null, statusSource?: string | null): { label: string; note: string } {
+  const reported = statusInfo(status, statusSource)
+  if (reported) return { label: reported.label, note: reported.note }
+  return { label: 'Not confirmed live', note: 'Outza does not show live ticket availability. Check the organiser or ticket seller before you go.' }
 }
 
 /** Short, honest status wording. Availability is always attributed and never presented as live. */

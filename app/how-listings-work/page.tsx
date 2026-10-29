@@ -20,6 +20,10 @@ const SECTIONS: { title: string; body: string[] }[] = [
     'Ticket status (for example sold out) is shown only when the source reports it, with the source named. It is not live availability; always check with the ticket seller.',
     'Cancelled, postponed and rescheduled events are flagged when the source reports it. Past and cancelled events are removed from city guides and from search-engine sitemaps.',
   ] },
+  { title: 'Outza Verified', body: [
+    'The Outza Verified badge is not decoration. A listing gets it only when all of these are true: it is not marked as a duplicate; its status is still scheduled (not cancelled, postponed, rescheduled, or reported sold out); it has not passed in its own city; we re-confirmed it in the last 7 days; it has a title, date, start time, a specific venue, a city, a price or a free flag, and a link to the organiser or ticket page; the source is one we already ingest; and there is no open correction report for a duplicate, a wrong date, a wrong venue, or a cancellation.',
+    'If any of those checks cannot be run, the badge stays off. Availability is still not live: the page says when a source reported a status, and otherwise says availability is not confirmed live.',
+  ] },
   { title: 'Duplicates', body: [
     'The same event often appears on several ticketing sites. We merge these into one listing and keep every source attached, so you can still see where the information came from.',
   ] },

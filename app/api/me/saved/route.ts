@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { sydneyToday } from '@/lib/event-store'
 import { isPastEvent } from '@/lib/seo'
+import { verifiedFlags } from '@/lib/listing-trust'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,12 +19,22 @@ async function list(userId: string) {
       event: {
         select: {
           id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true,
-          venueName: true, suburb: true, city: true, category: true, subTags: true, isLGBTI: true, isFree: true, price: true, ticketUrl: true,
+          venueName: true, suburb: true, city: true, category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true,
+          ticketUrl: true, organiserUrl: true, source: true, status: true, statusSource: true, lastVerifiedAt: true, duplicateOfId: true,
         },
       },
     },
   })
-  return NextResponse.json({ events: rows.filter((r) => !isPastEvent(r.event)).map((r) => ({ ...r.event, description: r.event.description?.slice(0, 400) ?? null })) })
+  const upcoming = rows.filter((r) => !isPastEvent(r.event)).map((r) => r.event)
+  const flags = await verifiedFlags(upcoming)
+  return NextResponse.json({
+    events: upcoming.map((event) => ({
+      ...event,
+      description: event.description?.slice(0, 400) ?? null,
+      lastVerifiedAt: event.lastVerifiedAt?.toISOString() ?? null,
+      verified: flags.get(event.id) ?? false,
+    })),
+  })
 }
 
 export async function GET() {

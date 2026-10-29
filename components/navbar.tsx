@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store } from 'lucide-react'
+import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store, Users, Sparkles } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useSession, signOut } from 'next-auth/react'
@@ -104,6 +104,9 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <DropdownMenuLabel className="truncate">{user.name || user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/itinerary"><CalendarRange className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/watchlist"><Bookmark className="w-4 h-4 mr-2" />My Outza</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Outza Together</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/outings"><Sparkles className="w-4 h-4 mr-2" />Day and night plans</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />My account & emails</Link></DropdownMenuItem>
                 {isPromoter
                   ? <DropdownMenuItem asChild><Link href="/promoter"><Megaphone className="w-4 h-4 mr-2" />Promoter dashboard</Link></DropdownMenuItem>
