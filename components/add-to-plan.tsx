@@ -58,7 +58,7 @@ export function AddToPlanButton({ eventId, city, className }: { eventId: string;
 
   return (
     <div className={className}>
-      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-border font-semibold hover:bg-muted">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center justify-center gap-2 w-full h-10 rounded-lg border border-border text-sm font-semibold hover:bg-muted">
         <Users className="w-4 h-4" />{open ? 'Close Plan' : 'Add to a Plan'}
       </button>
       {open && (
