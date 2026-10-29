@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CalendarDays, ChevronDown, Loader2, MapPin, Sparkles, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, CalendarRange, ChevronDown, Loader2, MapPin, Sparkles, X } from 'lucide-react'
 import { categoryIcon, dayLabel, formatTime } from '@/lib/board'
 import { CATEGORIES } from '@/lib/categories'
+import { matchPlanPick, PLAN_PICKS, type PlanPick, type PlanView } from '@/lib/plan-picks'
 import { eventPath } from '@/lib/seo'
 import { cn } from '@/lib/utils'
+import { OutingItinerary } from '@/components/outing-itinerary'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 
 export interface AiSearchFilters {
@@ -63,20 +65,29 @@ const pickClass = (on: boolean) => cn(
 )
 
 /** Hero search: plain-English request → AI-parsed filters → real listings only.
- *  Suggested prompts and quick picks open inside the white bar, not as rows under it. */
+ *  Ask suggestions stay inside the bar. Plan mode keeps day-plan chips in the bar too. */
 export function AiSearchBar({ city, today, onShowAll }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void }) {
+  const [mode, setMode] = useState<'ask' | 'plan'>('ask')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState<AiResponse | null>(null)
   const [hints, setHints] = useState<Hints>(NO_HINTS)
   const [open, setOpen] = useState(false)
+  const [planBusy, setPlanBusy] = useState(false)
+  const [planError, setPlanError] = useState('')
+  const [plan, setPlan] = useState<PlanView | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const skipOpen = useRef(false)
   const reqId = useRef(0)
+  const planReq = useRef(0)
+  const loadedSlug = useRef<string | null>(null)
   const hasHints = pickedHints(hints)
+  const planning = mode === 'plan'
+  const working = planning ? planBusy : busy
+  const activeSlug = matchPlanPick(q)?.slug ?? ''
 
   const search = async (query: string, h: Hints = hints, closeOnSend = false, coords?: { lat: number; lng: number }) => {
     const text = query.trim()
@@ -118,17 +129,100 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
     } finally { if (id === reqId.current) setBusy(false) }
   }
 
+  const loadPlan = async (pick: PlanPick) => {
+    const id = ++planReq.current
+    loadedSlug.current = pick.slug
+    setPlanBusy(true)
+    setPlanError('')
+    setError('')
+    setData(null)
+    try {
+      const params = new URLSearchParams({ slug: pick.slug, city: city || 'Sydney' })
+      const res = await fetch(`/api/outings?${params}`)
+      const body = await res.json().catch(() => ({}))
+      if (id !== planReq.current) return
+      if (!res.ok || !body?.plan) {
+        setPlan(null)
+        setPlanError(typeof body?.error === 'string' ? body.error : 'The planner is having a moment. Try again.')
+        return
+      }
+      setPlan(body.plan as PlanView)
+    } catch (err) {
+      console.error(err)
+      if (id !== planReq.current) return
+      setPlan(null)
+      setPlanError('The planner is having a moment. Try again.')
+    } finally {
+      if (id === planReq.current) setPlanBusy(false)
+    }
+  }
+
+  const submitPlan = () => {
+    const pick = matchPlanPick(q)
+    if (!pick) {
+      setPlan(null)
+      loadedSlug.current = null
+      setPlanError(q.trim()
+        ? 'I stitch three kinds of day: date night, family Sunday, or a free afternoon.'
+        : 'Tap a chip, or name the day: date night, family Sunday, free afternoon.')
+      return
+    }
+    setQ(pick.fill)
+    void loadPlan(pick)
+  }
+
+  const chooseMode = (next: 'ask' | 'plan') => {
+    setMode(next)
+    setError('')
+    setPlanError('')
+    if (next === 'plan') {
+      setOpen(false)
+      reqId.current += 1
+      setBusy(false)
+    } else {
+      planReq.current += 1
+      setPlanBusy(false)
+    }
+  }
+
+  const runPick = (pick: PlanPick) => {
+    setQ(pick.fill)
+    setPlanError('')
+    void loadPlan(pick)
+  }
+
+  const clearBar = () => {
+    setQ('')
+    setData(null)
+    setError('')
+    setPlan(null)
+    setPlanError('')
+    loadedSlug.current = null
+    planReq.current += 1
+    setPlanBusy(false)
+    inputRef.current?.focus()
+  }
+
   // Quick picks refine the search live. Query text waits for Ask VibePeep, so it is not a dependency.
   const hintsKey = JSON.stringify(hints)
   const firstRun = useRef(true)
   useEffect(() => {
     if (firstRun.current) { firstRun.current = false; return }
+    if (planning) return
     if (!hasHints && !data) return
     if (!hasHints && q.trim().length < 2) return
     const t = setTimeout(() => search(q, hints), 450)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-search only when picks or city change
   }, [hintsKey, city])
+
+  // A plan already on screen follows the city select.
+  useEffect(() => {
+    if (!planning || !loadedSlug.current) return
+    const pick = PLAN_PICKS.find((item) => item.slug === loadedSlug.current)
+    if (pick) void loadPlan(pick)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the city changes
+  }, [city])
 
   useEffect(() => {
     if (!open) return
@@ -165,6 +259,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
   }, [open])
 
   const reveal = () => {
+    if (planning) return
     if (skipOpen.current) { skipOpen.current = false; return }
     setOpen(true)
   }
@@ -197,38 +292,97 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
   return (
     <div className="flex-1 min-w-0">
       <div ref={rootRef} className="rounded-xl bg-white text-neutral-900 ring-2 ring-primary/50 focus-within:ring-primary shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] overflow-hidden">
-        <form role="search" onSubmit={(e) => { e.preventDefault(); void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
-          <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />
-          <label htmlFor="ai-search" className="sr-only">Tell us your vibe</label>
+        <div role="radiogroup" aria-label="Ask VibePeep or plan a day or night" className="grid grid-cols-2 gap-1 p-1.5 pb-0">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!planning}
+            onClick={() => chooseMode('ask')}
+            className={cn('h-9 rounded-lg px-2 text-xs sm:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70', !planning ? 'bg-neutral-100 text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900')}
+          >
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" aria-hidden />
+              Ask<span className="hidden sm:inline"> VibePeep</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={planning}
+            onClick={() => chooseMode('plan')}
+            className={cn('h-9 rounded-lg px-2 text-xs sm:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70', planning ? 'bg-neutral-100 text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900')}
+          >
+            <span className={cn('inline-flex items-center justify-center gap-1.5', planning && 'underline decoration-2 underline-offset-4 decoration-[#FF4E6A]')}>
+              <CalendarRange className="w-3.5 h-3.5 shrink-0 text-primary" aria-hidden />
+              <span className="sm:hidden">Plan</span>
+              <span className="hidden sm:inline">Plan a day or night</span>
+            </span>
+          </button>
+        </div>
+        <form role="search" onSubmit={(e) => { e.preventDefault(); if (planning) submitPlan(); else void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
+          {planning ? <CalendarRange className="w-5 h-5 text-primary shrink-0" aria-hidden /> : <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />}
+          <label htmlFor="ai-search" className="sr-only">{planning ? 'Plan a day or night' : 'Tell us your vibe'}</label>
           <input
             id="ai-search" ref={inputRef} type="text" value={q} maxLength={200} autoComplete="off" enterKeyHint="search"
             aria-describedby="ai-search-help"
             onFocus={reveal}
             onClick={reveal}
-            onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); focusPanel() } }}
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowDown') return
+              e.preventDefault()
+              if (planning) document.getElementById('plan-picks')?.querySelector<HTMLElement>('button')?.focus()
+              else focusPanel()
+            }}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Tell us your vibe, e.g. ‘cheap jazz Friday night’"
+            placeholder={planning ? 'Name the day, e.g. Saturday date night' : 'Tell us your vibe, e.g. ‘cheap jazz Friday night’'}
             className="flex-1 min-w-0 bg-transparent text-base sm:text-lg text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
-          <p id="ai-search-help" className="sr-only">Type a vibe, or open ideas and filters for times, budget, suburb and suggestions.</p>
-          {q && !busy && (
-            <button type="button" aria-label="Clear search" onClick={() => { setQ(''); setData(null); setError(''); inputRef.current?.focus() }} className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"><X className="w-4 h-4" /></button>
+          <p id="ai-search-help" className="sr-only">{planning ? 'Choose a plan chip, or type date night, family Sunday, or free afternoon. Planning fills this bar and lines up real stops.' : 'Type a vibe, or open ideas and filters for times, budget, suburb and suggestions.'}</p>
+          {(q || (planning && plan)) && !working && (
+            <button type="button" aria-label="Clear search" onClick={clearBar} className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"><X className="w-4 h-4" /></button>
           )}
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={open ? 'ai-search-panel' : undefined}
-            aria-label={open ? 'Hide ideas and filters' : hasHints ? `Show ideas and filters, ${summary} selected` : 'Show ideas and filters'}
-            onClick={() => setOpen((v) => !v)}
-            className="hidden sm:grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-          >
-            <ChevronDown className={cn('w-4 h-4 transition-transform duration-150', open && 'rotate-180')} />
-          </button>
-          <button type="submit" disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 sm:px-5 h-11 text-sm sm:text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}<span className="hidden sm:inline">Ask VibePeep</span><span className="sm:hidden">Go</span>
+          {!planning && (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls={open ? 'ai-search-panel' : undefined}
+              aria-label={open ? 'Hide ideas and filters' : hasHints ? `Show ideas and filters, ${summary} selected` : 'Show ideas and filters'}
+              onClick={() => setOpen((v) => !v)}
+              className="hidden sm:grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            >
+              <ChevronDown className={cn('w-4 h-4 transition-transform duration-150', open && 'rotate-180')} />
+            </button>
+          )}
+          <button type="submit" disabled={working} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 sm:px-5 h-11 text-sm sm:text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30">
+            {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+            {planning ? <><span className="hidden sm:inline">Plan it</span><span className="sm:hidden">Go</span></> : <><span className="hidden sm:inline">Ask VibePeep</span><span className="sm:hidden">Go</span></>}
           </button>
         </form>
 
-        {open && (
+        {planning && (
+          <div className="border-t border-neutral-200 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 sm:sr-only">Plan a day or night</p>
+            <div id="plan-picks" className="mt-2 flex min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] sm:mt-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Ready-made plans">
+              {PLAN_PICKS.map((pick) => (
+                <button
+                  key={pick.slug}
+                  type="button"
+                  aria-pressed={activeSlug === pick.slug}
+                  disabled={planBusy}
+                  onClick={() => runPick(pick)}
+                  className={cn(
+                    'h-8 shrink-0 rounded-full px-3 text-sm ring-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:opacity-60',
+                    activeSlug === pick.slug ? 'bg-primary font-semibold text-primary-foreground ring-primary' : 'bg-neutral-100 text-neutral-800 ring-neutral-200 hover:bg-neutral-200',
+                  )}
+                >
+                  {pick.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-snug text-neutral-500">Tap one. I’ll fill the bar and line up real stops, with time to hop between them.</p>
+          </div>
+        )}
+
+        {!planning && open && (
           <div
             id="ai-search-panel"
             ref={panelRef}
@@ -294,7 +448,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
           </div>
         )}
 
-        {!open && hasHints && (
+        {!planning && !open && hasHints && (
           <div className="flex items-center gap-3 border-t border-neutral-200 px-4 py-2">
             <button type="button" onClick={() => setOpen(true)} title={summary} className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm text-neutral-700 hover:text-neutral-900 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
@@ -305,16 +459,48 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
         )}
       </div>
 
-      {!open && errorEl}
+      {!planning && !open && errorEl}
 
-      {busy && !data && (
+      {planning && planError && <p role="alert" className="mt-3 text-sm text-[#ffb4a6]">{planError}</p>}
+
+      {planning && planBusy && !plan && (
+        <div className="mt-4 flex items-center gap-3" aria-live="polite">
+          <VibePeepMascot onDark className="w-14 shrink-0" alt="" />
+          <p className="text-sm text-white/80">Stitching the stops together…</p>
+        </div>
+      )}
+
+      {planning && plan && (
+        <div className="mt-4 rounded-xl bg-white/[0.04] p-4 ring-1 ring-white/10" aria-live="polite">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#ffb4a6]">Your plan</p>
+          <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
+            <h2 className="font-display text-xl font-bold leading-tight">{plan.title}</h2>
+            <Link href={plan.href} className="inline-flex items-center gap-1 text-sm font-semibold text-[#ffb4a6] underline underline-offset-2">Open the full plan<ArrowRight className="w-3.5 h-3.5" /></Link>
+          </div>
+          <p className="mt-1 text-sm text-white/70">{plan.city}{plan.date ? ` · ${dayLabel(plan.date, today)}` : ''}</p>
+          <p className="mt-2 text-sm text-white/80">{plan.blurb}</p>
+          {plan.stops.length ? (
+            <div className="mt-3">
+              <OutingItinerary stops={plan.stops} legs={plan.legs} tone="hero" today={today} />
+              {plan.legs.length > 0 && <p className="mt-3 text-xs text-white/55">Travel times are a rough hop from the distance between stops. Not a timetable, and not the traffic.</p>}
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center gap-3">
+              <VibePeepMascot onDark className="w-16 shrink-0" alt="" />
+              <p className="text-sm text-white/80">The board’s quiet for that one{plan.city ? ` in ${plan.city}` : ''}. Try another city, or ask me for a single thing to do.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!planning && busy && !data && (
         <div className="mt-4 flex items-center gap-3" aria-live="polite">
           <VibePeepMascot onDark className="w-14 shrink-0" alt="" />
           <p className="text-sm text-white/80">Having a peep…</p>
         </div>
       )}
 
-      {data && (
+      {!planning && data && (
         <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
             <span className="text-white/60">{data.ai ? 'VibePeep AI understood:' : 'Searching for:'}</span>

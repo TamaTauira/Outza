@@ -120,7 +120,7 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 - Navbar (`components/navbar.tsx`): tabs Board · Map · Local · Saved · Itinerary (Links with aria-current). Guest Sign In / Sign Up / For promoters links hide on small screens.
 
 ### 4.4 Ask VibePeep AI search
-`components/ai-search-bar.tsx` → `POST /api/ai-search`. The LLM only converts text into filters; results are always real database listings. Relative dates are resolved in code. Quick-pick chips (When / Budget / Vibe / Suburb / Clear Picks) are sent as `hints` and override the parsed text. Keep the city select and the disclaimer under it. (This replaced a removed "Your next great night out" card. **Don't re-add that card.**)
+`components/ai-search-bar.tsx` → `POST /api/ai-search`. The LLM only converts text into filters; results are always real database listings. Relative dates are resolved in code. Quick-pick chips (When / Budget / Vibe / Suburb / Clear Picks) are sent as `hints` and override the parsed text. The bar has an Ask / Plan toggle. Plan chips (Saturday date night, Family Sunday, Free afternoon) fill the bar and call `GET /api/outings`. Keep the city select beside the bar. Do not put the “Event details may change…” line back on the homepage; it belongs on the event page, next to price and tickets. (This replaced a removed "Your next great night out" card. **Don't re-add that card.**)
 
 ### 4.5 Event detail (`app/events/[id]`)
 - `lib/event-detail.ts` `getEventDetail` returns null for past events (→ 404). Canonical URL `eventPath()` = `/events/<slug>-<id>`.
