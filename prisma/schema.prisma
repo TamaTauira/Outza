@@ -743,17 +743,29 @@ model TogetherPlan {
   @@index([creatorGuest])
 }
 
+/// A shortlisted option. eventId is a public listing. When eventId is null the row is a private stop that never appears on boards or in search.
 model TogetherItem {
-  id        String   @id @default(cuid())
-  planId    String
-  eventId   String
-  createdAt DateTime @default(now())
-  plan      TogetherPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  event     Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  votes     TogetherVote[]
+  id            String    @id @default(cuid())
+  planId        String
+  eventId       String?
+  title         String?
+  address       String?
+  note          String?
+  startTime     String?
+  endTime       String?
+  stopDate      DateTime?
+  latitude      Float?
+  longitude     Float?
+  addedById     String?
+  addedByGuest  String?
+  createdAt     DateTime  @default(now())
+  plan          TogetherPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  event         Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  votes         TogetherVote[]
 
   @@unique([planId, eventId])
   @@index([eventId])
+  @@index([addedById])
 }
 
 /// One row per person on a plan. Signed-in users use userId; guests use a cookie key. Display name is not an account.
