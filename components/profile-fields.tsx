@@ -18,7 +18,7 @@ export function ProfileFields({ birthDate, homePostcode, onBirthDate, onPostcode
         </div>
         <div className="space-y-1.5 min-w-0">
           <Label htmlFor={`${idPrefix}-pc`}>Postcode <span className="text-muted-foreground font-normal">(optional)</span></Label>
-          <Input id={`${idPrefix}-pc`} inputMode="numeric" autoComplete="postal-code" maxLength={4} pattern="\d{4}" placeholder="2010" value={homePostcode}
+          <Input id={`${idPrefix}-pc`} inputMode="numeric" autoComplete="off" maxLength={4} pattern="\d{4}" placeholder="4 digits" value={homePostcode}
             onChange={(e) => onPostcode(e.target.value.replace(/\D/g, '').slice(0, 4))} className="h-11 w-full min-w-0" />
         </div>
       </div>

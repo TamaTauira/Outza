@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
@@ -43,7 +43,15 @@ export function AccountClient() {
   }
   const [dob, setDob] = useState('')
   const [pc, setPc] = useState('')
-  useEffect(() => { if (me) { setDob(me.birthDate ?? ''); setPc(me.homePostcode ?? '') } }, [me?.birthDate, me?.homePostcode]) // eslint-disable-line react-hooks/exhaustive-deps
+  const loadedAbout = useRef({ dob: '', pc: '' })
+  useEffect(() => {
+    if (!me) return
+    const nextDob = (me.birthDate ?? '').slice(0, 10)
+    const nextPc = me.homePostcode ?? ''
+    setDob((cur) => (cur === loadedAbout.current.dob ? nextDob : cur))
+    setPc((cur) => (cur === loadedAbout.current.pc ? nextPc : cur))
+    loadedAbout.current = { dob: nextDob, pc: nextPc }
+  }, [me])
   const saveAbout = async () => {
     const p = parseBirthDate(dob)
     if (p.error) { toast.error(p.error); return }
@@ -53,7 +61,12 @@ export function AccountClient() {
       const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ birthDate: dob, homePostcode: pc }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Could not save')
-      setMe((m) => (m ? { ...m, birthDate: d.user?.birthDate ?? dob, homePostcode: d.user?.homePostcode ?? null } : m))
+      const savedDob = (d.user?.birthDate ?? dob).slice(0, 10)
+      const savedPc = d.user?.homePostcode ?? ''
+      loadedAbout.current = { dob: savedDob, pc: savedPc }
+      setDob(savedDob)
+      setPc(savedPc)
+      setMe((m) => (m ? { ...m, birthDate: savedDob, homePostcode: savedPc || null } : m))
       toast.success('Details saved')
     } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Could not save') } finally { setSaving(false) }
   }
@@ -84,7 +97,7 @@ export function AccountClient() {
         <h2 className="font-semibold mb-1">About you</h2>
         <p className="text-xs text-muted-foreground mb-3">{me.role === 'CONSUMER' ? 'Date of birth is required for event-goer accounts. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
         <ProfileFields idPrefix="acct" birthDate={dob} homePostcode={pc} onBirthDate={setDob} onPostcode={setPc} showNote={false} />
-        <button onClick={saveAbout} disabled={saving || (dob === (me.birthDate ?? '') && pc === (me.homePostcode ?? ''))} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save Details</button>
+        <button onClick={saveAbout} disabled={saving || (dob.slice(0, 10) === (me.birthDate ?? '').slice(0, 10) && pc.trim() === (me.homePostcode ?? ''))} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save Details</button>
       </section>
 
       <VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} />

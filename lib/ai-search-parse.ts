@@ -26,6 +26,8 @@ export interface AiFilters {
   soon: boolean
   /** City named in the query. Empty when the query did not name one (the page city still applies). */
   city: string
+  /** "near me" / "nearby" — needs the browser's location, not the board city. */
+  nearMe: boolean
 }
 
 const GENERIC = new Set(['live', 'music', 'live music', 'event', 'events', 'things', 'fun', 'stuff', 'show', 'shows', 'activities'])
@@ -260,6 +262,7 @@ export function normalise(raw: any, today: string, explicitDates = false): AiFil
     keywords,
     soon: false,
     city,
+    nearMe: false,
   }
 }
 
@@ -296,5 +299,16 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
     merged = ai ? { ...fb, ...ai, city: fb.city || ai.city, category: ai.category || fb.category, timeOfDay: fb.timeOfDay || ai.timeOfDay } : fb
   }
   if (/\b(live music|gigs?|concerts?)\b/i.test(q)) merged = { ...merged, category: 'Music' }
-  return normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
+  const out = normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
+  out.nearMe = /\b(near me|nearby|around me)\b/i.test(q)
+  return out
+}
+
+/**
+ * Dropping the person's own words is only safe when they also asked for a real filter
+ * (a category, a price, a time of day). Gibberish with no other signal stays an empty result.
+ */
+export function keywordRelaxAllowed(f: Pick<AiFilters, 'keywords' | 'category' | 'suburb' | 'isFree' | 'lgbtiq' | 'timeOfDay' | 'soon' | 'nearMe'>): boolean {
+  if (!f.keywords.length || f.nearMe) return false
+  return !!(f.category || f.suburb || f.isFree || f.lgbtiq || f.timeOfDay !== 'any' || f.soon)
 }

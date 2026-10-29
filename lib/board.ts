@@ -29,6 +29,19 @@ export function sydneyNow(): SydneyNow {
   }
 }
 
+/**
+ * Dates the board should load. A from/to range wins over the selected day,
+ * so a November range is not still a single day, and search uses the same span.
+ */
+export function listSpan(day: string | null, dateFrom: string, dateTo: string): { from: string; to: string; spanning: boolean } | null {
+  const fromRaw = dateFrom || day || dateTo
+  const toRaw = dateTo || day || dateFrom
+  if (!fromRaw || !toRaw) return null
+  const from = fromRaw <= toRaw ? fromRaw : toRaw
+  const to = fromRaw <= toRaw ? toRaw : fromRaw
+  return { from, to, spanning: from !== to }
+}
+
 export function addDays(key: string, n: number): string {
   const d = new Date(`${key}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + n)

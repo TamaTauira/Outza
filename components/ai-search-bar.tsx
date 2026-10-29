@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
-  lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; keywords: string[]; soon: boolean; city?: string
+  lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
 }
 type When = '' | 'soon' | 'tonight' | 'weekend'
 type Budget = '' | 'free' | '30' | '75'
@@ -77,7 +77,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
   const reqId = useRef(0)
   const hasHints = pickedHints(hints)
 
-  const search = async (query: string, h: Hints = hints, closeOnSend = false) => {
+  const search = async (query: string, h: Hints = hints, closeOnSend = false, coords?: { lat: number; lng: number }) => {
     const text = query.trim()
     const picked = pickedHints(h)
     if (text.length < 2 && !picked) {
@@ -90,10 +90,27 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
     const id = ++reqId.current
     setQ(text); setBusy(true); setError('')
     try {
-      const res = await fetch('/api/ai-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: text.length >= 2 ? text : '', city, hints: h }) })
+      const res = await fetch('/api/ai-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: text.length >= 2 ? text : '', city, hints: h, ...(coords ?? {}) }) })
       if (id !== reqId.current) return
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { setError(d?.error ?? 'Search is unavailable right now.'); setData(null); return }
+      if (d?.needsLocation && !coords) {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+          setError('Allow location for “near me”, or name a city or suburb. We won’t guess from the board city.')
+          setData({ ...d, results: [], total: 0, needsLocation: false })
+          return
+        }
+        navigator.geolocation.getCurrentPosition(
+          (pos) => { if (id === reqId.current) void search(text, h, false, { lat: pos.coords.latitude, lng: pos.coords.longitude }) },
+          () => {
+            if (id !== reqId.current) return
+            setError('Allow location for “near me”, or name a city or suburb. We won’t guess from the board city.')
+            setData({ ...d, results: [], total: 0 })
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+        )
+        return
+      }
       setData(d)
     } catch (err) {
       console.error(err); setError('Search is unavailable right now.'); setData(null)
@@ -320,7 +337,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/80">Nothing on Outza matches that yet{(data.filters.city || city) ? ` in ${data.filters.city || city}` : ''}. Try different dates, a wider area or fewer details.</p>
+            <p className="mt-3 text-sm text-white/80">Nothing on Outza matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

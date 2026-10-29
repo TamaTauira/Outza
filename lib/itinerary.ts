@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { isPastEvent } from '@/lib/seo'
+import { GUEST_ITINERARY_KEY, LEGACY_ITINERARY_KEY, itineraryStorageKey, shouldClearGuestItinerary } from '@/lib/itinerary-scope'
 
 /** One stop in the visitor's itinerary: an Outza event or their own custom stop (dinner, meet-up…). */
 export interface ItineraryItem {
@@ -30,25 +31,48 @@ export interface ItineraryItem {
   adId?: string | null
 }
 
-const KEY = 'outza-itinerary-v1'
 const EVT = 'outza-itinerary-change'
 
-function read(): ItineraryItem[] {
+let boundUser: string | null | undefined = undefined
+
+function storageKey(): string {
+  return itineraryStorageKey(boundUser ?? null)
+}
+
+function readKey(key: string): ItineraryItem[] {
   try {
-    const list = JSON.parse(localStorage.getItem(KEY) ?? '[]')
+    const list = JSON.parse(localStorage.getItem(key) ?? '[]')
     return Array.isArray(list) ? list : []
   } catch {
     return []
   }
 }
 
-function write(list: ItineraryItem[]) {
+function writeKey(key: string, list: ItineraryItem[]) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(list))
+    localStorage.setItem(key, JSON.stringify(list))
     window.dispatchEvent(new Event(EVT))
   } catch (err) {
     console.error('Could not save itinerary:', err)
   }
+}
+
+function read(): ItineraryItem[] {
+  return readKey(storageKey())
+}
+
+function write(list: ItineraryItem[]) {
+  writeKey(storageKey(), list)
+}
+
+/** Point the device itinerary at this account. Signing out clears the guest list. The old shared key is dropped, not copied. */
+export function bindItineraryUser(userId: string | null) {
+  if (boundUser === userId) return
+  const previous = boundUser
+  boundUser = userId
+  try { localStorage.removeItem(LEGACY_ITINERARY_KEY) } catch {}
+  if (shouldClearGuestItinerary(previous, userId)) writeKey(GUEST_ITINERARY_KEY, [])
+  else window.dispatchEvent(new Event(EVT))
 }
 
 export const sortItinerary = (list: ItineraryItem[]) =>

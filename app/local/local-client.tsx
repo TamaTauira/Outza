@@ -41,7 +41,7 @@ export function LocalClient() {
 
   const [city, setCityState] = useState(DEFAULT_CITY)
   const setCity = (c: string) => { setCityState(c); writeCity(c) }
-  const [loadNote, setLoadNote] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [category, setCategory] = useState('')
   const [when, setWhen] = useState('weekend')
   const [data, setData] = useState<{ items: Item[]; counts: Record<string, number> } | null>(null)
@@ -63,16 +63,18 @@ export function LocalClient() {
   useEffect(() => {
     if (tab !== 'browse') return
     const ac = new AbortController()
-    const timer = setTimeout(() => ac.abort(), 8000)
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; ac.abort() }, 8000)
     setData(null)
-    setLoadNote(null)
+    setLoadError(null)
     fetch(`/api/local?${new URLSearchParams({ city, category, when })}`, { signal: ac.signal })
       .then((r) => r.json())
-      .then((d) => { setData(d?.items ? d : { items: [], counts: {} }); setLoadNote(null) })
+      .then((d) => { setData(d?.items ? d : { items: [], counts: {} }); setLoadError(null) })
       .catch((e) => {
         console.error(e)
-        setData({ items: [], counts: {} })
-        setLoadNote(e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.')
+        if (e?.name === 'AbortError' && !timedOut) return
+        setData(null)
+        setLoadError(timedOut || e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.')
       })
       .finally(() => clearTimeout(timer))
     return () => { clearTimeout(timer); ac.abort() }
@@ -146,12 +148,18 @@ export function LocalClient() {
                 <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"><MousePointerClick className="w-3 h-3" /> Tap a row for the goods</span>
               </div>
               <BoardHeadings />
-              {!data && <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading local listings…</p>}
-              {data && !days.length && (
+              {!data && !loadError && <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading local listings…</p>}
+              {loadError && (
+                <div className="p-8 text-center">
+                  <p className="font-display text-lg font-bold">Couldn’t load listings</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+                </div>
+              )}
+              {data && !loadError && !days.length && (
                 <div className="p-8 text-center">
                   <Store className="w-8 h-8 mx-auto text-muted-foreground" />
                   <p className="mt-3 font-display text-lg font-bold">Nothing listed for {city} {WHEN.find((w) => w.key === when)?.label.toLowerCase()} yet.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{loadNote ?? 'Running a garage sale, clearance, market or community activity? Be the trailblazer.'}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Running a garage sale, clearance, market or community activity? Be the trailblazer.</p>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     <button onClick={() => setTab('submit')} className="h-10 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" />List It Free</button>
                     <Link href={`/${citySlug(city)}/markets`} className="h-10 px-5 rounded-full bg-muted text-sm inline-flex items-center">Markets on the Board</Link>
