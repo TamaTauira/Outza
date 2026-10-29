@@ -97,14 +97,23 @@ export function clearVersionCache() { versionCache = null }
 export type Obs = { measure: string; geoType: string; geoCode: string; period: string; value: number | null; unit: string | null; unitMult: number; adjustment: string; category: string; obsStatus: string | null }
 
 /** Read observations of the ACTIVE version of a dataset only. */
+const obsCache = new Map<string, { at: number; rows: Obs[] }>()
+const OBS_TTL_MS = 60_000
+
 export async function readObs(source: string, dataset: string, where: { measure?: string | { in: string[] }; geoType?: string; geoCode?: string | { in: string[] }; category?: string | { in: string[] }; adjustment?: string; period?: string | { gte?: string } } = {}): Promise<Obs[]> {
+  const key = JSON.stringify([source, dataset, where])
+  const hit = obsCache.get(key)
+  if (hit && Date.now() - hit.at < OBS_TTL_MS) return hit.rows
   const v = (await activeVersions()).get(`${source}:${dataset}`)
   if (!v) return []
-  return prisma.intelObservation.findMany({
+  const rows = await prisma.intelObservation.findMany({
     where: { source, dataset, version: v, ...where },
     select: { measure: true, geoType: true, geoCode: true, period: true, value: true, unit: true, unitMult: true, adjustment: true, category: true, obsStatus: true },
     orderBy: { period: 'asc' },
   })
+  if (obsCache.size > 400) obsCache.clear()
+  obsCache.set(key, { at: Date.now(), rows })
+  return rows
 }
 
 export async function datasetMeta(source: string) {

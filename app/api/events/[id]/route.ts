@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const data = (await getEventDetail(id)) ?? (id.includes('-') ? await getEventDetail(idFromEventParam(id)) : null)
+    const data = (await getEventDetail(id, { countView: false })) ?? (id.includes('-') ? await getEventDetail(idFromEventParam(id), { countView: false }) : null)
     if (!data) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 })
     }

@@ -36,8 +36,8 @@ export const TIERS: TierDef[] = [
     prices: { 7: 2900, 14: 4900, 30: 7900 },
   },
   {
-    key: 'GOLD', name: 'Headliner', priceCents: 9900, days: 30, headlineDays: 30, color: '#F5B700', tagline: 'Premium placement in every city',
-    perks: ['Everything in Spotlight', 'Premium placement in the Featured band in every city', 'Premium pin always shown on the map', 'Newsletter eligibility in subscriber emails'],
+    key: 'GOLD', name: 'Headliner', priceCents: 9900, days: 30, headlineDays: 30, color: '#F5B700', tagline: 'Top of your city’s Featured band',
+    perks: ['Everything in Spotlight', 'Highest rank in the Featured band for your event’s city', 'Premium pin on your city’s map', 'Newsletter eligibility in subscriber emails'],
     prices: { 7: 4900, 14: 6900, 30: 9900 },
   },
 ]
@@ -82,6 +82,8 @@ export const isAddon = (a: unknown): a is Addon => a === 'SPOTLIGHT' || a === 'F
 export const isDuration = (d: unknown): d is Duration => d === 7 || d === 14 || d === 30
 export const productName = (key: string) => tierDef(key)?.name ?? addonDef(key)?.name ?? key
 export const formatAud = (cents: number) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`
+/** Invoices always show cents, including whole-dollar amounts. */
+export const formatAudCents = (cents: number) => `$${(cents / 100).toFixed(2)}`
 export const applyPro = (cents: number, pro: boolean) => (pro ? Math.round(cents * (1 - PRO_PLAN.discountPct / 100)) : cents)
 
 /** Price breakdown for a campaign. All amounts in cents. */

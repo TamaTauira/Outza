@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMounted } from '@/components/client-only'
-import { ACKNOWLEDGEMENT_OF_COUNTRY, CITIES } from '@/lib/cities'
+import { ACKNOWLEDGEMENT_OF_COUNTRY, CITIES, cityDef } from '@/lib/cities'
 import { cityPath, type TopicKey } from '@/lib/seo'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
 
@@ -30,13 +30,20 @@ interface FooterProps {
   quickLinks?: QuickLink[]
 }
 
-export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
+export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { city?: string }) {
   const mounted = useMounted()
+  const zone = city ? cityDef(city).tz : 'Australia/Sydney'
+  const zoneName = (() => {
+    if (!mounted) return city ? `${city} time` : 'local time'
+    const parts = new Intl.DateTimeFormat('en-AU', { timeZone: zone, timeZoneName: 'short' }).formatToParts(new Date())
+    const short = parts.find((p) => p.type === 'timeZoneName')?.value
+    return city ? `${short ?? ''} ${city} time`.trim() : (short ?? 'local time')
+  })()
 
   const refreshed = (() => {
     if (!lastRefresh || !mounted) return 'recently'
     return new Date(lastRefresh).toLocaleString('en-AU', {
-      timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+      timeZone: zone, day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
     })
   })()
 
@@ -48,7 +55,7 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
           <span className="text-[11px] text-muted-foreground">Events · Experiences · Local discoveries.</span>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed md:px-8">
-          Listings refreshed {refreshed} (AEST/AEDT) from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring and City of Sydney.
+          Listings refreshed {refreshed} ({zoneName}) from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring and City of Sydney.
           Times and prices can change — always check with the organiser before you go.
         </p>
         {quickLinks.length > 0 && (
@@ -103,6 +110,11 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
             <Link href="/outings" className="hover:text-foreground underline underline-offset-2">Day and night plans</Link>
             <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>
             <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My VibePeep</Link>
+            <Link href="/about" className="hover:text-foreground underline underline-offset-2">About</Link>
+            <Link href="/contact" className="hover:text-foreground underline underline-offset-2">Contact</Link>
+            <Link href="/faq" className="hover:text-foreground underline underline-offset-2">FAQ</Link>
+            <Link href="/pricing" className="hover:text-foreground underline underline-offset-2">Pricing</Link>
+            <Link href="/refunds" className="hover:text-foreground underline underline-offset-2">Refunds</Link>
             <Link href="/how-listings-work" className="hover:text-foreground underline underline-offset-2">How listings work</Link>
             <Link href="/terms" className="hover:text-foreground underline underline-offset-2">Terms</Link>
             <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">Privacy</Link>

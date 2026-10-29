@@ -1,5 +1,6 @@
 // VibePeep Intelligence: one event's reach report. Official imports plus counts of VibePeep listings. Nothing is estimated or invented.
 import { prisma } from '@/lib/prisma'
+import { correctPin, pinIsCityDump, placeFromText, resolveListingPlace } from '@/lib/venue-place'
 import { resolveVenueGeo } from './geo'
 import { readObs } from './store'
 import { CITIES } from '@/lib/cities'
@@ -57,16 +58,6 @@ const inAustralia = (lat: number, lng: number) => lat < -9 && lat > -45 && lng >
 const latest = <T extends { period: string }>(rows: T[]) => rows.reduce<T | null>((m, r) => (!m || r.period > m.period ? r : m), null)
 const GOING_OUT = ['Food & Drink', 'Nightlife']
 const scaled = (v: number | null, mult: number) => (v == null ? null : v * 10 ** mult)
-
-async function geocode(q: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const res = await fetch(`https://photon.komoot.io/api/?limit=1&lang=en&bbox=112,-44,154,-10&q=${encodeURIComponent(q)}`, { headers: { 'User-Agent': 'VibePeep Intelligence (venue lookup)' }, signal: AbortSignal.timeout(8000) })
-    const feature = res.ok ? (await res.json())?.features?.[0] : null
-    if (feature?.properties?.countrycode && feature.properties.countrycode !== 'AU') return null
-    const c = feature?.geometry?.coordinates
-    return Array.isArray(c) ? { lat: Number(c[1]), lng: Number(c[0]) } : null
-  } catch { return null }
-}
 
 async function sourceStatuses(): Promise<SourceStatus[]> {
   const rows = await prisma.intelSource.findMany()
@@ -216,7 +207,11 @@ function advise(base: VenueIntel, ev: ListedEvent, catalogue: CatalogueSnapshot,
     spendMonth: (rec ?? hosp ?? alc)?.month ?? null,
     tourism: base.tourismTitle && base.tourism.intlYoyPct != null && base.tourism.intlVisitors != null
       ? { title: base.tourismTitle, period: base.tourism.period, intlVisitors: base.tourism.intlVisitors, yoyPct: base.tourism.intlYoyPct } : null,
-    seifa: ier?.nswDecile != null ? { area: ier.area, decile: ier.nswDecile } : null,
+    seifa: ier?.nswDecile != null ? {
+      area: ier.area,
+      decile: ier.nswDecile,
+      advantageDecile: base.seifa.find((s) => s.index === 'IRSAD' && s.nswDecile != null)?.nswDecile ?? null,
+    } : null,
     areaLoaded: base.area.some((a) => a.venue != null) || base.ages.length > 0,
   }
   if (base.status === 'no_location') {
@@ -255,17 +250,35 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     spendLabel: cityState ? STE_NAME[cityState] : 'Australia',
     stateName: cityState ? STE_NAME[cityState] : 'Australia',
     transportCovered: cityState === '1',
-    sources: await sourceStatuses(), generatedAt: new Date().toISOString(),
+    sources: [], generatedAt: new Date().toISOString(),
   }
+  const regional = Promise.all([
+    sourceStatuses(),
+    spending(cityState ?? 'AUS'),
+    cityState === '1' ? tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW') : Promise.resolve(null),
+  ])
+  const hinted = placeFromText({ venueAddress: ev.venueAddress, venueName: ev.venueName, suburb: ev.suburb, city: ev.city })
   let lat = ev.latitude, lng = ev.longitude
-  if (lat == null || lng == null) {
-    const q = [ev.venueName, ev.venueAddress, ev.suburb, ev.city, 'Australia'].filter(Boolean).join(', ')
-    const g = (await geocode(q)) ?? (await geocode([ev.venueAddress ?? ev.suburb, ev.city].filter(Boolean).join(', ')))
-    if (g && inAustralia(g.lat, g.lng)) { lat = g.lat; lng = g.lng; await prisma.event.update({ where: { id: ev.id }, data: { latitude: lat, longitude: lng } }).catch(() => {}) }
+  const dump = pinIsCityDump(lat, lng, ev.city, hinted.suburb ?? ev.suburb, hinted.postcode)
+  if (lat == null || lng == null || dump) {
+    const placed = hinted.lat != null ? hinted : await resolveListingPlace({ venueAddress: ev.venueAddress, venueName: ev.venueName, suburb: ev.suburb, city: ev.city })
+    const next = correctPin(dump ? null : lat, dump ? null : lng, placed, ev.city)
+    if (next.lat != null && next.lng != null && inAustralia(next.lat, next.lng)) {
+      lat = next.lat
+      lng = next.lng
+      const suburb = placed.suburb && placed.suburb.toLowerCase() !== ev.city.toLowerCase() ? placed.suburb : ev.suburb
+      await prisma.event.update({ where: { id: ev.id }, data: { latitude: lat, longitude: lng, ...(suburb && suburb !== ev.suburb ? { suburb } : {}) } }).catch(() => {})
+      if (suburb) ev.suburb = suburb
+    } else if (dump) {
+      lat = null
+      lng = null
+    }
   }
-  base.spending = await spending(cityState ?? 'AUS')
-  if (cityState === '1') {
-    base.tourism = await tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW')
+  const [sources, spendRows, tourRows] = await regional
+  base.sources = sources
+  base.spending = spendRows
+  if (tourRows) {
+    base.tourism = tourRows
     base.tourismTitle = ev.city === 'Sydney' ? 'Visitors to Sydney' : 'Visitors to New South Wales'
   }
   let under15: AreaSignals['under15'] = null
@@ -284,24 +297,26 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     base.stateName = STE_NAME[ste]
     base.spendLabel = STE_NAME[ste]
     base.transportCovered = ste === '1'
-    base.spending = await spending(ste)
-    if (ste === '1') {
-      base.tourism = await tourism(ev.city === 'Sydney' ? 'SYD' : 'NSW')
-      base.tourismTitle = ev.city === 'Sydney' ? 'Visitors to Sydney' : 'Visitors to New South Wales'
-    } else {
+    if (ste !== '1') {
       base.tourism = { period: null, visitors: null, nights: null, spend: null, intlVisitors: null, intlYoyPct: null, intlPrevPeriod: null }
       base.tourismTitle = null
     }
   }
   base.benchLabel = g.gccsaName || base.stateName
 
-  // Area profile: venue SA2 vs council (LGA) vs the venue's greater capital city (or rest-of-state region).
+  // Area profile, SEIFA and stations together. State spending is reused when the state did not change.
   const codes = [...CORE, ...AGE_MEASURES.map((a) => a.code)]
-  const [sa2, gsyd, lga] = await Promise.all([
+  const [sa2, gsyd, lga, seifaRows, stationRows, spendNext] = await Promise.all([
     g.sa2 ? readObs('abs_region', 'asgs', { geoType: 'SA2', geoCode: g.sa2, measure: { in: codes } }) : [],
     g.gccsa ? readObs('abs_region', 'asgs', { geoType: 'GCCSA', geoCode: g.gccsa, measure: { in: codes } }) : [],
     g.lga ? readObs('abs_region', 'lga', { geoType: 'LGA', geoCode: g.lga, measure: { in: CORE } }) : [],
+    loadSeifaIndexes(seifaCandidates(g), (area) => readObs('abs_seifa', area.ds, { geoType: area.geo, geoCode: area.code })),
+    base.transportCovered ? stationsNear(lat!, lng!) : Promise.resolve([]),
+    ste && ste !== (cityState ?? 'AUS') ? spending(ste) : Promise.resolve(null),
   ])
+  if (spendNext) base.spending = spendNext
+  base.seifa = seifaRows
+  base.stations = stationRows
   const pick = (rows: typeof sa2, m: string) => latest(rows.filter((r) => r.measure === m && r.value != null))
   base.area = CORE.map((m) => {
     const d = REGION_MEASURES[m], v = pick(sa2, m), b = pick(gsyd, m), c = pick(lga, m)
@@ -324,19 +339,16 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     }).filter((x): x is AgeBand => !!x)
   }
 
-  // SEIFA preference order: suburb (SAL), then venue SA2 when SAL is missing or has no deciles.
-  base.seifa = await loadSeifaIndexes(seifaCandidates(g), (area) => readObs('abs_seifa', area.ds, { geoType: area.geo, geoCode: area.code }))
-
-  base.stations = base.transportCovered ? await stationsNear(lat!, lng!) : []
   if (!base.area.length && !base.stations.length && !base.seifa.length) base.status = 'no_data'
   }
   return advise(base, ev, await cataloguePromise, under15, stateCode, price)
 }
 
-/** Cached for 12h per event; the cache is cleared whenever a source imports a new version. */
+/** Cached for 12h per event version. A date, pin or edit change builds a new report. */
 export async function getVenueIntelCached(eventId: string) {
-  // au4 drops reports cached before per-event reach cards and venue voice.
-  const key = `venue:au4:${eventId}`
+  const stamp = await prisma.event.findUnique({ where: { id: eventId }, select: { updatedAt: true, date: true, latitude: true, longitude: true } })
+  // au5 drops reports cached when every suburb was pinned on the CBD.
+  const key = `venue:au5:${eventId}:${stamp?.updatedAt?.getTime() ?? 0}:${stamp?.date?.toISOString().slice(0, 10) ?? ''}:${stamp?.latitude ?? ''}:${stamp?.longitude ?? ''}`
   const hit = await prisma.intelCache.findUnique({ where: { key } })
   if (hit && Date.now() - hit.createdAt.getTime() < 12 * 3600_000) return hit.data as unknown as VenueIntel
   const data = await getVenueIntel(eventId)

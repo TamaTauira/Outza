@@ -12,7 +12,7 @@ import { ProfileFields } from '@/components/profile-fields'
 import { isPostcode, parseBirthDate } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
 
-type Me = { name?: string | null; email: string; role?: string; birthDate?: string | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
+type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthDate?: string | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
@@ -103,6 +103,8 @@ export function AccountClient() {
 
       <VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} />
 
+      {(me.role === 'PROMOTER' || me.role === 'ADMIN') && <PromoterProfile me={me} onSaved={(patch) => setMe((m) => (m ? { ...m, ...patch } : m))} />}
+
       <section className={card}>
         <label htmlFor="acct-city" className="font-semibold block mb-3">Home city</label>
         <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-11 w-full sm:w-auto rounded-md border border-border bg-background px-3 text-sm">
@@ -157,6 +159,85 @@ export function AccountClient() {
         {!friends.friends.length && <p className="mt-3 text-xs text-muted-foreground">Add friends to see which events they&apos;re going to.</p>}
       </section>
 
+      <SecurityCard email={me.email} />
     </main>
+  )
+}
+
+function PromoterProfile({ me, onSaved }: { me: Me; onSaved: (patch: Partial<Me>) => void }) {
+  const [orgName, setOrgName] = useState(me.orgName ?? '')
+  const [bio, setBio] = useState(me.bio ?? '')
+  const [website, setWebsite] = useState(me.website ?? '')
+  const [image, setImage] = useState(me.image ?? '')
+  const [busy, setBusy] = useState(false)
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ orgName, bio, website, image }) })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d?.error ?? 'Could not save')
+      onSaved({ orgName, bio, website, image })
+      toast.success('Promoter profile saved')
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Could not save') } finally { setBusy(false) }
+  }
+  return (
+    <section className={card}>
+      <h2 className="font-semibold mb-1">Promoter profile</h2>
+      <p className="text-xs text-muted-foreground mb-3">This is what people see on your public organiser page.</p>
+      <form onSubmit={save} className="space-y-3">
+        <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Organisation name" aria-label="Organisation name" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+        <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio" aria-label="Bio" rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
+        <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Website (https://…)" aria-label="Website" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+        <input value={image} onChange={(e) => setImage(e.target.value)} placeholder="Logo image link (https://…)" aria-label="Logo" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+        <button disabled={busy} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">{busy ? 'Saving…' : 'Save profile'}</button>
+      </form>
+      {me.id && <p className="mt-3 text-xs text-muted-foreground">Public page: <Link href={`/organisers/${me.id}`} className="underline">your organiser page</Link> is linked from each event you present.</p>}
+    </section>
+  )
+}
+
+function SecurityCard({ email }: { email: string }) {
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const change = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      const res = await fetch('/api/me/password', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ current, next }) })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d?.error ?? 'Could not change password')
+      setCurrent(''); setNext('')
+      toast.success('Password updated')
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Could not change password') } finally { setBusy(false) }
+  }
+  const close = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!window.confirm('Close this account permanently? Your listings stay on the site without an owner.')) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/me/close', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm }) })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d?.error ?? 'Could not close account')
+      window.location.href = '/'
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Could not close account'); setBusy(false) }
+  }
+  return (
+    <section className={card}>
+      <h2 className="font-semibold mb-3">Password</h2>
+      <form onSubmit={change} className="space-y-2">
+        <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Current password" aria-label="Current password" autoComplete="current-password" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+        <input type="password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="New password" aria-label="New password" autoComplete="new-password" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+        <button disabled={busy} className="h-9 px-4 rounded-md border border-border text-sm font-semibold hover:bg-muted disabled:opacity-60">Change password</button>
+      </form>
+      <h2 className="font-semibold mt-6 mb-1">Close account</h2>
+      <p className="text-xs text-muted-foreground mb-2">Type {email} to permanently delete this login. This does not refund purchases.</p>
+      <form onSubmit={close} className="flex flex-col sm:flex-row gap-2">
+        <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={email} aria-label="Confirm email to close account" className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
+        <button disabled={busy || confirm.trim().toLowerCase() !== email.toLowerCase()} className="h-10 px-4 rounded-md border border-destructive text-destructive text-sm font-semibold disabled:opacity-40">Close account</button>
+      </form>
+    </section>
   )
 }

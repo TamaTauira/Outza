@@ -19,10 +19,16 @@ export function FeaturedTurnstile({ city }: { city: string }) {
   const [items, setItems] = useState<FeaturedItem[]>([])
 
   useEffect(() => {
+    let live = true
     fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`)
       .then((r) => r.json())
-      .then((d) => setItems(d?.items ?? []))
+      .then((d) => {
+        if (!live) return
+        const rows: FeaturedItem[] = d?.items ?? []
+        setItems(city ? rows.filter((it) => !it.city || it.city === city) : rows)
+      })
       .catch((err) => console.error('Failed to load featured events:', err))
+    return () => { live = false }
   }, [city])
 
   const cards = [...items.map((it) => <FeaturedCard key={it.id} it={it} />), <PromoteCard key="cta" />]
@@ -54,7 +60,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const color = CATEGORIES.find((c) => c.name === it.category)?.color ?? '#FF7A1A'
   const t = tierDef(it.tier)
-  const badge = it.tier === 'HOT' ? { label: 'HOT', bg: '#c2410c', fg: '#ffffff' } : { label: (t?.name ?? it.tier).toUpperCase(), bg: t?.color ?? '#C0C7D1', fg: '#000000' }
+  const badge = it.tier === 'HOT' ? { label: 'HOT', bg: '#c2410c', fg: '#ffffff' } : { label: 'SPONSORED', bg: t?.color ?? '#C0C7D1', fg: '#000000' }
   const price = formatPrice(it.isFree, it.price, it.priceMin, it.priceMax)
   const time = formatTime(it.time)
   const date = new Date(it.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
@@ -63,7 +69,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
       <div className="relative aspect-[16/9] overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
         <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="260px" compact />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <span className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
+        <span title={it.tier === 'HOT' ? 'Popular on VibePeep' : `${t?.name ?? 'Promoted'} placement`} className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
           {it.tier === 'HOT' && <Flame className="w-2.5 h-2.5" />}{badge.label}
         </span>
         <span className="absolute z-10 bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white font-mono text-xs">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>

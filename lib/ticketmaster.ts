@@ -1,6 +1,9 @@
 import { saveEvent, sleep } from '@/lib/event-store'
 import { moneyNumber, priceFromAmounts } from '@/lib/price'
 import { CITIES, type CityDef } from '@/lib/cities'
+import { addressInOtherState } from '@/lib/seo'
+import { distanceKm } from '@/lib/travel'
+import { coordsInTasmania } from '@/lib/tas-retag'
 
 const TM_PAGE_SIZE = 200
 /** Discovery rejects page * size >= 1000, so five pages is the most one query can return. */
@@ -149,6 +152,14 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
       const widest = (list: any[]) => [...list].sort((a, b) => (b?.width ?? 0) - (a?.width ?? 0))[0]?.url
       const imageUrl = widest(usable.filter((i) => i?.ratio === '16_9')) ?? widest(usable) ?? images[0]?.url ?? null
       const venueCity = venue?.city?.name ?? city.name
+      const lat = parseFloat(venue?.location?.latitude ?? '')
+      const lng = parseFloat(venue?.location?.longitude ?? '')
+      const hasPin = Number.isFinite(lat) && Number.isFinite(lng) && !!(lat || lng)
+      const stateBits = [venue?.state?.name, venue?.state?.stateCode, venue?.address?.line1, venueCity].filter(Boolean).join(' ')
+      let filed = city
+      if (hasPin && coordsInTasmania(lat, lng)) filed = CITIES.find((c) => c.name === 'Hobart') ?? city
+      else if (addressInOtherState(stateBits, city)) continue
+      else if (hasPin && distanceKm({ lat, lng }, { lat: city.lat, lng: city.lng }) > city.radiusKm + 40) continue
       // Gallery: distinct artworks only (TM serves one artwork in many sizes - keep the widest of each)
       const attractionImages: any[] = (ev?._embedded?.attractions ?? []).flatMap((a: any) => a?.images ?? [])
       const byArtwork = new Map<string, { url: string; width: number }>()
@@ -172,12 +183,12 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
         price,
         imageUrl,
         ticketUrl: ev?.url ?? null,
-        latitude: parseFloat(venue?.location?.latitude ?? '') || null,
-        longitude: parseFloat(venue?.location?.longitude ?? '') || null,
+        latitude: hasPin ? lat : null,
+        longitude: hasPin ? lng : null,
         source: 'ticketmaster',
         status,
         feesIncluded: pr ? /including fees/i.test(pr?.type ?? '') : null,
-        city: city.name,
+        city: filed.name,
         galleryUrls,
         accessibilityInfo: ev?.accessibility?.info ?? venue?.accessibleSeatingDetail ?? null,
         ageRestriction: ev?.ageRestrictions?.legalAgeEnforced ? '18+ (legal age enforced)' : null,

@@ -52,6 +52,8 @@ model Event {
   accessibilityInfo String?  @db.Text
   ageRestriction    String?
   transportInfo     String?  @db.Text
+  /// Optional room size supplied by the organiser. Never inferred.
+  capacity          Int?
   organiserName     String?
   organiserUrl      String?
   // Image pipeline
@@ -308,6 +310,13 @@ model PromoterFollow {
 
   @@id([followerId, promoterId])
   @@index([promoterId])
+}
+
+/// One stable tax-invoice number per purchase id (campaign order, Pro pass, or local ad).
+model InvoiceSeq {
+  id        String   @id
+  number    Int      @unique
+  createdAt DateTime @default(now())
 }
 
 model Promotion {

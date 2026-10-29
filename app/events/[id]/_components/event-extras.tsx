@@ -75,7 +75,7 @@ export function VerifiedLine({ event }: { event: any }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-5 text-sm text-muted-foreground">
       {checked && <span className="inline-flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" />{now && checkedAgo(checked, now) ? `Last verified ${checkedAgo(checked, now)}` : 'Last verified'} from {sourceLabel(event.source)}</span>}
-      {original && <a href={original} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">View original listing <ExternalLink className="w-3.5 h-3.5" /></a>}
+      {original && event.source !== 'promoter' && <a href={original} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">View original listing <ExternalLink className="w-3.5 h-3.5" /></a>}
       <button onClick={share} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 hover:bg-muted text-foreground"><Share2 className="w-3.5 h-3.5" />Share</button>
     </div>
   )

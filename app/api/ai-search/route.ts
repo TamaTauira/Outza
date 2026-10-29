@@ -89,15 +89,21 @@ export async function POST(req: NextRequest) {
     }
     const now = sydneyNow()
 
+    const narrowed: Prisma.EventWhereInput[] = [
+      ...(filters.isFree ? [{ OR: [{ isFree: true }, { price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] }] : []),
+      ...(filters.paidOnly ? [{ NOT: { OR: [{ price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] } }] : []),
+      ...(filters.suburb ? [{ OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueName: { contains: filters.suburb, mode: 'insensitive' as const } }] }] : []),
+    ]
     const base: Prisma.EventWhereInput = {
       date: { gte: new Date(`${filters.dateFrom}T00:00:00.000Z`), lte: new Date(`${filters.dateTo}T00:00:00.000Z`) },
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
       ...(searchCity ? { city: searchCity } : {}),
       ...(filters.category ? { category: filters.category } : {}),
-      ...(filters.isFree ? { isFree: true } : {}),
+      ...(filters.paidOnly ? { isFree: false } : {}),
       ...(filters.lgbtiq ? { isLGBTI: true } : {}),
-      ...(filters.suburb ? { OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' } }] } : {}),
+      ...(filters.subTag ? { subTags: { has: filters.subTag } } : {}),
+      ...(narrowed.length ? { AND: narrowed } : {}),
     }
     const kw: Prisma.EventWhereInput = filters.keywords.length
       ? { AND: [{ OR: filters.keywords.flatMap((k) => [

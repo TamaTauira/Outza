@@ -1,4 +1,4 @@
-import { CATEGORIES } from '@/lib/categories'
+import { CATEGORIES, areasForCity } from '@/lib/categories'
 import { CITIES, CITY_NAMES } from '@/lib/cities'
 
 function addDays(key: string, n: number): string {
@@ -22,6 +22,9 @@ export interface AiFilters {
   lgbtiq: boolean
   timeOfDay: TimeOfDay
   suburb: string
+  subTag: string
+  /** True when the person asked for paid events, so free listings stay out. */
+  paidOnly: boolean
   keywords: string[]
   soon: boolean
   /** City named in the query. Empty when the query did not name one (the page city still applies). */
@@ -186,13 +189,60 @@ function weekend(today: string): [string, string] {
   return [addDays(today, 6 - dow), addDays(today, 7 - dow)]
 }
 
+function escapeRe(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')
+}
+
+/** Longest known suburb in the query. A name that belongs to one city also names that city. */
+function suburbHit(q: string): { suburb: string; city: string } | null {
+  const hits: { suburb: string; city: string }[] = []
+  for (const c of CITY_NAMES) {
+    for (const area of areasForCity(c)) {
+      if (/^cbd$/i.test(area)) continue
+      if (new RegExp(`\\b${escapeRe(area)}\\b(?!\\s+(?:st|street|rd|road|ave|avenue|ln|lane|dr|drive)\\b)`, 'i').test(q)) hits.push({ suburb: area, city: c })
+    }
+  }
+  if (!hits.length) return null
+  hits.sort((a, b) => b.suburb.length - a.suburb.length)
+  const top = hits[0]
+  const same = hits.filter((h) => h.suburb.toLowerCase() === top.suburb.toLowerCase())
+  const cities = new Set(same.map((h) => h.city))
+  return { suburb: top.suburb, city: cities.size === 1 ? top.city : '' }
+}
+
+function categoryFromQuery(s: string): { category: string; subTag: string } {
+  if (/\b(films?|cinema|screenings?|documentary|documentaries)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Film' }
+  if (/\bmarkets?\b/.test(s)) return { category: 'Community', subTag: 'Markets' }
+  if (/\bworkshops?\b/.test(s)) return { category: 'Business', subTag: 'Workshop' }
+  if (/\b(exhibitions?|gallery|galleries)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Exhibition' }
+  if (/\b(comedy|comedian)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Comedy' }
+  let best: { category: string; tag: string; len: number } | null = null
+  for (const cat of CATEGORIES) {
+    const head = cat.name.toLowerCase()
+    if (s.includes(head) && (!best || head.length > best.len)) best = { category: cat.name, tag: '', len: head.length }
+    for (const tag of cat.subTags) {
+      const t = tag.toLowerCase()
+      if (t === 'market') continue
+      if (s.includes(t) && (!best || t.length > best.len)) best = { category: cat.name, tag, len: t.length }
+    }
+  }
+  if (/\b(gig|band|concert|live music)\b/.test(s)) return { category: 'Music', subTag: best?.tag && best.category === 'Music' ? best.tag : '' }
+  return best ? { category: best.category, subTag: best.tag } : { category: '', subTag: '' }
+}
+
 export function fallbackParse(q: string, today: string) {
   const s = q.toLowerCase()
-  const out: Record<string, unknown> = { keywords: [] as string[], explicitDates: false, city: '' }
+  const out: Record<string, unknown> = { keywords: [] as string[], explicitDates: false, city: '', subTag: '', paidOnly: false }
   const range = extractExplicitRange(q, today)
   if (range) {
     out.dateFrom = range.from
     out.dateTo = range.to
+    out.explicitDates = true
+  } else if (/\b(nye|new year'?s eve)\b/.test(s)) {
+    const y = Number(today.slice(0, 4))
+    const thisYear = `${y}-12-31`
+    const year = thisYear >= today ? y : y + 1
+    out.dateFrom = out.dateTo = `${year}-12-31`
     out.explicitDates = true
   } else if (/\btonight\b/.test(s)) {
     out.dateFrom = out.dateTo = today
@@ -201,17 +251,24 @@ export function fallbackParse(q: string, today: string) {
   else if (/\btomorrow\b/.test(s)) out.dateFrom = out.dateTo = addDays(today, 1)
   else if (/\bweekend\b/.test(s)) [out.dateFrom, out.dateTo] = weekend(today)
   if (/\bfree\b/.test(s)) out.isFree = true
+  else if (/\bpaid\b/.test(s)) out.paidOnly = true
   if (/\b(lgbt|queer|gay|pride)/.test(s)) out.lgbtiq = true
   const money = s.match(/(?:under|below|less than)\s*\$?(\d+)/)
   if (money) out.maxPrice = Number(money[1])
-  const cat = CATEGORIES.find((c) => s.includes(c.name.toLowerCase().split(' ')[0]) || c.subTags.some((t) => s.includes(t.toLowerCase())))
-  if (cat) out.category = cat.name
-  if (/\b(gig|band|concert|live music)\b/.test(s)) out.category = 'Music'
-  const city = cityInQuery(q)
-  if (city) out.city = city
-  const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'tonight', 'today', 'tomorrow', 'weekend', 'free', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music', ...SOFT, ...Object.keys(MONTH_FULL), ...Object.keys(MONTH_ABBR), 'may'])
+  const cat = categoryFromQuery(s)
+  if (cat.category) out.category = cat.category
+  if (cat.subTag) out.subTag = cat.subTag
+  const namedCity = cityInQuery(q)
+  const place = suburbHit(q)
+  if (namedCity) out.city = namedCity
+  else if (place?.city) out.city = place.city
+  if (place?.suburb) out.suburb = place.suburb
+  const city = String(out.city || '')
+  const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'tonight', 'today', 'tomorrow', 'weekend', 'free', 'paid', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music', 'nye', ...SOFT, ...Object.keys(MONTH_FULL), ...Object.keys(MONTH_ABBR), 'may'])
   if (city) city.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
-  out.keywords = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w) && !(cat && cat.name.toLowerCase().includes(w))).slice(0, 3)
+  if (place?.suburb) place.suburb.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
+  const catWords = `${cat.category} ${cat.subTag}`.toLowerCase()
+  out.keywords = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w) && !catWords.includes(w)).slice(0, 3)
   return out
 }
 
@@ -259,6 +316,8 @@ export function normalise(raw: any, today: string, explicitDates = false): AiFil
     lgbtiq: raw?.lgbtiq === true,
     timeOfDay: TIMES.includes(raw?.timeOfDay) ? raw.timeOfDay : 'any',
     suburb,
+    subTag: typeof raw?.subTag === 'string' ? raw.subTag : '',
+    paidOnly: raw?.paidOnly === true,
     keywords,
     soon: false,
     city,
@@ -300,6 +359,11 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   }
   if (/\b(live music|gigs?|concerts?)\b/i.test(q)) merged = { ...merged, category: 'Music' }
   const out = normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
+  if (typeof fb.suburb === 'string' && fb.suburb) out.suburb = fb.suburb
+  if (typeof fb.subTag === 'string' && fb.subTag) out.subTag = fb.subTag
+  if (fb.paidOnly === true) out.paidOnly = true
+  if (fb.isFree === true) out.isFree = true
+  if (!out.city && typeof fb.city === 'string' && fb.city) out.city = fb.city
   out.nearMe = /\b(near me|nearby|around me)\b/i.test(q)
   return out
 }

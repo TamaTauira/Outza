@@ -269,9 +269,20 @@ const CBD_EVIDENCE = /\b(cbd|town hall|martin place|wynyard|pitt street mall|hyd
  * actually supports the CBD; otherwise it is cleared so CBD is not a dump bucket.
  * A specific stored suburb is left alone when the address does not name a better one.
  */
+function suburbNamedInText(text: string, city: string): string | null {
+  const areas = areasForCity(city).filter((a) => !/^cbd$/i.test(a)).sort((a, b) => b.length - a.length)
+  for (const area of areas) {
+    const re = new RegExp(`\\b${area.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')}\\b(?!\\s+(?:st|street|rd|road|ave|avenue|hwy|pde|parade|ln|lane|dr|drive|tce|terrace|pl|place|way|cct|cres|blvd)\\b)`, 'i')
+    if (re.test(text)) return area
+  }
+  return null
+}
+
 export function reconcileSuburb(stored: string | null | undefined, venueName: string, address: string | null | undefined, city: string): string | null {
   const addr = address ?? ''
-  const next = city === 'Sydney' ? guessSuburb(venueName, addr) : suburbFromAddress(addr)
+  const named = suburbNamedInText(`${venueName} ${addr}`, city)
+  const next = named ?? (city === 'Sydney' ? guessSuburb(venueName, addr) : suburbFromAddress(addr))
+  if (next && !/^cbd$/i.test(next)) return next
   if (next) return next
   const cur = (stored ?? '').trim()
   if (!cur) return null

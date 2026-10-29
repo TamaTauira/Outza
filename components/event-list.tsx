@@ -156,9 +156,22 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       <BoardHeadings />
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-16" aria-live="polite">
-          <VibePeepMascot className="w-20" alt="" />
-          <p className="text-sm text-muted-foreground">Having a peep…</p>
+        <div aria-busy="true" aria-label="Loading events">
+          <div className="flex flex-col items-center justify-center gap-2 py-8" aria-live="polite">
+            <VibePeepMascot className="w-16" alt="" />
+            <p className="text-sm text-muted-foreground">Having a peep…</p>
+          </div>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="px-5 py-4 flex gap-4">
+                <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : span?.spanning && timed.length === 0 ? (
         <PeepEmpty title="Crickets. I checked twice." body="Nothing in that date range. Widen the dates or loosen your filters." />

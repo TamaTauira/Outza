@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
-import { suburbFromAddress } from '@/lib/cities'
 import { makeSeriesKey } from '@/lib/event-store'
-import { parsePriceRange, promoterCanEditEvent, sourceLabel } from '@/lib/quality'
-import { bestSourceUrl } from '@/lib/images/source-url'
+import { promoterCanEditEvent, sourceLabel } from '@/lib/quality'
 import { queueEventImage } from '@/lib/images/runner'
+import { parsePromoterListing } from '@/lib/promoter-listing'
+import { resolveListingPlace } from '@/lib/venue-place'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,35 +23,67 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const b = await req.json().catch(() => ({}))
-  const title = String(b.title ?? '').trim().slice(0, 250)
-  const date = String(b.date ?? '')
-  const venueName = String(b.venueName ?? '').trim().slice(0, 200)
-  if (!title || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !venueName) {
-    return NextResponse.json({ error: 'Title, date and venue are required' }, { status: 400 })
-  }
-  const txt = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max) || null
-  const url = (v: unknown) => (/^https?:\/\//.test(String(v ?? '')) ? String(v).slice(0, 500) : null)
-  const time = /^\d{2}:\d{2}$/.test(b.time ?? '') ? b.time : null
-  const endTime = /^\d{2}:\d{2}$/.test(b.endTime ?? '') ? b.endTime : null
-  const venueAddress = txt(b.venueAddress, 300)
-  const price = txt(b.price, 60)
-  const isFree = !!b.isFree || /^free$/i.test(price ?? '')
-  const range = parsePriceRange(isFree, price)
-  const imageUrl = url(b.imageUrl) ? bestSourceUrl(url(b.imageUrl)!) : null
+  const parsed = parsePromoterListing({ ...b, city: b.city ?? ev.city })
+  if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+  const listing = parsed.listing
+  const place = await resolveListingPlace({ venueAddress: listing.venueAddress, venueName: listing.venueName, city: listing.city })
 
   await prisma.event.update({
     where: { id },
     data: {
-      title, date: new Date(`${date}T00:00:00.000Z`), time, endTime, venueName, venueAddress,
-      suburb: suburbFromAddress(venueAddress) ?? ev.city,
-      description: txt(b.description, 2000), price: isFree ? 'Free' : price, isFree, priceMin: range.min, priceMax: range.max,
-      ticketUrl: url(b.ticketUrl), organiserName: txt(b.organiserName, 160), organiserUrl: url(b.organiserUrl),
-      accessibilityInfo: txt(b.accessibilityInfo, 1000), ageRestriction: txt(b.ageRestriction, 120), transportInfo: txt(b.transportInfo, 1000),
-      seriesKey: makeSeriesKey(title, venueName, ev.city),
-      ...(imageUrl && imageUrl !== ev.imageUrl ? { imageUrl, imageAssetId: null } : {}),
-      organiserEditedAt: new Date(), lastVerifiedAt: new Date(),
+      title: listing.title,
+      date: new Date(`${listing.date}T00:00:00.000Z`),
+      endDate: listing.endDate ? new Date(`${listing.endDate}T00:00:00.000Z`) : null,
+      time: listing.time,
+      endTime: listing.endTime,
+      venueName: listing.venueName,
+      venueAddress: listing.venueAddress,
+      city: listing.city,
+      category: listing.category,
+      subTags: listing.subTags,
+      isLGBTI: listing.isLGBTI,
+      suburb: place.suburb,
+      latitude: place.lat,
+      longitude: place.lng,
+      description: listing.description,
+      price: listing.price,
+      isFree: listing.isFree,
+      priceMin: listing.priceMin,
+      priceMax: listing.priceMax,
+      ticketUrl: listing.ticketUrl,
+      organiserName: listing.organiserName,
+      organiserUrl: listing.organiserUrl,
+      accessibilityInfo: listing.accessibilityInfo,
+      ageRestriction: listing.ageRestriction,
+      transportInfo: listing.transportInfo,
+      capacity: listing.capacity,
+      galleryUrls: listing.galleryUrls,
+      seriesKey: makeSeriesKey(listing.title, listing.venueName, listing.city),
+      ...(listing.imageUrl && listing.imageUrl !== ev.imageUrl ? { imageUrl: listing.imageUrl, imageAssetId: null } : listing.imageUrl === null ? { imageUrl: null, imageAssetId: null } : {}),
+      organiserEditedAt: new Date(),
+      lastVerifiedAt: new Date(),
     },
   })
-  if (imageUrl && imageUrl !== ev.imageUrl) queueEventImage(id)
+  if (listing.imageUrl && listing.imageUrl !== ev.imageUrl) queueEventImage(id)
+  await prisma.intelCache.deleteMany({ where: { key: { contains: id } } }).catch(() => {})
+  return NextResponse.json({ ok: true })
+}
+
+/** Unpublish a listing the promoter created. Ingested listings stay as the source published them. */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const me = await getSessionUser()
+  if (!me) return unauthorized()
+  if (!isPromoter(me.role)) return forbidden()
+  const { id } = await params
+  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, source: true } })
+  if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+  if (ev.promoterId !== me.id && me.role !== 'ADMIN') return forbidden()
+  if (!promoterCanEditEvent(ev.source)) {
+    return NextResponse.json({ error: 'Only listings you created can be unpublished.' }, { status: 403 })
+  }
+  await prisma.event.update({
+    where: { id },
+    data: { status: 'CANCELLED', statusSource: 'promoter', organiserEditedAt: new Date() },
+  })
   return NextResponse.json({ ok: true })
 }

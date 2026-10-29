@@ -37,7 +37,7 @@ export const fmtPeriod = (p?: string | null) => {
 const yearsOld = (period: string | null) => (period ? new Date().getUTCFullYear() - Number(period.slice(0, 4)) : 99)
 const aud = (n: number) => `$${Number.isInteger(n) ? n.toLocaleString('en-AU') : n.toFixed(2)}`
 const nfmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-const things = (n: number, one: string, many: string) => `${n.toLocaleString('en-AU')} ${n === 1 ? one : many}`
+const things = (n: number, one: string, many: string) => (n === 0 ? `No ${many}` : `${n.toLocaleString('en-AU')} ${n === 1 ? one : many}`)
 
 /** Sum of shares. A missing band returns null so we never treat a hole as zero. */
 export function shareSum(values: (number | null | undefined)[]): number | null {
@@ -221,7 +221,7 @@ export type AreaSignals = {
   alcoholYoy: number | null
   spendMonth: string | null
   tourism: { title: string; period: string | null; intlVisitors: number; yoyPct: number } | null
-  seifa: { area: string; decile: number } | null
+  seifa: { area: string; decile: number; advantageDecile?: number | null } | null
   areaLoaded: boolean
 }
 
@@ -251,7 +251,8 @@ function sameNight(voice: Voice, f: EventFacts, c: CatalogueSnapshot): Insight {
   if (c.sameNightTotal === 0) {
     detail = `No other listing in ${f.city} falls on ${f.dateLabel} in the VibePeep catalogue. That is this catalogue, not every event in town.`
   } else {
-    detail = `${things(c.sameNightTotal, 'other listing', 'other listings')} in ${f.city} on ${f.dateLabel}, ${c.sameNightCategory} of them ${f.category}.`
+    const ofThem = c.sameNightCategory === 0 ? `none of them ${f.category}` : `${c.sameNightCategory} of them ${f.category}`
+    detail = `${things(c.sameNightTotal, 'other listing', 'other listings')} in ${f.city} on ${f.dateLabel}, ${ofThem}.`
     if (c.sameNightSuburb != null && f.suburb?.trim()) detail += ` ${c.sameNightSuburb} in ${f.suburb.trim()}.`
     if (c.otherNightTitles.length) detail += ` On VibePeep that day: ${c.otherNightTitles.join('; ')}.`
     if (c.sameNightMore > 0) detail += ` And ${c.sameNightMore} more.`
@@ -409,9 +410,12 @@ function tourismInsight(voice: Voice, f: EventFacts, a: AreaSignals): Insight | 
 function seifaInsight(f: EventFacts, a: AreaSignals): Insight | null {
   if (!a.seifa) return null
   const band = f.bandLabel ? ` This listing sits in the ${f.bandLabel} band.` : ''
+  const other = a.seifa.advantageDecile != null && a.seifa.advantageDecile !== a.seifa.decile
+    ? ` Advantage and disadvantage (IRSAD) is state decile ${a.seifa.advantageDecile} for the same area. The indexes measure different things, so those two numbers are not a disagreement.`
+    : ''
   return cat(['abs_seifa'], 'hypothesis', confidenceFor({ hasData: true, geoPrecise: true, ageYears: 5, proxy: true }),
-    `Economic resources: ${a.stateName} decile ${a.seifa.decile} of 10`,
-    `${a.seifa.area} ranks in decile ${a.seifa.decile} of 10 for area-level economic resources within ${a.stateName} (SEIFA 2021, 10 = most resources).${band} The decile describes the area, not the people who will turn up, so it is one input when a price is set, never the answer.`)
+    `Economic resources (IER): state decile ${a.seifa.decile} of 10`,
+    `${a.seifa.area} is state decile ${a.seifa.decile} of 10 on economic resources (IER, SEIFA 2021). 10 means the most resources. That is not a rank of the people who will turn up.${other}${band}`)
 }
 
 type Ch = InsightLink
