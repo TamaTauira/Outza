@@ -104,6 +104,7 @@ export function Footer({ lastRefresh, quickLinks = [] }: FooterProps) {
             <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>
             <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My Outza</Link>
             <Link href="/how-listings-work" className="hover:text-foreground underline underline-offset-2">How listings work</Link>
+            <Link href="/terms" className="hover:text-foreground underline underline-offset-2">Terms</Link>
             <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">Privacy</Link>
             <Link href="/disclaimer" className="hover:text-foreground underline underline-offset-2">Disclaimer</Link>
           </span>

@@ -65,8 +65,9 @@ export function classifyCategory(title: string, description: string, genres: str
     else if (/\b(sport|rugby|cricket|football|tennis|nrl|afl)\b/.test(text)) category = 'Sports'
     else if (/\b(theatre|theater|comedy|dance|art|exhibition|gallery|opera|film)\b/.test(text)) category = 'Arts & Culture'
     else if (/\b(food|wine|beer|cocktail|dining|market|brunch)\b/.test(text)) category = 'Food & Drink'
+    else if (/\b(melbourne cup|horse racing|racing carnival)\b/.test(text)) category = 'Sports'
     else if (/\b(kids|family|children|zoo|aquarium)\b/.test(text)) category = 'Family'
-    else if (/\b(club|nightlife|party|rave)\b/.test(text)) category = 'Nightlife'
+    else if (/\b(nightlife|night\s?club|club night|rave)\b/.test(text) || (/\bparty\b/.test(text) && !/\b(book club|probus|social club)\b/.test(text))) category = 'Nightlife'
     else if (/\b(yoga|meditation|wellness|fitness|health)\b/.test(text)) category = 'Wellness'
     else if (/\b(conference|workshop|seminar|networking|business)\b/.test(text)) category = 'Business'
     else if (/\b(lecture|talk|course|education|learning|tour)\b/.test(text)) category = 'Education'
@@ -116,7 +117,10 @@ export function conflictsWithMusicIntent(title: string, description = '', extra:
   const blob = `${title}\n${description}`
   if (/\b(comedy|comedian|stand-?up|standup)\b/i.test(blob)) return true
   if (/\b(screenings?|documentar(?:y|ies)|cinema)\b/i.test(blob) || /\bfilms?\b/i.test(blob)) return true
-  if (/\b(stage plays?|theatre shows?|theater shows?)\b/i.test(blob)) return true
+  if (/\b(stage plays?|theatre shows?|theater shows?|musicals?)\b/i.test(blob)) return true
+  if (/\b(lion king|wicked|hamilton|les mis(?:e|é)rables|phantom of the opera)\b/i.test(title)) return true
+  if (/\b(ballet|opera)\b/i.test(title) && !isKidsDanceClass(blob)) return true
+  if (/\b(art battles?|tattoo (?:convention|expo|festival)s?)\b/i.test(blob)) return true
   if (extra.some((t) => /^(theatre|theater|comedy|film)$/i.test(t.trim()))) return true
   if (isKidsDanceClass(`${title} ${description}`)) return true
   return false
@@ -126,21 +130,39 @@ export function conflictsWithMusicIntent(title: string, description = '', extra:
  * Correct a stored category when title, description or tags show it was mistagged.
  * Returns null when the stored category should stand. Used on refresh and when reading listings.
  */
+const SPORT_WORDS = /\b(rugby|nrl|afl|cricket|a-league|football|soccer|basketball|tennis|melbourne cup)\b/i
+
 export function refineStoredCategory(ev: { title: string; description?: string | null; category: string; subTags?: string[] | null }): { category: string; subTags: string[] } | null {
   const subTags = [...(ev.subTags ?? [])]
   const text = `${ev.title} ${ev.description ?? ''} ${subTags.join(' ')}`
   let category = ev.category
-  if (isBusinessNetworking(text)) category = 'Business'
+  if (isBusinessNetworking(text) || /\b(investor roadshows?|shareholder)\b/i.test(text) || (/\broadshow\b/i.test(text) && /\binvestor\b/i.test(text))) category = 'Business'
+  else if (category === 'Wellness' && SPORT_WORDS.test(text)) category = 'Sports'
+  else if (category === 'Nightlife' && /\b(probus|book\s*clubs?|rotary|social club|melbourne cup)\b/i.test(text)) category = /\bmelbourne cup\b/i.test(text) ? 'Sports' : 'Community'
+  else if (category === 'Community' && /\bmelbourne cup\b/i.test(text)) category = 'Sports'
   else if (category === 'Music' && isKidsDanceClass(text)) category = 'Family'
   else if (category === 'Music' && conflictsWithMusicIntent(ev.title, ev.description ?? '', subTags)) category = 'Arts & Culture'
-  if (category === ev.category) return null
+  const prose = `${ev.title} ${ev.description ?? ''}`
+  const photoShoot = /\b(photo\s*shoots?|photoshoots?)\b/i.test(prose)
+  if (photoShoot) {
+    const filmAt = subTags.indexOf('Film')
+    if (filmAt >= 0) subTags.splice(filmAt, 1)
+    if (category === 'Arts & Culture' && !subTags.includes('Photography')) subTags.push('Photography')
+  }
+  if (/\bcontiki\b/i.test(ev.title) && !/\b(film|screening|cinema|movie)\b/i.test(ev.title)) {
+    const filmAt = subTags.indexOf('Film')
+    if (filmAt >= 0) subTags.splice(filmAt, 1)
+    if (category === 'Arts & Culture') category = 'Community'
+  }
+  const changedTags = subTags.join('|') !== [...(ev.subTags ?? [])].join('|')
+  if (category === ev.category && !changedTags) return null
   const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
   const next = subTags.filter((t) => own.includes(t))
   if (category === 'Business' && own.includes('Networking') && !next.includes('Networking')) next.push('Networking')
   if (category === 'Family' && own.includes('Kids Activities') && !next.includes('Kids Activities')) next.push('Kids Activities')
   if (category === 'Arts & Culture') {
     if (/\b(comedy|comedian|stand-?up|standup)\b/i.test(text) && own.includes('Comedy') && !next.includes('Comedy')) next.push('Comedy')
-    if (/\b(screenings?|documentar(?:y|ies)|cinema|films?)\b/i.test(text) && own.includes('Film') && !next.includes('Film')) next.push('Film')
+    if (!photoShoot && /\b(screenings?|documentar(?:y|ies)|cinema|films?)\b/i.test(prose) && own.includes('Film') && !next.includes('Film')) next.push('Film')
     if (/\b(theatres?|theaters?)\b/i.test(text) && own.includes('Theatre') && !next.includes('Theatre')) next.push('Theatre')
   }
   return { category, subTags: next }

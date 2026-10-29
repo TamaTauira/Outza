@@ -1,7 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
 import { isPastEvent } from '@/lib/seo'
+import { LEGACY_REMOVED_KEY, LEGACY_SAVED_KEY, pendingStorageKey, savedStorageKey, savesToUpload } from '@/lib/saved-scope'
 
 export interface SavedEvent {
   id: string
@@ -39,15 +43,22 @@ export interface SavedEvent {
   href?: string
 }
 
-const KEY = 'sydney-events-saved-v1'
 const EVT = 'sydney-events-saved-change'
 
-// Ids un-saved on this device that the account hasn't confirmed yet, so a later sync can't bring them back.
-const REMOVED_KEY = 'sydney-events-saved-removed-v1'
+interface PendingSave { eventId: string; saved: boolean; snapshot?: SavedEvent }
 
-function read(): SavedEvent[] {
+function purgeLegacy() {
   try {
-    const raw = localStorage.getItem(KEY)
+    localStorage.removeItem(LEGACY_SAVED_KEY)
+    localStorage.removeItem(LEGACY_REMOVED_KEY)
+  } catch {}
+}
+
+function readFor(userId: string): SavedEvent[] {
+  const key = savedStorageKey(userId)
+  if (!key) return []
+  try {
+    const raw = localStorage.getItem(key)
     const list = raw ? (JSON.parse(raw) as SavedEvent[]) : []
     if (!Array.isArray(list)) return []
     const seen = new Set<string>()
@@ -57,65 +68,101 @@ function read(): SavedEvent[] {
   }
 }
 
-function readRemoved(): string[] {
+function readPending(userId: string): PendingSave[] {
   try {
-    const v = JSON.parse(localStorage.getItem(REMOVED_KEY) ?? '[]')
-    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []
+    const v = JSON.parse(localStorage.getItem(pendingStorageKey(userId)) ?? '[]')
+    return Array.isArray(v) ? v.filter((x) => x && typeof x.eventId === 'string') : []
   } catch { return [] }
 }
-function writeRemoved(ids: string[]) {
-  try { localStorage.setItem(REMOVED_KEY, JSON.stringify([...new Set(ids)].slice(-500))) } catch {}
+
+function writePending(userId: string, rows: PendingSave[]) {
+  try { localStorage.setItem(pendingStorageKey(userId), JSON.stringify(rows.slice(-500))) } catch {}
 }
 
-function write(list: SavedEvent[]) {
+function writeFor(userId: string, list: SavedEvent[]) {
+  const key = savedStorageKey(userId)
+  if (!key) return
   try {
-    localStorage.setItem(KEY, JSON.stringify(list))
+    localStorage.setItem(key, JSON.stringify(list))
     window.dispatchEvent(new Event(EVT))
   } catch (err) {
     console.error('Could not save bookmarks:', err)
   }
 }
 
-/** Pushes a single save/unsave to the account. Before the account is linked, the change waits on this device for the next sync. */
-let accountLinked = false
-export function setSavedAccountLinked(v: boolean) { accountLinked = v }
-
-function pushToAccount(eventId: string, saved: boolean) {
-  if (saved) writeRemoved(readRemoved().filter((x) => x !== eventId))
-  else writeRemoved([...readRemoved(), eventId])
-  if (!accountLinked) return
-  fetch('/api/me/saved', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId, saved }),
-  }).then((r) => { if (r.ok && !saved) writeRemoved(readRemoved().filter((x) => x !== eventId)) }).catch(() => {})
+function applyPending(list: SavedEvent[], pending: PendingSave[]): SavedEvent[] {
+  let next = list
+  for (const p of pending) {
+    if (p.saved) {
+      if (!next.some((e) => e.id === p.eventId) && p.snapshot) next = [...next, p.snapshot]
+    } else {
+      next = next.filter((e) => e.id !== p.eventId)
+    }
+  }
+  return next
 }
 
-/** Merges local bookmarks into the account (applying removals made on this device) and pulls account bookmarks back. */
-export async function syncSavedWithAccount() {
-  try {
-    const local = read()
-    const removed = readRemoved()
-    const r = await fetch('/api/me/saved', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ids: local.map((s) => s.id), removed }),
-    })
+/** The signed-in account, if any. Toggles before this is set are not stored. */
+let activeUserId: string | null = null
+export function setSavedAccountLinked(v: boolean, userId?: string | null) {
+  activeUserId = v ? (userId ?? null) : null
+}
+
+function pushToAccount(userId: string, eventId: string, saved: boolean, snapshot?: SavedEvent) {
+  const pending = readPending(userId).filter((p) => p.eventId !== eventId)
+  pending.push({ eventId, saved, ...(snapshot ? { snapshot } : {}) })
+  writePending(userId, pending)
+  fetch('/api/me/saved', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId, saved }),
+  }).then((r) => {
     if (!r.ok) return
-    writeRemoved([])
+    writePending(userId, readPending(userId).filter((p) => p.eventId !== eventId))
+  }).catch(() => {})
+}
+
+/**
+ * Loads this account's saves from the server and replaces the device cache.
+ * Does not upload another account's bookmarks. Pending toggles for this account are kept.
+ */
+export async function syncSavedWithAccount(userId?: string | null) {
+  const id = userId ?? activeUserId
+  if (!id) return
+  purgeLegacy()
+  try {
+    const r = await fetch('/api/me/saved')
+    if (!r.ok) return
     const { events } = (await r.json()) as { events: SavedEvent[] }
-    const ids = new Set(local.map((s) => s.id))
-    const gone = new Set(removed)
-    const merged = [...local, ...events.filter((e) => !ids.has(e.id) && !gone.has(e.id))]
-    if (merged.length !== local.length) write(merged)
+    const server = Array.isArray(events) ? events : []
+    const pending = readPending(id)
+    const uploadIds = savesToUpload(id, pending.map((p) => p.eventId))
+    const kept = pending.filter((p) => uploadIds.includes(p.eventId))
+    writeFor(id, applyPending(server, kept))
+    for (const p of kept) {
+      const res = await fetch('/api/me/saved', {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: p.eventId, saved: p.saved }),
+      }).catch(() => null)
+      if (res?.ok) writePending(id, readPending(id).filter((row) => row.eventId !== p.eventId))
+    }
   } catch (err) {
     console.error('Saved sync failed:', err)
   }
 }
 
-/** Saved events kept in localStorage (synced to the account when signed in) and across components and tabs. */
+/** This account's saved events. Signed out, the list and the badge stay empty. */
 export function useSaved() {
+  const router = useRouter()
+  const { data, status } = useSession()
+  const userId = status === 'authenticated' ? (data?.user?.id ?? null) : null
   const [saved, setSaved] = useState<SavedEvent[]>([])
 
   useEffect(() => {
-    // Past events are never shown (kept in storage so nothing is lost)
-    const sync = () => setSaved(read().filter((s) => !isPastEvent(s)))
+    setSavedAccountLinked(!!userId, userId)
+    if (!userId) {
+      purgeLegacy()
+      setSaved([])
+      return
+    }
+    const sync = () => setSaved(readFor(userId).filter((s) => !isPastEvent(s)))
     sync()
     window.addEventListener(EVT, sync)
     window.addEventListener('storage', sync)
@@ -123,18 +170,27 @@ export function useSaved() {
       window.removeEventListener(EVT, sync)
       window.removeEventListener('storage', sync)
     }
-  }, [])
+  }, [userId])
 
   const isSaved = useCallback((id: string) => saved.some((s) => s.id === id), [saved])
 
   const toggle = useCallback((ev: SavedEvent) => {
-    const list = read()
+    if (!userId) {
+      toast('Sign in to save events', {
+        action: { label: 'Sign in', onClick: () => router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`) },
+      })
+      return
+    }
+    const list = readFor(userId)
     const exists = list.some((s) => s.id === ev.id)
     const snapshot: SavedEvent = {
       id: ev.id, title: ev.title, description: ev.description, date: ev.date, endDate: ev.endDate,
       time: ev.time, endTime: ev.endTime, venueName: ev.venueName, suburb: ev.suburb, category: ev.category,
       subTags: ev.subTags ?? [], isLGBTI: ev.isLGBTI, isFree: ev.isFree, price: ev.price, ticketUrl: ev.ticketUrl,
       ...(ev.href ? { href: ev.href } : {}),
+      ...(ev.city ? { city: ev.city } : {}),
+      ...(ev.latitude != null ? { latitude: ev.latitude } : {}),
+      ...(ev.longitude != null ? { longitude: ev.longitude } : {}),
       ...(ev.status ? { status: ev.status } : {}),
       ...(ev.statusSource ? { statusSource: ev.statusSource } : {}),
       ...(ev.source ? { source: ev.source } : {}),
@@ -142,9 +198,9 @@ export function useSaved() {
       ...(ev.lastVerifiedAt ? { lastVerifiedAt: ev.lastVerifiedAt } : {}),
       ...(ev.organiserUrl ? { organiserUrl: ev.organiserUrl } : {}),
     }
-    write(exists ? list.filter((s) => s.id !== ev.id) : [...list, snapshot])
-    pushToAccount(ev.id, !exists)
-  }, [])
+    writeFor(userId, exists ? list.filter((s) => s.id !== ev.id) : [...list, snapshot])
+    pushToAccount(userId, ev.id, !exists, snapshot)
+  }, [userId, router])
 
-  return { saved, isSaved, toggle }
+  return { saved, isSaved, toggle, signedIn: !!userId }
 }

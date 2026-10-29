@@ -1,13 +1,13 @@
 /**
  * Transactional email via the Resend HTTP API (https://api.resend.com/emails).
- * Sending is on only when RESEND_API_KEY is set. The From domain
- * (RESEND_FROM_EMAIL, or noreply@outza.app by default) must be verified in
- * Resend or the API rejects the send. With no key, nothing is posted.
+ * Sending is on only when RESEND_API_KEY is set. From is RESEND_FROM_EMAIL,
+ * or Outza <onboarding@resend.dev> when that is unset. That shared Resend
+ * sender does not need a custom domain. With no key, nothing is posted.
  */
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails'
 
-/** Used when RESEND_FROM_EMAIL is unset. Verify outza.app in Resend first. */
-export const DEFAULT_FROM_EMAIL = 'Outza <noreply@outza.app>'
+/** Used when RESEND_FROM_EMAIL is unset. Resend's shared sender; no custom domain. */
+export const DEFAULT_FROM_EMAIL = 'Outza <onboarding@resend.dev>'
 
 export function emailSendingEnabled(): boolean {
   return Boolean(process.env.RESEND_API_KEY?.trim())

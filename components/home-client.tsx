@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
 import { EventList } from '@/components/event-list';
@@ -22,12 +23,13 @@ import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { useBackState } from '@/lib/scroll-memory';
-import { readCity, writeCity } from '@/lib/city-pref';
+import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
 
 const EMPTY_FILTERS: FilterState = {
   category: '', categories: [], subTag: '', suburb: '', isFree: false, isLGBTI: false, dateFrom: '', dateTo: '', datePreset: ''
 };
 const CAT_KEY = 'se-categories-v1';
+const FILTER_OWNER = 'outza-filter-owner';
 const DAYS_AHEAD = 30;
 
 const WINDOWS: {key: TimeWindow;label: string;todayOnly?: boolean;}[] = [
@@ -61,11 +63,17 @@ export function HomeClient() {
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
   const [catsHydrated, setCatsHydrated] = useState(false);
   const [calOpen, setCalOpen] = useState(false);
+  const [calMonth, setCalMonth] = useState<Date | undefined>(undefined);
   const { saved } = useSaved();
+  const { data: session, status: authStatus } = useSession();
+  const userId = authStatus === 'authenticated' ? session?.user?.id ?? null : null;
   const boardRef = useRef<HTMLDivElement>(null);
+  const cityTouched = useRef(false);
   const setCity = (c: string) => {
+    cityTouched.current = true;
     setCityState(c);
     writeCity(c);
+    writeUserCity(userId, c);
     // Drop an area preset from the city we're leaving. Keep a free-text suburb Ask Outza set.
     const nextAreas = new Set(areasForCity(c));
     const previousAreas = new Set(areasForCity(city));
@@ -78,30 +86,75 @@ export function HomeClient() {
   };
   const pinWindow = (w: TimeWindow) => { setWindowPinned(true); setTimeWindow(w); };
 
+  const filterUser = useRef<string | null | undefined>(undefined);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CAT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setBoardFilters((f) => withCategories(f, parsed));
-      }
-    } catch {}
+    if (authStatus === 'loading') return;
+    const owner = userId ?? '';
+    let previous = '';
+    try { previous = sessionStorage.getItem(FILTER_OWNER) ?? ''; } catch {}
+    if (previous !== owner) {
+      setBoardFilters(EMPTY_FILTERS);
+      setMapFilters(EMPTY_FILTERS);
+      try {
+        sessionStorage.setItem(FILTER_OWNER, owner);
+        sessionStorage.removeItem('outza-ui:home:filters');
+        sessionStorage.removeItem('outza-ui:map:filters');
+        localStorage.removeItem(CAT_KEY);
+      } catch {}
+    }
+    if (userId) {
+      try {
+        const raw = localStorage.getItem(`${CAT_KEY}:user:${userId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setBoardFilters((f) => withCategories(f, parsed));
+        }
+      } catch {}
+    }
     setCatsHydrated(true);
-  }, []);
+  }, [authStatus, userId]);
 
   useEffect(() => {
-    if (!catsHydrated) return;
+    if (!catsHydrated || !userId) return;
+    if (filterUser.current !== userId) { filterUser.current = userId; return; }
     const list = knownCategories(Array.isArray(boardFilters.categories) ? boardFilters.categories : boardFilters.category ? [boardFilters.category] : []);
-    try { localStorage.setItem(CAT_KEY, JSON.stringify(list)); } catch {}
-  }, [catsHydrated, boardFilters.categories, boardFilters.category]);
+    try { localStorage.setItem(`${CAT_KEY}:user:${userId}`, JSON.stringify(list)); } catch {}
+  }, [catsHydrated, userId, boardFilters.categories, boardFilters.category]);
 
   useEffect(() => {
-    try {
-      const q = new URLSearchParams(window.location.search).get('city');
-      const named = q && CITIES.some((x) => x.name === q) ? q : readCity();
-      if (named !== null) setCity(named);
-    } catch {}
-  }, []);
+    if (authStatus === 'loading') return;
+    if (cityTouched.current) {
+      if (userId) writeUserCity(userId, city);
+      return;
+    }
+    let cancelled = false;
+    const url = new URLSearchParams(window.location.search).get('city');
+    const signedIn = !!userId;
+    const userCity = signedIn ? readUserCity(userId) : null;
+    const apply = (homeCity: string | null) => {
+      if (cancelled || cityTouched.current) return;
+      const next = resolveBoardCity({
+        urlCity: url,
+        userCity,
+        homeCity,
+        guestCity: signedIn ? null : readCity(),
+        signedIn,
+      });
+      setCityState(next);
+      writeCity(next);
+      if (signedIn && userId) writeUserCity(userId, next);
+    };
+    const urlChosen = url === '' || (!!url && CITIES.some((c) => c.name === url));
+    if (!signedIn || userCity !== null || urlChosen) {
+      apply(null);
+      return () => { cancelled = true; };
+    }
+    fetch('/api/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => apply(typeof d?.user?.homeCity === 'string' ? d.user.homeCity : null))
+      .catch(() => apply(null));
+    return () => { cancelled = true; };
+  }, [authStatus, userId]);
 
   // Live Sydney clock + old ?view=map|saved links forward to their own addresses
   useEffect(() => {
@@ -276,7 +329,13 @@ export function HomeClient() {
                 </div>
                 {view === 'board' &&
               <div className="flex items-center gap-2">
-                    <Popover open={calOpen} onOpenChange={setCalOpen}>
+                    <Popover open={calOpen} onOpenChange={(open) => {
+                      setCalOpen(open);
+                      if (open) {
+                        const iso = boardFilters.dateFrom || day;
+                        if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
+                      }
+                    }}>
                       <PopoverTrigger asChild>
                         <button className="shrink-0 h-11 flex items-center gap-2 px-4 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">
                           <CalendarDays className="w-4 h-4" /> Pick a date
@@ -285,12 +344,16 @@ export function HomeClient() {
                       <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
                       mode="single"
+                      month={calMonth}
+                      onMonthChange={setCalMonth}
                       selected={day ? new Date(`${day}T12:00:00`) : undefined}
                       disabled={today ? { before: new Date(`${today}T00:00:00`) } : undefined}
                       onSelect={(d) => {
                         if (!d) return;
                         const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                        setDay(iso);setCalOpen(false);
+                        setDay(iso);
+                        setBoardFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                        setCalOpen(false);
                       }}
                       initialFocus />
                     
@@ -301,7 +364,7 @@ export function HomeClient() {
                     const dt = new Date(`${d}T00:00:00Z`);
                     const label = d === today ? 'Today' : i === 1 && days[0] === today ? 'Tomorrow' : dt.toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' });
                     return (
-                      <button key={d} onClick={() => setDay(d)} className={cn('shrink-0 h-11 min-w-[64px] px-3 rounded-lg border text-center leading-tight transition-colors', day === d ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted')}>
+                      <button key={d} onClick={() => { setDay(d); setBoardFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }} className={cn('shrink-0 h-11 min-w-[64px] px-3 rounded-lg border text-center leading-tight transition-colors', day === d ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted')}>
                             <div className="text-xs font-semibold">{label}</div>
                             <div className="text-xs opacity-80">{dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })}</div>
                           </button>);

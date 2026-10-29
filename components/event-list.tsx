@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { FilterState } from '@/components/filter-panel'
 import { knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
-import { DAY_PARTS, dayLabel, toMinutes, type TimeWindow } from '@/lib/board'
+import { DAY_PARTS, dayLabel, listSpan, toMinutes, type TimeWindow } from '@/lib/board'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
 import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
@@ -38,12 +38,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const { isSaved, toggle } = useSaved()
   const fetchSeq = useRef(0)
 
-  const fetchDay = useCallback(async (d: string, pageNum: number, append: boolean) => {
+  const span = listSpan(day, filters.dateFrom, filters.dateTo)
+
+  const fetchSpan = useCallback(async (from: string, to: string, pageNum: number, append: boolean) => {
     const seq = ++fetchSeq.current
     try {
       if (append) setLoadingMore(true)
       else setLoading(true)
-      const params = new URLSearchParams({ page: String(pageNum), limit: '300', dateFrom: d, dateTo: d })
+      const params = new URLSearchParams({ page: String(pageNum), limit: '300', dateFrom: from, dateTo: to })
       if (searchQuery) params.set('search', searchQuery)
       if (city) params.set('city', city)
       const cats = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : [])
@@ -71,10 +73,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   }, [searchQuery, city, filters.category, filters.categories, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI])
 
   useEffect(() => {
-    if (!day) return
+    if (!span) return
     setPage(1)
-    fetchDay(day, 1, false)
-  }, [day, fetchDay])
+    fetchSpan(span.from, span.to, 1, false)
+  }, [span?.from, span?.to, fetchSpan])
 
   const isToday = !!day && day === today
   const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'
@@ -98,35 +100,39 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   }
 
   const effectiveWindow: TimeWindow = useMemo(() => {
+    if (span?.spanning) return 'all'
     if (windowPinned || loading) return requestedWindow
     if (countFor(events, requestedWindow) > 0) return requestedWindow
     if (countFor(events, 'evening') > 0) return 'evening'
     if (countFor(events, 'all') > 0) return 'all'
     return requestedWindow
-  }, [windowPinned, loading, requestedWindow, events, nowMinutes])
+  }, [span?.spanning, windowPinned, loading, requestedWindow, events, nowMinutes])
 
   useEffect(() => {
+    if (span?.spanning) return
     if (!windowPinned && !loading && effectiveWindow !== timeWindow) onWindowChange?.(effectiveWindow)
-  }, [windowPinned, loading, effectiveWindow, timeWindow, onWindowChange])
+  }, [span?.spanning, windowPinned, loading, effectiveWindow, timeWindow, onWindowChange])
 
   const { timed, untimed, endedCount } = useMemo(() => {
-    const t: { ev: BoardEvent; status: ReturnType<typeof getStatus>; start: number }[] = []
+    const t: { ev: BoardEvent; status: ReturnType<typeof getStatus>; start: number; date: string }[] = []
     const u: BoardEvent[] = []
     let ended = 0
-    if (!day) return { timed: t, untimed: u, endedCount: 0 }
+    if (!span) return { timed: t, untimed: u, endedCount: 0 }
     for (const ev of events) {
+      const date = String(ev.date).slice(0, 10)
+      const rowDay = span.spanning ? date : (day ?? span.from)
       const start = toMinutes(ev.time)
       if (start === null) { u.push(ev); continue }
-      const status = getStatus(ev, day, today, nowMinutes)
+      const status = getStatus(ev, rowDay, today, nowMinutes)
       if (status.tone === 'done') ended++
       if (effectiveWindow === 'now' && !(status.tone === 'live' || (start >= nowMinutes && start - nowMinutes <= 180))) continue
       if (effectiveWindow === 'hour' && !(start >= nowMinutes && start - nowMinutes <= 60)) continue
       if (effectiveWindow === 'evening' && start < 17 * 60) continue
       if (hideEnded && status.tone === 'done') continue
-      t.push({ ev, status, start })
+      t.push({ ev, status, start, date })
     }
     return { timed: t, untimed: u, endedCount: ended }
-  }, [events, day, today, nowMinutes, effectiveWindow, hideEnded])
+  }, [events, day, span, today, nowMinutes, effectiveWindow, hideEnded])
 
   const groups = DAY_PARTS.map((p) => ({ ...p, rows: timed.filter((r) => r.start >= p.from && r.start < p.to) })).filter((g) => g.rows.length)
 
@@ -136,6 +142,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
         <span className="font-semibold text-foreground">{loading ? '…' : timed.length}</span> timed events
+        {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
           <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
@@ -151,6 +158,20 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         <div className="flex items-center justify-center py-24">
           <Loader2 className="w-7 h-7 animate-spin text-primary" />
         </div>
+      ) : span?.spanning && timed.length === 0 ? (
+        <div className="text-center py-20 px-4">
+          <p className="font-semibold mb-1">Crickets…</p>
+          <p className="text-sm text-muted-foreground">Nothing in that date range. Widen the dates or loosen your filters.</p>
+        </div>
+      ) : span?.spanning ? (
+        [...timed.reduce((map, row) => map.set(row.date, [...(map.get(row.date) ?? []), row]), new Map<string, typeof timed>())].map(([date, rows]) => (
+          <section key={date}>
+            <GroupBar label={dayLabel(date, today)} count={rows.length} open={!closed[date]} onToggle={() => setClosed((c) => ({ ...c, [date]: !c[date] }))} />
+            {!closed[date] && rows.map(({ ev, status }) => (
+              <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={dayLabel(date, today)} />
+            ))}
+          </section>
+        ))
       ) : groups.length === 0 ? (
         <div className="text-center py-20 px-4">
           <p className="font-semibold mb-1">Crickets…</p>
@@ -175,10 +196,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         })
       )}
 
-      {!loading && page < totalPages && day && (
+      {!loading && page < totalPages && span && (
         <div className="flex justify-center py-5 border-t border-border">
           <button
-            onClick={() => { const n = page + 1; setPage(n); fetchDay(day, n, true) }}
+            onClick={() => { const n = page + 1; setPage(n); fetchSpan(span.from, span.to, n, true) }}
             disabled={loadingMore}
             className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
           >

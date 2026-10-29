@@ -83,7 +83,7 @@ export function WatchlistClient() {
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">My Outza</p>
       <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Your keepers, plus what you follow.</h1>
-      <p className="mt-3 text-muted-foreground">Saved events stay on this device and, once you sign in, on your account. Follow a venue or an interest and we can email new matches. Reminders are a separate opt-in.</p>
+      <p className="mt-3 text-muted-foreground">Saves belong to your account, so sign in to keep them. Follow a venue or an interest and we can email new matches. Reminders are a separate opt-in.</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         <button type="button" onClick={download} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2">
@@ -96,7 +96,7 @@ export function WatchlistClient() {
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold mb-3">Saved events</h2>
         {!saved.length && (
-          <p className="text-sm text-muted-foreground">Nothing saved yet. Use the bookmark on the board or an event page.</p>
+          <p className="text-sm text-muted-foreground">{status === 'authenticated' ? 'Nothing saved yet. Use the bookmark on the board or an event page.' : 'Sign in to see the events saved on your account.'}</p>
         )}
         <ul className="space-y-2">
           {saved.map((ev) => (
@@ -164,7 +164,7 @@ export function WatchlistClient() {
             <button type="button" onClick={preview} className="h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Send Me a Preview</button>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Sign in to opt in. Guest saves stay on this device until then.</p>
+          <p className="text-sm text-muted-foreground">Sign in to opt in. Reminders and the digest are tied to your account.</p>
         )}
       </section>
     </main>

@@ -15,11 +15,15 @@ function asSaved(ev: OutingEvent): SavedEvent {
 }
 
 export function OutingActions({ plan }: { plan: { title: string; city: string; date: string | null; events: OutingEvent[] } }) {
-  const { isSaved, toggle } = useSaved()
+  const { isSaved, toggle, signedIn } = useSaved()
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   if (!plan.events.length) return null
   const saveAll = () => {
+    if (!signedIn) {
+      toast('Sign in to save these stops', { action: { label: 'Sign in', onClick: () => router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`) } })
+      return
+    }
     for (const ev of plan.events) if (!isSaved(ev.id)) toggle(asSaved(ev))
     toast.success('Saved to My Outza', { action: { label: 'View', onClick: () => router.push('/watchlist') } })
   }

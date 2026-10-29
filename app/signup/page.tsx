@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { signIn } from 'next-auth/react'
+import { establishSession } from '@/lib/establish-session'
 import { Loader2, Ticket, Megaphone } from 'lucide-react'
 import { AuthShell } from '@/components/auth-shell'
 import { Input } from '@/components/ui/input'
@@ -27,11 +27,13 @@ function SignupForm() {
   const [birthDate, setBirthDate] = useState('')
   const [homePostcode, setHomePostcode] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setNotice('')
     if (role === 'CONSUMER') {
       const p = parseBirthDate(birthDate)
       if (p.error) { setError(p.error); return }
@@ -45,8 +47,17 @@ function SignupForm() {
       })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) { setError(data.error || 'Could not create account'); return }
-      const res = await signIn('credentials', { email, password, redirect: false })
-      if (!res || res.error) { setError('Account created — please sign in.'); router.push('/login'); return }
+      setNotice('Account created. Signing you in…')
+      const ok = await establishSession(email.trim().toLowerCase(), password)
+      if (!ok) {
+        setNotice('')
+        setError('Account created. Sign in with the email and password you just chose.')
+        const q = new URLSearchParams({ created: '1', email: email.trim().toLowerCase() })
+        const next = params.get('next')
+        if (next) q.set('next', next)
+        router.push(`/login?${q.toString()}`)
+        return
+      }
       router.replace(params.get('next') || (role === 'PROMOTER' ? '/promoter' : '/account'))
     } catch (err) {
       console.error(err)
@@ -103,12 +114,13 @@ function SignupForm() {
         </select>
       </div>
       {role === 'CONSUMER' && <ProfileFields birthDate={birthDate} homePostcode={homePostcode} onBirthDate={setBirthDate} onPostcode={setHomePostcode} />}
+      {notice && <p className="text-sm text-foreground" role="status">{notice}</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Create Account
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        By creating an account you agree to our <Link href="/disclaimer" className="underline hover:text-foreground">disclaimer</Link>.
+        By creating an account you agree to our <Link href="/terms" className="underline hover:text-foreground">terms</Link> and <Link href="/disclaimer" className="underline hover:text-foreground">disclaimer</Link>.
       </p>
       <p className="text-sm text-muted-foreground text-center">
         Already have an account? <Link href="/login" className="text-primary font-medium hover:underline">Sign in</Link>
