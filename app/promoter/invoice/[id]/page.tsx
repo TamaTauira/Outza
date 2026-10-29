@@ -61,7 +61,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       </div>
       <article className="mt-6 rounded-xl bg-white text-neutral-900 shadow-sm border border-neutral-200 p-8 print:shadow-none print:border-0 print:mt-0">
         <header className="flex flex-wrap items-start justify-between gap-6">
-          <VibePeepLogo />
+          <VibePeepLogo tone="on-light" />
           <div className="text-right">
             <p className="text-2xl font-bold">Invoice / receipt</p>
             <p className="text-sm text-neutral-600 mt-1">No. {number}</p>

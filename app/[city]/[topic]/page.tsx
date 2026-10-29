@@ -5,6 +5,7 @@ import { GuideLanding } from '@/components/guide-landing'
 import { formatGuideDay, formatGuideSpan, relatedGuides } from '@/lib/local-seo'
 import { TOPICS, MIN_INDEX, guideFacts, topicDef, cityFromSlug, cityPath, suburbPath, type TopicDef } from '@/lib/seo'
 import { cityEventCounts, cityGuideModel, citySuburbs, landingData, lastRefreshAt } from '@/lib/seo-server'
+import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
 export const revalidate = 300
@@ -56,8 +57,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: { canonical: path },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title, description, url: path, images: ['/og-image.png'] },
-    twitter: { card: 'summary_large_image', title, description, images: ['/og-image.png'] },
+    openGraph: { title, description, url: path, images: [BRAND_OG_IMAGE] },
+    twitter: { card: 'summary_large_image', title, description, images: [BRAND_OG_IMAGE] },
   }
 }
 
