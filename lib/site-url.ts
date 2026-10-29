@@ -1,6 +1,6 @@
 /**
- * Canonical public origin. See lib/canonical-host.js for why the legacy
- * Vercel alias and deployment URLs are never used.
+ * Canonical public origin. See lib/canonical-host.js. Abacus hosts are
+ * never returned, including when NEXTAUTH_URL is missing or wrong.
  */
 import { CANONICAL_SITE_URL, resolveSiteUrl } from './canonical-host.js'
 
