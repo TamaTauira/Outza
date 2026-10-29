@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 export default function FaqPage() {
   return (
     <InfoPage
+      variant="faq"
       title="FAQ"
       lede="Short answers. The pricing and refund pages have the money details."
       sections={[

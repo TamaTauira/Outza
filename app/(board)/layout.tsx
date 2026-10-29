@@ -31,7 +31,7 @@ export default async function BoardLayout({ children }: { children: React.ReactN
       city: DEFAULT_CITY,
       from: now.date,
       to: now.date,
-      events: feed.events as BoardEvent[],
+      events: feed.events as unknown as BoardEvent[],
       total: feed.total,
       totalPages: Math.max(1, Math.ceil(feed.total / 300)),
     }

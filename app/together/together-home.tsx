@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { CITIES } from '@/lib/cities'
+import { EmptyState } from '@/components/empty-state'
 
 type PlanRow = { token: string; name: string; city: string | null; planDate: string | null; items: number; votes: number }
 
@@ -68,7 +69,14 @@ export function TogetherHome() {
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold mb-3">Your plans</h2>
         {plans === null && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
-        {plans?.length === 0 && <p className="text-sm text-muted-foreground">None yet. Start one, or open an invite link a friend sent you.</p>}
+        {plans?.length === 0 && (
+          <EmptyState
+            title="No plans yet."
+            lede="Shortlist a few events, send one link, and vote. Guests can join without an account."
+            action={{ href: '/', label: 'Browse events' }}
+            examples={['Saturday in Newtown · 3 options', 'Sunday with the kids · 2 options', 'Friday drinks · 4 options']}
+          />
+        )}
         <ul className="space-y-2">
           {plans?.map((plan) => (
             <li key={plan.token}>

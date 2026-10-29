@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { PageShell } from '@/components/page-shell'
 
 export const metadata = { title: 'Privacy policy — VibePeep', description: 'What VibePeep collects, why, and the choices you have.' }
 
@@ -61,6 +62,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
 
 export default function PrivacyPage() {
   return (
+    <PageShell>
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">Privacy policy</h1>
@@ -77,5 +79,6 @@ export default function PrivacyPage() {
       </div>
       <p className="mt-10 text-xs text-muted-foreground">See also <Link href="/how-listings-work" className="underline underline-offset-2">how listings work</Link> and our <Link href="/disclaimer" className="underline underline-offset-2">disclaimer</Link>.</p>
     </main>
+    </PageShell>
   )
 }

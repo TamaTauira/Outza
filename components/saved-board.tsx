@@ -1,11 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import { BoardRow, BoardHeadings, GroupBar, getStatus } from '@/components/board-row'
 import { dayLabel } from '@/lib/board'
 import { useSaved } from '@/lib/saved'
-import { Bookmark } from 'lucide-react'
+import { EmptyState } from '@/components/empty-state'
 
 export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | null; nowMinutes: number; onBrowse: () => void }) {
   const { saved, isSaved, toggle, signedIn } = useSaved()
@@ -23,14 +22,13 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
   if (byDay.length === 0) {
     return (
-      <div className="text-center py-20 px-4">
-        <Bookmark className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
-        <p className="font-semibold mb-1">{signedIn ? 'No keepers yet' : 'Sign in to see your saved events'}</p>
-        <p className="text-sm text-muted-foreground mb-5">{signedIn ? 'Go find some favourites. We’ll hold them for you.' : 'Saved events belong to your account. Nothing is kept while you’re signed out.'}</p>
-        {signedIn
-          ? <button onClick={onBrowse} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Browse the Board</button>
-          : <Link href="/login?next=/saved" className="inline-flex px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Sign in</Link>}
-      </div>
+      <EmptyState
+        title={signedIn ? 'No keepers yet' : 'Sign in to see your saved events'}
+        lede={signedIn ? 'Go find some favourites. We’ll hold them for you.' : 'Saved events belong to your account. Nothing is kept while you’re signed out.'}
+        action={signedIn ? { label: 'Browse events', onClick: onBrowse } : { href: '/login?next=/saved', label: 'Sign in' }}
+        secondary={signedIn ? undefined : { href: '/', label: 'Browse events' }}
+        examples={['Friday · Outdoor yoga · Rose Bay', 'Saturday · Live music · The Rocks', 'Sunday · Market · Bondi']}
+      />
     )
   }
 

@@ -6,7 +6,9 @@ import { CalendarRange, Trash2, AlertTriangle, Plus, MapPin, Clock, Footprints, 
 import { eventPath } from '@/lib/seo'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
+import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
+import { EmptyState } from '@/components/empty-state'
 import { useItinerary, sortItinerary, clashMap, type ItineraryItem } from '@/lib/itinerary'
 import { coordsFitCity, directionsUrl, fmtKm, fmtMin, planLeg } from '@/lib/travel'
 import { StopForm, emptyStop, type StopFormValues } from './stop-form'
@@ -50,6 +52,7 @@ function TravelLeg({ from, to, locating }: { from: ItineraryItem; to: ItineraryI
 
 export default function ItineraryPage() {
   const { saved } = useSaved()
+  const { status } = useSession() || {}
   const { items, add, remove, update, clear } = useItinerary()
   const [editing, setEditing] = useState<string | null>(null)
   const [picks, setPicks] = useState<Record<string, RoutePick[]>>({})
@@ -125,10 +128,13 @@ export default function ItineraryPage() {
         <p className="text-muted-foreground mb-8">Your game plan. Tap <span className="font-semibold text-foreground">+ Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. Your itinerary is kept on this device for the account you are signed in with, and clears from view when you sign out. It is separate from your saved favourites.</p>
 
         {!sorted.length ? (
-          <div className="rounded-xl bg-card shadow-[var(--shadow-md)] p-8 text-center">
-            <p className="font-semibold mb-2">No plans yet? Let’s fix that.</p>
-            <Link href="/" className="text-primary underline">Browse events</Link>
-          </div>
+          <EmptyState
+            title="No plans yet."
+            lede="Line up the night: the gig, dinner, and the bit in between. It stays on this device for the account you’re signed in with."
+            action={status === 'authenticated' ? { href: '/', label: 'Browse events' } : { href: '/login?next=/itinerary', label: 'Sign in' }}
+            secondary={status === 'authenticated' ? undefined : { href: '/', label: 'Browse events' }}
+            examples={['6:30pm · Live music · The Rocks', '8:00pm · Dinner nearby', '10:00pm · Late set · Surry Hills']}
+          />
         ) : (
           <div className="space-y-8">
             {days.map((d) => (
@@ -182,10 +188,19 @@ export default function ItineraryPage() {
           </div>
         )}
 
-        <section className="mt-10 rounded-xl bg-card shadow-[var(--shadow-md)] p-5">
-          <h2 className="font-semibold mb-3 flex items-center gap-2"><Plus className="w-4 h-4" />Add your own stop</h2>
-          <StopForm initial={emptyStop} submitLabel="Add Stop" onSubmit={addCustom} keepDate />
-        </section>
+        {sorted.length === 0 ? (
+          <details className="mt-10 rounded-xl bg-card shadow-[var(--shadow-md)] p-5">
+            <summary className="cursor-pointer font-semibold flex items-center gap-2"><Plus className="w-4 h-4" />Add your own stop</summary>
+            <div className="mt-3">
+              <StopForm initial={emptyStop} submitLabel="Add Stop" onSubmit={addCustom} keepDate />
+            </div>
+          </details>
+        ) : (
+          <section className="mt-10 rounded-xl bg-card shadow-[var(--shadow-md)] p-5">
+            <h2 className="font-semibold mb-3 flex items-center gap-2"><Plus className="w-4 h-4" />Add your own stop</h2>
+            <StopForm initial={emptyStop} submitLabel="Add Stop" onSubmit={addCustom} keepDate />
+          </section>
+        )}
       </main>
       <Footer lastRefresh={null} />
     </div>

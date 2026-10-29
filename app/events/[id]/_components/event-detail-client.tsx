@@ -131,30 +131,32 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           onClick={() => { navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
           target="_blank"
           rel={ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
-          className="flex items-center justify-center gap-2 w-full h-10 bg-primary text-primary-foreground hover:opacity-90 text-sm font-semibold rounded-lg transition-opacity"
+          className="hidden sm:flex items-center justify-center gap-2 w-full h-11 bg-primary text-primary-foreground hover:opacity-90 text-sm font-semibold rounded-lg transition-opacity"
         >
           Get Tickets <ExternalLink className="w-4 h-4" />
         </a>
       )}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="hidden sm:grid grid-cols-4 gap-2">
         <button
           type="button"
           onClick={() => toggle(event)}
-          className={cn('flex items-center justify-center gap-1.5 h-10 rounded-lg border text-sm font-semibold transition-colors', savedNow ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
+          aria-label={savedNow ? 'Saved' : 'Save'}
+          className={cn('flex h-10 flex-col items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors', savedNow ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
         >
           <Bookmark className={cn('w-4 h-4', savedNow && 'fill-current')} />
-          {savedNow ? 'Saved' : 'Save'}
+          Save
         </button>
+        <ItineraryButton event={event} compact className="h-10 w-full rounded-lg" />
+        <AddToPlanButton eventId={event.id} city={event.city} icon />
         <button
           type="button"
           onClick={() => shareEvent(event)}
-          className="flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border text-sm font-semibold hover:bg-muted"
+          aria-label="Share"
+          className="flex h-10 flex-col items-center justify-center rounded-lg border border-border text-[10px] font-semibold hover:bg-muted"
         >
           <Share2 className="w-4 h-4" />Share
         </button>
       </div>
-      <ItineraryButton event={event} className="h-10 py-0 text-sm" />
-      <AddToPlanButton eventId={event.id} city={event.city} />
     </aside>
   )
 
@@ -162,7 +164,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
     <div className="min-h-screen bg-background">
       {nav}
 
-      <main className="max-w-[1120px] mx-auto px-4 sm:px-6 py-4 sm:py-5">
+      <main className="max-w-[1120px] mx-auto px-4 sm:px-6 py-4 pb-24 sm:py-5 sm:pb-5">
         <BackToEventsLink className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to events
         </BackToEventsLink>
@@ -179,6 +181,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   alt={event?.title ?? 'Event'}
                   sizes="(max-width: 1024px) 100vw, 720px"
                   priority
+                  crop
+                  accent={catDef?.color}
                 />
                 {event?.isLGBTI && (
                   <div className="absolute top-3 right-3 z-10 rainbow-bg text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-lg">
@@ -255,6 +259,37 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           </div>
         )}
       </main>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:hidden">
+        <div className="min-w-0">
+          <p className="text-[11px] text-muted-foreground">Price</p>
+          <p className="truncate font-bold">{price}</p>
+        </div>
+        {ticket && (
+          <a
+            href={ticket}
+            onClick={() => { navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
+            target="_blank"
+            rel={ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+            className="ml-auto flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
+          >
+            Get Tickets <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
+        <details className="relative">
+          <summary className="flex h-11 cursor-pointer list-none items-center rounded-lg border border-border px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">More</summary>
+          <div className="absolute bottom-14 right-0 z-50 w-64 space-y-2 rounded-xl border border-border bg-card p-3 shadow-xl">
+            <button type="button" onClick={() => toggle(event)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-3 text-sm font-semibold">
+              <Bookmark className={cn('h-4 w-4', savedNow && 'fill-current')} />{savedNow ? 'Saved' : 'Save'}
+            </button>
+            <ItineraryButton event={event} />
+            <AddToPlanButton eventId={event.id} city={event.city} />
+            <button type="button" onClick={() => shareEvent(event)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-3 text-sm font-semibold">
+              <Share2 className="h-4 w-4" />Share
+            </button>
+          </div>
+        </details>
+      </div>
 
       <Footer lastRefresh={null} />
     </div>

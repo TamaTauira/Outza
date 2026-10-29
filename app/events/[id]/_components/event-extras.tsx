@@ -34,7 +34,7 @@ const ACC_RE = /\b(wheelchair|accessib|step[- ]free|auslan|hearing loop|companio
 const TRANSPORT_RE = /\b(train|station|bus|ferry|light rail|tram|parking|car park|public transport)\b/i
 
 /** Shared hero frame: short enough to avoid a giant letterboxed banner. */
-export const HERO_FRAME = 'relative h-52 sm:h-60 lg:h-72 overflow-hidden bg-muted'
+export const HERO_FRAME = 'relative h-52 sm:h-60 overflow-hidden bg-muted'
 
 /** Hero image plus thumbnails for any extra artwork the source supplied. */
 export function EventGallery({ event, children }: { event: any; children: React.ReactNode }) {

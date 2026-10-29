@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { Footer } from '@/components/footer'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { PageShell } from '@/components/page-shell'
 
 export const metadata = {
   title: 'Disclaimer — VibePeep',
@@ -81,7 +81,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 
 export default function DisclaimerPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <PageShell>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
         <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4" />Back to events
@@ -102,7 +102,6 @@ export default function DisclaimerPage() {
           ))}
         </div>
       </main>
-      <Footer lastRefresh={null} />
-    </div>
+    </PageShell>
   )
 }
