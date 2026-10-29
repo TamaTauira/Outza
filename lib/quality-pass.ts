@@ -154,7 +154,12 @@ export async function runQualityPass() {
   }
   if (fresh.length) {
     await prisma.qualityAudit.createMany({
-      data: fresh.map((row) => ({ eventId: row.eventId || null, action: row.action, detail: row.detail })),
+      data: fresh.map((row) => ({
+        eventId: row.eventId || null,
+        action: row.action,
+        detail: row.detail,
+        status: row.action === 'DUPLICATE_MERGED' ? null : 'OPEN',
+      })),
     })
   }
 
