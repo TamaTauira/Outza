@@ -73,6 +73,7 @@ model Event {
   reports     EventReport[]
   claims      EventClaim[]
   signals     EventSignal[]
+  togetherItems TogetherItem[]
 
   @@index([date])
   @@index([category])
@@ -178,6 +179,9 @@ model User {
   emailOptIn          Boolean   @default(false)
   emailFrequency      String    @default("weekly") // daily | weekly | monthly
   lastDigestAt        DateTime?
+  /// Separate from the newsletter. Upcoming saved-event reminders only.
+  reminderOptIn       Boolean   @default(false)
+  lastWatchDigestAt   DateTime?
   proUntil            DateTime?
   weeklyReport        Boolean   @default(false) // promoter opted in to a weekly emailed performance report
   lastReportAt        DateTime?
@@ -203,6 +207,10 @@ model User {
   eventReports    EventReport[]
   eventClaims     EventClaim[]
   eventSignals    EventSignal[]
+  togetherPlans   TogetherPlan[]
+  togetherMembers TogetherMember[]
+  venueFollows    VenueFollow[]
+  watchNotices    WatchNotice[]
 
   @@index([emailOptIn])
   @@index([role])
@@ -713,4 +721,108 @@ model IntelAuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// Shared shortlist. Anyone with the token link can view, add events, and vote. Not a social graph.
+model TogetherPlan {
+  id           String    @id @default(cuid())
+  token        String    @unique
+  name         String
+  city         String?
+  planDate     DateTime?
+  creatorId    String?
+  creatorGuest String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  creator      User?     @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  items        TogetherItem[]
+  members      TogetherMember[]
+  votes        TogetherVote[]
+
+  @@index([creatorId])
+  @@index([creatorGuest])
+}
+
+model TogetherItem {
+  id        String   @id @default(cuid())
+  planId    String
+  eventId   String
+  createdAt DateTime @default(now())
+  plan      TogetherPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  event     Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  votes     TogetherVote[]
+
+  @@unique([planId, eventId])
+  @@index([eventId])
+}
+
+/// One row per person on a plan. Signed-in users use userId; guests use a cookie key. Display name is not an account.
+model TogetherMember {
+  id        String   @id @default(cuid())
+  planId    String
+  userId    String?
+  guestKey  String?
+  name      String
+  createdAt DateTime @default(now())
+  plan      TogetherPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, userId])
+  @@unique([planId, guestKey])
+  @@index([userId])
+  @@index([guestKey])
+}
+
+/// One vote per participant on a plan (userId or guestKey). Voting another option moves the vote.
+model TogetherVote {
+  id        String   @id @default(cuid())
+  planId    String
+  itemId    String
+  userId    String?
+  guestKey  String?
+  createdAt DateTime @default(now())
+  plan      TogetherPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  item      TogetherItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, userId])
+  @@unique([planId, guestKey])
+  @@index([itemId])
+}
+
+/// Venues a signed-in person follows. Interest tags stay on User.preferredCategories.
+model VenueFollow {
+  userId    String
+  venueKey  String
+  venueName String
+  city      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, venueKey])
+  @@index([city])
+}
+
+/// Sent watchlist reminder (or match note) so the same event is not emailed twice.
+model WatchNotice {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String // REMINDER
+  eventId   String
+  sentAt    DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, eventId])
+  @@index([userId])
+}
+
+/// Audit trail for duplicate merges and expired-listing checks. Rows are never deleted by the quality pass.
+model QualityAudit {
+  id        String   @id @default(cuid())
+  eventId   String?
+  action    String // DUPLICATE_MERGED | DUPLICATE_FLAGGED | EXPIRED_HIDDEN
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([eventId])
 }

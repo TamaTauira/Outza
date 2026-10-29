@@ -11,6 +11,7 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
+import { sourceLabel } from '@/lib/quality'
 
 interface EventData {
   id: string
@@ -32,6 +33,8 @@ interface EventData {
   venueAddress?: string | null
   city?: string | null
   ticketUrl: string | null
+  source?: string | null
+  verified?: boolean
 }
 
 export function EventCard({ event, index }: { event: EventData; index: number }) {
@@ -103,6 +106,13 @@ export function EventCard({ event, index }: { event: EventData; index: number })
             <h3 className="font-display font-semibold text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors">
               {event.title}
             </h3>
+            {(event.verified || event.source) && (
+              <p className="text-[11px] text-muted-foreground">
+                {event.verified && <span className="font-semibold text-primary">Outza Verified</span>}
+                {event.verified && event.source ? ' · ' : ''}
+                {event.source ? `From ${sourceLabel(event.source)}` : ''}
+              </p>
+            )}
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">

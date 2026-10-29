@@ -7,6 +7,7 @@ import { presentListing } from '@/lib/categories'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
 import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
+import { verifiedFlags } from '@/lib/listing-trust'
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
@@ -14,6 +15,7 @@ const landingSelect = {
   id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
   category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, status: true,
   latitude: true, longitude: true, organiserName: true, organiserUrl: true, city: true,
+  source: true, sources: true, lastVerifiedAt: true, statusSource: true, duplicateOfId: true,
   imageAsset: { select: imageAssetSelect },
 } satisfies Prisma.EventSelect
 
@@ -68,7 +70,9 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   if (post && opts.topic) clean = clean.filter((e) => matchesTopic(e, opts.topic!))
   if (tonight) clean = clean.filter((e) => isTonightSlot(e.time, e.endTime))
   const total = post || tonight ? clean.length : await prisma.event.count({ where })
-  return { events: clean.slice(0, take), total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
+  const slice = clean.slice(0, take)
+  const flags = await verifiedFlags(slice)
+  return { events: slice.map((e) => ({ ...e, verified: flags.get(e.id) ?? false })), total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
 }
 
 export type LandingLocal = {

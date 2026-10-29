@@ -11,6 +11,7 @@ import { CITY_NAMES } from '@/lib/cities'
 import { knownCategories, presentListing } from '@/lib/categories'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { confidence } from '@/lib/quality'
+import { verifiedFlags } from '@/lib/listing-trust'
 
 export async function GET(request: NextRequest) {
   try {
@@ -119,10 +120,11 @@ export async function GET(request: NextRequest) {
 
     const ids = shown.map((e) => e.id)
     const me = await getSessionUser().catch(() => null)
-    const [tiers, friends, mine] = await Promise.all([
+    const [tiers, friends, mine, verified] = await Promise.all([
       activeTierMap(ids),
       me ? friendsGoing(me.id, ids) : Promise.resolve({} as Record<string, string[]>),
       me && ids.length ? prisma.attendance.findMany({ where: { userId: me.id, eventId: { in: ids } }, select: { eventId: true } }) : Promise.resolve([]),
+      verifiedFlags(shown),
     ])
     const going = new Set(mine.map((m) => m.eventId))
 
@@ -133,6 +135,7 @@ export async function GET(request: NextRequest) {
         friendsGoing: friends[e.id] ?? [],
         going: going.has(e.id),
         confidenceLevel: confidence(e).level,
+        verified: verified.get(e.id) ?? false,
       })),
       total: Math.max(0, total - dropped),
       page,

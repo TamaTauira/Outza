@@ -34,6 +34,10 @@ export interface SavedEvent {
   friendsGoing?: string[]
   status?: string | null
   statusSource?: string | null
+  source?: string | null
+  verified?: boolean
+  lastVerifiedAt?: string | null
+  organiserUrl?: string | null
   confidenceLevel?: 'high' | 'medium' | 'low'
   /** Detail link for non-board items (e.g. OUTZA Local listings); defaults to the event page. */
   href?: string
@@ -187,6 +191,12 @@ export function useSaved() {
       ...(ev.city ? { city: ev.city } : {}),
       ...(ev.latitude != null ? { latitude: ev.latitude } : {}),
       ...(ev.longitude != null ? { longitude: ev.longitude } : {}),
+      ...(ev.status ? { status: ev.status } : {}),
+      ...(ev.statusSource ? { statusSource: ev.statusSource } : {}),
+      ...(ev.source ? { source: ev.source } : {}),
+      ...(ev.verified ? { verified: true } : {}),
+      ...(ev.lastVerifiedAt ? { lastVerifiedAt: ev.lastVerifiedAt } : {}),
+      ...(ev.organiserUrl ? { organiserUrl: ev.organiserUrl } : {}),
     }
     writeFor(userId, exists ? list.filter((s) => s.id !== ev.id) : [...list, snapshot])
     pushToAccount(userId, ev.id, !exists, snapshot)

@@ -11,7 +11,7 @@ import { categoryIcon, checkedAgo, formatPrice, formatTime, toMinutes } from '@/
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
-import { statusInfo } from '@/lib/quality'
+import { sourceLabel, statusInfo } from '@/lib/quality'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 
 export type BoardEvent = SavedEvent
@@ -127,7 +127,9 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         {ev.promoTier && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title="Promoted event">{(tierDef(ev.promoTier)?.name ?? 'Featured').toUpperCase()}</span>}
         {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-[10px] font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
         {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
-        {!reported && ev.confidenceLevel === 'low' && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-medium" title="Low data confidence: not re-confirmed recently or details are missing. Check with the ticket seller.">Unconfirmed</span>}
+        {ev.verified && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[10px] font-semibold" title="Outza Verified: recent refresh, required details, not a duplicate, no open date or venue report.">Outza Verified</span>}
+        {!reported && !ev.verified && ev.confidenceLevel === 'low' && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-medium" title="Low data confidence: not re-confirmed recently or details are missing. Check with the ticket seller.">Unconfirmed</span>}
+        {ev.source && <span className="relative hidden xl:inline shrink-0 text-[10px] text-muted-foreground truncate max-w-[9rem]" title={ev.lastVerifiedAt ? `Last verified ${ev.lastVerifiedAt}` : undefined}>{sourceLabel(ev.source)}</span>}
         {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-[9px] font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
       </div>
 

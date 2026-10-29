@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
@@ -248,7 +249,7 @@ export function HomeClient() {
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>
-            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">All your bookmarks in one tidy line-up.</p>
+            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">All your bookmarks in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My Outza</Link> also keeps follows, reminders and a calendar file.</p>
           </div>
         ) : view === 'map' ? (
           <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
@@ -291,6 +292,12 @@ export function HomeClient() {
               <Info className="w-4 h-4 mt-0.5 shrink-0" />
               Event details may change. Confirm times, availability and prices with the organiser before attending.
             </p>
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              <Link href={`/outings?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white underline underline-offset-4">Plan a day or night</Link>
+              <Link href={`/outings/saturday-date-night?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Saturday date night</Link>
+              <Link href={`/outings/family-sunday?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Family Sunday</Link>
+              <Link href={`/outings/free-afternoon?city=${encodeURIComponent(city || 'Sydney')}`} className="text-white/80 hover:text-white">Free afternoon</Link>
+            </div>
           </section>
         )}
 

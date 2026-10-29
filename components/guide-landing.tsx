@@ -105,6 +105,14 @@ export function GuideLanding(props: {
             )
           })}
         </nav>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Plan the day in {city.name}:{' '}
+          <Link href={`/outings/saturday-date-night?city=${encodeURIComponent(city.name)}`} className="text-primary underline">Saturday date night</Link>
+          {', '}
+          <Link href={`/outings/family-sunday?city=${encodeURIComponent(city.name)}`} className="text-primary underline">Family Sunday under $50</Link>
+          {' or '}
+          <Link href={`/outings/free-afternoon?city=${encodeURIComponent(city.name)}`} className="text-primary underline">a free afternoon</Link>.
+        </p>
 
         {events.length === 0 && local.length === 0 ? (
           <div className="mt-12 rounded-xl bg-card p-8 text-center">
