@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Brain, Building2, ChevronDown, Info, Lightbulb, Loader2, MapPin, Plane, ShieldCheck, ShoppingBag, TrainFront, Users } from 'lucide-react'
+import { Brain, Building2, ChevronDown, Footprints, Info, Lightbulb, Loader2, MapPin, Plane, ShieldCheck, ShoppingBag, TrainFront, Users } from 'lucide-react'
 import type { Insight, VenueIntel } from '@/lib/intel/analytics'
 import { CONFIDENCE_LABEL, INSIGHT_SOURCE_LABEL } from '@/lib/intel/sources'
 import { intelOwnerVoice } from '@/lib/intel/voice'
@@ -10,7 +10,13 @@ import { cn } from '@/lib/utils'
 type Ev = { id: string; title: string; date: string; venueName: string; source?: string | null }
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const period = (p?: string | null) => { if (!p) return ''; const m = p.match(/^(YE-)?(\d{4})-(\d{2})$/); return m ? `${m[1] ? 'YE ' : ''}${MON[Number(m[3]) - 1]} ${m[2]}` : p }
+const period = (p?: string | null) => {
+  if (!p) return ''
+  const q = p.match(/^(\d{4})-Q([1-4])$/)
+  if (q) return `${['Mar', 'Jun', 'Sep', 'Dec'][Number(q[2]) - 1]} quarter ${q[1]}`
+  const m = p.match(/^(YE-)?(\d{4})-(\d{2})$/)
+  return m ? `${m[1] ? 'YE ' : ''}${MON[Number(m[3]) - 1]} ${m[2]}` : p
+}
 const num = (v: number | null | undefined, d = 0) => (v == null ? '—' : v.toLocaleString('en-AU', { minimumFractionDigits: d, maximumFractionDigits: d }))
 const unitFmt = (v: number | null, unit: string, d: number) => (v == null ? '—' : unit === '%' ? `${num(v, d)}%` : unit.startsWith('$') ? `$${num(v, d)}` : num(v, d))
 const signed = (v: number | null) => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`)
@@ -97,7 +103,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
             </select>
           </label>
         </div>
-        <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />Area figures describe people who live there. Spending and tourism are statewide. Catalogue counts are VibePeep listings. None of it is ticket sales, foot traffic or attendance, and nothing is estimated.</p>
+        <p className="text-xs text-muted-foreground mt-4 flex gap-1.5"><ShieldCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" />Area figures describe people who live there. Spending is statewide. Tourism is the published region (or the whole state, when that is the only free split). Pedestrian figures, when shown, are sensor counts, not the door. Catalogue counts are VibePeep listings. None of it is ticket sales, and nothing is estimated.</p>
       </div>
 
       {loading && (
@@ -121,7 +127,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           )}
 
           {(data.gaps?.length ?? 0) > 0 && (
-            <Section title="Not in this report" Icon={Info} sub="These would help the promo plan. They are not imported, so there is no number here.">
+            <Section title="Not in this report" Icon={Info} sub="These would help the promo plan. A number is missing because it is not imported, or because nobody publishes it for free. Nothing is filled in.">
               <ul className="space-y-3">
                 {data.gaps.map((gap) => (
                   <li key={gap.title} className="text-sm">
@@ -198,6 +204,24 @@ export function IntelTab({ events }: { events: Ev[] }) {
             </Section>
           )}
 
+          {data.weekend && (
+            <Section title="Friday, Saturday, Sunday" Icon={Footprints} sub={`${data.weekend.seriesLabel}. Index versus a Monday–Thursday hour. ${period(data.weekend.from)} to ${period(data.weekend.to)}.`}>
+              <ul className="space-y-3">
+                {([
+                  ['Friday', data.weekend.friIndex, data.weekend.friAvg],
+                  ['Saturday', data.weekend.satIndex, data.weekend.satAvg],
+                  ['Sunday', data.weekend.sunIndex, data.weekend.sunAvg],
+                ] as const).map(([day, index, avg]) => (
+                  <li key={day} className="text-xs">
+                    <div className="flex justify-between"><span>{day}{day === data.weekend?.busiest ? ' · busiest' : ''}</span><span className="tabular-nums"><b>{index.toFixed(2)}×</b> <span className="text-muted-foreground">· {Math.round(avg).toLocaleString('en-AU')} / hour</span></span></div>
+                    <div className="h-1.5 rounded-full bg-muted mt-1 overflow-hidden"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, index * 40)}%` }} /></div>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-[11px] text-muted-foreground mt-3">{data.weekend.caveat} <a href={data.weekend.url} target="_blank" rel="noopener noreferrer" className="underline">Source</a>. Licence: {data.weekend.licence}.</p>
+            </Section>
+          )}
+
           <div className="grid lg:grid-cols-2 gap-6">
             {data.spending.length > 0 && (
               <Section title={`${data.spendLabel} household spending`} Icon={ShoppingBag} sub={`ABS Monthly Household Spending Indicator, ${period(data.spending[0].month)}. Statewide, current prices.`}>
@@ -207,8 +231,20 @@ export function IntelTab({ events }: { events: Ev[] }) {
                 </table>
               </Section>
             )}
+            {data.visitor && (
+              <Section title={`Visitors · ${data.visitor.region}`} Icon={Plane} sub={`Tourism Research Australia. Domestic overnight trips for ${period(data.visitor.domesticPeriod)}. Survey estimates for the region, not this venue.`}>
+                <dl className="grid grid-cols-2 gap-4 text-sm">
+                  <div><dt className="text-xs text-muted-foreground">Domestic overnight trips</dt><dd className="text-xl font-bold tabular-nums">{big(data.visitor.domesticTrips)}{data.visitor.domesticYoyPct != null && <span className="text-xs font-medium text-muted-foreground ml-1">{signed(data.visitor.domesticYoyPct)} on the year before</span>}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Nights</dt><dd className="text-xl font-bold tabular-nums">{big(data.visitor.domesticNights)}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">Spend</dt><dd className="text-xl font-bold tabular-nums">{big(data.visitor.domesticSpend, true)}</dd></div>
+                  <div><dt className="text-xs text-muted-foreground">International trips</dt><dd className="text-xl font-bold tabular-nums">{big(data.visitor.intlTrips)}{data.visitor.intlYoyPct != null && <span className="text-xs font-medium text-muted-foreground ml-1">{signed(data.visitor.intlYoyPct)} on {period(data.visitor.intlPeriod)}</span>}</dd></div>
+                </dl>
+                {data.visitor.statePeakPeriod && <p className="text-xs text-muted-foreground mt-3">Busiest recent {data.visitor.stateName} quarter: {period(data.visitor.statePeakPeriod)} ({big(data.visitor.statePeakTrips)} overnight trips). {data.visitor.useStateTiming ? 'Used as the state season, and labelled as the whole state.' : 'Shown as the state total only. It is not this city’s peak.'}</p>}
+                <p className="text-[11px] text-muted-foreground mt-2">Source: Tourism Research Australia. Licence: CC BY 4.0.</p>
+              </Section>
+            )}
             {data.tourism.period && (
-              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW, ${period(data.tourism.period)}. Survey estimates for that region, not this venue.`}>
+              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW headline, ${period(data.tourism.period)}, including day trips. Not the overnight-only series. Not this venue.`}>
                 <dl className="grid grid-cols-2 gap-4 text-sm">
                   <div><dt className="text-xs text-muted-foreground">All visitors</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.visitors)}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Visitor nights</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.nights)}</dd></div>

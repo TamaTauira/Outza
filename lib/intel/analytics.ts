@@ -14,6 +14,9 @@ import {
   CATALOGUE_RADIUS_DAYS, DOW, addUtcDays, buildCatalogueSnapshot, composeInsights, listedPrice, priceBand, reachGoal, shareSum, utcMidnight,
   type AreaSignals, type CatalogueSnapshot, type EventFacts, type Gap, type Insight, type PriceBandId,
 } from './reach'
+import { loadVisitor, loadWeekend } from './crowd-load'
+import { resolveMarket } from './markets'
+import type { VisitorSignal, WeekendSignal } from './crowd-shape'
 
 export type { Gap, Insight, Voice }
 export type Confidence = 'high' | 'medium' | 'low' | 'insufficient'
@@ -43,6 +46,9 @@ export type VenueIntel = {
   stations: Station[]
   spending: SpendRow[]
   tourism: { period: string | null; visitors: number | null; nights: number | null; spend: number | null; intlVisitors: number | null; intlYoyPct: number | null; intlPrevPeriod: string | null }
+  visitor: VisitorSignal | null
+  weekend: WeekendSignal | null
+  marketId: string
   insights: Insight[]
   sources: SourceStatus[]
   generatedAt: string
@@ -205,8 +211,9 @@ function advise(base: VenueIntel, ev: ListedEvent, catalogue: CatalogueSnapshot,
     stationsWithoutTaps: base.stations.length > 0 && !st,
     recreationYoy: rec?.yoyPct ?? null, hospitalityYoy: hosp?.yoyPct ?? null, alcoholYoy: alc?.yoyPct ?? null,
     spendMonth: (rec ?? hosp ?? alc)?.month ?? null,
-    tourism: base.tourismTitle && base.tourism.intlYoyPct != null && base.tourism.intlVisitors != null
+    tourism: base.tourismTitle && base.tourism.intlVisitors != null
       ? { title: base.tourismTitle, period: base.tourism.period, intlVisitors: base.tourism.intlVisitors, yoyPct: base.tourism.intlYoyPct } : null,
+    visitor: base.visitor, weekend: base.weekend, marketId: base.marketId,
     seifa: ier?.nswDecile != null ? {
       area: ier.area,
       decile: ier.nswDecile,
@@ -245,7 +252,7 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
     voice, gaps: [],
     status: 'ok', area: [], ages: [], agePeriod: null, seifa: [], stations: [], spending: [], insights: [],
     tourism: { period: null, visitors: null, nights: null, spend: null, intlVisitors: null, intlYoyPct: null, intlPrevPeriod: null },
-    tourismTitle: null,
+    tourismTitle: null, visitor: null, weekend: null, marketId: ev.city,
     benchLabel: 'the wider region',
     spendLabel: cityState ? STE_NAME[cityState] : 'Australia',
     stateName: cityState ? STE_NAME[cityState] : 'Australia',
@@ -283,6 +290,8 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
   }
   let under15: AreaSignals['under15'] = null
   let stateCode = cityState
+  let lgaName: string | null = null
+  let sa2Name: string | null = null
   if (lat == null || lng == null) base.status = 'no_location'
   else if (!inAustralia(lat, lng)) {
     base.status = 'outside_au'
@@ -291,6 +300,8 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
 
   const g = await resolveVenueGeo(lat!, lng!)
   base.geo = { sa2Name: g.sa2Name, sa3Name: g.sa3Name, lgaName: g.lgaName, salName: g.salName, poa: g.poa }
+  lgaName = g.lgaName
+  sa2Name = g.sa2Name
   const ste = g.state && STE_NAME[g.state] ? g.state : cityState
   if (ste) stateCode = ste
   if (ste && STE_NAME[ste]) {
@@ -341,14 +352,24 @@ export async function getVenueIntel(eventId: string): Promise<VenueIntel> {
 
   if (!base.area.length && !base.stations.length && !base.seifa.length) base.status = 'no_data'
   }
+  if (base.status !== 'outside_au') {
+    const market = resolveMarket({ city: ev.city, suburb: ev.suburb, address: ev.venueAddress, lgaName, sa2Name })
+    base.marketId = market.id
+    const [visitor, weekend] = await Promise.all([
+      loadVisitor(market, ev.date.getUTCMonth() + 1),
+      loadWeekend(market, lat, lng),
+    ])
+    base.visitor = visitor
+    base.weekend = weekend
+  }
   return advise(base, ev, await cataloguePromise, under15, stateCode, price)
 }
 
 /** Cached for 12h per event version. A date, pin or edit change builds a new report. */
 export async function getVenueIntelCached(eventId: string) {
   const stamp = await prisma.event.findUnique({ where: { id: eventId }, select: { updatedAt: true, date: true, latitude: true, longitude: true } })
-  // au5 drops reports cached when every suburb was pinned on the CBD.
-  const key = `venue:au5:${eventId}:${stamp?.updatedAt?.getTime() ?? 0}:${stamp?.date?.toISOString().slice(0, 10) ?? ''}:${stamp?.latitude ?? ''}:${stamp?.longitude ?? ''}`
+  // au6 drops reports cached before tourism regions and weekend sensors were loaded.
+  const key = `venue:au6:${eventId}:${stamp?.updatedAt?.getTime() ?? 0}:${stamp?.date?.toISOString().slice(0, 10) ?? ''}:${stamp?.latitude ?? ''}:${stamp?.longitude ?? ''}`
   const hit = await prisma.intelCache.findUnique({ where: { key } })
   if (hit && Date.now() - hit.createdAt.getTime() < 12 * 3600_000) return hit.data as unknown as VenueIntel
   const data = await getVenueIntel(eventId)

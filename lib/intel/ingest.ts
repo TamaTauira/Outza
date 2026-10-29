@@ -6,6 +6,7 @@ import { reportFault } from '@/lib/owner-alerts'
 import { INTEL_SOURCES, type SourceKey } from './sources'
 import { absHsi, dnsw, tfnsw, type ConnectorResult } from './connectors'
 import { runChunkedAbs } from './abs-run'
+import { runChunkedCrowd } from './crowd-run'
 import { writeDataset } from './store'
 import { googleConfigured, syncAllConnections } from './google'
 import { sha } from './util'
@@ -14,7 +15,7 @@ import {
   sourceIsDue, STALE_RUNNING_ERROR, STALE_RUNNING_MS,
 } from './schedule'
 
-const RUNNERS: Record<Exclude<SourceKey, 'google_bp' | 'abs_region' | 'abs_seifa'>, (cfg: Record<string, string> | null) => Promise<ConnectorResult>> = {
+const RUNNERS: Record<Exclude<SourceKey, 'google_bp' | 'abs_region' | 'abs_seifa' | 'tra' | 'footfall'>, (cfg: Record<string, string> | null) => Promise<ConnectorResult>> = {
   abs_hsi: () => absHsi(), tfnsw: () => tfnsw(), dnsw: (cfg) => dnsw(cfg),
 }
 
@@ -78,6 +79,7 @@ export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 
     try {
       if (key === 'google_bp') return await runGoogle(key, job.id)
       if (key === 'abs_region' || key === 'abs_seifa') return await runAbs(key, before?.config, resume, deadline, job.id, before?.latestPeriod ?? null)
+      if (key === 'tra' || key === 'footfall') return await runCrowd(key, before?.config, resume, deadline, job.id, before?.latestPeriod ?? null)
       const result = await RUNNERS[key]((before?.config as Record<string, string> | null) ?? null)
       return await finishConnector(key, job.id, before?.config, result)
     } catch (e) {
@@ -91,8 +93,15 @@ export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 
   } finally { running.delete(key) }
 }
 
+async function runCrowd(key: 'tra' | 'footfall', config: unknown, resume: boolean, deadline: number, jobId: string, previousLatest: string | null) {
+  return finishChunked(key, await runChunkedCrowd({ source: key, config, resume, deadline }), jobId, previousLatest)
+}
+
 async function runAbs(key: 'abs_region' | 'abs_seifa', config: unknown, resume: boolean, deadline: number, jobId: string, previousLatest: string | null) {
-  const result = await runChunkedAbs({ source: key, config, resume, deadline })
+  return finishChunked(key, await runChunkedAbs({ source: key, config, resume, deadline }), jobId, previousLatest)
+}
+
+async function finishChunked(key: SourceKey, result: Awaited<ReturnType<typeof runChunkedAbs>>, jobId: string, previousLatest: string | null) {
   const cur = await prisma.intelSource.findUnique({ where: { key } })
   const cfg = asConfig(cur?.config)
   delete cfg.retryNow
@@ -142,7 +151,7 @@ async function runGoogle(key: 'google_bp', jobId: string) {
   return { status, message }
 }
 
-async function finishConnector(key: Exclude<SourceKey, 'google_bp' | 'abs_region' | 'abs_seifa'>, jobId: string, config: unknown, result: ConnectorResult) {
+async function finishConnector(key: Exclude<SourceKey, 'google_bp' | 'abs_region' | 'abs_seifa' | 'tra' | 'footfall'>, jobId: string, config: unknown, result: ConnectorResult) {
   let changed = false, rows = 0, latest: string | null = null
   const versions: string[] = []
   for (const d of result.datasets) {
