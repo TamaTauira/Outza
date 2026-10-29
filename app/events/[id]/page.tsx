@@ -1,47 +1,23 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound, permanentRedirect } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
-import { getEventDetail } from '@/lib/event-detail'
-import { cityDef } from '@/lib/cities'
-import { eventPath, idFromEventParam, isPastEvent as isPast } from '@/lib/seo'
+import { getPublicEvent, personalizeEvent } from '@/lib/event-detail'
+import { eventPath, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 import { EventDetailClient } from './_components/event-detail-client'
-import { classifyReferral, recordReferral } from '@/lib/referrals'
-import { getSessionUser } from '@/lib/session'
-import { recordSignal } from '@/lib/event-signals'
-
-export const dynamic = 'force-dynamic'
+import { classifyReferral } from '@/lib/referrals'
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }
 
-/** Accepts both the canonical "/events/<slug>-<id>" and legacy "/events/<id>" forms. */
-async function resolveId(param: string): Promise<string | null> {
-  const raw = decodeURIComponent(param)
-  const direct = await prisma.event.findUnique({ where: { id: raw }, select: { id: true } })
-  if (direct) return direct.id
-  const tail = idFromEventParam(raw)
-  if (tail === raw) return null
-  const viaSlug = await prisma.event.findUnique({ where: { id: tail }, select: { id: true } })
-  return viaSlug?.id ?? null
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id: param } = await params
-  const id = await resolveId(param)
-  if (!id) return { title: 'Event not found | VibePeep', robots: { index: false } }
-  const ev = await prisma.event.findUnique({
-    where: { id },
-    select: { id: true, title: true, description: true, date: true, endDate: true, time: true, venueName: true, suburb: true, city: true, imageUrl: true, duplicateOfId: true, status: true, imageAsset: { select: { variants: true, status: true } } },
-  })
+  const data = await getPublicEvent(param)
+  const ev = data?.event
   if (!ev || isPast(ev)) return { title: 'Event not found | VibePeep', robots: { index: false } }
-  // Merged duplicates point search engines at the listing they were merged into
-  const canonicalTarget = ev.duplicateOfId
-    ? await prisma.event.findUnique({ where: { id: ev.duplicateOfId }, select: { id: true, title: true } })
-    : null
-  const dateLabel = ev.date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  const canonicalTarget = data.duplicateTarget
+  const dateLabel = new Date(ev.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   const where = [ev.venueName, ev.suburb && ev.suburb !== ev.city ? ev.suburb : null, ev.city].filter(Boolean).join(', ')
   const status = ev.status === 'CANCELLED' ? 'Cancelled: ' : ev.status === 'POSTPONED' ? 'Postponed: ' : ''
   const desc = `${status}${ev.title} on ${dateLabel}${ev.time ? ` at ${ev.time}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
@@ -64,30 +40,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventPage({ params, searchParams }: Props) {
   const { id: param } = await params
-  const id = await resolveId(param)
-  if (!id) notFound()
+  const core = await getPublicEvent(param)
+  if (!core) notFound()
 
   const h = await headers()
   const ua = h.get('user-agent') ?? ''
   const isHuman = !/bot|crawl|spider|slurp|preview|facebookexternalhit|embedly/i.test(ua)
   const prefetch = /prefetch/i.test(h.get('purpose') ?? '') || /prefetch/i.test(h.get('sec-purpose') ?? '') || h.get('next-router-prefetch') === '1'
-  const data = await getEventDetail(id, { countView: isHuman, prefetch })
-  if (!data) notFound()
-  if (isHuman) {
-    const sp = await searchParams
-    const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
-    recordReferral(id, classifyReferral(h.get('referer'), h.get('x-forwarded-host') ?? h.get('host'), { source: one(sp.utm_source), medium: one(sp.utm_medium) }))
-    const me = await getSessionUser().catch(() => null)
-    if (me) recordSignal(me.id, id, 'VIEW')
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
+  const sp = await searchParams
+
+  // Legacy ids redirect before the signed-in lookups. Checkout returns on ?ad=paid stay on the query string.
+  const canonical = eventPath(core.event)
+  if (`/events/${decodeURIComponent(param)}` !== canonical) {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(sp)) for (const x of [v].flat()) if (x != null) qs.append(k, x)
+    permanentRedirect(qs.size ? `${canonical}?${qs}` : canonical)
   }
 
-  // One canonical, readable URL per event (keeps any query string, e.g. checkout return flags)
-  const canonical = eventPath(data.event)
-  if (`/events/${decodeURIComponent(param)}` !== canonical) {
-    const sp = new URLSearchParams()
-    for (const [k, v] of Object.entries(await searchParams)) for (const x of [v].flat()) if (x != null) sp.append(k, x)
-    permanentRedirect(sp.size ? `${canonical}?${sp}` : canonical)
-  }
+  const referral = isHuman
+    ? classifyReferral(h.get('referer'), h.get('x-forwarded-host') ?? h.get('host'), { source: one(sp.utm_source), medium: one(sp.utm_medium) })
+    : null
+  const data = await personalizeEvent(core, { countView: isHuman, prefetch, referral })
 
   const origin = siteUrl()
   const ev = data.event
@@ -97,7 +71,7 @@ export default async function EventPage({ params, searchParams }: Props) {
   return (
     <>
       {ld && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />}
-      <EventDetailClient key={id} eventId={id} initial={initial} />
+      <EventDetailClient key={ev.id} eventId={ev.id} initial={initial} />
     </>
   )
 }

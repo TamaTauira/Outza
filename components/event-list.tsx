@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
+import { useSession } from 'next-auth/react'
 import { FilterState } from '@/components/filter-panel'
 import { knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
@@ -12,6 +13,15 @@ import { cn } from '@/lib/utils'
 import { useBackState } from '@/lib/scroll-memory'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 
+export type BoardSeed = {
+  city: string
+  from: string
+  to: string
+  events: BoardEvent[]
+  total: number
+  totalPages: number
+}
+
 interface EventListProps {
   filters: FilterState
   searchQuery: string
@@ -22,14 +32,31 @@ interface EventListProps {
   onWindowChange?: (w: TimeWindow) => void
   windowPinned?: boolean
   city?: string
+  initialBoard?: BoardSeed | null
 }
 
-export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city }: EventListProps) {
-  const [events, setEvents] = useState<BoardEvent[]>([])
-  const [total, setTotal] = useState(0)
+function filtersAreOpen(filters: FilterState) {
+  return Boolean(
+    filters.category || filters.categories?.length || filters.subTag || filters.suburb ||
+    filters.isFree || filters.isLGBTI || filters.dateFrom || filters.dateTo,
+  )
+}
+
+export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null }: EventListProps) {
+  const { status: authStatus } = useSession()
+  const span = listSpan(day, filters.dateFrom, filters.dateTo)
+  const seedMatches = !!initialBoard
+    && !searchQuery
+    && !filtersAreOpen(filters)
+    && (city ?? '') === initialBoard.city
+    && !!span
+    && span.from === initialBoard.from
+    && span.to === initialBoard.to
+  const [events, setEvents] = useState<BoardEvent[]>(initialBoard && seedMatches ? initialBoard.events : [])
+  const [total, setTotal] = useState(initialBoard && seedMatches ? initialBoard.total : 0)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
+  const [loading, setLoading] = useState(!(initialBoard && seedMatches))
   const [loadingMore, setLoadingMore] = useState(false)
   // Ended rows are hidden by default; "Show ended" is the opt-in.
   const [showEnded, setShowEnded] = useBackState('board:showEnded', false)
@@ -38,8 +65,6 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [allDayOpen, setAllDayOpen] = useBackState('board:allDayOpen', false)
   const { isSaved, toggle } = useSaved()
   const fetchSeq = useRef(0)
-
-  const span = listSpan(day, filters.dateFrom, filters.dateTo)
 
   const fetchSpan = useCallback(async (from: string, to: string, pageNum: number, append: boolean) => {
     const seq = ++fetchSeq.current
@@ -74,10 +99,19 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   }, [searchQuery, city, filters.category, filters.categories, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI])
 
   useEffect(() => {
-    if (!span) return
+    if (!span || authStatus === 'loading') return
+    // Anonymous visitors use the server-rendered day. Signed-in visitors refetch for their own flags.
+    if (initialBoard && seedMatches && authStatus !== 'authenticated') {
+      setEvents(initialBoard.events)
+      setTotal(initialBoard.total)
+      setTotalPages(initialBoard.totalPages)
+      setPage(1)
+      setLoading(false)
+      return
+    }
     setPage(1)
     fetchSpan(span.from, span.to, 1, false)
-  }, [span?.from, span?.to, fetchSpan])
+  }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard])
 
   const isToday = !!day && day === today
   const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'

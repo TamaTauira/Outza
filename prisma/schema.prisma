@@ -83,6 +83,8 @@ model Event {
   @@index([isLGBTI])
   @@index([suburb])
   @@index([city, date])
+  @@index([city, date, status])
+  @@index([city, category, date])
   @@index([promoterId])
   @@index([dedupeHash])
   @@index([seriesKey])
@@ -162,6 +164,8 @@ model RefreshLog {
   status    String   @default("running")
   eventsAdded Int    @default(0)
   errors    String?
+
+  @@index([status, endedAt])
 }
 
 model User {
@@ -435,6 +439,7 @@ model EventReport {
 
   @@index([status, createdAt])
   @@index([eventId])
+  @@index([eventId, status])
 }
 
 /// Where event-page visits came from (counted per traffic source), for promoter referral reporting.

@@ -4,13 +4,15 @@ import { getSessionUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: Request) {
+async function run(req: Request) {
   const secret = process.env.CRON_SECRET
+  const bearer = req.headers.get('authorization')
   const header = req.headers.get('x-cron-secret')
   const me = await getSessionUser().catch(() => null)
-  if (!(secret && header === secret) && me?.role !== 'ADMIN') {
-    return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
-  }
-  const result = await runDueDigests()
-  return NextResponse.json(result)
+  const authed = !!secret && (bearer === `Bearer ${secret}` || header === secret)
+  if (!authed && me?.role !== 'ADMIN') return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
+  return NextResponse.json(await runDueDigests())
 }
+
+export async function GET(req: Request) { return run(req) }
+export async function POST(req: Request) { return run(req) }
