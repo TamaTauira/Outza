@@ -140,12 +140,15 @@ export const localPath = (l: { id: string; title?: string | null }, date?: strin
   return `/local/${slug ? `${slug}-` : ''}${l.id}${date ? `?date=${date}` : ''}`
 }
 
-export interface LocalOccurrence { id: string; title: string; category: string; description: string; address: string; suburb: string; city: string; startTime: string; endTime: string; priceNote: string | null; date: string; schedule: string }
+export interface LocalOccurrence { id: string; title: string; category: string; description?: string | null; address: string; suburb: string; city: string; startTime: string; endTime: string; priceNote: string | null; date: string; schedule: string }
 
-/** Shapes one dated occurrence as a board row / saved favourite. Id is per date so each date can be saved or planned separately. */
+/**
+ * Shapes one dated occurrence as a board row / saved favourite. Id is per date so each date can be saved or planned separately.
+ * Description is optional: a stale tab can receive a feed item that no longer includes it, and that must degrade instead of throwing.
+ */
 export function localToBoard(o: LocalOccurrence) {
   return {
-    id: `local-${o.id}-${o.date}`, title: o.title, description: o.description.slice(0, 400), date: o.date, endDate: null, time: o.startTime, endTime: o.endTime,
+    id: `local-${o.id}-${o.date}`, title: o.title, description: (o.description ?? '').slice(0, 400), date: o.date, endDate: null, time: o.startTime, endTime: o.endTime,
     venueName: o.address, suburb: o.suburb, category: localCategoryShort(o.category), subTags: [o.schedule], isLGBTI: false,
     isFree: !!o.priceNote && /^free\b/i.test(o.priceNote.trim()), price: o.priceNote ?? 'See listing', ticketUrl: null, city: o.city, href: localPath(o, o.date),
   }
