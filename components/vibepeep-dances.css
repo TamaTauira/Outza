@@ -59,10 +59,11 @@
 .vp-hit[data-react='party'] .vp-disco-ball { animation: vp-ball-drop 4.4s ease forwards; }
 .vp-hit[data-react='party'] .vp-ball-b { animation-delay: 0.1s; }
 .vp-hit[data-react='party'] .vp-ball-c { animation-delay: 0.18s; }
-.vp-hit[data-react='party'] .vp-sweep { animation: vp-light-sweep 1.5s ease-in-out 2; }
-.vp-hit[data-react='party'] .vp-glint { animation: vp-glint 0.9s ease-in-out infinite; }
-.vp-hit[data-react='party'] .vp-glint-b { animation-delay: 0.3s; }
-.vp-hit[data-react='party'] .vp-glint-c { animation-delay: 0.5s; }
+/* Light sweeps used to smear across his body. Disco balls stay above him. */
+.vp-sweep,
+.vp-glint {
+  display: none !important;
+}
 
 .vp-hit[data-dance] .vp-act { animation: none !important; }
 

@@ -153,7 +153,7 @@
 
 /* Direction flips the three-quarter walker. The front face stays orange-left
    so a dance is never a mirrored copy of the last stroll. */
-.vp-roam[data-face='left'] .vp-side {
+.vp-roam[data-face='left'] .vp-pose-walk {
   transform: scaleX(-1);
 }
 
