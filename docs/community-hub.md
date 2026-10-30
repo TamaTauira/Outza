@@ -9,7 +9,7 @@ VibePeep Local (`/local`) is unchanged. This hub is a separate submit flow that 
 - `/community` lists the eight sections.
 - `/community/[section]`, `/community/[section]/[city]`, `/community/[section]/[city]/[suburb]` and an optional when segment (`tonight`, `this-weekend`, `friday`, `saturday`, `sunday`).
 - Filters on the page: city, suburb, from, to, when, free. A repeating listing matches a date only when an occurrence falls in that window.
-- City and section pages are indexed at 5 or more live listings. Suburb and single-date pages need 3. Thinner pages render, send `noindex`, and stay out of the sitemap.
+- Indexing uses `assessIndexability` in `lib/indexability.ts` (5 live listings; suburb pages also need 2 inside the fresh window). Thinner pages render, send `noindex`, and stay out of the sitemap.
 - Listings without a photo use the genre WebPs in `public/placeholders/`.
 - The public event page keeps a **Get Tickets** link when the organiser gave a ticket-seller URL, and **More Info** otherwise (their website, or the shareable event page).
 - Street addresses stay off the public page unless the organiser opts in. School fundraisers are always suburb-only, and photos of children are not published.

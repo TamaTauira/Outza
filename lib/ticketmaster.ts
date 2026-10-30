@@ -1,4 +1,5 @@
 import { saveEvent, sleep } from '@/lib/event-store'
+import { usableUrl } from '@/lib/listing-link'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { moneyNumber, priceFromAmounts } from '@/lib/price'
 import { CITIES, type CityDef } from '@/lib/cities'
@@ -176,6 +177,8 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
       }
       const galleryUrls = [...byArtwork.values()].map((v) => v.url).filter((u) => u !== imageUrl)
       const promoterName: string | null = ev?.promoter?.name ?? ev?.promoters?.[0]?.name ?? null
+      const page = usableUrl(ev?.url) ?? (ev?.id ? usableUrl(`https://www.ticketmaster.com.au/event/${encodeURIComponent(String(ev.id))}`) : null)
+      const organiserPage = usableUrl(ev?._embedded?.attractions?.[0]?.externalLinks?.homepage?.[0]?.url)
       const ok = await saveEvent({
         title: ev?.name ?? 'Untitled Event',
         description: ev?.info ?? ev?.pleaseNote ?? '',
@@ -188,7 +191,9 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
         genres,
         price,
         imageUrl,
-        ticketUrl: ev?.url ?? null,
+        ticketUrl: page,
+        sourceUrl: page,
+        organiserUrl: organiserPage,
         latitude: hasPin ? lat : null,
         longitude: hasPin ? lng : null,
         source: 'ticketmaster',

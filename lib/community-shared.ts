@@ -4,6 +4,7 @@
  */
 import { CITIES, type CityDef } from '@/lib/cities'
 import { occurrences, isDateStr, isTimeStr, addDaysStr, diffDays, todayIn } from '@/lib/local-shared'
+import { INDEX_FRESH_DAYS, assessIndexability } from '@/lib/indexability'
 import { whenRange } from '@/lib/local-seo'
 import { addDaysKey, citySlug, cityToday, eventPath, isTonightSlot, slugify, WHEN_KEYS, type WhenKey } from '@/lib/seo'
 
@@ -31,10 +32,9 @@ export type CommunityRecurrence = (typeof COMMUNITY_RECURRENCE)[number]['key']
 
 /** Submissions per email and per network, rolling 24 hours. */
 export const COMMUNITY_RATE_LIMIT = 5
-/** City and category guides need this many live listings before they are indexed. */
+/** Kept for callers. The live threshold is `assessIndexability` in lib/indexability.ts. */
 export const COMMUNITY_MIN_SECTION = 5
-/** Suburb and single-date guides need this many. */
-export const COMMUNITY_MIN_PLACE = 3
+export const COMMUNITY_MIN_PLACE = 5
 export const COMMUNITY_MAX_AHEAD_DAYS = 365
 export const COMMUNITY_MAX_RECUR_DAYS = 182
 export const COMMUNITY_MAX_SPAN_DAYS = 14
@@ -423,9 +423,19 @@ export function filterCommunityListings<T extends CommunityOccurrence>(rows: T[]
 
 export type CommunityPageKind = 'section' | 'city' | 'suburb' | 'date'
 
-export function communityPageIndexable(listingCount: number, kind: CommunityPageKind): boolean {
-  if (kind === 'suburb' || kind === 'date') return listingCount >= COMMUNITY_MIN_PLACE
-  return listingCount >= COMMUNITY_MIN_SECTION
+export function freshListingCount(rows: { id: string; occursOn: string }[], from: string): number {
+  const until = addDaysKey(from, INDEX_FRESH_DAYS)
+  return new Set(rows.filter((row) => row.occursOn <= until).map((row) => row.id)).size
+}
+
+/** Same gate as the city guides. Dated pages skip the freshness check because the URL is already a date window. */
+export function communityPageIndexable(listingCount: number, kind: CommunityPageKind, fresh?: number): boolean {
+  return assessIndexability({
+    total: listingCount,
+    fresh: fresh ?? listingCount,
+    requireFresh: kind === 'suburb',
+    mode: kind === 'section' || kind === 'city' ? 'editorial' : 'combo',
+  }).index
 }
 
 export function communitySectionPath(key: string): string {

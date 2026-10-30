@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Accessibility, Baby, Bus, Building2, ExternalLink, Map as MapIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { sourceLabel } from '@/lib/quality'
+import { formatUpdated } from '@/lib/listing-window'
 import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
@@ -70,21 +71,18 @@ export async function shareEvent(event: { id: string; title: string }) {
   } catch (err: any) { if (err?.name !== 'AbortError') console.error('Share failed:', err) }
 }
 
-/** One muted line: source link and when the listing was updated. Date is absolute so server and client match. */
+/** One short line: where the listing came from, and when it was updated. */
 export function SourceLine({ event }: { event: any }) {
-  const href = event?.organiserUrl || event?.ticketUrl
-  const label = event?.organiserName || event?.promoter?.orgName || event?.promoter?.name || sourceLabel(event?.source)
-  const updated = event?.quality?.checkedAt
-    ? new Date(event.quality.checkedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' })
-    : null
+  const label = sourceLabel(event?.source).replace(/\bverified\b/ig, '').replace(/\s{2,}/g, ' ').trim() || 'a listing site'
+  const href = event?.sourceUrl || event?.organiserUrl || event?.ticketUrl
+  const linked = typeof href === 'string' && /^https?:\/\//i.test(href) ? href : null
+  const updated = formatUpdated(event?.quality?.checkedAt)
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-      <span>
-        Source: {href
-          ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{label}</a>
-          : label}
-        {updated ? ` · Updated ${updated}` : ''}
-      </span>
+    <p className="text-xs text-muted-foreground">
+      Source: {linked
+        ? <a href={linked} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{label}</a>
+        : label}
+      {updated ? ` · Updated ${updated}` : ''}
     </p>
   )
 }
@@ -147,7 +145,7 @@ export function EventExtras({ event }: { event: any }) {
           <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
           {organiserName && <span className="text-foreground">Organised by {organiserName}</span>}
           {organiserUrl && (
-            <a href={organiserUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <a href={organiserUrl} target="_blank" rel="noopener noreferrer" onClick={() => { fetch('/api/landing/hit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'lead' }), keepalive: true }).catch(() => {}) }} className="inline-flex items-center gap-1 text-primary hover:underline">
               Original organiser listing <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}

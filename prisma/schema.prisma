@@ -26,6 +26,8 @@ model Event {
   price       String?
   imageUrl    String?
   ticketUrl   String?
+  /// Original listing page when it is not the same as the ticket link.
+  sourceUrl   String?
   source      String   @default("ticketmaster")
   city        String   @default("Sydney")
   latitude    Float?
@@ -56,6 +58,16 @@ model Event {
   capacity          Int?
   organiserName     String?
   organiserUrl      String?
+  /// IANA zone for startsAt/endsAt. Derived from the city. Not a public badge.
+  timezone        String?
+  /// True when the source listed no start time. Ranking treats these as possibly available.
+  allDay          Boolean   @default(false)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  /// Internal 0–100 score for ranking and filters. Never send this to the client.
+  confidenceScore Int?
+  venueId         String?
+  venue           Venue?    @relation(fields: [venueId], references: [id], onDelete: SetNull)
   // Image pipeline
   imageAssetId   String?
   imageLocked    Boolean   @default(false) // admin replaced the artwork; source refreshes must not overwrite it
@@ -99,6 +111,9 @@ model Event {
   signals     EventSignal[]
   togetherItems TogetherItem[]
   communityAudits CommunityAudit[]
+  occurrences   EventOccurrence[]
+  sourceRecords SourceRecord[]
+  verificationChecks VerificationCheck[]
 
   @@index([date])
   @@index([category])
@@ -116,6 +131,8 @@ model Event {
   @@index([communityKey, approvalState, date])
   @@index([approvalState, deletedAt])
   @@index([contactEmail])
+  @@index([startsAt])
+  @@index([venueId])
 }
 
 /// One processed source image, keyed by sha1 of its (upgraded) source URL. Shared by every event using that URL.
@@ -963,4 +980,91 @@ model QualityAudit {
   @@index([action, createdAt])
   @@index([eventId])
   @@index([status, action])
+}
+
+/// Aggregated guide conversions. One row per landing path and referrer type.
+model LandingStat {
+  id          String   @id @default(cuid())
+  path        String
+  source      String
+  views       Int      @default(0)
+  detailViews Int      @default(0)
+  saves       Int      @default(0)
+  leads       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([path, source])
+  @@index([source])
+}
+
+/// Venue row for hours cross-checks. Hours are stored only when a source supplied them.
+model Venue {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  city        String
+  timezone    String
+  latitude    Float?
+  longitude   Float?
+  openTime    String?
+  closeTime   String?
+  hoursSource String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  events      Event[]
+
+  @@index([city])
+}
+
+/// One normalised occurrence. Derived from the listing; the Event row stays the public record.
+model EventOccurrence {
+  id         String    @id @default(cuid())
+  eventId    String
+  startsAt   DateTime
+  endsAt     DateTime?
+  timezone   String
+  allDay     Boolean   @default(false)
+  status     String
+  recurrence String?
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, startsAt])
+  @@index([startsAt])
+}
+
+/// Provenance for one source on a listing. Conflicts are recorded; the primary fields are not overwritten.
+model SourceRecord {
+  id        String   @id @default(cuid())
+  eventId   String
+  source    String
+  sourceUrl String?  @db.Text
+  seenAt    DateTime @default(now())
+  missing   Boolean  @default(false)
+  changed   Boolean  @default(false)
+  conflicts Json?
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, source])
+  @@index([missing, changed])
+}
+
+/// Rule-based check. Outcomes are ok, due, flag, or skipped. Never a guarantee.
+model VerificationCheck {
+  id        String   @id @default(cuid())
+  eventId   String?
+  kind      String
+  outcome   String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([kind, createdAt])
+  @@index([eventId])
+}
+
+/// Admin counters that have no other table (search-result clicks).
+model AnalyticsCounter {
+  key       String   @id
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
 }

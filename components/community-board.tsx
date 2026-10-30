@@ -7,7 +7,7 @@ import { Footer } from '@/components/footer'
 import { CITIES } from '@/lib/cities'
 import { loadCommunityPage, pageKindFor, recordCommunityEntrance } from '@/lib/community'
 import {
-  communityCityPath, communityPageIndexable, communityPlacePath, communitySectionPath,
+  communityCityPath, communityPageIndexable, communityPlacePath, communitySectionPath, freshListingCount,
   isWhenKey, listingCta, redactCommunityPublic, sectionByKey,
 } from '@/lib/community-shared'
 import { cityFromSlug, eventPath, slugify, WHEN_KEYS } from '@/lib/seo'
@@ -65,7 +65,7 @@ export async function CommunityBoard({
   const rows = (data?.rows ?? []).filter((row) => !suburbSlug || slugify(row.suburb || '') === suburbSlug)
   const listingCount = new Set(rows.map((row) => row.id)).size
   const kind = pageKindFor({ city: city?.name, suburb: suburbSlug || suburbQuery, when, date: dateParam })
-  const indexable = data ? communityPageIndexable(listingCount, kind) : false
+  const indexable = data ? communityPageIndexable(listingCount, kind, freshListingCount(rows, data.from)) : false
   const h = await headers()
   const prefetch = /prefetch/i.test(h.get('purpose') ?? '') || /prefetch/i.test(h.get('sec-purpose') ?? '') || h.get('next-router-prefetch') === '1'
   if (!prefetch) {
@@ -144,7 +144,7 @@ export async function CommunityBoard({
             return (
               <li key={`${row.id}-${row.occursOn}`} className="overflow-hidden rounded-2xl bg-card shadow-sm">
                 <div className="relative h-36 bg-muted">
-                  <EventImage src={safe.imageUrl} kind="card" alt="" sizes="100vw" category={safe.category} communityKey={safe.communityKey} crop />
+                  <EventImage src={safe.imageUrl} kind="card" alt="" sizes="100vw" category={safe.communityKey || safe.category} crop />
                 </div>
                 <div className="space-y-2 p-4">
                   <p className="text-sm text-muted-foreground">{dayLabel(row.occursOn)}{row.time ? ` · ${row.time}` : ''}{row.status === 'CANCELLED' ? ' · Cancelled' : row.status === 'POSTPONED' ? ' · Postponed' : ''}</p>
@@ -198,7 +198,8 @@ export async function communityMeta(args: Parameters<typeof CommunityBoard>[0]) 
     const data = await loadCommunityPage(JSON.stringify({
       section: section.key, city: city?.name ?? null, suburb, from: null, to: null, free: false, when,
     }))
-    index = !!data && communityPageIndexable(data.listingCount, pageKindFor({ city: city?.name, suburb, when }))
+    const kind = pageKindFor({ city: city?.name, suburb, when })
+    index = !!data && communityPageIndexable(data.listingCount, kind, freshListingCount(data.rows, data.from))
   } catch {
     index = false
   }

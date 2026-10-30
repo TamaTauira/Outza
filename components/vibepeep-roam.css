@@ -5,7 +5,7 @@
   z-index: 34;
   left: 0;
   top: 0;
-  width: 3.5rem;
+  width: 7.5rem;
   pointer-events: none;
 }
 
@@ -19,7 +19,7 @@
 
 @media (min-width: 640px) {
   .vp-roam {
-    width: 4.5rem;
+    width: 11rem;
   }
 
   .vp-roam:not([data-ready]) {
@@ -29,7 +29,7 @@
 }
 
 .vp-roam-map {
-  width: 3rem;
+  width: 5.5rem;
 }
 
 .vp-roam-parked {

@@ -1,6 +1,29 @@
 /** What the Trust & listings queue counts, and what Approve / Dismiss does. Pure, so tests do not need a database. */
 
-export const QUEUE_FLAG_ACTIONS = ['DUPLICATE_FLAGGED', 'EXPIRED_HIDDEN'] as const
+export const QUEUE_FLAG_ACTIONS = [
+  'DUPLICATE_FLAGGED',
+  'EXPIRED_HIDDEN',
+  'TIME_CONFLICT',
+  'MISSING_COORDS',
+  'SUSPECT_IMAGE',
+  'SOURCE_FAILURE',
+  'SOURCE_CHANGED',
+  'SOURCE_MISSING',
+] as const
+
+export function flagIssueLabel(action: string): string {
+  switch (action) {
+    case 'DUPLICATE_FLAGGED': return 'Flagged duplicate'
+    case 'EXPIRED_HIDDEN': return 'Expired listings'
+    case 'TIME_CONFLICT': return 'Conflicting times'
+    case 'MISSING_COORDS': return 'Missing venue coordinates'
+    case 'SUSPECT_IMAGE': return 'Suspect image'
+    case 'SOURCE_FAILURE': return 'Repeated source failure'
+    case 'SOURCE_CHANGED': return 'Source changed'
+    case 'SOURCE_MISSING': return 'Missing source'
+    default: return 'Quality check'
+  }
+}
 
 export type QueueKind = 'report' | 'claim' | 'flag'
 export type QueueAction = 'approve' | 'dismiss'

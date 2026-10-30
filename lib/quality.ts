@@ -233,7 +233,7 @@ export function popularity(ev: { saves?: number; attendees?: number; views?: num
  * 3. The last day (end date, else start date) is still today or later in the event's city.
  * 4. `lastVerifiedAt` is within the last 7 days. Ingest refreshes and organiser edits set this.
  * 5. Required fields: title, date, a start time, a specific venue name (not the city or "TBA"),
- *    city, a price or an explicit free flag, and an http(s) organiser or ticket link.
+ *    city, a price or an explicit free flag, and an http(s) organiser, source or ticket link.
  * 6. `source` is a known VibePeep source (organiser, official guide, or ticketing partner).
  * 7. No OPEN correction report for duplicate, wrong date, wrong venue, or cancelled.
  *    Wrong price, broken link, and "something else" do not by themselves fail the check.
@@ -255,6 +255,7 @@ export type VerifiedInput = {
   price?: string | null
   priceMin?: number | null
   ticketUrl?: string | null
+  sourceUrl?: string | null
   organiserUrl?: string | null
   source?: string | null
   status?: string | null
@@ -285,8 +286,8 @@ export function outzaVerified(ev: VerifiedInput, now = Date.now()): { ok: boolea
   if (!ev.city?.trim()) missing.push('City is missing')
   const priced = ev.isFree === true || (typeof ev.priceMin === 'number' && ev.priceMin >= 0) || !!(ev.price && ev.price.trim())
   if (!priced) missing.push('Price is not listed and the event is not marked free')
-  const link = ev.organiserUrl || ev.ticketUrl || ''
-  if (!/^https?:\/\//i.test(link)) missing.push('No organiser or ticket link')
+  const link = ev.organiserUrl || ev.ticketUrl || ev.sourceUrl || ''
+  if (!/^https?:\/\//i.test(link)) missing.push('No organiser, source or ticket link')
   if (!ev.source || !SOURCES[ev.source]) missing.push('Source is not a known VibePeep source')
   // A listing the organiser just typed has not been re-checked against a source feed.
   if (ev.source === 'promoter') missing.push('Listed by the organiser, not re-checked against a source feed')

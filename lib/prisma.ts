@@ -1,1 +1,1 @@
-export { prisma } from './db'
+export { prisma, runWithJobPrisma } from './db'

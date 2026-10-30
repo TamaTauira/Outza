@@ -9,8 +9,6 @@ import { matchPlanPick, PLAN_PICKS, type PlanPick, type PlanView } from '@/lib/p
 import { eventPath } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { OutingItinerary } from '@/components/outing-itinerary'
-import { VibePeepMascot } from '@/components/vibepeep-mascot'
-
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
   lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; subTag?: string; paidOnly?: boolean; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
@@ -464,10 +462,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
       {planning && planError && <p role="alert" className="mt-3 text-sm text-[#ffb4a6]">{planError}</p>}
 
       {planning && planBusy && !plan && (
-        <div className="mt-4 flex items-center gap-3" aria-live="polite">
-          <VibePeepMascot onDark className="w-14 shrink-0" alt="" />
-          <p className="text-sm text-white/80">Stitching the stops together…</p>
-        </div>
+        <p className="mt-4 text-sm text-white/80" aria-live="polite">Stitching the stops together…</p>
       )}
 
       {planning && plan && (
@@ -485,19 +480,13 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               {plan.legs.length > 0 && <p className="mt-3 text-xs text-white/55">Travel times are a rough hop from the distance between stops. Not a timetable, and not the traffic.</p>}
             </div>
           ) : (
-            <div className="mt-3 flex items-center gap-3">
-              <VibePeepMascot onDark className="w-16 shrink-0" alt="" />
-              <p className="text-sm text-white/80">The board’s quiet for that one{plan.city ? ` in ${plan.city}` : ''}. Try another city, or ask me for a single thing to do.</p>
-            </div>
+            <p className="mt-3 text-sm text-white/80">The board’s quiet for that one{plan.city ? ` in ${plan.city}` : ''}. Try another city, or ask me for a single thing to do.</p>
           )}
         </div>
       )}
 
       {!planning && busy && !data && (
-        <div className="mt-4 flex items-center gap-3" aria-live="polite">
-          <VibePeepMascot onDark className="w-14 shrink-0" alt="" />
-          <p className="text-sm text-white/80">Having a peep…</p>
-        </div>
+        <p className="mt-4 text-sm text-white/80" aria-live="polite">Having a peep…</p>
       )}
 
       {!planning && data && (
@@ -531,10 +520,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               })}
             </ul>
           ) : (
-            <div className="mt-3 flex items-center gap-3">
-              <VibePeepMascot onDark className="w-16 shrink-0" alt="" />
-              <p className="text-sm text-white/80">I had a proper look. Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
-            </div>
+            <p className="mt-3 text-sm text-white/80">I had a proper look. Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

@@ -136,10 +136,14 @@ test('suburb, city, free and date filters use real occurrences', () => {
 })
 
 test('thin community pages stay out of the index', () => {
+  assert.equal(communityPageIndexable(0, 'section'), false)
   assert.equal(communityPageIndexable(4, 'section'), false)
   assert.equal(communityPageIndexable(5, 'city'), true)
-  assert.equal(communityPageIndexable(2, 'suburb'), false)
-  assert.equal(communityPageIndexable(3, 'date'), true)
+  assert.equal(communityPageIndexable(4, 'suburb'), false)
+  assert.equal(communityPageIndexable(5, 'suburb', 1), false)
+  assert.equal(communityPageIndexable(5, 'suburb', 2), true)
+  assert.equal(communityPageIndexable(4, 'date'), false)
+  assert.equal(communityPageIndexable(5, 'date'), true)
 })
 
 test('community pages keep a More Info link and ticket hosts stay Get Tickets', () => {

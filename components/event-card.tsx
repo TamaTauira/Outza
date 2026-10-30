@@ -11,7 +11,6 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
-import { listingCta } from '@/lib/community-shared'
 interface EventData {
   id: string
   title: string
@@ -35,10 +34,10 @@ interface EventData {
   organiserUrl?: string | null
   source?: string | null
   communityKey?: string | null
-  verified?: boolean
+  availabilityKind?: 'possibly'
 }
 
-export function EventCard({ event, index }: { event: EventData; index: number }) {
+export function EventCard({ event, index, listingQuery }: { event: EventData; index: number; listingQuery?: string }) {
   const dateObj = new Date(event.date)
   const day = dateObj.getUTCDate()
   const month = dateObj.toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' })
@@ -52,7 +51,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
     >
-      <Link href={eventPath(event)} className="block group">
+      <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} className="block group">
         <div className="bg-card rounded-xl overflow-hidden shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] transition-all duration-300 group-hover:-translate-y-1">
           {/* Image */}
           <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A1A'}, #1a120c)` }}>
@@ -64,8 +63,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               crop
               accent={catDef?.color}
-              category={event.category}
-              communityKey={event.communityKey}
+              category={event.communityKey || event.category}
             />
 
             {/* Date badge */}
@@ -126,6 +124,9 @@ export function EventCard({ event, index }: { event: EventData; index: number })
                 {event.time}
               </div>
             )}
+            {event.availabilityKind === 'possibly' && (
+              <p className="text-xs text-muted-foreground">Possibly available</p>
+            )}
 
             {/* Price + CTA */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -133,7 +134,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
                 {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
               </span>
               <span className="flex items-center gap-1 text-xs font-medium text-primary group-hover:gap-2 transition-all">
-                {listingCta(event)?.label ?? 'More Info'} <ExternalLink className="w-3 h-3" />
+                Get Tickets <ExternalLink className="w-3 h-3" />
               </span>
             </div>
           </div>
@@ -144,20 +145,20 @@ export function EventCard({ event, index }: { event: EventData; index: number })
 }
 
 /** Two-line city-guide row used under the desktop card breakpoint. */
-export function GuideEventRow({ event }: { event: EventData }) {
+export function GuideEventRow({ event, listingQuery }: { event: EventData; listingQuery?: string }) {
   const catDef = CATEGORIES.find((c) => c.name === event.category)
   const color = catDef?.color ?? '#FF7A1A'
   const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
   return (
-    <Link href={eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
+    <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={event.imageAsset} src={event.imageUrl} kind="card" alt="" sizes="64px" compact crop accent={color} category={event.category} communityKey={event.communityKey} />
+        <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} shape="square" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>
         <p className="truncate text-sm text-muted-foreground">
-          {event.time ?? 'All day'} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
+          {event.availabilityKind === 'possibly' ? 'Possibly available' : (event.time ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
         </p>
       </div>
       <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{price.value}</span>

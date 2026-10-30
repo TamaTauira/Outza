@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { VibePeepMark } from '@/components/vibepeep-mark'
-import { VibePeepWordmark } from '@/components/vibepeep-logo'
 import { srcSet, variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import { cn } from '@/lib/utils'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
-import { placeholderSrc } from '@/lib/community-shared'
+import { placeholderPath, type PlaceholderShape } from '@/lib/placeholders'
 
 interface Props {
   image?: ClientImage | null
@@ -22,19 +20,19 @@ interface Props {
   crop?: boolean
   /** Category colour for the branded placeholder when there is no image. */
   accent?: string
-  /** Board category, used to pick a genre placeholder WebP. */
+  /** Genre used to pick the placeholder artwork when the event has no picture. */
   category?: string | null
-  /** Community hub section, when this listing was submitted there. */
-  communityKey?: string | null
+  /** Square crop uses the square file. Wide is the default. */
+  shape?: PlaceholderShape
   className?: string
 }
 
 /**
  * Fills its (fixed-aspect, relative) parent. Uses the optimised AVIF/WebP variants when processed,
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
- * otherwise a clearly labelled VibePeep placeholder.
+ * otherwise the genre placeholder (wide, or square when that crop is needed).
  */
-export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, crop, accent, category, communityKey, className }: Props) {
+export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, crop, accent, category, shape, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
   const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
   const m = image?.variants ?? null
@@ -43,6 +41,8 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
   const loading = priority ? 'eager' : 'lazy'
 
   const frame = cn('absolute inset-0 w-full h-full', crop ? 'object-cover' : 'object-contain', className)
+  const fallbackShape: PlaceholderShape = shape ?? (kind === 'square' ? 'square' : 'wide')
+  const fallbackSrc = placeholderPath(category, fallbackShape)
 
   if (stage === 'variant' && m && hasVariants) {
     const widths = m.sizes[kind]!
@@ -85,12 +85,13 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
   }
 
   return (
-    <div className="absolute inset-0" role="img" aria-label={alt}>
-      <img src={placeholderSrc(category, communityKey)} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-white">
-        <VibePeepMark className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} decorative />
-        {!compact && <VibePeepWordmark tone="on-dark" decorative className="h-3 w-auto" />}
-      </span>
-    </div>
+    <img
+      src={fallbackSrc}
+      alt={alt}
+      loading={loading}
+      decoding="async"
+      className={cn('absolute inset-0 h-full w-full object-cover', className)}
+      style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #1a120c 72%)` : 'linear-gradient(145deg, #2a211c, #141414)' }}
+    />
   )
 }
