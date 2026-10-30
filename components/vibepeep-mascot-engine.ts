@@ -89,6 +89,7 @@ export function attachMascot(slot: HTMLElement): () => void {
   let reaction: PlayId | null = null
   let last: PlayId | null = null
   let lastDance: DanceId | null = null
+  let partyGen = 0
   let stamps: number[] = []
   let clickWait = 0
   let pointerKind = 'mouse'
@@ -134,22 +135,33 @@ export function attachMascot(slot: HTMLElement): () => void {
     button.style.setProperty('--vp-x', '0')
     button.style.setProperty('--vp-y', '0')
     button.removeAttribute('data-mood')
+    let gen = 0
     if (id === 'party') {
+      gen = ++partyGen
       const dance = pickDance(lastDance)
       lastDance = dance
+      // Drop the attribute and reflow so the next routine's animation actually restarts.
+      // Without this, a second double-click keeps the first dance's timeline (Safari and Chrome).
+      button.removeAttribute('data-dance')
+      button.removeAttribute('data-react')
+      void button.offsetWidth
       button.setAttribute('data-dance', dance)
+      button.setAttribute('data-dance-run', String(gen))
     } else {
       button.removeAttribute('data-dance')
+      button.removeAttribute('data-dance-run')
     }
     button.setAttribute('data-react', id)
     setLine(line ?? (id === 'party' ? PARTY_LINE : REACTION_LINES[id]))
     spawnBits(fx, id)
     const ms = reduce ? 1400 : id === 'party' ? PARTY_MS : REACTION_MS[id]
     later(() => {
+      if (id === 'party' && gen !== partyGen) return
       if (reaction !== id) return
       reaction = null
       button.removeAttribute('data-react')
       button.removeAttribute('data-dance')
+      button.removeAttribute('data-dance-run')
       setLine(null)
       fx.replaceChildren()
     }, ms)
