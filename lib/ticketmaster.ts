@@ -1,5 +1,6 @@
 import { saveEvent, sleep } from '@/lib/event-store'
 import { usableUrl } from '@/lib/listing-link'
+import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { moneyNumber, priceFromAmounts } from '@/lib/price'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { addressInOtherState } from '@/lib/seo'
@@ -27,7 +28,7 @@ function cityUrl(city: CityDef, apiKey: string, extra: string): string {
 
 async function tmJson(url: string, label: string): Promise<any | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) })
+    const res = await fetch(url, { signal: sourceFetchSignal(20000) })
     if (!res.ok) {
       console.error(`Ticketmaster ${label} returned ${res.status}`)
       return null
@@ -47,7 +48,9 @@ export async function fetchTicketmasterEvents(): Promise<number> {
   }
   let total = 0
   for (const city of CITIES) {
+    if (yieldIfBudget('cities')) break
     total += await fetchCity(city, apiKey)
+    noteSourceSaved(total)
   }
   console.log(`Ticketmaster: added/updated ${total} events across Australia`)
   return total
@@ -82,6 +85,7 @@ async function fetchCity(city: CityDef, apiKey: string): Promise<number> {
   let saved = 0
   let cursor = new Date()
   while (cursor < horizon) {
+    if (yieldIfBudget('date windows')) break
     const end = new Date(Math.min(horizon.getTime(), cursor.getTime() + TM_WINDOW_MS))
     saved += await fetchWindow(city, apiKey, cursor, end)
     cursor = end
@@ -95,6 +99,7 @@ async function fetchCity(city: CityDef, apiKey: string): Promise<number> {
  * reports that many (or more) is halved until it fits, down to a single day.
  */
 async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date): Promise<number> {
+  if (yieldIfBudget('date windows')) return 0
   if (end.getTime() - start.getTime() < 1000) return 0
   const range = `startDateTime=${tmStamp(start)}&endDateTime=${tmStamp(end)}`
   const first = await tmJson(cityUrl(city, apiKey, `page=0&sort=date,asc&${range}`), `${city.name} ${tmStamp(start)}`)
@@ -131,6 +136,7 @@ async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date
 async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
   let saved = 0
   for (const ev of events) {
+    if (yieldIfBudget('events')) break
     try {
       const venue = ev?._embedded?.venues?.[0]
       const genres: string[] = []

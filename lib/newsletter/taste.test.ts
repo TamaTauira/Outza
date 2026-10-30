@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { assertPublicImageUrl, emailImageSrc } from './images'
-import { buildProfile, rankDigest, trustLine, type DigestEvent, type RankOpts } from './taste'
+import { buildProfile, inDigestScope, rankDigest, trustLine, type DigestEvent, type RankOpts } from './taste'
 
 const FROM = new Date('2026-10-29T00:00:00.000Z')
 const TO = new Date('2026-11-05T00:00:00.000Z')
@@ -60,7 +60,9 @@ test('a known taste gets a first-name greeting and a line about what they peep',
     saved: [{ id: 's1', title: 'Late show', category: 'Arts & Culture', venueName: 'The Imperial', suburb: 'Newtown', subTags: ['Comedy'] }],
   })
   assert.equal(profile.greeting, 'Hey Sam,')
-  assert.match(profile.intro, /You've been peeping at comedy and Newtown bars/)
+  assert.match(profile.intro, /You've been peeping at arts and theatre/)
+  assert.match(profile.intro, /lined up around that/)
+  assert.doesNotMatch(profile.intro, /variety sneaks in|wellness/i)
   assert.equal(profile.thin, false)
   assert.equal(profile.becauseTitle, 'Because you liked comedy')
 })
@@ -115,8 +117,7 @@ test('ranking explains follows, suburbs and saved gigs, and skips past, duplicat
   assert.equal(like?.whyLine, 'Like the gig you saved')
   const venue = [picked.hero, ...picked.weekend, ...picked.because].find((e) => e?.id === 'venue')
   assert.equal(venue?.whyLine, 'Because you follow Enmore Theatre')
-  const near = [picked.hero, ...picked.weekend, ...picked.because, ...picked.saved].find((e) => e?.id === 'near')
-  assert.equal(near?.whyLine, 'Near Surry Hills')
+  assert.equal(ids.includes('near'), false)
   assert.equal(picked.saved.some((e) => e.id === 'saved-gig'), true)
   assert.match(picked.saved.find((e) => e.id === 'saved-gig')?.whyLine ?? '', /watchlist|Together|itinerary|follow|Near|peep|gig/)
   assert.equal(ids.filter((id) => id === 'like-gig' || id === 'same-name').length <= 1, true)
@@ -124,19 +125,21 @@ test('ranking explains follows, suburbs and saved gigs, and skips past, duplicat
   assert.equal(titles.filter((t) => t?.startsWith('another band')).length <= 1, true)
 })
 
-test('a thin profile falls back to popular events in their city', () => {
+test('a thin profile is not padded with popular events from categories they never chose', () => {
   const profile = buildProfile({ name: 'Jamie', city: 'Sydney', preferredCategories: [], venueNames: [], saved: [] })
   const events = [
     ev({ id: 'quiet', title: 'Quiet one', popularity: 0, hasImage: false, imageUrl: null, date: new Date('2026-11-04T00:00:00.000Z') }),
     ev({ id: 'busy', title: 'Busy one', popularity: 40, category: 'Community', date: new Date('2026-10-31T00:00:00.000Z') }),
     ev({ id: 'also', title: 'Also busy', popularity: 20, category: 'Sports', date: new Date('2026-11-04T00:00:00.000Z') }),
+    ev({ id: 'yoga', title: 'Sunset yoga', popularity: 80, category: 'Wellness', isFree: true, priceMin: 0 }),
   ]
   const picked = rankDigest(events, profile, opts())
   assert.equal(picked.thin, true)
-  assert.equal(picked.hero?.id, 'busy')
-  assert.match(picked.hero?.whyLine ?? '', /Popular in Sydney/)
+  assert.equal(picked.hero, null)
   assert.equal(picked.because.length, 0)
-  assert.ok(picked.popular.length >= 1)
+  assert.equal(picked.popular.length, 0)
+  assert.equal(picked.weekend.length, 0)
+  assert.equal(picked.free.length, 0)
   assert.match(picked.intro, /new on our radar/)
 })
 
@@ -144,20 +147,28 @@ test('free-only taste keeps paid events out of the hero and shows a free section
   const profile = buildProfile({
     name: 'Sam',
     city: 'Sydney',
-    preferredCategories: [],
+    preferredCategories: ['Community'],
     venueNames: [],
     vibe: { spend: ['Free is my favourite price'] },
     saved: [{ id: 's', title: 'Market', category: 'Community', venueName: 'Square', suburb: 'Glebe', subTags: [] }],
   })
   const events = [
     ev({ id: 'paid', title: 'Pricey dinner', category: 'Food & Drink', priceMin: 120, popularity: 30 }),
-    ev({ id: 'free', title: 'Twilight market', category: 'Community', isFree: true, priceMin: 0, popularity: 4, suburb: 'Glebe' }),
-    ev({ id: 'lawn', title: 'Park screening', category: 'Film', isFree: true, priceMin: 0, popularity: 1, suburb: 'Redfern', date: new Date('2026-11-04T00:00:00.000Z') }),
+    ev({ id: 'free', title: 'Twilight market', category: 'Community', isFree: true, priceMin: 0, popularity: 8, suburb: 'Glebe' }),
+    ev({ id: 'lawn', title: 'Park screening', category: 'Film', isFree: true, priceMin: 0, popularity: 80, suburb: 'Redfern', date: new Date('2026-11-04T00:00:00.000Z') }),
+    ev({ id: 'stalls', title: 'Craft stalls', category: 'Community', isFree: true, priceMin: 0, popularity: 2, suburb: 'Glebe', date: new Date('2026-11-03T00:00:00.000Z') }),
+    ev({ id: 'choir', title: 'Park choir', category: 'Community', isFree: true, priceMin: 0, popularity: 2, suburb: 'Glebe', date: new Date('2026-11-03T00:00:00.000Z'), venueName: 'Glebe Town Hall' }),
+    ev({ id: 'picnic', title: 'Community picnic', category: 'Community', isFree: true, priceMin: 0, popularity: 2, suburb: 'Glebe', date: new Date('2026-11-04T00:00:00.000Z'), venueName: 'Glebe Point' }),
+    ev({ id: 'talk', title: 'Neighbourhood talk', category: 'Community', isFree: true, priceMin: 0, popularity: 1, suburb: 'Glebe', date: new Date('2026-11-04T00:00:00.000Z'), venueName: 'Library' }),
   ]
   const picked = rankDigest(events, profile, opts())
+  const ids = [picked.hero, ...picked.weekend, ...picked.because, ...picked.saved, ...picked.free, ...picked.popular].filter(Boolean).map((e) => e!.id)
   assert.equal(picked.hero?.isFree, true)
+  assert.equal(ids.includes('paid'), false)
+  assert.equal(ids.includes('lawn'), false)
   assert.ok(picked.free.length >= 1)
-  assert.match([picked.hero, ...picked.free].map((e) => e?.whyLine).join(' '), /Free, the way you like it/)
+  assert.ok([picked.hero, ...picked.free].every((e) => e?.isFree && e.category === 'Community'))
+  assert.match([picked.hero, ...picked.free].map((e) => e?.whyLine).join(' '), /community events you saved|Because you follow Community/)
 })
 
 test('a big spender does not get a free section they did not ask for', () => {
@@ -194,6 +205,111 @@ test('same-day saved stops include a travel time', () => {
   ], profile, opts())
   const later = picked.saved.find((e) => e.id === 'b') ?? (picked.hero?.id === 'b' ? picked.hero : null)
   assert.match(later?.travel ?? '', /About \d+ min (walk|drive) from Enmore Theatre/)
+})
+
+function placed(picked: ReturnType<typeof rankDigest>) {
+  return [picked.hero, ...picked.weekend, ...picked.because, ...picked.saved, ...picked.free, ...picked.popular].filter((e) => !!e)
+}
+
+test('music and comedy preferences never include wellness', () => {
+  const profile = buildProfile({
+    name: 'Alex Owner',
+    city: 'Sydney',
+    preferredCategories: ['Music', 'Comedy'],
+    venueNames: [],
+    vibe: { vibes: ['Wellness', 'Outdoorsy'], spend: ['Under $30'] },
+    viewed: [{ id: 'viewed-well', title: 'Sound bath', category: 'Wellness', venueName: 'Studio', suburb: 'Bondi', subTags: ['Yoga'] }],
+    clickedCategories: ['Wellness'],
+    saved: [{ id: 'saved-gig', title: 'Old favourite', category: 'Music', venueName: 'The Factory', suburb: 'Surry Hills', subTags: [] }],
+  })
+  const yoga = ev({ id: 'yoga', title: 'Sunset yoga', category: 'Wellness', isFree: true, priceMin: 0, popularity: 100, suburb: 'Bondi' })
+  const bath = ev({ id: 'bath', title: 'Sound bath', category: 'Wellness', isFree: true, priceMin: 0, popularity: 90, date: new Date('2026-10-31T00:00:00.000Z') })
+  const market = ev({ id: 'market', title: 'Craft market', category: 'Community', isFree: true, priceMin: 0, popularity: 40 })
+  const play = ev({ id: 'play', title: 'A serious play', category: 'Arts & Culture', subTags: ['Theatre'], popularity: 30 })
+  const gig = ev({ id: 'gig', title: 'Friday riffs', category: 'Music', popularity: 5, date: new Date('2026-10-30T00:00:00.000Z') })
+  const laughs = ev({ id: 'laughs', title: 'Stand-up night', category: 'Arts & Culture', subTags: ['Comedy'], popularity: 4, date: new Date('2026-10-31T00:00:00.000Z') })
+  const cheapGig = ev({ id: 'cheap-gig', title: 'Park band', category: 'Music', isFree: true, priceMin: 0, popularity: 3, date: new Date('2026-11-02T00:00:00.000Z') })
+  const cheapTwo = ev({ id: 'cheap-two', title: 'Lunchtime jazz', category: 'Music', isFree: true, priceMin: 0, popularity: 2, date: new Date('2026-11-03T00:00:00.000Z'), venueName: 'Town Hall' })
+  const cheapThree = ev({ id: 'cheap-three', title: 'Courtyard set', category: 'Music', isFree: true, priceMin: 0, popularity: 2, date: new Date('2026-11-03T00:00:00.000Z'), venueName: 'The Bearded Tit' })
+  const cheapFour = ev({ id: 'cheap-four', title: 'Acoustic hour', category: 'Music', isFree: true, priceMin: 0, popularity: 1, date: new Date('2026-11-04T00:00:00.000Z'), venueName: 'Camelot Lounge' })
+  assert.equal(inDigestScope(yoga, profile), false)
+  assert.equal(inDigestScope(play, profile), false)
+  assert.equal(inDigestScope(gig, profile), true)
+  assert.equal(inDigestScope(laughs, profile), true)
+  const picked = rankDigest([yoga, bath, market, play, gig, laughs, cheapGig, cheapTwo, cheapThree, cheapFour], profile, opts())
+  const all = placed(picked)
+  assert.ok(all.some((e) => e.id === 'gig' || e.id === 'laughs'))
+  assert.equal(all.some((e) => e.category === 'Wellness'), false)
+  assert.equal(all.some((e) => e.id === 'market' || e.id === 'play'), false)
+  assert.ok(picked.free.length >= 1)
+  assert.ok(picked.free.every((e) => e.category === 'Music' || /comedy|stand-?up/i.test(`${e.category} ${e.title} ${e.subTags.join(' ')}`)))
+  for (const e of all) {
+    assert.doesNotMatch(e.whyLine, /wellness/i)
+    assert.match(e.whyLine, /Music|comedy|watchlist|gig|follow|peep|Free|Surry Hills|itinerary|Together/i)
+  }
+  assert.equal(all.length < 7, true)
+})
+
+test('a short match list stays short instead of padding other categories', () => {
+  const profile = buildProfile({
+    name: 'Sam',
+    city: 'Sydney',
+    preferredCategories: ['Music'],
+    venueNames: [],
+    saved: [],
+    viewed: [{ id: 'v', title: 'Yoga flow', category: 'Wellness', venueName: 'Studio', suburb: 'Bondi', subTags: [] }],
+  })
+  const picked = rankDigest([
+    ev({ id: 'only', title: 'One gig', category: 'Music' }),
+    ev({ id: 'yoga', title: 'Sunset yoga', category: 'Wellness', popularity: 50, isFree: true, priceMin: 0 }),
+    ev({ id: 'run', title: 'Harbour run', category: 'Sports', popularity: 40 }),
+    ev({ id: 'fair', title: 'Street fair', category: 'Community', popularity: 30, isFree: true, priceMin: 0 }),
+  ], profile, opts())
+  const all = placed(picked)
+  assert.deepEqual(all.map((e) => e.id), ['only'])
+  assert.equal(all[0]?.whyLine, 'Because you follow Music')
+})
+
+test('a saved event outside your categories still shows, and does not open that category', () => {
+  const profile = buildProfile({
+    name: 'Sam',
+    city: 'Sydney',
+    preferredCategories: ['Music'],
+    venueNames: [],
+    saved: [{ id: 'yoga-saved', title: 'Sunrise yoga', category: 'Wellness', venueName: 'The Lawn', suburb: 'Bondi', subTags: ['Yoga'] }],
+  })
+  const picked = rankDigest([
+    ev({ id: 'yoga-saved', title: 'Sunrise yoga', category: 'Wellness', isFree: true, priceMin: 0 }),
+    ev({ id: 'other-yoga', title: 'Sunset yoga', category: 'Wellness', popularity: 20, isFree: true, priceMin: 0 }),
+    ev({ id: 'gig', title: 'Friday riffs', category: 'Music' }),
+  ], profile, opts())
+  const all = placed(picked)
+  assert.equal(all.some((e) => e.id === 'other-yoga'), false)
+  assert.equal(all.some((e) => e.id === 'gig'), true)
+  const savedYoga = all.find((e) => e.id === 'yoga-saved')
+  assert.ok(savedYoga)
+  assert.match(savedYoga?.whyLine ?? '', /watchlist/)
+})
+
+test('a followed venue can include that venue outside your categories', () => {
+  const profile = buildProfile({
+    name: 'Sam',
+    city: 'Sydney',
+    preferredCategories: ['Music'],
+    venueNames: ['The Yoga Room'],
+    saved: [],
+  })
+  const picked = rankDigest([
+    ev({ id: 'room', title: 'Morning stretch', category: 'Wellness', venueName: 'The Yoga Room', suburb: 'Newtown' }),
+    ev({ id: 'other', title: 'Beach yoga', category: 'Wellness', venueName: 'Bondi Pavilion', popularity: 30 }),
+    ev({ id: 'gig', title: 'Friday riffs', category: 'Music' }),
+  ], profile, opts())
+  const all = placed(picked)
+  const room = all.find((e) => e.id === 'room')
+  assert.ok(room)
+  assert.equal(room?.whyLine, 'Because you follow The Yoga Room')
+  assert.equal(all.some((e) => e.id === 'other'), false)
+  assert.equal(all.some((e) => e.id === 'gig'), true)
 })
 
 test('trust line is source and updated, with no verified wording', () => {

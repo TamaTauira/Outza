@@ -1,4 +1,5 @@
 import { fetchHtml, saveEvent, sleep, toSydneyParts } from '@/lib/event-store'
+import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { firstListingUrl, joinOriginPath, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
@@ -33,7 +34,7 @@ async function fetchPrices(ids: string[]): Promise<Map<string, string>> {
   if (!ids.length) return out
   try {
     const url = `https://www.eventbrite.com.au/api/v3/destination/events/?event_ids=${ids.join(',')}&expand=ticket_availability&page_size=${ids.length}`
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', Accept: 'application/json' }, signal: AbortSignal.timeout(15000) })
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36', Accept: 'application/json' }, signal: sourceFetchSignal(15000) })
     if (!res.ok) return out
     const json: any = await res.json()
     for (const ev of json?.events ?? []) {
@@ -163,6 +164,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
 
 /** One inclusive date window. Splits when the page wall would hide events; otherwise reads every returned page. */
 async function scrapeWindow(city: CityDef, path: string, forceFree: boolean, start: string, end: string): Promise<number> {
+  if (yieldIfBudget('date windows')) return 0
   const first = await fetchListingPage(city, path, 1, start, end)
   await sleep(EB_DELAY_MS)
   if (!first || first.results.length === 0) return 0
@@ -181,6 +183,7 @@ async function scrapeWindow(city: CityDef, path: string, forceFree: boolean, sta
   const extra = first.pageCount >= EB_PAGE_WALL ? 1 : 0
   const last = Math.min(first.pageCount + extra, EB_PAGE_SAFETY)
   for (let page = 2; page <= last; page++) {
+    if (yieldIfBudget('pages')) break
     const info = await fetchListingPage(city, path, page, start, end)
     await sleep(EB_DELAY_MS)
     if (!info || info.results.length === 0) break
@@ -195,6 +198,7 @@ async function scrapeListing(city: CityDef, path: string, forceFree: boolean): P
   const horizon = addDays(today, EB_HORIZON_DAYS)
   let saved = 0
   for (let start = today; start <= horizon;) {
+    if (yieldIfBudget('date windows')) break
     const windowEnd = addDays(start, EB_WINDOW_DAYS - 1)
     const end = windowEnd > horizon ? horizon : windowEnd
     saved += await scrapeWindow(city, path, forceFree, start, end)
@@ -206,12 +210,14 @@ async function scrapeListing(city: CityDef, path: string, forceFree: boolean): P
 export async function fetchEventbriteEvents(): Promise<number> {
   let total = 0
   for (const city of CITIES) {
+    if (yieldIfBudget('cities')) break
     // All-events first. The free listing runs second so its isFree flag is what saveEvent keeps
     // when the same event is in both feeds (a same-source update overwrites isFree).
     const all = await scrapeListing(city, 'all-events', false)
     const free = await scrapeListing(city, 'free--events', true)
     console.log(`[eventbrite] ${city.name}: saved ${free + all} events`)
     total += free + all
+    noteSourceSaved(total)
   }
   return total
 }

@@ -14,8 +14,44 @@
       "schedule": "15 22 * * *"
     },
     {
-      "path": "/api/cron/refresh",
-      "schedule": "0 */2 * * *"
+      "path": "/api/cron/refresh/ticketmaster",
+      "schedule": "2 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/frontier",
+      "schedule": "8 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/city-of-sydney",
+      "schedule": "14 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/humanitix",
+      "schedule": "20 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/moshtix",
+      "schedule": "26 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/oztix",
+      "schedule": "32 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/ticketek",
+      "schedule": "38 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/eventbrite",
+      "schedule": "44 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/curated",
+      "schedule": "50 */2 * * *"
+    },
+    {
+      "path": "/api/cron/refresh/finalize",
+      "schedule": "56 */2 * * *"
     },
     {
       "path": "/api/cron/digest",

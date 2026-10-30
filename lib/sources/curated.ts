@@ -1,4 +1,5 @@
 import { saveEvent, toSydneyParts } from '@/lib/event-store'
+import { noteSourceSaved, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES } from '@/lib/cities'
 
 /**
@@ -126,6 +127,7 @@ function addDays(ymd: string, n: number): string {
 export async function fetchCuratedEvents(): Promise<number> {
   let saved = 0
   for (const c of CURATED) {
+    if (yieldIfBudget('curated listings')) break
     const tz = CITIES.find((x) => x.name === c.city)?.tz ?? 'Australia/Sydney'
     const today = toSydneyParts(new Date(), tz).date
     const base = { title: c.title, description: c.description, venueName: c.venueName, venueAddress: c.venueAddress,
@@ -139,6 +141,7 @@ export async function fetchCuratedEvents(): Promise<number> {
     }
 
     for (let i = 0; i < DAYS_AHEAD; i++) {
+      if (i % 20 === 0 && yieldIfBudget('curated listings')) break
       const date = addDays(today, i)
       if (!inSeason(date.slice(5), c.season)) continue
       const dow = new Date(`${date}T00:00:00.000Z`).getUTCDay()
@@ -146,6 +149,7 @@ export async function fetchCuratedEvents(): Promise<number> {
       if (!slot) continue
       if (await saveEvent({ ...base, date, time: slot.start, endTime: slot.end })) saved++
     }
+    noteSourceSaved(saved)
   }
   return saved
 }

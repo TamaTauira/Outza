@@ -11,33 +11,59 @@ import {
 } from '@/lib/mascot-reactions'
 
 const WINDOW_MS = 2000
+const SULK_MS = 50000
 const COLORS = ['#FF8A1A', '#FF4E6A', '#FFD166', '#FFFFFF', '#7CFFCB', '#8AB4FF']
 
 type PlayId = ReactionId | 'party'
+type BitKind = 'heart' | 'spark' | 'confetti' | 'note' | 'puff'
+
+function bitPlan(id: PlayId): Record<BitKind, number> {
+  const none = { heart: 0, spark: 0, confetti: 0, note: 0, puff: 0 }
+  switch (id) {
+    case 'party': return { heart: 8, spark: 4, confetti: 14, note: 5, puff: 0 }
+    case 'hearts': return { heart: 11, spark: 0, confetti: 0, note: 0, puff: 0 }
+    case 'heart-eyes': return { heart: 8, spark: 5, confetti: 0, note: 0, puff: 0 }
+    case 'delighted': return { heart: 10, spark: 4, confetti: 4, note: 0, puff: 0 }
+    case 'wiggle': return { heart: 7, spark: 0, confetti: 0, note: 0, puff: 0 }
+    case 'tickle': return { heart: 5, spark: 4, confetti: 0, note: 0, puff: 0 }
+    case 'blush': return { heart: 3, spark: 2, confetti: 0, note: 0, puff: 0 }
+    case 'confetti': return { heart: 0, spark: 0, confetti: 14, note: 0, puff: 0 }
+    case 'dance': return { heart: 0, spark: 2, confetti: 0, note: 8, puff: 0 }
+    case 'sparkle': return { heart: 0, spark: 9, confetti: 0, note: 0, puff: 0 }
+    case 'eyepop': return { heart: 0, spark: 6, confetti: 0, note: 0, puff: 0 }
+    case 'wink': return { heart: 0, spark: 4, confetti: 0, note: 0, puff: 0 }
+    case 'rainbow': return { heart: 0, spark: 4, confetti: 6, note: 0, puff: 0 }
+    case 'sneeze': return { heart: 0, spark: 0, confetti: 0, note: 0, puff: 7 }
+    case 'wave': return { heart: 0, spark: 3, confetti: 0, note: 0, puff: 0 }
+    default: return none
+  }
+}
 
 function spawnBits(fx: HTMLElement, id: PlayId) {
   fx.replaceChildren()
-  const hearts = id === 'hearts' || id === 'heart-eyes' || id === 'party'
-  const confetti = id === 'confetti' || id === 'party'
-  const spark = id === 'wink' || id === 'rainbow' || id === 'eyepop'
-  const heartCount = hearts ? (id === 'party' ? 6 : 7) : 0
-  const confettiCount = confetti ? (id === 'party' ? 10 : 12) : 0
-  const sparkCount = spark ? 5 : 0
-  const total = heartCount + confettiCount + sparkCount
+  const plan = bitPlan(id)
+  const kinds: BitKind[] = []
+  ;(Object.keys(plan) as BitKind[]).forEach((kind) => {
+    for (let n = 0; n < plan[kind]; n++) kinds.push(kind)
+  })
+  const total = kinds.length
   for (let i = 0; i < total; i++) {
     const el = document.createElement('i')
-    const kind = i < heartCount ? 'heart' : i < heartCount + sparkCount ? 'spark' : 'confetti'
+    const kind = kinds[i]
     el.className = kind === 'confetti' ? 'vp-bit' : `vp-bit vp-bit-${kind}`
     if (kind === 'heart') el.textContent = '♥'
-    if (kind === 'spark') el.textContent = '✦'
-    const angle = (Math.PI * 2 * i) / Math.max(total, 1) - Math.PI / 2
-    const dist = 34 + (i % 4) * 14
-    el.style.setProperty('--dx', `${Math.round(Math.cos(angle) * dist)}%`)
-    el.style.setProperty('--dy', `${Math.round(Math.sin(angle) * dist - (kind === 'heart' ? 30 : 6))}%`)
+    if (kind === 'spark') el.textContent = i % 2 ? '✦' : '✧'
+    if (kind === 'note') el.textContent = i % 2 ? '♪' : '♫'
+    const forward = kind === 'puff' ? -0.2 + (i % 5) * 0.35 : (Math.PI * 2 * i) / Math.max(total, 1) - Math.PI / 2
+    const dist = kind === 'puff' ? 46 + (i % 3) * 16 : 38 + (i % 4) * 16
+    const lift = kind === 'heart' ? 36 : kind === 'note' ? 28 : kind === 'puff' ? 4 : 8
+    el.style.setProperty('--dx', `${Math.round(Math.cos(forward) * dist)}%`)
+    el.style.setProperty('--dy', `${Math.round(Math.sin(forward) * dist - lift)}%`)
     el.style.setProperty('--rot', `${(i * 47) % 200 - 80}deg`)
-    el.style.setProperty('--delay', `${(i % 6) * 0.045}s`)
+    el.style.setProperty('--delay', `${(i % 7) * 0.04}s`)
     el.style.color = i % 2 ? '#FF4E6A' : '#FF8A1A'
-    if (kind === 'spark') el.style.color = '#FFD166'
+    if (kind === 'spark') el.style.color = i % 3 === 0 ? '#FFFFFF' : '#FFD166'
+    if (kind === 'note') el.style.color = i % 2 ? '#FF4E6A' : '#FF8A1A'
     if (kind === 'confetti') {
       el.style.background = COLORS[i % COLORS.length]
       if (i % 3 === 0) el.style.borderRadius = '999px'
@@ -71,6 +97,9 @@ export function attachMascot(slot: HTMLElement): () => void {
   let hoverTimer = 0
   let rect: DOMRect | null = null
   let rectAt = 0
+  let lastClick = Date.now()
+  let lastPointer = Date.now()
+  let sulking = false
   const timers = new Set<number>()
 
   const later = (fn: () => void, ms: number) => {
@@ -92,12 +121,14 @@ export function attachMascot(slot: HTMLElement): () => void {
   const play = (id: PlayId, line?: string) => {
     last = id
     reaction = id
+    sulking = false
     targetX = 0
     targetY = 0
     lookX = 0
     lookY = 0
     button.style.setProperty('--vp-x', '0')
     button.style.setProperty('--vp-y', '0')
+    button.removeAttribute('data-mood')
     button.setAttribute('data-react', id)
     setLine(line ?? (id === 'party' ? PARTY_LINE : REACTION_LINES[id]))
     spawnBits(fx, id)
@@ -135,10 +166,15 @@ export function attachMascot(slot: HTMLElement): () => void {
 
   const onClick = (event: MouseEvent) => {
     const now = Date.now()
+    lastClick = now
     stamps = [...stamps.filter((t) => now - t <= WINDOW_MS), now]
     if (isPartyCombo(stamps, now, WINDOW_MS)) {
       stamps = []
       play('party')
+    } else if (sulking) {
+      play('delighted')
+    } else if (stamps.length >= 2) {
+      play('tickle')
     } else {
       const previous = last && last !== 'party' ? last : null
       play(pickReaction(previous))
@@ -178,7 +214,7 @@ export function attachMascot(slot: HTMLElement): () => void {
     window.clearTimeout(hoverTimer)
     hoverTimer = window.setTimeout(() => {
       hoverTimer = 0
-      if (reaction || Date.now() < hoverCooldownUntil) return
+      if (reaction || sulking || Date.now() < hoverCooldownUntil) return
       if (Math.random() > 0.5) return
       hoverCooldownUntil = Date.now() + 12000
       const pool = HOVER_POOL.filter((id) => id !== last)
@@ -194,6 +230,26 @@ export function attachMascot(slot: HTMLElement): () => void {
     targetX = 0
     targetY = 0
     kickLook()
+  }
+
+  const markActive = () => {
+    lastPointer = Date.now()
+  }
+
+  const scheduleSulk = () => {
+    later(() => {
+      const bored = Date.now() - lastClick > SULK_MS
+      const around = Date.now() - lastPointer < 12000
+      if (!off && !reaction && !reduce && !sulking && bored && around) {
+        sulking = true
+        button.setAttribute('data-mood', 'sulk')
+        setLine('Oi… you forgetting me?')
+        later(() => {
+          if (sulking && !reaction && bubble.textContent === 'Oi… you forgetting me?') setLine(null)
+        }, 2800)
+      }
+      scheduleSulk()
+    }, 4000)
   }
 
   const scheduleBlink = () => {
@@ -243,10 +299,14 @@ export function attachMascot(slot: HTMLElement): () => void {
   button.addEventListener('pointerenter', onEnter)
   button.addEventListener('pointerleave', onLeave)
   window.addEventListener('pointermove', onMove, { passive: true })
+  window.addEventListener('pointerdown', markActive, { passive: true })
+  window.addEventListener('scroll', markActive, { passive: true })
+  window.addEventListener('keydown', markActive)
   reduceMq.addEventListener('change', onReduce)
   fineMq.addEventListener('change', onFine)
   observer.observe(button)
   scheduleBlink()
+  scheduleSulk()
 
   const queued = Number(button.getAttribute('data-queued') || '0')
   button.removeAttribute('data-queued')
@@ -260,6 +320,9 @@ export function attachMascot(slot: HTMLElement): () => void {
     button.removeEventListener('pointerenter', onEnter)
     button.removeEventListener('pointerleave', onLeave)
     window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerdown', markActive)
+    window.removeEventListener('scroll', markActive)
+    window.removeEventListener('keydown', markActive)
     reduceMq.removeEventListener('change', onReduce)
     fineMq.removeEventListener('change', onFine)
     if (lookRaf) cancelAnimationFrame(lookRaf)
@@ -267,6 +330,7 @@ export function attachMascot(slot: HTMLElement): () => void {
     for (const id of timers) window.clearTimeout(id)
     timers.clear()
     button.removeAttribute('data-react')
+    button.removeAttribute('data-mood')
     button.removeAttribute('data-blink')
     button.removeAttribute('data-off')
     setLine(null)

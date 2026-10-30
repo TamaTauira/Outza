@@ -1,5 +1,6 @@
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { BRAND_MASCOT_EMAIL } from '@/lib/brand'
+import { categoryColor, categoryInk } from '@/lib/categories'
 import { loadSharp } from '@/lib/images/pipeline'
 import { bestSourceUrl } from '@/lib/images/source-url'
 import { BROWSER_UA } from '@/lib/event-store'
@@ -13,7 +14,7 @@ import { placeholderAbsolute, type PlaceholderShape } from '@/lib/placeholders'
 export const EMAIL_SIZES = { hero: { w: 1200, h: 675 }, thumb: { w: 360, h: 360 } } as const
 export type EmailKind = keyof typeof EMAIL_SIZES
 
-/** Mascot PNG on the canonical host. Used when a source photo cannot be fetched. */
+/** Mascot PNG on the canonical host. One sign-off in the digest, never an event thumbnail. A listing with no photo uses genre placeholder art instead. */
 export const MASCOT_EMAIL_URL = `${CANONICAL_SITE_URL}${BRAND_MASCOT_EMAIL}`
 
 export interface ImgSource { id?: string; category?: string | null; imageUrl: string | null; imageAsset?: { id?: string; originalPath?: string | null; sourceUrl: string; isPublic?: boolean; status: string } | null }
@@ -65,6 +66,41 @@ async function fetchBytes(url: string) {
   const buf = Buffer.from(await res.arrayBuffer())
   if (buf.length < 512 || buf.length > 8 * 1024 * 1024) throw new Error('bad size')
   return buf
+}
+
+function escapeXml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c))
+}
+
+/**
+ * Fixed-size JPEG used when a digest image URL cannot be rendered.
+ * A category-coloured block, not the mascot, so every thumbnail stays the same shape.
+ */
+export async function categoryFillJpeg(label: string, kind: EmailKind): Promise<{ body: Buffer; contentType: string } | null> {
+  const sharp = await loadSharp()
+  if (!sharp) return null
+  const { w, h } = EMAIL_SIZES[kind]
+  const bg = categoryColor(label)
+  const ink = categoryInk(bg)
+  const text = escapeXml((label || 'Event').trim() || 'Event')
+  const fontSize = kind === 'hero' ? 64 : 36
+  const solid = () => sharp({ create: { width: w, height: h, channels: 3, background: bg } }).jpeg({ quality: 82 }).toBuffer()
+  try {
+    const svg = Buffer.from(
+      `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="${ink}" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="700">${text}</text></svg>`,
+    )
+    const jpg = await sharp({ create: { width: w, height: h, channels: 3, background: bg } })
+      .composite([{ input: svg, top: 0, left: 0 }])
+      .jpeg({ quality: 82 })
+      .toBuffer()
+    return { body: jpg, contentType: 'image/jpeg' }
+  } catch {
+    try {
+      return { body: await solid(), contentType: 'image/jpeg' }
+    } catch {
+      return null
+    }
+  }
 }
 
 /** JPEG rendition for the public email-image route. */
