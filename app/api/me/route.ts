@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { CATEGORIES } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
-import { isPostcode, parseBirthDate } from '@/lib/profile-shared'
+import { isPostcode, parseBirthYear, under16GeoBlock } from '@/lib/profile-shared'
 import { cleanVibe } from '@/lib/vibe-shared'
 import { Prisma } from '@prisma/client'
 
@@ -13,12 +13,10 @@ const SELECT = {
   id: true, name: true, email: true, image: true, role: true, orgName: true, bio: true, website: true, homeCity: true,
   preferredCategories: true, preferredCities: true, emailOptIn: true, emailFrequency: true, lastDigestAt: true,
   reminderOptIn: true, lastWatchDigestAt: true,
-  birthDate: true, homePostcode: true, vibeProfile: true,
+  birthYear: true, homePostcode: true, vibeProfile: true,
 } as const
 
-type Row = { birthDate: Date | null } & Record<string, unknown>
-// Date of birth goes back to its owner only, as a plain YYYY-MM-DD string.
-const out = (u: Row) => ({ ...u, birthDate: u.birthDate ? u.birthDate.toISOString().slice(0, 10) : null })
+const out = <T extends { birthYear: number | null }>(u: T) => u
 
 export async function GET() {
   const me = await getSessionUser()
@@ -54,10 +52,12 @@ export async function PATCH(req: Request) {
   if (typeof b.reminderOptIn === 'boolean') data.reminderOptIn = b.reminderOptIn
   if (['daily', 'weekly', 'monthly'].includes(b.emailFrequency)) data.emailFrequency = b.emailFrequency
   if (b.role === 'PROMOTER' && me.role === 'CONSUMER') data.role = 'PROMOTER'
-  if ('birthDate' in b) {
-    const p = parseBirthDate(b.birthDate)
-    if (p.error) return NextResponse.json({ error: p.error }, { status: 400 })
-    data.birthDate = p.date
+  if ('birthYear' in b) {
+    const p = parseBirthYear(b.birthYear)
+    if (p.error || p.year == null) return NextResponse.json({ error: p.error ?? 'Enter the year you were born' }, { status: 400 })
+    const geo = under16GeoBlock(req.headers.get('x-vercel-ip-country'), p.year)
+    if (geo) return NextResponse.json({ error: geo }, { status: 403 })
+    data.birthYear = p.year
   }
   if ('homePostcode' in b) {
     const pc = typeof b.homePostcode === 'string' ? b.homePostcode.trim() : ''

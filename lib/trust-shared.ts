@@ -104,7 +104,7 @@ export const ANALYTICS_DATA = [
   { metric: 'Ticket link clicks', detail: 'A counter per event when someone taps “Get tickets”.' },
   { metric: 'Saves and “going”', detail: 'Totals per event. Organisers never see who saved or is going.' },
   { metric: 'Shares and itinerary adds', detail: 'Totals per event when someone shares a listing or adds it to their itinerary. Organisers never see who.' },
-  { metric: 'Audience insights', detail: 'Grouped percentages only: age bands, broad home areas, other interests and how far ahead people plan, plus the organiser’s most saved, shared and itinerary-added events. Built from signed-in activity on VibePeep (interest, not ticket purchases, as VibePeep doesn’t sell tickets). Any group under 10 people is hidden; exact ages, birthdays, postcodes, names and emails are never shown.' },
+  { metric: 'Audience insights', detail: 'Grouped percentages only: age bands, broad home areas, other interests and how far ahead people plan, plus the organiser’s most saved, shared and itinerary-added events. Built from signed-in adults on VibePeep. Under-18s are excluded. This is interest, not ticket purchases, as VibePeep doesn’t sell tickets. Any group under 10 people is hidden; years of birth, postcodes, names and emails are never shown.' },
   { metric: 'Promotion impressions and clicks', detail: 'Totals per sponsored placement, used to report campaign results.' },
   { metric: 'Newsletter clicks', detail: 'Totals per event and section. Individual subscribers are never shared with organisers.' },
 ]

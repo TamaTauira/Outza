@@ -312,6 +312,28 @@ test('a followed venue can include that venue outside your categories', () => {
   assert.equal(all.some((e) => e.id === 'gig'), true)
 })
 
+test('a possible under-18 is not vibe-profiled or ranked from browsing', () => {
+  const profile = buildProfile({
+    name: 'Sam',
+    city: 'Sydney',
+    preferredCategories: ['Music'],
+    venueNames: [],
+    saved: [],
+    birthYear: new Date().getFullYear() - 10,
+    vibe: { vibes: ['Comedy', 'LGBTIQ+ scene'], spend: ['$150+'] },
+    viewed: [ev({ id: 'seen', title: 'Jazz night' })],
+    clickedCategories: ['Nightlife'],
+    homePostcode: '2010',
+    paidPrices: [40, 50, 60],
+  })
+  assert.equal(profile.minor, true)
+  assert.deepEqual(profile.vibeLabels, [])
+  assert.equal(profile.lgbtiq, false)
+  assert.equal(profile.viewedIds.size, 0)
+  assert.equal(profile.homeArea, null)
+  assert.equal(profile.maxPrice, null)
+})
+
 test('trust line is source and updated, with no verified wording', () => {
   const line = trustLine('ticketmaster', new Date('2026-10-28T02:00:00.000Z'))
   assert.equal(line, 'Ticketmaster · Updated 28 Oct')

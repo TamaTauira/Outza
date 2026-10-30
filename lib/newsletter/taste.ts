@@ -1,4 +1,4 @@
-import { ageOn, areaForPostcode } from '@/lib/profile-shared'
+import { areaForPostcode, isUnder18 } from '@/lib/profile-shared'
 import { sourceLabel } from '@/lib/quality'
 import { coordsFitCity, estimateLeg, fmtMin } from '@/lib/travel'
 import { VIBE_CATEGORIES, asVibe, type VibeProfile } from '@/lib/vibe-shared'
@@ -209,7 +209,7 @@ export interface TasteSource {
   homePostcode?: string | null
   preferredCategories: string[]
   vibe?: unknown
-  birthDate?: Date | null
+  birthYear?: number | null
   reminderOptIn?: boolean
   venueNames: string[]
   saved: TasteAnchor[]
@@ -313,13 +313,13 @@ function askedWhy(event: ScopeEvent, profile: TasteProfile): string {
 }
 
 export function buildProfile(src: TasteSource): TasteProfile {
-  const vibe = asVibe(src.vibe)
+  const minor = isUnder18(src.birthYear)
+  const vibe = minor ? asVibe(null) : asVibe(src.vibe)
   const vibeLabels = vibe.vibes ?? []
   const vibeCategories = new Set(vibeLabels.flatMap((v) => VIBE_CATEGORIES[v] ?? []))
   const family = vibeLabels.includes('Family fun') || (vibe.crew ?? []).includes('Family with kids')
   const lgbtiq = vibeLabels.includes('LGBTIQ+ scene')
   const spend = spendCap(vibe.spend?.[0])
-  const minor = src.birthDate ? ageOn(src.birthDate) < 18 : false
   const suburbWeights = new Map<string, number>()
   const suburbLabels = new Map<string, string>()
   const categoryWeights = new Map<string, number>()
@@ -336,14 +336,16 @@ export function buildProfile(src: TasteSource): TasteProfile {
   }
   for (const row of src.saved) touch(row, 3, savedCategories)
   for (const row of src.attended ?? []) touch(row, 2, savedCategories)
-  for (const row of src.viewed ?? []) touch(row, 2, viewedCategories)
-  for (const row of src.ticketed ?? []) touch(row, 3, viewedCategories)
-  for (const row of src.itinerary ?? []) touch(row, 2)
-  for (const row of src.together ?? []) touch(row, 2, savedCategories)
-  for (const cat of src.clickedCategories ?? []) remember(clickWeights, categoryLabels, cat, 1)
+  if (!minor) {
+    for (const row of src.viewed ?? []) touch(row, 2, viewedCategories)
+    for (const row of src.ticketed ?? []) touch(row, 3, viewedCategories)
+    for (const row of src.itinerary ?? []) touch(row, 2)
+    for (const row of src.together ?? []) touch(row, 2, savedCategories)
+    for (const cat of src.clickedCategories ?? []) remember(clickWeights, categoryLabels, cat, 1)
+  }
   for (const cat of src.preferredCategories) remember(categoryWeights, categoryLabels, cat, 2)
 
-  const prices = (src.paidPrices ?? []).filter((n) => n > 0).sort((a, b) => a - b)
+  const prices = minor ? [] : (src.paidPrices ?? []).filter((n) => n > 0).sort((a, b) => a - b)
   const historyBudget = prices.length >= 3 ? prices[Math.floor(prices.length / 2)] : null
   const freeCount = src.freeCount ?? 0
   const history = src.saved.length + (src.attended?.length ?? 0)
@@ -354,10 +356,10 @@ export function buildProfile(src: TasteSource): TasteProfile {
 
   const anchors = [...src.saved, ...(src.viewed ?? []), ...(src.together ?? [])]
   const signals = src.preferredCategories.length + src.venueNames.length + src.saved.length
-    + (src.viewed?.length ?? 0) + (src.together?.length ?? 0) + (src.attended?.length ?? 0)
-    + (src.clickedCategories?.length ?? 0) + vibeLabels.length + (src.itinerary?.length ?? 0)
+    + (src.attended?.length ?? 0)
+    + (minor ? 0 : (src.viewed?.length ?? 0) + (src.together?.length ?? 0) + (src.clickedCategories?.length ?? 0) + vibeLabels.length + (src.itinerary?.length ?? 0))
   const thin = signals === 0
-  const homeArea = areaForPostcode(src.homePostcode)
+  const homeArea = minor ? null : areaForPostcode(src.homePostcode)
   const suburb = displayKey(suburbWeights, suburbLabels)
   const bits = emailTasteBits(src.preferredCategories, src.venueNames, suburb)
   const savedComedy = [...src.saved, ...(src.attended ?? [])].some((row) => /comedy|stand-?up/i.test(`${row.category} ${row.title} ${row.subTags.join(' ')}`))
@@ -377,7 +379,7 @@ export function buildProfile(src: TasteSource): TasteProfile {
     categoryWeights,
     clickWeights,
     savedIds: new Set(src.saved.map((s) => s.id)),
-    viewedIds: new Set((src.viewed ?? []).map((s) => s.id)),
+    viewedIds: new Set(minor ? [] : (src.viewed ?? []).map((s) => s.id)),
     togetherIds: new Set((src.together ?? []).map((s) => s.id)),
     itineraryIds: new Set((src.itinerary ?? []).map((s) => s.id)),
     savedCategories,

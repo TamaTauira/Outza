@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { AGE_BANDS, MIN_GROUP, PLAN_AHEAD, ageBand, areaForPostcode, planAheadBand } from '@/lib/profile-shared'
+import { AGE_BANDS, MIN_GROUP, PLAN_AHEAD, ageBandForYear, areaForPostcode, includeInAudience, planAheadBand } from '@/lib/profile-shared'
 
 export type Share = { label: string; pct: number }
 export type TopEvent = { id: string; title: string; date: string; count: number }
@@ -36,7 +36,8 @@ function shares(counts: Map<string, number>, order?: readonly string[]): { list:
 /**
  * Grouped, anonymised audience insights for one promoter's events, built from saves, "going", ticket taps, shares,
  * itinerary adds and views by signed-in people on VibePeep. VibePeep doesn't sell tickets, so this is interest, not purchasers.
- * No names, emails, exact ages, birthdays or postcodes ever leave this function; groups under MIN_GROUP people are hidden.
+ * No names, emails, years of birth or postcodes ever leave this function. Under-18s are left out of every
+ * aggregate. Groups under MIN_GROUP people are hidden.
  */
 export async function getAudienceInsights(promoterId: string, opts: { sinceDays?: number } = {}): Promise<AudienceInsights> {
   const events = await prisma.event.findMany({
@@ -53,7 +54,7 @@ export async function getAudienceInsights(promoterId: string, opts: { sinceDays?
   const [saves, going, signals] = await Promise.all([
     prisma.savedEvent.findMany({ where: { eventId: { in: ids }, ...notMe }, select: { userId: true, eventId: true, createdAt: true } }),
     prisma.attendance.findMany({ where: { eventId: { in: ids }, ...notMe }, select: { userId: true, eventId: true, createdAt: true } }),
-    prisma.eventSignal.findMany({ where: { eventId: { in: ids }, ...notMe }, select: { userId: true, eventId: true, createdAt: true } }),
+    prisma.eventSignal.findMany({ where: { eventId: { in: ids }, ...notMe }, select: { userId: true, eventId: true, createdAt: true, kind: true } }),
   ])
 
   // First engagement per person per event (for plan-ahead), and the set of people.
@@ -65,27 +66,40 @@ export async function getAudienceInsights(promoterId: string, opts: { sinceDays?
   }
   const people = [...new Set([...first.keys()].map((k) => k.split('|')[0]))]
 
-  const top = (pick: (e: (typeof events)[number]) => number): TopEvent[] =>
-    events.map((e) => ({ id: e.id, title: e.title, date: e.date.toISOString(), count: pick(e) }))
-      .filter((e) => e.count >= MIN_GROUP).sort((a, b) => b.count - a.count).slice(0, 5)
-  const topSaved = top((e) => e._count.savedBy)
-  const topShared = top((e) => e.shares)
-  const topItinerary = top((e) => e.itineraryAdds)
-
-  if (people.length < MIN_GROUP) return { ...EMPTY, topSaved, topShared, topItinerary }
-
-  const users = await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, birthDate: true, homePostcode: true, preferredCategories: true } })
+  const users = await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, birthYear: true, homePostcode: true, preferredCategories: true } })
   const now = new Date()
+  const adult = new Set(users.filter((u) => includeInAudience(u.birthYear, now)).map((u) => u.id))
+  const tally = (rows: { userId: string; eventId: string }[]) => {
+    const counts = new Map<string, number>()
+    for (const row of rows) {
+      if (!adult.has(row.userId)) continue
+      counts.set(row.eventId, (counts.get(row.eventId) ?? 0) + 1)
+    }
+    return events.map((e) => ({ id: e.id, title: e.title, date: e.date.toISOString(), count: counts.get(e.id) ?? 0 }))
+      .filter((e) => e.count >= MIN_GROUP).sort((a, b) => b.count - a.count).slice(0, 5)
+  }
+  const topSaved = tally(saves)
+  const topShared = tally(signals.filter((s) => s.kind === 'SHARE'))
+  const topItinerary = tally(signals.filter((s) => s.kind === 'ITINERARY'))
+
+  const adultFirst = [...first.entries()].filter(([k]) => adult.has(k.split('|')[0]))
+  const adultPeople = [...new Set(adultFirst.map(([k]) => k.split('|')[0]))]
+  if (adultPeople.length < MIN_GROUP) return { ...EMPTY, topSaved, topShared, topItinerary }
+
   const ageCounts = new Map<string, number>()
   const areaCounts = new Map<string, number>()
-  for (const u of users) {
-    if (u.birthDate) { const b = ageBand(u.birthDate, now); ageCounts.set(b, (ageCounts.get(b) ?? 0) + 1) }
+  const adultUsers = users.filter((u) => adultPeople.includes(u.id))
+  for (const u of adultUsers) {
+    if (typeof u.birthYear === 'number') {
+      const b = ageBandForYear(u.birthYear, now)
+      if (b !== 'Under 18') ageCounts.set(b, (ageCounts.get(b) ?? 0) + 1)
+    }
     const a = areaForPostcode(u.homePostcode)
     if (a) areaCounts.set(a, (areaCounts.get(a) ?? 0) + 1)
   }
 
   // Other interests: categories of other events these people engaged with, plus the interests they chose themselves.
-  const notThese = { userId: { in: people }, eventId: { notIn: ids } }
+  const notThese = { userId: { in: adultPeople }, eventId: { notIn: ids } }
   const [oSaves, oGoing, oSignals] = await Promise.all([
     prisma.savedEvent.findMany({ where: notThese, select: { userId: true, event: { select: { category: true } } }, take: 20000 }),
     prisma.attendance.findMany({ where: notThese, select: { userId: true, event: { select: { category: true } } }, take: 20000 }),
@@ -93,16 +107,16 @@ export async function getAudienceInsights(promoterId: string, opts: { sinceDays?
   ])
   const perCat = new Map<string, Set<string>>()
   const add = (cat: string, uid: string) => { if (!perCat.has(cat)) perCat.set(cat, new Set()); perCat.get(cat)!.add(uid) }
-  for (const r of [...oSaves, ...oGoing, ...oSignals]) add(r.event.category, r.userId)
-  for (const u of users) for (const c of u.preferredCategories) add(c, u.id)
+  for (const r of [...oSaves, ...oGoing, ...oSignals]) if (adult.has(r.userId)) add(r.event.category, r.userId)
+  for (const u of adultUsers) for (const c of u.preferredCategories) add(c, u.id)
   const interestCounts = new Map([...perCat].map(([c, s]) => [c, s.size]))
   const visibleInterests = [...interestCounts].filter(([, c]) => c >= MIN_GROUP)
-  // Interests overlap (one person can like several), so show each as a share of the whole audience.
-  const interests = visibleInterests.map(([label, c]) => ({ label, pct: Math.min(100, Math.round((c / people.length) * 100)) }))
+  // Interests overlap (one person can like several), so show each as a share of the adult audience.
+  const interests = visibleInterests.map(([label, c]) => ({ label, pct: Math.min(100, Math.round((c / adultPeople.length) * 100)) }))
     .sort((a, b) => b.pct - a.pct).slice(0, 6)
 
   const planCounts = new Map<string, number>()
-  for (const [k, at] of first) {
+  for (const [k, at] of adultFirst) {
     const d = dateOf.get(k.split('|')[1])
     if (!d) continue
     const b = planAheadBand(at, d)
@@ -114,7 +128,7 @@ export async function getAudienceInsights(promoterId: string, opts: { sinceDays?
   const plan = shares(planCounts, PLAN_AHEAD)
   return {
     enough: true,
-    audienceApprox: Math.floor(people.length / 10) * 10,
+    audienceApprox: Math.floor(adultPeople.length / 10) * 10,
     ageBands: age.list,
     areas: area.list.slice(0, 8),
     interests,
