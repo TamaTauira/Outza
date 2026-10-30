@@ -7,6 +7,7 @@ import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
+import { normalizeListingUrls, usableUrl } from '@/lib/listing-link'
 import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
 
 export const BROWSER_UA =
@@ -26,6 +27,7 @@ export interface RawEvent {
   isFree?: boolean
   imageUrl?: string | null
   ticketUrl?: string | null
+  sourceUrl?: string | null
   latitude?: number | null
   longitude?: number | null
   source: string
@@ -92,22 +94,36 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const now = new Date()
   const imageUrl = bestSourceUrl(sanitizeDbUrl(ev.imageUrl, 2000))
   const venueAddress = ev.venueAddress ? cleanText(ev.venueAddress, 500) : ''
-  const ticketUrl = sanitizeDbUrl(ev.ticketUrl, 2000)
   const galleryUrls = (ev.galleryUrls ?? []).map((u) => sanitizeDbUrl(u, 2000)).filter((u): u is string => !!u).slice(0, 8)
-  const organiserUrl = ev.organiserUrl && /^https?:\/\//.test(ev.organiserUrl) ? sanitizeDbUrl(ev.organiserUrl, 500) : null
+  // Repair escapes and unpaired surrogates before and after URL normalisation.
+  // usableUrl still cuts with slice(), which can split an emoji.
+  const links = normalizeListingUrls({
+    source: ev.source,
+    ticketUrl: sanitizeDbUrl(ev.ticketUrl, 2000),
+    sourceUrl: sanitizeDbUrl(ev.sourceUrl, 2000),
+    organiserUrl: sanitizeDbUrl(ev.organiserUrl, 2000),
+  })
+  const storedLinks = {
+    ticketUrl: sanitizeDbUrl(links.ticketUrl, 500),
+    sourceUrl: sanitizeDbUrl(links.sourceUrl, 500),
+    organiserUrl: sanitizeDbUrl(links.organiserUrl, 500),
+  }
 
   const data = {
     description, time, endTime, endDate, category, subTags, isLGBTI, isFree, price,
-    imageUrl, ticketUrl,
+    imageUrl,
     latitude: ev.latitude ?? null, longitude: ev.longitude ?? null,
     priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
     status, statusSource: status === 'SCHEDULED' ? null : ev.source, lastVerifiedAt: now,
+    // A refresh that omits a link must not wipe one we already stored.
+    ...(storedLinks.ticketUrl ? { ticketUrl: storedLinks.ticketUrl } : {}),
+    ...(storedLinks.sourceUrl ? { sourceUrl: storedLinks.sourceUrl } : {}),
+    ...(storedLinks.organiserUrl ? { organiserUrl: storedLinks.organiserUrl } : {}),
     // Visitor details only overwrite when the source actually supplies them
     ...(galleryUrls.length ? { galleryUrls } : {}),
     ...(ev.accessibilityInfo ? { accessibilityInfo: cleanText(ev.accessibilityInfo, 1000) } : {}),
     ...(ev.ageRestriction ? { ageRestriction: cleanText(ev.ageRestriction, 120) } : {}),
     ...(ev.organiserName ? { organiserName: cleanText(ev.organiserName, 160) } : {}),
-    ...(organiserUrl ? { organiserUrl } : {}),
   }
 
   const existing = await prisma.event.findFirst({
@@ -143,7 +159,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         }
       }
       await prisma.event.update({ where: { id: existing.id }, data: update })
-    } else await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl })
+    } else await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
     return true
   }
 
@@ -159,7 +175,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const dup = candidates.find((c) => isSameEvent(c, { title, venueName, time, source: ev.source }))
   if (dup) {
     const sources = dup.sources.includes(ev.source) ? dup.sources : [...dup.sources, ev.source]
-    await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl })
+    await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
     return false
   }
 
@@ -180,12 +196,28 @@ async function mergeInto(
   id: string,
   source: string,
   sources: string[],
-  f: { time: string | null; endTime: string | null; price: string | null; range: { min: number | null; max: number | null }; status: string; imageUrl?: string | null },
+  f: {
+    time: string | null
+    endTime: string | null
+    price: string | null
+    range: { min: number | null; max: number | null }
+    status: string
+    imageUrl?: string | null
+    ticketUrl?: string | null
+    sourceUrl?: string | null
+    organiserUrl?: string | null
+  },
 ) {
-  const cur = await prisma.event.findUnique({ where: { id }, select: { time: true, endTime: true, price: true, priceMin: true, status: true, imageUrl: true } })
+  const cur = await prisma.event.findUnique({
+    where: { id },
+    select: { time: true, endTime: true, price: true, priceMin: true, status: true, imageUrl: true, ticketUrl: true, sourceUrl: true, organiserUrl: true },
+  })
   if (!cur) return
   const fill: Record<string, unknown> = { sources, lastVerifiedAt: new Date() }
   if (!cur.imageUrl && f.imageUrl) fill.imageUrl = f.imageUrl
+  if (!usableUrl(cur.ticketUrl) && f.ticketUrl) fill.ticketUrl = f.ticketUrl
+  if (!usableUrl(cur.sourceUrl) && f.sourceUrl) fill.sourceUrl = f.sourceUrl
+  if (!usableUrl(cur.organiserUrl) && f.organiserUrl) fill.organiserUrl = f.organiserUrl
   if (!cur.time && f.time) fill.time = f.time
   if (!cur.endTime && f.endTime) fill.endTime = f.endTime
   if (!cur.price && f.price) Object.assign(fill, { price: f.price, priceMin: f.range.min, priceMax: f.range.max })

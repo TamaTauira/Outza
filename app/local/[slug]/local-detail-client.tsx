@@ -71,7 +71,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
         <div className="bg-card rounded-xl overflow-hidden border border-border">
           {l.imageUrl && (
             <div className="relative aspect-[16/9] bg-muted overflow-hidden">
-              <EventImage image={l.imageAsset} src={l.imageUrl} kind="hero" alt={`Image supplied by the organiser for ${l.title}`} sizes="(min-width: 1280px) 1280px, 100vw" priority />
+              <EventImage image={l.imageAsset} src={l.imageUrl} kind="hero" alt={`Image supplied by the organiser for ${l.title}`} sizes="(min-width: 1280px) 1280px, 100vw" priority category={l.category} />
             </div>
           )}
           <div className="p-6 md:p-8">
