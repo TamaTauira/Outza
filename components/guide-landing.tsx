@@ -76,7 +76,7 @@ export function GuideLanding(props: {
           {total > 0 && (
             <p className="mt-3 hidden text-muted-foreground leading-relaxed md:block">
               {topic?.key === 'tonight' || when === 'tonight' ? (
-                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}, plus all-day listings. Early-morning times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
+                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}. Listings without a start time are marked possibly available and sit after the timed ones. Morning-only times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
               ) : (
                 <>We currently list <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
                 {suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
@@ -151,7 +151,7 @@ export function GuideLanding(props: {
             {total > 0 && (
               <p className="text-sm leading-relaxed text-muted-foreground md:hidden">
                 {topic?.key === 'tonight' || when === 'tonight' ? (
-                  <>Tonight covers 5pm onwards in {city.name}, plus all-day listings.</>
+                  <>Tonight covers 5pm onwards in {city.name}. Untimed listings are marked possibly available.</>
                 ) : (
                   <>{total} upcoming {total === 1 ? 'event' : 'events'}{suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
                 )}

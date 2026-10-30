@@ -86,7 +86,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const schedule = event.quality?.schedule
   const scheduleNote = schedule && !REDUNDANT_SCHEDULE.has(schedule.label) && schedule.label !== 'Start time not listed' ? schedule : null
   const price = event.quality?.price?.range ?? (event?.isFree ? 'Free' : (event?.price ?? 'See website'))
-  const availability = event.quality?.status ? null : event.quality?.availability
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
   const outbound = eventOutbound(event)
@@ -118,6 +117,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         ) : (
           <Fact icon={Clock}>
             <span className="text-muted-foreground">Start time isn’t on the listing</span>
+            <span className="block text-xs text-muted-foreground">Possibly available</span>
           </Fact>
         )}
         {(where || event?.venueName) && (
@@ -134,7 +134,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         <Fact icon={Banknote}>
           <span className="font-semibold">{price}</span>
           {event.quality?.price?.fees && <span className="block text-xs font-normal text-muted-foreground">{event.quality.price.fees}</span>}
-          {availability && <span className="block text-xs font-normal text-muted-foreground mt-0.5">Availability: {availability.label}. {availability.note}</span>}
         </Fact>
       </ul>
 

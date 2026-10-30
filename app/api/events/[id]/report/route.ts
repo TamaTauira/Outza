@@ -4,6 +4,7 @@ import { getSessionUser } from '@/lib/session'
 import { REPORT_REASONS, reportReasonLabel } from '@/lib/trust-shared'
 import { notifyTrustTeam } from '@/lib/trust'
 import { eventPath } from '@/lib/seo'
+import { bumpCounter } from '@/lib/data-health'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (dupe) return NextResponse.json({ ok: true, duplicate: true })
     }
     await prisma.eventReport.create({ data: { eventId: ev.id, userId: me?.id ?? null, reason, details, email: email || me?.email || null } })
+    await bumpCounter('invalid_reports').catch((e) => console.error('report counter failed', e?.message))
     await notifyTrustTeam(`Listing report: ${reportReasonLabel(reason)} — ${ev.title.slice(0, 60)}`, [
       ['Event', `${ev.title} (${ev.city})`], ['Link', eventPath(ev)], ['Problem', reportReasonLabel(reason)], ['Details', details], ['Reporter', email || me?.email || 'Anonymous'],
     ])

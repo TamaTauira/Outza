@@ -67,7 +67,7 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
     <div className="mt-6 text-sm">
      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <a href="#report" aria-expanded={open === 'report'} onClick={(e) => { e.preventDefault(); toggle('report') }} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-        <Flag className="w-3 h-3" />{open === 'report' ? 'Close' : 'Report a problem'}
+        <Flag className="w-3 h-3" />{open === 'report' ? 'Close' : 'Report incorrect details'}
       </a>
       {canClaim && (claimStatus === 'PENDING' ? (
         <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Clock className="w-4 h-4" />Your claim is being reviewed</span>
