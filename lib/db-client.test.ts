@@ -3,7 +3,7 @@ import test from 'node:test'
 
 test('event-page reads and the refresh job do not share a Prisma client', async () => {
   process.env.DATABASE_URL ??= 'postgresql://user:secret@localhost:5432/app'
-  const db = await import('./db.ts')
+  const db = await import('./db')
   assert.notEqual(db.interactivePrisma, db.jobPrisma)
   assert.equal(db.prismaPool(), 'interactive')
   const pageDelegate = db.prisma.event
