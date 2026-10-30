@@ -163,9 +163,7 @@ export async function POST(req: NextRequest) {
       relaxed = rows.length > 0
     }
 
-    const scope = { ...filters, city: searchCity }
-    let ranked = rankAskRows(rows, scope, ASK_LIMIT)
-    if (ranked.length === 0 && broader) ranked = rankAskRows(rows, { ...scope, keywords: broader }, ASK_LIMIT)
+    const ranked = rankAskRows(rows, { ...filters, city: searchCity }, ASK_LIMIT)
 
     return NextResponse.json({
       filters, ai: !!parsed, relaxed, total: rows.length,

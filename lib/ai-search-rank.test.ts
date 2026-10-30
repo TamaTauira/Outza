@@ -9,6 +9,8 @@ const markets = JSON.parse(readFileSync(new URL('./ai-search-weekend-markets.jso
 
 const decoys: AskRow[] = [
   { id: 'picnic-community', title: 'Picnic Under the Bridge', date: '2026-10-31', time: '10:00', venueName: 'Dawes Point', suburb: 'Dawes Point', city: 'Sydney', category: 'Community', subTags: ['Markets'], isFree: true, price: 'Free', priceMin: 0, description: 'A community market picnic under the bridge.' },
+  { id: 'lion', title: 'Disney Presents The Lion King (Australia)', date: '2026-10-31', time: '13:00', venueName: 'Capitol Theatre', venueAddress: '13 Campbell St, Haymarket NSW 2000', suburb: 'Haymarket', city: 'Sydney', category: 'Arts & Culture', subTags: ['Theatre'], isFree: false, price: '$89', priceMin: 89 },
+  { id: 'kungfu', title: 'Kids kung fu classes', date: '2026-10-31', time: '09:00', venueName: 'Community Hall', venueAddress: 'Haymarket NSW', suburb: 'Haymarket', city: 'Sydney', category: 'Sports', subTags: [], isFree: true, price: 'Free', priceMin: 0 },
   { id: 'picnic-arts', title: 'Picnic Under the Bridge', date: '2026-10-30', time: '10:00', venueName: 'Dawes Point', suburb: 'Dawes Point', city: 'Sydney', category: 'Arts & Culture', subTags: [], isFree: true, price: 'Free', priceMin: 0 },
   { id: 'boat', title: 'Girls Only Halloween Boat Party', date: '2026-10-30', time: '19:00', venueName: 'Darling Harbour', suburb: 'Darling Harbour', city: 'Sydney', category: 'Nightlife', subTags: ['Party'], isFree: false, price: '$40', priceMin: 40, description: 'Trivia, wine, beer and drag on the harbour.' },
   { id: 'yoga', title: 'Rooftop Yoga', date: '2026-10-31', time: '08:00', venueName: 'Rooftop', suburb: 'CBD', city: 'Melbourne', category: 'Wellness', subTags: ['Yoga'], isFree: true, price: '$25', priceMin: 25 },
@@ -38,6 +40,7 @@ test('Markets this weekend in Sydney returns the Sydney markets, not Picnic Unde
   assert.ok(results.length >= sydney.size)
   for (const title of sydney) assert.ok(results.some((row) => row.title === title), title)
   assert.equal(results.some((row) => row.title === 'Picnic Under the Bridge'), false)
+  assert.equal(results.some((row) => row.id === 'lion' || row.id === 'kungfu'), false)
   const bondi = results.find((row) => row.title === 'Bondi Farmers Market')
   assert.equal(bondi?.category, 'Food & Drink')
   const rocks = results.find((row) => row.title === 'The Rocks Markets')

@@ -59,6 +59,11 @@ test('markets stay a keyword and are not a hard Community filter', () => {
   assert.equal(bondi.dateFrom, '2026-10-31')
   assert.deepEqual(bondi.keywords, ['market'])
 
+  const rocks = interpretQuery('the rocks markets', FRIDAY)
+  assert.equal(rocks.category, '')
+  assert.equal(rocks.suburb, 'The Rocks')
+  assert.deepEqual(rocks.keywords, ['market'])
+
   const fremantle = interpretQuery('fremantle markets', FRIDAY)
   assert.equal(fremantle.city, 'Perth')
   assert.equal(fremantle.suburb, 'Fremantle')
