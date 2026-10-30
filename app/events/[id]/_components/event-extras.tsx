@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Accessibility, Baby, Bus, Building2, ExternalLink, Map as MapIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { sourceLabel } from '@/lib/quality'
+import { formatUpdated } from '@/lib/listing-window'
 import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
@@ -75,9 +76,7 @@ export function SourceLine({ event }: { event: any }) {
   const label = sourceLabel(event?.source).replace(/\bverified\b/ig, '').replace(/\s{2,}/g, ' ').trim() || 'a listing site'
   const href = event?.sourceUrl || event?.organiserUrl || event?.ticketUrl
   const linked = typeof href === 'string' && /^https?:\/\//i.test(href) ? href : null
-  const updated = event?.quality?.checkedAt
-    ? new Date(event.quality.checkedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' })
-    : null
+  const updated = formatUpdated(event?.quality?.checkedAt)
   return (
     <p className="text-xs text-muted-foreground">
       Source: {linked

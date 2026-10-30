@@ -7,7 +7,8 @@ import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { idFromEventParam, isPastEvent } from '@/lib/seo'
-import { activityTitle, availabilityLine, confidence, outzaVerified, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, VERIFIED_BLOCKING_REPORTS, type Recurrence } from '@/lib/quality'
+import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, type Recurrence } from '@/lib/quality'
+import { queueNearStartRecheck } from '@/lib/verification-pass'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
 
@@ -41,7 +42,7 @@ async function queryEventCore(id: string) {
   })
   if (!event || isPastEvent(event)) return null
 
-  const [relatedRows, tiers, openReports, duplicateTarget] = await Promise.all([
+  const [relatedRows, tiers, duplicateTarget] = await Promise.all([
     prisma.event.findMany({
       where: {
         id: { not: event.id },
@@ -56,10 +57,6 @@ async function queryEventCore(id: string) {
       select: RELATED_SELECT,
     }),
     activeTierMap([event.id]),
-    prisma.eventReport.findMany({
-      where: { eventId: event.id, status: 'OPEN', reason: { in: [...VERIFIED_BLOCKING_REPORTS] } },
-      select: { reason: true },
-    }),
     event.duplicateOfId
       ? prisma.event.findUnique({ where: { id: event.duplicateOfId }, select: { id: true, title: true } })
       : Promise.resolve(null),
@@ -76,24 +73,20 @@ async function queryEventCore(id: string) {
     return true
   }).slice(0, 6)
 
-  const { _count, promoter, views: _v, ticketClicks: _c, ...rest } = event
-  const promoterVerified = !!promoter?.proUntil && promoter.proUntil > new Date()
+  const { _count, promoter, views: _v, ticketClicks: _c, confidenceScore: _score, ...rest } = event
   const payload = {
     event: {
       ...rest,
-      promoter: promoter ? { id: promoter.id, name: promoter.name, orgName: promoter.orgName, verified: promoterVerified } : null,
+      promoter: promoter ? { id: promoter.id, name: promoter.name, orgName: promoter.orgName } : null,
       attendeeCount: _count.attendees,
       promoTier: tiers[event.id] ?? null,
       quality: {
-        confidence: confidence({ ...event, promoterVerified }),
         status: statusInfo(event.status, event.statusSource),
         price: priceSummary(event),
         recurrence: event.recurrence ? RECURRENCE_LABEL[event.recurrence as Recurrence] ?? null : null,
         sources: [...new Set([event.source, ...(event.sources ?? [])])].map(sourceLabel),
         checkedAt: (event.lastVerifiedAt ?? event.updatedAt).toISOString(),
-        verified: outzaVerified({ ...event, openReportReasons: openReports.map((r) => r.reason) }),
         schedule: scheduleCue(event),
-        availability: availabilityLine(event.status, event.statusSource),
       },
     },
     related,
@@ -102,7 +95,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v1'], { revalidate: 120 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v2'], { revalidate: 120 })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 
@@ -134,12 +127,27 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
   const ownerView = !!me && me.id === event.promoterId
   const countView = !!opts.countView && !opts.prefetch && !ownerView
   const signalView = !!me && !!opts.countView && !opts.prefetch
-  if (countView || opts.referral || signalView) {
+  if (!opts.prefetch) {
     const eventId = event.id
     const referral = opts.referral ?? null
     const userId = me?.id
+    const recheck = {
+      id: event.id,
+      date: event.date,
+      endDate: event.endDate,
+      time: event.time,
+      endTime: event.endTime,
+      city: event.city,
+      status: event.status,
+      duplicateOfId: event.duplicateOfId,
+      source: event.source,
+      isFree: event.isFree,
+      lastVerifiedAt: event.lastVerifiedAt,
+    }
     after(() => {
-      const jobs: Promise<unknown>[] = []
+      const jobs: Promise<unknown>[] = [
+        queueNearStartRecheck(recheck).catch((e) => console.error('near-start check failed', e?.message)),
+      ]
       if (countView) {
         jobs.push(prisma.event.update({ where: { id: eventId }, data: { views: { increment: 1 } }, select: { id: true } }).catch((e) => console.error('view count failed', e?.message)))
       }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
 import { addDays, formatPrice, formatTime } from '@/lib/board'
+import { minutesNow, orderedWindow } from '@/lib/listing-window'
 import { EventImage } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
 
@@ -13,6 +14,10 @@ type RailEvent = {
   title: string
   date: string
   time: string | null
+  endTime?: string | null
+  endDate?: string | null
+  status?: string | null
+  duplicateOfId?: string | null
   venueName: string
   city?: string | null
   category: string
@@ -22,13 +27,6 @@ type RailEvent = {
   priceMax?: number | null
   imageUrl?: string | null
   imageAsset?: ClientImage | null
-}
-
-const toMin = (t: string | null) => {
-  if (!t) return null
-  const [h, m] = t.split(':').map(Number)
-  if (Number.isNaN(h)) return null
-  return h * 60 + (m || 0)
 }
 
 function weekendFrom(today: string) {
@@ -63,7 +61,10 @@ export function HomeRails({
 
   if (!today) return null
   const weekend = weekendFrom(today)
-  const tonight = rows.filter((e) => e.date.slice(0, 10) === today && (toMin(e.time) === null || (toMin(e.time) ?? 0) >= 17 * 60)).slice(0, 8)
+  const tonight = orderedWindow(
+    rows.filter((e) => e.date.slice(0, 10) === today || (e.endDate ? e.endDate.slice(0, 10) >= today && e.date.slice(0, 10) <= today : false)),
+    { window: 'tonight', day: today, nowMinutes: minutesNow(city), dropEnded: true },
+  ).slice(0, 8)
   const weekendRows = rows.filter((e) => {
     const day = e.date.slice(0, 10)
     return day >= weekend.from && day <= weekend.to
@@ -106,7 +107,7 @@ function RailCard({ ev }: { ev: RailEvent }) {
       </div>
       <div className="p-2.5">
         <p className="truncate text-sm font-semibold">{ev.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{time.hm}{time.ampm ? ` ${time.ampm}` : ''} · {ev.venueName}</p>
+        <p className="truncate text-xs text-muted-foreground">{ev.time ? `${time.hm}${time.ampm ? ` ${time.ampm}` : ''}` : 'Possibly available'} · {ev.venueName}</p>
       </div>
     </Link>
   )

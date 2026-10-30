@@ -57,7 +57,7 @@ export interface TopicDef {
 
 export const TOPICS: TopicDef[] = [
   { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `Gigs, shows, markets and festivals: every upcoming thing to do in ${c}, sorted by date.` },
-  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on from 5pm`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `Evening plans only. Gigs, shows, trivia and late sessions in ${c} starting from 5pm, plus all-day listings still on tonight.` },
+  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on from 5pm`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `Evening plans from 5pm in ${c}. Listings without a start time are marked possibly available and shown after the timed ones.` },
   { key: 'this-weekend', label: 'This weekend', title: (c) => `What’s on in ${c} this weekend`, heading: (c) => `Things to do in ${c} this weekend`, blurb: (c) => `Friday to Sunday sorted: live music, markets, theatre, sport and family days out in ${c}.` },
   { key: 'free-events', label: 'Free events', heading: (c) => `Free events in ${c}`, blurb: (c) => `Zero dollars, full fun: free festivals, markets, talks and exhibitions in ${c}.` },
   { key: 'live-music', label: 'Live music', title: (c) => `Live music & gigs in ${c}`, heading: (c) => `Live music in ${c}`, blurb: (c) => `From sticky-floor pub gigs to arena tours, here’s every upcoming show in ${c}.` },
@@ -99,7 +99,7 @@ export function guideFacts(input: {
     case 'tonight':
       out.push({
         question: `What is on tonight in ${input.city}?`,
-        answer: `Tonight means events in ${where} that start at 5pm or later, plus all-day listings still on. Morning times stay on the full events guide. ${count}`,
+        answer: `Tonight means events in ${where} that start at 5pm or later. Listings without a start time are marked possibly available and shown after the timed ones. Morning-only times stay on the full events guide. ${count}`,
       })
       break
     case 'this-weekend':

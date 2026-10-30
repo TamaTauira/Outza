@@ -5,8 +5,6 @@ import { recordLandingFromCookieJar } from '@/lib/landing-stats'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { sydneyToday } from '@/lib/event-store'
 import { isPastEvent } from '@/lib/seo'
-import { verifiedFlags } from '@/lib/listing-trust'
-
 export const dynamic = 'force-dynamic'
 
 /** DB pre-filter one day wide (cities west of Sydney can still be on yesterday); the exact per-city check is isPastEvent. */
@@ -28,13 +26,11 @@ async function list(userId: string) {
     },
   })
   const upcoming = rows.filter((r) => !isPastEvent(r.event)).map((r) => r.event)
-  const flags = await verifiedFlags(upcoming)
   return NextResponse.json({
     events: upcoming.map((event) => ({
       ...event,
       description: event.description?.slice(0, 400) ?? null,
       lastVerifiedAt: event.lastVerifiedAt?.toISOString() ?? null,
-      verified: flags.get(event.id) ?? false,
     })),
   })
 }

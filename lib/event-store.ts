@@ -2,7 +2,9 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { classifyCategory, checkLGBTI, reconcileSuburb } from '@/lib/categories'
 import { DEFAULT_CITY, tidyVenueName } from '@/lib/cities'
-import { isSameEvent, normalizeTitle, normalizeVenue } from '@/lib/quality'
+import { normalizeTitle, normalizeVenue } from '@/lib/quality'
+import { fieldConflicts, sameRealWorldEvent, scheduleFields } from '@/lib/listing-window'
+import { recordFieldConflict } from '@/lib/listing-audit'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
@@ -108,6 +110,23 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     sourceUrl: sanitizeDbUrl(links.sourceUrl, 500),
     organiserUrl: sanitizeDbUrl(links.organiserUrl, 500),
   }
+  const sched = scheduleFields({
+    date: ev.date,
+    endDate: ev.endDate,
+    time,
+    endTime,
+    city,
+    status,
+    source: ev.source,
+    isFree,
+    price,
+    title,
+    venueName,
+    venueAddress: venueAddress || null,
+    latitude: ev.latitude,
+    lastVerifiedAt: now,
+    organiserName: ev.organiserName,
+  })
 
   const data = {
     description, time, endTime, endDate, category, subTags, isLGBTI, isFree, price,
@@ -115,6 +134,8 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     latitude: ev.latitude ?? null, longitude: ev.longitude ?? null,
     priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
     status, statusSource: status === 'SCHEDULED' ? null : ev.source, lastVerifiedAt: now,
+    timezone: sched.timezone, allDay: sched.allDay, startsAt: sched.startsAt, endsAt: sched.endsAt,
+    confidenceScore: sched.confidenceScore,
     // A refresh that omits a link must not wipe one we already stored.
     ...(storedLinks.ticketUrl ? { ticketUrl: storedLinks.ticketUrl } : {}),
     ...(storedLinks.sourceUrl ? { sourceUrl: storedLinks.sourceUrl } : {}),
@@ -169,10 +190,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   // Cross-source duplicate: a fuzzy title/venue/time match on the same day in the same city
   const candidates = await prisma.event.findMany({
     where: { date, city, duplicateOfId: null },
-    select: { id: true, title: true, venueName: true, time: true, sources: true, source: true },
+    select: { id: true, title: true, venueName: true, time: true, sources: true, source: true, organiserName: true },
     take: 400,
   })
-  const dup = candidates.find((c) => isSameEvent(c, { title, venueName, time, source: ev.source }))
+  const dup = candidates.find((c) => sameRealWorldEvent(c, { title, venueName, time, source: ev.source, organiserName: ev.organiserName }))
   if (dup) {
     const sources = dup.sources.includes(ev.source) ? dup.sources : [...dup.sources, ev.source]
     await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
@@ -220,6 +241,10 @@ async function mergeInto(
   if (!usableUrl(cur.organiserUrl) && f.organiserUrl) fill.organiserUrl = f.organiserUrl
   if (!cur.time && f.time) fill.time = f.time
   if (!cur.endTime && f.endTime) fill.endTime = f.endTime
+  const conflicts = fieldConflicts(cur, f).filter((line) => line.startsWith('time ') || line.startsWith('end '))
+  if (conflicts.length) {
+    await recordFieldConflict(id, `Kept the original times. ${source} disagreed: ${conflicts.join('; ')}. Provenance stays on sources.`)
+  }
   if (!cur.price && f.price) Object.assign(fill, { price: f.price, priceMin: f.range.min, priceMax: f.range.max })
   // Cancellations and postponements matter more than which source reported them first
   if (cur.status === 'SCHEDULED' && f.status !== 'SCHEDULED') Object.assign(fill, { status: f.status, statusSource: source })
