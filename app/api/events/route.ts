@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { boardArgsFromSearch, getBoardFeed } from '@/lib/board-feed'
+import { liveBoostEventIds } from '@/lib/sponsorship-store'
 import { hasSessionCookie, PRIVATE_NO_STORE, publicCacheHeaders } from '@/lib/http-cache'
 
 export async function GET(request: NextRequest) {
@@ -19,8 +20,9 @@ export async function GET(request: NextRequest) {
       me && ids.length ? prisma.attendance.findMany({ where: { userId: me.id, eventId: { in: ids } }, select: { eventId: true } }) : Promise.resolve([]),
     ])
     const going = new Set(mine.map((m) => m.eventId))
+    const boosts = await liveBoostEventIds(ids)
     const body = {
-      events: board.events.map((e) => ({ ...e, friendsGoing: friends[e.id] ?? [], going: going.has(e.id) })),
+      events: board.events.map((e) => ({ ...e, friendsGoing: friends[e.id] ?? [], going: going.has(e.id), sponsored: boosts.has(e.id) || !!e.promoTier })),
       total: board.total,
       page: args.page,
       totalPages: Math.max(1, Math.ceil(board.total / args.limit)),

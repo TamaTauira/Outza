@@ -35,6 +35,8 @@ export interface SavedEvent {
   latitude?: number | null
   longitude?: number | null
   promoTier?: string | null
+  /** Paid placement. The row stays in time order; the label is the only change. */
+  sponsored?: boolean
   friendsGoing?: string[]
   status?: string | null
   statusSource?: string | null

@@ -14,6 +14,7 @@ const CARDS = [
   { href: '/admin/seo', title: 'SEO', body: 'Guides, indexing, and referrals.' },
   { href: '/admin/images', title: 'Images', body: 'Artwork pipeline.' },
   { href: '/admin/intel', title: 'Intelligence', body: 'Official data sources.' },
+  { href: '/admin/sponsorship', title: 'Sponsorship', body: 'Paying organisers, repeat purchase, MRR and margin.' },
 ]
 
 export default async function AdminHome() {

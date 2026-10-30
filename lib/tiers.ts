@@ -55,15 +55,15 @@ export const PRO_PLAN = {
   priceCents: 2900,
   days: 30,
   discountPct: 15,
-  perks: ['15% off every package and add-on', 'Promoter Pro on your account', 'Views & ticket-click analytics on all your events'],
+  perks: ['15% off packages, add-ons and short boosts', 'Promoter Pro on your account', 'Views & ticket-click analytics on all your events'],
 }
 
-/** Monthly business subscriptions (proposed — not yet purchasable; visitors can register interest). */
+/** Monthly organiser plans. Purchase and plan changes live in the promoter dashboard. */
 export const BUSINESS_PLANS = [
-  { key: 'FREE', name: 'Free', monthlyCents: 0, value: 'Basic listing and event submissions', live: true },
-  { key: 'LOCAL_PRO', name: 'Local Pro', monthlyCents: 3900, value: 'Enhanced profile, recurring events, basic analytics', live: false },
-  { key: 'GROWTH', name: 'Growth', monthlyCents: 9900, value: 'More promotion credits, richer analytics, scheduling tools', live: false },
-  { key: 'VENUE_PLUS', name: 'Venue Plus', monthlyCents: 19900, value: 'Multi-event management, team access, advanced promotion tools', live: false },
+  { key: 'FREE', name: 'Free', monthlyCents: 0, value: 'List events for free and buy a one-off boost when you want the extra eyes', live: true },
+  { key: 'LOCAL_PRO', name: 'Local Pro', monthlyCents: 3900, value: 'Five short boosts at once, plan invoices, and cancel or switch without emailing us', live: false },
+  { key: 'GROWTH', name: 'Growth', monthlyCents: 9900, value: 'Fifteen short boosts, schedule 60 days ahead, hourly results and a CSV export', live: false },
+  { key: 'VENUE_PLUS', name: 'Venue Plus', monthlyCents: 19900, value: 'Forty short boosts, pause the lot, and a 7-day refund window when a boost has not been shown', live: false },
 ] as const
 
 /** Local business recommendation shown beneath a single event, until that event ends. Flat price. */

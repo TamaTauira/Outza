@@ -110,6 +110,7 @@ model Event {
   claims      EventClaim[]
   signals     EventSignal[]
   togetherItems TogetherItem[]
+  campaigns   Campaign[]
   communityAudits CommunityAudit[]
   occurrences   EventOccurrence[]
   sourceRecords SourceRecord[]
@@ -260,6 +261,9 @@ model User {
   togetherMembers TogetherMember[]
   venueFollows    VenueFollow[]
   watchNotices    WatchNotice[]
+  campaigns       Campaign[]
+  organiserSubscriptions OrganiserSubscription[]
+  sponsorshipLeads SponsorshipLead[]
 
   @@index([emailOptIn])
   @@index([role])
@@ -980,6 +984,166 @@ model QualityAudit {
   @@index([action, createdAt])
   @@index([eventId])
   @@index([status, action])
+}
+
+/// Sellable short-boost placements. Multi-day packages stay on Promotion.
+model PlacementInventory {
+  id            String     @id
+  name          String
+  placement     String
+  durationKind  String
+  minMinutes    Int
+  maxMinutes    Int
+  priceCents    Int
+  impressionCap Int
+  guaranteed    String     @db.Text
+  estimated     String     @db.Text
+  active        Boolean    @default(true)
+  campaigns     Campaign[]
+}
+
+/// Monthly organiser plan catalogue. A row here is not a charge.
+model SubscriptionPlan {
+  id            String                   @id
+  name          String
+  monthlyCents  Int
+  features      String[]
+  active        Boolean                  @default(true)
+  subscriptions OrganiserSubscription[]
+}
+
+/// One organiser's monthly plan. No trial. Charges only after checkout consent and a paid Stripe invoice.
+model OrganiserSubscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  planId               String
+  status               String    @default("PENDING") // PENDING | ACTIVE | PAST_DUE | CANCELLED
+  cancelAtPeriodEnd    Boolean   @default(false)
+  pendingPlanId        String?
+  pendingPlanAt        DateTime?
+  amountCents          Int
+  currency             String    @default("aud")
+  paymentMode          String    @default("stripe")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?   @unique
+  stripeSessionId      String?   @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  consentAt            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 SubscriptionPlan @relation(fields: [planId], references: [id])
+  charges              SubscriptionCharge[]
+
+  @@index([userId, status])
+}
+
+/// One paid Stripe invoice for a monthly plan, so renewals have their own tax invoice.
+model SubscriptionCharge {
+  id                    String   @id
+  subscriptionId        String
+  userId                String
+  amountCents           Int
+  currency              String   @default("aud")
+  status                String   @default("PAID") // PAID | REFUNDED
+  stripePaymentIntentId String?
+  hostedUrl             String?
+  periodStart           DateTime?
+  periodEnd             DateTime?
+  createdAt             DateTime @default(now())
+  subscription          OrganiserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([subscriptionId])
+}
+
+/// A paid short boost. Stays PENDING until Stripe confirms payment. Never activated from a quote.
+model Campaign {
+  id                    String    @id @default(cuid())
+  promoterId            String
+  eventId               String
+  inventoryId           String
+  city                  String
+  category              String
+  startsAt              DateTime
+  endsAt                DateTime
+  impressionCap         Int
+  spendCapCents         Int
+  amountCents           Int
+  currency              String    @default("aud")
+  status                String    @default("PENDING") // PENDING | ACTIVE | PAUSED | EXPIRED | CANCELLED | REFUNDED
+  paymentMode           String    @default("stripe")
+  stripeSessionId       String?   @unique
+  stripePaymentIntentId String?
+  consentAt             DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  promoter              User      @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+  event                 Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inventory             PlacementInventory @relation(fields: [inventoryId], references: [id])
+  creative              Creative?
+  impressions           Impression[]
+  conversions           ConversionEvent[]
+
+  @@index([status, endsAt])
+  @@index([promoterId, status])
+  @@index([eventId])
+  @@index([city, status, startsAt])
+}
+
+model Creative {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  headline   String
+  blurb      String?
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+/// Serves of a boost, summed by hour so a busy night does not insert one row per view.
+model Impression {
+  id         String   @id @default(cuid())
+  campaignId String
+  surface    String
+  bucket     String
+  count      Int      @default(0)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, surface, bucket])
+  @@index([campaignId])
+}
+
+model ConversionEvent {
+  id         String   @id @default(cuid())
+  campaignId String
+  kind       String // DETAIL | TICKET | REPEAT
+  actorHash  String?
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, kind])
+  @@index([actorHash, kind, createdAt])
+}
+
+/// Quote request when card billing is off. Never a charge.
+model SponsorshipLead {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  kind      String
+  note      String?  @db.Text
+  payload   Json
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, kind, createdAt])
+}
+
+/// Stripe event id, so a webhook retry does not apply twice. Deleted if handling fails.
+model PaymentEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
 }
 
 /// Aggregated guide conversions. One row per landing path and referrer type.

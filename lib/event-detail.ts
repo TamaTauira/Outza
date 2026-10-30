@@ -11,6 +11,7 @@ import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, n
 import { queueNearStartRecheck } from '@/lib/verification-pass'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
+import { recordCampaignConversion } from '@/lib/sponsorship-store'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
 const RELATED_SELECT = {
@@ -159,6 +160,7 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
       }
       if (referral) recordReferral(eventId, referral)
       if (signalView && userId) jobs.push(recordSignal(userId, eventId, 'VIEW'))
+      if (countView) jobs.push(recordCampaignConversion(eventId, 'DETAIL', userId))
       return Promise.all(jobs)
     })
   }

@@ -6,6 +6,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { PRO_PLAN, formatAudCents, productName } from '@/lib/tiers'
 import { formatInvoiceNumber, invoiceNumberFor, proDiscountLine } from '@/lib/invoice'
+import { sponsorshipInvoice } from '@/lib/sponsorship-store'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { PrintButton } from './print-button'
 
@@ -59,12 +60,20 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       status = pass.status === 'CANCELLED' ? 'Cancelled' : 'Paid'
     } else {
       const ad = await prisma.localAd.findUnique({ where: { id }, include: { event: { select: { title: true } }, promoter: { select: { name: true, orgName: true, email: true } } } })
-      if (!ad || ad.status === 'PENDING') notFound()
-      if (ad.promoterId !== me.id && !isAdmin) notFound()
-      buyer.name = ad.promoter.orgName || ad.promoter.name || ''; buyer.email = ad.promoter.email ?? ''
-      lines = [{ label: 'Local business recommendation', detail: `${ad.businessName} · ${ad.event.title}`, cents: ad.amountCents }]
-      issued = ad.createdAt; test = ad.paymentMode === 'test'
-      status = ad.status === 'CANCELLED' ? 'Cancelled' : 'Paid'
+      if (ad && ad.status !== 'PENDING') {
+        if (ad.promoterId !== me.id && !isAdmin) notFound()
+        buyer.name = ad.promoter.orgName || ad.promoter.name || ''; buyer.email = ad.promoter.email ?? ''
+        lines = [{ label: 'Local business recommendation', detail: `${ad.businessName} · ${ad.event.title}`, cents: ad.amountCents }]
+        issued = ad.createdAt; test = ad.paymentMode === 'test'
+        status = ad.status === 'CANCELLED' ? 'Cancelled' : 'Paid'
+      } else {
+        const sponsor = await sponsorshipInvoice(id).catch(() => null)
+        if (!sponsor) notFound()
+        if (sponsor.ownerId !== me.id && !isAdmin) notFound()
+        buyer.name = sponsor.buyer.name; buyer.email = sponsor.buyer.email
+        lines = sponsor.lines
+        issued = sponsor.issued; test = sponsor.test; status = sponsor.status
+      }
     }
   }
 

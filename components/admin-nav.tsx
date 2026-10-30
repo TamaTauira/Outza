@@ -15,6 +15,7 @@ const LINKS = [
   { href: '/admin/seo', label: 'SEO' },
   { href: '/admin/images', label: 'Images' },
   { href: '/admin/intel', label: 'Intelligence' },
+  { href: '/admin/sponsorship', label: 'Sponsorship' },
 ]
 
 export function TrustCount({ className }: { className?: string }) {
