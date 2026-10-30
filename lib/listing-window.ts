@@ -197,27 +197,49 @@ function shortDate(key: string): string {
 export type BoardRange = {
   hm: string
   ampm: string
-  /** Finish line, or null when there is no end to show. Never a clock earlier than the start. */
+  /** Finish clock, e.g. "– 1:00 am". Null when there is no end to show. */
   endLine: string | null
+  /** Calendar note under the finish. Null for a same-day or same-night finish. */
+  endNote: string | null
   label: string
 }
 
-/** Start, and a finish that is never drawn earlier than the start. Multi-day finishes keep their date. */
+/** A finish before 6am the next morning is still that night. The board shows the clock only. */
+const SAME_NIGHT_BEFORE = 6 * 60
+
+function shownFinish(ev: SlotInput, sched: ResolvedSchedule, endClockLabel: string): { endLabel: string; endNote: string | null } {
+  const clockOnly = { endLabel: endClockLabel, endNote: null as string | null }
+  if (!sched.endKey || sched.end == null || sched.start == null) return clockOnly
+  const startKey = dateKeyOf(ev.date)
+  const span = startKey ? daySpan(startKey, sched.endKey) : 0
+  const endClock = ((sched.end % 1440) + 1440) % 1440
+  // Overnight windows already store the finish past midnight. A later calendar day with a later clock does not.
+  const duration = sched.overnight ? sched.end - sched.start : sched.end - sched.start + Math.max(0, span) * 1440
+  if (span <= 1 && endClock < SAME_NIGHT_BEFORE) return clockOnly
+  const longStay = span > 1 || duration >= 24 * 60 - 1
+  if (!longStay) return clockOnly
+  if (sched.overnight && span <= 1) {
+    const note = shortDate(sched.endKey)
+    return { endLabel: `${endClockLabel}, ${note}`, endNote: note }
+  }
+  const note = `until ${shortDate(sched.endKey)}`
+  return { endLabel: `${endClockLabel} · ${note}`, endNote: note }
+}
+
+/** Start, and a finish that is never drawn earlier than the start. Same-night finishes omit the next date. */
 export function formatBoardRange(ev: SlotInput): BoardRange {
   const key = dateKeyOf(ev.date) || '1970-01-01'
   const sched = resolveSchedule(ev, key)
-  if (sched.start == null) return { hm: '--:--', ampm: '', endLine: null, label: 'Time not listed' }
+  if (sched.start == null) return { hm: '--:--', ampm: '', endLine: null, endNote: null, label: 'Time not listed' }
   const start = clockParts(sched.start)
   const startLabel = `${start.hm} ${start.ampm}`
-  if (sched.end == null || sched.bogusEnd) return { hm: start.hm, ampm: start.ampm, endLine: null, label: startLabel }
+  const startOnly = { hm: start.hm, ampm: start.ampm, endLine: null, endNote: null, label: startLabel }
+  if (sched.end == null || sched.bogusEnd) return startOnly
+  if ((sched.end % 1440) <= sched.start && !sched.endKey) return startOnly
   const end = clockParts(sched.end)
-  let endLabel = `${end.hm} ${end.ampm}`
-  if (sched.overnight && sched.endKey) endLabel = `${endLabel}, ${shortDate(sched.endKey)}`
-  else if (sched.multiDay && sched.endKey) endLabel = `${endLabel} · until ${shortDate(sched.endKey)}`
-  if ((sched.end % 1440) <= sched.start && !sched.endKey) {
-    return { hm: start.hm, ampm: start.ampm, endLine: null, label: startLabel }
-  }
-  return { hm: start.hm, ampm: start.ampm, endLine: `– ${endLabel}`, label: `${startLabel} – ${endLabel}` }
+  const clock = `${end.hm} ${end.ampm}`
+  const finish = shownFinish(ev, sched, clock)
+  return { hm: start.hm, ampm: start.ampm, endLine: `– ${clock}`, endNote: finish.endNote, label: `${startLabel} – ${finish.endLabel}` }
 }
 
 export type LiveTone = 'live' | 'soon' | 'later' | 'done' | 'upcoming' | 'tbc'
