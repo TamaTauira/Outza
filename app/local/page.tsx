@@ -3,8 +3,8 @@ import { Suspense } from 'react'
 import { LocalClient } from './local-client'
 
 export const metadata: Metadata = {
-  title: 'VibePeep Local — garage sales, clearance sales, markets & community events near you',
-  description: 'Everything happening nearby: garage and moving sales, warehouse clearances, markets and pop-ups, fundraisers and community activities. List yours free, including weekly and monthly events.',
+  title: 'VibePeep Local — garage sales, markets, fetes and neighbourhood events',
+  description: 'Garage sales, clearances, farmers markets, pop-ups, school fundraisers, community sport, charity events, dog meetups and local art. List yours free.',
   alternates: { canonical: '/local' },
 }
 
