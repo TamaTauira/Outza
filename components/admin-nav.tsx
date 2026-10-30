@@ -9,6 +9,7 @@ import { VibePeepLogo } from '@/components/vibepeep-logo'
 const LINKS = [
   { href: '/admin', label: 'Dashboard', exact: true },
   { href: '/admin/trust', label: 'Trust & listings' },
+  { href: '/admin/venues', label: 'Venue claims' },
   { href: '/admin/local', label: 'Local' },
   { href: '/admin/community', label: 'Community' },
   { href: '/admin/newsletter', label: 'Newsletter' },

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   try {
     const session = event.data.object as Stripe.Checkout.Session
     const { orderId, promotionId, proPassId, localAdId } = session?.metadata ?? {}
-    if (event.type === 'checkout.session.completed' && session.payment_status === 'paid') {
+    if (event.type === 'checkout.session.completed' && session.payment_status === 'paid' && session.metadata?.kind !== 'venue') {
       if (orderId) {
         const changed = await activateOrder(orderId)
         if (changed.length) await notifyPromotionPurchased(changed[0], orderId)
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       } else if (localAdId) {
         await activateLocalAd(localAdId)
       }
-    } else if (event.type === 'checkout.session.expired') {
+    } else if (event.type === 'checkout.session.expired' && session.metadata?.kind !== 'venue') {
       if (orderId) await prisma.promotion.updateMany({ where: { orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } })
       if (promotionId) await prisma.promotion.updateMany({ where: { id: promotionId, status: 'PENDING' }, data: { status: 'CANCELLED' } })
       if (proPassId) await prisma.proPass.updateMany({ where: { id: proPassId, status: 'PENDING' }, data: { status: 'CANCELLED' } })

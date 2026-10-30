@@ -2,6 +2,7 @@ import Stripe from 'stripe'
 import { prisma } from '@/lib/db'
 import { planDef, priceEnvForBoost, type BoostId, type PlanId, ORGANISER_PLANS, PLAN_RANK } from '@/lib/sponsorship'
 import { ensureCatalog, missingTable } from '@/lib/sponsorship-store'
+import { activateVenueOrder } from '@/lib/venue-access'
 
 export function paymentsEnabled() {
   return !!process.env.STRIPE_SECRET_KEY?.trim()
@@ -75,6 +76,38 @@ export async function createBoostSession(input: {
     cancel_url: `${input.origin}/promoter?tab=boosts&cancelled=1`,
   })
   await prisma.campaign.update({ where: { id: input.campaignId }, data: { stripeSessionId: session.id } })
+  return { url: session.url }
+}
+
+/** Venue placement checkout. Same Stripe session path as a short boost. It does not grant event edits. */
+export async function createVenueSession(input: {
+  placementId: string
+  orderId: string
+  userId: string
+  email?: string | null
+  amountCents: number
+  title: string
+  origin: string
+  venueId: string
+}) {
+  const stripe = stripeClient()
+  if (!stripe) return { unavailable: true as const }
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    customer_email: input.email || undefined,
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: 'aud',
+        unit_amount: input.amountCents,
+        product_data: { name: input.title, description: 'Sponsored venue placement. Does not include editing other people’s events.' },
+      },
+    }],
+    metadata: { kind: 'venue', venueOrderId: input.orderId, venueId: input.venueId, userId: input.userId, placementId: input.placementId },
+    success_url: `${input.origin}/venue/${input.venueId}?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${input.origin}/venue/${input.venueId}?cancelled=1`,
+  })
+  await prisma.venuePlacement.update({ where: { id: input.placementId }, data: { stripeSessionId: session.id, paymentMode: 'stripe' } })
   return { url: session.url }
 }
 
@@ -268,11 +301,20 @@ export async function handleSponsorshipStripeEvent(event: Stripe.Event) {
   const relevant = type === 'checkout.session.completed' || type === 'checkout.session.expired' || type === 'customer.subscription.updated' || type === 'customer.subscription.deleted' || type === 'invoice.paid' || type === 'charge.refunded'
   if (!relevant) return
   const session = event.data.object as Stripe.Checkout.Session
-  if ((type === 'checkout.session.completed' || type === 'checkout.session.expired') && session.metadata?.kind !== 'boost' && session.metadata?.kind !== 'plan') return
+  const kind = session.metadata?.kind
+  if ((type === 'checkout.session.completed' || type === 'checkout.session.expired') && kind !== 'boost' && kind !== 'plan' && kind !== 'venue') return
   let claimed = false
   try {
     claimed = await claimEvent(event.id)
     if (!claimed) return
+    if (kind === 'venue') {
+      const orderId = session.metadata?.venueOrderId
+      if (orderId && type === 'checkout.session.completed' && session.payment_status === 'paid') await activateVenueOrder(orderId)
+      if (orderId && type === 'checkout.session.expired') {
+        await prisma.venuePlacement.updateMany({ where: { orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } })
+      }
+      return
+    }
     if (type === 'checkout.session.completed') await applyPaidCheckout(session)
     if (type === 'checkout.session.expired') await cancelZeroCheckout(session)
     if (type === 'customer.subscription.updated' || type === 'customer.subscription.deleted') {

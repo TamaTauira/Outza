@@ -68,6 +68,10 @@ model Event {
   confidenceScore Int?
   venueId         String?
   venue           Venue?    @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  /// Set when a source refresh disagrees with an active organiser override on a safety-sensitive field.
+  materialConflict String?
+  /// Organiser dashboard URL at the original source, when we know it. Never a ticket link.
+  sourceEditUrl    String?
   // Image pipeline
   imageAssetId   String?
   imageLocked    Boolean   @default(false) // admin replaced the artwork; source refreshes must not overwrite it
@@ -115,6 +119,11 @@ model Event {
   occurrences   EventOccurrence[]
   sourceRecords SourceRecord[]
   verificationChecks VerificationCheck[]
+  managementGrants EventManagementGrant[]
+  fieldOverrides   EventFieldOverride[]
+  overrideHistory  EventOverrideHistory[]
+  editAcks         EventEditAck[]
+  venueReports     VenueEventReport[]
 
   @@index([date])
   @@index([category])
@@ -261,6 +270,11 @@ model User {
   togetherMembers TogetherMember[]
   venueFollows    VenueFollow[]
   watchNotices    WatchNotice[]
+  memberships     OrganisationMembership[]
+  venueClaims     VenueClaimRequest[]
+  venuePlacements VenuePlacement[]
+  editAcks        EventEditAck[]
+  venueReports    VenueEventReport[]
   campaigns       Campaign[]
   organiserSubscriptions OrganiserSubscription[]
   sponsorshipLeads SponsorshipLead[]
@@ -1162,22 +1176,48 @@ model LandingStat {
 }
 
 /// Venue row for hours cross-checks. Hours are stored only when a source supplied them.
+/// Profile fields below are additive. claimStatus stays UNCLAIMED until a grant is approved.
 model Venue {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  name        String
-  city        String
-  timezone    String
-  latitude    Float?
-  longitude   Float?
-  openTime    String?
-  closeTime   String?
-  hoursSource String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  events      Event[]
+  id            String   @id @default(cuid())
+  key           String   @unique
+  name          String
+  city          String
+  timezone      String
+  latitude      Float?
+  longitude     Float?
+  openTime      String?
+  closeTime     String?
+  hoursSource   String?
+  address       String?
+  website       String?
+  /// Domain we already trust for this venue. Never taken from the claim form.
+  officialDomain String?
+  description   String?  @db.Text
+  contactEmail  String?
+  contactPhone  String?
+  instagram     String?
+  facebook      String?
+  legalName     String?
+  categories    String[] @default([])
+  facilities    String[] @default([])
+  accessibilityInfo String? @db.Text
+  logoUrl       String?
+  photos        String[] @default([])
+  announcement  String?  @db.Text
+  claimStatus   String   @default("UNCLAIMED") // UNCLAIMED | PENDING | CLAIMED
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  events        Event[]
+  grants        VenueManagementGrant[]
+  claims        VenueClaimRequest[]
+  audits        VenueAuditLog[]
+  analytics     VenueAnalyticsAggregate[]
+  reports       VenueEventReport[]
+  placements    VenuePlacement[]
+  profileChanges VenueProfileChange[]
 
   @@index([city])
+  @@index([claimStatus])
 }
 
 /// One normalised occurrence. Derived from the listing; the Event row stays the public record.
@@ -1231,4 +1271,244 @@ model AnalyticsCounter {
   key       String   @id
   count     Int      @default(0)
   updatedAt DateTime @updatedAt
+}
+
+/// A venue business or an event organiser. Verification is separate from a user login.
+model Organisation {
+  id                 String   @id @default(cuid())
+  name               String
+  organisationType   String // VENUE | ORGANISER
+  verificationStatus String   @default("UNVERIFIED") // UNVERIFIED | PENDING | VERIFIED | REVOKED
+  emailDomain        String?
+  website            String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  memberships        OrganisationMembership[]
+  venueGrants        VenueManagementGrant[]
+  eventGrants        EventManagementGrant[]
+  venueClaims        VenueClaimRequest[]
+
+  @@index([verificationStatus])
+  @@index([emailDomain])
+}
+
+model OrganisationMembership {
+  id             String    @id @default(cuid())
+  userId         String
+  organisationId String
+  role           String // ADMINISTRATOR | MANAGER | ORGANISER
+  status         String    @default("ACTIVE") // ACTIVE | PENDING | REVOKED
+  createdAt      DateTime  @default(now())
+  revokedAt      DateTime?
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organisationId])
+  @@index([organisationId, status])
+}
+
+/// Approved rows are the only venue edit rights. Event.venueId is not a grant.
+model VenueManagementGrant {
+  id               String    @id @default(cuid())
+  venueId          String
+  organisationId   String
+  permissionScope  String // ADMINISTRATOR | MANAGER
+  status           String    @default("PENDING") // PENDING | APPROVED | REVOKED
+  approvedAt       DateTime?
+  revokedAt        DateTime?
+  venue            Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  organisation     Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, status])
+  @@index([organisationId, status])
+}
+
+model VenueClaimRequest {
+  id                     String    @id @default(cuid())
+  venueId                String
+  claimantUserId         String
+  claimantOrganisationId String?
+  fullName               String
+  roleAtVenue            String?
+  businessEmail          String
+  verificationMethod     String // BUSINESS_EMAIL | EXISTING_ORG | MANUAL
+  evidenceReference      String?
+  status                 String    @default("PENDING") // PENDING | APPROVED | REJECTED | EXPIRED | DISPUTE
+  riskNote               String?   @db.Text
+  submittedAt            DateTime  @default(now())
+  reviewedAt             DateTime?
+  venue                  Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user                   User      @relation(fields: [claimantUserId], references: [id], onDelete: Cascade)
+  organisation           Organisation? @relation(fields: [claimantOrganisationId], references: [id], onDelete: SetNull)
+
+  @@index([venueId, status])
+  @@index([claimantUserId, submittedAt])
+  @@index([status, submittedAt])
+}
+
+/// One-time email code. Same shape as the community hub code: hashed, expiring, attempt-capped.
+model EmailVerificationCode {
+  id        String    @id @default(cuid())
+  purpose   String // VENUE_CLAIM | EVENT_CLAIM
+  subjectId String
+  email     String
+  codeHash  String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([purpose, subjectId])
+  @@index([email, createdAt])
+}
+
+model VenueAuditLog {
+  id            String   @id @default(cuid())
+  venueId       String
+  actorId       String?
+  action        String
+  previousValue String?  @db.Text
+  updatedValue  String?  @db.Text
+  createdAt     DateTime @default(now())
+  venue         Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, createdAt])
+}
+
+model VenueAnalyticsAggregate {
+  id         String @id @default(cuid())
+  venueId    String
+  period     String // YYYY-MM-DD
+  metricType String // PROFILE_VIEWS | WEBSITE_CLICKS | DIRECTIONS_CLICKS | SHARES | EVENT_VIEWS
+  value      Int    @default(0)
+  venue      Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, period, metricType])
+}
+
+model VenueEventReport {
+  id             String    @id @default(cuid())
+  venueId        String
+  eventId        String
+  reporterUserId String
+  reason         String
+  details        String?   @db.Text
+  status         String    @default("OPEN") // OPEN | IN_REVIEW | RESOLVED | DISMISSED
+  caution        Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  reviewedAt     DateTime?
+  venue          Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [reporterUserId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, status])
+  @@index([venueId, createdAt])
+  @@index([reporterUserId, createdAt])
+}
+
+model VenueProfileChange {
+  id             String    @id @default(cuid())
+  venueId        String
+  actorId        String
+  fieldName      String
+  proposedValue  String    @db.Text
+  status         String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  createdAt      DateTime  @default(now())
+  reviewedAt     DateTime?
+  venue          Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, status])
+}
+
+model VenuePlacement {
+  id              String    @id @default(cuid())
+  venueId         String
+  userId          String
+  product         String // FEATURED | MAP_PIN | CATEGORY | BOOST | PROFILE
+  days            Int
+  orderId         String?
+  status          String    @default("PENDING") // PENDING | ACTIVE | EXPIRED | CANCELLED
+  amountCents     Int
+  currency        String    @default("aud")
+  stripeSessionId String?   @unique
+  paymentMode     String    @default("stripe")
+  startsAt        DateTime?
+  endsAt          DateTime?
+  createdAt       DateTime  @default(now())
+  venue           Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([venueId, status])
+  @@index([orderId])
+}
+
+/// Explicit event management. Independent of any venue grant.
+model EventManagementGrant {
+  id             String    @id @default(cuid())
+  eventId        String
+  organisationId String
+  status         String    @default("APPROVED") // APPROVED | REVOKED
+  approvedAt     DateTime?
+  revokedAt      DateTime?
+  event          Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, organisationId])
+  @@index([organisationId, status])
+}
+
+model EventFieldOverride {
+  id                       String   @id @default(cuid())
+  eventId                  String
+  fieldName                String
+  overrideValue            String   @db.Text
+  originalSourceValue      String?  @db.Text
+  updatedBy                String
+  authorisedOrganisationId String?
+  updatedAt                DateTime @updatedAt
+  verificationContext      String?
+  active                   Boolean  @default(true)
+  event                    Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, fieldName])
+  @@index([eventId, active])
+}
+
+model EventOverrideHistory {
+  id            String   @id @default(cuid())
+  eventId       String
+  fieldName     String
+  action        String // SET | RESTORE | CLEAR_MATCH | SOURCE_SNAPSHOT | CONFLICT
+  previousValue String?  @db.Text
+  updatedValue  String?  @db.Text
+  actorId       String?
+  createdAt     DateTime @default(now())
+  event         Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
+}
+
+model EventEditAck {
+  userId         String
+  eventId        String
+  acknowledgedAt DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event          Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId])
+}
+
+/// Denied permission checks. Not a visitor log.
+model SecurityAudit {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  detail     String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
 }

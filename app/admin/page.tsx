@@ -8,6 +8,7 @@ export const metadata = { title: 'Admin — VibePeep', robots: { index: false } 
 
 const CARDS = [
   { href: '/admin/trust', title: 'Trust & listings', body: 'Reports, organiser claims, and quality flags waiting on you.' },
+  { href: '/admin/venues', title: 'Venue claims', body: 'Venue claims, disputes, and identity changes. A person decides.' },
   { href: '/admin/local', title: 'Local', body: 'Community listings to approve.' },
   { href: '/admin/community', title: 'Community hub', body: 'Neighbourhood submissions, removals and counters. Removals keep the audit trail.' },
   { href: '/admin/newsletter', title: 'Newsletter', body: 'Preview and send THE WEEKENDER.' },

@@ -324,7 +324,7 @@ export async function featuredBoosts(city: string, today: Date) {
     }))
 }
 
-export async function saveLead(input: { userId?: string | null; email: string; kind: 'BOOST' | 'PLAN'; note?: string | null; payload: unknown }) {
+export async function saveLead(input: { userId?: string | null; email: string; kind: 'BOOST' | 'PLAN' | 'VENUE'; note?: string | null; payload: unknown }) {
   const recent = await prisma.sponsorshipLead.findFirst({
     where: { email: input.email, kind: input.kind, createdAt: { gt: new Date(Date.now() - 10 * 60000) } },
     select: { id: true },

@@ -11,6 +11,8 @@ import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, n
 import { queueNearStartRecheck } from '@/lib/verification-pass'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
+import { canManageEvent, ownershipPresentation } from '@/lib/event-overrides'
+import { VENUE_MANAGED_LABEL } from '@/lib/ownership'
 import { recordCampaignConversion } from '@/lib/sponsorship-store'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
@@ -81,6 +83,7 @@ async function queryEventCore(id: string) {
   }).slice(0, 6).map((row) => redactCommunityPublic(row))
 
   const { _count, promoter, views: _v, ticketClicks: _c, confidenceScore: _score, contactEmail: _email, submitIpHash: _ip, manageTokenHash: _token, emailVerifiedAt: _verifiedAt, communityFlags: _flags, ...rest } = redacted
+  const presentation = await ownershipPresentation(event.id, event.materialConflict).catch(() => ({ notice: null, caution: null, venueManaged: false }))
   const payload = {
     event: {
       ...rest,
@@ -95,6 +98,9 @@ async function queryEventCore(id: string) {
         checkedAt: (event.lastVerifiedAt ?? event.updatedAt).toISOString(),
         schedule: scheduleCue(event),
       },
+      organiserUpdate: presentation.notice,
+      listingCaution: presentation.caution,
+      venueManagedLabel: presentation.venueManaged ? VENUE_MANAGED_LABEL : null,
     },
     related,
     duplicateTarget,
@@ -102,7 +108,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v2'], { revalidate: 120 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v3'], { revalidate: 120 })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 
@@ -180,6 +186,7 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
       going: !!mine,
       followingPromoter: !!following,
       isMine: !!me && !!event.promoterId && event.promoterId === me.id,
+      canManageListing: me ? (await canManageEvent(me.id, event.id, me.role === 'ADMIN').catch(() => null))?.access.allowed ?? false : false,
     },
     related: core.related,
     signedIn: !!me,
