@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { reportCrash } from '@/components/report-crash'
 
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  // reportCrash reloads once for a chunk-load failure and skips the fault email until that reload still fails.
   useEffect(() => { reportCrash(error) }, [error])
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
