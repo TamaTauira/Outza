@@ -64,16 +64,24 @@ function tagBlob(row: AskRow): string {
   return fold((row.subTags ?? []).join(' '))
 }
 
-type Strength = 'title' | 'tag' | 'none'
+type Strength = 'title' | 'place' | 'tag' | 'none'
+
+/** Whole words only, so "market" matches Markets but not Haymarket. */
+function hasWord(blob: string, word: string): boolean {
+  const forms = new Set([word])
+  if (word.length > 3 && word.endsWith('s')) forms.add(word.slice(0, -1))
+  else forms.add(`${word}s`)
+  return blob.split(' ').some((token) => forms.has(token))
+}
 
 function strengthFor(row: AskRow, keywords: string[]): Strength {
   if (!keywords.length) return 'title'
   const title = titleBlob(row)
   const place = placeBlob(row)
   const tags = tagBlob(row)
-  const inTitle = keywords.every((word) => title.includes(word)) || keywords.every((word) => place.includes(word))
-  if (inTitle) return 'title'
-  const inTag = keywords.every((word) => title.includes(word) || place.includes(word) || tags.includes(word) || tagForms(word).some((form) => (row.subTags ?? []).includes(form)))
+  if (keywords.every((word) => hasWord(title, word))) return 'title'
+  if (keywords.every((word) => hasWord(place, word))) return 'place'
+  const inTag = keywords.every((word) => hasWord(tags, word) || tagForms(word).some((form) => (row.subTags ?? []).some((tag) => tag.toLowerCase() === form.toLowerCase())))
   return inTag ? 'tag' : 'none'
 }
 
@@ -99,11 +107,13 @@ export function rankAskRows<T extends AskRow>(rows: T[], filters: Pick<AiFilters
   const pool = rows.filter((row) => inRange(row, filters))
   const scored = pool.map((row) => ({ row, strength: strengthFor(row, keywords) }))
   const titles = scored.filter((item) => item.strength === 'title')
+  const places = scored.filter((item) => item.strength === 'place')
   const tags = scored.filter((item) => item.strength === 'tag')
   let chosen = titles
-  if (keywords.length && titles.length === 0) chosen = tags
-  if (keywords.length && titles.length > 0) chosen = titles
   if (!keywords.length) chosen = scored
+  else if (titles.length) chosen = titles
+  else if (places.length) chosen = places
+  else chosen = tags
   const ranked = chosen
     .map((item) => {
       const title = titleBlob(item.row)

@@ -256,6 +256,11 @@ function nextWeekday(today: string, target: number): string {
   return addDays(today, delta)
 }
 
+function hasTerm(haystack: string, term: string): boolean {
+  const body = term.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')
+  return new RegExp(`(?:^|[^a-z0-9])${body}(?:[^a-z0-9]|$)`).test(haystack)
+}
+
 function categoryFromQuery(s: string): { category: string; subTag: string } {
   if (/\b(films?|cinema|screenings?|documentary|documentaries)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Film' }
   if (/\bworkshops?\b/.test(s)) return { category: 'Business', subTag: 'Workshop' }
@@ -264,11 +269,11 @@ function categoryFromQuery(s: string): { category: string; subTag: string } {
   let best: { category: string; tag: string; len: number } | null = null
   for (const cat of CATEGORIES) {
     const head = cat.name.toLowerCase()
-    if (s.includes(head) && (!best || head.length > best.len)) best = { category: cat.name, tag: '', len: head.length }
+    if (hasTerm(s, head) && (!best || head.length > best.len)) best = { category: cat.name, tag: '', len: head.length }
     for (const tag of cat.subTags) {
       const t = tag.toLowerCase()
       if (/^markets?$/.test(t) || t === 'festival' || t === 'party' || t === 'cultural') continue
-      if (s.includes(t) && (!best || t.length > best.len)) best = { category: cat.name, tag, len: t.length }
+      if (hasTerm(s, t) && (!best || t.length > best.len)) best = { category: cat.name, tag, len: t.length }
     }
   }
   if (/\b(gig|band|concert|live music)\b/.test(s)) return { category: 'Music', subTag: best?.tag && best.category === 'Music' ? best.tag : '' }
