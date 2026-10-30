@@ -99,18 +99,26 @@ export function VibePeepMascot({
         <span className="vp-stage">
           <span className="vp-bob">
             <span className="vp-look">
-              <span className="vp-act">
-                <MascotArt priority={priority} onDark={onDark} sizes={sizes} />
-                <span className="vp-lid vp-lid-l" aria-hidden="true" />
-                <span className="vp-lid vp-lid-r" aria-hidden="true" />
-                <span className="vp-blush vp-blush-l" aria-hidden="true" />
-                <span className="vp-blush vp-blush-r" aria-hidden="true" />
-                <span className="vp-heart vp-heart-l" aria-hidden="true">♥</span>
-                <span className="vp-heart vp-heart-r" aria-hidden="true">♥</span>
-                <span className="vp-pop vp-pop-l" aria-hidden="true"><i /></span>
-                <span className="vp-pop vp-pop-r" aria-hidden="true"><i /></span>
-                <span className="vp-zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></span>
-                <span className="vp-five" aria-hidden="true">✋</span>
+              <span className="vp-face">
+                <span className="vp-act">
+                  <MascotArt priority={priority} onDark={onDark} sizes={sizes} />
+                  <span className="vp-lid vp-lid-l" aria-hidden="true" />
+                  <span className="vp-lid vp-lid-r" aria-hidden="true" />
+                  <span className="vp-blush vp-blush-l" aria-hidden="true" />
+                  <span className="vp-blush vp-blush-r" aria-hidden="true" />
+                  <span className="vp-heart vp-heart-l" aria-hidden="true">♥</span>
+                  <span className="vp-heart vp-heart-r" aria-hidden="true">♥</span>
+                  <span className="vp-pop vp-pop-l" aria-hidden="true"><i /></span>
+                  <span className="vp-pop vp-pop-r" aria-hidden="true"><i /></span>
+                  <span className="vp-zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></span>
+                  <span className="vp-five" aria-hidden="true">✋</span>
+                  <span className="vp-paw" aria-hidden="true">🐾</span>
+                  <span className="vp-note vp-note-a" aria-hidden="true">♪</span>
+                  <span className="vp-note vp-note-b" aria-hidden="true">♫</span>
+                  <span className="vp-star vp-star-l" aria-hidden="true">✦</span>
+                  <span className="vp-star vp-star-r" aria-hidden="true">✧</span>
+                  <span className="vp-star vp-star-c" aria-hidden="true">✦</span>
+                </span>
               </span>
             </span>
           </span>

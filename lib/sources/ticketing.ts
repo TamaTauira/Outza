@@ -1,4 +1,5 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
+import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
@@ -67,11 +68,12 @@ export async function fetchMoshtixEvents(): Promise<number> {
   let total = Infinity
   let page = 0
   for (; page < MOSHTIX_MAX_PAGES && page * MOSHTIX_PAGE_SIZE < total; page++) {
+    if (yieldIfBudget('pages')) break
     const res = await fetch('https://api.moshtix.com/v1/graphql', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': UA() },
       body: JSON.stringify({ query: MOSHTIX_QUERY, variables: { page, from } }),
-      signal: AbortSignal.timeout(30000),
+      signal: sourceFetchSignal(30000),
     })
     if (!res.ok) throw new Error(`Moshtix API ${res.status}`)
     const json: any = await res.json()
@@ -120,6 +122,7 @@ export async function fetchMoshtixEvents(): Promise<number> {
         console.error(`[moshtix] event error: ${err?.message}`)
       }
     }
+    noteSourceSaved(saved)
     await sleep(1000)
   }
   if (total > MOSHTIX_MAX_PAGES * MOSHTIX_PAGE_SIZE) {
@@ -144,7 +147,7 @@ async function oztixQuery(params: string): Promise<any> {
       'User-Agent': UA(),
     },
     body: JSON.stringify({ params }),
-    signal: AbortSignal.timeout(30000),
+    signal: sourceFetchSignal(30000),
   })
   if (!res.ok) throw new Error(`Oztix search ${res.status}`)
   return res.json()
@@ -159,6 +162,7 @@ const OZTIX_HORIZON = 730 * DAY
 const OZTIX_FIELDS = 'EventName,EventDescription,SpecialGuests,DateStartUnix,DateEndUnix,EventUrl,EventImage1,Categories,Bands,Venue,_geoloc,MinPrice,PriceFrom,MaxPrice,PriceTo,IsFree,IsCancelled,IsPostponed,IsRescheduled,HasEventDatePassed'
 
 async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<string>): Promise<number> {
+  if (yieldIfBudget('date windows')) return 0
   const r = await oztixQuery(
     `query=&hitsPerPage=${OZTIX_HITS}&aroundLatLng=${city.lat},${city.lng}&aroundRadius=${city.radiusKm * 1000}` +
     `&filters=${encodeURIComponent(`DateStartUnix >= ${a} AND DateStartUnix < ${b}`)}&attributesToRetrieve=${OZTIX_FIELDS}&attributesToHighlight=`,
@@ -223,10 +227,13 @@ export async function fetchOztixEvents(): Promise<number> {
   const horizon = now + OZTIX_HORIZON
   let saved = 0
   for (const city of CITIES) {
+    if (yieldIfBudget('cities')) break
     const seen = new Set<string>()
     for (let a = now; a < horizon; a += OZTIX_WINDOW) {
+      if (yieldIfBudget('date windows')) break
       const b = Math.min(a + OZTIX_WINDOW, horizon)
       saved += await fetchOztixSpan(city, a, b, seen)
+      noteSourceSaved(saved)
     }
   }
   console.log(`[oztix] saved ${saved} events`)
@@ -315,7 +322,8 @@ async function ticketekRows(): Promise<Row[] | null> {
     let next: string | null = `/Mediapartners/${sid}/Catalogs/${catalog}/Items?PageSize=1000`
     let pages = 0
     for (; next && pages < TICKETEK_MAX_PAGES; pages++) {
-      const res: Response = await fetch(`https://api.impact.com${next}`, { headers: { Authorization: auth, Accept: 'application/json', 'User-Agent': UA() }, signal: AbortSignal.timeout(60000) })
+      if (yieldIfBudget('catalog pages')) break
+      const res: Response = await fetch(`https://api.impact.com${next}`, { headers: { Authorization: auth, Accept: 'application/json', 'User-Agent': UA() }, signal: sourceFetchSignal(30000) })
       if (!res.ok) throw new Error(`impact.com catalog ${res.status}`)
       const j: any = await res.json()
       rows.push(...(j?.Items ?? []))
@@ -329,7 +337,7 @@ async function ticketekRows(): Promise<Row[] | null> {
   if (!url) return null
   const headers: Record<string, string> = { Accept: 'application/json, text/csv', 'User-Agent': UA() }
   if (process.env.TICKETEK_FEED_AUTH) headers.Authorization = process.env.TICKETEK_FEED_AUTH
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(120000) })
+  const res = await fetch(url, { headers, signal: sourceFetchSignal(45000) })
   if (!res.ok) throw new Error(`Ticketek feed ${res.status}`)
   const text = await res.text()
   if (/^\s*[[{]/.test(text)) {
@@ -348,6 +356,7 @@ export async function fetchTicketekEvents(): Promise<number> {
   const images = process.env.TICKETEK_IMAGES_ALLOWED === '1'
   let saved = 0
   for (const r of rows) {
+    if (yieldIfBudget('events')) break
     try {
       const lat = Number(field(r, 'latitude', 'lat', 'venuelatitude')), lng = Number(field(r, 'longitude', 'lng', 'lon', 'venuelongitude'))
       const hasGeo = Number.isFinite(lat) && Number.isFinite(lng) && !!(lat || lng)
@@ -382,6 +391,7 @@ export async function fetchTicketekEvents(): Promise<number> {
         city: city.name,
       })
       if (ok) saved++
+      noteSourceSaved(saved)
     } catch (err: any) {
       console.error(`[ticketek] event error: ${err?.message}`)
     }

@@ -4,7 +4,7 @@ import { cityDef } from '@/lib/cities'
 import { activePromoWhere } from '@/lib/promotions'
 import { popularity } from '@/lib/quality'
 import { weekendRange } from '@/lib/seo'
-import { buildProfile, rankDigest, type TasteAnchor } from './taste'
+import { buildProfile, inDigestScope, rankDigest, type TasteAnchor } from './taste'
 
 export const WINDOW_DAYS: Record<string, number> = { daily: 2, weekly: 7, monthly: 30 }
 const BOOKABLE = ['SCHEDULED', 'RESCHEDULED']
@@ -83,9 +83,8 @@ export interface Picked {
 
 /**
  * Personalised selection for one subscriber.
- * Stated taste: digest frequency, category follows, venue follows, cities, vibe (budget, free-only, family), home postcode area, age.
- * Behaviour: signed-in event views (EventSignal VIEW), saves, attendance, Together plans, itinerary adds, ticket and newsletter clicks.
- * Searches are not stored against a person, so they are not a signal.
+ * Editorial picks come only from digest categories, followed interests, followed venues, and saved events.
+ * Views, vibe and lookalike saves re-rank inside that set. They never add a category the person did not opt into.
  * Skips past, cancelled, duplicate and already-started events. Editorial picks skip the previous two real issues; saved reminders still appear.
  */
 export async function pickEvents(userId: string, opts: { city?: string; edition?: string } = {}): Promise<Picked | null> {
@@ -195,6 +194,9 @@ export async function pickEvents(userId: string, opts: { city?: string; edition?
     from, to, todayKey: nowParts.date, nowMin, lastIssue: new Set(recent[0]?.eventIds ?? []),
     free: (e) => !used.has(e.id),
     take: (e) => used.add(e.id),
+    allow: (row) => inDigestScope({
+      id: row.id, title: row.title, description: row.description, category: row.category, subTags: row.subTags ?? [], venueName: row.venueName,
+    }, profile),
   })
 
   return {
@@ -212,7 +214,7 @@ type PromoRow = { tier: string; eventId: string; createdAt: Date }
  * Order: Newsletter boosts first (ones this subscriber didn't see last issue, then soonest event, then oldest purchase),
  * then Headliner events in this issue's window.
  */
-async function pickSponsored(promos: PromoRow[], o: { from: Date; to: Date; todayKey: string; nowMin: number; lastIssue: Set<string>; free: (e: NlEvent) => boolean; take: (e: NlEvent) => void }) {
+async function pickSponsored(promos: PromoRow[], o: { from: Date; to: Date; todayKey: string; nowMin: number; lastIssue: Set<string>; free: (e: NlEvent) => boolean; take: (e: NlEvent) => void; allow: (e: Row) => boolean }) {
   if (!promos.length) return { sponsored: [] as Picked['sponsored'], missedBoosts: 0 }
   const rows = await prisma.event.findMany({ where: { id: { in: [...new Set(promos.map((p) => p.eventId))] } }, select: nlEventSelect })
   const byId = new Map(rows.map((r) => [r.id, r]))
@@ -235,7 +237,7 @@ async function pickSponsored(promos: PromoRow[], o: { from: Date; to: Date; toda
   for (const p of sorted) {
     if (sponsored.length >= MAX_SPONSORED) break
     const row = byId.get(p.eventId)!
-    if (placed.has(row.id) || startsTooSoon(row)) continue
+    if (placed.has(row.id) || startsTooSoon(row) || !o.allow(row)) continue
     if (p.tier !== 'SPOTLIGHT' && row.date > o.to) continue
     const shaped = decorate(row)
     const e: NlEvent & { tier: string } = {
@@ -245,7 +247,7 @@ async function pickSponsored(promos: PromoRow[], o: { from: Date; to: Date; toda
     if (!o.free(e)) continue
     sponsored.push(e); o.take(e); placed.add(row.id)
   }
-  const boostIds = new Set(promos.filter((p) => p.tier === 'SPOTLIGHT' && byId.has(p.eventId) && !startsTooSoon(byId.get(p.eventId)!)).map((p) => p.eventId))
+  const boostIds = new Set(promos.filter((p) => p.tier === 'SPOTLIGHT' && byId.has(p.eventId) && !startsTooSoon(byId.get(p.eventId)!) && o.allow(byId.get(p.eventId)!)).map((p) => p.eventId))
   const missedBoosts = [...boostIds].filter((id) => !placed.has(id)).length
   return { sponsored, missedBoosts }
 }

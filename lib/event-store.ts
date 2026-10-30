@@ -7,6 +7,7 @@ import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
+import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
 
 export const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -194,13 +195,16 @@ async function mergeInto(
 }
 
 export async function fetchHtml(url: string, retries = 2): Promise<string | null> {
+  if (sourceOverBudget()) return null
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html,application/xhtml+xml' },
-      signal: AbortSignal.timeout(20000),
+      signal: sourceFetchSignal(20000),
     })
     if (res.status === 429 && retries > 0) {
+      if (sourceOverBudget()) return null
       await sleep(30000)
+      if (sourceOverBudget()) return null
       return fetchHtml(url, retries - 1)
     }
     if (!res.ok) {
@@ -220,4 +224,4 @@ export function extractNextData(html: string): any | null {
   try { return JSON.parse(m[1]) } catch { return null }
 }
 
-export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, remainingBudgetMs(ms)))

@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
+import { yieldIfBudget } from '@/lib/source-budget'
 import { prisma } from '@/lib/db'
 import { CITIES, cityDef } from '@/lib/cities'
 import { addDaysStr, diffDays, isTimeStr, lastDate, localDupKey, occurrences, todayIn, MAX_SPAN_DAYS, type RecurringShape } from '@/lib/local-shared'
@@ -101,6 +102,7 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
 
   let upserted = 0
   for (const d of unique.values()) {
+    if (yieldIfBudget('local import')) break
     const r = d.row
     if (lastDate(d) < todayIn(cityDef(r.city).tz)) { skipped++; continue }
     const place = splitAddress(r.venueName, r.venueAddress, r.suburb ?? r.city)

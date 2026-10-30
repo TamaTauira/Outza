@@ -14,25 +14,37 @@ export const REACTION_IDS = [
   'highfive',
   'eyepop',
   'rainbow',
+  'sneeze',
+  'dance',
+  'wave',
+  'sparkle',
+  'tickle',
+  'delighted',
 ] as const
 
 export type ReactionId = (typeof REACTION_IDS)[number]
 
 export const REACTION_LINES: Record<ReactionId, string> = {
-  hearts: 'Caught a crush on tonight.',
-  spin: 'Full spin. Still facing the fun.',
-  wiggle: 'This is my going-out dance.',
+  hearts: 'Caught a crush. Hearts everywhere.',
+  spin: 'Spin… and stick the landing.',
+  wiggle: 'Happy wiggle. Hearts out.',
   wink: 'Take a peep!',
-  giggle: 'Psst… something’s on tonight 👀',
+  giggle: 'Hehe… something’s on tonight 👀',
   sleepy: 'I dozed off. What’s on?',
   confetti: 'That’s a yes from me.',
   peekaboo: 'Peekaboo. Found your night.',
-  'heart-eyes': 'Already in love with this one.',
-  squash: 'Boing. Let’s get out there.',
+  'heart-eyes': 'Love-struck. Can’t even hide it.',
+  squash: 'Big squat. Bigger jump.',
   blush: 'Stop it. You’ll make me blush.',
   highfive: 'Up top. You showed up.',
-  eyepop: 'Wait. That one’s tonight?',
+  eyepop: 'Starry-eyed. That one’s tonight?',
   rainbow: 'Full-spectrum kind of night.',
+  sneeze: 'Achoo! Didn’t see that coming.',
+  dance: 'Little dance. Notes and all.',
+  wave: 'G’day! Over here.',
+  sparkle: 'Starry-eyed for this one.',
+  tickle: 'Hehe, that tickles!',
+  delighted: 'You came back. I’m chuffed.',
 }
 
 export const REACTION_MS: Record<ReactionId, number> = {
@@ -50,7 +62,16 @@ export const REACTION_MS: Record<ReactionId, number> = {
   highfive: 1800,
   eyepop: 1700,
   rainbow: 2400,
+  sneeze: 1600,
+  dance: 2400,
+  wave: 1800,
+  sparkle: 2000,
+  tickle: 1500,
+  delighted: 2200,
 }
+
+/** Not in the random pool: tickle is the repeat-click gag, delighted is the sulk payoff. */
+const SCRIPTED = new Set<ReactionId>(['tickle', 'delighted'])
 
 export const PARTY_LINE = 'Super party mode. Everyone’s invited.'
 export const PARTY_MS = 3600
@@ -65,7 +86,8 @@ export const HOVER_LINES = [
 
 /** Next reaction, never the one that just played. `rand` returns a number in [0, 1). */
 export function pickReaction(last: ReactionId | null, rand: () => number = Math.random): ReactionId {
-  const pool = last ? REACTION_IDS.filter((id) => id !== last) : REACTION_IDS
+  const base = REACTION_IDS.filter((id) => !SCRIPTED.has(id))
+  const pool = last ? base.filter((id) => id !== last) : base
   const index = Math.min(pool.length - 1, Math.floor(rand() * pool.length))
   return pool[index]
 }
