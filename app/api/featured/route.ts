@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
 import { activePromoWhere } from '@/lib/promotions'
+import { mixSponsored } from '@/lib/sponsorship'
+import { featuredBoosts, recordImpressions } from '@/lib/sponsorship-store'
 import { TIER_KEYS, TIER_RANK, type Tier } from '@/lib/tiers'
 import { CITY_NAMES } from '@/lib/cities'
 import { imageAssetSelect } from '@/lib/images/spec'
@@ -10,7 +12,6 @@ import { publicCacheHeaders } from '@/lib/http-cache'
 
 export const dynamic = 'force-dynamic'
 
-const MIN_ITEMS = 8
 const evSelect = {
   id: true, title: true, date: true, time: true, venueName: true, suburb: true, city: true,
   category: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, latitude: true, longitude: true,
@@ -52,25 +53,38 @@ async function queryFeatured(validCity: string, day: string) {
       Number(b.event.city === validCity) - Number(a.event.city === validCity) ||
       a.event.date.getTime() - b.event.date.getTime(),
     )
-    const items: Record<string, unknown>[] = promoted.map((i) => ({ ...i.event, tier: i.tier, frontRow: frontRow.has(i.event.id) }))
-
-    if (items.length < MIN_ITEMS) {
-      const hot = await prisma.event.findMany({
-        where: {
-          date: { gte: today, lte: new Date(today.getTime() + 30 * 86400000) },
-          id: { notIn: [...best.keys()] },
-          ...(validCity ? { city: validCity } : {}),
-        },
-        orderBy: [{ savedBy: { _count: 'desc' } }, { attendees: { _count: 'desc' } }, { views: 'desc' }, { date: 'asc' }],
-        take: MIN_ITEMS - items.length,
-        select: evSelect,
-      })
-      items.push(...hot.map((e) => ({ ...e, tier: 'HOT', frontRow: false })))
+    const packageCards: Record<string, unknown>[] = promoted.map((i) => ({ ...i.event, tier: i.tier, frontRow: frontRow.has(i.event.id), sponsored: true }))
+    let boostCards: Record<string, unknown>[] = []
+    try {
+      boostCards = await featuredBoosts(validCity, today) as Record<string, unknown>[]
+    } catch (error) {
+      console.error('short boosts', error)
     }
+    const seen = new Set<string>()
+    const sponsored: Record<string, unknown>[] = []
+    for (const card of [...packageCards, ...boostCards]) {
+      const id = String(card.id)
+      if (seen.has(id)) continue
+      seen.add(id)
+      sponsored.push(card)
+    }
+    const hot = await prisma.event.findMany({
+      where: {
+        date: { gte: today, lte: new Date(today.getTime() + 30 * 86400000) },
+        id: { notIn: [...seen] },
+        duplicateOfId: null,
+        ...(validCity ? { city: validCity } : {}),
+      },
+      orderBy: [{ savedBy: { _count: 'desc' } }, { attendees: { _count: 'desc' } }, { views: 'desc' }, { date: 'asc' }],
+      take: 16,
+      select: evSelect,
+    })
+    const organic = hot.map((e) => ({ ...e, tier: 'HOT', frontRow: false, sponsored: false }))
+    const items = mixSponsored(organic, sponsored)
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v1'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v2'], { revalidate: 60 })
 
 export async function GET(req: NextRequest) {
   try {
@@ -78,6 +92,8 @@ export async function GET(req: NextRequest) {
     const validCity = CITY_NAMES.includes(city) ? city : ''
     const day = sydneyToday().toISOString().slice(0, 10)
     const body = await cachedFeatured(validCity, day)
+    const campaignIds = body.items.map((item) => item.campaignId).filter((id): id is string => typeof id === 'string')
+    if (campaignIds.length) await recordImpressions(campaignIds, 'FEATURED')
     return NextResponse.json(body, { headers: publicCacheHeaders(60) })
   } catch (e: any) {
     console.error('featured error', e?.message)

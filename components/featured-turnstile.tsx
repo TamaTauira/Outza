@@ -13,6 +13,7 @@ import type { ClientImage } from '@/lib/images/spec'
 interface FeaturedItem {
   id: string; title: string; date: string; time: string | null; venueName: string; city?: string
   category: string; isFree: boolean; price: string | null; priceMin?: number | null; priceMax?: number | null; imageUrl?: string | null; imageAsset?: ClientImage | null; tier: string
+  creative?: string | null
 }
 
 export function FeaturedTurnstile({ city }: { city: string }) {
@@ -68,13 +69,14 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
       <div className="relative aspect-[16/9] overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
         <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="260px" compact crop accent={color} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <span title={it.tier === 'HOT' ? 'Popular on VibePeep' : `${t?.name ?? 'Promoted'} placement`} className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
+        <span title={it.tier === 'HOT' ? 'Popular on VibePeep' : `${t?.name ?? 'Sponsored'} placement`} className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
           {it.tier === 'HOT' && <Flame className="w-2.5 h-2.5" />}{badge.label}
         </span>
         <span className="absolute z-10 bottom-2 right-2 px-2 py-0.5 rounded bg-black/70 text-white font-mono text-xs">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
       </div>
       <div className="p-3">
         <p className="font-semibold text-sm truncate" title={it.title}>{it.title}</p>
+        {it.tier !== 'HOT' && it.creative && <p className="text-[11px] text-primary truncate">{it.creative}</p>}
         <p className="text-xs text-muted-foreground truncate mt-0.5">{date} · {time.hm}{time.ampm ? ` ${time.ampm}` : ''}</p>
         <p className="text-xs text-muted-foreground truncate">{it.venueName}{it.city ? ` · ${it.city}` : ''}</p>
       </div>

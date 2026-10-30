@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { activateOrder, activatePromotion, activateProPass } from '@/lib/promotions'
 import { notifyPromotionPurchased, notifyProPurchased } from '@/lib/promotion-email'
 import { activateLocalAd } from '@/lib/local-ads'
+import { handleSponsorshipStripeEvent } from '@/lib/sponsorship-billing'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       if (proPassId) await prisma.proPass.updateMany({ where: { id: proPassId, status: 'PENDING' }, data: { status: 'CANCELLED' } })
       if (localAdId) await prisma.localAd.updateMany({ where: { id: localAdId, status: 'PENDING' }, data: { status: 'CANCELLED' } })
     }
+    await handleSponsorshipStripeEvent(event)
   } catch (e: any) {
     console.error('Stripe webhook handling error:', e?.message)
     return NextResponse.json({ error: 'Handler error' }, { status: 500 })

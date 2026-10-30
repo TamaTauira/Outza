@@ -142,10 +142,10 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 - `/login` has an Event-goer/Promoter toggle (`?as=promoter`).
 
 ### 4.8 Promoters and money
-- Dashboard `/promoter` (`app/promoter/promoter-client.tsx`) tabs: Overview, Intelligence, Promote an event, My events, Local business ads, Pro & billing.
+- Dashboard `/promoter` (`app/promoter/promoter-client.tsx`) tabs: Overview, Intelligence, Promote an event, Short boosts, My events, Local business ads, Pro & billing.
 - Pricing in **`lib/tiers.ts` only** (server-side `quote()`): Boost $19/7d, Spotlight $49/14d, Headliner $99/30d (DB keys SILVER/BRONZE/GOLD). Add-ons FRONTROW and SPOTLIGHT (shown as "Newsletter boost"). Promoter Pro (ProPass + `User.proUntil`, 15% off, analytics). Local business ad $59 flat (`LOCAL_AD`). Do not show a Verified badge on listings or promoters.
-- BUSINESS_PLANS (Free / Local Pro $39 / Growth $99 / Venue Plus $199 monthly) are "Coming soon" with Register interest until recurring billing exists.
-- Checkout: `/api/promotions/checkout`, `/api/local-ads/checkout`, webhook `/api/webhooks/stripe`, activation in `lib/promotions.ts`. **`STRIPE_SECRET_KEY` is not set, so checkouts activate instantly in "test mode" (free).** Going live needs `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET`.
+- BUSINESS_PLANS (Free / Local Pro $39 / Growth $99 / Venue Plus $199 monthly) are purchasable from Pro & billing when Stripe price ids are set. See `docs/sponsorships.md`. Short boosts are an evening pass ($9, up to 6 hours) and a day pass ($15, up to 24 hours).
+- Checkout: `/api/promotions/checkout`, `/api/local-ads/checkout`, `/api/sponsorships/checkout`, webhook `/api/webhooks/stripe`, activation in `lib/promotions.ts` and `lib/sponsorship-billing.ts`. **Multi-day packages and Promoter Pro still activate in test mode when `STRIPE_SECRET_KEY` is unset.** Short boosts and monthly plans do not: they show Payments coming soon and store a quote. They never fake a charge, and they have no trial.
 - Invoices `/promoter/invoice/[id]` (GST shown as 1/11, no invented ABN).
 - Listing edits: `PATCH /api/promoter/events/[id]`. Referrals: `lib/referrals.ts` (EventReferral). Weekly performance report: `lib/promoter-report.ts`, `/api/promoter/report`, `/api/cron/promoter-reports`.
 - **Audience insights** (`lib/audience-insights.ts`, `app/promoter/audience-card.tsx`, `/api/promoter/insights`): grouped percentages only, **groups under 10 hidden** (`MIN_GROUP=10`), audience size rounded down to 10s, promoter's own activity excluded, never exact age/birthday/postcode/name/email. Always labelled as interest data, not purchaser data (VibePeep doesn't sell tickets). Signals: EventSignal (VIEW/TICKET/SHARE/ITINERARY) via `lib/event-signals.ts`.

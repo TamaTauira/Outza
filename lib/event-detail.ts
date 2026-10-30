@@ -10,6 +10,7 @@ import { idFromEventParam, isPastEvent } from '@/lib/seo'
 import { activityTitle, availabilityLine, confidence, outzaVerified, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, VERIFIED_BLOCKING_REPORTS, type Recurrence } from '@/lib/quality'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
+import { recordCampaignConversion } from '@/lib/sponsorship-store'
 
 const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -145,6 +146,7 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
       }
       if (referral) recordReferral(eventId, referral)
       if (signalView && userId) jobs.push(recordSignal(userId, eventId, 'VIEW'))
+      if (countView) jobs.push(recordCampaignConversion(eventId, 'DETAIL', userId))
       return Promise.all(jobs)
     })
   }

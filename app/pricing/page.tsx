@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { PageShell } from '@/components/page-shell'
+import { BOOSTS } from '@/lib/sponsorship'
 import { DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 
 export const metadata: Metadata = {
@@ -46,6 +47,13 @@ export default function PricingPage() {
                   <th className="px-4 py-3 font-semibold">{t.name}</th>
                   {DURATIONS.map((d) => <td key={d.days} className="px-4 py-3 font-mono">{formatAud(t.prices[d.days])}</td>)}
                   <td className="px-4 py-3 text-muted-foreground">{t.key === 'GOLD' ? 'Top of your city’s Featured band' : t.key === 'BRONZE' ? 'Featured band, above Boost' : 'Featured band in your city'}</td>
+                </tr>
+              ))}
+              {Object.values(BOOSTS).map((boost) => (
+                <tr key={boost.id} className="border-t border-border">
+                  <th className="px-4 py-3 font-semibold">{boost.name}</th>
+                  <td className="px-4 py-3 font-mono" colSpan={3}>{formatAud(boost.priceCents)} · up to {boost.maxMinutes / 60} hours</td>
+                  <td className="px-4 py-3 text-muted-foreground">Hot right now in the event’s city, labelled Sponsored, until the end you pick or the impression cap.</td>
                 </tr>
               ))}
               <tr className="border-t border-border">

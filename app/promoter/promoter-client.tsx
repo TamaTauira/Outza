@@ -17,6 +17,8 @@ import { EditEventPanel } from './edit-event-panel'
 import { promoterCanEditEvent } from '@/lib/quality'
 import { AudienceCard } from './audience-card'
 import { IntelTab } from './intel-tab'
+import { BoostStudio } from './boost-studio'
+import { OrganiserPlans } from './organiser-plans'
 
 type Promo = { id: string; tier: string; days?: number | null; orderId?: string | null; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
 type MyEvent = {
@@ -29,7 +31,7 @@ type Pass = { id: string; status: string; amountCents: number; paymentMode: stri
 type AdSpend = { id: string; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string; businessName: string; event?: { title: string } | null }
 type ClaimRow = { id: string; status: string; createdAt: string; reviewNote?: string | null; event: { id: string; title: string; date: string; city: string; venueName: string } }
 type Account = { pro: boolean; proUntil: string | null; displayName: string; homeCity?: string; weeklyReport?: boolean; lastReportAt?: string | null }
-type Tab = 'overview' | 'intel' | 'promote' | 'events' | 'local' | 'billing'
+type Tab = 'overview' | 'intel' | 'promote' | 'boosts' | 'events' | 'local' | 'billing'
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
 const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm w-full'
@@ -40,6 +42,7 @@ const TABS: { key: Tab; label: string; Icon: typeof Rocket }[] = [
   { key: 'overview', label: 'Overview', Icon: BarChart3 },
   { key: 'intel', label: 'Intelligence', Icon: Brain },
   { key: 'promote', label: 'Promote an event', Icon: Rocket },
+  { key: 'boosts', label: 'Short boosts', Icon: Megaphone },
   { key: 'events', label: 'My events', Icon: CalendarPlus },
   { key: 'local', label: 'Local business ads', Icon: Store },
   { key: 'billing', label: 'Pro & billing', Icon: Receipt },
@@ -138,6 +141,11 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
             {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => setTab('events')} onAccount={(a) => setAccount({ ...account, ...a })} />}
+            {tab === 'boosts' && (
+              <section className={card}>
+                <BoostStudio events={events} pro={account.pro} />
+              </section>
+            )}
             {tab === 'promote' && (
               <section className={card}>
                 <h2 className="font-display text-xl font-bold mb-1">Build a campaign</h2>
@@ -583,7 +591,9 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
   const statusLabel = (r: (typeof rows)[number]) => (r.status === 'CANCELLED' ? 'Cancelled' : r.endsAt && new Date(r.endsAt) > new Date() ? 'Active' : 'Completed')
 
   return (
-    <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+    <div className="space-y-6">
+      <OrganiserPlans />
+      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
       <section className={card}>
         <h2 className="font-semibold mb-4">Billing history</h2>
         {!rows.length ? <p className="text-sm text-muted-foreground">No purchases yet.</p> : (
@@ -608,6 +618,7 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
         {account.pro && <button type="button" onClick={async () => { if (!window.confirm('End Promoter Pro now? This does not refund the current period.')) return; const res = await fetch('/api/promoter/pro/cancel', { method: 'POST' }); if (res.ok) { toast.success('Pro ended'); onEnded() } else toast.error('Could not end Pro') }} className="mt-3 text-xs text-muted-foreground underline">End Pro</button>}
       </section>
       <ProCard account={account} onPro={onPro} proBusy={proBusy} />
+      </div>
     </div>
   )
 }
