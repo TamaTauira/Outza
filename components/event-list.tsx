@@ -11,8 +11,6 @@ import { useSaved } from '@/lib/saved'
 import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBackState } from '@/lib/scroll-memory'
-import { VibePeepMascot } from '@/components/vibepeep-mascot'
-
 export type BoardSeed = {
   city: string
   from: string
@@ -192,7 +190,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       {loading ? (
         <div aria-busy="true" aria-label="Loading events">
           <div className="flex flex-col items-center justify-center gap-2 py-8" aria-live="polite">
-            <VibePeepMascot className="w-16" alt="" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Having a peep…</p>
           </div>
           <div className="divide-y divide-border">
@@ -274,8 +272,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 function PeepEmpty({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
   return (
     <div className="px-4 py-16 text-center">
-      <VibePeepMascot className="mx-auto w-24 sm:w-28" alt="" />
-      <p className="mb-1 mt-3 font-semibold">{title}</p>
+      <p className="mb-1 font-semibold">{title}</p>
       <p className="mx-auto max-w-sm text-sm text-muted-foreground">{body}</p>
       {action}
     </div>

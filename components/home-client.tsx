@@ -23,7 +23,6 @@ import { HomeRails } from '@/components/home-rails';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
-import { VibePeepMascot } from '@/components/vibepeep-mascot';
 import { useBackState } from '@/lib/scroll-memory';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
 const MapView = dynamic(() => import('@/components/map-view').then((m) => m.MapView), {
@@ -290,9 +289,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 </div>
                 <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
               </div>
-              <figure className="w-14 shrink-0 sm:w-24">
-                <VibePeepMascot priority onDark className="w-full" sizes="(min-width: 640px) 96px, 56px" alt="VibePeep, a round black robot with orange and pink eyes, mid-jump and waving hello" />
-              </figure>
             </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
               <label className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3 sm:w-[200px]">

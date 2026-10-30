@@ -1,0 +1,534 @@
+/* Living-robot rig. Parts are cut from vibepeep-mascot.png and stacked in the same box.
+   Motion is transform and opacity only, so it stays on the compositor. */
+
+.vp-rig {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1104 / 1115;
+}
+
+.vp-part {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.vp-part img {
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Idle life. Different periods so blink, glance, sway and fidget never lock into one pose. */
+.vp-ant {
+  animation: vp-ant-idle 3.6s ease-in-out infinite;
+}
+
+.vp-spark {
+  animation: vp-spark-idle 2.6s ease-in-out infinite;
+}
+
+.vp-spark-1 { animation-delay: -0.7s; }
+.vp-spark-2 { animation-delay: -1.4s; }
+.vp-spark-3 { animation-delay: -1.9s; }
+
+.vp-arm-l { animation: vp-idle-arm-l 4.8s ease-in-out infinite; }
+.vp-arm-r { animation: vp-idle-arm-r 5.4s ease-in-out infinite; }
+.vp-leg-l { animation: vp-idle-leg-l 3.8s ease-in-out infinite; }
+.vp-leg-r { animation: vp-idle-leg-r 3.8s ease-in-out infinite; }
+
+.vp-pupil-l { animation: vp-glance-l 6.2s ease-in-out infinite; }
+.vp-pupil-r { animation: vp-glance-r 6.8s ease-in-out infinite; }
+
+.vp-roam[data-paused] .vp-part,
+.vp-hit[data-off] .vp-part {
+  animation-play-state: paused;
+}
+
+/* Walking, chasing and bouncing: real steps. The body only tips; the legs do the work. */
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-bob,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-bob,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-bob {
+  animation: vp-step-bob 0.56s ease-in-out infinite;
+  transform-origin: 50% 78%;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-leg-l,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-leg-l,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-leg-l {
+  animation: vp-step-leg-l 0.56s ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-leg-r,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-leg-r,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-leg-r {
+  animation: vp-step-leg-r 0.56s ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-arm-l,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-arm-l,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-arm-l {
+  animation: vp-step-arm-l 0.56s ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-arm-r {
+  animation: vp-step-arm-r 0.56s ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-ant,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-ant,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-ant {
+  animation: vp-step-ant 0.56s ease-in-out infinite;
+}
+
+/* Jump: crouch, tuck, land. Timed to the roam hop. */
+.vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-leg-l { animation: vp-jump-leg-l 1.15s ease; }
+.vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-leg-r { animation: vp-jump-leg-r 1.15s ease; }
+.vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-arm-l { animation: vp-jump-arm-l 1.15s ease; }
+.vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-arm-r { animation: vp-jump-arm-r 1.15s ease; }
+.vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-ant { animation: vp-jump-ant 1.15s ease; }
+.vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-pupil { animation: vp-jump-eyes 1.15s ease; }
+
+/* Dance in place. */
+.vp-roam[data-move='dance'] .vp-hit:not([data-react]) .vp-leg-l,
+.vp-hit[data-react='dance'] .vp-leg-l,
+.vp-hit[data-react='party'] .vp-leg-l { animation: vp-dance-leg-l 0.44s ease-in-out infinite; }
+
+.vp-roam[data-move='dance'] .vp-hit:not([data-react]) .vp-leg-r,
+.vp-hit[data-react='dance'] .vp-leg-r,
+.vp-hit[data-react='party'] .vp-leg-r { animation: vp-dance-leg-r 0.44s ease-in-out infinite; }
+
+.vp-roam[data-move='dance'] .vp-hit:not([data-react]) .vp-arm-l,
+.vp-hit[data-react='dance'] .vp-arm-l,
+.vp-hit[data-react='wiggle'] .vp-arm-l,
+.vp-hit[data-react='party'] .vp-arm-l { animation: vp-dance-arm-l 0.44s ease-in-out infinite; }
+
+.vp-roam[data-move='dance'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-hit[data-react='dance'] .vp-arm-r,
+.vp-hit[data-react='wiggle'] .vp-arm-r,
+.vp-hit[data-react='party'] .vp-arm-r { animation: vp-dance-arm-r 0.44s ease-in-out infinite; }
+
+.vp-roam[data-move='dance'] .vp-hit:not([data-react]) .vp-ant,
+.vp-hit[data-react='dance'] .vp-ant,
+.vp-hit[data-react='party'] .vp-ant { animation: vp-dance-ant 0.44s ease-in-out infinite; }
+
+/* Other roam acts. */
+.vp-roam[data-move='spin'] .vp-hit:not([data-react]) .vp-arm-l,
+.vp-hit[data-react='spin'] .vp-arm-l { animation: vp-star-arm-l 1.3s ease; }
+.vp-roam[data-move='spin'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-hit[data-react='spin'] .vp-arm-r { animation: vp-star-arm-r 1.3s ease; }
+.vp-roam[data-move='spin'] .vp-hit:not([data-react]) .vp-leg-l,
+.vp-hit[data-react='spin'] .vp-leg-l { animation: vp-star-leg-l 1.3s ease; }
+.vp-roam[data-move='spin'] .vp-hit:not([data-react]) .vp-leg-r,
+.vp-hit[data-react='spin'] .vp-leg-r { animation: vp-star-leg-r 1.3s ease; }
+
+.vp-roam[data-move='wave'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-hit[data-react='wave'] .vp-arm-r,
+.vp-hit[data-react='highfive'] .vp-arm-r { animation: vp-wave-arm 0.42s ease-in-out 4; }
+
+.vp-roam[data-move='wiggle'] .vp-hit:not([data-react]) .vp-arm-l { animation: vp-dance-arm-l 0.28s ease-in-out infinite; }
+.vp-roam[data-move='wiggle'] .vp-hit:not([data-react]) .vp-arm-r { animation: vp-dance-arm-r 0.28s ease-in-out infinite; }
+.vp-roam[data-move='wiggle'] .vp-hit:not([data-react]) .vp-leg-l { animation: vp-dance-leg-l 0.28s ease-in-out infinite; }
+.vp-roam[data-move='wiggle'] .vp-hit:not([data-react]) .vp-leg-r { animation: vp-dance-leg-r 0.28s ease-in-out infinite; }
+
+.vp-roam[data-move='cheer'] .vp-hit:not([data-react]) .vp-arm-l,
+.vp-hit[data-react='delighted'] .vp-arm-l { animation: vp-cheer-arm-l 1.5s ease; }
+.vp-roam[data-move='cheer'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-hit[data-react='delighted'] .vp-arm-r { animation: vp-cheer-arm-r 1.5s ease; }
+.vp-hit[data-react='delighted'] .vp-pupil,
+.vp-roam[data-move='cheer'] .vp-hit:not([data-react]) .vp-pupil { animation: vp-joy-eyes 1.5s ease; }
+
+.vp-roam[data-move='nap'] .vp-hit:not([data-react]) .vp-ant,
+.vp-hit[data-react='sleepy'] .vp-ant,
+.vp-hit[data-mood='sulk']:not([data-react]) .vp-ant { animation: vp-droop-ant 0.6s ease forwards; }
+
+.vp-roam[data-move='nap'] .vp-hit:not([data-react]) .vp-arm-l,
+.vp-roam[data-move='nap'] .vp-hit:not([data-react]) .vp-arm-r,
+.vp-hit[data-react='sleepy'] .vp-arm,
+.vp-hit[data-mood='sulk']:not([data-react]) .vp-arm { animation: vp-droop-arm 0.6s ease forwards; }
+
+.vp-roam[data-move='peek'] .vp-hit:not([data-react]) .vp-pupil,
+.vp-hit[data-react='peekaboo'] .vp-pupil { animation: vp-wide-eyes 1.9s ease; }
+.vp-roam[data-move='peek'] .vp-hit:not([data-react]) .vp-arm-l { animation: vp-peek-arm 1.9s ease; }
+
+.vp-roam[data-move='perch'] .vp-hit:not([data-react]) .vp-leg-l { animation: vp-sit-leg-l 0.55s ease forwards; }
+.vp-roam[data-move='perch'] .vp-hit:not([data-react]) .vp-leg-r { animation: vp-sit-leg-r 0.55s ease forwards; }
+
+/* Click reactions: the face changes as well as the body. */
+.vp-hit[data-react='hearts'] .vp-pupil,
+.vp-hit[data-react='heart-eyes'] .vp-pupil,
+.vp-hit[data-react='party'] .vp-pupil,
+.vp-hit[data-react='sparkle'] .vp-pupil { opacity: 0; }
+
+.vp-hit[data-react='hearts'] .vp-heart,
+.vp-hit[data-react='sparkle'] .vp-heart { opacity: 1; animation: vp-pop 0.45s ease; }
+
+.vp-hit[data-react='hearts'] .vp-arm-l,
+.vp-hit[data-react='heart-eyes'] .vp-arm-l { animation: vp-cheer-arm-l 2.3s ease; }
+.vp-hit[data-react='hearts'] .vp-arm-r,
+.vp-hit[data-react='heart-eyes'] .vp-arm-r { animation: vp-cheer-arm-r 2.3s ease; }
+
+.vp-hit[data-react='wink'] .vp-arm-r { animation: vp-wave-arm 0.55s ease-in-out 2; }
+.vp-hit[data-react='wink'] .vp-ant { animation: vp-wink-ant 1.8s ease; }
+
+.vp-hit[data-react='giggle'] .vp-lid,
+.vp-hit[data-react='tickle'] .vp-lid { animation: vp-squint 0.42s ease-in-out 4; }
+.vp-hit[data-react='giggle'] .vp-ant,
+.vp-hit[data-react='tickle'] .vp-ant { animation: vp-giggle-ant 0.22s ease-in-out 8; }
+.vp-hit[data-react='tickle'] .vp-arm-l { animation: vp-dance-arm-l 0.18s ease-in-out 6; }
+.vp-hit[data-react='tickle'] .vp-arm-r { animation: vp-dance-arm-r 0.18s ease-in-out 6; }
+
+.vp-hit[data-react='sleepy'] .vp-pupil { animation: vp-sleepy-eyes 3.2s ease forwards; }
+
+.vp-hit[data-react='confetti'] .vp-arm-l,
+.vp-hit[data-react='confetti'] .vp-arm-r { animation: vp-cheer-arm-l 2.2s ease; }
+.vp-hit[data-react='confetti'] .vp-leg-l { animation: vp-jump-leg-l 1.1s ease; }
+.vp-hit[data-react='confetti'] .vp-leg-r { animation: vp-jump-leg-r 1.1s ease; }
+.vp-hit[data-react='confetti'] .vp-pupil { animation: vp-joy-eyes 2.2s ease; }
+
+.vp-hit[data-react='squash'] .vp-leg-l { animation: vp-squash-leg-l 1.9s ease; }
+.vp-hit[data-react='squash'] .vp-leg-r { animation: vp-squash-leg-r 1.9s ease; }
+.vp-hit[data-react='squash'] .vp-arm-l { animation: vp-jump-arm-l 1.9s ease; }
+.vp-hit[data-react='squash'] .vp-arm-r { animation: vp-jump-arm-r 1.9s ease; }
+.vp-hit[data-react='squash'] .vp-pupil { animation: vp-pop-eyes 1.9s ease; }
+
+.vp-hit[data-react='blush'] .vp-pupil-l { animation: vp-shy-l 2.2s ease forwards; }
+.vp-hit[data-react='blush'] .vp-pupil-r { animation: vp-shy-r 2.2s ease forwards; }
+.vp-hit[data-react='blush'] .vp-arm-l,
+.vp-hit[data-react='blush'] .vp-arm-r { animation: vp-shy-arm 2.2s ease; }
+
+.vp-hit[data-react='eyepop'] .vp-pupil { animation: vp-pop-eyes 1.5s ease; }
+.vp-hit[data-react='eyepop'] .vp-arm-l,
+.vp-hit[data-react='eyepop'] .vp-arm-r { animation: vp-startle-arm 1.5s ease; }
+
+.vp-hit[data-react='rainbow'] .vp-pupil { animation: vp-dizzy 0.7s linear 3; }
+.vp-hit[data-react='rainbow'] .vp-ant { animation: vp-dizzy-ant 0.35s ease-in-out 6; }
+.vp-hit[data-react='rainbow'] .vp-arm-l { animation: vp-star-arm-l 2.4s ease; }
+.vp-hit[data-react='rainbow'] .vp-arm-r { animation: vp-star-arm-r 2.4s ease; }
+
+.vp-hit[data-react='sneeze'] .vp-lid { animation: vp-squint 0.16s ease-in-out 3; }
+.vp-hit[data-react='sneeze'] .vp-arm-l,
+.vp-hit[data-react='sneeze'] .vp-arm-r { animation: vp-sneeze-arm 1.6s ease; }
+.vp-hit[data-react='sneeze'] .vp-ant { animation: vp-sneeze-ant 1.6s ease; }
+
+.vp-hit[data-react='sparkle'] .vp-arm-l { animation: vp-cheer-arm-l 2s ease; }
+.vp-hit[data-react='sparkle'] .vp-arm-r { animation: vp-cheer-arm-r 2s ease; }
+
+@keyframes vp-ant-idle {
+  0%, 100% { transform: rotate(-3deg); }
+  35% { transform: rotate(4deg); }
+  48% { transform: rotate(-7deg); }
+  62% { transform: rotate(2deg); }
+}
+
+@keyframes vp-spark-idle {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50% { transform: rotate(9deg) scale(1.08); }
+}
+
+@keyframes vp-idle-arm-l {
+  0%, 100% { transform: rotate(1deg); }
+  38% { transform: rotate(-5deg); }
+  46% { transform: rotate(8deg); }
+  62% { transform: rotate(-2deg); }
+}
+
+@keyframes vp-idle-arm-r {
+  0%, 100% { transform: rotate(-2deg); }
+  30% { transform: rotate(3deg); }
+  44% { transform: rotate(-8deg); }
+  58% { transform: rotate(2deg); }
+}
+
+@keyframes vp-idle-leg-l {
+  0%, 100% { transform: rotate(3deg); }
+  50% { transform: rotate(-4deg); }
+}
+
+@keyframes vp-idle-leg-r {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(4deg); }
+}
+
+@keyframes vp-glance-l {
+  0%, 28% { transform: translate(0, 0); }
+  40%, 56% { transform: translate(26%, -12%); }
+  68%, 80% { transform: translate(-18%, 10%); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes vp-glance-r {
+  0%, 28% { transform: translate(0, 0); }
+  40%, 56% { transform: translate(22%, -14%); }
+  68%, 80% { transform: translate(-16%, 8%); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes vp-step-bob {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+  50% { transform: translateY(-3%) rotate(2.5deg); }
+}
+
+@keyframes vp-step-leg-l {
+  0%, 100% { transform: rotate(34deg); }
+  50% { transform: rotate(-32deg); }
+}
+
+@keyframes vp-step-leg-r {
+  0%, 100% { transform: rotate(-32deg); }
+  50% { transform: rotate(34deg); }
+}
+
+@keyframes vp-step-arm-l {
+  0%, 100% { transform: rotate(-26deg); }
+  50% { transform: rotate(24deg); }
+}
+
+@keyframes vp-step-arm-r {
+  0%, 100% { transform: rotate(22deg); }
+  50% { transform: rotate(-28deg); }
+}
+
+@keyframes vp-step-ant {
+  0%, 100% { transform: rotate(8deg); }
+  50% { transform: rotate(-8deg); }
+}
+
+@keyframes vp-jump-leg-l {
+  0% { transform: rotate(0deg); }
+  16% { transform: rotate(28deg); }
+  48% { transform: rotate(-18deg); }
+  66% { transform: rotate(16deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes vp-jump-leg-r {
+  0% { transform: rotate(0deg); }
+  16% { transform: rotate(-26deg); }
+  48% { transform: rotate(16deg); }
+  66% { transform: rotate(-14deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes vp-jump-arm-l {
+  0% { transform: rotate(0deg); }
+  16% { transform: rotate(10deg); }
+  48% { transform: rotate(-32deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes vp-jump-arm-r {
+  0% { transform: rotate(0deg); }
+  16% { transform: rotate(8deg); }
+  48% { transform: rotate(-28deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes vp-jump-ant {
+  0%, 100% { transform: rotate(0deg); }
+  16% { transform: rotate(6deg); }
+  48% { transform: rotate(-12deg); }
+}
+
+@keyframes vp-jump-eyes {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  16% { transform: translate(0, 8%) scale(0.92); }
+  48% { transform: translate(0, -16%) scale(1.12); }
+}
+
+@keyframes vp-dance-leg-l {
+  0%, 100% { transform: rotate(18deg); }
+  50% { transform: rotate(-16deg); }
+}
+
+@keyframes vp-dance-leg-r {
+  0%, 100% { transform: rotate(-14deg); }
+  50% { transform: rotate(20deg); }
+}
+
+@keyframes vp-dance-arm-l {
+  0%, 100% { transform: rotate(12deg); }
+  50% { transform: rotate(-34deg); }
+}
+
+@keyframes vp-dance-arm-r {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(28deg); }
+}
+
+@keyframes vp-dance-ant {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(12deg); }
+}
+
+@keyframes vp-star-arm-l {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 70% { transform: rotate(-36deg); }
+}
+
+@keyframes vp-star-arm-r {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 70% { transform: rotate(-30deg); }
+}
+
+@keyframes vp-star-leg-l {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 70% { transform: rotate(26deg); }
+}
+
+@keyframes vp-star-leg-r {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 70% { transform: rotate(-24deg); }
+}
+
+@keyframes vp-wave-arm {
+  0%, 100% { transform: rotate(0deg); }
+  35% { transform: rotate(-24deg); }
+  70% { transform: rotate(10deg); }
+}
+
+@keyframes vp-cheer-arm-l {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 68% { transform: rotate(-30deg); }
+}
+
+@keyframes vp-cheer-arm-r {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 68% { transform: rotate(-26deg); }
+}
+
+@keyframes vp-joy-eyes {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%, 70% { transform: translate(0, -10%) scale(1.08); }
+}
+
+@keyframes vp-droop-ant {
+  to { transform: rotate(14deg); }
+}
+
+@keyframes vp-droop-arm {
+  to { transform: rotate(8deg); }
+}
+
+@keyframes vp-wide-eyes {
+  0%, 100% { transform: scale(1); }
+  35%, 68% { transform: scale(1.14) translate(0, -6%); }
+}
+
+@keyframes vp-peek-arm {
+  0%, 100% { transform: rotate(0deg); }
+  40%, 65% { transform: rotate(-18deg); }
+}
+
+@keyframes vp-sit-leg-l {
+  to { transform: rotate(16deg); }
+}
+
+@keyframes vp-sit-leg-r {
+  to { transform: rotate(-14deg); }
+}
+
+@keyframes vp-squint {
+  0%, 100% { transform: scaleY(0.15); }
+  50% { transform: scaleY(0.72); }
+}
+
+@keyframes vp-wink-ant {
+  0%, 100% { transform: rotate(0deg); }
+  30%, 68% { transform: rotate(-8deg); }
+}
+
+@keyframes vp-giggle-ant {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(6deg); }
+}
+
+@keyframes vp-sleepy-eyes {
+  0%, 18% { transform: translate(0, 0); }
+  30%, 62% { transform: translate(0, 18%) scaleY(0.9); }
+  100% { transform: translate(0, 0); }
+}
+
+@keyframes vp-squash-leg-l {
+  0%, 100% { transform: rotate(0deg); }
+  16% { transform: rotate(30deg); }
+  42% { transform: rotate(-20deg); }
+  58% { transform: rotate(12deg); }
+}
+
+@keyframes vp-squash-leg-r {
+  0%, 100% { transform: rotate(0deg); }
+  16% { transform: rotate(-28deg); }
+  42% { transform: rotate(18deg); }
+  58% { transform: rotate(-10deg); }
+}
+
+@keyframes vp-pop-eyes {
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(1.28) translate(0, -8%); }
+  60% { transform: scale(1.08); }
+}
+
+@keyframes vp-shy-l {
+  0%, 100% { transform: translate(0, 0); }
+  24%, 74% { transform: translate(-22%, 16%); }
+}
+
+@keyframes vp-shy-r {
+  0%, 100% { transform: translate(0, 0); }
+  24%, 74% { transform: translate(-18%, 14%); }
+}
+
+@keyframes vp-shy-arm {
+  0%, 100% { transform: rotate(0deg); }
+  28%, 72% { transform: rotate(12deg); }
+}
+
+@keyframes vp-startle-arm {
+  0%, 100% { transform: rotate(0deg); }
+  30%, 55% { transform: rotate(-22deg); }
+}
+
+@keyframes vp-dizzy {
+  0% { transform: rotate(0deg) translate(0, 0); }
+  25% { transform: rotate(90deg) translate(20%, 0); }
+  50% { transform: rotate(180deg) translate(20%, 0); }
+  75% { transform: rotate(270deg) translate(20%, 0); }
+  100% { transform: rotate(360deg) translate(0, 0); }
+}
+
+@keyframes vp-dizzy-ant {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(12deg); }
+}
+
+@keyframes vp-sneeze-arm {
+  0%, 100% { transform: rotate(0deg); }
+  22% { transform: rotate(14deg); }
+  40% { transform: rotate(-8deg); }
+}
+
+@keyframes vp-sneeze-ant {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(16deg); }
+  38% { transform: rotate(-10deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-part {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .vp-hit[data-react='heart-eyes'] .vp-pupil,
+  .vp-hit[data-react='hearts'] .vp-pupil,
+  .vp-hit[data-react='party'] .vp-pupil,
+  .vp-hit[data-react='sparkle'] .vp-pupil {
+    opacity: 0;
+  }
+}
