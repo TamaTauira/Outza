@@ -24,6 +24,7 @@ import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { placeLine } from '@/lib/place'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
+import { ClaimedTick } from '@/components/ClaimedTick'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
 
@@ -123,11 +124,14 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
         {(where || event?.venueName) && (
           <Fact icon={MapPin}>
-            {event?.venueId ? (
-              <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{where || event.venueName}</Link>
-            ) : (
-              <span className="font-medium">{where || event.venueName}</span>
-            )}
+            <span className="inline-flex items-center gap-1 flex-wrap">
+              {event?.venueId ? (
+                <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{where || event.venueName}</Link>
+              ) : (
+                <span className="font-medium">{where || event.venueName}</span>
+              )}
+              {event?.venueManagedLabel && <ClaimedTick kind="venue" />}
+            </span>
             {event?.venueManagedLabel && <span className="block text-[11px] text-muted-foreground">{event.venueManagedLabel}</span>}
           </Fact>
         )}
@@ -240,6 +244,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             {event?.promoter && (
               <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-1.5">
                 Presented by <Link href={`/organisers/${event.promoter.id}`} className="font-medium text-foreground underline underline-offset-2">{event.promoter.orgName || event.promoter.name || 'a local promoter'}</Link>
+                {event.organiserClaimed && <ClaimedTick kind="organiser" />}
                 {!event.isMine && <FollowPromoterButton promoterId={event.promoter.id} initialFollowing={!!event.followingPromoter} signedIn={signedIn} />}
               </p>
             )}

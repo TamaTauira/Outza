@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   ANALYTICS_CAVEAT,
+  CLAIMED_TICK_COPY,
   DIRECT_EDIT_BODY,
   DIRECT_EDIT_TITLE,
   MANAGE_EVENT_BLURB,
@@ -19,6 +20,7 @@ import {
   authorizeEventMutation,
   canSeeOrganiserAnalytics,
   canSeeVenueAnalytics,
+  claimedOrganiserVisible,
   claimRateLimited,
   directEditSteps,
   editChoices,
@@ -178,14 +180,40 @@ test('3 — the direct-edit notice says VibePeep may differ from the source', ()
 test('4 — an active organiser override is named on the public listing and hidden once cleared', () => {
   const notice = publicOrganiserNotice([{ fieldName: 'time', overrideValue: '19:30', originalSourceValue: '19:00', active: true }], '2026-10-30T08:00:00.000Z')
   assert.equal(notice?.title, ORGANISER_UPDATE_TITLE)
-  assert.equal(notice?.title, 'Verified Organiser Update')
+  assert.equal(notice?.title, 'Organiser update')
   assert.equal(notice?.body, ORGANISER_UPDATE_BODY)
   assert.match(notice?.body ?? '', /may differ from the original listing/)
+  assert.doesNotMatch(`${notice?.title} ${notice?.body}`, /verified/i)
   assert.equal(notice?.updatedAt, '2026-10-30T08:00:00.000Z')
   assert.equal(publicOrganiserNotice([{ fieldName: 'time', overrideValue: '19:30', originalSourceValue: '19:00', active: false }]), null)
-  assert.equal(VENUE_MANAGED_LABEL, 'Managed by a verified venue representative')
+  assert.equal(VENUE_MANAGED_LABEL, 'Managed by the venue')
+  assert.doesNotMatch(VENUE_MANAGED_LABEL, /verified/i)
+  for (const copy of Object.values(CLAIMED_TICK_COPY)) {
+    assert.doesNotMatch(`${copy.label} ${copy.body}`, /verified/i)
+    assert.match(copy.body, /VibePeep checked/)
+    assert.match(copy.body, /not a guarantee/i)
+  }
   assert.match(MANAGE_VENUE_BLURB, /Claim your free profile/)
   assert.match(MANAGE_EVENT_BLURB, /Verify your connection/)
+})
+
+test('the organiser tick shows only for an approved grant on this promoter', () => {
+  const row = {
+    grantStatus: 'APPROVED',
+    grantRevokedAt: null,
+    organisationType: 'ORGANISER',
+    verificationStatus: 'VERIFIED',
+    memberships: [{ userId: 'ada', role: 'ORGANISER', status: 'ACTIVE', revokedAt: null }],
+  }
+  assert.equal(claimedOrganiserVisible('ada', [row]), true)
+  assert.equal(claimedOrganiserVisible(null, [row]), false)
+  assert.equal(claimedOrganiserVisible('someone-else', [row]), false)
+  assert.equal(claimedOrganiserVisible('ada', [{ ...row, grantStatus: 'PENDING' }]), false)
+  assert.equal(claimedOrganiserVisible('ada', [{ ...row, grantRevokedAt: '2020-01-01T00:00:00.000Z' }]), false)
+  assert.equal(claimedOrganiserVisible('ada', [{ ...row, verificationStatus: 'PENDING' }]), false)
+  assert.equal(claimedOrganiserVisible('ada', [{ ...row, organisationType: 'VENUE' }]), false)
+  assert.equal(claimedOrganiserVisible('ada', [{ ...row, memberships: [{ userId: 'ada', role: 'ORGANISER', status: 'REVOKED', revokedAt: null }] }]), false)
+  assert.equal(claimedOrganiserVisible('ada', [{ ...row, memberships: [{ userId: 'ada', role: 'MANAGER', status: 'ACTIVE', revokedAt: null }] }]), false)
 })
 
 test('5 — a later import does not overwrite an active organiser change', () => {

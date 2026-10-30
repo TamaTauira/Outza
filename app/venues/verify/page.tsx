@@ -18,7 +18,7 @@ function VerifyInner() {
       const res = await fetch('/api/venues/verify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'That link didn’t work')
-      setDone(data.statusText === 'APPROVED' ? 'You’re verified. The venue dashboard is open.' : 'Email checked. A person still needs to review this claim.')
+      setDone(data.statusText === 'APPROVED' ? 'You’re in. The venue dashboard is open.' : 'Email checked. A person still needs to review this claim.')
       if (data.venueId && data.statusText === 'APPROVED') router.push(`/venue/${data.venueId}`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'That link didn’t work')

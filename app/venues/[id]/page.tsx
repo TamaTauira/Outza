@@ -5,6 +5,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import { MANAGE_VENUE_BLURB, MANAGE_VENUE_LABEL, VENUE_MANAGED_LABEL, ownershipUiEnabled } from '@/lib/ownership'
 import { bumpVenueMetric, canManageVenue, publicVenue } from '@/lib/venue-access'
+import { ClaimedTick } from '@/components/ClaimedTick'
 import { VenueLinks } from './venue-links'
 
 export const dynamic = 'force-dynamic'
@@ -32,7 +33,10 @@ export default async function VenueProfilePage({ params }: { params: Promise<{ i
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16">
       <p className="text-xs text-muted-foreground">{venue.city}</p>
-      <h1 className="font-display text-3xl font-bold tracking-tight mt-1">{venue.name}</h1>
+      <h1 className="font-display text-3xl font-bold tracking-tight mt-1 flex items-center gap-2 flex-wrap">
+        {venue.name}
+        {venue.managed && <ClaimedTick kind="venue" className="h-5 w-5" />}
+      </h1>
       {venue.managed && <p className="mt-2 text-xs text-muted-foreground">{VENUE_MANAGED_LABEL}</p>}
       {venue.description && <p className="mt-4 text-sm text-muted-foreground whitespace-pre-line">{venue.description}</p>}
       <ul className="mt-4 space-y-1 text-sm">

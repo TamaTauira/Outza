@@ -10,6 +10,7 @@ import {
   OVERRIDE_FIELDS,
   applyOverride,
   authorizeEventMutation,
+  claimedOrganiserVisible,
   editChoices,
   evaluateEventAccess,
   fieldDiffs,
@@ -399,20 +400,61 @@ export async function ensureOrganiserGrant(userId: string, eventId: string, orgN
 
 export async function ownershipPresentation(eventId: string, materialConflict: string | null) {
   try {
-    const [overrides, report, event] = await Promise.all([
+    const [overrides, report, event, grants] = await Promise.all([
       prisma.eventFieldOverride.findMany({ where: { eventId, active: true }, select: { fieldName: true, overrideValue: true, originalSourceValue: true, active: true, updatedAt: true } }),
       prisma.venueEventReport.findFirst({ where: { eventId, caution: true, status: { in: ['OPEN', 'IN_REVIEW'] } }, select: { id: true } }),
-      prisma.event.findUnique({ where: { id: eventId }, select: { venue: { select: { claimStatus: true } } } }),
+      prisma.event.findUnique({ where: { id: eventId }, select: { promoterId: true, venue: { select: { claimStatus: true } } } }),
+      prisma.eventManagementGrant.findMany({
+        where: { eventId },
+        select: {
+          status: true,
+          revokedAt: true,
+          organisation: {
+            select: {
+              organisationType: true,
+              verificationStatus: true,
+              memberships: { select: { userId: true, role: true, status: true, revokedAt: true } },
+            },
+          },
+        },
+      }),
     ])
     const latest = overrides.reduce<string | null>((best, row) => {
       const iso = row.updatedAt.toISOString()
       return !best || iso > best ? iso : best
     }, null)
     const caution = materialCaution(materialConflict) || (report ? 'A venue representative asked us to check this listing. The event itself is unchanged while we look.' : null)
-    return { notice: publicOrganiserNotice(overrides, latest), caution, venueManaged: event?.venue?.claimStatus === 'CLAIMED' }
+    const organiserClaimed = claimedOrganiserVisible(event?.promoterId, grants.map((grant) => ({
+      grantStatus: grant.status,
+      grantRevokedAt: grant.revokedAt,
+      organisationType: grant.organisation.organisationType,
+      verificationStatus: grant.organisation.verificationStatus,
+      memberships: grant.organisation.memberships,
+    })))
+    return { notice: publicOrganiserNotice(overrides, latest), caution, venueManaged: event?.venue?.claimStatus === 'CLAIMED', organiserClaimed }
   } catch (err) {
     if (!missingRelation(err)) console.error('ownership presentation failed', (err as { message?: string })?.message)
-    return { notice: null, caution: materialCaution(materialConflict), venueManaged: false }
+    return { notice: null, caution: materialCaution(materialConflict), venueManaged: false, organiserClaimed: false }
+  }
+}
+
+/** True when this account still belongs to a checked organiser organisation. */
+export async function organiserNameClaimed(userId: string): Promise<boolean> {
+  try {
+    const membership = await prisma.organisationMembership.findFirst({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        revokedAt: null,
+        role: { in: ['ORGANISER', 'ADMINISTRATOR'] },
+        organisation: { organisationType: 'ORGANISER', verificationStatus: 'VERIFIED' },
+      },
+      select: { id: true },
+    })
+    return !!membership
+  } catch (err) {
+    if (!missingRelation(err)) console.error('organiser name claim lookup failed', (err as { message?: string })?.message)
+    return false
   }
 }
 
