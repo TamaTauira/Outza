@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
-import path from 'node:path'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import rig from './mascot-rig.json'
 
 const MOVING = ['arm-l', 'arm-r', 'leg-l', 'leg-r', 'antenna', 'pupil-l', 'pupil-r'] as const
 
-test('the living rig is a cut of the mascot with a pivot on every limb', () => {
+test('the living rig is a jointed figure with shoulders and hips tucked into the body', () => {
+  const figure = readFileSync(new URL('../components/vibepeep-figure.tsx', import.meta.url), 'utf8')
+  for (const id of ['vp-arm-l', 'vp-arm-r', 'vp-leg-l', 'vp-leg-r', 'vp-ant', 'vp-pupil-l', 'vp-pupil-r', 'vp-side', 'vp-s-arm-f', 'vp-s-leg-f']) {
+    assert.ok(figure.includes(id), id)
+  }
+  assert.equal(figure.includes('/mascot/'), false)
   assert.ok(rig.order.includes('body'))
-  assert.ok(rig.order.length >= 10)
   assert.equal(new Set(rig.order).size, rig.order.length)
+  for (const id of MOVING) assert.ok(rig.order.includes(id))
   for (const id of rig.order) {
     const box = rig.layout[id as keyof typeof rig.layout]
     assert.ok(box, id)
@@ -19,13 +23,12 @@ test('the living rig is a cut of the mascot with a pivot on every limb', () => {
     assert.ok(box.height > 0 && box.height <= 1)
     assert.ok(box.originX >= 0 && box.originX <= 1)
     assert.ok(box.originY >= 0 && box.originY <= 1)
-    const file = path.join(process.cwd(), 'public', 'mascot', `${id}.png`)
-    assert.equal(existsSync(file), true, file)
-    assert.ok(readFileSync(file).length > 500)
   }
-  for (const id of MOVING) assert.ok(rig.order.includes(id))
-  const arm = rig.layout['arm-r']
+  const arm = rig.layout['arm-l']
+  const shoulder = arm.left + arm.width * arm.originX
+  assert.ok(shoulder > 0.2 && shoulder < 0.4, 'left arm pivots on the shoulder, not the hand')
+  assert.ok(arm.originY < 0.3, 'arms pivot at the shoulder')
   const leg = rig.layout['leg-l']
-  assert.ok(arm.originX > 0 && arm.originX < 1)
-  assert.ok(leg.top > 0.5, 'legs hang off the lower body')
+  assert.ok(leg.top > 0.55, 'legs hang under the body')
+  assert.ok(leg.originY < 0.3, 'legs pivot at the hip')
 })

@@ -1,4 +1,8 @@
-"""Cut public/vibepeep-mascot.png into a stacked rig. Rest pose composites back to the source."""
+"""Legacy cutter. The live buddy is the jointed figure in components/vibepeep-figure.tsx.
+
+This script sliced a single pose into PNG layers. Those layers left holes in the
+body and floating limb scraps, so the shipped mascot no longer uses them.
+"""
 from __future__ import annotations
 
 import json
