@@ -279,23 +279,27 @@
 }
 
 @keyframes vp-step-leg-l {
-  0%, 100% { transform: rotate(14deg); }
-  50% { transform: rotate(-12deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(16deg); }
+  75% { transform: rotate(-14deg); }
 }
 
 @keyframes vp-step-leg-r {
-  0%, 100% { transform: rotate(-12deg); }
-  50% { transform: rotate(14deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-14deg); }
+  75% { transform: rotate(16deg); }
 }
 
 @keyframes vp-step-arm-l {
-  0%, 100% { transform: rotate(-12deg); }
-  50% { transform: rotate(10deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(8deg); }
 }
 
 @keyframes vp-step-arm-r {
-  0%, 100% { transform: rotate(10deg); }
-  50% { transform: rotate(-14deg); }
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(8deg); }
+  75% { transform: rotate(-10deg); }
 }
 
 @keyframes vp-step-ant {
@@ -392,8 +396,8 @@
 
 @keyframes vp-wave-arm {
   0%, 100% { transform: rotate(0deg); }
-  35% { transform: rotate(-24deg); }
-  70% { transform: rotate(10deg); }
+  35% { transform: rotate(78deg); }
+  70% { transform: rotate(58deg); }
 }
 
 @keyframes vp-cheer-arm-l {
@@ -403,7 +407,7 @@
 
 @keyframes vp-cheer-arm-r {
   0%, 100% { transform: rotate(0deg); }
-  40%, 68% { transform: rotate(-26deg); }
+  40%, 68% { transform: rotate(72deg); }
 }
 
 @keyframes vp-joy-eyes {
@@ -623,8 +627,8 @@
 
 @keyframes vp-stretch-arm {
   0%, 100% { transform: rotate(0deg); }
-  18%, 42% { transform: rotate(-62deg); }
-  62%, 82% { transform: rotate(-8deg); }
+  18%, 42% { transform: rotate(68deg); }
+  62%, 82% { transform: rotate(10deg); }
 }
 
 @keyframes vp-stretch-arm-l {
@@ -665,8 +669,8 @@
 }
 
 @keyframes vp-music-arm-r {
-  0%, 100% { transform: rotate(8deg); }
-  50% { transform: rotate(-6deg); }
+  0%, 100% { transform: rotate(48deg); }
+  50% { transform: rotate(36deg); }
 }
 
 @keyframes vp-music-arm-l {

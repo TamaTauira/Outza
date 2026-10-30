@@ -14,6 +14,7 @@ import {
   vignetteGap,
   roamBounds,
   lerp,
+  smoothstep,
   type Bounds,
   type VignetteAct,
   type Point,
@@ -286,10 +287,10 @@ export function attachRoam(root: HTMLElement): () => void {
 
     if (phase.type === 'goto') {
       const t = Math.min(1, (now - phase.start) / phase.dur)
-      // Linear travel so each step stays with the body. The rig bobs; the feet are not lifted off the page.
+      const eased = smoothstep(t)
       pos = {
-        x: lerp(phase.from.x, phase.to.x, t),
-        y: lerp(phase.from.y, phase.to.y, t),
+        x: lerp(phase.from.x, phase.to.x, eased),
+        y: lerp(phase.from.y, phase.to.y, eased),
       }
       apply()
       if (t < 1) return 'raf'

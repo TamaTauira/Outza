@@ -229,7 +229,7 @@
   34%, 58% { transform: rotate(18deg); }
 }
 @keyframes vp-moon-al { 0%, 100% { transform: none; } 12%, 80% { transform: rotate(14deg); } }
-@keyframes vp-moon-ar { 0%, 100% { transform: none; } 12%, 80% { transform: rotate(-8deg); } }
+@keyframes vp-moon-ar { 0%, 100% { transform: none; } 12%, 80% { transform: rotate(8deg); } }
 
 @keyframes vp-robot-body {
   0%, 100% { transform: none; }
@@ -247,10 +247,10 @@
 }
 @keyframes vp-robot-ar {
   0%, 100% { transform: none; }
-  12%, 28% { transform: rotate(6deg); }
-  32%, 48% { transform: rotate(-50deg); }
-  52%, 68% { transform: rotate(-8deg); }
-  72%, 84% { transform: rotate(10deg); }
+  12%, 28% { transform: rotate(-6deg); }
+  32%, 48% { transform: rotate(50deg); }
+  52%, 68% { transform: rotate(8deg); }
+  72%, 84% { transform: rotate(-10deg); }
 }
 @keyframes vp-robot-ll { 0%, 100% { transform: none; } 32%, 68% { transform: rotate(16deg); } }
 @keyframes vp-robot-lr { 0%, 100% { transform: none; } 12%, 28% { transform: rotate(-16deg); } 72%, 84% { transform: rotate(12deg); } }
@@ -265,10 +265,10 @@
 }
 @keyframes vp-ymca-r {
   0%, 100% { transform: none; }
-  8%, 24% { transform: rotate(-62deg); }
-  30%, 46% { transform: rotate(-20deg); }
-  52%, 68% { transform: rotate(-70deg); }
-  74%, 88% { transform: rotate(-46deg); }
+  8%, 24% { transform: rotate(62deg); }
+  30%, 46% { transform: rotate(20deg); }
+  52%, 68% { transform: rotate(70deg); }
+  74%, 88% { transform: rotate(46deg); }
 }
 @keyframes vp-ymca-body {
   0%, 100% { transform: none; }
@@ -286,11 +286,11 @@
 }
 @keyframes vp-maca-r {
   0%, 100% { transform: none; }
-  8%, 18% { transform: rotate(-40deg); }
-  24%, 34% { transform: rotate(16deg); }
-  40%, 50% { transform: rotate(-12deg); }
-  56%, 66% { transform: rotate(-52deg); }
-  72%, 84% { transform: rotate(8deg); }
+  8%, 18% { transform: rotate(40deg); }
+  24%, 34% { transform: rotate(-16deg); }
+  40%, 50% { transform: rotate(12deg); }
+  56%, 66% { transform: rotate(52deg); }
+  72%, 84% { transform: rotate(-8deg); }
 }
 @keyframes vp-maca-body {
   0%, 100% { transform: none; }
@@ -310,7 +310,7 @@
   80% { transform: rotate(5deg); }
 }
 @keyframes vp-snake-al { 0%, 100% { transform: none; } 25%, 70% { transform: rotate(-12deg); } }
-@keyframes vp-snake-ar { 0%, 100% { transform: none; } 25%, 70% { transform: rotate(10deg); } }
+@keyframes vp-snake-ar { 0%, 100% { transform: none; } 25%, 70% { transform: rotate(-10deg); } }
 
 @keyframes vp-island-body {
   0%, 100% { transform: none; }
@@ -326,9 +326,9 @@
 }
 @keyframes vp-island-r {
   0%, 100% { transform: none; }
-  30% { transform: rotate(6deg); }
-  55% { transform: rotate(-36deg); }
-  80% { transform: rotate(-8deg); }
+  30% { transform: rotate(-6deg); }
+  55% { transform: rotate(36deg); }
+  80% { transform: rotate(8deg); }
 }
 
 @keyframes vp-grid-ll {
@@ -348,8 +348,8 @@
 }
 @keyframes vp-grid-ar {
   0%, 88%, 100% { transform: none; }
-  6%, 22%, 38%, 54%, 70% { transform: rotate(8deg); }
-  14%, 30%, 46%, 62% { transform: rotate(-30deg); }
+  6%, 22%, 38%, 54%, 70% { transform: rotate(-8deg); }
+  14%, 30%, 46%, 62% { transform: rotate(30deg); }
 }
 @keyframes vp-grid-body {
   0%, 88%, 100% { transform: none; }
@@ -365,10 +365,10 @@
 }
 @keyframes vp-goth-r {
   0%, 100% { transform: none; }
-  14%, 28% { transform: rotate(8deg); }
-  34%, 48% { transform: rotate(-54deg); }
-  54%, 70% { transform: rotate(12deg); }
-  76%, 86% { transform: rotate(-40deg); }
+  14%, 28% { transform: rotate(-8deg); }
+  34%, 48% { transform: rotate(54deg); }
+  54%, 70% { transform: rotate(-12deg); }
+  76%, 86% { transform: rotate(40deg); }
 }
 @keyframes vp-goth-body {
   0%, 100% { transform: none; }
@@ -395,13 +395,13 @@
 }
 @keyframes vp-jive-r {
   0%, 100% { transform: none; }
-  12% { transform: rotate(8deg); }
-  24% { transform: rotate(-46deg); }
-  36% { transform: rotate(12deg); }
-  48% { transform: rotate(-30deg); }
-  60% { transform: rotate(6deg); }
-  72% { transform: rotate(-42deg); }
-  84% { transform: rotate(-10deg); }
+  12% { transform: rotate(-8deg); }
+  24% { transform: rotate(46deg); }
+  36% { transform: rotate(-12deg); }
+  48% { transform: rotate(30deg); }
+  60% { transform: rotate(-6deg); }
+  72% { transform: rotate(42deg); }
+  84% { transform: rotate(10deg); }
 }
 @keyframes vp-jive-body {
   0%, 100% { transform: none; }
@@ -417,7 +417,7 @@
   40%, 54% { transform: translateX(8%) rotate(4deg); }
   62%, 78% { transform: translateX(-6%) rotate(-3deg); }
 }
-@keyframes vp-shuf-arm { 0%, 100% { transform: none; } 20%, 70% { transform: rotate(-48deg); } }
+@keyframes vp-shuf-arm { 0%, 100% { transform: none; } 20%, 70% { transform: rotate(48deg); } }
 @keyframes vp-shuf-leg { 0%, 100% { transform: none; } 22% { transform: rotate(14deg); } 48% { transform: rotate(-10deg); } }
 @keyframes vp-shuf-legr { 0%, 100% { transform: none; } 22% { transform: rotate(-8deg); } 48% { transform: rotate(14deg); } }
 
@@ -431,13 +431,13 @@
   90% { transform: rotate(10deg); }
 }
 @keyframes vp-floss-r {
-  0%, 100% { transform: rotate(0deg); }
-  15% { transform: rotate(18deg); }
-  30% { transform: rotate(-46deg); }
-  45% { transform: rotate(18deg); }
-  60% { transform: rotate(-46deg); }
-  75% { transform: rotate(18deg); }
-  90% { transform: rotate(-12deg); }
+  0%, 100% { transform: rotate(-0deg); }
+  15% { transform: rotate(-18deg); }
+  30% { transform: rotate(46deg); }
+  45% { transform: rotate(-18deg); }
+  60% { transform: rotate(46deg); }
+  75% { transform: rotate(-18deg); }
+  90% { transform: rotate(12deg); }
 }
 @keyframes vp-floss-body {
   0%, 100% { transform: none; }
@@ -446,12 +446,12 @@
 }
 
 @keyframes vp-sprink-arm {
-  0%, 100% { transform: rotate(0deg); }
-  12% { transform: rotate(-70deg); }
-  28% { transform: rotate(16deg); }
-  44% { transform: rotate(-70deg); }
-  60% { transform: rotate(16deg); }
-  76% { transform: rotate(-50deg); }
+  0%, 100% { transform: rotate(-0deg); }
+  12% { transform: rotate(70deg); }
+  28% { transform: rotate(-16deg); }
+  44% { transform: rotate(70deg); }
+  60% { transform: rotate(-16deg); }
+  76% { transform: rotate(50deg); }
 }
 @keyframes vp-sprink-still { 0%, 100% { transform: none; } 12%, 80% { transform: rotate(18deg); } }
 @keyframes vp-sprink-body { 0%, 100% { transform: none; } 40% { transform: rotate(-4deg); } 70% { transform: rotate(8deg); } }
@@ -473,8 +473,8 @@
 }
 @keyframes vp-run-ar {
   0%, 90%, 100% { transform: none; }
-  5%, 20%, 35%, 50%, 65%, 80% { transform: rotate(8deg); }
-  12%, 27%, 42%, 57%, 72% { transform: rotate(-26deg); }
+  5%, 20%, 35%, 50%, 65%, 80% { transform: rotate(-8deg); }
+  12%, 27%, 42%, 57%, 72% { transform: rotate(26deg); }
 }
 @keyframes vp-run-body {
   0%, 90%, 100% { transform: none; }
@@ -515,9 +515,9 @@
 }
 @keyframes vp-chick-r {
   0%, 100% { transform: none; }
-  8%, 14%, 20%, 26% { transform: rotate(-38deg); }
-  11%, 17%, 23% { transform: rotate(4deg); }
-  40%, 70% { transform: rotate(10deg); }
+  8%, 14%, 20%, 26% { transform: rotate(38deg); }
+  11%, 17%, 23% { transform: rotate(-4deg); }
+  40%, 70% { transform: rotate(-10deg); }
 }
 @keyframes vp-chick-body {
   0%, 100% { transform: none; }
@@ -528,9 +528,9 @@
 
 @keyframes vp-point-arm {
   0%, 100% { transform: none; }
-  14%, 78% { transform: rotate(-68deg); }
-  40% { transform: rotate(-58deg); }
-  55% { transform: rotate(-74deg); }
+  14%, 78% { transform: rotate(68deg); }
+  40% { transform: rotate(58deg); }
+  55% { transform: rotate(74deg); }
 }
 @keyframes vp-point-hip { 0%, 100% { transform: none; } 14%, 78% { transform: rotate(16deg); } }
 @keyframes vp-point-body {
@@ -558,11 +558,11 @@
 }
 @keyframes vp-horse-lasso {
   0%, 100% { transform: none; }
-  12% { transform: rotate(-60deg); }
-  28% { transform: rotate(-30deg); }
-  44% { transform: rotate(-70deg); }
-  60% { transform: rotate(-24deg); }
-  76% { transform: rotate(-60deg); }
+  12% { transform: rotate(60deg); }
+  28% { transform: rotate(30deg); }
+  44% { transform: rotate(70deg); }
+  60% { transform: rotate(24deg); }
+  76% { transform: rotate(60deg); }
 }
 @keyframes vp-horse-rein { 0%, 100% { transform: none; } 12%, 80% { transform: rotate(8deg); } }
 @keyframes vp-horse-legs { 0%, 100% { transform: none; } 18%, 70% { transform: rotate(10deg); } }
@@ -601,7 +601,7 @@
 
   .vp-hit[data-react='party'] .vp-arm-r {
     animation: none !important;
-    transform: rotate(-42deg) !important;
+    transform: rotate(48deg) !important;
   }
 
   .vp-hit[data-react='party'] .vp-leg-l,

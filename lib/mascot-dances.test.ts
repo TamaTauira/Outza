@@ -34,6 +34,27 @@ test('the dance party has twenty distinct routines', () => {
   assert.ok(DANCE_MS >= 4000 && DANCE_MS <= 5000)
 })
 
+test('pickDance covers all twenty routines and never repeats back to back', () => {
+  let last: DanceId | null = null
+  const seen = new Set<DanceId>()
+  for (let i = 0; i < 400; i++) {
+    const next = pickDance(last, () => ((i * 17) % 1000) / 1000)
+    assert.notEqual(next, last)
+    assert.ok(DANCE_IDS.includes(next))
+    seen.add(next)
+    last = next
+  }
+  assert.equal(seen.size, DANCE_IDS.length)
+  for (const id of DANCE_IDS) {
+    const fromHere = new Set<DanceId>()
+    for (let i = 0; i < 19; i++) {
+      fromHere.add(pickDance(id, () => (i + 0.5) / 19))
+    }
+    assert.equal(fromHere.has(id), false)
+    assert.equal(fromHere.size, 19)
+  }
+})
+
 test('pickDance never repeats the routine that just played', () => {
   let last: DanceId | null = null
   const seen = new Set<DanceId>()

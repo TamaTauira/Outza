@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections import deque
 from pathlib import Path
 
@@ -296,16 +297,14 @@ for name, box in (('pupil-l', (300, 330, 580, 600)), ('pupil-r', (600, 320, 830,
 # kept, because the limb/pupil sprites cover them exactly at rest.
 erase = np.zeros((h, w), bool)
 for limb in limbs.values():
-    erase |= limb['full']
+    # The mask only. The joint hub is a disc that would eat the cheek and hip.
+    erase |= limb['mask']
 for mask in sparks.values():
     erase |= mask
 for mask in pupils.values():
     erase |= mask
 
 hole = np.zeros((h, w), bool)
-for limb in limbs.values():
-    px, py = limb['pivot']
-    hole |= disc(px, py, limb['radius']) & limb['full']
 for mask in pupils.values():
     hole |= mask
 
@@ -335,29 +334,84 @@ while q:
 # Anything in the hole the fill didn't reach stays transparent — shouldn't happen.
 unfilled = hole & (body[:, :, 3] == 0)
 if int(unfilled.sum()):
-    print('unfilled socket px', int(unfilled.sum()))
+    # Only close gaps that sit inside the silhouette. A sticker outside the belly reads as a blob.
+    closed = 0
+    for y in range(h):
+        cols = np.where(body[y, :, 3] > 40)[0]
+        if cols.size < 2:
+            continue
+        span = unfilled[y, cols[0]:cols[-1] + 1]
+        if not span.any():
+            continue
+        src = int(cols[np.argmin(np.abs(cols - (cols[0] + cols[-1]) / 2))])
+        block = body[y, cols[0]:cols[-1] + 1]
+        block[span] = body[y, src]
+        body[y, cols[0]:cols[-1] + 1] = block
+        closed += int(span.sum())
+    print('unfilled socket px', int(unfilled.sum()), 'closed inside', closed)
 
-# Fill the torso oval where a limb was cut out, so a turn shows body instead of a hole.
-# The oval is the head-and-belly. Limb pixels outside it stay empty.
-body_alpha = body[:, :, 3] > 28
-ys, xs = np.where(body_alpha)
-cx, cy = float(np.median(xs)), float(np.median(ys))
-rx = float(np.percentile(np.abs(xs - cx), 92)) * 1.04
-ry = float(np.percentile(np.abs(ys - cy), 90)) * 1.02
-yy, xx = np.mgrid[0:h, 0:w]
-inside = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1.0
-# Sample local body colour per joint, then shade it so the cap is not a flat sticker.
-base_cols = body[body[:, :, 3] > 200][:, :3].astype(np.float32)
-base = np.median(base_cols, axis=0) if len(base_cols) else np.array([30, 30, 34], np.float32)
-fill = inside & (body[:, :, 3] < 24) & dilate(alpha | inside, 1)
-# Light sits upper-left on the original render.
-shade = 1.0 + (-(xx - cx) / rx) * 0.08 + (-(yy - cy) / ry) * 0.1
-shade = np.clip(shade, 0.78, 1.12)
-painted = int(fill.sum())
-for c in range(3):
-    body[:, :, c][fill] = np.clip(base[c] * shade[fill], 0, 255)
-body[:, :, 3][fill] = 255
-print(f'torso fill {painted} center {cx:.0f},{cy:.0f} r {rx:.0f}x{ry:.0f}')
+# Keep the drawn belly and face. Shave only the torn stumps the jump cuts left,
+# then close one-row bites where the outline drops inward.
+for y in range(648, 708):
+    body[y, :236] = 0
+for y in range(848, 910):
+    body[y, 836:] = 0
+
+
+def _edge_fit(y0, y1, step, side):
+    ysamp, edge = [], []
+    for y in range(y0, y1, step):
+        cols = np.where(body[y, :, 3] > 40)[0]
+        if cols.size > 30:
+            ysamp.append(y)
+            edge.append(int(cols.min() if side < 0 else cols.max()))
+    return np.polyfit(np.array(ysamp, float), np.array(edge, float), 2)
+
+
+left_coef = _edge_fit(760, 845, 4, -1)
+right_coef = _edge_fit(760, 845, 4, 1)
+trimmed = 0
+for y in range(845, h):
+    cols = np.where(body[y, :, 3] > 40)[0]
+    if cols.size == 0:
+        continue
+    left = float(np.polyval(left_coef, y))
+    right = float(np.polyval(right_coef, y))
+    if right - left < 36:
+        body[y] = 0
+        trimmed += int(cols.size)
+        continue
+    kill = (cols < left) | (cols > right)
+    body[y, cols[kill]] = 0
+    trimmed += int(kill.sum())
+print('belly trim', trimmed)
+
+
+def fill_outline_bites(side, y0, y1):
+    """Extend a row when both neighbours stick out past it."""
+    filled = 0
+    for _ in range(3):
+        edges = {}
+        for y in range(y0, y1):
+            cols = np.where(body[y, :, 3] > 40)[0]
+            if cols.size:
+                edges[y] = int(cols.max() if side > 0 else cols.min())
+        for y, edge in list(edges.items()):
+            if y - 1 not in edges or y + 1 not in edges:
+                continue
+            if side > 0 and edge + 5 < edges[y - 1] and edge + 5 < edges[y + 1]:
+                dest = min(edge + 22, max(edges[y - 1], edges[y + 1]))
+                body[y, edge:dest + 1] = body[y, max(0, edge - 8)]
+                filled += dest - edge
+            elif side < 0 and edge - 5 > edges[y - 1] and edge - 5 > edges[y + 1]:
+                dest = max(edge - 22, min(edges[y - 1], edges[y + 1]))
+                body[y, dest:edge + 1] = body[y, min(w - 1, edge + 8)]
+                filled += edge - dest
+    return filled
+
+
+print('outline bites', fill_outline_bites(1, 240, 980), fill_outline_bites(-1, 240, 980))
+
 
 def layer_from(mask):
     out = np.zeros_like(arr)
@@ -380,15 +434,172 @@ def premultiplied_resize(image, size):
     return Image.fromarray(result, 'RGBA')
 
 
-# Relaxed stance baked into the limb sprites. CSS rotate(0) is this pose,
-# so idle, reactions and reduced-motion are not stuck in the jump.
-# Positive rotation dropped the waving hand and tucked the legs in the pose tests.
-REST = {
-    'arm-l': 20,
-    'arm-r': 50,
-    'leg-l': 26,
-    'leg-r': -22,
+# The rest sprites are already arms-down and feet-down. CSS rotations are
+# relative to that, so hang stays at zero (no second tilt).
+HANG = {
+    'arm-l': 0.0,
+    'arm-r': 0.0,
+    'leg-l': 0.0,
+    'leg-r': 0.0,
 }
+
+
+def _project_all(pts, poly):
+    """pts (N,2). Returns dist, arc length, signed offset, total length."""
+    best_dist = np.full(len(pts), 1e9)
+    best_s = np.zeros(len(pts))
+    best_signed = np.zeros(len(pts))
+    arc = 0.0
+    for i in range(len(poly) - 1):
+        a = poly[i]
+        b = poly[i + 1]
+        ab = b - a
+        L = float(np.linalg.norm(ab)) or 1e-6
+        t = np.clip(((pts - a) @ ab) / (L * L), 0.0, 1.0)
+        q = a + t[:, None] * ab
+        delta = pts - q
+        dist = np.linalg.norm(delta, axis=1)
+        tangent = ab / L
+        normal = np.array([-tangent[1], tangent[0]])
+        signed = delta @ normal
+        better = dist < best_dist
+        best_dist = np.where(better, dist, best_dist)
+        best_s = np.where(better, arc + t * L, best_s)
+        best_signed = np.where(better, signed, best_signed)
+        arc += L
+    return best_dist, best_s, best_signed, arc
+
+
+def _point_on(poly, s):
+    left = float(s)
+    for i in range(len(poly) - 1):
+        a = poly[i]
+        b = poly[i + 1]
+        ab = b - a
+        L = float(np.linalg.norm(ab)) or 1e-6
+        if left <= L or i == len(poly) - 2:
+            t = min(1.0, max(0.0, left / L))
+            tangent = ab / L
+            normal = np.array([-tangent[1], tangent[0]])
+            return a + ab * t, normal
+        left -= L
+    return poly[-1], np.array([1.0, 0.0])
+
+
+def heading(v):
+    return math.atan2(float(v[0]), float(v[1]))
+
+
+def rotate_point(pivot, point, deg):
+    """Match rotate_layer: positive degrees move a point clockwise."""
+    a = math.radians(deg)
+    c, s = math.cos(a), math.sin(a)
+    dx, dy = float(point[0] - pivot[0]), float(point[1] - pivot[1])
+    return np.array([pivot[0] + c * dx - s * dy, pivot[1] + s * dx + c * dy])
+
+
+def translate_layer(image_arr, dx, dy):
+    if abs(dx) < 0.15 and abs(dy) < 0.15:
+        return image_arr
+    src = image_arr.astype(np.float32)
+    alpha_px = src[:, :, 3:4] / 255.0
+    prem = np.dstack([src[:, :, :3] * alpha_px, src[:, :, 3]])
+    image = Image.fromarray(np.clip(prem, 0, 255).astype(np.uint8), 'RGBA')
+    moved = image.transform(image.size, Image.AFFINE, (1, 0, -dx, 0, 1, -dy), resample=Image.BICUBIC)
+    out = np.array(moved).astype(np.float32)
+    aa = out[:, :, 3:4]
+    rgb = np.zeros_like(out[:, :, :3])
+    np.divide(out[:, :, :3], np.maximum(aa / 255.0, 1e-6), out=rgb, where=aa[:, :, 0:1] > 0)
+    result = np.dstack([np.clip(rgb, 0, 255), aa]).astype(np.uint8)
+    result[aa[:, :, 0] < 12] = 0
+    return result
+
+
+# Shoulders on the flanks, hips on the lower belly.
+ATTACH = {
+    'arm-l': (252.0, 705.0),
+    'arm-r': (848.0, 705.0),
+    'leg-l': (450.0, 875.0),
+    'leg-r': (660.0, 875.0),
+}
+AIM = {'arm-l': -16.0, 'arm-r': 16.0, 'leg-l': -6.0, 'leg-r': 6.0}
+REACH = {'arm-l': 215.0, 'arm-r': 215.0, 'leg-l': 200.0, 'leg-r': 200.0}
+
+
+
+def prem_affine(image_arr, matrix):
+    src = image_arr.astype(np.float32)
+    a = src[:, :, 3:4] / 255.0
+    prem = np.dstack([src[:, :, :3] * a, src[:, :, 3]])
+    image = Image.fromarray(np.clip(prem, 0, 255).astype(np.uint8), 'RGBA')
+    turned = np.array(image.transform(image.size, Image.AFFINE, matrix, resample=Image.BICUBIC)).astype(np.float32)
+    aa = turned[:, :, 3:4]
+    rgb = np.zeros_like(turned[:, :, :3])
+    np.divide(turned[:, :, :3], np.maximum(aa / 255.0, 1e-6), out=rgb, where=aa > 0)
+    out = np.dstack([np.clip(rgb, 0, 255), aa]).astype(np.uint8)
+    out[aa[:, :, 0] < 12] = 0
+    return out
+
+
+def scale_layer(image_arr, pivot, factor):
+    if abs(factor - 1.0) < 0.015:
+        return image_arr
+    px, py = pivot
+    inv = 1.0 / factor
+    return prem_affine(image_arr, (inv, 0, px * (1 - inv), 0, inv, py * (1 - inv)))
+
+
+def hang_limb(name):
+    """Turn his own arm or leg so it hangs, then tuck the root into the body."""
+    mask = limbs[name]['mask']
+    px, py = limbs[name]['pivot']
+    ys, xs = np.where(mask)
+    pts = np.stack([xs, ys], 1).astype(np.float64)
+    dist = np.hypot(pts[:, 0] - px, pts[:, 1] - py)
+    far = dist >= np.quantile(dist, 0.88)
+    tip = pts[far].mean(axis=0)
+    length = float(np.hypot(tip[0] - px, tip[1] - py)) or 1.0
+    current = math.degrees(math.atan2(tip[0] - px, tip[1] - py))
+    rot = current - AIM[name]
+    scale = float(np.clip(REACH[name] / length, 0.82, 1.12))
+    ax, ay = ATTACH[name]
+    layer = scale_layer(layer_from(mask), (px, py), scale)
+    layer = rotate_layer(layer, (px, py), rot)
+    layer = translate_layer(layer, ax - px, ay - py)
+    ang = math.radians(AIM[name])
+    direction = np.array([math.sin(ang), math.cos(ang)])
+    # The art pivot sits on the shoulder. Tuck the sprite into the body so the
+    # cut root is covered, and keep the rotation pivot on the surface.
+    tuck = 42.0
+    layer = translate_layer(layer, float(-direction[0] * tuck), float(-direction[1] * tuck))
+    jx, jy = ax, ay
+    all_y, all_x = np.where(layer[:, :, 3] > 16)
+    along = np.stack([all_x - jx, all_y - jy], 1) @ direction
+    # Keep the root tucked under the belly. Only drop a tail that would cross the face.
+    layer[all_y[along < -70], all_x[along < -70]] = 0
+    limbs[name]['pivot'] = (jx, jy)
+    pivots[name] = (jx, jy)
+    limbs[name]['posed'] = layer
+    print(f'{name} scale {scale:.2f} rot {rot:.0f} joint ({jx:.0f},{jy:.0f})')
+
+
+def paint_joint(target, cx, cy, radius, col):
+    yy, xx = np.ogrid[0:h, 0:w]
+    d = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
+    core = d <= radius - 1.2
+    edge = (d > radius - 1.2) & (d < radius + 0.8)
+    target[core] = col
+    if edge.any():
+        t = ((radius + 0.8) - d[edge]) / 2.0
+        t = np.clip(t, 0, 1)[:, None]
+        base = target[edge].astype(np.float32)
+        ink = col.astype(np.float32)
+        # Only cover pixels that are already opaque, so the cap does not grow a fringe.
+        already = base[:, 3] > 20
+        mixed = base.copy()
+        mixed[already] = ink * t[already] + base[already] * (1 - t[already])
+        mixed[already, 3] = np.maximum(base[already, 3], ink[3] * t[already, 0])
+        target[edge] = np.clip(mixed, 0, 255).astype(np.uint8)
 
 
 def rotate_layer(image_arr, pivot, deg):
@@ -414,24 +625,32 @@ def rotate_layer(image_arr, pivot, deg):
 
 
 def defringe(image_arr):
-    """Drop bright semi-transparent fringe left by the cut."""
+    """Drop the light rim the cut leaves where a limb meets the belly."""
     out = image_arr.copy()
     a = out[:, :, 3]
-    rgb_px = out[:, :, :3].astype(int)
-    bright = (rgb_px.max(axis=2) > 80) & (a > 0) & (a < 32)
-    out[bright, 3] = 0
-    out[bright, :3] = 0
+    rgb_px = out[:, :, :3].astype(np.int16)
+    bright = rgb_px.max(axis=2) > 70
+    ghost = bright & (a > 0) & (a < 80)
+    out[ghost] = 0
+    opaque = a > 40
+    inner = erode(opaque, 1)
+    rim = opaque & ~inner & bright
+    if rim.any():
+        out[rim, :3] = np.clip(rgb_px[rim] * 0.35, 0, 255).astype(np.uint8)
     return out
 
+
+for name in ('arm-l', 'arm-r', 'leg-l', 'leg-r'):
+    hang_limb(name)
 
 layers = {'body': defringe(body)}
 foot_points = {}
 for name, limb in limbs.items():
-    layer = layer_from(limb['full'])
-    deg = REST.get(name, 0)
-    if deg:
-        layer = rotate_layer(layer, limb['pivot'], deg)
-    layers[name] = defringe(layer)
+    if 'posed' in limb:
+        layer = defringe(limb['posed'])
+    else:
+        layer = defringe(layer_from(limb['full']))
+    layers[name] = layer
     mask = layer[:, :, 3] > 40
     if name.startswith('leg') and mask.any():
         ys, xs = np.where(mask)
@@ -447,7 +666,8 @@ for name, mask in {**sparks, **pupils}.items():
 
 # Full-res rest composite
 rest = np.zeros_like(arr)
-order = ['body', *sparks.keys(), 'leg-l', 'leg-r', 'arm-l', 'arm-r', 'antenna', 'pupil-l', 'pupil-r']
+# Limbs sit under the belly so the tucked root never shows a seam.
+order = ['leg-l', 'leg-r', 'arm-l', 'arm-r', 'body', *sparks.keys(), 'antenna', 'pupil-l', 'pupil-r']
 for name in order:
     layer = layers[name]
     m = layer[:, :, 3] > 0
@@ -478,6 +698,8 @@ for name, image_arr in layers.items():
         small = premultiplied_resize(full, size)
         box = (0, 0, w - 1, h - 1)
         origin = (0.5, 0.5)
+        chk = np.array(small)
+        print('saved body', chk.shape, 'opaque', int((chk[:, :, 3] > 40).sum()))
     else:
         mask = image_arr[:, :, 3] > 0
         x0, y0, x1, y1 = part_bbox(mask)
@@ -495,7 +717,7 @@ for name, image_arr in layers.items():
             px[kill, 3] = 0
             px[kill, :3] = 0
             small = Image.fromarray(px, 'RGBA')
-        small.save(OUT / f'{name}.png', optimize=True)
+    small.save(OUT / f'{name}.png', optimize=True)
     x0, y0, x1, y1 = box
     layout[name] = {
         'left': round(x0 / w, 4),
@@ -522,7 +744,7 @@ meta = {
     'srcHeight': h,
     'layout': layout,
     'order': order,
-    'rest': REST,
+    'hang': HANG,
     'walk': walk,
 }
 Path('lib/mascot-rig.json').write_text(json.dumps(meta, indent=2) + '\n')
@@ -556,9 +778,9 @@ def compose(poses, scale_to=420):
 
 frames = {
     'rest': {},
-    'walk-a': {'leg-l': 16, 'leg-r': -14, 'arm-l': -12, 'arm-r': 12},
-    'walk-b': {'leg-l': -14, 'leg-r': 16, 'arm-l': 12, 'arm-r': -16},
-    'cheer': {'arm-l': -36, 'arm-r': -42, 'leg-l': 6, 'leg-r': -6},
+    'walk-a': {'leg-l': 16, 'leg-r': -14, 'arm-l': -12, 'arm-r': 10},
+    'walk-b': {'leg-l': -14, 'leg-r': 16, 'arm-l': 10, 'arm-r': -12},
+    'raise': {'arm-l': -70, 'arm-r': 72},
 }
 sheet = []
 for name, pose in frames.items():
