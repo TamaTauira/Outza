@@ -15,6 +15,10 @@ export interface SavedEvent {
   endDate: string | null
   time: string | null
   endTime: string | null
+  /** Set when the source listed no clock time. Ranking uses this with startsAt/endsAt. */
+  allDay?: boolean
+  startsAt?: string | null
+  endsAt?: string | null
   venueName: string
   suburb: string | null
   category: string

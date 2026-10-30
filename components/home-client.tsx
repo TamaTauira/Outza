@@ -63,8 +63,8 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const setFilters = view === 'map' ? setMapFilters : setBoardFilters;
   const [now, setNow] = useState<SydneyNow | null>(initialNow);
   const [day, setDay] = useBackState<string | null>('home:day', initialNow.date);
-  // Full day matches the "Today" date chip. Ended rows stay hidden until "Show ended".
-  const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window', 'all');
+  // Land on what's on now. Full day stays on the Today chip, and ended rows stay hidden until "Show ended".
+  const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window-v2', 'now');
   const [windowPinned, setWindowPinned] = useState(false);
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
   const [catsHydrated, setCatsHydrated] = useState(false);
