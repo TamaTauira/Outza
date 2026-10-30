@@ -8,7 +8,7 @@ import { useItinerary, eventToItem } from '@/lib/itinerary'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
 import { categoryIcon, checkedAgo, formatPrice } from '@/lib/board'
-import { formatBoardRange, liveStatus } from '@/lib/listing-window'
+import { formatBoardRange, liveStatus, type BoardRange } from '@/lib/listing-window'
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
@@ -33,6 +33,22 @@ const STATUS_CLASS: Record<Status['tone'], string> = {
 }
 
 export const BOARD_COLS = 'xl:grid-cols-[92px_minmax(0,1fr)_minmax(0,250px)_130px_104px_104px_100px]'
+
+function Finish({ when, compact }: { when: BoardRange; compact?: boolean }) {
+  if (!when.endLine && !when.endNote) return null
+  const time = compact
+    ? 'whitespace-nowrap font-mono text-[10px] leading-tight tabular-nums text-muted-foreground'
+    : 'whitespace-nowrap font-mono text-xs leading-tight tabular-nums text-muted-foreground'
+  const note = compact
+    ? 'whitespace-nowrap font-mono text-[10px] leading-tight text-muted-foreground'
+    : 'whitespace-nowrap font-mono text-xs leading-tight text-muted-foreground'
+  return (
+    <>
+      {when.endLine && <div className={time}>{when.endLine}</div>}
+      {when.endNote && <div className={note}>{when.endNote}</div>}
+    </>
+  )
+}
 
 interface BoardRowProps {
   ev: BoardEvent
@@ -95,10 +111,10 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         done && 'opacity-75',
       )}
     >
-      <div className="min-w-0" title={when.label}>
-        <span className="font-mono text-sm tabular-nums">{when.hm}</span>
+      <div className="min-w-0 overflow-hidden" title={when.label}>
+        <span className="whitespace-nowrap font-mono text-sm tabular-nums">{when.hm}</span>
         <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{when.ampm}</span>
-        {when.endLine && <div className="font-mono text-[10px] leading-tight text-muted-foreground">{when.endLine}</div>}
+        <Finish when={when} compact />
       </div>
       <span className="flex h-10 w-10 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
         <Icon className="w-4 h-4" />
@@ -123,14 +139,10 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
       )}
     >
       {/* Start */}
-      <div className="row-span-2 xl:row-span-1 self-start xl:self-center pt-0.5 xl:pt-0" title={when.label}>
-        <span className="font-mono text-[15px] xl:text-base tabular-nums text-foreground">{when.hm}</span>
+      <div className="row-span-2 xl:row-span-1 self-start xl:self-center min-w-0 overflow-hidden pt-0.5 xl:pt-0" title={when.label}>
+        <span className="whitespace-nowrap font-mono text-[15px] xl:text-base tabular-nums text-foreground">{when.hm}</span>
         <span className="ml-1 font-mono text-xs text-muted-foreground">{when.ampm}</span>
-        {when.endLine && (
-          <div className="font-mono text-xs leading-tight tabular-nums text-muted-foreground">
-            {when.endLine}
-          </div>
-        )}
+        <Finish when={when} />
         {showDate && <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{showDate}</div>}
       </div>
 
