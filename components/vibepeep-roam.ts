@@ -259,6 +259,8 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const step = (now: number): 'raf' | 'sleep' => {
+    // Visual checks pin him in place. Nothing in the product sets this.
+    if (root.dataset.shot === '1') return 'sleep'
     if (held()) {
       if (!dragging) setMove('hold')
       phase = { type: 'hold' }

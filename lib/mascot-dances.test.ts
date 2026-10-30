@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { DANCE_IDS, DANCE_MS, pickDance, type DanceId } from './mascot-dances'
 import { PARTY_MS } from './mascot-reactions'
@@ -52,6 +53,22 @@ test('pickDance covers all twenty routines and never repeats back to back', () =
     }
     assert.equal(fromHere.has(id), false)
     assert.equal(fromHere.size, 19)
+  }
+})
+
+test('every dance paints its own full animation, so a party cannot zero the body', () => {
+  const dances = readFileSync(new URL('../components/vibepeep-dances.css', import.meta.url), 'utf8')
+  const mascot = readFileSync(new URL('../components/vibepeep-mascot.css', import.meta.url), 'utf8')
+  assert.match(mascot, /\.vp-hit\[data-react\]:not\(\[data-dance\]\) \.vp-bob \{[^}]*animation: none;/)
+  assert.equal(mascot.includes(".vp-hit[data-react] .vp-bob {\n  animation: none;"), false)
+  for (const id of DANCE_IDS) {
+    const token = `[data-react='party'][data-dance='${id}']`
+    const start = dances.indexOf(token)
+    assert.ok(start >= 0, id)
+    const slice = dances.slice(start, start + 500)
+    const anim = slice.match(/animation:\s*(vp-[a-z0-9-]+)/)
+    assert.ok(anim, `${id} sets a full animation`)
+    assert.ok(dances.includes(`@keyframes ${anim[1]}`), `${anim[1]} is defined`)
   }
 })
 

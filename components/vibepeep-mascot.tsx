@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { VibePeepFigure } from '@/components/vibepeep-figure'
 import { BRAND_MASCOT_HEIGHT, BRAND_MASCOT_SRC, BRAND_MASCOT_WIDTH } from '@/lib/brand'
-import rig from '@/lib/mascot-rig.json'
 
 export type MascotBubble = 'center' | 'start'
 
@@ -12,47 +12,11 @@ function mascotLabel(alt?: string) {
   return `${name}. Press for a surprise.`
 }
 
-const PART_CLASS: Record<string, string> = {
-  body: 'vp-torso',
-  'arm-l': 'vp-arm vp-arm-l',
-  'arm-r': 'vp-arm vp-arm-r',
-  'leg-l': 'vp-leg vp-leg-l',
-  'leg-r': 'vp-leg vp-leg-r',
-  antenna: 'vp-ant',
-  'pupil-l': 'vp-pupil vp-pupil-l',
-  'pupil-r': 'vp-pupil vp-pupil-r',
-  'spark-0': 'vp-spark vp-spark-0',
-  'spark-1': 'vp-spark vp-spark-1',
-  'spark-2': 'vp-spark vp-spark-2',
-  'spark-3': 'vp-spark vp-spark-3',
-}
-
-type RigBox = { left: number; top: number; width: number; height: number; originX: number; originY: number }
-
-/** Segmented cut of vibepeep-mascot.png. At rest the parts stack back into that picture. */
+/** Jointed figure. Front for tricks, three-quarter when he walks. */
 function MascotRig() {
-  const layout = rig.layout as Record<string, RigBox>
   return (
     <span className="vp-rig">
-      {rig.order.map((name) => {
-        const box = layout[name]
-        if (!box) return null
-        return (
-          <span
-            key={name}
-            className={`vp-part ${PART_CLASS[name] ?? ''}`}
-            style={{
-              left: `${box.left * 100}%`,
-              top: `${box.top * 100}%`,
-              width: `${box.width * 100}%`,
-              height: `${box.height * 100}%`,
-              transformOrigin: `${box.originX * 100}% ${box.originY * 100}%`,
-            }}
-          >
-            <Image src={`/mascot/${name}.png`} alt="" fill unoptimized sizes="160px" draggable={false} className="object-fill" />
-          </span>
-        )
-      })}
+      <VibePeepFigure />
       <span className="vp-prop vp-pizza" aria-hidden="true"><Pizza /></span>
       <span className="vp-prop vp-mic" aria-hidden="true"><Mic /></span>
       <span className="vp-prop vp-kick" aria-hidden="true"><Ball /></span>

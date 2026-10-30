@@ -48,13 +48,15 @@
   transform-origin: 50% 72%;
 }
 
-.vp-hit[data-react] .vp-bob,
+.vp-hit[data-react]:not([data-dance]) .vp-bob,
 .vp-hit[data-off] .vp-bob,
 .vp-hit[data-mood='sulk'] .vp-bob {
   animation-play-state: paused;
 }
 
-.vp-hit[data-react] .vp-bob {
+/* Party dances set their own bob animation. A bare reset here used to
+   zero that duration, so body-led routines never appeared. */
+.vp-hit[data-react]:not([data-dance]) .vp-bob {
   animation: none;
 }
 
@@ -511,8 +513,7 @@
   transition: transform 0.45s ease;
 }
 
-.vp-hit[data-react='heart-eyes'] .vp-heart,
-.vp-hit[data-react='party'] .vp-heart {
+.vp-hit[data-react='heart-eyes'] .vp-heart {
   opacity: 1;
   animation: vp-pop 0.45s ease;
 }

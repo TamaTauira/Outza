@@ -1,138 +1,82 @@
 {
-  "width": 480,
-  "height": 485,
-  "srcWidth": 1104,
-  "srcHeight": 1115,
+  "width": 584,
+  "height": 760,
+  "srcWidth": 584,
+  "srcHeight": 760,
   "layout": {
     "body": {
-      "left": 0.0,
-      "top": 0.0,
-      "width": 1.0,
-      "height": 1.0,
+      "left": 0.0634,
+      "top": 0.1293,
+      "width": 0.8368,
+      "height": 0.7529,
+      "originX": 0.5,
+      "originY": 0.45
+    },
+    "leg-l": {
+      "left": 0.204,
+      "top": 0.8237,
+      "width": 0.2536,
+      "height": 0.1745,
+      "originX": 0.55,
+      "originY": 0.08
+    },
+    "leg-r": {
+      "left": 0.453,
+      "top": 0.8237,
+      "width": 0.2824,
+      "height": 0.1745,
+      "originX": 0.42,
+      "originY": 0.08
+    },
+    "antenna": {
+      "left": 0.3769,
+      "top": 0.0018,
+      "width": 0.1475,
+      "height": 0.1329,
+      "originX": 0.5,
+      "originY": 0.92
+    },
+    "arm-l": {
+      "left": 0.03,
+      "top": 0.5368,
+      "width": 0.1418,
+      "height": 0.2896,
+      "originX": 0.6098,
+      "originY": 0.08
+    },
+    "arm-r": {
+      "left": 0.80,
+      "top": 0.5368,
+      "width": 0.1418,
+      "height": 0.2896,
+      "originX": 0.3902,
+      "originY": 0.08
+    },
+    "pupil-l": {
+      "left": 0.36,
+      "top": 0.28,
+      "width": 0.12,
+      "height": 0.12,
       "originX": 0.5,
       "originY": 0.5
     },
-    "arm-l": {
-      "left": 0.1223,
-      "top": 0.5704,
-      "width": 0.1748,
-      "height": 0.2269,
-      "originX": 0.6062,
-      "originY": 0.2727
-    },
-    "arm-r": {
-      "left": 0.6929,
-      "top": 0.5489,
-      "width": 0.1775,
-      "height": 0.2682,
-      "originX": 0.4235,
-      "originY": 0.311
-    },
-    "leg-l": {
-      "left": 0.3107,
-      "top": 0.7193,
-      "width": 0.202,
-      "height": 0.2018,
-      "originX": 0.4798,
-      "originY": 0.3244
-    },
-    "leg-r": {
-      "left": 0.4592,
-      "top": 0.7139,
-      "width": 0.2835,
-      "height": 0.2152,
-      "originX": 0.4888,
-      "originY": 0.3292
-    },
-    "antenna": {
-      "left": 0.3007,
-      "top": 0.0045,
-      "width": 0.1404,
-      "height": 0.1444,
-      "originX": 0.7839,
-      "originY": 0.8935
-    },
-    "spark-0": {
-      "left": 0.0734,
-      "top": 0.0969,
-      "width": 0.1096,
-      "height": 0.1247,
-      "originX": 0.4952,
-      "originY": 0.4886
-    },
-    "spark-1": {
-      "left": 0.0045,
-      "top": 0.2206,
-      "width": 0.1277,
-      "height": 0.0816,
-      "originX": 0.4895,
-      "originY": 0.4955
-    },
-    "spark-2": {
-      "left": 0.7726,
-      "top": 0.0287,
-      "width": 0.0806,
-      "height": 0.1184,
-      "originX": 0.4844,
-      "originY": 0.479
-    },
-    "spark-3": {
-      "left": 0.8297,
-      "top": 0.1166,
-      "width": 0.1014,
-      "height": 0.0843,
-      "originX": 0.5048,
-      "originY": 0.4949
-    },
-    "pupil-l": {
-      "left": 0.3243,
-      "top": 0.3372,
-      "width": 0.1748,
-      "height": 0.1722,
-      "originX": 0.6064,
-      "originY": 0.5732
-    },
     "pupil-r": {
-      "left": 0.5734,
-      "top": 0.2888,
-      "width": 0.1658,
-      "height": 0.1749,
-      "originX": 0.4066,
-      "originY": 0.5788
+      "left": 0.52,
+      "top": 0.27,
+      "width": 0.12,
+      "height": 0.12,
+      "originX": 0.5,
+      "originY": 0.5
     }
   },
   "order": [
     "leg-l",
     "leg-r",
+    "body",
     "arm-l",
     "arm-r",
-    "body",
-    "spark-0",
-    "spark-1",
-    "spark-2",
-    "spark-3",
     "antenna",
     "pupil-l",
     "pupil-r"
-  ],
-  "hang": {
-    "arm-l": 0.0,
-    "arm-r": 0.0,
-    "leg-l": 0.0,
-    "leg-r": 0.0
-  },
-  "walk": {
-    "leg-l": {
-      "hipX": 0.4076,
-      "hipY": 0.7848,
-      "footX": 0.3935,
-      "footY": 0.8984
-    },
-    "leg-r": {
-      "hipX": 0.5978,
-      "hipY": 0.7848,
-      "footX": 0.5981,
-      "footY": 0.8912
-    }
-  }
+  ]
 }

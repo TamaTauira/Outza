@@ -5,7 +5,110 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 1104 / 1115;
+  aspect-ratio: 584 / 760;
+  overflow: visible;
+}
+
+.vp-front,
+.vp-side {
+  position: absolute;
+  inset: 0;
+}
+
+.vp-part img,
+.vp-pose {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.vp-pose {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: none;
+  object-fit: contain;
+}
+
+.vp-roam[data-move='hop'] .vp-pose-walk,
+.vp-roam[data-move='chase'] .vp-pose-walk,
+.vp-roam[data-move='bounce'] .vp-pose-walk,
+.vp-roam[data-move='jog'] .vp-pose-walk,
+.vp-roam[data-move='wave'] .vp-pose-wave,
+.vp-hit[data-react='wave']:not([data-dance]) .vp-pose-wave,
+.vp-roam[data-move='perch'] .vp-pose-sit,
+.vp-roam[data-move='jump'] .vp-pose-jump,
+.vp-roam[data-pose='back'] .vp-pose-back,
+.vp-roam[data-pose='hips'] .vp-pose-hips,
+.vp-roam[data-move='idle'] .vp-pose-hips,
+.vp-roam[data-move='still'] .vp-pose-hips {
+  display: block;
+}
+
+.vp-pose-hips { opacity: 0; }
+
+.vp-roam[data-move='idle'] .vp-pose-hips,
+.vp-roam[data-move='still'] .vp-pose-hips {
+  animation: vp-hips-on 9.2s steps(1, end) infinite;
+}
+
+.vp-roam[data-pose='hips'] .vp-pose-hips {
+  opacity: 1;
+  animation: none;
+}
+
+@keyframes vp-hips-on {
+  0%, 32% { opacity: 0; }
+  33%, 56% { opacity: 1; }
+  57%, 100% { opacity: 0; }
+}
+
+.vp-roam[data-move='hop'] .vp-front,
+.vp-roam[data-move='chase'] .vp-front,
+.vp-roam[data-move='bounce'] .vp-front,
+.vp-roam[data-move='jog'] .vp-front,
+.vp-roam[data-move='wave'] .vp-front,
+.vp-hit[data-react='wave']:not([data-dance]) .vp-front,
+.vp-roam[data-move='perch'] .vp-front,
+.vp-roam[data-move='jump'] .vp-front,
+.vp-roam[data-pose='back'] .vp-front,
+.vp-roam[data-pose='hips'] .vp-front {
+  visibility: hidden;
+}
+
+.vp-limb,
+.vp-part svg,
+.vp-side-art {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.vp-side-art {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.vp-leg { z-index: 1; }
+.vp-torso { z-index: 2; }
+.vp-arm { z-index: 3; }
+.vp-spark { z-index: 4; }
+.vp-ant { z-index: 5; }
+
+.vp-s-leg-b { z-index: 1; }
+.vp-s-arm-b { z-index: 2; }
+.vp-s-leg-f { z-index: 4; }
+.vp-s-arm-f { z-index: 5; }
+.vp-s-ant { z-index: 6; }
+
+.vp-pupil {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .vp-part {
@@ -90,6 +193,87 @@
   animation: vp-step-ant var(--vp-step, 0.48s) ease-in-out infinite;
 }
 
+/* Travel uses the three-quarter figure, arms swinging against the legs. */
+.vp-roam[data-move='hop'] .vp-front,
+.vp-roam[data-move='chase'] .vp-front,
+.vp-roam[data-move='bounce'] .vp-front,
+.vp-roam[data-move='jog'] .vp-front {
+  visibility: hidden;
+}
+
+.vp-roam[data-move='hop'] .vp-side,
+.vp-roam[data-move='chase'] .vp-side,
+.vp-roam[data-move='bounce'] .vp-side,
+.vp-roam[data-move='jog'] .vp-side {
+  display: block;
+}
+
+.vp-roam[data-move='hop'] .vp-s-leg-f,
+.vp-roam[data-move='chase'] .vp-s-leg-f,
+.vp-roam[data-move='bounce'] .vp-s-leg-f,
+.vp-roam[data-move='jog'] .vp-s-leg-f {
+  animation: vp-side-leg-f var(--vp-step, 0.46s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-s-leg-b,
+.vp-roam[data-move='chase'] .vp-s-leg-b,
+.vp-roam[data-move='bounce'] .vp-s-leg-b,
+.vp-roam[data-move='jog'] .vp-s-leg-b {
+  animation: vp-side-leg-b var(--vp-step, 0.46s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-s-arm-f,
+.vp-roam[data-move='chase'] .vp-s-arm-f,
+.vp-roam[data-move='bounce'] .vp-s-arm-f,
+.vp-roam[data-move='jog'] .vp-s-arm-f {
+  animation: vp-side-arm-f var(--vp-step, 0.46s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-s-arm-b,
+.vp-roam[data-move='chase'] .vp-s-arm-b,
+.vp-roam[data-move='bounce'] .vp-s-arm-b,
+.vp-roam[data-move='jog'] .vp-s-arm-b {
+  animation: vp-side-arm-b var(--vp-step, 0.46s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-s-ant,
+.vp-roam[data-move='chase'] .vp-s-ant,
+.vp-roam[data-move='bounce'] .vp-s-ant,
+.vp-roam[data-move='jog'] .vp-s-ant {
+  animation: vp-side-ant var(--vp-step, 0.46s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='jog'] .vp-s-leg-f,
+.vp-roam[data-move='jog'] .vp-s-leg-b,
+.vp-roam[data-move='jog'] .vp-s-arm-f,
+.vp-roam[data-move='jog'] .vp-s-arm-b,
+.vp-roam[data-move='jog'] .vp-s-ant {
+  animation-duration: 0.28s;
+}
+
+/* Standing pauses: arms down, then hands on hips, then arms down again. */
+.vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-l,
+.vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-l,
+.vp-roam:not([data-move]) .vp-hit:not([data-react]) .vp-arm-l {
+  animation: vp-rest-arm-l 9.2s ease-in-out infinite;
+}
+
+.vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-r,
+.vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-r,
+.vp-roam:not([data-move]) .vp-hit:not([data-react]) .vp-arm-r {
+  animation: vp-rest-arm-r 9.2s ease-in-out infinite;
+}
+
+.vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-leg-l,
+.vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-leg-l {
+  animation: vp-rest-leg-l 9.2s ease-in-out infinite;
+}
+
+.vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-leg-r,
+.vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-leg-r {
+  animation: vp-rest-leg-r 9.2s ease-in-out infinite;
+}
+
 /* Jump: crouch, tuck, land. Timed to the roam hop. */
 .vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-leg-l { animation: vp-jump-leg-l 1.15s ease; }
 .vp-roam[data-move='jump'] .vp-hit:not([data-react]) .vp-leg-r { animation: vp-jump-leg-r 1.15s ease; }
@@ -162,11 +346,11 @@
 
 .vp-roam[data-move='perch'] .vp-hit:not([data-react]) .vp-leg-l { animation: vp-sit-leg-l 0.55s ease forwards; }
 .vp-roam[data-move='perch'] .vp-hit:not([data-react]) .vp-leg-r { animation: vp-sit-leg-r 0.55s ease forwards; }
+.vp-roam[data-move='perch'] .vp-hit:not([data-react]) .vp-bob { animation: vp-sit-body 0.55s ease forwards; }
 
 /* Click reactions: the face changes as well as the body. */
 .vp-hit[data-react='hearts'] .vp-pupil,
 .vp-hit[data-react='heart-eyes'] .vp-pupil,
-.vp-hit[data-react='party'] .vp-pupil,
 .vp-hit[data-react='sparkle'] .vp-pupil { opacity: 0; }
 
 .vp-hit[data-react='hearts'] .vp-heart,
@@ -260,16 +444,16 @@
 }
 
 @keyframes vp-glance-l {
-  0%, 22% { transform: translate(0, 0); }
-  34%, 48% { transform: translate(12%, -6%); }
-  62%, 76% { transform: translate(-10%, 5%); }
+  0%, 18% { transform: translate(0, 0); }
+  30%, 46% { transform: translate(28%, -14%); }
+  58%, 76% { transform: translate(-26%, 12%); }
   100% { transform: translate(0, 0); }
 }
 
 @keyframes vp-glance-r {
-  0%, 22% { transform: translate(0, 0); }
-  34%, 48% { transform: translate(10%, -7%); }
-  62%, 76% { transform: translate(-8%, 4%); }
+  0%, 18% { transform: translate(0, 0); }
+  30%, 46% { transform: translate(24%, -16%); }
+  58%, 76% { transform: translate(-22%, 10%); }
   100% { transform: translate(0, 0); }
 }
 
@@ -307,6 +491,55 @@
   50% { transform: rotate(-8deg); }
 }
 
+@keyframes vp-side-leg-f {
+  0%, 100% { transform: rotate(-36deg); }
+  50% { transform: rotate(28deg); }
+}
+
+@keyframes vp-side-leg-b {
+  0%, 100% { transform: rotate(30deg); }
+  50% { transform: rotate(-32deg); }
+}
+
+@keyframes vp-side-arm-f {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(14deg); }
+}
+
+@keyframes vp-side-arm-b {
+  0%, 100% { transform: rotate(12deg); }
+  50% { transform: rotate(-14deg); }
+}
+
+@keyframes vp-side-ant {
+  0%, 100% { transform: rotate(7deg); }
+  50% { transform: rotate(-8deg); }
+}
+
+@keyframes vp-rest-arm-l {
+  0%, 24% { transform: rotate(2deg); }
+  36%, 54% { transform: rotate(68deg); }
+  66%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes vp-rest-arm-r {
+  0%, 24% { transform: rotate(-2deg); }
+  36%, 54% { transform: rotate(-64deg); }
+  66%, 100% { transform: rotate(0deg); }
+}
+
+@keyframes vp-rest-leg-l {
+  0%, 24% { transform: rotate(3deg); }
+  36%, 54% { transform: rotate(-16deg); }
+  66%, 100% { transform: rotate(2deg); }
+}
+
+@keyframes vp-rest-leg-r {
+  0%, 24% { transform: rotate(-3deg); }
+  36%, 54% { transform: rotate(18deg); }
+  66%, 100% { transform: rotate(-2deg); }
+}
+
 @keyframes vp-jump-leg-l {
   0% { transform: rotate(0deg); }
   16% { transform: rotate(28deg); }
@@ -325,15 +558,15 @@
 
 @keyframes vp-jump-arm-l {
   0% { transform: rotate(0deg); }
-  16% { transform: rotate(10deg); }
-  48% { transform: rotate(-32deg); }
+  16% { transform: rotate(8deg); }
+  48% { transform: rotate(-52deg); }
   100% { transform: rotate(0deg); }
 }
 
 @keyframes vp-jump-arm-r {
   0% { transform: rotate(0deg); }
-  16% { transform: rotate(8deg); }
-  48% { transform: rotate(-28deg); }
+  16% { transform: rotate(-6deg); }
+  48% { transform: rotate(48deg); }
   100% { transform: rotate(0deg); }
 }
 
@@ -395,19 +628,21 @@
 }
 
 @keyframes vp-wave-arm {
-  0%, 100% { transform: rotate(0deg); }
-  35% { transform: rotate(78deg); }
-  70% { transform: rotate(58deg); }
+  0%, 100% { transform: rotate(6deg); }
+  22% { transform: rotate(148deg); }
+  40% { transform: rotate(124deg); }
+  58% { transform: rotate(152deg); }
+  76% { transform: rotate(128deg); }
 }
 
 @keyframes vp-cheer-arm-l {
   0%, 100% { transform: rotate(0deg); }
-  40%, 68% { transform: rotate(-30deg); }
+  40%, 68% { transform: rotate(-138deg); }
 }
 
 @keyframes vp-cheer-arm-r {
   0%, 100% { transform: rotate(0deg); }
-  40%, 68% { transform: rotate(72deg); }
+  40%, 68% { transform: rotate(146deg); }
 }
 
 @keyframes vp-joy-eyes {
@@ -434,11 +669,15 @@
 }
 
 @keyframes vp-sit-leg-l {
-  to { transform: rotate(16deg); }
+  to { transform: rotate(-58deg); }
 }
 
 @keyframes vp-sit-leg-r {
-  to { transform: rotate(-14deg); }
+  to { transform: rotate(62deg); }
+}
+
+@keyframes vp-sit-body {
+  to { transform: translateY(7%) scale(1.04, 0.92); }
 }
 
 @keyframes vp-squint {
@@ -627,20 +866,20 @@
 
 @keyframes vp-stretch-arm {
   0%, 100% { transform: rotate(0deg); }
-  18%, 42% { transform: rotate(68deg); }
-  62%, 82% { transform: rotate(10deg); }
+  16%, 42% { transform: rotate(92deg); }
+  58%, 84% { transform: rotate(150deg); }
 }
 
 @keyframes vp-stretch-arm-l {
   0%, 100% { transform: rotate(0deg); }
-  18%, 42% { transform: rotate(8deg); }
-  62%, 82% { transform: rotate(-48deg); }
+  16%, 42% { transform: rotate(-92deg); }
+  58%, 84% { transform: rotate(-148deg); }
 }
 
 @keyframes vp-stretch-body {
   0%, 100% { transform: none; }
-  18%, 42% { transform: rotate(6deg) translateY(-2%); }
-  62%, 82% { transform: rotate(-6deg) translateY(-2%); }
+  16%, 42% { transform: translateY(-1%); }
+  58%, 84% { transform: translateY(-4%) scale(0.98, 1.04); }
 }
 
 @keyframes vp-jog-leg-l {
@@ -736,7 +975,6 @@
 
   .vp-hit[data-react='heart-eyes'] .vp-pupil,
   .vp-hit[data-react='hearts'] .vp-pupil,
-  .vp-hit[data-react='party'] .vp-pupil,
   .vp-hit[data-react='sparkle'] .vp-pupil {
     opacity: 0;
   }
