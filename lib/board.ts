@@ -94,3 +94,12 @@ export const DAY_PARTS = [
   { key: 'evening', label: 'Evening', from: 17 * 60, to: 22 * 60 },
   { key: 'late', label: 'Late night', from: 22 * 60, to: 24 * 60 + 1 },
 ] as const
+
+/** Today’s full-day board leads with the current part, then later parts, then earlier ones. */
+export function orderedDayParts(nowMinutes: number | null): Array<(typeof DAY_PARTS)[number]> {
+  const parts = [...DAY_PARTS]
+  if (nowMinutes == null) return parts
+  const idx = parts.findIndex((p) => nowMinutes >= p.from && nowMinutes < p.to)
+  if (idx <= 0) return parts
+  return [...parts.slice(idx), ...parts.slice(0, idx)]
+}
