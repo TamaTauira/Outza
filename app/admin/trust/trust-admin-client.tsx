@@ -8,7 +8,7 @@ import { PROVIDER_POLICY, PERMISSION_LABEL, type PermissionStatus } from '@/lib/
 import { eventPath } from '@/lib/seo'
 import { toggleAll, toggleSelection } from '@/lib/trust-queue'
 
-type Ev = { id: string; title: string; city: string; date: string; source: string; ticketUrl: string | null; organiserUrl: string | null; status: string }
+type Ev = { id: string; title: string; city: string; date: string; source: string; ticketUrl: string | null; sourceUrl: string | null; organiserUrl: string | null; status: string }
 type Item = {
   key: string
   kind: 'report' | 'claim' | 'flag'
@@ -24,16 +24,28 @@ type Item = {
 const fmt = (d: string) => new Date(d).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 const tone: Record<PermissionStatus, string> = { CONFIRMED: 'bg-emerald-100 text-emerald-800', TERMS_ONLY: 'bg-amber-100 text-amber-900', NEEDS_REVIEW: 'bg-red-100 text-red-800' }
 
+function HealthStat({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 font-display text-2xl font-bold">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+    </div>
+  )
+}
+
 export function TrustAdminClient() {
   const [items, setItems] = useState<Item[] | null>(null)
   const [pending, setPending] = useState(0)
   const [picked, setPicked] = useState<string[]>([])
+  const [health, setHealth] = useState<{ reports: number; views: number; reportsPerThousand: number | null; searchClicks: number; refreshCompleted: number; refreshFailed: number; refreshSuccessRate: number | null } | null>(null)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(() => {
     fetch('/api/admin/trust').then((r) => r.json()).then((d) => {
       setItems(d?.items ?? [])
       setPending(d?.pending ?? 0)
+      setHealth(d?.health ?? null)
       setPicked([])
     }).catch((e) => { console.error(e); toast.error('Could not load') })
   }, [])
@@ -61,8 +73,14 @@ export function TrustAdminClient() {
     <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
       <header>
         <h1 className="font-display text-3xl font-bold">Trust & listings</h1>
-        <p className="text-muted-foreground mt-1">{pending} waiting on you. Check the original source before you approve a change. Nothing here is deleted.</p>
+        <p className="text-muted-foreground mt-1">{pending} waiting on you. Check the original source before you approve a change. Nothing here is deleted. A flag is a heuristic, not a guarantee.</p>
       </header>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <HealthStat label="Incorrect-detail reports per 1,000 views" value={health?.reportsPerThousand == null ? '—' : String(health.reportsPerThousand)} note={health ? `${health.reports} reports · ${health.views.toLocaleString('en-AU')} views` : 'Loading'} />
+        <HealthStat label="Search-result clicks" value={health ? health.searchClicks.toLocaleString('en-AU') : '—'} note="Counted when someone opens a listing from search" />
+        <HealthStat label="Data-refresh success rate" value={health?.refreshSuccessRate == null ? '—' : `${health.refreshSuccessRate}%`} note={health ? `${health.refreshCompleted} completed · ${health.refreshFailed} failed, last 7 days` : 'Loading'} />
+      </section>
 
       <section>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
@@ -78,7 +96,7 @@ export function TrustAdminClient() {
         {items && !items.length && <p className="text-sm text-muted-foreground">Nothing needs a decision.</p>}
         <ul className="space-y-3">
           {items?.map((item) => {
-            const original = item.event?.organiserUrl || item.event?.ticketUrl
+            const original = item.event?.sourceUrl || item.event?.organiserUrl || item.event?.ticketUrl
             return (
               <li key={item.key} className="rounded-xl bg-card border border-border p-4 flex items-start gap-3">
                 <input type="checkbox" className="mt-1 w-4 h-4 shrink-0 accent-[hsl(var(--primary))]" checked={picked.includes(item.key)} onChange={() => setPicked(toggleSelection(picked, item.key))} aria-label={`Select ${item.issue}`} />

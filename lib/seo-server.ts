@@ -8,7 +8,7 @@ import { presentListing } from '@/lib/categories'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
 import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
-import { verifiedFlags } from '@/lib/listing-trust'
+import { listingBucket, minutesNow, orderedWindow } from '@/lib/listing-window'
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
@@ -69,11 +69,16 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
     .filter((e) => !addressInOtherState(e.venueAddress, city))
     .map((e) => presentListing(e))
   if (post && opts.topic) clean = clean.filter((e) => matchesTopic(e, opts.topic!))
-  if (tonight) clean = clean.filter((e) => isTonightSlot(e.time, e.endTime))
+  if (tonight) {
+    const tonightWindow = { window: 'tonight' as const, day: today, nowMinutes: minutesNow(city.name), dropEnded: true }
+    clean = orderedWindow(clean, tonightWindow).map((e) => ({
+      ...e,
+      availabilityKind: listingBucket(e, tonightWindow) === 'possibly' ? 'possibly' as const : undefined,
+    }))
+  }
   const total = post || tonight ? clean.length : await prisma.event.count({ where })
   const slice = clean.slice(0, take)
-  const flags = await verifiedFlags(slice)
-  return { events: slice.map((e) => ({ ...e, verified: flags.get(e.id) ?? false })), total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
+  return { events: slice, total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))) }
 }
 
 export type LandingLocal = {

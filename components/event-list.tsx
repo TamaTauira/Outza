@@ -6,6 +6,7 @@ import { FilterState } from '@/components/filter-panel'
 import { knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
 import { DAY_PARTS, dayLabel, listSpan, toMinutes, type TimeWindow } from '@/lib/board'
+import { rankWindow } from '@/lib/listing-window'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
 import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
@@ -169,14 +170,38 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     return { timed: t, untimed: u, endedCount: ended }
   }, [events, day, span, today, nowMinutes, effectiveWindow, hideEnded])
 
+  const windowRank = useMemo(() => {
+    if (!span || span.spanning || (effectiveWindow !== 'now' && effectiveWindow !== 'evening')) return null
+    const dayKey = day ?? span.from
+    const ranked = rankWindow(events, {
+      window: effectiveWindow === 'evening' ? 'tonight' : 'now',
+      day: dayKey,
+      nowMinutes,
+      dropEnded: !!today && dayKey === today && hideEnded,
+    })
+    const lead = [...ranked.confirmed, ...ranked.soon]
+    return { lead, possibly: ranked.possibly }
+  }, [events, day, span, today, nowMinutes, effectiveWindow, hideEnded])
+
   const groups = DAY_PARTS.map((p) => ({ ...p, rows: timed.filter((r) => r.start >= p.from && r.start < p.to) })).filter((g) => g.rows.length)
+  const rankGroups = windowRank
+    ? DAY_PARTS.map((p) => ({
+      ...p,
+      rows: windowRank.lead.flatMap((ev) => {
+        const start = toMinutes(ev.time)
+        if (start == null || start < p.from || start >= p.to) return []
+        const date = String(ev.date).slice(0, 10)
+        return [{ ev, status: getStatus(ev, day ?? date, today, nowMinutes), start, date }]
+      }),
+    })).filter((g) => g.rows.length)
+    : groups
 
   return (
     <div>
       {/* Summary row */}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{loading ? '…' : timed.length}</span> timed events
+        <span className="font-semibold text-foreground">{loading ? '…' : (windowRank ? windowRank.lead.length : timed.length)}</span> timed events
         {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
@@ -214,10 +239,45 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           <section key={date}>
             <GroupBar label={dayLabel(date, today)} count={rows.length} open={!closed[date]} onToggle={() => setClosed((c) => ({ ...c, [date]: !c[date] }))} />
             {!closed[date] && rows.map(({ ev, status }) => (
-              <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={dayLabel(date, today)} />
+              <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={dayLabel(date, today)} trackSearch={!!searchQuery} />
             ))}
           </section>
         ))
+      ) : windowRank ? (
+        <>
+          {rankGroups.length === 0 && windowRank.possibly.length === 0 ? (
+            <PeepEmpty
+              title="Crickets. I checked twice."
+              body="Nothing with a confirmed time in this window. Untimed listings are listed separately when we have them."
+              action={onWindowChange ? (
+                <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show Full Day</button>
+              ) : null}
+            />
+          ) : rankGroups.map((g) => {
+            const open = !closed[g.key]
+            return (
+              <section key={g.key}>
+                <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
+                {open && g.rows.map(({ ev, status }) => (
+                  <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} />
+                ))}
+              </section>
+            )
+          })}
+          {windowRank.possibly.length > 0 && (
+            <div className="border-t border-border">
+              <button onClick={() => setAllDayOpen((o) => !o)} className="w-full flex items-center gap-3 px-3 sm:px-5 py-3.5 text-left hover:bg-muted/50" aria-expanded={allDayOpen}>
+                <Sparkles className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">Possibly available</span>
+                <span className="ml-auto font-mono text-xs text-muted-foreground">{windowRank.possibly.length}</span>
+                <ChevronRight className={cn('w-4 h-4 text-muted-foreground transition-transform', allDayOpen && 'rotate-90')} />
+              </button>
+              {allDayOpen && windowRank.possibly.map((ev) => (
+                <BoardRow key={ev.id} ev={ev} status={{ label: 'Possibly available', tone: 'tbc' }} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} />
+              ))}
+            </div>
+          )}
+        </>
       ) : groups.length === 0 ? (
         <PeepEmpty
           title="Crickets. I checked twice."
@@ -233,7 +293,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <section key={g.key}>
               <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
               {open && g.rows.map(({ ev, status }) => (
-                <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} />
+                <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} />
               ))}
             </section>
           )
@@ -254,7 +314,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
 
       {/* All-day / untimed */}
-      {!loading && untimed.length > 0 && (
+      {!loading && !windowRank && untimed.length > 0 && (
         <div className="border-t border-border">
           <button onClick={() => setAllDayOpen((o) => !o)} className="w-full flex items-center gap-3 px-3 sm:px-5 py-3.5 text-left hover:bg-muted/50" aria-expanded={allDayOpen}>
             <Sparkles className="w-4 h-4 text-muted-foreground" />
@@ -263,7 +323,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <ChevronRight className={cn('w-4 h-4 text-muted-foreground transition-transform', allDayOpen && 'rotate-90')} />
           </button>
           {allDayOpen && day && untimed.map((ev) => (
-            <BoardRow key={ev.id} ev={ev} status={getStatus(ev, day, today, nowMinutes)} saved={isSaved(ev.id)} onToggleSave={toggle} />
+            <BoardRow key={ev.id} ev={ev} status={getStatus(ev, day, today, nowMinutes)} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} />
           ))}
         </div>
       )}

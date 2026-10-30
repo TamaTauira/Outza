@@ -32,7 +32,7 @@ interface EventData {
   city?: string | null
   ticketUrl: string | null
   source?: string | null
-  verified?: boolean
+  availabilityKind?: 'possibly'
 }
 
 export function EventCard({ event, index }: { event: EventData; index: number }) {
@@ -122,6 +122,9 @@ export function EventCard({ event, index }: { event: EventData; index: number })
                 {event.time}
               </div>
             )}
+            {event.availabilityKind === 'possibly' && (
+              <p className="text-xs text-muted-foreground">Possibly available</p>
+            )}
 
             {/* Price + CTA */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -153,7 +156,7 @@ export function GuideEventRow({ event }: { event: EventData }) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>
         <p className="truncate text-sm text-muted-foreground">
-          {event.time ?? 'All day'} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
+          {event.availabilityKind === 'possibly' ? 'Possibly available' : (event.time ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
         </p>
       </div>
       <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{price.value}</span>

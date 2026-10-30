@@ -4,7 +4,9 @@ import { makeSeriesKey, sydneyToday } from '@/lib/event-store'
 import { reconcileSuburb, refineStoredCategory } from '@/lib/categories'
 import { tidyVenueName } from '@/lib/cities'
 import { repairKnownListingUrl, usableUrl } from '@/lib/listing-link'
-import { SOURCES, inferRecurrence, isSameEvent, parsePriceRange } from '@/lib/quality'
+import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
+import { fieldConflicts, sameRealWorldEvent } from '@/lib/listing-window'
+import { runVerificationPass } from '@/lib/verification-pass'
 import { yieldIfBudget } from '@/lib/source-budget'
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
@@ -57,6 +59,7 @@ async function runQualityPassInner() {
     select: {
       id: true, title: true, venueName: true, time: true, endTime: true, price: true, city: true, date: true,
       source: true, sources: true, promoterId: true, createdAt: true, status: true, statusSource: true,
+      organiserName: true,
       ticketUrl: true, sourceUrl: true, organiserUrl: true,
       _count: { select: { savedBy: true, attendees: true, promotions: true } },
     },
@@ -77,7 +80,7 @@ async function runQualityPassInner() {
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
       used.add(primary.id)
-      const blocked = sorted.filter((o) => !used.has(o.id) && (o.promoterId || o._count.promotions) && isSameEvent(primary, o))
+      const blocked = sorted.filter((o) => !used.has(o.id) && (o.promoterId || o._count.promotions) && sameRealWorldEvent(primary, o))
       for (const other of blocked) {
         audits.push({
           eventId: other.id,
@@ -85,7 +88,7 @@ async function runQualityPassInner() {
           detail: `Likely duplicate of ${primary.id} (${primary.title}). Left in place because it is organiser-owned or promoted.`,
         })
       }
-      const dups = sorted.filter((o) => !used.has(o.id) && !o.promoterId && !o._count.promotions && isSameEvent(primary, o))
+      const dups = sorted.filter((o) => !used.has(o.id) && !o.promoterId && !o._count.promotions && sameRealWorldEvent(primary, o))
       if (!dups.length) continue
       dups.forEach((d) => used.add(d.id))
       for (const dup of dups) {
@@ -94,6 +97,14 @@ async function runQualityPassInner() {
           action: 'DUPLICATE_MERGED',
           detail: `Linked as a duplicate of ${primary.id} (${primary.title}). The listing stays in the database and drops off public boards.`,
         })
+        const conflicts = fieldConflicts(primary, dup)
+        if (conflicts.length) {
+          audits.push({
+            eventId: primary.id,
+            action: 'TIME_CONFLICT',
+            detail: `Kept ${primary.id} (${primary.title}). ${dup.source} disagreed: ${conflicts.join('; ')}. Provenance stays on sources. Nothing was deleted.`,
+          })
+        }
       }
       const sources = [...new Set([...primary.sources, primary.source, ...dups.flatMap((d) => [d.source, ...d.sources])])]
       const fill: Record<string, unknown> = { sources }
@@ -171,7 +182,7 @@ async function runQualityPassInner() {
   const expired = await prisma.event.count({ where: { date: { lt: today }, duplicateOfId: null, status: 'SCHEDULED' } })
   const since = new Date(Date.now() - 20 * 60 * 60 * 1000)
   const recent = await prisma.qualityAudit.findMany({
-    where: { createdAt: { gte: since }, action: { in: ['DUPLICATE_MERGED', 'DUPLICATE_FLAGGED', 'EXPIRED_HIDDEN'] } },
+    where: { createdAt: { gte: since }, action: { in: ['DUPLICATE_MERGED', 'DUPLICATE_FLAGGED', 'EXPIRED_HIDDEN', 'TIME_CONFLICT'] } },
     select: { eventId: true, action: true },
   })
   const seen = new Set(recent.map((row) => `${row.action}:${row.eventId ?? ''}`))
@@ -194,7 +205,10 @@ async function runQualityPassInner() {
     })
   }
 
-  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired }
+  const verification = yieldIfBudget('quality pass')
+    ? { normalized: 0, flagged: 0, checks: 0 }
+    : await runVerificationPass()
+  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired, verification }
   console.log('[quality] pass complete', result)
   return result
 }
