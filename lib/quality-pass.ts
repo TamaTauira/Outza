@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/prisma'
+import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
+import { prisma, runWithJobPrisma } from '@/lib/prisma'
 import { makeSeriesKey, sydneyToday } from '@/lib/event-store'
 import { reconcileSuburb, refineStoredCategory } from '@/lib/categories'
 import { tidyVenueName } from '@/lib/cities'
@@ -12,7 +13,13 @@ async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unkn
  * Runs after every refresh: backfills quality fields, merges cross-source duplicates
  * that slipped through ingestion, and labels recurring series.
  */
-export async function runQualityPass() {
+export function runQualityPass() {
+  // Own client even when the quality cron calls this outside a refresh, so the
+  // batched updates cannot take the connections event pages are using.
+  return runWithJobPrisma(() => runQualityPassInner())
+}
+
+async function runQualityPassInner() {
   const today = sydneyToday()
   const upcoming = { date: { gte: today } }
 
@@ -23,7 +30,7 @@ export async function runQualityPass() {
     where: { ...upcoming, OR: [{ seriesKey: null }, { priceMin: null, price: { not: null } }, { priceMin: null, isFree: true }] },
     select: { id: true, title: true, venueName: true, city: true, isFree: true, price: true, seriesKey: true },
   })
-  await inBatches(missing, 20, (e) => {
+  await inBatches(missing, JOB_CONNECTION_LIMIT, (e) => {
     const r = parsePriceRange(e.isFree, e.price)
     return prisma.event.update({
       where: { id: e.id },
@@ -106,7 +113,7 @@ export async function runQualityPass() {
     if (rec) recurring++
     if (g.current.size !== 1 || !g.current.has(rec)) updates.push([key, rec])
   }
-  await inBatches(updates, 20, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
+  await inBatches(updates, JOB_CONNECTION_LIMIT, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
 
   // 4) Correct dump-bucket suburbs, city-as-venue names, and known category mistags.
   // Organiser edits are left alone. The same rules run at ingest; this catches rows already stored.
@@ -135,7 +142,7 @@ export async function runQualityPass() {
     if (data.suburb !== undefined || data.venueName) places++
     if (Object.keys(data).length) placeUpdates.push({ id: e.id, data })
   }
-  await inBatches(placeUpdates, 20, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
+  await inBatches(placeUpdates, JOB_CONNECTION_LIMIT, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
 
   const expired = await prisma.event.count({ where: { date: { lt: today }, duplicateOfId: null, status: 'SCHEDULED' } })
   const since = new Date(Date.now() - 20 * 60 * 60 * 1000)

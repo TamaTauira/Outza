@@ -6,6 +6,7 @@ import { isSameEvent, normalizeTitle, normalizeVenue } from '@/lib/quality'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
+import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 
 export const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -55,8 +56,7 @@ function normTime(t?: string | null): string | null {
 }
 
 function cleanText(s?: string | null, max = 600): string {
-  if (!s) return ''
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max)
+  return sanitizeDbText(s, max)
 }
 
 export function makeSeriesKey(title: string, venue: string, city: string): string {
@@ -68,6 +68,7 @@ const STATUS_UPDATABLE = new Set(['CANCELLED', 'POSTPONED', 'RESCHEDULED', 'SOLD
 export async function saveEvent(ev: RawEvent): Promise<boolean> {
   if (!ev.title || !/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return false
   const title = cleanText(ev.title, 250)
+  if (!title) return false
   const description = cleanText(ev.description)
   const date = new Date(`${ev.date}T00:00:00.000Z`)
   if (date < sydneyToday()) return false
@@ -88,20 +89,24 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const status = ev.status && STATUS_UPDATABLE.has(ev.status) ? ev.status : 'SCHEDULED'
   const range = { min: parsedPrice.min, max: parsedPrice.max }
   const now = new Date()
-  const imageUrl = bestSourceUrl(ev.imageUrl)
+  const imageUrl = bestSourceUrl(sanitizeDbUrl(ev.imageUrl, 2000))
+  const venueAddress = ev.venueAddress ? cleanText(ev.venueAddress, 500) : ''
+  const ticketUrl = sanitizeDbUrl(ev.ticketUrl, 2000)
+  const galleryUrls = (ev.galleryUrls ?? []).map((u) => sanitizeDbUrl(u, 2000)).filter((u): u is string => !!u).slice(0, 8)
+  const organiserUrl = ev.organiserUrl && /^https?:\/\//.test(ev.organiserUrl) ? sanitizeDbUrl(ev.organiserUrl, 500) : null
 
   const data = {
     description, time, endTime, endDate, category, subTags, isLGBTI, isFree, price,
-    imageUrl, ticketUrl: ev.ticketUrl ?? null,
+    imageUrl, ticketUrl,
     latitude: ev.latitude ?? null, longitude: ev.longitude ?? null,
     priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
     status, statusSource: status === 'SCHEDULED' ? null : ev.source, lastVerifiedAt: now,
     // Visitor details only overwrite when the source actually supplies them
-    ...(ev.galleryUrls?.length ? { galleryUrls: ev.galleryUrls.slice(0, 8) } : {}),
+    ...(galleryUrls.length ? { galleryUrls } : {}),
     ...(ev.accessibilityInfo ? { accessibilityInfo: cleanText(ev.accessibilityInfo, 1000) } : {}),
     ...(ev.ageRestriction ? { ageRestriction: cleanText(ev.ageRestriction, 120) } : {}),
     ...(ev.organiserName ? { organiserName: cleanText(ev.organiserName, 160) } : {}),
-    ...(ev.organiserUrl && /^https?:\/\//.test(ev.organiserUrl) ? { organiserUrl: ev.organiserUrl.slice(0, 500) } : {}),
+    ...(organiserUrl ? { organiserUrl } : {}),
   }
 
   const existing = await prisma.event.findFirst({
@@ -120,7 +125,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       const update: Record<string, unknown> = {
         ...rest, sources, venueName, suburb,
         seriesKey: makeSeriesKey(title, venueName, city),
-        ...(ev.venueAddress ? { venueAddress: ev.venueAddress } : {}),
+        ...(venueAddress ? { venueAddress } : {}),
       }
       if (dedupeHash !== existing.dedupeHash) {
         const clash = await prisma.event.findUnique({ where: { dedupeHash }, select: { id: true } })
@@ -160,7 +165,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   await prisma.event.create({
     data: {
       ...data, title, date, venueName,
-      venueAddress: ev.venueAddress ?? null,
+      venueAddress: venueAddress || null,
       suburb,
       source: ev.source, sources: [ev.source], dedupeHash, city,
       seriesKey: makeSeriesKey(title, venueName, city),
