@@ -63,6 +63,18 @@ def dilate(mask, n):
     return out
 
 
+def erode(mask, n):
+    out = mask.copy()
+    for _ in range(n):
+        nxt = out.copy()
+        nxt[1:] &= out[:-1]
+        nxt[:-1] &= out[1:]
+        nxt[:, 1:] &= out[:, :-1]
+        nxt[:, :-1] &= out[:, 1:]
+        out = nxt
+    return out
+
+
 def reclaim(mask, blocked):
     body = alpha & ~mask & ~blocked
     near_limb = dilate(mask, 8)
@@ -146,6 +158,18 @@ for name in limbs:
 for name in limbs:
     limbs[name]['hub'] &= ~claimed
     limbs[name]['full'] = limbs[name]['mask'] | limbs[name]['hub']
+
+# A few pixels of the original joint travel with the limb so a turn covers the socket
+# instead of opening a gap. Antenna stays a clean cut.
+for name in list(limbs):
+    if name == 'antenna':
+        continue
+    others = np.zeros((h, w), bool)
+    for other_name, other_limb in limbs.items():
+        if other_name != name:
+            others |= other_limb['full']
+    extra = dilate(limbs[name]['full'], 6) & alpha & ~limbs[name]['full'] & ~others
+    limbs[name]['full'] |= extra
 
 # Sparks: opaque pixels in the dash boxes, not already a limb.
 spark_boxes = {
@@ -258,8 +282,11 @@ for name, box in (('pupil-l', (300, 330, 580, 600)), ('pupil-r', (600, 320, 830,
     dil_p = dilate(pupil, 3)
     highlight = white & dil_p & ~sclera_mask
     mask = pupil | highlight
-    # include the antialiased rim
-    mask = (dilate(mask, 1) & alpha & window) | mask
+    # Keep the antialiased dark edge. Leave the orange/pink eyelid on the body —
+    # if it travels with the pupil, a glance pulls a coloured seam across the eye.
+    soft = dilate(mask, 1) & alpha & window
+    warm = (r > 100) & (r > b + 18)
+    mask = (mask | soft) & ~warm
     pupils[name] = mask
     ys, xs = np.where(mask)
     pivots[name] = (float(xs.mean()), float(ys.mean()))
@@ -310,6 +337,28 @@ unfilled = hole & (body[:, :, 3] == 0)
 if int(unfilled.sum()):
     print('unfilled socket px', int(unfilled.sum()))
 
+# Fill the torso oval where a limb was cut out, so a turn shows body instead of a hole.
+# The oval is the head-and-belly. Limb pixels outside it stay empty.
+body_alpha = body[:, :, 3] > 28
+ys, xs = np.where(body_alpha)
+cx, cy = float(np.median(xs)), float(np.median(ys))
+rx = float(np.percentile(np.abs(xs - cx), 92)) * 1.04
+ry = float(np.percentile(np.abs(ys - cy), 90)) * 1.02
+yy, xx = np.mgrid[0:h, 0:w]
+inside = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1.0
+# Sample local body colour per joint, then shade it so the cap is not a flat sticker.
+base_cols = body[body[:, :, 3] > 200][:, :3].astype(np.float32)
+base = np.median(base_cols, axis=0) if len(base_cols) else np.array([30, 30, 34], np.float32)
+fill = inside & (body[:, :, 3] < 24) & dilate(alpha | inside, 1)
+# Light sits upper-left on the original render.
+shade = 1.0 + (-(xx - cx) / rx) * 0.08 + (-(yy - cy) / ry) * 0.1
+shade = np.clip(shade, 0.78, 1.12)
+painted = int(fill.sum())
+for c in range(3):
+    body[:, :, c][fill] = np.clip(base[c] * shade[fill], 0, 255)
+body[:, :, 3][fill] = 255
+print(f'torso fill {painted} center {cx:.0f},{cy:.0f} r {rx:.0f}x{ry:.0f}')
+
 def layer_from(mask):
     out = np.zeros_like(arr)
     out[mask] = arr[mask]
@@ -331,11 +380,70 @@ def premultiplied_resize(image, size):
     return Image.fromarray(result, 'RGBA')
 
 
-layers = {'body': body}
+# Relaxed stance baked into the limb sprites. CSS rotate(0) is this pose,
+# so idle, reactions and reduced-motion are not stuck in the jump.
+# Positive rotation dropped the waving hand and tucked the legs in the pose tests.
+REST = {
+    'arm-l': 20,
+    'arm-r': 50,
+    'leg-l': 26,
+    'leg-r': -22,
+}
+
+
+def rotate_layer(image_arr, pivot, deg):
+    """Rotate in premultiplied space so the cut edge does not grow a light halo."""
+    if abs(deg) < 0.01:
+        return image_arr
+    src = image_arr.astype(np.float32)
+    alpha_px = src[:, :, 3:4] / 255.0
+    prem = np.dstack([src[:, :, :3] * alpha_px, src[:, :, 3]])
+    image = Image.fromarray(np.clip(prem, 0, 255).astype(np.uint8), 'RGBA')
+    px, py = pivot
+    a = np.deg2rad(deg)
+    c, s = float(np.cos(a)), float(np.sin(a))
+    matrix = (c, s, px - c * px - s * py, -s, c, py + s * px - c * py)
+    turned = np.array(image.transform(image.size, Image.AFFINE, matrix, resample=Image.BICUBIC)).astype(np.float32)
+    aa = turned[:, :, 3:4]
+    rgb = np.zeros_like(turned[:, :, :3])
+    np.divide(turned[:, :, :3], np.maximum(aa / 255.0, 1e-6), out=rgb, where=aa > 0)
+    out = np.dstack([np.clip(rgb, 0, 255), aa]).astype(np.uint8)
+    out[aa[:, :, 0] < 12, 3] = 0
+    out[aa[:, :, 0] < 12, :3] = 0
+    return out
+
+
+def defringe(image_arr):
+    """Drop bright semi-transparent fringe left by the cut."""
+    out = image_arr.copy()
+    a = out[:, :, 3]
+    rgb_px = out[:, :, :3].astype(int)
+    bright = (rgb_px.max(axis=2) > 80) & (a > 0) & (a < 32)
+    out[bright, 3] = 0
+    out[bright, :3] = 0
+    return out
+
+
+layers = {'body': defringe(body)}
+foot_points = {}
 for name, limb in limbs.items():
-    layers[name] = layer_from(limb['full'])
+    layer = layer_from(limb['full'])
+    deg = REST.get(name, 0)
+    if deg:
+        layer = rotate_layer(layer, limb['pivot'], deg)
+    layers[name] = defringe(layer)
+    mask = layer[:, :, 3] > 40
+    if name.startswith('leg') and mask.any():
+        ys, xs = np.where(mask)
+        y_cut = np.quantile(ys, 0.82)
+        foot = ys >= y_cut
+        foot_points[name] = {
+            'hip': [float(limb['pivot'][0]), float(limb['pivot'][1])],
+            'foot': [float(xs[foot].mean()), float(ys[foot].mean())],
+        }
+        print(f'{name} foot {foot_points[name]}')
 for name, mask in {**sparks, **pupils}.items():
-    layers[name] = layer_from(mask)
+    layers[name] = defringe(layer_from(mask))
 
 # Full-res rest composite
 rest = np.zeros_like(arr)
@@ -379,7 +487,15 @@ for name, image_arr in layers.items():
         px, py = pivots.get(name, ((x0 + x1) / 2, (y0 + y1) / 2))
         origin = ((px - x0) / (x1 - x0 + 1), (py - y0) / (y1 - y0 + 1))
         box = (x0, y0, x1, y1)
-    small.save(OUT / f'{name}.png', optimize=True)
+        if name.startswith('pupil'):
+            # Resize can revive an orange eyelid fringe. Keep only the pupil and highlight.
+            px = np.array(small)
+            rr, gg, bb, aa = px[:, :, 0].astype(int), px[:, :, 1].astype(int), px[:, :, 2].astype(int), px[:, :, 3]
+            kill = (aa > 0) & (rr > 110) & (rr > bb + 24) & (rr > gg + 16)
+            px[kill, 3] = 0
+            px[kill, :3] = 0
+            small = Image.fromarray(px, 'RGBA')
+        small.save(OUT / f'{name}.png', optimize=True)
     x0, y0, x1, y1 = box
     layout[name] = {
         'left': round(x0 / w, 4),
@@ -390,7 +506,25 @@ for name, image_arr in layers.items():
         'originY': round(origin[1], 4),
     }
 
-meta = {'width': size[0], 'height': size[1], 'srcWidth': w, 'srcHeight': h, 'layout': layout, 'order': order}
+walk = {}
+for name, pts in foot_points.items():
+    walk[name] = {
+        'hipX': round(pts['hip'][0] / w, 4),
+        'hipY': round(pts['hip'][1] / h, 4),
+        'footX': round(pts['foot'][0] / w, 4),
+        'footY': round(pts['foot'][1] / h, 4),
+    }
+
+meta = {
+    'width': size[0],
+    'height': size[1],
+    'srcWidth': w,
+    'srcHeight': h,
+    'layout': layout,
+    'order': order,
+    'rest': REST,
+    'walk': walk,
+}
 Path('lib/mascot-rig.json').write_text(json.dumps(meta, indent=2) + '\n')
 print(json.dumps(layout, indent=2))
 
@@ -422,10 +556,9 @@ def compose(poses, scale_to=420):
 
 frames = {
     'rest': {},
-    'walk-a': {'leg-l': 26, 'leg-r': -22, 'arm-l': -18, 'arm-r': 16, 'antenna': -8},
-    'walk-b': {'leg-l': -24, 'leg-r': 20, 'arm-l': 16, 'arm-r': -14, 'antenna': 8},
-    'jump': {'leg-l': -18, 'leg-r': 16, 'arm-l': -28, 'arm-r': -22, 'antenna': -12},
-    'dance': {'leg-l': 20, 'leg-r': -14, 'arm-l': -34, 'arm-r': 24, 'antenna': 14},
+    'walk-a': {'leg-l': 16, 'leg-r': -14, 'arm-l': -12, 'arm-r': 12},
+    'walk-b': {'leg-l': -14, 'leg-r': 16, 'arm-l': 12, 'arm-r': -16},
+    'cheer': {'arm-l': -36, 'arm-r': -42, 'leg-l': 6, 'leg-r': -6},
 }
 sheet = []
 for name, pose in frames.items():

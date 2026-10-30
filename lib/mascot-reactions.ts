@@ -74,7 +74,7 @@ export const REACTION_MS: Record<ReactionId, number> = {
 const SCRIPTED = new Set<ReactionId>(['tickle', 'delighted'])
 
 export const PARTY_LINE = 'Super party mode. Everyone’s invited.'
-export const PARTY_MS = 3600
+export const PARTY_MS = 4400
 
 export const HOVER_POOL: ReactionId[] = ['wink', 'giggle', 'hearts']
 
@@ -92,12 +92,16 @@ export function pickReaction(last: ReactionId | null, rand: () => number = Math.
   return pool[index]
 }
 
-/** True when the newest stamps contain 5 clicks inside the window. Stamps must be ascending. */
+/**
+ * True when the newest stamps contain 2 clicks inside the window.
+ * The engine passes a short window so this is a quick double-click, not every repeat tap.
+ * Stamps must be ascending.
+ */
 export function isPartyCombo(stamps: number[], now: number, windowMs = 1700): boolean {
   let count = 0
   for (let i = stamps.length - 1; i >= 0; i--) {
     if (now - stamps[i] > windowMs) break
     count++
   }
-  return count >= 5
+  return count >= 2
 }

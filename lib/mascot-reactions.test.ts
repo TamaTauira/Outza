@@ -47,10 +47,12 @@ test('pickReaction never repeats the reaction that just played', () => {
   }
 })
 
-test('five clicks inside the window starts party mode', () => {
+test('two quick clicks inside the window starts the dance party', () => {
   const now = 10_000
-  assert.equal(isPartyCombo([8400, 8800, 9200, 9600, 9900], now), true)
-  assert.equal(isPartyCombo([8000, 9200, 9400, 9600, 9900], now), false)
-  assert.equal(isPartyCombo([9600, 9700, 9800, 9900], now), false)
-  assert.equal(isPartyCombo([], now), false)
+  const quick = 480
+  assert.equal(isPartyCombo([9700, 9950], now, quick), true)
+  assert.equal(isPartyCombo([9000, 9950], now, quick), false)
+  assert.equal(isPartyCombo([9900], now, quick), false)
+  assert.equal(isPartyCombo([], now, quick), false)
+  assert.equal(isPartyCombo([9600, 9700, 9800, 9900], now, quick), true)
 })
