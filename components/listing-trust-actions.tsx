@@ -74,10 +74,10 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
       ) : claimStatus === 'APPROVED' ? (
         <Link href="/promoter" className="inline-flex items-center gap-1.5 text-primary hover:underline"><BadgeCheck className="w-4 h-4" />You manage this listing</Link>
       ) : session?.user ? (
-        <a href="#claim" aria-expanded={open === 'claim'} onClick={(e) => { e.preventDefault(); toggle('claim') }} className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"><BadgeCheck className="w-4 h-4" />Is this your gig? Make it official</a>
+        <a href="#claim" aria-expanded={open === 'claim'} onClick={(e) => { e.preventDefault(); toggle('claim') }} className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"><BadgeCheck className="w-4 h-4" />Manage this event</a>
       ) : (
         <Link href={`/login?as=promoter&next=${encodeURIComponent(pathname || '/')}`} className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-          <BadgeCheck className="w-4 h-4" />Is this your gig? Sign in to make it official
+          <BadgeCheck className="w-4 h-4" />Manage this event
         </Link>
       ))}
      </div>
@@ -114,7 +114,7 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
             <div>
             <h3 className="font-semibold text-base">Claim this listing</h3>
             <p className="text-muted-foreground mt-1">
-              Once a claim is accepted you can correct details and promote the event. If your account email uses the same domain as the event’s website, the claim is accepted straight away; otherwise we review it by hand.
+              Are you the organiser? Verify your connection to this event to update its details and view performance. If your account email uses the same domain as the event’s website, the claim is accepted straight away. Otherwise we review it. Knowing the public details is not enough.
             </p>
             </div>
             <button type="button" aria-label="Close" onClick={() => setOpen('')} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>

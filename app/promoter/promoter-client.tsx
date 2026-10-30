@@ -468,7 +468,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                         <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>
                         <p className="text-xs text-muted-foreground">{fmt(ev.date)} · {ev.venueName}{ev.city ? ` · ${ev.city}` : ''}</p>
                         {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
-                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">Details stay as published</p>}
+                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">Details stay as published until you add an organiser update</p>}
                       </td>
                       <td className="px-3 py-3">
                         {ev.status === 'CANCELLED' ? <span className="text-xs text-muted-foreground">Unpublished</span> : past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (
@@ -483,7 +483,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                       <td className="px-3 py-3 text-right tabular-nums">{ev._count?.savedBy ?? 0} / {ev._count?.attendees ?? 0}</td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-2">
-                          {promoterCanEditEvent(ev.source) ? <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button> : <span className="text-[11px] text-muted-foreground">Not editable</span>}
+                          {promoterCanEditEvent(ev.source) ? <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button> : <Link href={`/events/${ev.id}/manage`} className="h-8 px-3 rounded-md border border-border text-xs font-medium inline-flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</Link>}
                           {promoterCanEditEvent(ev.source) && ev.status !== 'CANCELLED' && <button onClick={async () => { if (!window.confirm(`Unpublish “${ev.title}”? It leaves the public board. Purchases stay in billing.`)) return; const res = await fetch(`/api/promoter/events/${ev.id}`, { method: 'DELETE' }); if (res.ok) { toast.success('Listing unpublished'); reload() } else toast.error('Could not unpublish') }} className="h-8 px-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted" aria-label={`Unpublish ${ev.title}`}><Trash2 className="w-3.5 h-3.5" /></button>}
                           {!past && ev.status !== 'CANCELLED' && <button onClick={() => onPromote(ev.id)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold">{liveTier ? productName(liveTier.tier) : 'Promote'}</button>}
                         </div>

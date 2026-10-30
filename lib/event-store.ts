@@ -11,6 +11,7 @@ import { toSydneyParts } from '@/lib/event-store-parts'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 import { normalizeListingUrls, usableUrl } from '@/lib/listing-link'
 import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
+import { applyProtectedRefresh } from '@/lib/event-overrides'
 
 export const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -153,11 +154,19 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   })
   if (existing) {
     const sources = existing.sources.includes(ev.source) ? existing.sources : [...existing.sources, ev.source]
-    // The organiser edited this listing: keep their details, only record that the source still lists it
-    if (existing.organiserEditedAt) {
-      await prisma.event.update({ where: { id: existing.id }, data: { sources, lastVerifiedAt: new Date(), ...(status === 'CANCELLED' ? { status } : {}) } })
-      return true
+    const incomingFields = {
+      title,
+      description,
+      date: ev.date,
+      time,
+      endTime,
+      venueName,
+      venueAddress: venueAddress || null,
+      status,
+      price,
+      category,
     }
+    const legacyLock = { sources, lastVerifiedAt: new Date(), ...(status === 'CANCELLED' ? { status } : {}) }
     if (existing.source === ev.source) {
       const { imageUrl: _img, ...rest } = data
       const update: Record<string, unknown> = {
@@ -179,8 +188,22 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
           })
         }
       }
+      // Per-field organiser overrides keep their values. Other fields, including artwork, still refresh.
+      if (await applyProtectedRefresh(existing.id, incomingFields, update)) return true
+      // Older organiser edits lock the whole listing. Cancellation from the source still lands.
+      if (existing.organiserEditedAt) {
+        await prisma.event.update({ where: { id: existing.id }, data: legacyLock })
+        return true
+      }
       await prisma.event.update({ where: { id: existing.id }, data: update })
-    } else await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
+    } else {
+      if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) return true
+      if (existing.organiserEditedAt) {
+        await prisma.event.update({ where: { id: existing.id }, data: legacyLock })
+        return true
+      }
+      await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
+    }
     return true
   }
 

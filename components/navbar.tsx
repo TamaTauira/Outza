@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store, Users, Sparkles, ShieldCheck } from 'lucide-react'
+import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store, Users, Sparkles, ShieldCheck, Building2 } from 'lucide-react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -112,6 +112,9 @@ export function Navbar({ savedCount }: NavbarProps) {
                 {isPromoter
                   ? <DropdownMenuItem asChild><Link href="/promoter"><Megaphone className="w-4 h-4 mr-2" />Promoter dashboard</Link></DropdownMenuItem>
                   : <DropdownMenuItem asChild><Link href="/promoters"><Megaphone className="w-4 h-4 mr-2" />For promoters</Link></DropdownMenuItem>}
+                {process.env.NEXT_PUBLIC_OWNERSHIP_UI !== '0' && (
+                  <DropdownMenuItem asChild><Link href="/venue"><Building2 className="w-4 h-4 mr-2" />My venue</Link></DropdownMenuItem>
+                )}
                 {user.role === 'ADMIN' && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin/trust"><ShieldCheck className="w-4 h-4 mr-2" />Trust & listings <TrustCount className="ml-auto" /></Link>

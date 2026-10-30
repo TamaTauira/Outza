@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, OWNER_EMAIL, escapeHtml } from '@/lib/email'
 import { emailLockup } from '@/lib/email-brand'
+import { ensureOrganiserGrant } from '@/lib/event-overrides'
 
 const FREE_MAIL = /^(gmail|googlemail|outlook|hotmail|live|yahoo|icloud|me|aol|proton|protonmail|bigpond|optusnet|tpg|iinet|internode)\./
 /** Hosts that sell or list other people's events; an email at these domains does not prove you run the event. */
@@ -35,6 +36,12 @@ export async function approveClaim(claimId: string, note?: string) {
     ...(c.user.role === 'CONSUMER' ? [prisma.user.update({ where: { id: c.userId }, data: { role: 'PROMOTER', orgName: c.orgName } })] : []),
     prisma.eventClaim.updateMany({ where: { eventId: c.eventId, status: 'PENDING', id: { not: c.id } }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: 'Another organiser already manages this listing' } }),
   ])
+  const user = await prisma.user.findUnique({ where: { id: c.userId }, select: { email: true } })
+  if (user?.email) {
+    await ensureOrganiserGrant(c.userId, c.eventId, c.orgName, user.email).catch((err) => {
+      console.error('organiser grant failed', err instanceof Error ? err.message : err)
+    })
+  }
   return c
 }
 

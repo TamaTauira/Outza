@@ -23,6 +23,7 @@ import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { placeLine } from '@/lib/place'
+import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
 
@@ -122,7 +123,12 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
         {(where || event?.venueName) && (
           <Fact icon={MapPin}>
-            <span className="font-medium">{where || event.venueName}</span>
+            {event?.venueId ? (
+              <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{where || event.venueName}</Link>
+            ) : (
+              <span className="font-medium">{where || event.venueName}</span>
+            )}
+            {event?.venueManagedLabel && <span className="block text-[11px] text-muted-foreground">{event.venueManagedLabel}</span>}
           </Fact>
         )}
         {event?.capacity > 0 && (
@@ -217,6 +223,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             <StatusBanner status={event.quality?.status ?? null} />
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{event?.title}</h1>
             <SourceLine event={event} />
+            {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}
+            {event?.listingCaution && <p className="text-xs text-muted-foreground">{event.listingCaution}</p>}
             <p className="flex items-start gap-1.5 text-xs leading-snug text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
               <span>Event details may change. Confirm times, availability and prices with the organiser before attending.</span>
@@ -225,6 +233,9 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
               <Link href={`/promoter?tab=promote&event=${event.id}`} className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
                 <Megaphone className="w-4 h-4" />Promote this event
               </Link>
+            )}
+            {event?.canManageListing && (
+              <Link href={`/events/${event.id}/manage`} className="inline-flex text-sm text-muted-foreground underline underline-offset-2">Manage this event</Link>
             )}
             {event?.promoter && (
               <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-1.5">
