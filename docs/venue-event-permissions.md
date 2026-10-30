@@ -22,7 +22,7 @@ Event claims keep the existing rule: a signed-in email on the same domain as the
 
 Direct edits by a verified organiser are per field (`EventFieldOverride`). The public columns show the override. The source value is kept on the override row. A later import refreshes fields that are not overridden. When the source value matches the override, the override is cleared and the history row stays. If the source says cancelled while an override still says the event is on, the import sets `Event.materialConflict` and does not silently mark the listing cancelled or leave it looking confirmed.
 
-The public line is “Verified Organiser Update”. It means the organiser was allowed to edit. It does not mean every detail is accurate. Venue profiles that have an approved manager show “Managed by a verified venue representative”. There is still no generic Verified badge on events, and confidence scores stay off the page.
+The public line is “Organiser update”. It means the organiser was allowed to edit. It does not mean every detail is accurate. Venue profiles that have an approved manager show “Managed by the venue”. A small claimed tick sits beside that venue name, beside an approved organiser’s name, and on the organiser-update line. There is still no generic Verified badge on events, and confidence scores stay off the page.
 
 Listings edited before this change still use `organiserEditedAt`, which keeps the whole record locked. New edits of ingested listings use field overrides and do not set that lock, so untouched fields keep refreshing. Promoter-created listings (`source = promoter`) still save through the existing editor.
 

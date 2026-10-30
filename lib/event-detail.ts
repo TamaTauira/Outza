@@ -83,7 +83,7 @@ async function queryEventCore(id: string) {
   }).slice(0, 6).map((row) => redactCommunityPublic(row))
 
   const { _count, promoter, views: _v, ticketClicks: _c, confidenceScore: _score, contactEmail: _email, submitIpHash: _ip, manageTokenHash: _token, emailVerifiedAt: _verifiedAt, communityFlags: _flags, ...rest } = redacted
-  const presentation = await ownershipPresentation(event.id, event.materialConflict).catch(() => ({ notice: null, caution: null, venueManaged: false }))
+  const presentation = await ownershipPresentation(event.id, event.materialConflict).catch(() => ({ notice: null, caution: null, venueManaged: false, organiserClaimed: false }))
   const payload = {
     event: {
       ...rest,
@@ -99,6 +99,7 @@ async function queryEventCore(id: string) {
         schedule: scheduleCue(event),
       },
       organiserUpdate: presentation.notice,
+      organiserClaimed: presentation.organiserClaimed,
       listingCaution: presentation.caution,
       venueManagedLabel: presentation.venueManaged ? VENUE_MANAGED_LABEL : null,
     },
@@ -108,7 +109,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v3'], { revalidate: 120 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v4'], { revalidate: 120 })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 

@@ -18,11 +18,23 @@ export type OverrideField = (typeof OVERRIDE_FIELDS)[number]
 
 export const MATERIAL_FIELDS = ['date', 'time', 'endTime', 'venueName', 'venueAddress', 'status'] as const
 
-export const ORGANISER_UPDATE_TITLE = 'Verified Organiser Update'
+export const ORGANISER_UPDATE_TITLE = 'Organiser update'
 export const ORGANISER_UPDATE_BODY =
-  'This event information has been updated directly by the verified event organiser on VibePeep and may differ from the original listing.'
+  'This event information has been updated directly by the event organiser on VibePeep and may differ from the original listing.'
 
-export const VENUE_MANAGED_LABEL = 'Managed by a verified venue representative'
+export const VENUE_MANAGED_LABEL = 'Managed by the venue'
+
+/** Plain-language copy for the claimed tick. No accuracy promise, and no “verified” wording. */
+export const CLAIMED_TICK_COPY = {
+  venue: {
+    label: 'Claimed by the venue',
+    body: 'Someone claimed this venue and VibePeep checked the claim. It means the profile is looked after by the venue. It is not a guarantee that every detail is accurate.',
+  },
+  organiser: {
+    label: 'Claimed by the organiser',
+    body: 'Someone claimed this organiser and VibePeep checked the claim. It means they are allowed to speak for the listing. It is not a guarantee that every detail is accurate.',
+  },
+} as const
 
 export const MANAGE_VENUE_LABEL = 'Manage this Venue'
 export const MANAGE_VENUE_BLURB =
@@ -185,6 +197,31 @@ export function evaluateEventAccess(input: {
   if (viaGrant) return { allowed: true, via: 'grant' }
   if (input.isAdmin) return { allowed: true, via: 'admin' }
   return { allowed: false, via: null }
+}
+
+export type ClaimedOrganiserRow = {
+  grantStatus: string
+  grantRevokedAt?: Date | string | null
+  organisationType: string
+  verificationStatus: string
+  memberships: { userId: string; role: string; status: string; revokedAt?: Date | string | null }[]
+}
+
+/**
+ * The public tick beside an organiser name. True only when this listing’s promoter
+ * still has a live organiser membership on an approved grant for a checked organisation.
+ */
+export function claimedOrganiserVisible(promoterId: string | null | undefined, rows: ClaimedOrganiserRow[], now = Date.now()): boolean {
+  if (!promoterId) return false
+  return rows.some((row) => {
+    if (row.organisationType !== 'ORGANISER' || row.verificationStatus !== 'VERIFIED') return false
+    if (!live(row.grantStatus, row.grantRevokedAt, now)) return false
+    return row.memberships.some((membership) => (
+      membership.userId === promoterId
+      && (membership.role === 'ORGANISER' || membership.role === 'ADMINISTRATOR')
+      && live(membership.status, membership.revokedAt, now)
+    ))
+  })
 }
 
 export function authorizeEventMutation(allowed: boolean): { ok: boolean; log: boolean } {

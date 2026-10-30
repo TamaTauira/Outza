@@ -416,7 +416,7 @@ export async function reportVenueEvent(userId: string, venueId: string, body: Re
     await sendEmail({
       to: event.promoter.email,
       subject: `A venue asked us to check ${event.title}`.slice(0, 120),
-      html: `<p>A verified venue representative reported “${escapeHtml(event.title)}”. The listing is unchanged while we check it.</p>`,
+      html: `<p>A venue representative reported “${escapeHtml(event.title)}”. The listing is unchanged while we check it.</p>`,
       text: `A venue reported “${event.title}”. The listing is unchanged while we check it.`,
     })
   }

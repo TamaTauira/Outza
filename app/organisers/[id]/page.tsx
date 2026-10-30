@@ -7,6 +7,8 @@ import { sydneyToday } from '@/lib/event-store'
 import { eventPath } from '@/lib/seo'
 import { Footer } from '@/components/footer'
 import { BackToEventsLink } from '@/components/back-to-events-link'
+import { ClaimedTick } from '@/components/ClaimedTick'
+import { organiserNameClaimed } from '@/lib/event-overrides'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +30,7 @@ export default async function OrganiserPage({ params }: Props) {
   })
   if (!user || (user.role !== 'PROMOTER' && user.role !== 'ADMIN')) notFound()
   const name = user.orgName || user.name || 'Organiser'
+  const claimed = await organiserNameClaimed(user.id)
   const events = await prisma.event.findMany({
     where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },
     orderBy: { date: 'asc' },
@@ -42,7 +45,10 @@ export default async function OrganiserPage({ params }: Props) {
           {user.image && <img src={user.image} alt="" className="w-16 h-16 rounded-full object-cover bg-muted" />}
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">Organiser</p>
-            <h1 className="font-display text-3xl font-bold tracking-tight">{name}</h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
+              {name}
+              {claimed && <ClaimedTick kind="organiser" className="h-5 w-5" />}
+            </h1>
             {user.homeCity && <p className="text-sm text-muted-foreground mt-1">{user.homeCity}</p>}
           </div>
         </div>
