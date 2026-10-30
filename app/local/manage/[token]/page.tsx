@@ -18,7 +18,7 @@ export default async function ManageListingPage({ params }: { params: Promise<{ 
     <div className="min-h-screen bg-background">
       <Navbar savedCount={0} />
       <main className="mx-auto max-w-xl px-4 py-6 sm:px-6">
-        <p className="text-sm"><Link href="/community" className="text-muted-foreground">Community hub</Link></p>
+        <p className="text-sm"><Link href="/local" className="text-muted-foreground">Local</Link></p>
         <h1 className="mt-2 font-display text-3xl font-bold">Your listing, your call</h1>
         <p className="mt-2 text-sm text-muted-foreground">Postpone it, cancel it, or fix the details. Taking it off the public page from here marks it cancelled. An admin removal keeps the audit trail.</p>
         <div className="mt-6">

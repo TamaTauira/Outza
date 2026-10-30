@@ -90,13 +90,13 @@ export async function CommunityBoard({
     <div className="min-h-screen bg-background">
       <Navbar savedCount={0} />
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <p className="text-sm"><Link href="/community" className="text-muted-foreground hover:text-foreground">Community hub</Link></p>
+        <p className="text-sm"><Link href="/local" className="text-muted-foreground hover:text-foreground">Local</Link></p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{section.label}{city ? ` in ${city.name}` : ''}</h1>
         <p className="mt-2 text-base text-muted-foreground">{section.blurb}</p>
         {section.key === 'school-fundraisers' && (
           <p className="mt-3 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">School listings show the suburb only. Street addresses and photos of children stay off the public page.</p>
         )}
-        <p className="mt-4"><Link href={`/community/submit?category=${section.key}`} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">List one free</Link></p>
+        <p className="mt-4"><Link href={`/local?tab=submit&category=${section.key}`} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">List your thing free</Link></p>
 
         <form method="get" action={action} className="mt-6 grid gap-3 rounded-2xl bg-card p-4 shadow-sm sm:grid-cols-2">
           <label className="text-sm font-semibold sm:col-span-2">Filter this page
@@ -165,7 +165,7 @@ export async function CommunityBoard({
           })}
         </ul>
         {rows.length === 0 && (
-          <p className="mt-8 rounded-2xl bg-muted px-4 py-6 text-base">Nothing in that filter yet. Be the neighbour who lists it. <Link href={`/community/submit?category=${section.key}`} className="font-semibold text-primary underline">List it free</Link>.</p>
+          <p className="mt-8 rounded-2xl bg-muted px-4 py-6 text-base">Nothing in that filter yet. Be the neighbour who lists it. <Link href={`/local?tab=submit&category=${section.key}`} className="font-semibold text-primary underline">List your thing free</Link>.</p>
         )}
         {city && suburbs.length > 0 && (
           <nav aria-label="Suburbs" className="mt-8 flex flex-wrap gap-2 text-sm">
@@ -204,8 +204,9 @@ export async function communityMeta(args: Parameters<typeof CommunityBoard>[0]) 
     index = false
   }
   return {
-    title: `${section.label}${city ? ` in ${city.name}` : ''} | VibePeep`,
+    title: `${section.label}${city ? ` in ${city.name}` : ''} | VibePeep Local`,
     description: section.blurb,
+    alternates: { canonical: [communitySectionPath(section.key), args.cityParam, args.place, args.whenParam].filter(Boolean).join('/') },
     robots: index ? undefined : { index: false as const, follow: true as const },
   }
 }

@@ -10,6 +10,7 @@ import { addDaysKey, citySlug, cityToday, eventPath, isTonightSlot, slugify, WHE
 
 export const COMMUNITY_SECTIONS = [
   { key: 'garage-sales', label: 'Garage sales', short: 'Garage sale', blurb: 'Driveway treasures, moving sales and the good kind of clutter.', boardCategory: 'Community', subTags: [] as string[] },
+  { key: 'warehouse-sales', label: 'Warehouse & clearance', short: 'Clearance', blurb: 'Temporary sales from labels, retailers and wholesalers.', boardCategory: 'Community', subTags: [] as string[] },
   { key: 'school-fundraisers', label: 'School fundraisers', short: 'School fundraiser', blurb: 'Fetes, sausage sizzles and trivia nights. Suburb only, and no photos of children.', boardCategory: 'Community', subTags: ['Fundraiser'] },
   { key: 'farmers-markets', label: 'Farmers markets', short: 'Farmers market', blurb: 'Produce, flowers, coffee and the Saturday that is worth setting an alarm for.', boardCategory: 'Food & Drink', subTags: ['Market'] },
   { key: 'neighbourhood-popups', label: 'Neighbourhood pop-ups', short: 'Pop-up', blurb: 'Here this weekend, gone next week. Stalls, shops and one-off hangs.', boardCategory: 'Community', subTags: [] as string[] },
@@ -439,15 +440,15 @@ export function communityPageIndexable(listingCount: number, kind: CommunityPage
 }
 
 export function communitySectionPath(key: string): string {
-  return `/community/${key}`
+  return `/local/in/${key}`
 }
 
 export function communityCityPath(key: string, city: string): string {
-  return `/community/${key}/${citySlug(city)}`
+  return `/local/in/${key}/${citySlug(city)}`
 }
 
 export function communityPlacePath(key: string, city: string, place: string): string {
-  return `/community/${key}/${citySlug(city)}/${slugify(place)}`
+  return `/local/in/${key}/${citySlug(city)}/${slugify(place)}`
 }
 
 export const isWhenKey = (value: string): value is WhenKey => (WHEN_KEYS as readonly string[]).includes(value)

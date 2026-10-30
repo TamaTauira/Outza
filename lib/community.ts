@@ -55,7 +55,7 @@ function infoHref(input: Pick<CommunityInput, 'websiteUrl'>, id: string, title: 
 }
 
 async function sendCodeMail(to: string, code: string, token: string, title: string) {
-  const link = `${siteUrl()}/community/verify?token=${token}`
+  const link = `${siteUrl()}/local/verify?token=${token}`
   const html = `<div style="font-family:Georgia,serif;color:#1c1c1e;line-height:1.5">
     <p style="font-size:18px">Your listing “${esc(title)}” is one code away from the neighbourhood.</p>
     <p style="font-size:32px;letter-spacing:0.2em;font-weight:700">${esc(code)}</p>
@@ -154,7 +154,7 @@ async function acceptVerification(eventId: string) {
   const ev = await prisma.event.findUnique({ where: { id: eventId } })
   if (!ev?.communityKey || !ev.contactEmail) return { ok: false as const, status: 404, error: 'Listing not found.' }
   if (ev.submissionState === 'SUBMITTED') {
-    return { ok: true as const, status: 200, already: true, approvalState: ev.approvalState, path: eventPath(ev), posterPath: `/community/poster/${ev.id}` }
+    return { ok: true as const, status: 200, already: true, approvalState: ev.approvalState, path: eventPath(ev), posterPath: `/local/poster/${ev.id}` }
   }
   const review = (ev.communityFlags ?? []).some((f) => ['SCHOOL', 'SCHOOL_ADDRESS', 'SCHOOL_IMAGE', 'CHILDREN_IMAGE', 'SPAM', 'FAST'].includes(f))
   const approvalState = review ? 'PENDING' : 'APPROVED'
@@ -176,7 +176,7 @@ async function acceptVerification(eventId: string) {
     await audit(ev.id, 'APPROVE', 'email verified, no higher-risk flags')
     await metric('APPROVED', { city: ev.city, suburb: ev.suburb, category: ev.communityKey })
   }
-  const managePath = `/community/manage/${manageToken}`
+  const managePath = `/local/manage/${manageToken}`
   const link = `${siteUrl()}${managePath}`
   const page = `${siteUrl()}${eventPath(ev)}`
   await sendEmail({
@@ -186,10 +186,10 @@ async function acceptVerification(eventId: string) {
       <p>${approvalState === 'APPROVED' ? 'It’s up. Neighbours can peep it now.' : 'Got it. A person will check this one before it goes public.'}</p>
       <p><a href="${esc(page)}">Listing page</a></p>
       <p><a href="${esc(link)}">Edit, postpone or take it down</a>. Keep this link. It’s the key to the listing.</p>
-      <p><a href="${esc(siteUrl())}/community/poster/${ev.id}">Printable poster</a></p>
+      <p><a href="${esc(siteUrl())}/local/poster/${ev.id}">Printable poster</a></p>
       <p style="font-size:12px;color:#666"><strong>Acknowledgement of Country.</strong> ${esc(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>
     </div>`,
-    text: `${approvalState === 'APPROVED' ? 'Your listing is live.' : 'A person will check this listing before it goes public.'}\n${page}\nManage: ${link}\nPoster: ${siteUrl()}/community/poster/${ev.id}`,
+    text: `${approvalState === 'APPROVED' ? 'Your listing is live.' : 'A person will check this listing before it goes public.'}\n${page}\nManage: ${link}\nPoster: ${siteUrl()}/local/poster/${ev.id}`,
   }).catch(() => null)
   return {
     ok: true as const,
@@ -197,7 +197,7 @@ async function acceptVerification(eventId: string) {
     approvalState,
     path: eventPath(ev),
     managePath,
-    posterPath: `/community/poster/${ev.id}`,
+    posterPath: `/local/poster/${ev.id}`,
     review,
   }
 }
@@ -503,7 +503,7 @@ export async function communitySitemapPaths(): Promise<string[]> {
     select: { id: true, communityKey: true, city: true, suburb: true, date: true, endDate: true, recurrence: true, time: true, isFree: true, status: true },
     take: 2000,
   })
-  const paths = new Set<string>(['/community'])
+  const paths = new Set<string>()
   for (const section of COMMUNITY_SECTIONS) {
     const mine = rows.filter((row) => row.communityKey === section.key)
     const asOcc: CommunityOccurrence[] = mine.map((row) => ({

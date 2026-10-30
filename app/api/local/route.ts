@@ -5,7 +5,10 @@ import { getSessionUser } from '@/lib/session'
 import { CITIES, cityDef } from '@/lib/cities'
 import { notifyTrustTeam } from '@/lib/trust'
 import { storagePath } from '@/lib/s3'
-import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL } from '@/lib/local-shared'
+import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
+import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
+import { eventPath } from '@/lib/seo'
+import { dedupeFeed, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
 import { aiModeration, expiryFor, findDuplicate, hardBlock, ipHash, parseLocal, recentCount, spamSignals, validateAddress } from '@/lib/local'
 
 export const dynamic = 'force-dynamic'
@@ -30,28 +33,82 @@ export async function GET(req: Request) {
     const me = await getSessionUser()
     if (!me) return NextResponse.json({ error: 'Please sign in' }, { status: 401 })
     const mine = await prisma.localListing.findMany({ where: { userId: me.id, status: { not: 'REMOVED' } }, orderBy: { createdAt: 'desc' }, take: 50, select: { ...PUBLIC, status: true, expiresAt: true, flags: true, reviewNote: true } })
-    return NextResponse.json({ listings: mine.map((l) => ({ ...l, schedule: recurrenceLabel(l) })) })
+    const email = me.email.toLowerCase()
+    const community = email ? await prisma.event.findMany({
+      where: { communityKey: { not: null }, deletedAt: null, OR: [{ promoterId: me.id }, { contactEmail: email }] },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      select: { id: true, title: true, suburb: true, city: true, communityKey: true, approvalState: true, status: true, date: true },
+    }).catch(() => []) : []
+    return NextResponse.json({
+      listings: mine.map((l) => ({ ...l, schedule: recurrenceLabel(l) })),
+      community: community.map((ev) => ({ ...ev, date: ev.date.toISOString(), href: eventPath(ev) })),
+    })
   }
   const city = u.searchParams.get('city') ?? ''
-  const category = u.searchParams.get('category') ?? ''
+  const section = u.searchParams.get('category') ?? ''
+  const suburb = u.searchParams.get('suburb') ?? ''
   const when = u.searchParams.get('when') ?? '30'
   const validCity = CITIES.some((c) => c.name === city)
-  const { from, to } = range(cityDef(validCity ? city : 'Sydney').tz, when)
-  let rows: Awaited<ReturnType<typeof prisma.localListing.findMany<{ select: typeof PUBLIC }>>> = []
+  const zone = cityDef(validCity ? city : 'Sydney')
+  const { from, to } = range(zone.tz, when)
   try {
-  rows = await prisma.localListing.findMany({
-    where: { status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(validCity ? { city } : {}), ...(category ? { category } : {}) },
+  const rows = await prisma.localListing.findMany({
+    where: { status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(validCity ? { city } : {}) },
     select: PUBLIC, take: 600,
   })
-  // Belt and braces: the same listing (title + suburb + city + start time) shows once per date even if a copy slipped through.
   const seen = new Set<string>()
-  const items = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ ...l, userId: undefined, date, schedule: recurrenceLabel(l), recurring: l.recurrence !== 'NONE' })))
-    .filter((i) => { const k = `${localDupKey(i)}|${i.date}|${i.startTime}`; if (seen.has(k)) return false; seen.add(k); return true })
-  items.sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
-  const counts: Record<string, number> = {}
-  const counted = new Set<string>()
-  items.forEach((i) => { const k = `${i.category}|${localDupKey(i)}`; if (!counted.has(k)) { counted.add(k); counts[i.category] = (counts[i.category] ?? 0) + 1 } })
-  return NextResponse.json({ from, to, items: items.slice(0, 300), counts })
+  const localItems: FeedItem[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
+    .filter(({ l, date }) => { const k = `${localDupKey(l)}|${date}|${l.startTime}`; if (seen.has(k)) return false; seen.add(k); return true })
+    .map(({ l, date }) => ({
+      id: l.id,
+      title: l.title,
+      section: sectionForLocal(l),
+      suburb: l.suburb,
+      city: l.city,
+      date,
+      time: l.startTime,
+      isFree: !l.priceNote || /^free\b/i.test(l.priceNote.trim()),
+      price: l.priceNote,
+      href: localPath(l, date),
+      kind: 'local' as const,
+    }))
+  const events = await prisma.event.findMany({
+    where: { communityKey: { not: null }, approvalState: 'APPROVED', deletedAt: null, duplicateOfId: null, ...(validCity ? { city } : {}) },
+    select: {
+      id: true, title: true, description: true, date: true, endDate: true, time: true, suburb: true, city: true,
+      venueName: true, venueAddress: true, isFree: true, price: true, status: true, recurrence: true, communityKey: true,
+      locationVisibility: true, childrenInImage: true, imageKidSafe: true,
+    },
+    take: 400,
+  }).catch(() => [])
+  const shaped = events.map((ev) => ({
+    ...redactCommunityPublic(ev),
+    id: ev.id,
+    communityKey: ev.communityKey || '',
+    date: ev.date.toISOString().slice(0, 10),
+    endDate: ev.endDate ? ev.endDate.toISOString().slice(0, 10) : null,
+    recurrence: ev.recurrence,
+    time: ev.time,
+    isFree: ev.isFree,
+    status: ev.status,
+  }))
+  const communityItems: FeedItem[] = filterCommunityListings(shaped, { city: validCity ? city : null, from, to }, zone).map((ev) => ({
+    id: ev.id,
+    title: ev.title,
+    section: ev.communityKey,
+    suburb: ev.suburb || '',
+    city: ev.city,
+    date: ev.occursOn,
+    time: ev.time,
+    isFree: ev.isFree,
+    price: ev.price,
+    href: eventPath(ev),
+    kind: 'community' as const,
+    status: ev.status,
+  }))
+  const items = filterFeed(dedupeFeed([...communityItems, ...localItems]), { section, suburb }).slice(0, 300)
+  return NextResponse.json({ from, to, items, counts: sectionCounts(filterFeed(dedupeFeed([...communityItems, ...localItems]), { suburb })) })
   } catch (err) {
     console.error('Local listings failed:', err)
     return NextResponse.json({ from, to, items: [], counts: {}, notice: 'Listings are unavailable right now.' })

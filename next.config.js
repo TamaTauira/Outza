@@ -23,7 +23,18 @@ const nextConfig = {
   // rule covers the alias when that domain redirect is not set. Preview and
   // git hostnames are left alone.
   async redirects() {
-    return LEGACY_SITE_HOSTS.flatMap((host) => [
+    const local = [
+      { source: '/community', destination: '/local', statusCode: 301 },
+      { source: '/community/submit', destination: '/local?tab=submit', statusCode: 301 },
+      { source: '/community/verify', destination: '/local/verify', statusCode: 301 },
+      { source: '/community/manage/:token', destination: '/local/manage/:token', statusCode: 301 },
+      { source: '/community/poster/:id', destination: '/local/poster/:id', statusCode: 301 },
+      { source: '/community/:section/:city/:place/:when', destination: '/local/in/:section/:city/:place/:when', statusCode: 301 },
+      { source: '/community/:section/:city/:place', destination: '/local/in/:section/:city/:place', statusCode: 301 },
+      { source: '/community/:section/:city', destination: '/local/in/:section/:city', statusCode: 301 },
+      { source: '/community/:section', destination: '/local/in/:section', statusCode: 301 },
+    ]
+    return [...local, ...LEGACY_SITE_HOSTS.flatMap((host) => [
       {
         source: '/',
         has: [{ type: 'host', value: host }],
@@ -36,7 +47,7 @@ const nextConfig = {
         destination: `${CANONICAL_SITE_URL}/:path*`,
         permanent: true,
       },
-    ]);
+    ])];
   },
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
