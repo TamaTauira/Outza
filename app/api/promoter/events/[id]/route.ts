@@ -51,6 +51,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       priceMin: listing.priceMin,
       priceMax: listing.priceMax,
       ticketUrl: listing.ticketUrl,
+      ...(listing.organiserUrl || listing.ticketUrl ? { sourceUrl: listing.organiserUrl || listing.ticketUrl } : {}),
       organiserName: listing.organiserName,
       organiserUrl: listing.organiserUrl,
       accessibilityInfo: listing.accessibilityInfo,

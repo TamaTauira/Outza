@@ -1,6 +1,7 @@
 import { fetchHtml, saveEvent, sleep, toSydneyParts } from '@/lib/event-store'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
+import { firstListingUrl, joinOriginPath, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
 import { distanceKm } from '@/lib/travel'
 import { addressInTasmania, coordsInTasmania } from '@/lib/tas-retag'
@@ -128,6 +129,9 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
       const status = e?.is_cancelled ? 'CANCELLED' : e?.ticket_availability?.is_sold_out ? 'SOLD_OUT' : 'SCHEDULED'
       const v = e?.primary_venue
       const genres = (e?.tags ?? []).map((t: any) => t?.display_name).filter(Boolean)
+      const page = joinOriginPath('https://www.eventbrite.com.au', e?.url)
+        ?? (e?.id ? usableUrl(`https://www.eventbrite.com.au/e/${e.id}`) : null)
+      const organiser = firstListingUrl(e?.primary_organizer ?? e?.organizer, ['website_url', 'url', 'website'])
       const ok = await saveEvent({
         title: e?.name,
         description: e?.summary,
@@ -141,7 +145,9 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
         isFree: forceFree,
         price: priceFromAvailability(e?.ticket_availability) ?? prices.get(String(e?.id)) ?? null,
         imageUrl: e?.image?.original?.url ?? e?.image?.url ?? null,
-        ticketUrl: e?.url ?? null,
+        ticketUrl: page,
+        sourceUrl: page,
+        organiserUrl: organiser,
         latitude: parseFloat(v?.address?.latitude) || null,
         longitude: parseFloat(v?.address?.longitude) || null,
         source: 'eventbrite',

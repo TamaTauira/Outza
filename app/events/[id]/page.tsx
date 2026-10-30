@@ -4,7 +4,6 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { getPublicEvent, personalizeEvent } from '@/lib/event-detail'
 import { eventPath, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
-import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 import { EventDetailClient } from './_components/event-detail-client'
 import { classifyReferral } from '@/lib/referrals'
@@ -28,12 +27,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: desc.slice(0, 300),
     alternates: { canonical: eventPath(canonicalTarget ?? ev) },
     robots: ev.duplicateOfId ? { index: false, follow: true } : undefined,
-    openGraph: { title: ev.title, description: desc.slice(0, 200), type: 'website', url: eventPath(ev), ...(image ? { images: [image] } : {}) },
+    openGraph: { title: ev.title, description: desc.slice(0, 200), type: 'website', url: eventPath(ev), images: [image] },
     twitter: {
       card: 'summary_large_image',
       title: ev.title,
       description: desc.slice(0, 200),
-      images: image ? [image] : [BRAND_OG_IMAGE],
+      images: [image],
     },
   }
 }

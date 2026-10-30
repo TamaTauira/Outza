@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
+import { placeholderAbsolute } from '@/lib/placeholders'
 import { presentListing } from '@/lib/categories'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
@@ -188,14 +189,15 @@ export const citySuburbs = cache(async function citySuburbs(city: CityDef, min =
   return [...counts].filter(([, v]) => v.count >= min).sort((a, b) => b[1].count - a[1].count).map(([slug, v]) => ({ name: v.name, slug, count: v.count }))
 })
 
-export function eventImageUrl(ev: { imageUrl?: string | null; imageAsset?: { variants?: unknown; status?: string } | null }, origin: string): string | null {
+export function eventImageUrl(ev: { imageUrl?: string | null; category?: string | null; imageAsset?: { variants?: unknown; status?: string } | null }, origin: string): string {
   const m = ev.imageAsset?.variants as VariantManifest | null | undefined
   const w = m?.sizes?.hero?.at(-1) ?? m?.sizes?.featured?.at(-1)
   if (m && w) {
     const url = variantUrl(m, m.sizes.hero?.length ? 'hero' : 'featured', w, 'webp')
     return url.startsWith('http') ? url : `${origin}${url}`
   }
-  return ev.imageUrl && /^https?:\/\//.test(ev.imageUrl) ? ev.imageUrl : null
+  if (ev.imageUrl && /^https?:\/\//.test(ev.imageUrl)) return ev.imageUrl
+  return placeholderAbsolute(ev.category, 'wide', origin)
 }
 
 const STATUS_SCHEMA: Record<string, string> = {
@@ -248,7 +250,7 @@ export function eventJsonLd(ev: JsonLdEvent, origin: string) {
   }
   if (ev.endTime || ev.endDate) ld.endDate = iso(endKey, ev.endTime, city.tz)
   if (ev.description) ld.description = ev.description.slice(0, 500)
-  if (image) ld.image = [image]
+  ld.image = [image]
   if (organiser) ld.organizer = { '@type': 'Organization', name: organiser, ...(ev.organiserUrl ? { url: ev.organiserUrl } : {}) }
   if (ev.isFree) ld.isAccessibleForFree = true
   if (ev.ticketUrl && /^https?:\/\//.test(ev.ticketUrl) && (ev.isFree || ev.priceMin != null)) {

@@ -321,7 +321,8 @@ test('trust line is source and updated, with no verified wording', () => {
 
 test('email image urls stay on the canonical host and reject svg or data uris', () => {
   assert.equal(emailImageSrc({ id: 'evt_12345678', imageUrl: 'https://cdn.example/a.webp', imageAsset: null }, 'hero'), 'https://outza-outza.vercel.app/api/nl/img?e=evt_12345678&k=hero')
-  assert.equal(emailImageSrc({ id: 'evt_12345678', imageUrl: null, imageAsset: null }, 'thumb'), null)
+  assert.equal(emailImageSrc({ id: 'evt_12345678', imageUrl: null, imageAsset: null, category: 'Music' }, 'thumb'), 'https://outza-outza.vercel.app/placeholders/music-square.webp')
+  assert.equal(emailImageSrc({ id: 'evt_12345678', imageUrl: null, imageAsset: null, category: 'Music' }, 'hero'), 'https://outza-outza.vercel.app/placeholders/music.webp')
   assert.equal(assertPublicImageUrl('https://cdn.example/a.jpg'), 'https://cdn.example/a.jpg')
   assert.equal(assertPublicImageUrl('data:image/png;base64,aaaa'), null)
   assert.equal(assertPublicImageUrl('https://cdn.example/icon.svg'), null)

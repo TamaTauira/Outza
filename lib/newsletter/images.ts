@@ -4,26 +4,30 @@ import { categoryColor, categoryInk } from '@/lib/categories'
 import { loadSharp } from '@/lib/images/pipeline'
 import { bestSourceUrl } from '@/lib/images/source-url'
 import { BROWSER_UA } from '@/lib/event-store'
+import { placeholderAbsolute, type PlaceholderShape } from '@/lib/placeholders'
 
 /**
- * Email images are JPEG (or the original PNG) served from the canonical host.
- * Outlook cannot show WebP, AVIF or SVG. Nothing is inlined as a data URI.
+ * Email images are absolute https URLs on the canonical host.
+ * Source photos are resized to JPEG. A listing with no photo uses its genre placeholder WebP, unchanged.
+ * Nothing is inlined as a data URI.
  */
 export const EMAIL_SIZES = { hero: { w: 1200, h: 675 }, thumb: { w: 360, h: 360 } } as const
 export type EmailKind = keyof typeof EMAIL_SIZES
 
-/** Mascot PNG on the canonical host. One sign-off in the digest, never an event thumbnail. */
+/** Mascot PNG on the canonical host. One sign-off in the digest, never an event thumbnail. A listing with no photo uses genre placeholder art instead. */
 export const MASCOT_EMAIL_URL = `${CANONICAL_SITE_URL}${BRAND_MASCOT_EMAIL}`
 
-export interface ImgSource { id?: string; imageUrl: string | null; imageAsset?: { id?: string; originalPath?: string | null; sourceUrl: string; isPublic?: boolean; status: string } | null }
+export interface ImgSource { id?: string; category?: string | null; imageUrl: string | null; imageAsset?: { id?: string; originalPath?: string | null; sourceUrl: string; isPublic?: boolean; status: string } | null }
 
-/** Absolute https URL on the canonical host. The public route resizes to JPEG. Null when there is nothing to show. */
-export function emailImageSrc(ev: ImgSource, kind: EmailKind): string | null {
-  if (!ev.id) return null
+/** Absolute https URL. Source art is resized to JPEG; a missing picture uses the genre placeholder. */
+export function emailImageSrc(ev: ImgSource, kind: EmailKind): string {
   const assetOk = !!ev.imageAsset && ev.imageAsset.status !== 'FAILED'
-  if (!ev.imageUrl && !assetOk) return null
-  const q = new URLSearchParams({ e: ev.id, k: kind })
-  return `${CANONICAL_SITE_URL}/api/nl/img?${q}`
+  if (ev.id && (ev.imageUrl || assetOk)) {
+    const q = new URLSearchParams({ e: ev.id, k: kind })
+    return `${CANONICAL_SITE_URL}/api/nl/img?${q}`
+  }
+  const shape: PlaceholderShape = kind === 'thumb' ? 'square' : 'wide'
+  return placeholderAbsolute(ev.category, shape, CANONICAL_SITE_URL)
 }
 
 export function sourceForEmail(ev: ImgSource): string | null {

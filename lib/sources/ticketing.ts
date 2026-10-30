@@ -1,6 +1,7 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
+import { joinOriginPath } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
 
@@ -110,7 +111,8 @@ export async function fetchMoshtixEvents(): Promise<number> {
           price: priced.price,
           isFree: priced.isFree,
           imageUrl: main ? main.url.replace(/x\d+x\d+$/, 'x600x600') : null,
-          ticketUrl: e.eventUrl ?? null,
+          ticketUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
+          sourceUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
           latitude: v.location?.latitude ?? null,
           longitude: v.location?.longitude ?? null,
           ageRestriction: e.ageRestriction === 'OVER18' ? '18+' : e.ageRestriction === 'UNDER18' ? 'Under 18s' : e.ageRestriction === 'ALL' ? 'All ages' : null,
@@ -206,7 +208,8 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
         price: oztixPrice.price,
         isFree: oztixPrice.isFree,
         imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=1200&height=600') : null,
-        ticketUrl: e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null,
+        ticketUrl: joinOriginPath('https://www.oztix.com.au', e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null),
+        sourceUrl: joinOriginPath('https://www.oztix.com.au', e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null),
         latitude: e._geoloc?.lat ?? null,
         longitude: e._geoloc?.lng ?? null,
         status,
@@ -383,7 +386,8 @@ export async function fetchTicketekEvents(): Promise<number> {
         price: ticketPrice.price,
         isFree: ticketPrice.isFree,
         imageUrl: images ? field(r, 'imageurl', 'image', 'eventimage') : null,
-        ticketUrl: field(r, 'url', 'eventurl', 'producturl', 'link', 'deeplink'),
+        ticketUrl: joinOriginPath('https://premier.ticketek.com.au', field(r, 'url', 'eventurl', 'producturl', 'link', 'deeplink', 'trackinglink', 'mobileurl', 'clickurl')),
+        sourceUrl: joinOriginPath('https://premier.ticketek.com.au', field(r, 'url', 'eventurl', 'producturl', 'link', 'deeplink', 'trackinglink', 'mobileurl', 'clickurl')),
         latitude: hasGeo ? lat : null,
         longitude: hasGeo ? lng : null,
         status: /cancel/.test(status) ? 'CANCELLED' : /postpon/.test(status) ? 'POSTPONED' : /reschedul/.test(status) ? 'RESCHEDULED' : 'SCHEDULED',

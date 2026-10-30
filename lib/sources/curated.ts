@@ -131,7 +131,7 @@ export async function fetchCuratedEvents(): Promise<number> {
     const tz = CITIES.find((x) => x.name === c.city)?.tz ?? 'Australia/Sydney'
     const today = toSydneyParts(new Date(), tz).date
     const base = { title: c.title, description: c.description, venueName: c.venueName, venueAddress: c.venueAddress,
-      ticketUrl: c.url, isFree: c.isFree, price: c.price ?? null, genres: c.genres, source: 'curated', city: c.city }
+      sourceUrl: c.url, organiserUrl: c.url, isFree: c.isFree, price: c.price ?? null, genres: c.genres, source: 'curated', city: c.city }
 
     if (c.once) {
       if (c.once.end < today) continue

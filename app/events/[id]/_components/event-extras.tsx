@@ -70,21 +70,20 @@ export async function shareEvent(event: { id: string; title: string }) {
   } catch (err: any) { if (err?.name !== 'AbortError') console.error('Share failed:', err) }
 }
 
-/** One muted line: source link and when the listing was updated. Date is absolute so server and client match. */
+/** One short line: where the listing came from, and when it was updated. */
 export function SourceLine({ event }: { event: any }) {
-  const href = event?.organiserUrl || event?.ticketUrl
-  const label = event?.organiserName || event?.promoter?.orgName || event?.promoter?.name || sourceLabel(event?.source)
+  const label = sourceLabel(event?.source).replace(/\bverified\b/ig, '').replace(/\s{2,}/g, ' ').trim() || 'a listing site'
+  const href = event?.sourceUrl || event?.organiserUrl || event?.ticketUrl
+  const linked = typeof href === 'string' && /^https?:\/\//i.test(href) ? href : null
   const updated = event?.quality?.checkedAt
     ? new Date(event.quality.checkedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' })
     : null
   return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-      <span>
-        Source: {href
-          ? <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{label}</a>
-          : label}
-        {updated ? ` · Updated ${updated}` : ''}
-      </span>
+    <p className="text-xs text-muted-foreground">
+      Source: {linked
+        ? <a href={linked} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{label}</a>
+        : label}
+      {updated ? ` · Updated ${updated}` : ''}
     </p>
   )
 }

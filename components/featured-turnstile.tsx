@@ -66,7 +66,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   return (
     <Link href={eventPath(it)} aria-hidden={hidden} tabIndex={hidden ? -1 : undefined} className="shrink-0 w-[260px] snap-start rounded-xl bg-card border border-border overflow-hidden shadow-md hover:-translate-y-0.5 hover:shadow-lg transition">
       <div className="relative aspect-[16/9] overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
-        <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="260px" compact crop accent={color} />
+        <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="260px" compact crop accent={color} category={it.category} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <span title={it.tier === 'HOT' ? 'Popular on VibePeep' : `${t?.name ?? 'Promoted'} placement`} className="absolute z-10 top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
           {it.tier === 'HOT' && <Flame className="w-2.5 h-2.5" />}{badge.label}
