@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { reportCrash } from '@/components/report-crash'
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  // reportCrash reloads once for a chunk-load failure and skips the fault email until that reload still fails.
   useEffect(() => { reportCrash(error) }, [error])
   return (
     <html lang="en">
