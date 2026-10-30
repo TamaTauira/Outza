@@ -5,6 +5,7 @@ import { getPublicEvent, personalizeEvent } from '@/lib/event-detail'
 import { eventPath, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
+import { LandingDetailBeacon } from '@/components/landing-beacon'
 import { EventDetailClient } from './_components/event-detail-client'
 import { classifyReferral } from '@/lib/referrals'
 
@@ -70,6 +71,7 @@ export default async function EventPage({ params, searchParams }: Props) {
   return (
     <>
       {ld && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />}
+      <LandingDetailBeacon />
       <EventDetailClient key={ev.id} eventId={ev.id} initial={initial} />
     </>
   )

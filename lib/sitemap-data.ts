@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef } from '@/lib/cities'
-import { addDaysKey, cityToday, eventPath } from '@/lib/seo'
+import { assessEditorial, EDITORIAL_GUIDES, editorialPath } from '@/lib/editorial'
+import { addDaysKey, cityPath, cityToday, eventPath } from '@/lib/seo'
 import { cityGuideModel } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
 import { addDaysStr, localPath, occurrences, todayIn, MAX_AHEAD_DAYS } from '@/lib/local-shared'
@@ -85,6 +86,15 @@ export function guidesSitemapXml() {
         if (!guide.index) continue
         urls.push({ loc: `${origin}${guide.path}`, lastmod: now })
       }
+      for (const season of model.seasons) {
+        if (!season.index) continue
+        urls.push({ loc: `${origin}${season.path}`, lastmod: now })
+      }
+    }
+    for (const guide of EDITORIAL_GUIDES) {
+      const perCity = CITIES.map((city, i) => models[i]?.decisions.find((d) => d.path === cityPath(city, guide.topic))?.total ?? 0)
+      if (!assessEditorial(perCity).index) continue
+      urls.push({ loc: `${origin}${editorialPath(guide.slug)}`, lastmod: now })
     }
     for (const l of locals) {
       const today = todayIn(cityDef(l.city).tz)

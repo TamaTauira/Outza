@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { GuideLanding } from '@/components/guide-landing'
 import { formatGuideDay, formatGuideSpan, relatedGuides } from '@/lib/local-seo'
+import { cityEditorial } from '@/lib/editorial'
+import { seasonDef } from '@/lib/seasons'
+import { SeasonPage, seasonMetadata } from '@/lib/season-page'
 import { TOPICS, MIN_INDEX, guideFacts, topicDef, cityFromSlug, cityPath, suburbPath, type TopicDef } from '@/lib/seo'
 import { cityEventCounts, cityGuideModel, citySuburbs, landingData, lastRefreshAt } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
@@ -43,6 +46,7 @@ function blurbFor(r: Resolved) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city, topic } = await params
+  if (seasonDef(topic)) return seasonMetadata(city, topic)
   const r = await resolve(city, topic)
   if (!r) return { title: 'Page not found | VibePeep', robots: { index: false } }
   const [data, model] = await Promise.all([landingData(r.city, r.topic, r.suburb ?? undefined, 1), cityGuideModel(r.city)])
@@ -64,6 +68,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LandingPage({ params }: Props) {
   const { city: citySlug, topic: topicSlug } = await params
+  if (seasonDef(topicSlug)) return SeasonPage({ citySlug, seasonSlug: topicSlug })
   const r = await resolve(citySlug, topicSlug)
   if (!r) notFound()
   const { city, topic, suburb, suburbs } = r
@@ -87,7 +92,10 @@ export default async function LandingPage({ params }: Props) {
     href: cityPath(c, topic?.key ?? 'events'),
     label: topic ? topic.heading(c.name) : `Events in ${c.name}`,
   }))
-  const facts = guideFacts({
+  const editorial = topic ? cityEditorial(topic.key, city) : null
+  const seasonLinks = model.seasons.filter((s) => s.index).map((s) => ({ href: s.path, title: seasonDef(s.key)?.h1(city.name) ?? s.key }))
+  const facts = [
+    ...guideFacts({
     city: city.name,
     topicKey: topic?.key ?? null,
     suburb,
@@ -99,7 +107,9 @@ export default async function LandingPage({ params }: Props) {
       venue: events[0].venueName,
       when: formatGuideDay(events[0].date.toISOString().slice(0, 10)),
     } : null,
-  })
+  }),
+    ...(editorial?.facts ?? []),
+  ]
   const crumbs = [
     { name: 'VibePeep', url: `${origin}/` },
     { name: city.name, url: `${origin}${cityPath(city)}` },
@@ -128,6 +138,8 @@ export default async function LandingPage({ params }: Props) {
       refreshed={refreshed}
       related={model.ok ? relatedGuides(model.decisions, path, city.name) : []}
       crumbs={crumbs}
+      editorial={editorial ? { paragraphs: editorial.paragraphs, ...(total > 0 ? { more: editorial.more } : {}) } : null}
+      seasons={seasonLinks}
     />
   )
 }

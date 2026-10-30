@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { recordLandingFromCookieJar } from '@/lib/landing-stats'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { sydneyToday } from '@/lib/event-store'
 import { isPastEvent } from '@/lib/seo'
@@ -51,7 +53,12 @@ export async function POST(req: Request) {
     if (b.saved) {
       const ev = await prisma.event.findUnique({ where: { id: b.eventId }, select: { id: true } })
       if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
-      await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
+      const already = await prisma.savedEvent.findUnique({ where: { userId_eventId: { userId: me.id, eventId: ev.id } }, select: { eventId: true } })
+      if (!already) {
+        await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
+        const jar = await cookies()
+        await recordLandingFromCookieJar((name) => jar.get(name)?.value, 'save')
+      }
     } else {
       await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: b.eventId } })
     }
