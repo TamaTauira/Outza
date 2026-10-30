@@ -4,9 +4,12 @@ import {
   ROAM_ACTS,
   ROAM_LINES,
   ROAM_POOL,
+  VIGNETTE_ACTS,
   bounceStep,
   destination,
   faceForDelta,
+  pickVignette,
+  vignetteGap,
   hopArc,
   hopCount,
   moveDuration,
@@ -105,6 +108,28 @@ test('bounce step stays inside the safe box and flips velocity', () => {
   assert.equal(miss.hit, false)
   assert.equal(miss.pos.x, 44)
   assert.equal(miss.pos.y, 37)
+})
+
+test('vignettes are a varied set and never repeat back to back', () => {
+  assert.ok(VIGNETTE_ACTS.length >= 6)
+  assert.equal(new Set(VIGNETTE_ACTS).size, VIGNETTE_ACTS.length)
+  for (const id of ['dance', 'eat', 'stretch', 'jog', 'music', 'cheer', 'jump', 'peek', 'sport', 'paint'] as const) {
+    assert.ok(VIGNETTE_ACTS.includes(id))
+    assert.ok(ROAM_ACTS.includes(id))
+    assert.ok(ROAM_LINES[id].length >= 2)
+  }
+  let last: (typeof VIGNETTE_ACTS)[number] | null = null
+  for (let i = 0; i < VIGNETTE_ACTS.length * 3; i++) {
+    const next = pickVignette(last, () => 0)
+    assert.notEqual(next, last)
+    last = next
+  }
+  assert.equal(vignetteGap(() => 0), 10000)
+  assert.equal(vignetteGap(() => 0.999), 10000 + Math.floor(0.999 * 15001))
+  for (let i = 0; i < 30; i++) {
+    const gap = vignetteGap(() => i / 30)
+    assert.ok(gap >= 10000 && gap <= 25000)
+  }
 })
 
 test('cheer only when the page can scroll and the reader is at the bottom', () => {

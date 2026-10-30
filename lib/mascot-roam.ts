@@ -13,6 +13,12 @@ export const ROAM_ACTS = [
   'chase',
   'bounce',
   'perch',
+  'eat',
+  'stretch',
+  'jog',
+  'music',
+  'sport',
+  'paint',
 ] as const
 
 export type RoamAct = (typeof ROAM_ACTS)[number]
@@ -40,10 +46,16 @@ export const ROAM_ACT_MS: Record<RoamAct, number> = {
   wiggle: 1600,
   peek: 1900,
   nap: 5400,
-  cheer: 1500,
+  cheer: 2200,
   chase: 1700,
   bounce: 2600,
   perch: 2400,
+  eat: 4200,
+  stretch: 3800,
+  jog: 3200,
+  music: 4000,
+  sport: 3400,
+  paint: 4000,
 }
 
 export const ROAM_LINES: Record<RoamAct, readonly string[]> = {
@@ -59,6 +71,39 @@ export const ROAM_LINES: Record<RoamAct, readonly string[]> = {
   chase: ['Wait for me!', 'Coming through.', 'Oi, slow down.'],
   bounce: ['Boing, walls.', 'Pinball time.', 'Didn’t bounce that hard.'],
   perch: ['Nice spot up here.', 'Good view from here.', 'I’ll sit for a bit.'],
+  eat: ['Snack o’clock.', 'Just a bite.', 'Ooh, cheesy.'],
+  stretch: ['Little stretch.', 'Loose and easy.', 'Arms up, nice.'],
+  jog: ['On the spot.', 'Warming up.', 'Light feet.'],
+  music: ['Turn it up.', 'Mic check.', 'This one’s a bop.'],
+  sport: ['Game on!', 'Nice strike.', 'Back of the net.'],
+  paint: ['A little colour.', 'Orange and pink.', 'Art time.'],
+}
+
+/** Fun breaks. He walks and rests the rest of the time. Never the same one twice in a row. */
+export const VIGNETTE_ACTS = [
+  'dance',
+  'eat',
+  'stretch',
+  'jog',
+  'music',
+  'cheer',
+  'jump',
+  'peek',
+  'sport',
+  'paint',
+] as const
+
+export type VignetteAct = (typeof VIGNETTE_ACTS)[number]
+
+export function pickVignette(last: VignetteAct | null, rand: () => number = Math.random): VignetteAct {
+  const pool = last ? VIGNETTE_ACTS.filter((id) => id !== last) : VIGNETTE_ACTS
+  const index = Math.min(pool.length - 1, Math.floor(rand() * pool.length))
+  return pool[index]!
+}
+
+/** Milliseconds until the next vignette. Inclusive range 10s–25s. */
+export function vignetteGap(rand: () => number = Math.random): number {
+  return 10000 + Math.floor(rand() * 15001)
 }
 
 /** No clicks and no wandering input for this long, and he has a nap. */

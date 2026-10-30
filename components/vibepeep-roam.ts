@@ -5,17 +5,17 @@ import {
   clampPoint,
   destination,
   faceForDelta,
-  hopArc,
   hopCount,
   moveDuration,
   nearPageBottom,
   peekTarget,
-  pickRoamAct,
   pickRoamLine,
+  pickVignette,
+  vignetteGap,
   roamBounds,
   lerp,
-  smoothstep,
   type Bounds,
+  type VignetteAct,
   type Point,
   type RoamAct,
 } from '@/lib/mascot-roam'
@@ -55,8 +55,15 @@ export function attachRoam(root: HTMLElement): () => void {
   let dragging = false
   let hiddenAt = 0
   let lastAct: RoamAct | null = null
-  // Open on a walk, a jump and a dance so he never sits in one pose while you arrive.
-  const intro: RoamAct[] = ['hop', 'jump', 'dance']
+  const params = new URLSearchParams(window.location.search)
+  const fast = params.get('peepfast') === '1'
+  const demo = params.get('peepdemo') === '1'
+  const script: Array<'idle' | 'hop' | VignetteAct> = demo
+    ? ['idle', 'hop', 'eat', 'hop', 'music', 'sport', 'paint']
+    : []
+  const gapMs = () => (fast ? 3200 + Math.random() * 1800 : vignetteGap(Math.random))
+  let lastVignette: VignetteAct | null = null
+  let nextVignetteAt = performance.now() + gapMs()
   let lastActivity = performance.now()
   let cheered = false
   let phase: Phase = { type: 'pause', until: performance.now() + 600 }
@@ -90,7 +97,13 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const park = () => {
     const box = bounds()
-    pos = { x: box.maxX, y: box.maxY }
+    const corners = [
+      { x: box.maxX, y: box.maxY },
+      { x: box.minX, y: box.maxY },
+      { x: box.maxX, y: Math.max(box.minY, box.maxY - size()) },
+      { x: box.minX, y: Math.max(box.minY, box.maxY - size()) },
+    ]
+    pos = corners.find((corner) => spotClear(corner.x, corner.y)) ?? corners[0]!
     face = 'right'
     root.dataset.ready = '1'
     setMove('still')
@@ -171,15 +184,18 @@ export function attachRoam(root: HTMLElement): () => void {
   const held = () =>
     dragging || button.hasAttribute('data-react') || button.getAttribute('data-mood') === 'sulk'
 
-  const pauseNext = (ms = 800 + Math.random() * 1100) => {
+  const pauseNext = (ms?: number) => {
+    const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
     setMove('idle')
-    phase = { type: 'pause', until: performance.now() + ms }
+    phase = { type: 'pause', until: performance.now() + wait }
   }
 
   const goTo = (to: Point, then: RoamAct | null) => {
     const from = { ...pos }
     const dist = Math.hypot(to.x - from.x, to.y - from.y)
     const dur = moveDuration(dist)
+    const steps = Math.max(2, Math.round(dist / Math.max(36, size() * 0.42)))
+    root.style.setProperty('--vp-step', `${Math.round(Math.max(320, Math.min(520, dur / steps)))}ms`)
     face = faceForDelta(to.x - from.x, face)
     setMove('hop')
     phase = { type: 'goto', from, to, start: performance.now(), dur, hops: hopCount(dur), then }
@@ -203,7 +219,7 @@ export function attachRoam(root: HTMLElement): () => void {
       return 'raf'
     }
     if (act === 'chase') {
-      if (performance.now() - pointer.t > 2200) return begin(pickRoamAct(act))
+      if (performance.now() - pointer.t > 2200) return begin('hop')
       setMove('chase')
       phase = { type: 'chase', until: performance.now() + ROAM_ACT_MS.chase }
       speak('chase', 0.55)
@@ -252,18 +268,28 @@ export function attachRoam(root: HTMLElement): () => void {
     if (phase.type === 'pause') {
       if (now - lastActivity > NAP_IDLE_MS && lastAct !== 'nap') return begin('nap')
       if (now < phase.until) return 'sleep'
-      const scripted = intro.shift()
-      if (scripted) return begin(scripted)
-      return begin(lastAct ? pickRoamAct(lastAct) : 'hop')
+      const cue = script.shift()
+      if (cue === 'idle') {
+        pauseNext(1700)
+        return 'sleep'
+      }
+      if (cue === 'hop') return begin('hop')
+      if (cue) return begin(cue)
+      if (now >= nextVignetteAt) {
+        const act = pickVignette(lastVignette)
+        lastVignette = act
+        nextVignetteAt = now + gapMs()
+        return begin(act)
+      }
+      return begin('hop')
     }
 
     if (phase.type === 'goto') {
       const t = Math.min(1, (now - phase.start) / phase.dur)
-      const eased = smoothstep(t)
-      const lift = hopArc(t, phase.hops) * Math.min(22, size() * 0.32)
+      // Linear travel so each step stays with the body. The rig bobs; the feet are not lifted off the page.
       pos = {
-        x: lerp(phase.from.x, phase.to.x, eased),
-        y: lerp(phase.from.y, phase.to.y, eased) + lift,
+        x: lerp(phase.from.x, phase.to.x, t),
+        y: lerp(phase.from.y, phase.to.y, t),
       }
       apply()
       if (t < 1) return 'raf'
@@ -458,7 +484,7 @@ export function attachRoam(root: HTMLElement): () => void {
 
   park()
   if (!reduce) {
-    phase = { type: 'pause', until: performance.now() + 700 }
+    phase = { type: 'pause', until: performance.now() + 1600 }
     kick()
   }
 

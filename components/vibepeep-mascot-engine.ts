@@ -1,3 +1,4 @@
+import { pickDance, type DanceId } from '@/lib/mascot-dances'
 import {
   HOVER_LINES,
   HOVER_POOL,
@@ -11,6 +12,8 @@ import {
 } from '@/lib/mascot-reactions'
 
 const WINDOW_MS = 2000
+/** Two taps this close unlock the dance party. A slower second tap still tickles. */
+const QUICK_MS = 420
 const SULK_MS = 50000
 const COLORS = ['#FF8A1A', '#FF4E6A', '#FFD166', '#FFFFFF', '#7CFFCB', '#8AB4FF']
 
@@ -85,7 +88,9 @@ export function attachMascot(slot: HTMLElement): () => void {
   let fine = fineMq.matches
   let reaction: PlayId | null = null
   let last: PlayId | null = null
+  let lastDance: DanceId | null = null
   let stamps: number[] = []
+  let clickWait = 0
   let pointerKind = 'mouse'
   let off = false
   let lookX = 0
@@ -129,6 +134,13 @@ export function attachMascot(slot: HTMLElement): () => void {
     button.style.setProperty('--vp-x', '0')
     button.style.setProperty('--vp-y', '0')
     button.removeAttribute('data-mood')
+    if (id === 'party') {
+      const dance = pickDance(lastDance)
+      lastDance = dance
+      button.setAttribute('data-dance', dance)
+    } else {
+      button.removeAttribute('data-dance')
+    }
     button.setAttribute('data-react', id)
     setLine(line ?? (id === 'party' ? PARTY_LINE : REACTION_LINES[id]))
     spawnBits(fx, id)
@@ -137,6 +149,7 @@ export function attachMascot(slot: HTMLElement): () => void {
       if (reaction !== id) return
       reaction = null
       button.removeAttribute('data-react')
+      button.removeAttribute('data-dance')
       setLine(null)
       fx.replaceChildren()
     }, ms)
@@ -164,20 +177,32 @@ export function attachMascot(slot: HTMLElement): () => void {
     pointerKind = event.pointerType
   }
 
+  const cancelClickWait = () => {
+    if (!clickWait) return
+    window.clearTimeout(clickWait)
+    timers.delete(clickWait)
+    clickWait = 0
+  }
+
+  const playFromStamps = () => {
+    if (sulking) play('delighted')
+    else if (stamps.length >= 2) play('tickle')
+    else {
+      const previous = last && last !== 'party' ? last : null
+      play(pickReaction(previous))
+    }
+  }
+
   const onClick = (event: MouseEvent) => {
     const now = Date.now()
     lastClick = now
     stamps = [...stamps.filter((t) => now - t <= WINDOW_MS), now]
-    if (isPartyCombo(stamps, now, WINDOW_MS)) {
+    cancelClickWait()
+    if (isPartyCombo(stamps, now, QUICK_MS)) {
       stamps = []
       play('party')
-    } else if (sulking) {
-      play('delighted')
-    } else if (stamps.length >= 2) {
-      play('tickle')
     } else {
-      const previous = last && last !== 'party' ? last : null
-      play(pickReaction(previous))
+      clickWait = later(playFromStamps, QUICK_MS)
     }
     if (pointerKind === 'touch' && !reduce) {
       const rect = button.getBoundingClientRect()
@@ -310,7 +335,7 @@ export function attachMascot(slot: HTMLElement): () => void {
 
   const queued = Number(button.getAttribute('data-queued') || '0')
   button.removeAttribute('data-queued')
-  if (queued >= 5) play('party')
+  if (queued >= 2) play('party')
   else if (queued > 0) play(pickReaction(null))
 
   return () => {
@@ -326,10 +351,12 @@ export function attachMascot(slot: HTMLElement): () => void {
     reduceMq.removeEventListener('change', onReduce)
     fineMq.removeEventListener('change', onFine)
     if (lookRaf) cancelAnimationFrame(lookRaf)
+    cancelClickWait()
     window.clearTimeout(hoverTimer)
     for (const id of timers) window.clearTimeout(id)
     timers.clear()
     button.removeAttribute('data-react')
+    button.removeAttribute('data-dance')
     button.removeAttribute('data-mood')
     button.removeAttribute('data-blink')
     button.removeAttribute('data-off')
