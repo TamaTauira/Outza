@@ -6,6 +6,7 @@ import { isSameEvent, normalizeTitle, normalizeVenue } from '@/lib/quality'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
+import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 import { normalizeListingUrls, usableUrl } from '@/lib/listing-link'
 import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
 
@@ -58,8 +59,7 @@ function normTime(t?: string | null): string | null {
 }
 
 function cleanText(s?: string | null, max = 600): string {
-  if (!s) return ''
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max)
+  return sanitizeDbText(s, max)
 }
 
 export function makeSeriesKey(title: string, venue: string, city: string): string {
@@ -71,6 +71,7 @@ const STATUS_UPDATABLE = new Set(['CANCELLED', 'POSTPONED', 'RESCHEDULED', 'SOLD
 export async function saveEvent(ev: RawEvent): Promise<boolean> {
   if (!ev.title || !/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return false
   const title = cleanText(ev.title, 250)
+  if (!title) return false
   const description = cleanText(ev.description)
   const date = new Date(`${ev.date}T00:00:00.000Z`)
   if (date < sydneyToday()) return false
@@ -91,8 +92,22 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const status = ev.status && STATUS_UPDATABLE.has(ev.status) ? ev.status : 'SCHEDULED'
   const range = { min: parsedPrice.min, max: parsedPrice.max }
   const now = new Date()
-  const imageUrl = bestSourceUrl(ev.imageUrl)
-  const links = normalizeListingUrls({ source: ev.source, ticketUrl: ev.ticketUrl, sourceUrl: ev.sourceUrl, organiserUrl: ev.organiserUrl })
+  const imageUrl = bestSourceUrl(sanitizeDbUrl(ev.imageUrl, 2000))
+  const venueAddress = ev.venueAddress ? cleanText(ev.venueAddress, 500) : ''
+  const galleryUrls = (ev.galleryUrls ?? []).map((u) => sanitizeDbUrl(u, 2000)).filter((u): u is string => !!u).slice(0, 8)
+  // Repair escapes and unpaired surrogates before and after URL normalisation.
+  // usableUrl still cuts with slice(), which can split an emoji.
+  const links = normalizeListingUrls({
+    source: ev.source,
+    ticketUrl: sanitizeDbUrl(ev.ticketUrl, 2000),
+    sourceUrl: sanitizeDbUrl(ev.sourceUrl, 2000),
+    organiserUrl: sanitizeDbUrl(ev.organiserUrl, 2000),
+  })
+  const storedLinks = {
+    ticketUrl: sanitizeDbUrl(links.ticketUrl, 500),
+    sourceUrl: sanitizeDbUrl(links.sourceUrl, 500),
+    organiserUrl: sanitizeDbUrl(links.organiserUrl, 500),
+  }
 
   const data = {
     description, time, endTime, endDate, category, subTags, isLGBTI, isFree, price,
@@ -101,11 +116,11 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
     status, statusSource: status === 'SCHEDULED' ? null : ev.source, lastVerifiedAt: now,
     // A refresh that omits a link must not wipe one we already stored.
-    ...(links.ticketUrl ? { ticketUrl: links.ticketUrl } : {}),
-    ...(links.sourceUrl ? { sourceUrl: links.sourceUrl } : {}),
-    ...(links.organiserUrl ? { organiserUrl: links.organiserUrl } : {}),
+    ...(storedLinks.ticketUrl ? { ticketUrl: storedLinks.ticketUrl } : {}),
+    ...(storedLinks.sourceUrl ? { sourceUrl: storedLinks.sourceUrl } : {}),
+    ...(storedLinks.organiserUrl ? { organiserUrl: storedLinks.organiserUrl } : {}),
     // Visitor details only overwrite when the source actually supplies them
-    ...(ev.galleryUrls?.length ? { galleryUrls: ev.galleryUrls.slice(0, 8) } : {}),
+    ...(galleryUrls.length ? { galleryUrls } : {}),
     ...(ev.accessibilityInfo ? { accessibilityInfo: cleanText(ev.accessibilityInfo, 1000) } : {}),
     ...(ev.ageRestriction ? { ageRestriction: cleanText(ev.ageRestriction, 120) } : {}),
     ...(ev.organiserName ? { organiserName: cleanText(ev.organiserName, 160) } : {}),
@@ -127,7 +142,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       const update: Record<string, unknown> = {
         ...rest, sources, venueName, suburb,
         seriesKey: makeSeriesKey(title, venueName, city),
-        ...(ev.venueAddress ? { venueAddress: ev.venueAddress } : {}),
+        ...(venueAddress ? { venueAddress } : {}),
       }
       if (dedupeHash !== existing.dedupeHash) {
         const clash = await prisma.event.findUnique({ where: { dedupeHash }, select: { id: true } })
@@ -144,7 +159,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         }
       }
       await prisma.event.update({ where: { id: existing.id }, data: update })
-    } else await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...links })
+    } else await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
     return true
   }
 
@@ -160,14 +175,14 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const dup = candidates.find((c) => isSameEvent(c, { title, venueName, time, source: ev.source }))
   if (dup) {
     const sources = dup.sources.includes(ev.source) ? dup.sources : [...dup.sources, ev.source]
-    await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...links })
+    await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
     return false
   }
 
   await prisma.event.create({
     data: {
       ...data, title, date, venueName,
-      venueAddress: ev.venueAddress ?? null,
+      venueAddress: venueAddress || null,
       suburb,
       source: ev.source, sources: [ev.source], dedupeHash, city,
       seriesKey: makeSeriesKey(title, venueName, city),
