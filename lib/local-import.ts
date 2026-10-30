@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 import { yieldIfBudget } from '@/lib/source-budget'
 import { prisma } from '@/lib/db'
 import { CITIES, cityDef } from '@/lib/cities'
@@ -104,17 +105,17 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
     if (yieldIfBudget('local import')) break
     const r = d.row
     if (lastDate(d) < todayIn(cityDef(r.city).tz)) { skipped++; continue }
-    const { address, suburb, postcode } = splitAddress(r.venueName, r.venueAddress, r.suburb ?? r.city)
+    const place = splitAddress(r.venueName, r.venueAddress, r.suburb ?? r.city)
     const data = {
-      title: r.title.slice(0, 120), category: categoryFor(r.title),
-      description: (r.description?.trim() || r.title).slice(0, 2000),
-      address, suburb, postcode, city: r.city,
+      title: sanitizeDbText(r.title, 120), category: categoryFor(r.title),
+      description: sanitizeDbText(r.description?.trim() || r.title, 2000),
+      address: sanitizeDbText(place.address, 200), suburb: sanitizeDbText(place.suburb, 80), postcode: place.postcode, city: r.city,
       lat: r.latitude, lng: r.longitude, addressVerified: r.latitude != null && r.longitude != null,
       startDate: d.startDate, endDate: d.endDate, startTime: r.time!, endTime: r.endTime!,
       recurrence: d.recurrence, recurUntil: d.recurUntil,
-      priceNote: r.isFree ? 'Free' : r.price?.slice(0, 60) || null,
-      organiserName: (r.organiserName || r.venueName).slice(0, 120),
-      contactEmail: '', websiteUrl: r.ticketUrl || r.organiserUrl,
+      priceNote: r.isFree ? 'Free' : sanitizeDbText(r.price, 60) || null,
+      organiserName: sanitizeDbText(r.organiserName || r.venueName, 120),
+      contactEmail: '', websiteUrl: sanitizeDbUrl(r.ticketUrl || r.organiserUrl, 500),
       sourceName: LOCAL_IMPORT_SOURCES[r.source], sourceKey: d.sourceKey,
       expiresAt: new Date(`${addDaysStr(lastDate(d), 1)}T14:00:00Z`),
     }

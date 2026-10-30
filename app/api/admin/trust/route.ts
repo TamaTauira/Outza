@@ -3,7 +3,8 @@ import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized, forbidden } from '@/lib/session'
 import { reportReasonLabel } from '@/lib/trust-shared'
 import { sourceLabel } from '@/lib/quality'
-import { QUEUE_FLAG_ACTIONS, pendingTotal, type QueueKind } from '@/lib/trust-queue'
+import { QUEUE_FLAG_ACTIONS, flagIssueLabel, pendingTotal, type QueueKind } from '@/lib/trust-queue'
+import { loadListingHealth } from '@/lib/data-health'
 import { applyTrustItems } from '@/lib/trust-review'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ async function admin() {
   return { me }
 }
 
-const ev = { select: { id: true, title: true, city: true, date: true, source: true, ticketUrl: true, organiserUrl: true, status: true, promoterId: true } }
+const ev = { select: { id: true, title: true, city: true, date: true, source: true, ticketUrl: true, sourceUrl: true, organiserUrl: true, status: true, promoterId: true } }
 
 export async function GET(req: Request) {
   const a = await admin()
@@ -28,6 +29,7 @@ export async function GET(req: Request) {
   ])
   const pending = pendingTotal({ reports: reportCount, claims: claimCount, flags: flagCount })
   if (countOnly) return NextResponse.json({ pending, reports: reportCount, claims: claimCount, flags: flagCount })
+  const health = await loadListingHealth()
 
   const [reports, claims, flags] = await Promise.all([
     prisma.eventReport.findMany({ where: { status: 'OPEN' }, orderBy: { createdAt: 'desc' }, take: 200, include: { event: ev } }),
@@ -57,13 +59,13 @@ export async function GET(req: Request) {
     })),
     ...flags.map((f) => ({
       key: `flag:${f.id}`, kind: 'flag' as const, id: f.id,
-      issue: f.action === 'DUPLICATE_FLAGGED' ? 'Flagged duplicate' : 'Expired listings',
+      issue: flagIssueLabel(f.action),
       note: f.detail, source: f.eventId && byId.get(f.eventId) ? sourceLabel(byId.get(f.eventId)!.source) : 'Quality check',
       createdAt: f.createdAt, event: f.eventId ? byId.get(f.eventId) ?? null : null,
       who: 'Quality check',
     })),
   ].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-  return NextResponse.json({ pending, reports, claims, items })
+  return NextResponse.json({ pending, reports, claims, items, health })
 }
 
 const kinds = new Set<QueueKind>(['report', 'claim', 'flag'])

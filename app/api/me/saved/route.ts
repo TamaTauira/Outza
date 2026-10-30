@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { recordLandingFromCookieJar } from '@/lib/landing-stats'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { sydneyToday } from '@/lib/event-store'
 import { isPastEvent } from '@/lib/seo'
-import { verifiedFlags } from '@/lib/listing-trust'
-
 export const dynamic = 'force-dynamic'
 
 /** DB pre-filter one day wide (cities west of Sydney can still be on yesterday); the exact per-city check is isPastEvent. */
@@ -26,13 +26,11 @@ async function list(userId: string) {
     },
   })
   const upcoming = rows.filter((r) => !isPastEvent(r.event)).map((r) => r.event)
-  const flags = await verifiedFlags(upcoming)
   return NextResponse.json({
     events: upcoming.map((event) => ({
       ...event,
       description: event.description?.slice(0, 400) ?? null,
       lastVerifiedAt: event.lastVerifiedAt?.toISOString() ?? null,
-      verified: flags.get(event.id) ?? false,
     })),
   })
 }
@@ -55,7 +53,12 @@ export async function POST(req: Request) {
     if (b.saved) {
       const ev = await prisma.event.findUnique({ where: { id: b.eventId }, select: { id: true } })
       if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
-      await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
+      const already = await prisma.savedEvent.findUnique({ where: { userId_eventId: { userId: me.id, eventId: ev.id } }, select: { eventId: true } })
+      if (!already) {
+        await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
+        const jar = await cookies()
+        await recordLandingFromCookieJar((name) => jar.get(name)?.value, 'save')
+      }
     } else {
       await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: b.eventId } })
     }

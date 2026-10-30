@@ -26,6 +26,8 @@ model Event {
   price       String?
   imageUrl    String?
   ticketUrl   String?
+  /// Original listing page when it is not the same as the ticket link.
+  sourceUrl   String?
   source      String   @default("ticketmaster")
   city        String   @default("Sydney")
   latitude    Float?
@@ -56,11 +58,43 @@ model Event {
   capacity          Int?
   organiserName     String?
   organiserUrl      String?
+  /// IANA zone for startsAt/endsAt. Derived from the city. Not a public badge.
+  timezone        String?
+  /// True when the source listed no start time. Ranking treats these as possibly available.
+  allDay          Boolean   @default(false)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  /// Internal 0–100 score for ranking and filters. Never send this to the client.
+  confidenceScore Int?
+  venueId         String?
+  venue           Venue?    @relation(fields: [venueId], references: [id], onDelete: SetNull)
   // Image pipeline
   imageAssetId   String?
   imageLocked    Boolean   @default(false) // admin replaced the artwork; source refreshes must not overwrite it
   imageLookupAt  DateTime? // last attempt to find artwork on the event's own page (og:image / JSON-LD)
   organiserEditedAt DateTime? // the organiser edited this listing; source refreshes must not overwrite their details
+  /// Community hub taxonomy (garage-sales, school-fundraisers, …). Null on ingested listings.
+  communityKey       String?
+  /// null on ingested listings. PENDING_EMAIL | SUBMITTED
+  submissionState    String?
+  /// null on ingested listings. PENDING | APPROVED | REJECTED | REMOVED
+  approvalState      String?
+  /// SUBURB hides the street address. PRECISE is an organiser opt-in. Null on ingested listings.
+  locationVisibility String?
+  /// Soft-delete. The row and CommunityAudit history stay.
+  deletedAt          DateTime?
+  /// Private organiser email used for the verification code. Never rendered publicly.
+  contactEmail       String?
+  emailVerifiedAt    DateTime?
+  /// Organiser said the photo includes children. Public pages keep the genre placeholder.
+  childrenInImage    Boolean  @default(false)
+  /// School listings only: organiser confirmed the photo shows no children. Default off.
+  imageKidSafe       Boolean  @default(false)
+  templateKey        String?
+  communityFlags     String[] @default([])
+  submitIpHash       String?
+  /// sha256 of the manage link. The raw token is only emailed after verification.
+  manageTokenHash    String?  @unique
   referrals      EventReferral[]
   imageAsset     ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
   imageHistory   ImageHistory[]
@@ -77,6 +111,10 @@ model Event {
   signals     EventSignal[]
   togetherItems TogetherItem[]
   campaigns   Campaign[]
+  communityAudits CommunityAudit[]
+  occurrences   EventOccurrence[]
+  sourceRecords SourceRecord[]
+  verificationChecks VerificationCheck[]
 
   @@index([date])
   @@index([category])
@@ -91,6 +129,11 @@ model Event {
   @@index([seriesKey])
   @@index([city, date, duplicateOfId])
   @@index([imageAssetId])
+  @@index([communityKey, approvalState, date])
+  @@index([approvalState, deletedAt])
+  @@index([contactEmail])
+  @@index([startsAt])
+  @@index([venueId])
 }
 
 /// One processed source image, keyed by sha1 of its (upgraded) source URL. Shared by every event using that URL.
@@ -576,6 +619,73 @@ model LocalListing {
   @@index([imageAssetId])
 }
 
+/// Moderation and organiser history for a community listing. Removing a listing never deletes these rows.
+model CommunityAudit {
+  id        String   @id @default(cuid())
+  eventId   String
+  actorId   String?
+  action    String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Email code and magic-link token for one community submission.
+model CommunityCode {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String
+  tokenHash String    @unique
+  eventId   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@index([eventId])
+}
+
+/// Counters for community submissions and organic landings. No visitor identity.
+model CommunityMetric {
+  id        String   @id @default(cuid())
+  kind      String
+  city      String?
+  suburb    String?
+  category  String?
+  path      String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([city, suburb, category])
+}
+
+/// Organiser-saved starting point for the next community listing.
+model CommunityTemplate {
+  id                 String   @id @default(cuid())
+  ownerEmail         String
+  userId             String?
+  title              String
+  communityKey       String
+  description        String   @db.Text
+  suburb             String
+  city               String
+  startTime          String
+  endTime            String?
+  recurrence         String   @default("NONE")
+  locationVisibility String   @default("SUBURB")
+  organiserName      String?
+  websiteUrl         String?
+  isFree             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([ownerEmail])
+}
+
 /// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, TRA, pedestrian counts, Google Business Profile)
 model IntelSource {
   key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | tra | footfall | google_bp
@@ -1034,4 +1144,91 @@ model SponsorshipLead {
 model PaymentEvent {
   id        String   @id
   createdAt DateTime @default(now())
+}
+
+/// Aggregated guide conversions. One row per landing path and referrer type.
+model LandingStat {
+  id          String   @id @default(cuid())
+  path        String
+  source      String
+  views       Int      @default(0)
+  detailViews Int      @default(0)
+  saves       Int      @default(0)
+  leads       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([path, source])
+  @@index([source])
+}
+
+/// Venue row for hours cross-checks. Hours are stored only when a source supplied them.
+model Venue {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  city        String
+  timezone    String
+  latitude    Float?
+  longitude   Float?
+  openTime    String?
+  closeTime   String?
+  hoursSource String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  events      Event[]
+
+  @@index([city])
+}
+
+/// One normalised occurrence. Derived from the listing; the Event row stays the public record.
+model EventOccurrence {
+  id         String    @id @default(cuid())
+  eventId    String
+  startsAt   DateTime
+  endsAt     DateTime?
+  timezone   String
+  allDay     Boolean   @default(false)
+  status     String
+  recurrence String?
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, startsAt])
+  @@index([startsAt])
+}
+
+/// Provenance for one source on a listing. Conflicts are recorded; the primary fields are not overwritten.
+model SourceRecord {
+  id        String   @id @default(cuid())
+  eventId   String
+  source    String
+  sourceUrl String?  @db.Text
+  seenAt    DateTime @default(now())
+  missing   Boolean  @default(false)
+  changed   Boolean  @default(false)
+  conflicts Json?
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, source])
+  @@index([missing, changed])
+}
+
+/// Rule-based check. Outcomes are ok, due, flag, or skipped. Never a guarantee.
+model VerificationCheck {
+  id        String   @id @default(cuid())
+  eventId   String?
+  kind      String
+  outcome   String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([kind, createdAt])
+  @@index([eventId])
+}
+
+/// Admin counters that have no other table (search-result clicks).
+model AnalyticsCounter {
+  key       String   @id
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
 }

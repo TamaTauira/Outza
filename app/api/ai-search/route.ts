@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
       ...(filters.paidOnly ? { isFree: false } : {}),
       ...(filters.lgbtiq ? { isLGBTI: true } : {}),
       ...(filters.subTag ? { subTags: { has: filters.subTag } } : {}),
-      ...(narrowed.length ? { AND: narrowed } : {}),
+      AND: [...narrowed, { deletedAt: null }, { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] }],
     }
     const kw: Prisma.EventWhereInput = filters.keywords.length
       ? { AND: [{ OR: filters.keywords.flatMap((k) => [

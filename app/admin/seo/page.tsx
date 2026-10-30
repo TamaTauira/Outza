@@ -33,7 +33,7 @@ export default async function AdminSeoPage() {
     )
   }
   const r = await getSeoReport()
-  const sitemapTotal = r.sitemap.static + r.sitemap.guides + r.sitemap.suburbs + r.sitemap.combos + r.sitemap.events + r.sitemap.local
+  const sitemapTotal = r.sitemap.static + r.sitemap.guides + r.sitemap.suburbs + r.sitemap.combos + r.sitemap.seasons + r.sitemap.editorial + r.sitemap.events + r.sitemap.local
   const cities = [...new Set(r.pages.map((p) => p.city))]
   const topics = [...new Map(r.pages.map((p) => [p.topic, p.label])).entries()]
   const totalVisits = r.referrals.reduce((s, x) => s + x.visits, 0)
@@ -56,7 +56,7 @@ export default async function AdminSeoPage() {
       <div className="grid gap-6 md:grid-cols-2">
         <Card title="Sitemap" sub="URLs currently listed in /sitemap.xml">
           <table className="w-full text-sm"><tbody>
-            {[['Core pages', r.sitemap.static], ['City & topic guides', r.sitemap.guides], ['Suburb pages', r.sitemap.suburbs], ['Local combinations', r.sitemap.combos], ['Upcoming events', r.sitemap.events], ['VibePeep Local listings', r.sitemap.local]].map(([k, v]) => (
+            {[['Core pages', r.sitemap.static], ['City & topic guides', r.sitemap.guides], ['Suburb pages', r.sitemap.suburbs], ['Local combinations', r.sitemap.combos], ['Seasonal pages', r.sitemap.seasons], ['Editorial hubs', r.sitemap.editorial], ['Upcoming events', r.sitemap.events], ['VibePeep Local listings', r.sitemap.local]].map(([k, v]) => (
               <tr key={k as string} className="border-b border-border/40"><td className="py-1.5">{k}</td><td className="py-1.5 text-right font-mono">{v}</td></tr>
             ))}
             <tr><td className="py-1.5 font-semibold">Total</td><td className="py-1.5 text-right font-mono font-semibold">{sitemapTotal}</td></tr>
@@ -103,6 +103,53 @@ export default async function AdminSeoPage() {
         </Card>
       </div>
 
+      <Card title="Landing-page conversions" sub="Guide visits, then what people did next. Search means the visit to the guide came from a search engine. Brand versus non-brand queries need Search Console, which is not connected.">
+        {r.landing.views === 0 && r.landing.detailViews === 0 ? (
+          <p className="text-sm text-muted-foreground">No guide visits recorded yet. Counters start when someone opens a city, season or editorial page.</p>
+        ) : (
+          <div className="space-y-4">
+            <ul className="text-sm space-y-1.5">
+              <li className="flex justify-between"><span>Guide views</span><span className="font-mono">{r.landing.views}</span></li>
+              <li className="flex justify-between"><span>Event pages opened from a guide</span><span className="font-mono">{r.landing.detailViews}</span></li>
+              <li className="flex justify-between"><span>Saves attributed to a guide</span><span className="font-mono">{r.landing.saves}</span></li>
+              <li className="flex justify-between"><span>Organiser leads (claim or organiser link)</span><span className="font-mono">{r.landing.leads}</span></li>
+              <li className="flex justify-between"><span>Engaged search rate</span><span className="font-mono">{pct(r.landing.bySource.find((s) => s.source === 'SEARCH')?.detailViews ?? 0, r.landing.bySource.find((s) => s.source === 'SEARCH')?.views ?? 0)}</span></li>
+            </ul>
+            {r.landing.bySource.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs text-muted-foreground"><th className="py-1 pr-3">Source</th><th className="py-1 text-right">Views</th><th className="py-1 text-right">Event opens</th><th className="py-1 text-right">Saves</th><th className="py-1 text-right">Leads</th></tr></thead>
+                  <tbody>
+                    {r.landing.bySource.map((row) => (
+                      <tr key={row.source} className="border-t border-border/40">
+                        <td className="py-1.5 pr-3">{SOURCE_LABEL[row.source] ?? row.source}</td>
+                        <td className="py-1.5 text-right font-mono">{row.views}</td>
+                        <td className="py-1.5 text-right font-mono">{row.detailViews}</td>
+                        <td className="py-1.5 text-right font-mono">{row.saves}</td>
+                        <td className="py-1.5 text-right font-mono">{row.leads}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {r.landing.topSearch.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold mb-1">Search-referred guides</p>
+                <ul className="text-xs space-y-1">
+                  {r.landing.topSearch.map((row) => (
+                    <li key={row.path} className="flex justify-between gap-2">
+                      <Link href={row.path} target="_blank" className="hover:underline truncate">{row.path}</Link>
+                      <span className="font-mono shrink-0">{row.views} views · {row.detailViews} opens</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
       <Card title="Opportunities" sub={`Guides close to the ${MIN_INDEX}-listing index threshold. More genuine listings (organiser submissions, VibePeep Local) would make them indexable.`}>
         {r.opportunities.length === 0 ? <p className="text-sm text-muted-foreground">Every guide with listings is already indexable.</p> : (
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-1.5 text-sm">
@@ -129,6 +176,7 @@ export default async function AdminSeoPage() {
               ))}
               <tr className="border-t border-border/40"><td className="py-1.5 pr-3">Suburb pages</td>{r.suburbs.map((s) => <td key={s.city} className="px-2 py-1.5 text-right font-mono">{s.count}</td>)}</tr>
               <tr className="border-t border-border/40"><td className="py-1.5 pr-3">Indexable combinations</td>{r.combos.map((s) => <td key={s.city} className="px-2 py-1.5 text-right font-mono">{s.indexable}</td>)}</tr>
+              <tr className="border-t border-border/40"><td className="py-1.5 pr-3">Seasonal pages</td>{r.seasons.map((s) => <td key={s.city} className="px-2 py-1.5 text-right font-mono">{s.indexable}</td>)}</tr>
             </tbody>
           </table>
         </div>

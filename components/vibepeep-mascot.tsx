@@ -3,12 +3,58 @@
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { BRAND_MASCOT_HEIGHT, BRAND_MASCOT_SRC, BRAND_MASCOT_WIDTH } from '@/lib/brand'
+import rig from '@/lib/mascot-rig.json'
 
 export type MascotBubble = 'center' | 'start'
 
 function mascotLabel(alt?: string) {
   const name = alt?.trim() ? alt.trim() : 'VibePeep'
   return `${name}. Press for a surprise.`
+}
+
+const PART_CLASS: Record<string, string> = {
+  body: 'vp-torso',
+  'arm-l': 'vp-arm vp-arm-l',
+  'arm-r': 'vp-arm vp-arm-r',
+  'leg-l': 'vp-leg vp-leg-l',
+  'leg-r': 'vp-leg vp-leg-r',
+  antenna: 'vp-ant',
+  'pupil-l': 'vp-pupil vp-pupil-l',
+  'pupil-r': 'vp-pupil vp-pupil-r',
+  'spark-0': 'vp-spark vp-spark-0',
+  'spark-1': 'vp-spark vp-spark-1',
+  'spark-2': 'vp-spark vp-spark-2',
+  'spark-3': 'vp-spark vp-spark-3',
+}
+
+type RigBox = { left: number; top: number; width: number; height: number; originX: number; originY: number }
+
+/** Segmented cut of vibepeep-mascot.png. At rest the parts stack back into that picture. */
+function MascotRig() {
+  const layout = rig.layout as Record<string, RigBox>
+  return (
+    <span className="vp-rig">
+      {rig.order.map((name) => {
+        const box = layout[name]
+        if (!box) return null
+        return (
+          <span
+            key={name}
+            className={`vp-part ${PART_CLASS[name] ?? ''}`}
+            style={{
+              left: `${box.left * 100}%`,
+              top: `${box.top * 100}%`,
+              width: `${box.width * 100}%`,
+              height: `${box.height * 100}%`,
+              transformOrigin: `${box.originX * 100}% ${box.originY * 100}%`,
+            }}
+          >
+            <Image src={`/mascot/${name}.png`} alt="" fill unoptimized sizes="160px" draggable={false} className="object-fill" />
+          </span>
+        )
+      })}
+    </span>
+  )
 }
 
 function MascotArt({ priority, onDark, sizes }: { priority: boolean; onDark: boolean; sizes: string }) {
@@ -42,6 +88,8 @@ export function VibePeepMascot({
   onDark = false,
   bubble = 'center',
   sizes = '(max-width: 640px) 112px, 192px',
+  /** Stacked limb rig for the roaming buddy. Other spots keep the single bitmap. */
+  rig: living = false,
 }: {
   className?: string
   alt?: string
@@ -49,6 +97,7 @@ export function VibePeepMascot({
   onDark?: boolean
   bubble?: MascotBubble
   sizes?: string
+  rig?: boolean
 }) {
   const slotRef = useRef<HTMLSpanElement>(null)
 
@@ -101,7 +150,7 @@ export function VibePeepMascot({
             <span className="vp-look">
               <span className="vp-face">
                 <span className="vp-act">
-                  <MascotArt priority={priority} onDark={onDark} sizes={sizes} />
+                  {living ? <MascotRig /> : <MascotArt priority={priority} onDark={onDark} sizes={sizes} />}
                   <span className="vp-lid vp-lid-l" aria-hidden="true" />
                   <span className="vp-lid vp-lid-r" aria-hidden="true" />
                   <span className="vp-blush vp-blush-l" aria-hidden="true" />

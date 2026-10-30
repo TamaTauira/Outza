@@ -17,7 +17,7 @@ function readMinimised() {
   }
 }
 
-/** Roaming mascot on every page. The hero art stays put; this one walks the viewport. */
+/** The one living mascot. He walks the viewport; the homepage does not also show a hero. */
 export function VibePeepBuddy() {
   const path = usePathname()
   const onMap = path === '/map'
@@ -66,8 +66,8 @@ export function VibePeepBuddy() {
         <span className="vp-shadow" aria-hidden="true" />
         <div className="vp-actor">
           <VibePeepMascot
+            rig
             className="w-full"
-            sizes={onMap ? '48px' : '(max-width: 639px) 56px, 72px'}
             bubble="start"
             alt="VibePeep"
           />

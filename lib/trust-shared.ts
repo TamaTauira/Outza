@@ -7,6 +7,8 @@ export const REPORT_REASONS = [
   { key: 'CANCELLED', label: 'Cancelled or postponed' },
   { key: 'DUPLICATE', label: 'Duplicate listing' },
   { key: 'BROKEN_LINK', label: 'Ticket or website link broken' },
+  { key: 'UNSAFE', label: 'Unsafe or fraudulent' },
+  { key: 'PRIVACY', label: 'Shows a child or a precise school address' },
   { key: 'OTHER', label: 'Something else' },
 ] as const
 export type ReportReason = (typeof REPORT_REASONS)[number]['key']

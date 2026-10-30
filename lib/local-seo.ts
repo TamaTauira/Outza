@@ -12,23 +12,17 @@
  * separate near-me URL would repeat the same listings.
  * Empty combinations 404. Near-duplicates redirect to the broader guide.
  * Thin and stale combinations render with noindex and stay out of the sitemap.
+ * Thresholds live in lib/indexability.ts so other guides can reuse them.
  */
 import { conflictsWithMusicIntent } from '@/lib/categories'
 import type { CityDef } from '@/lib/cities'
+import { INDEX_FRESH_DAYS, INDEX_MIN_FRESH, INDEX_MIN_LISTINGS, assessIndexability, blocksAsNearDuplicate } from '@/lib/indexability'
 import {
-  MIN_INDEX, TOPICS, WHEN_KEYS, addDaysKey, citySlug, cityToday, isLandingSuburb, isTonightSlot, slugify, topicDef, weekendRange,
+  TOPICS, WHEN_KEYS, addDaysKey, citySlug, cityToday, isLandingSuburb, isTonightSlot, slugify, topicDef, weekendRange,
   type TopicDef, type TopicKey, type WhenKey,
 } from '@/lib/seo'
 
-/** Undated suburb × activity pages need this many listings inside the fresh window. */
-export const MIN_FRESH = 2
-/** Days ahead that still count as fresh for an undated suburb × activity page. */
-export const FRESH_DAYS = 28
-/**
- * A narrower page is a near-duplicate when it contains at least this fraction of
- * its broader parent. 6 of the parent's 7 listings is not a distinct page.
- */
-export const NEAR_DUP_RATIO = 0.85
+export { INDEX_MIN_FRESH as MIN_FRESH, INDEX_FRESH_DAYS as FRESH_DAYS, INDEX_MAX_PARENT_OVERLAP as NEAR_DUP_RATIO } from '@/lib/indexability'
 
 const DATE_TOPICS = new Set<TopicKey>(['events', 'tonight', 'this-weekend'])
 export const ACTIVITY_TOPICS: TopicDef[] = TOPICS.filter((t) => !DATE_TOPICS.has(t.key))
@@ -430,7 +424,7 @@ export function evaluateGuides(city: CityDef, rows: InvRow[], now = new Date()):
   const ctx: EvalCtx = {
     city,
     today,
-    freshUntil: addDaysKey(today, FRESH_DAYS),
+    freshUntil: addDaysKey(today, INDEX_FRESH_DAYS),
     windows: new Map(WHEN_KEYS.map((key) => [key, whenRange(city, key, now)])),
   }
   const tallies = new Map<string, { total: number; fresh: number }>()
@@ -463,16 +457,27 @@ export function evaluateGuides(city: CityDef, rows: InvRow[], now = new Date()):
     const { total, fresh } = tally(spec)
     const kind = guideKind(spec)
     const base = { spec, path, kind, total, fresh, canonicalPath: path }
-    let decision: GuideDecision
-    if (total <= 0) decision = { ...base, index: false, reason: 'empty' }
-    else if (!isComboKind(kind)) decision = { ...base, index: total >= MIN_INDEX, reason: total >= MIN_INDEX ? 'index' : 'thin' }
-    else if (total < MIN_INDEX) decision = { ...base, index: false, reason: 'thin' }
-    else if (kind === 'suburb-activity' && fresh < MIN_FRESH) decision = { ...base, index: false, reason: 'stale' }
-    else {
-      const dups = parentSpecs(spec, ctx)
+    const combo = isComboKind(kind)
+    const requireFresh = kind === 'suburb-activity'
+    const couldDuplicate = combo && total >= INDEX_MIN_LISTINGS && !(requireFresh && fresh < INDEX_MIN_FRESH)
+    const dups = couldDuplicate
+      ? parentSpecs(spec, ctx)
         .map((parent) => ({ spec: parent, total: tally(parent).total, path: guidePath(city, parent)! }))
-        .filter((parent) => parent.total >= total && total / parent.total >= NEAR_DUP_RATIO)
+        .filter((parent) => blocksAsNearDuplicate(total, parent.total))
         .sort((a, b) => a.total - b.total || a.path.length - b.path.length || a.path.localeCompare(b.path))
+      : []
+    const overlap = dups[0] ? total / dups[0].total : null
+    const gate = assessIndexability({
+      total,
+      fresh,
+      requireFresh,
+      parentOverlap: overlap,
+      mode: combo ? 'combo' : 'primary',
+    })
+    let decision: GuideDecision
+    if (gate.reason !== 'near-duplicate') {
+      decision = { ...base, index: gate.index, reason: gate.reason }
+    } else {
       let canonical: string | null = null
       for (const dup of dups) {
         const parent = decide(dup.spec)

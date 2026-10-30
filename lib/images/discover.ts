@@ -1,3 +1,4 @@
+import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 
@@ -110,7 +111,7 @@ export async function discoverMissingImages(opts: { maxPages?: number; budgetMs?
       }).catch(() => {})
     }
   }
-  await Promise.all(Array.from({ length: 4 }, worker))
+  await Promise.all(Array.from({ length: Math.min(4, JOB_CONNECTION_LIMIT) }, worker))
   if (pages.length) console.log(`[images] page lookup: ${found}/${done} pages had artwork (${events} events)`)
   return { pages: done, found, events }
 }

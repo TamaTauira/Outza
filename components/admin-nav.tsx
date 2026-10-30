@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/admin', label: 'Dashboard', exact: true },
   { href: '/admin/trust', label: 'Trust & listings' },
   { href: '/admin/local', label: 'Local' },
+  { href: '/admin/community', label: 'Community' },
   { href: '/admin/newsletter', label: 'Newsletter' },
   { href: '/admin/seo', label: 'SEO' },
   { href: '/admin/images', label: 'Images' },

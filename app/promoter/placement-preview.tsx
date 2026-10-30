@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Eye, ImageOff, MapPin } from 'lucide-react'
+import { Eye, MapPin } from 'lucide-react'
 import { ADDONS, TIERS, type Addon, type Tier } from '@/lib/tiers'
+import { eventPictureSrc } from '@/lib/placeholders'
 
-type Ev = { title: string; date: string; city?: string; venueName: string; imageUrl?: string | null }
+type Ev = { title: string; date: string; city?: string; venueName: string; imageUrl?: string | null; category?: string | null }
 
 const fmt = (d: string) => new Date(d).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
 
@@ -20,11 +21,7 @@ export function PlacementPreview({ event, tier, addons }: { event?: Ev; tier: Ti
       <div className="grid sm:grid-cols-[220px_1fr] gap-5 items-start">
         <div className="rounded-xl overflow-hidden bg-card shadow-md border border-border">
           <div className="relative aspect-[4/3] bg-muted">
-            {event.imageUrl && imgOk ? (
-              <img src={event.imageUrl} alt={`Artwork for ${event.title}`} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgOk(false)} />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><ImageOff className="w-6 h-6" /></div>
-            )}
+            <img src={event.imageUrl && imgOk ? event.imageUrl : eventPictureSrc(null, event.category, 'wide')} alt={`Artwork for ${event.title}`} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgOk(false)} />
             <span className="absolute z-10 top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ backgroundColor: t.color }}>{t.name.toUpperCase()}</span>
             <span className="absolute z-10 top-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">Sponsored</span>
           </div>

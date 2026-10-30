@@ -1,8 +1,12 @@
-import { prisma } from '@/lib/prisma'
+import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
+import { prisma, runWithJobPrisma } from '@/lib/prisma'
 import { makeSeriesKey, sydneyToday } from '@/lib/event-store'
 import { reconcileSuburb, refineStoredCategory } from '@/lib/categories'
 import { tidyVenueName } from '@/lib/cities'
-import { SOURCES, inferRecurrence, isSameEvent, parsePriceRange } from '@/lib/quality'
+import { repairKnownListingUrl, usableUrl } from '@/lib/listing-link'
+import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
+import { fieldConflicts, sameRealWorldEvent } from '@/lib/listing-window'
+import { runVerificationPass } from '@/lib/verification-pass'
 import { yieldIfBudget } from '@/lib/source-budget'
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
@@ -16,9 +20,18 @@ async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unkn
  * Runs after every refresh: backfills quality fields, merges cross-source duplicates
  * that slipped through ingestion, and labels recurring series.
  */
-export async function runQualityPass() {
+export function runQualityPass() {
+  // Own client even when the quality cron calls this outside a refresh, so the
+  // batched updates cannot take the connections event pages are using.
+  return runWithJobPrisma(() => runQualityPassInner())
+}
+
+async function runQualityPassInner() {
   const today = sydneyToday()
   const upcoming = { date: { gte: today } }
+
+  // 0) Keep a usable source link. Repaired and copied only; a good URL is never cleared.
+  const links = await backfillListingLinks(today)
 
   // 1) Backfill fields for listings created before the quality fields existed
   await prisma.$executeRaw`UPDATE "Event" SET "sources" = ARRAY["source"] WHERE cardinality("sources") = 0 AND "date" >= ${today}`
@@ -27,7 +40,7 @@ export async function runQualityPass() {
     where: { ...upcoming, OR: [{ seriesKey: null }, { priceMin: null, price: { not: null } }, { priceMin: null, isFree: true }] },
     select: { id: true, title: true, venueName: true, city: true, isFree: true, price: true, seriesKey: true },
   })
-  await inBatches(missing, 20, (e) => {
+  await inBatches(missing, JOB_CONNECTION_LIMIT, (e) => {
     const r = parsePriceRange(e.isFree, e.price)
     return prisma.event.update({
       where: { id: e.id },
@@ -46,6 +59,8 @@ export async function runQualityPass() {
     select: {
       id: true, title: true, venueName: true, time: true, endTime: true, price: true, city: true, date: true,
       source: true, sources: true, promoterId: true, createdAt: true, status: true, statusSource: true,
+      organiserName: true,
+      ticketUrl: true, sourceUrl: true, organiserUrl: true,
       _count: { select: { savedBy: true, attendees: true, promotions: true } },
     },
   })
@@ -65,7 +80,7 @@ export async function runQualityPass() {
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
       used.add(primary.id)
-      const blocked = sorted.filter((o) => !used.has(o.id) && (o.promoterId || o._count.promotions) && isSameEvent(primary, o))
+      const blocked = sorted.filter((o) => !used.has(o.id) && (o.promoterId || o._count.promotions) && sameRealWorldEvent(primary, o))
       for (const other of blocked) {
         audits.push({
           eventId: other.id,
@@ -73,7 +88,7 @@ export async function runQualityPass() {
           detail: `Likely duplicate of ${primary.id} (${primary.title}). Left in place because it is organiser-owned or promoted.`,
         })
       }
-      const dups = sorted.filter((o) => !used.has(o.id) && !o.promoterId && !o._count.promotions && isSameEvent(primary, o))
+      const dups = sorted.filter((o) => !used.has(o.id) && !o.promoterId && !o._count.promotions && sameRealWorldEvent(primary, o))
       if (!dups.length) continue
       dups.forEach((d) => used.add(d.id))
       for (const dup of dups) {
@@ -82,9 +97,22 @@ export async function runQualityPass() {
           action: 'DUPLICATE_MERGED',
           detail: `Linked as a duplicate of ${primary.id} (${primary.title}). The listing stays in the database and drops off public boards.`,
         })
+        const conflicts = fieldConflicts(primary, dup)
+        if (conflicts.length) {
+          audits.push({
+            eventId: primary.id,
+            action: 'TIME_CONFLICT',
+            detail: `Kept ${primary.id} (${primary.title}). ${dup.source} disagreed: ${conflicts.join('; ')}. Provenance stays on sources. Nothing was deleted.`,
+          })
+        }
       }
       const sources = [...new Set([...primary.sources, primary.source, ...dups.flatMap((d) => [d.source, ...d.sources])])]
       const fill: Record<string, unknown> = { sources }
+      for (const key of ['ticketUrl', 'sourceUrl', 'organiserUrl'] as const) {
+        if (usableUrl(primary[key])) continue
+        const found = dups.map((d) => usableUrl(repairKnownListingUrl(d[key], d.source))).find((u): u is string => !!u)
+        if (found) fill[key] = found
+      }
       if (!primary.time) fill.time = dups.find((d) => d.time)?.time ?? null
       if (!primary.endTime) fill.endTime = dups.find((d) => d.endTime)?.endTime ?? null
       if (!primary.price) fill.price = dups.find((d) => d.price)?.price ?? null
@@ -115,7 +143,7 @@ export async function runQualityPass() {
     if (rec) recurring++
     if (g.current.size !== 1 || !g.current.has(rec)) updates.push([key, rec])
   }
-  await inBatches(updates, 20, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
+  await inBatches(updates, JOB_CONNECTION_LIMIT, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
 
   if (yieldIfBudget('quality pass')) {
     console.log('[quality] stopped at time budget')
@@ -149,12 +177,12 @@ export async function runQualityPass() {
     if (data.suburb !== undefined || data.venueName) places++
     if (Object.keys(data).length) placeUpdates.push({ id: e.id, data })
   }
-  await inBatches(placeUpdates, 20, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
+  await inBatches(placeUpdates, JOB_CONNECTION_LIMIT, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
 
   const expired = await prisma.event.count({ where: { date: { lt: today }, duplicateOfId: null, status: 'SCHEDULED' } })
   const since = new Date(Date.now() - 20 * 60 * 60 * 1000)
   const recent = await prisma.qualityAudit.findMany({
-    where: { createdAt: { gte: since }, action: { in: ['DUPLICATE_MERGED', 'DUPLICATE_FLAGGED', 'EXPIRED_HIDDEN'] } },
+    where: { createdAt: { gte: since }, action: { in: ['DUPLICATE_MERGED', 'DUPLICATE_FLAGGED', 'EXPIRED_HIDDEN', 'TIME_CONFLICT'] } },
     select: { eventId: true, action: true },
   })
   const seen = new Set(recent.map((row) => `${row.action}:${row.eventId ?? ''}`))
@@ -177,7 +205,57 @@ export async function runQualityPass() {
     })
   }
 
-  const result = { backfilled: missing.length, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired }
+  const verification = yieldIfBudget('quality pass')
+    ? { normalized: 0, flagged: 0, checks: 0 }
+    : await runVerificationPass()
+  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired, verification }
   console.log('[quality] pass complete', result)
   return result
+}
+
+/** Fill sourceUrl from a ticket or organiser link already on the row, and repair glued Humanitix hosts. */
+async function backfillListingLinks(today: Date): Promise<number> {
+  const rows = await prisma.event.findMany({
+    where: { date: { gte: today }, source: 'humanitix' },
+    select: { id: true, ticketUrl: true, sourceUrl: true },
+  })
+  let repaired = 0
+  await inBatches(rows, JOB_CONNECTION_LIMIT, async (row) => {
+    const ticketUrl = repairKnownListingUrl(row.ticketUrl, 'humanitix')
+    const sourceUrl = repairKnownListingUrl(row.sourceUrl, 'humanitix') ?? ticketUrl
+    if (ticketUrl === row.ticketUrl && sourceUrl === row.sourceUrl) return
+    repaired++
+    await prisma.event.update({
+      where: { id: row.id },
+      data: {
+        ...(ticketUrl ? { ticketUrl } : {}),
+        ...(sourceUrl ? { sourceUrl } : {}),
+      },
+    })
+  })
+  const cleared = await prisma.$executeRaw`
+    UPDATE "Event" SET
+      "ticketUrl" = CASE WHEN "ticketUrl" !~ '^https?://' OR "ticketUrl" ~ '/(undefined|null)/?($|\\?)' THEN NULL ELSE "ticketUrl" END,
+      "sourceUrl" = CASE WHEN "sourceUrl" !~ '^https?://' OR "sourceUrl" ~ '/(undefined|null)/?($|\\?)' THEN NULL ELSE "sourceUrl" END
+    WHERE "date" >= ${today}
+      AND (
+        ("ticketUrl" IS NOT NULL AND ("ticketUrl" !~ '^https?://' OR "ticketUrl" ~ '/(undefined|null)/?($|\\?)'))
+        OR ("sourceUrl" IS NOT NULL AND ("sourceUrl" !~ '^https?://' OR "sourceUrl" ~ '/(undefined|null)/?($|\\?)'))
+      )
+  `
+  const copiedTicket = await prisma.$executeRaw`
+    UPDATE "Event" SET "sourceUrl" = "ticketUrl"
+    WHERE "date" >= ${today}
+      AND ("sourceUrl" IS NULL OR "sourceUrl" = '')
+      AND "ticketUrl" ~ '^https?://'
+  `
+  const copiedOrg = await prisma.$executeRaw`
+    UPDATE "Event" SET "sourceUrl" = "organiserUrl"
+    WHERE "date" >= ${today}
+      AND ("sourceUrl" IS NULL OR "sourceUrl" = '')
+      AND ("ticketUrl" IS NULL OR "ticketUrl" = '')
+      AND "organiserUrl" ~ '^https?://'
+  `
+  const n = (v: unknown) => (typeof v === 'bigint' ? Number(v) : Number(v) || 0)
+  return repaired + n(copiedTicket) + n(copiedOrg) + n(cleared)
 }

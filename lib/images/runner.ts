@@ -1,4 +1,5 @@
-import { prisma } from '@/lib/prisma'
+import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
+import { prisma, runWithJobPrisma } from '@/lib/prisma'
 import { publicUrl } from '@/lib/s3'
 import { sydneyToday } from '@/lib/event-store'
 import { assetIdFor, bestSourceUrl } from './source-url'
@@ -78,7 +79,7 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
   if (running) return running
   const limit = opts.limit ?? 300
   const deadline = Date.now() + (opts.budgetMs ?? 8 * 60 * 1000)
-  running = (async () => {
+  running = runWithJobPrisma(async () => {
     const sharp = await loadSharp()
     const run = await prisma.imageRun.create({ data: { trigger: opts.trigger ?? 'refresh' } })
     const counts: Record<Outcome, number> = { ok: 0, enhanced: 0, rejected: 0, review: 0, failed: 0, cached: 0, unchanged: 0 }
@@ -124,7 +125,8 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
           if (r.outcome === 'failed' && r.note && errors.length < 20) errors.push(`${id.slice(0, 8)}: ${r.note}`)
         }
       }
-      await Promise.all(Array.from({ length: opts.concurrency ?? 3 }, worker))
+      const concurrency = Math.max(1, Math.min(opts.concurrency ?? 3, JOB_CONNECTION_LIMIT))
+      await Promise.all(Array.from({ length: concurrency }, worker))
     } catch (e: any) {
       errors.push(e?.message ?? 'image pass failed')
       console.error('[images] pass failed:', e?.message)
@@ -136,7 +138,7 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
     }).catch(() => {})
     console.log(`[images] pass done: ${processed} processed`, counts)
     return { processed, counts, errors }
-  })().finally(() => { running = null })
+  }).finally(() => { running = null })
   return running
 }
 

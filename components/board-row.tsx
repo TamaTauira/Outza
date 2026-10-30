@@ -7,7 +7,8 @@ import { toast } from 'sonner'
 import { useItinerary, eventToItem } from '@/lib/itinerary'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
-import { categoryIcon, checkedAgo, formatPrice, formatTime, toMinutes } from '@/lib/board'
+import { categoryIcon, checkedAgo, formatPrice } from '@/lib/board'
+import { formatBoardRange, liveStatus } from '@/lib/listing-window'
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
@@ -19,19 +20,7 @@ export type BoardEvent = SavedEvent
 export type Status = { label: string; tone: 'live' | 'soon' | 'later' | 'done' | 'upcoming' | 'tbc' }
 
 export function getStatus(ev: BoardEvent, day: string, today: string | null, nowMin: number): Status {
-  const start = toMinutes(ev.time)
-  if (start === null) return { label: 'All day', tone: 'tbc' }
-  if (!today || day !== today) return { label: 'Upcoming', tone: 'upcoming' }
-  const endSameDay = !ev.endDate || ev.endDate.slice(0, 10) === day
-  let end = toMinutes(ev.endTime)
-  if (end !== null && endSameDay && end <= start) end = null
-  const effectiveEnd = !endSameDay ? 24 * 60 : end ?? start + 180
-  if (nowMin >= effectiveEnd) return { label: 'Ended', tone: 'done' }
-  if (nowMin >= start) return { label: 'On now', tone: 'live' }
-  const diff = start - nowMin
-  if (diff <= 60) return { label: `In ${diff} min`, tone: 'soon' }
-  if (diff < 180) return { label: `In ${Math.floor(diff / 60)}h ${diff % 60}m`, tone: 'later' }
-  return { label: 'Later today', tone: 'later' }
+  return liveStatus(ev, day, today, nowMin)
 }
 
 const STATUS_CLASS: Record<Status['tone'], string> = {
@@ -51,16 +40,14 @@ interface BoardRowProps {
   saved: boolean
   onToggleSave: (ev: BoardEvent) => void
   showDate?: string
+  trackSearch?: boolean
 }
 
-export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRowProps) {
+export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch }: BoardRowProps) {
   const cat = CATEGORIES.find((c) => c.name === ev.category)
   const color = cat?.color ?? '#FF7A1A'
   const Icon = categoryIcon(ev.category)
-  const t = formatTime(ev.time)
-  const endMin = toMinutes(ev.endTime)
-  const startMin = toMinutes(ev.time)
-  const end = endMin !== null && startMin !== null && endMin !== startMin ? formatTime(ev.endTime) : null
+  const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const checked = checkedAgo(ev.updatedAt)
   const done = status.tone === 'done'
@@ -76,6 +63,9 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
   }
   const router = useRouter()
   const href = ev.href ?? eventPath(ev)
+  const noteSearch = () => {
+    if (trackSearch) navigator.sendBeacon?.('/api/analytics/search-click')
+  }
   // The whole row opens the event; buttons and links inside it keep their own job.
   const openRow = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('a,button,input,select,label')) return
@@ -101,19 +91,20 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
     <div
       onClick={openRow}
       className={cn(
-        'xl:hidden group relative cursor-pointer grid grid-cols-[52px_40px_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-2.5 border-b border-border hover:bg-muted/60',
+        'xl:hidden group relative cursor-pointer grid grid-cols-[4.75rem_40px_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-2.5 border-b border-border hover:bg-muted/60',
         done && 'opacity-75',
       )}
     >
-      <div>
-        <span className="font-mono text-sm tabular-nums">{t.hm}</span>
-        <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{t.ampm}</span>
+      <div className="min-w-0" title={when.label}>
+        <span className="font-mono text-sm tabular-nums">{when.hm}</span>
+        <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{when.ampm}</span>
+        {when.endLine && <div className="font-mono text-[10px] leading-tight text-muted-foreground">{when.endLine}</div>}
       </div>
       <span className="flex h-10 w-10 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
         <Icon className="w-4 h-4" />
       </span>
       <div className="min-w-0">
-        <Link href={href} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
+        <Link href={href} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
         <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
       </div>
       <div className="relative z-20 flex items-center">
@@ -132,12 +123,12 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
       )}
     >
       {/* Start */}
-      <div className="row-span-2 xl:row-span-1 self-start xl:self-center pt-0.5 xl:pt-0">
-        <span className="font-mono text-[15px] xl:text-base tabular-nums text-foreground">{t.hm}</span>
-        <span className="ml-1 font-mono text-xs text-muted-foreground">{t.ampm}</span>
-        {end && (
-          <div className="font-mono text-xs leading-tight tabular-nums text-muted-foreground" title="Finish time">
-            to {end.hm} {end.ampm}
+      <div className="row-span-2 xl:row-span-1 self-start xl:self-center pt-0.5 xl:pt-0" title={when.label}>
+        <span className="font-mono text-[15px] xl:text-base tabular-nums text-foreground">{when.hm}</span>
+        <span className="ml-1 font-mono text-xs text-muted-foreground">{when.ampm}</span>
+        {when.endLine && (
+          <div className="font-mono text-xs leading-tight tabular-nums text-muted-foreground">
+            {when.endLine}
           </div>
         )}
         {showDate && <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{showDate}</div>}
@@ -148,7 +139,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate }: BoardRow
         <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
           <Icon className="w-3.5 h-3.5" />
         </span>
-        <Link href={href} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
+        <Link href={href} onClick={noteSearch} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {ev.title}
         </Link>
         {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}

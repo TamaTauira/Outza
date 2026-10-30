@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { prisma, runWithJobPrisma } from '@/lib/prisma'
 import { fetchTicketmasterEvents } from '@/lib/ticketmaster'
 import { fetchEventbriteEvents } from '@/lib/sources/eventbrite'
 import { fetchFrontierEvents, fetchCityOfSydneyEvents, fetchHumanitixEvents } from '@/lib/sources/promoters'
@@ -78,12 +78,13 @@ function assertChunksCoverSources() {
  * Run named sources, or every source when no filter is given.
  * A `finalize` call with no source filter runs the quality pass, local import, and the cycle log.
  * Identical in-flight work in this process is shared. Different chunks are not.
+ * The run uses the job Prisma client so event-page reads keep the interactive pool.
  */
 export function refreshSources(opts: RefreshSourcesOptions = {}): Promise<RefreshResult> {
   const key = `${opts.chunk ? 'chunk' : 'full'}|${opts.finalize ? 'fin' : ''}|${(opts.sources ?? []).map(normalise).sort().join(',')}`
   const existing = inflight.get(key)
   if (existing) return existing
-  const job = execute(opts).finally(() => {
+  const job = runWithJobPrisma(() => execute(opts)).finally(() => {
     inflight.delete(key)
   })
   inflight.set(key, job)

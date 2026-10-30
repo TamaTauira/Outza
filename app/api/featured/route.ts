@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
 import { activePromoWhere } from '@/lib/promotions'
+import { minutesNow, rankBoard, type SlotInput } from '@/lib/listing-window'
 import { mixSponsored } from '@/lib/sponsorship'
 import { featuredBoosts, recordImpressions } from '@/lib/sponsorship-store'
 import { TIER_KEYS, TIER_RANK, type Tier } from '@/lib/tiers'
@@ -13,11 +14,23 @@ import { publicCacheHeaders } from '@/lib/http-cache'
 export const dynamic = 'force-dynamic'
 
 const evSelect = {
-  id: true, title: true, date: true, time: true, venueName: true, suburb: true, city: true,
+  id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, suburb: true, city: true,
   category: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, latitude: true, longitude: true,
+  status: true, duplicateOfId: true, allDay: true, startsAt: true, endsAt: true,
   promoter: { select: { id: true, orgName: true, name: true } },
   imageAsset: { select: imageAssetSelect },
 } as const
+
+/** Now & next order: on now, then starting soon, then long sessions, then all-day. Ended listings drop out. */
+function hotNowOrder<T extends SlotInput>(rows: T[], city: string, day: string): T[] {
+  const ranked = rankBoard(rows, {
+    window: 'now',
+    day,
+    nowMinutes: minutesNow(city || 'Sydney'),
+    dropEnded: true,
+  })
+  return [...ranked.lead, ...ranked.soon, ...ranked.still, ...ranked.allday, ...ranked.possibly]
+}
 
 /**
  * Featured = popular & hot events.
@@ -76,15 +89,17 @@ async function queryFeatured(validCity: string, day: string) {
         ...(validCity ? { city: validCity } : {}),
       },
       orderBy: [{ savedBy: { _count: 'desc' } }, { attendees: { _count: 'desc' } }, { views: 'desc' }, { date: 'asc' }],
-      take: 16,
+      take: 40,
       select: evSelect,
     })
-    const organic = hot.map((e) => ({ ...e, tier: 'HOT', frontRow: false, sponsored: false }))
-    const items = mixSponsored(organic, sponsored)
+    type Card = SlotInput & Record<string, unknown>
+    const organic = hotNowOrder(hot.map((e) => ({ ...e, tier: 'HOT', frontRow: false, sponsored: false })) as Card[], validCity, day)
+    const paid = hotNowOrder(sponsored as Card[], validCity, day)
+    const items = mixSponsored(organic, paid)
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v2'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v3'], { revalidate: 60 })
 
 export async function GET(req: NextRequest) {
   try {

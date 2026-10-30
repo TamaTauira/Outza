@@ -55,6 +55,8 @@ export function attachRoam(root: HTMLElement): () => void {
   let dragging = false
   let hiddenAt = 0
   let lastAct: RoamAct | null = null
+  // Open on a walk, a jump and a dance so he never sits in one pose while you arrive.
+  const intro: RoamAct[] = ['hop', 'jump', 'dance']
   let lastActivity = performance.now()
   let cheered = false
   let phase: Phase = { type: 'pause', until: performance.now() + 600 }
@@ -250,6 +252,8 @@ export function attachRoam(root: HTMLElement): () => void {
     if (phase.type === 'pause') {
       if (now - lastActivity > NAP_IDLE_MS && lastAct !== 'nap') return begin('nap')
       if (now < phase.until) return 'sleep'
+      const scripted = intro.shift()
+      if (scripted) return begin(scripted)
       return begin(lastAct ? pickRoamAct(lastAct) : 'hop')
     }
 

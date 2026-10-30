@@ -301,9 +301,9 @@ export async function featuredBoosts(city: string, today: Date) {
       creative: { select: { headline: true } },
       event: {
         select: {
-          id: true, title: true, date: true, time: true, venueName: true, suburb: true, city: true,
+          id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, suburb: true, city: true,
           category: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true,
-          latitude: true, longitude: true,
+          latitude: true, longitude: true, status: true, duplicateOfId: true, allDay: true, startsAt: true, endsAt: true,
           promoter: { select: { id: true, orgName: true, name: true } },
           imageAsset: { select: imageAssetSelect },
         },

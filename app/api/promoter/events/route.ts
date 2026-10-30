@@ -103,6 +103,7 @@ export async function POST(req: Request) {
       priceMin: listing.priceMin,
       priceMax: listing.priceMax,
       ticketUrl: listing.ticketUrl,
+      sourceUrl: listing.organiserUrl || listing.ticketUrl,
       imageUrl: listing.imageUrl,
       galleryUrls: listing.galleryUrls,
       organiserName: listing.organiserName,

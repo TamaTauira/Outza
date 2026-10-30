@@ -13,8 +13,9 @@ test('ABS geography keeps every state, not only NSW', () => {
   assert.equal(isAuAsgs('STE', '9'), false)
 })
 
-test('only promoter-created events are editable', () => {
+test('organiser-submitted events are editable, ingested feeds are not', () => {
   assert.equal(promoterCanEditEvent('promoter'), true)
+  assert.equal(promoterCanEditEvent('community'), true)
   for (const source of ['ticketmaster', 'moshtix', 'oztix', 'eventbrite', 'humanitix', 'frontier', 'cityofsydney', 'ticketek', 'curated']) {
     assert.equal(promoterCanEditEvent(source), false)
   }

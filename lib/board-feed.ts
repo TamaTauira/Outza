@@ -8,16 +8,19 @@ import { knownCategories, presentListing } from '@/lib/categories'
 import { addressInOtherState } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
 import { correctPin, placeFromText } from '@/lib/venue-place'
-import { confidence } from '@/lib/quality'
-import { verifiedFlags } from '@/lib/listing-trust'
+import { imageAssetSelect } from '@/lib/images/spec'
+import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
 const BOARD_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
+  allDay: true, startsAt: true, endsAt: true,
   venueName: true, venueAddress: true, suburb: true, city: true,
   category: true, subTags: true, isLGBTI: true, isFree: true,
-  price: true, priceMin: true, priceMax: true, ticketUrl: true, organiserUrl: true,
-  latitude: true, longitude: true, status: true, statusSource: true, source: true,
+  price: true, priceMin: true, priceMax: true, ticketUrl: true, sourceUrl: true, organiserUrl: true,
+  imageUrl: true, latitude: true, longitude: true, status: true, statusSource: true, source: true,
   lastVerifiedAt: true, updatedAt: true, duplicateOfId: true,
+  communityKey: true, locationVisibility: true, childrenInImage: true, imageKidSafe: true,
+  imageAsset: { select: imageAssetSelect },
 } as const
 
 export type BoardArgs = {
@@ -80,6 +83,7 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
     })
     and.push({ OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] })
   }
+  and.push(...PUBLIC_EVENT_AND)
   if (a.isLGBTI) where.isLGBTI = true
   if (a.dateFrom) where.date = { ...(where.date as object), gte: new Date(a.dateFrom) }
   if (a.dateTo) where.date = { ...(where.date as object), lte: new Date(a.dateTo) }
@@ -89,9 +93,12 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
 
 function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT }>[], city: string, categories: string[], suburb: string) {
   let shown = events.map((e) => {
-    const listed = presentListing(e)
+    const opened = redactCommunityPublic(e)
+    if (!opened.imageUrl) opened.imageAsset = null
+    const listed = presentListing(opened)
     const place = placeFromText({ venueAddress: listed.venueAddress, venueName: listed.venueName, suburb: listed.suburb, city: listed.city })
-    const pin = correctPin(listed.latitude, listed.longitude, place, listed.city)
+    const hidePin = !!listed.communityKey && listed.locationVisibility !== 'PRECISE'
+    const pin = hidePin ? { lat: null, lng: null } : correctPin(listed.latitude, listed.longitude, place, listed.city)
     return { ...listed, suburb: place.suburb ?? listed.suburb, latitude: pin.lat, longitude: pin.lng }
   })
   if (city && CITY_NAMES.includes(city)) {
@@ -124,20 +131,17 @@ async function queryBoard(raw: string) {
   const total = fullPage
     ? await prisma.event.count({ where })
     : skip + shown.length
-  const [tiers, verified] = await Promise.all([
-    activeTierMap(shown.map((e) => e.id)),
-    verifiedFlags(shown),
-  ])
+  const tiers = await activeTierMap(shown.map((e) => e.id))
   return {
     events: shown.map((e) => ({
       ...e,
       date: e.date.toISOString(),
       endDate: e.endDate?.toISOString() ?? null,
+      startsAt: e.startsAt?.toISOString() ?? null,
+      endsAt: e.endsAt?.toISOString() ?? null,
       lastVerifiedAt: e.lastVerifiedAt?.toISOString() ?? null,
       updatedAt: e.updatedAt.toISOString(),
       promoTier: tiers[e.id] ?? null,
-      confidenceLevel: confidence(e).level,
-      verified: verified.get(e.id) ?? false,
       friendsGoing: [] as string[],
       going: false,
     })),
@@ -145,7 +149,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v3'], { revalidate: 60 })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v6'], { revalidate: 60 })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 
