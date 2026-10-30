@@ -14,7 +14,7 @@ const clean = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max) 
 export async function submitClaim(me: Me, eventId: string, b: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
   const ev = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, title: true, city: true, promoterId: true, organiserUrl: true, ticketUrl: true, sourceUrl: true, venueName: true, organiserName: true } })
   if (!ev) return { status: 404, body: { error: 'Event not found' } }
-  if (ev.promoterId === me.id) return { status: 200, body: { ok: true, status: 'APPROVED' } }
+  if (ev.promoterId === me.id) return { status: 200, body: { ok: true, status: 'APPROVED', created: false } }
   if (ev.promoterId && me.role !== 'ADMIN') return { status: 409, body: { error: 'This listing is already managed by an organiser. If that’s wrong, use Report a problem on the event page.' } }
   const recentClaims = await prisma.eventClaim.count({ where: { userId: me.id, createdAt: { gt: new Date(Date.now() - 24 * 3600_000) } } })
   if (claimRateLimited(recentClaims)) return { status: 429, body: { error: 'That’s a lot of claims for one day. Try again tomorrow.' } }
@@ -26,7 +26,7 @@ export async function submitClaim(me: Me, eventId: string, b: Record<string, unk
   if (evidenceUrl) { try { new URL(evidenceUrl) } catch { return { status: 400, body: { error: 'That link doesn’t look right' } } } }
 
   const existing = await prisma.eventClaim.findUnique({ where: { eventId_userId: { eventId: ev.id, userId: me.id } } })
-  if (existing?.status === 'PENDING') return { status: 200, body: { ok: true, status: 'PENDING' } }
+  if (existing?.status === 'PENDING') return { status: 200, body: { ok: true, status: 'PENDING', created: false } }
 
   const emailDomainMatches = emailMatchesOrganiser(me.email, [ev.organiserUrl, ev.ticketUrl, ev.sourceUrl])
   const orgDomain = await verifiedOrganiserDomain(me.id).catch(() => null)
@@ -63,5 +63,5 @@ export async function submitClaim(me: Me, eventId: string, b: Record<string, unk
     ['Event', `${ev.title} (${ev.city})`], ['Link', eventPath(ev)], ['Claimant', `${me.name || ''} <${me.email}>`], ['Organisation', orgName],
     ['Position', data.position], ['Evidence', evidenceUrl], ['Message', data.message], ['Check', auto ? 'Automatic (email domain matches event website)' : 'Manual review needed'],
   ])
-  return { status: 200, body: { ok: true, status: auto ? 'APPROVED' : 'PENDING' } }
+  return { status: 200, body: { ok: true, status: auto ? 'APPROVED' : 'PENDING', created: !existing } }
 }

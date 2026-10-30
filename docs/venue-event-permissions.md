@@ -43,7 +43,7 @@ Then `yarn prisma generate`. The SQL only adds columns and tables.
 
 `OWNERSHIP_UI` and `NEXT_PUBLIC_OWNERSHIP_UI` default on. Set both to `0` to hide the dashboards and claim tools. Permission checks on the new routes stay in place either way.
 
-Sponsorships (PR #47) and the community hub (PR #48) were still open when this was written. Venue placements reuse the existing one-time Stripe checkout, not a second billing system and not the monthly plans in that PR. Email codes use the same hashed, expiring, attempt-capped shape as the community hub’s `CommunityCode`, stored in `EmailVerificationCode` so this does not depend on that PR. When the hub merges, those two code tables can be folded together. Do not add a paid identity vendor.
+Venue placements use the sponsorship Stripe checkout (`createVenueSession`, `kind: venue` on the same webhook as short boosts). A placement stays pending until Stripe reports `payment_status=paid`. With card billing off, the request is a sponsorship lead and nothing is charged. It never creates an event grant. Email codes use the same hashed, expiring, attempt-capped shape as the community hub, stored on `EmailVerificationCode` because community codes are tied to an event. Do not add a paid identity vendor.
 
 ## Rollback
 

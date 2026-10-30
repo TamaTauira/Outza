@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { orderedDayParts } from './board'
 import {
   fieldConflicts,
+  formatBoardRange,
   formatUpdated,
   listingBucket,
+  liveStatus,
   nearStartPlan,
   orderedWindow,
+  rankBoard,
   rankWindow,
   refreshSuccessRate,
   repeatedSourceFailures,
   reportsPerThousand,
+  resolveSchedule,
   sameRealWorldEvent,
   scheduleFields,
   sourceUpdatedLine,
@@ -125,6 +130,78 @@ test('near-start recheck is due only inside the window when the last check is st
   assert.equal(nearStartPlan(fresh, soon, now), 'ok')
   assert.equal(nearStartPlan(stale, later, now), 'skip')
   assert.equal(nearStartPlan(null, soon, now), 'due')
+})
+
+test('at 8pm, now leads with evening overlap and parks all-day, ended and morning-only', () => {
+  const eightPm = 20 * 60
+  const rows = [
+    { ...base, id: 'exhibit', title: 'Ai Weiwei', time: '00:00', endTime: '22:59' },
+    { ...base, id: 'yoga', title: 'Outdoor Yoga Flow', time: '06:15', endTime: '06:00' },
+    { ...base, id: 'morn', title: 'Morning only', time: '09:00', endTime: '12:00' },
+    { ...base, id: 'sculpture', title: 'Sculpture by the Sea', time: '06:00', endTime: '18:00', endDate: '2026-11-02T00:00:00.000Z' },
+    { ...base, id: 'look', title: 'The Infinite Look', time: '07:00', endTime: '21:00' },
+    { ...base, id: 'hunt', title: 'Adventure clues', time: '17:00', endTime: '16:59' },
+    { ...base, id: 'jazz', title: 'Curtains Jazz', time: '17:00', endTime: '02:00' },
+    { ...base, id: 'gig', title: 'Late show', time: '19:30', endTime: '22:00' },
+    { ...base, id: 'soon', title: 'Headline', time: '21:30', endTime: '23:30' },
+    { ...base, id: 'maybe', title: 'No finish', time: '19:40' },
+  ]
+  const opts = { window: 'now' as const, day, nowMinutes: eightPm, dropEnded: true }
+  const ranked = rankBoard(rows, opts)
+  assert.deepEqual(ranked.lead.map((row) => row.id), ['hunt', 'jazz', 'gig'])
+  assert.deepEqual(ranked.soon.map((row) => row.id), ['soon'])
+  assert.deepEqual(ranked.still.map((row) => row.id), ['look'])
+  assert.deepEqual(ranked.allday.map((row) => row.id), ['exhibit'])
+  assert.deepEqual(ranked.possibly.map((row) => row.id), ['maybe'])
+  for (const id of ['yoga', 'morn', 'sculpture']) {
+    assert.equal(listingBucket(rows.find((row) => row.id === id)!, opts), 'exclude')
+  }
+  assert.equal(liveStatus(rows[1], day, day, eightPm).label, 'Ended')
+  assert.equal(liveStatus(rows[3], day, day, eightPm).label, 'Ended')
+  assert.equal(liveStatus(rows[4], day, day, eightPm).label, 'On now')
+  assert.equal(liveStatus(rows[0], day, day, eightPm).label, 'All day')
+  const order = [...ranked.lead, ...ranked.soon, ...ranked.still, ...ranked.allday, ...ranked.possibly].map((row) => row.id)
+  assert.equal(order[0], 'hunt')
+  assert.ok(order.indexOf('look') > order.indexOf('gig'))
+  assert.ok(order.indexOf('exhibit') > order.indexOf('look'))
+  assert.ok(order.indexOf('maybe') > order.indexOf('exhibit'))
+})
+
+test('overnight finishes keep a later date, and a backwards morning clock is not a finish', () => {
+  const hunt = formatBoardRange({ ...base, time: '17:00', endTime: '16:59' })
+  assert.equal(hunt.label, '5:00 pm – 4:59 pm, 31 Oct')
+  assert.equal(hunt.endLine?.includes('31 Oct'), true)
+  const jazz = formatBoardRange({ ...base, time: '17:00', endTime: '02:00' })
+  assert.equal(jazz.label, '5:00 pm – 2:00 am, 31 Oct')
+  const yoga = formatBoardRange({ ...base, time: '06:15', endTime: '06:00' })
+  assert.equal(yoga.endLine, null)
+  assert.equal(yoga.label, '6:15 am')
+  const show = formatBoardRange({ ...base, time: '19:30', endTime: '22:00' })
+  assert.equal(show.label, '7:30 pm – 10:00 pm')
+  const sculpture = formatBoardRange({ ...base, time: '06:00', endTime: '18:00', endDate: '2026-11-02T00:00:00.000Z' })
+  assert.equal(sculpture.label, '6:00 am – 6:00 pm · until 2 Nov')
+  const noEnd = formatBoardRange({ ...base, time: '20:00', endTime: null })
+  assert.equal(noEnd.endLine, null)
+  assert.equal(resolveSchedule({ ...base, time: '17:00', endTime: '16:59' }, day).overnight, true)
+  assert.equal(resolveSchedule({ ...base, time: '06:15', endTime: '06:00' }, day).bogusEnd, true)
+})
+
+test('stored instants follow the same overnight rule and do not invent a next-day yoga finish', () => {
+  const yoga = scheduleFields({ ...base, time: '06:15', endTime: '06:00', source: 'cityofsydney', isFree: true }, Date.parse('2026-10-30T09:00:00.000Z'))
+  assert.equal(yoga.endsAt, null)
+  assert.equal(yoga.allDay, false)
+  const hunt = scheduleFields({ ...base, time: '17:00', endTime: '16:59', source: 'cityofsydney', isFree: false, price: '$25' }, Date.parse('2026-10-30T09:00:00.000Z'))
+  assert.equal(hunt.endsAt?.toISOString(), '2026-10-31T05:59:00.000Z')
+  const jazz = scheduleFields({ ...base, time: '17:00', endTime: '02:00', source: 'cityofsydney', isFree: false, price: '$20' }, Date.parse('2026-10-30T09:00:00.000Z'))
+  assert.equal(jazz.endsAt?.toISOString(), '2026-10-30T15:00:00.000Z')
+  const show = scheduleFields({ ...base, time: '19:30', endTime: '22:00', source: 'ticketmaster', isFree: false, price: '$20' }, Date.parse('2026-10-30T00:00:00.000Z'))
+  assert.equal(show.endsAt?.toISOString(), '2026-10-30T11:00:00.000Z')
+})
+
+test('full day at 8pm leads with the evening part, not morning', () => {
+  assert.deepEqual(orderedDayParts(20 * 60).map((part) => part.key), ['evening', 'late', 'morning', 'afternoon'])
+  assert.equal(orderedDayParts(9 * 60)[0].key, 'morning')
+  assert.equal(orderedDayParts(null)[0].key, 'morning')
 })
 
 test('health rates and repeated source failures stay numeric and skip budget stops', () => {

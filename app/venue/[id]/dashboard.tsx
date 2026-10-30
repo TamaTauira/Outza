@@ -153,8 +153,8 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
               const res = await fetch(`/api/venues/${venueId}/promote`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ product: product.id }) })
               const data = await res.json().catch(() => ({}))
               if (!res.ok) { toast.error(data.error || 'Could not start that'); return }
-              if (data.url) location.href = data.url
-              else toast.success(`${product.name} is on. It’s marked ${data.label || SPONSORED_LABEL}. Event permissions are unchanged.`)
+              if (data.url) { location.href = data.url; return }
+              toast.success(data.payments === 'soon' ? 'Card payments aren’t switched on yet. We noted your interest. This does not change who can edit events.' : `${product.name} is marked ${data.label || SPONSORED_LABEL}. Event permissions are unchanged.`)
             }}>
               <span className="font-semibold">{product.name}</span>
               <span className="block text-xs text-muted-foreground">${(product.priceCents / 100).toFixed(0)} · {product.days} days · {SPONSORED_LABEL}</span>

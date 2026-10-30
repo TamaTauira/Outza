@@ -8,11 +8,11 @@ export type LocalCardItem = {
 }
 
 /** Server-rendered, crawlable cards for public VibePeep Local listings on guide pages. */
-export function LocalListingCards({ items }: { items: LocalCardItem[] }) {
+export function LocalListingCards({ items, listingQuery }: { items: LocalCardItem[]; listingQuery?: string }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {items.map((l) => (
-        <Link key={l.id} href={localPath(l)} className="group rounded-xl bg-card p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-2">
+        <Link key={l.id} href={listingQuery ? `${localPath(l)}${localPath(l).includes('?') ? '&' : '?'}${listingQuery}` : localPath(l)} className="group rounded-xl bg-card p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-2">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-primary">{localCategoryShort(l.category)}</span>
           <h3 className="font-display text-lg font-semibold leading-snug group-hover:text-primary transition-colors">{l.title}</h3>
           <p className="text-sm text-muted-foreground">{fmtDay(l.date)} · {fmtTime(l.startTime)}–{fmtTime(l.endTime)}</p>

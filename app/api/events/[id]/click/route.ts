@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
 import { recordSignal } from '@/lib/event-signals'
+import { recordCampaignConversion } from '@/lib/sponsorship-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (n.count) {
     const me = await getSessionUser().catch(() => null)
     if (me) await recordSignal(me.id, id, 'TICKET')
+    await recordCampaignConversion(id, 'TICKET', me?.id)
   }
   return NextResponse.json({ ok: true })
 }

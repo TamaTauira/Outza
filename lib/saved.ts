@@ -15,6 +15,10 @@ export interface SavedEvent {
   endDate: string | null
   time: string | null
   endTime: string | null
+  /** Set when the source listed no clock time. Ranking uses this with startsAt/endsAt. */
+  allDay?: boolean
+  startsAt?: string | null
+  endsAt?: string | null
   venueName: string
   suburb: string | null
   category: string
@@ -31,6 +35,8 @@ export interface SavedEvent {
   latitude?: number | null
   longitude?: number | null
   promoTier?: string | null
+  /** Paid placement. The row stays in time order; the label is the only change. */
+  sponsored?: boolean
   friendsGoing?: string[]
   status?: string | null
   statusSource?: string | null

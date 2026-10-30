@@ -25,6 +25,10 @@ export type SlotInput = {
   source?: string | null
   venueOpen?: string | null
   venueClose?: string | null
+  /** Schema flag: the source listed no clock time. A sentinel midnight clock is not this. */
+  allDay?: boolean | null
+  startsAt?: string | Date | null
+  endsAt?: string | Date | null
 }
 
 export type WindowOpts = {
@@ -82,47 +86,201 @@ function blocked(status?: string | null): boolean {
   return !!status && status !== 'SCHEDULED'
 }
 
-/** Known finish already passed. Overnight (end before start) is still on. */
-function finishedToday(start: number, end: number | null, nowMinutes: number): boolean {
-  if (end == null || end <= start) return false
-  return nowMinutes >= end
+const SOON_MINUTES = 180
+/** A finish at or before this, after a daytime start, is the next morning — not a clock that ran backwards. */
+const NEXT_MORNING = 8 * 60
+/** Open-all-day encodings from guides: midnight through 10pm or later, with no real session start. */
+const OPEN_DAY_END = 22 * 60
+
+function daySpan(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000)
+}
+
+export type ResolvedSchedule = {
+  /** Minute of the start clock. Null when the source listed no time. */
+  start: number | null
+  /** Finish, in minutes from the start date's local midnight. Past 1440 means a later day. */
+  end: number | null
+  /** No clock, or a midnight-to-late encoding. These must not lead a timed list. */
+  dropIn: boolean
+  overnight: boolean
+  /** End clock is earlier than the start and is not a real next-day finish. Hide it. */
+  bogusEnd: boolean
+  multiDay: boolean
+  endKey: string | null
+}
+
+/**
+ * Wall-clock window for one listing on `day`, in the event's city.
+ * An end clock earlier than the start is the next day only when that reading is plausible
+ * (evening into the next morning, a 24-hour window stored as one minute short, or an end date).
+ * A morning class stored as 6:15am–6:00am is a bad finish, not an all-night session.
+ */
+export function resolveSchedule(ev: SlotInput, day: string): ResolvedSchedule {
+  const startKey = dateKeyOf(ev.date) || day
+  const endDateKey = dateKeyOf(ev.endDate)
+  let start = minutesOf(ev.time)
+  let endClock = minutesOf(ev.endTime)
+
+  if (start == null && ev.allDay !== true && ev.startsAt) {
+    const zone = cityDef(ev.city).tz
+    const parts = toSydneyParts(new Date(ev.startsAt), zone)
+    if (parts.date === startKey || parts.date === day) start = minutesOf(parts.time)
+    if (endClock == null && ev.endsAt) {
+      const endParts = toSydneyParts(new Date(ev.endsAt), zone)
+      const mins = minutesOf(endParts.time)
+      const span = daySpan(parts.date, endParts.date)
+      if (mins != null && span >= 0 && span < 14) endClock = mins + span * 1440
+    }
+  }
+
+  const multiDay = !!(endDateKey && startKey && endDateKey > startKey)
+  const openDay = start === 0 && endClock != null && endClock >= OPEN_DAY_END && endClock < 1440
+  const dropIn = start == null || openDay
+
+  if (dropIn) {
+    const end = start == null
+      ? (multiDay ? daySpan(startKey, endDateKey) * 1440 + (endClock ?? 24 * 60) : (endClock != null && endClock > 0 ? endClock : 24 * 60))
+      : endClock
+    return { start: start == null ? null : 0, end, dropIn: true, overnight: false, bogusEnd: false, multiDay, endKey: multiDay ? endDateKey : null }
+  }
+
+  let overnight = false
+  let bogusEnd = false
+  let end: number | null = endClock
+  let endKey: string | null = multiDay ? endDateKey : null
+
+  if (start != null && endClock != null && endClock <= start) {
+    const spanDays = multiDay ? daySpan(startKey, endDateKey) : 0
+    const intoNextMorning = start >= 10 * 60 && endClock <= NEXT_MORNING
+    const almostDay = endClock === start - 1
+    if (endClock === start && spanDays === 0) {
+      bogusEnd = true
+      end = null
+      endKey = null
+    } else if (intoNextMorning || almostDay || spanDays > 0) {
+      overnight = true
+      const days = spanDays > 0 ? spanDays : 1
+      end = endClock + days * 1440
+      endKey = spanDays > 0 ? endDateKey : addDaysKey(startKey, 1)
+    } else {
+      bogusEnd = true
+      end = null
+      endKey = null
+    }
+  }
+
+  return { start, end, dropIn: false, overnight, bogusEnd, multiDay, endKey }
+}
+
+/** The known finish is already past. A missing finish counts as over three hours after the start. */
+export function scheduleFinished(sched: ResolvedSchedule, nowMinutes: number): boolean {
+  if (sched.end != null) return nowMinutes >= sched.end
+  if (sched.dropIn || sched.start == null) return false
+  return nowMinutes - sched.start > SOON_MINUTES
+}
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function clockParts(mins: number): { hm: string; ampm: string } {
+  const m = ((mins % 1440) + 1440) % 1440
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  return { hm: `${h % 12 === 0 ? 12 : h % 12}:${String(min).padStart(2, '0')}`, ampm: h < 12 ? 'am' : 'pm' }
+}
+
+function shortDate(key: string): string {
+  const d = new Date(`${key}T00:00:00Z`)
+  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`
+}
+
+export type BoardRange = {
+  hm: string
+  ampm: string
+  /** Finish line, or null when there is no end to show. Never a clock earlier than the start. */
+  endLine: string | null
+  label: string
+}
+
+/** Start, and a finish that is never drawn earlier than the start. Multi-day finishes keep their date. */
+export function formatBoardRange(ev: SlotInput): BoardRange {
+  const key = dateKeyOf(ev.date) || '1970-01-01'
+  const sched = resolveSchedule(ev, key)
+  if (sched.start == null) return { hm: '--:--', ampm: '', endLine: null, label: 'Time not listed' }
+  const start = clockParts(sched.start)
+  const startLabel = `${start.hm} ${start.ampm}`
+  if (sched.end == null || sched.bogusEnd) return { hm: start.hm, ampm: start.ampm, endLine: null, label: startLabel }
+  const end = clockParts(sched.end)
+  let endLabel = `${end.hm} ${end.ampm}`
+  if (sched.overnight && sched.endKey) endLabel = `${endLabel}, ${shortDate(sched.endKey)}`
+  else if (sched.multiDay && sched.endKey) endLabel = `${endLabel} · until ${shortDate(sched.endKey)}`
+  if ((sched.end % 1440) <= sched.start && !sched.endKey) {
+    return { hm: start.hm, ampm: start.ampm, endLine: null, label: startLabel }
+  }
+  return { hm: start.hm, ampm: start.ampm, endLine: `– ${endLabel}`, label: `${startLabel} – ${endLabel}` }
+}
+
+export type LiveTone = 'live' | 'soon' | 'later' | 'done' | 'upcoming' | 'tbc'
+
+/** Row status from the same window the board uses to filter. No score and no verification wording. */
+export function liveStatus(ev: SlotInput, day: string, today: string | null, nowMin: number): { label: string; tone: LiveTone } {
+  const sched = resolveSchedule(ev, day)
+  if (!today || day !== today) {
+    if (sched.dropIn || sched.start == null) return { label: 'All day', tone: 'tbc' }
+    return { label: 'Upcoming', tone: 'upcoming' }
+  }
+  if (sched.dropIn) {
+    if (scheduleFinished(sched, nowMin)) return { label: 'Ended', tone: 'done' }
+    return { label: 'All day', tone: 'tbc' }
+  }
+  if (sched.start == null) return { label: 'All day', tone: 'tbc' }
+  if (scheduleFinished(sched, nowMin)) return { label: 'Ended', tone: 'done' }
+  if (nowMin >= sched.start) return { label: 'On now', tone: 'live' }
+  const diff = sched.start - nowMin
+  if (diff <= 60) return { label: `In ${diff} min`, tone: 'soon' }
+  if (diff < SOON_MINUTES) return { label: `In ${Math.floor(diff / 60)}h ${diff % 60}m`, tone: 'later' }
+  return { label: 'Later today', tone: 'later' }
 }
 
 /**
  * Tonight: a start at 17:00 or later. Morning and afternoon starts stay off this list,
  * including ones that run past 17:00. Untimed listings are possibly available, after the timed ones.
  * Happening now: a known window that contains this minute is confirmed. A start in the next
- * three hours stays as "soon" so Now & next still works. No end time is possibly available.
+ * three hours stays as "soon". No end time is possibly available. A bad earlier finish is not "still on".
  */
 export function listingBucket(ev: SlotInput, opts: WindowOpts): AvailabilityKind {
   if (ev.duplicateOfId) return 'exclude'
   if (blocked(ev.status)) return 'exclude'
   if (!coversDay(ev, opts.day)) return 'exclude'
-  const start = minutesOf(ev.time)
-  const end = minutesOf(ev.endTime)
-  const hours = venueHoursFit(start, ev.venueOpen, ev.venueClose)
+  const sched = resolveSchedule(ev, opts.day)
+  const hours = venueHoursFit(sched.dropIn ? null : sched.start, ev.venueOpen, ev.venueClose)
+  const now = opts.nowMinutes
   if (opts.window === 'tonight') {
-    if (start == null) return hours === 'outside' ? 'exclude' : 'possibly'
-    if (start < TONIGHT_START) return 'exclude'
-    if (opts.dropEnded && finishedToday(start, end, opts.nowMinutes)) return 'exclude'
+    if (sched.start == null) return hours === 'outside' ? 'exclude' : 'possibly'
+    if (sched.start < TONIGHT_START) return 'exclude'
+    if (opts.dropEnded && scheduleFinished(sched, now)) return 'exclude'
     if (hours === 'outside') return 'possibly'
     return 'confirmed'
   }
-  if (start == null) return 'possibly'
-  if (opts.dropEnded && finishedToday(start, end, opts.nowMinutes)) return 'exclude'
-  const untilStart = start - opts.nowMinutes
-  if (untilStart > 0 && untilStart <= 180) return hours === 'outside' ? 'possibly' : 'soon'
-  if (untilStart > 180) return 'exclude'
-  if (end != null && end > start && opts.nowMinutes >= start && opts.nowMinutes < end) {
-    return hours === 'outside' ? 'possibly' : 'confirmed'
+  if (sched.dropIn) {
+    if (opts.dropEnded && scheduleFinished(sched, now)) return 'exclude'
+    if (sched.end == null || now < sched.end) return 'confirmed'
+    return 'exclude'
   }
-  if (end != null && end <= start && opts.nowMinutes >= start) return hours === 'outside' ? 'possibly' : 'confirmed'
-  if (end == null && opts.nowMinutes - start <= 180) return 'possibly'
+  if (sched.start == null) return 'possibly'
+  if (opts.dropEnded && scheduleFinished(sched, now)) return 'exclude'
+  const untilStart = sched.start - now
+  if (untilStart > 0 && untilStart <= SOON_MINUTES) return hours === 'outside' ? 'possibly' : 'soon'
+  if (untilStart > SOON_MINUTES) return 'exclude'
+  if (sched.end != null && now < sched.end) return hours === 'outside' ? 'possibly' : 'confirmed'
+  if (sched.end == null && now - sched.start <= SOON_MINUTES) return 'possibly'
   return 'exclude'
 }
 
-function byStart(a: SlotInput, b: SlotInput): number {
-  return (minutesOf(a.time) ?? 24 * 60) - (minutesOf(b.time) ?? 24 * 60) || (a.title ?? '').localeCompare(b.title ?? '')
+function byStart(a: SlotInput, b: SlotInput, day = ''): number {
+  const as = resolveSchedule(a, day || dateKeyOf(a.date)).start ?? 24 * 60
+  const bs = resolveSchedule(b, day || dateKeyOf(b.date)).start ?? 24 * 60
+  return as - bs || (a.title ?? '').localeCompare(b.title ?? '')
 }
 
 export function rankWindow<T extends SlotInput>(rows: T[], opts: WindowOpts): { confirmed: T[]; soon: T[]; possibly: T[] } {
@@ -135,10 +293,55 @@ export function rankWindow<T extends SlotInput>(rows: T[], opts: WindowOpts): { 
     else if (bucket === 'soon') soon.push(row)
     else if (bucket === 'possibly') possibly.push(row)
   }
-  confirmed.sort(byStart)
-  soon.sort(byStart)
-  possibly.sort(byStart)
+  const sort = (a: T, b: T) => byStart(a, b, opts.day)
+  confirmed.sort(sort)
+  soon.sort(sort)
+  possibly.sort(sort)
   return { confirmed, soon, possibly }
+}
+
+export type RankedBoard<T> = {
+  /** Timed events on now, or tonight's confirmed starts. Latest-relevant first is the caller's section order. */
+  lead: T[]
+  soon: T[]
+  /** Still overlapping, but started well before this window. Kept below the lead so morning sessions don't crowd it. */
+  still: T[]
+  /** Open-all-day listings that cover this minute. */
+  allday: T[]
+  possibly: T[]
+}
+
+/**
+ * Now & next: confirmed overlap and the next three hours lead. Long-running daytime sessions
+ * and midnight-to-late listings sit in their own groups. Tonight stays a 5pm start.
+ */
+export function rankBoard<T extends SlotInput>(rows: T[], opts: WindowOpts): RankedBoard<T> {
+  const lead: T[] = []
+  const soon: T[] = []
+  const still: T[] = []
+  const allday: T[] = []
+  const possibly: T[] = []
+  for (const row of rows) {
+    const bucket = listingBucket(row, opts)
+    if (bucket === 'exclude') continue
+    if (bucket === 'possibly') { possibly.push(row); continue }
+    if (bucket === 'soon') { soon.push(row); continue }
+    const sched = resolveSchedule(row, opts.day)
+    if (opts.window === 'now' && sched.dropIn) { allday.push(row); continue }
+    if (opts.window === 'now' && sched.start != null && opts.nowMinutes - sched.start > SOON_MINUTES) {
+      still.push(row)
+      continue
+    }
+    lead.push(row)
+  }
+  const sort = (a: T, b: T) => byStart(a, b, opts.day)
+  lead.sort(sort)
+  soon.sort(sort)
+  // Latest start first, so a long afternoon session sits above a morning one.
+  still.sort((a, b) => sort(b, a))
+  allday.sort(sort)
+  possibly.sort(sort)
+  return { lead, soon, still, allday, possibly }
 }
 
 /** Confirmed, then soon, then possibly available. Excluded rows are omitted. */
@@ -194,6 +397,11 @@ export type ScheduleInput = SlotInput & {
   sources?: string[] | null
 }
 
+function hhmmFromMinutes(mins: number): string {
+  const m = ((mins % 1440) + 1440) % 1440
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+}
+
 /** Start/end instants in the city zone. All-day listings have no clock time. Confidence is internal. */
 export function scheduleFields(ev: ScheduleInput, now = Date.now()) {
   const timezone = cityDef(ev.city).tz
@@ -202,11 +410,12 @@ export function scheduleFields(ev: ScheduleInput, now = Date.now()) {
   const allDay = startMin == null
   const startsAt = key ? zonedWallTime(key, allDay ? '00:00' : ev.time!, timezone) : null
   let endsAt: Date | null = null
-  const endMin = minutesOf(ev.endTime)
-  if (key && endMin != null && ev.endTime) {
-    let endKey = dateKeyOf(ev.endDate) || key
-    if (!ev.endDate && startMin != null && endMin <= startMin) endKey = addDaysKey(key, 1)
-    endsAt = zonedWallTime(endKey, ev.endTime, timezone)
+  const sched = key ? resolveSchedule(ev, key) : null
+  if (key && sched && !allDay && sched.end != null && !sched.bogusEnd) {
+    const endKey = sched.multiDay && !sched.overnight && sched.endKey
+      ? sched.endKey
+      : addDaysKey(key, Math.floor(sched.end / 1440))
+    endsAt = zonedWallTime(endKey, hhmmFromMinutes(sched.end), timezone)
   } else if (key && ev.endDate && dateKeyOf(ev.endDate) > key) {
     endsAt = zonedWallTime(dateKeyOf(ev.endDate), '23:59', timezone)
   }

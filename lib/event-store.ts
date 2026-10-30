@@ -150,9 +150,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
 
   const existing = await prisma.event.findFirst({
     where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
-    select: { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true },
+    select: { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true, communityKey: true },
   })
   if (existing) {
+    if (existing.source === 'community' || existing.communityKey) return false
     const sources = existing.sources.includes(ev.source) ? existing.sources : [...existing.sources, ev.source]
     const incomingFields = {
       title,
@@ -212,7 +213,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
 
   // Cross-source duplicate: a fuzzy title/venue/time match on the same day in the same city
   const candidates = await prisma.event.findMany({
-    where: { date, city, duplicateOfId: null },
+    where: { date, city, duplicateOfId: null, communityKey: null },
     select: { id: true, title: true, venueName: true, time: true, sources: true, source: true, organiserName: true },
     take: 400,
   })

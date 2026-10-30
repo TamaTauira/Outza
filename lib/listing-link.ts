@@ -5,6 +5,7 @@
  */
 import { ticketHref } from '@/lib/affiliate'
 import { SOURCES } from '@/lib/quality'
+import { eventPath } from '@/lib/seo'
 
 const TICKET_HOST = /(^|\.)(ticketmaster|ticketek|eventbrite|humanitix|moshtix|oztix|tixr|trybooking|stickytickets|eventfinda|tixel|dice)\./i
 
@@ -127,6 +128,7 @@ export interface OutboundLink {
 }
 
 export function eventOutbound(ev: {
+  id?: string | null
   title?: string | null
   ticketUrl?: string | null
   sourceUrl?: string | null
@@ -143,7 +145,10 @@ export function eventOutbound(ev: {
       : org
         ? { href: org, field: 'organiser' as const, kind: 'organiser' as const }
         : null
-  if (!chosen) return { href: sourceSearchUrl(ev.source, ev.title), label: 'More info', kind: 'search' }
+  if (!chosen) {
+    if (ev.source === 'community' && ev.id) return { href: eventPath({ id: ev.id, title: ev.title }), label: 'More info', kind: 'source' }
+    return { href: sourceSearchUrl(ev.source, ev.title), label: 'More info', kind: 'search' }
+  }
   if (isTicketLink(chosen.href, ev.source, chosen.field)) {
     return { href: ticketHref(chosen.href) ?? chosen.href, label: 'Get tickets', kind: 'ticket' }
   }

@@ -117,7 +117,7 @@ export default async function PromotersPage() {
         <section id="plans" className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 scroll-mt-20">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For bars, restaurants, venues, galleries, studios, activity providers, markets & regular organisers</p>
           <h2 className="mt-2 font-display text-2xl sm:text-3xl font-bold">Business subscriptions</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">Monthly plans for businesses that run events all the time. Paid plans are coming soon — register your interest and we’ll tell you when they launch.</p>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">Monthly plans for rooms that put events on all the time. Subscribe from the promoter dashboard. If card billing is not switched on, the dashboard takes a quote instead and does not charge a card. Listing an event stays free.</p>
           <div className="mt-6 rounded-2xl bg-card border border-border shadow-sm divide-y divide-border">
             {BUSINESS_PLANS.map((p) => (
               <div key={p.key} className="grid sm:grid-cols-[160px_110px_1fr_auto] gap-2 sm:gap-6 items-center px-5 sm:px-6 py-5">

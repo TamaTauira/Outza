@@ -77,6 +77,28 @@ model Event {
   imageLocked    Boolean   @default(false) // admin replaced the artwork; source refreshes must not overwrite it
   imageLookupAt  DateTime? // last attempt to find artwork on the event's own page (og:image / JSON-LD)
   organiserEditedAt DateTime? // the organiser edited this listing; source refreshes must not overwrite their details
+  /// Community hub taxonomy (garage-sales, school-fundraisers, …). Null on ingested listings.
+  communityKey       String?
+  /// null on ingested listings. PENDING_EMAIL | SUBMITTED
+  submissionState    String?
+  /// null on ingested listings. PENDING | APPROVED | REJECTED | REMOVED
+  approvalState      String?
+  /// SUBURB hides the street address. PRECISE is an organiser opt-in. Null on ingested listings.
+  locationVisibility String?
+  /// Soft-delete. The row and CommunityAudit history stay.
+  deletedAt          DateTime?
+  /// Private organiser email used for the verification code. Never rendered publicly.
+  contactEmail       String?
+  emailVerifiedAt    DateTime?
+  /// Organiser said the photo includes children. Public pages keep the genre placeholder.
+  childrenInImage    Boolean  @default(false)
+  /// School listings only: organiser confirmed the photo shows no children. Default off.
+  imageKidSafe       Boolean  @default(false)
+  templateKey        String?
+  communityFlags     String[] @default([])
+  submitIpHash       String?
+  /// sha256 of the manage link. The raw token is only emailed after verification.
+  manageTokenHash    String?  @unique
   referrals      EventReferral[]
   imageAsset     ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
   imageHistory   ImageHistory[]
@@ -92,6 +114,8 @@ model Event {
   claims      EventClaim[]
   signals     EventSignal[]
   togetherItems TogetherItem[]
+  campaigns   Campaign[]
+  communityAudits CommunityAudit[]
   occurrences   EventOccurrence[]
   sourceRecords SourceRecord[]
   verificationChecks VerificationCheck[]
@@ -114,6 +138,9 @@ model Event {
   @@index([seriesKey])
   @@index([city, date, duplicateOfId])
   @@index([imageAssetId])
+  @@index([communityKey, approvalState, date])
+  @@index([approvalState, deletedAt])
+  @@index([contactEmail])
   @@index([startsAt])
   @@index([venueId])
 }
@@ -248,6 +275,9 @@ model User {
   venuePlacements VenuePlacement[]
   editAcks        EventEditAck[]
   venueReports    VenueEventReport[]
+  campaigns       Campaign[]
+  organiserSubscriptions OrganiserSubscription[]
+  sponsorshipLeads SponsorshipLead[]
 
   @@index([emailOptIn])
   @@index([role])
@@ -603,6 +633,73 @@ model LocalListing {
   @@index([imageAssetId])
 }
 
+/// Moderation and organiser history for a community listing. Removing a listing never deletes these rows.
+model CommunityAudit {
+  id        String   @id @default(cuid())
+  eventId   String
+  actorId   String?
+  action    String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Email code and magic-link token for one community submission.
+model CommunityCode {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String
+  tokenHash String    @unique
+  eventId   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@index([eventId])
+}
+
+/// Counters for community submissions and organic landings. No visitor identity.
+model CommunityMetric {
+  id        String   @id @default(cuid())
+  kind      String
+  city      String?
+  suburb    String?
+  category  String?
+  path      String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([city, suburb, category])
+}
+
+/// Organiser-saved starting point for the next community listing.
+model CommunityTemplate {
+  id                 String   @id @default(cuid())
+  ownerEmail         String
+  userId             String?
+  title              String
+  communityKey       String
+  description        String   @db.Text
+  suburb             String
+  city               String
+  startTime          String
+  endTime            String?
+  recurrence         String   @default("NONE")
+  locationVisibility String   @default("SUBURB")
+  organiserName      String?
+  websiteUrl         String?
+  isFree             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([ownerEmail])
+}
+
 /// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, TRA, pedestrian counts, Google Business Profile)
 model IntelSource {
   key           String    @id // abs_region | abs_seifa | abs_hsi | tfnsw | dnsw | tra | footfall | google_bp
@@ -901,6 +998,181 @@ model QualityAudit {
   @@index([action, createdAt])
   @@index([eventId])
   @@index([status, action])
+}
+
+/// Sellable short-boost placements. Multi-day packages stay on Promotion.
+model PlacementInventory {
+  id            String     @id
+  name          String
+  placement     String
+  durationKind  String
+  minMinutes    Int
+  maxMinutes    Int
+  priceCents    Int
+  impressionCap Int
+  guaranteed    String     @db.Text
+  estimated     String     @db.Text
+  active        Boolean    @default(true)
+  campaigns     Campaign[]
+}
+
+/// Monthly organiser plan catalogue. A row here is not a charge.
+model SubscriptionPlan {
+  id            String                   @id
+  name          String
+  monthlyCents  Int
+  features      String[]
+  active        Boolean                  @default(true)
+  subscriptions OrganiserSubscription[]
+}
+
+/// One organiser's monthly plan. No trial. Charges only after checkout consent and a paid Stripe invoice.
+model OrganiserSubscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  planId               String
+  status               String    @default("PENDING") // PENDING | ACTIVE | PAST_DUE | CANCELLED
+  cancelAtPeriodEnd    Boolean   @default(false)
+  pendingPlanId        String?
+  pendingPlanAt        DateTime?
+  amountCents          Int
+  currency             String    @default("aud")
+  paymentMode          String    @default("stripe")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?   @unique
+  stripeSessionId      String?   @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  consentAt            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 SubscriptionPlan @relation(fields: [planId], references: [id])
+  charges              SubscriptionCharge[]
+
+  @@index([userId, status])
+}
+
+/// One paid Stripe invoice for a monthly plan, so renewals have their own tax invoice.
+model SubscriptionCharge {
+  id                    String   @id
+  subscriptionId        String
+  userId                String
+  amountCents           Int
+  currency              String   @default("aud")
+  status                String   @default("PAID") // PAID | REFUNDED
+  stripePaymentIntentId String?
+  hostedUrl             String?
+  periodStart           DateTime?
+  periodEnd             DateTime?
+  createdAt             DateTime @default(now())
+  subscription          OrganiserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([subscriptionId])
+}
+
+/// A paid short boost. Stays PENDING until Stripe confirms payment. Never activated from a quote.
+model Campaign {
+  id                    String    @id @default(cuid())
+  promoterId            String
+  eventId               String
+  inventoryId           String
+  city                  String
+  category              String
+  startsAt              DateTime
+  endsAt                DateTime
+  impressionCap         Int
+  spendCapCents         Int
+  amountCents           Int
+  currency              String    @default("aud")
+  status                String    @default("PENDING") // PENDING | ACTIVE | PAUSED | EXPIRED | CANCELLED | REFUNDED
+  paymentMode           String    @default("stripe")
+  stripeSessionId       String?   @unique
+  stripePaymentIntentId String?
+  consentAt             DateTime?
+  refundedAt            DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  promoter              User      @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+  event                 Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  inventory             PlacementInventory @relation(fields: [inventoryId], references: [id])
+  creative              Creative?
+  impressions           Impression[]
+  conversions           ConversionEvent[]
+
+  @@index([status, endsAt])
+  @@index([promoterId, status])
+  @@index([eventId])
+  @@index([city, status, startsAt])
+}
+
+model Creative {
+  id         String   @id @default(cuid())
+  campaignId String   @unique
+  headline   String
+  blurb      String?
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+/// Serves of a boost, summed by hour so a busy night does not insert one row per view.
+model Impression {
+  id         String   @id @default(cuid())
+  campaignId String
+  surface    String
+  bucket     String
+  count      Int      @default(0)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, surface, bucket])
+  @@index([campaignId])
+}
+
+model ConversionEvent {
+  id         String   @id @default(cuid())
+  campaignId String
+  kind       String // DETAIL | TICKET | REPEAT
+  actorHash  String?
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, kind])
+  @@index([actorHash, kind, createdAt])
+}
+
+/// Quote request when card billing is off. Never a charge.
+model SponsorshipLead {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  kind      String
+  note      String?  @db.Text
+  payload   Json
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, kind, createdAt])
+}
+
+/// Stripe event id, so a webhook retry does not apply twice. Deleted if handling fails.
+model PaymentEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+}
+
+/// Aggregated guide conversions. One row per landing path and referrer type.
+model LandingStat {
+  id          String   @id @default(cuid())
+  path        String
+  source      String
+  views       Int      @default(0)
+  detailViews Int      @default(0)
+  saves       Int      @default(0)
+  leads       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([path, source])
+  @@index([source])
 }
 
 /// Venue row for hours cross-checks. Hours are stored only when a source supplied them.

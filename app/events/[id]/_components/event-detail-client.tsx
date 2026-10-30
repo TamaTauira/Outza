@@ -191,7 +191,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   priority
                   crop
                   accent={catDef?.color}
-                  category={event.category}
+                  category={event.communityKey || event.category}
                 />
                 {event?.isLGBTI && (
                   <div className="absolute top-3 right-3 z-10 rainbow-bg text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-lg">

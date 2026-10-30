@@ -24,6 +24,7 @@ export const SOURCES: Record<string, { label: string; kind: 'organiser' | 'offic
   oztix: { label: 'Oztix', kind: 'ticketing', trust: 30 },
   ticketek: { label: 'Ticketek', kind: 'ticketing', trust: 32 },
   eventbrite: { label: 'Eventbrite', kind: 'ticketing', trust: 26 },
+  community: { label: 'the organiser', kind: 'organiser', trust: 40 },
 }
 export const sourceLabel = (s?: string | null) => (s && SOURCES[s]?.label) || s || 'a listing site'
 
@@ -136,7 +137,7 @@ export function parsePriceRange(isFree: boolean, price?: string | null): { min: 
 
 /** Promoters can edit events they created. Ingested listings stay as the source published them. */
 export function promoterCanEditEvent(source: string | null | undefined): boolean {
-  return source === 'promoter'
+  return source === 'promoter' || source === 'community'
 }
 
 const money = (n: number) => (n === 0 ? 'Free' : `$${Number.isInteger(n) ? n : n.toFixed(2)}`)

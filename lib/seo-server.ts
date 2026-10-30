@@ -5,9 +5,11 @@ import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { placeholderAbsolute } from '@/lib/placeholders'
 import { presentListing } from '@/lib/categories'
+import { evaluateSeasons, type SeasonDecision } from '@/lib/seasons'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
 import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
+import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 import { listingBucket, minutesNow, orderedWindow } from '@/lib/listing-window'
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
@@ -36,12 +38,15 @@ const TOPIC_FILTER: Partial<Record<TopicKey, (e: { title: string; subTags: strin
 }
 
 /** Upcoming, non-duplicate, non-cancelled events for a landing page. */
-export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; suburb?: string; when?: WhenKey }, take = 60) {
+export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; suburb?: string; when?: WhenKey; range?: { from: string; to: string } }, take = 60) {
   const today = cityToday(city)
   let from = today
   let to: string | null = null
-  const where: Prisma.EventWhereInput = { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' } }
-  if (opts.when) ({ from, to } = whenRange(city, opts.when))
+  const where: Prisma.EventWhereInput = { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, AND: [...PUBLIC_EVENT_AND] }
+  if (opts.range) {
+    from = opts.range.from
+    to = opts.range.to
+  } else if (opts.when) ({ from, to } = whenRange(city, opts.when))
   switch (opts.topic) {
     case 'tonight': if (!opts.when) to = today; break
     case 'this-weekend': if (!opts.when) ({ from, to } = weekendRange(city)); break
@@ -111,12 +116,14 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
 export type LandingData = { events: LandingEvent[]; local: LandingLocal[]; total: number; from: string; to: string | null }
 
 /** Everything a city/topic page shows: board events plus matching VibePeep Local listings. */
-export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60, when?: WhenKey): Promise<LandingData> {
-  const ev = await landingEvents(city, { topic: topic?.key, suburb, when }, take)
+export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60, when?: WhenKey, range?: { from: string; to: string }): Promise<LandingData> {
+  const ev = await landingEvents(city, { topic: topic?.key, suburb, when, range }, take)
   const datedTopic = !when && (topic?.key === 'tonight' || topic?.key === 'this-weekend')
   const activity = !!topic && topic.key !== 'events' && topic.key !== 'tonight' && topic.key !== 'this-weekend'
   let raw: LandingLocal[] = []
-  if (topic?.local) {
+  if (range && !topic?.local) {
+    raw = await landingLocal(city, topic, { from: range.from, to: range.to, ...(suburb ? { suburb } : {}) })
+  } else if (topic?.local) {
     raw = await landingLocal(city, topic, {
       ...(suburb ? { suburb } : {}),
       ...(when ? { from: ev.from, to: ev.to ?? ev.from } : {}),
@@ -163,7 +170,7 @@ export const cityEventCounts = cache(async function cityEventCounts(): Promise<R
   const earliest = CITIES.map((c) => cityToday(c)).sort()[0]
   const rows = await prisma.event.groupBy({
     by: ['city'],
-    where: { duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(earliest), lte: day(addDaysKey(earliest, 120)) } },
+    where: { duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(earliest), lte: day(addDaysKey(earliest, 120)) }, AND: [...PUBLIC_EVENT_AND] },
     _count: { _all: true },
   }).catch(() => [])
   const out: Record<string, number> = {}
@@ -181,7 +188,7 @@ export const lastRefreshAt = cache(async function lastRefreshAt(): Promise<Date 
 export const citySuburbs = cache(async function citySuburbs(city: CityDef, min = 3): Promise<{ name: string; slug: string; count: number }[]> {
   const today = cityToday(city)
   const rows = await prisma.event.findMany({
-    where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null } },
+    where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
     select: { suburb: true, venueAddress: true },
   })
   const counts = new Map<string, { name: string; count: number }>()
@@ -284,7 +291,7 @@ async function loadGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
   const localUntil = addDaysKey(today, 60)
   const [events, locals] = await Promise.all([
     prisma.event.findMany({
-      where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) } },
+      where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) }, AND: [...PUBLIC_EVENT_AND] },
       select: {
         id: true, title: true, description: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
         category: true, subTags: true, isFree: true, isLGBTI: true,
@@ -339,6 +346,7 @@ export interface CityGuideModel {
   ok: boolean
   decisions: GuideDecision[]
   suburbs: { name: string; slug: string; count: number }[]
+  seasons: SeasonDecision[]
 }
 
 const modelCache = new Map<string, { at: number; model: CityGuideModel }>()
@@ -350,12 +358,12 @@ async function loadCityGuideModel(city: CityDef): Promise<CityGuideModel> {
   if (hit && Date.now() - hit.at < 10 * 60_000) return hit.model
   try {
     const rows = await loadGuideRows(city, today)
-    const model: CityGuideModel = { ok: true, decisions: evaluateGuides(city, rows), suburbs: suburbDirectory(city, rows) }
+    const model: CityGuideModel = { ok: true, decisions: evaluateGuides(city, rows), suburbs: suburbDirectory(city, rows), seasons: evaluateSeasons(city, rows) }
     modelCache.set(key, { at: Date.now(), model })
     return model
   } catch (err) {
     console.error('guide inventory failed', city.name, err)
-    return { ok: false, decisions: [], suburbs: [] }
+    return { ok: false, decisions: [], suburbs: [], seasons: [] }
   }
 }
 

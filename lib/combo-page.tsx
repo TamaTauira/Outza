@@ -6,6 +6,7 @@ import { CITIES } from '@/lib/cities'
 import {
   comboFacts, formatGuideDay, guideCopy, guidePath, parseCombo, relatedGuides, specFromParsed, whenMenuLabel,
 } from '@/lib/local-seo'
+import { seasonDef } from '@/lib/seasons'
 import { MIN_INDEX, TOPICS, cityFromSlug, cityPath, slugify, suburbPath, type TopicDef, type WhenKey } from '@/lib/seo'
 import { cityEventCounts, cityGuideModel, citySuburbs, landingData, lastRefreshAt, type LandingEvent } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
@@ -134,6 +135,7 @@ export async function ComboPage({ citySlug, segments }: { citySlug: string; segm
       refreshed={refreshed}
       related={model.ok ? relatedGuides(model.decisions, path, city.name) : []}
       crumbs={crumbs}
+      seasons={model.seasons.filter((s) => s.index).map((s) => ({ href: s.path, title: seasonDef(s.key)?.h1(city.name) ?? s.key }))}
     />
   )
 }
