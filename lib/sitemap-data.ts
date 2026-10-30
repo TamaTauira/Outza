@@ -5,6 +5,8 @@ import { addDaysKey, cityPath, cityToday, eventPath } from '@/lib/seo'
 import { cityGuideModel } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
 import { addDaysStr, localPath, occurrences, todayIn, MAX_AHEAD_DAYS } from '@/lib/local-shared'
+import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
+import { communitySitemapPaths } from '@/lib/community'
 
 const PAGE = 2000
 const memory = new Map<string, { at: number; body: string }>()
@@ -33,6 +35,7 @@ function eventWhere() {
   return {
     duplicateOfId: null,
     status: { not: 'CANCELLED' as const },
+    AND: [...PUBLIC_EVENT_AND],
     OR: [{ date: { gte: day(earliest) } }, { endDate: { gte: day(earliest) } }],
     date: { lte: day(addDaysKey(earliest, 365)) },
   }
@@ -70,6 +73,7 @@ export function guidesSitemapXml() {
       { loc: `${origin}/`, lastmod: now },
       { loc: `${origin}/promoters` },
       { loc: `${origin}/local`, lastmod: now },
+      { loc: `${origin}/community`, lastmod: now },
       { loc: `${origin}/how-listings-work` },
     ]
     const [locals, models] = await Promise.all([
@@ -95,6 +99,11 @@ export function guidesSitemapXml() {
       const perCity = CITIES.map((city, i) => models[i]?.decisions.find((d) => d.path === cityPath(city, guide.topic))?.total ?? 0)
       if (!assessEditorial(perCity).index) continue
       urls.push({ loc: `${origin}${editorialPath(guide.slug)}`, lastmod: now })
+    }
+    const communityPaths = await communitySitemapPaths().catch(() => [] as string[])
+    for (const path of communityPaths) {
+      if (path === '/community') continue
+      urls.push({ loc: `${origin}${path}`, lastmod: now })
     }
     for (const l of locals) {
       const today = todayIn(cityDef(l.city).tz)

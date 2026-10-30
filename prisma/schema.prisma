@@ -73,6 +73,28 @@ model Event {
   imageLocked    Boolean   @default(false) // admin replaced the artwork; source refreshes must not overwrite it
   imageLookupAt  DateTime? // last attempt to find artwork on the event's own page (og:image / JSON-LD)
   organiserEditedAt DateTime? // the organiser edited this listing; source refreshes must not overwrite their details
+  /// Community hub taxonomy (garage-sales, school-fundraisers, …). Null on ingested listings.
+  communityKey       String?
+  /// null on ingested listings. PENDING_EMAIL | SUBMITTED
+  submissionState    String?
+  /// null on ingested listings. PENDING | APPROVED | REJECTED | REMOVED
+  approvalState      String?
+  /// SUBURB hides the street address. PRECISE is an organiser opt-in. Null on ingested listings.
+  locationVisibility String?
+  /// Soft-delete. The row and CommunityAudit history stay.
+  deletedAt          DateTime?
+  /// Private organiser email used for the verification code. Never rendered publicly.
+  contactEmail       String?
+  emailVerifiedAt    DateTime?
+  /// Organiser said the photo includes children. Public pages keep the genre placeholder.
+  childrenInImage    Boolean  @default(false)
+  /// School listings only: organiser confirmed the photo shows no children. Default off.
+  imageKidSafe       Boolean  @default(false)
+  templateKey        String?
+  communityFlags     String[] @default([])
+  submitIpHash       String?
+  /// sha256 of the manage link. The raw token is only emailed after verification.
+  manageTokenHash    String?  @unique
   referrals      EventReferral[]
   imageAsset     ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
   imageHistory   ImageHistory[]
@@ -88,6 +110,7 @@ model Event {
   claims      EventClaim[]
   signals     EventSignal[]
   togetherItems TogetherItem[]
+  communityAudits CommunityAudit[]
   occurrences   EventOccurrence[]
   sourceRecords SourceRecord[]
   verificationChecks VerificationCheck[]
@@ -105,6 +128,9 @@ model Event {
   @@index([seriesKey])
   @@index([city, date, duplicateOfId])
   @@index([imageAssetId])
+  @@index([communityKey, approvalState, date])
+  @@index([approvalState, deletedAt])
+  @@index([contactEmail])
   @@index([startsAt])
   @@index([venueId])
 }
@@ -587,6 +613,73 @@ model LocalListing {
   @@index([userId])
   @@index([ipHash, createdAt])
   @@index([imageAssetId])
+}
+
+/// Moderation and organiser history for a community listing. Removing a listing never deletes these rows.
+model CommunityAudit {
+  id        String   @id @default(cuid())
+  eventId   String
+  actorId   String?
+  action    String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([action, createdAt])
+}
+
+/// Email code and magic-link token for one community submission.
+model CommunityCode {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String
+  tokenHash String    @unique
+  eventId   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@index([eventId])
+}
+
+/// Counters for community submissions and organic landings. No visitor identity.
+model CommunityMetric {
+  id        String   @id @default(cuid())
+  kind      String
+  city      String?
+  suburb    String?
+  category  String?
+  path      String?
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([city, suburb, category])
+}
+
+/// Organiser-saved starting point for the next community listing.
+model CommunityTemplate {
+  id                 String   @id @default(cuid())
+  ownerEmail         String
+  userId             String?
+  title              String
+  communityKey       String
+  description        String   @db.Text
+  suburb             String
+  city               String
+  startTime          String
+  endTime            String?
+  recurrence         String   @default("NONE")
+  locationVisibility String   @default("SUBURB")
+  organiserName      String?
+  websiteUrl         String?
+  isFree             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([ownerEmail])
 }
 
 /// VibePeep Intelligence: approved official data sources (ABS, TfNSW, Destination NSW, TRA, pedestrian counts, Google Business Profile)

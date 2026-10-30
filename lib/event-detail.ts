@@ -11,6 +11,7 @@ import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, n
 import { queueNearStartRecheck } from '@/lib/verification-pass'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
+import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
 const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -18,6 +19,7 @@ const RELATED_SELECT = {
   category: true, subTags: true, isLGBTI: true, isFree: true,
   price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, source: true,
   latitude: true, longitude: true, seriesKey: true,
+  communityKey: true, locationVisibility: true, childrenInImage: true, imageKidSafe: true,
   imageAsset: { select: imageAssetSelect },
 } as const
 
@@ -40,7 +42,10 @@ async function queryEventCore(id: string) {
     where: { id },
     include: { promoter: { select: { id: true, name: true, orgName: true, proUntil: true } }, _count: { select: { attendees: true } }, imageAsset: { select: imageAssetSelect } },
   })
-  if (!event || isPastEvent(event)) return null
+  if (!event || isPastEvent(event) || event.deletedAt) return null
+  if (event.approvalState && event.approvalState !== 'APPROVED') return null
+  const redacted = redactCommunityPublic(event)
+  if (!redacted.imageUrl) redacted.imageAsset = null
 
   const [relatedRows, tiers, duplicateTarget] = await Promise.all([
     prisma.event.findMany({
@@ -49,6 +54,7 @@ async function queryEventCore(id: string) {
         city: event.city,
         date: { gte: sydneyToday() },
         duplicateOfId: null,
+        AND: [...PUBLIC_EVENT_AND],
         OR: [{ category: event.category }, { venueName: event.venueName }],
         ...(event.seriesKey ? { NOT: { seriesKey: event.seriesKey } } : {}),
       },
@@ -71,9 +77,9 @@ async function queryEventCore(id: string) {
     const other = activityTitle(r.title)
     if (ownActivity && other && ownActivity === other && vs >= 0.34) return false
     return true
-  }).slice(0, 6)
+  }).slice(0, 6).map((row) => redactCommunityPublic(row))
 
-  const { _count, promoter, views: _v, ticketClicks: _c, confidenceScore: _score, ...rest } = event
+  const { _count, promoter, views: _v, ticketClicks: _c, confidenceScore: _score, contactEmail: _email, submitIpHash: _ip, manageTokenHash: _token, emailVerifiedAt: _verifiedAt, communityFlags: _flags, ...rest } = redacted
   const payload = {
     event: {
       ...rest,

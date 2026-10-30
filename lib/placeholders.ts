@@ -41,6 +41,14 @@ const ALIAS: Record<string, PlaceholderSlug> = {
   club: 'nightlife',
   garage: 'community',
   warehouse: 'community',
+  'garage-sales': 'community',
+  'school-fundraisers': 'family',
+  'farmers-markets': 'food-drink',
+  'neighbourhood-popups': 'community',
+  'community-sport': 'sports',
+  'charity-events': 'community',
+  'dog-friendly': 'community',
+  'local-art': 'arts-culture',
 }
 
 const DEFAULT_SLUG: PlaceholderSlug = 'community'
