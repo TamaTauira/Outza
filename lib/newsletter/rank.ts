@@ -53,7 +53,7 @@ const anchor = (e: { id: string; title: string; category: string; venueName: str
 
 async function loadPool(city: string, from: Date, to: Date) {
   return prisma.event.findMany({
-    where: { city, date: { gte: from, lt: to }, status: { in: BOOKABLE }, duplicateOfId: null },
+    where: { city, date: { gte: from, lt: to }, status: { in: BOOKABLE }, duplicateOfId: null, AND: [{ deletedAt: null }, { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] }] },
     orderBy: [{ date: 'asc' }], take: 600, select: nlEventSelect,
   })
 }

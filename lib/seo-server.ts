@@ -8,6 +8,7 @@ import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb,
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
 import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
 import { verifiedFlags } from '@/lib/listing-trust'
+import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
@@ -39,7 +40,7 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   const today = cityToday(city)
   let from = today
   let to: string | null = null
-  const where: Prisma.EventWhereInput = { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' } }
+  const where: Prisma.EventWhereInput = { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, AND: [...PUBLIC_EVENT_AND] }
   if (opts.when) ({ from, to } = whenRange(city, opts.when))
   switch (opts.topic) {
     case 'tonight': if (!opts.when) to = today; break
@@ -157,7 +158,7 @@ export const cityEventCounts = cache(async function cityEventCounts(): Promise<R
   const earliest = CITIES.map((c) => cityToday(c)).sort()[0]
   const rows = await prisma.event.groupBy({
     by: ['city'],
-    where: { duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(earliest), lte: day(addDaysKey(earliest, 120)) } },
+    where: { duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(earliest), lte: day(addDaysKey(earliest, 120)) }, AND: [...PUBLIC_EVENT_AND] },
     _count: { _all: true },
   }).catch(() => [])
   const out: Record<string, number> = {}
@@ -175,7 +176,7 @@ export const lastRefreshAt = cache(async function lastRefreshAt(): Promise<Date 
 export const citySuburbs = cache(async function citySuburbs(city: CityDef, min = 3): Promise<{ name: string; slug: string; count: number }[]> {
   const today = cityToday(city)
   const rows = await prisma.event.findMany({
-    where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null } },
+    where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
     select: { suburb: true, venueAddress: true },
   })
   const counts = new Map<string, { name: string; count: number }>()
@@ -277,7 +278,7 @@ async function loadGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
   const localUntil = addDaysKey(today, 60)
   const [events, locals] = await Promise.all([
     prisma.event.findMany({
-      where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) } },
+      where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) }, AND: [...PUBLIC_EVENT_AND] },
       select: {
         id: true, title: true, description: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
         category: true, subTags: true, isFree: true, isLGBTI: true,

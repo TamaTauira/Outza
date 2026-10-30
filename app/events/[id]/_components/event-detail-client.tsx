@@ -22,6 +22,7 @@ import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { placeLine } from '@/lib/place'
+import { listingCta } from '@/lib/community-shared'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
 
@@ -88,7 +89,10 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const availability = event.quality?.status ? null : event.quality?.availability
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
-  const ticket = event?.ticketUrl ? (ticketHref(event.ticketUrl) ?? event.ticketUrl) : null
+  const cta = listingCta(event)
+  const ticket = cta ? (cta.external ? (ticketHref(cta.href) ?? cta.href) : cta.href) : null
+  const ticketExternal = !!cta?.external
+  const ticketLabel = cta?.label ?? 'More Info'
 
   const card = (
     <aside className="rounded-xl border border-border bg-card p-4 shadow-sm lg:sticky lg:top-20 space-y-3">
@@ -129,11 +133,11 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         <a
           href={ticket}
           onClick={() => { navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
-          target="_blank"
-          rel={ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+          target={ticketExternal ? '_blank' : undefined}
+          rel={ticketExternal && ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
           className="hidden sm:flex items-center justify-center gap-2 w-full h-11 bg-primary text-primary-foreground hover:opacity-90 text-sm font-semibold rounded-lg transition-opacity"
         >
-          Get Tickets <ExternalLink className="w-4 h-4" />
+          {ticketLabel} {ticketExternal && <ExternalLink className="w-4 h-4" />}
         </a>
       )}
       <div className="hidden sm:grid grid-cols-4 gap-2">
@@ -183,6 +187,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   priority
                   crop
                   accent={catDef?.color}
+                  category={event.category}
+                  communityKey={event.communityKey}
                 />
                 {event?.isLGBTI && (
                   <div className="absolute top-3 right-3 z-10 rainbow-bg text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-lg">
@@ -269,11 +275,11 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <a
             href={ticket}
             onClick={() => { navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
-            target="_blank"
-            rel={ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+            target={ticketExternal ? '_blank' : undefined}
+            rel={ticketExternal && ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
             className="ml-auto flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
           >
-            Get Tickets <ExternalLink className="h-4 w-4" />
+            {ticketLabel} {ticketExternal && <ExternalLink className="h-4 w-4" />}
           </a>
         )}
         <details className="relative">

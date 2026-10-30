@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { VibePeepMark } from '@/components/vibepeep-mark'
-import { VibePeepWordmark, VIBEPEEP_TAGLINE } from '@/components/vibepeep-logo'
+import { VibePeepWordmark } from '@/components/vibepeep-logo'
 import { srcSet, variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import { cn } from '@/lib/utils'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
+import { placeholderSrc } from '@/lib/community-shared'
 
 interface Props {
   image?: ClientImage | null
@@ -21,6 +22,10 @@ interface Props {
   crop?: boolean
   /** Category colour for the branded placeholder when there is no image. */
   accent?: string
+  /** Board category, used to pick a genre placeholder WebP. */
+  category?: string | null
+  /** Community hub section, when this listing was submitted there. */
+  communityKey?: string | null
   className?: string
 }
 
@@ -29,7 +34,7 @@ interface Props {
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
  * otherwise a clearly labelled VibePeep placeholder.
  */
-export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, crop, accent, className }: Props) {
+export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, compact, crop, accent, category, communityKey, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
   const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
   const m = image?.variants ?? null
@@ -80,16 +85,11 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, com
   }
 
   return (
-    <div
-      className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
-      style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #1a120c 72%)` : 'linear-gradient(145deg, #2a211c, #141414)' }}
-      role="img"
-      aria-label={alt}
-    >
-      <VibePeepMark className={compact ? 'w-7 h-7' : 'w-10 h-10'} decorative />
-      <span className="flex flex-col items-center leading-none text-white">
-        <VibePeepWordmark tone="on-dark" decorative className={compact ? 'h-3.5 w-auto' : 'h-5 w-auto'} />
-        {!compact && <span className="mt-1 max-w-[9rem] text-[9px] font-medium leading-tight text-white/70">{VIBEPEEP_TAGLINE}</span>}
+    <div className="absolute inset-0" role="img" aria-label={alt}>
+      <img src={placeholderSrc(category, communityKey)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-white">
+        <VibePeepMark className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} decorative />
+        {!compact && <VibePeepWordmark tone="on-dark" decorative className="h-3 w-auto" />}
       </span>
     </div>
   )

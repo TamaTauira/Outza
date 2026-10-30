@@ -10,6 +10,7 @@ import { idFromEventParam, isPastEvent } from '@/lib/seo'
 import { activityTitle, availabilityLine, confidence, outzaVerified, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, VERIFIED_BLOCKING_REPORTS, type Recurrence } from '@/lib/quality'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
+import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
 const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -17,6 +18,7 @@ const RELATED_SELECT = {
   category: true, subTags: true, isLGBTI: true, isFree: true,
   price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, source: true,
   latitude: true, longitude: true, seriesKey: true,
+  communityKey: true, locationVisibility: true, childrenInImage: true, imageKidSafe: true,
   imageAsset: { select: imageAssetSelect },
 } as const
 
@@ -39,7 +41,10 @@ async function queryEventCore(id: string) {
     where: { id },
     include: { promoter: { select: { id: true, name: true, orgName: true, proUntil: true } }, _count: { select: { attendees: true } }, imageAsset: { select: imageAssetSelect } },
   })
-  if (!event || isPastEvent(event)) return null
+  if (!event || isPastEvent(event) || event.deletedAt) return null
+  if (event.approvalState && event.approvalState !== 'APPROVED') return null
+  const redacted = redactCommunityPublic(event)
+  if (!redacted.imageUrl) redacted.imageAsset = null
 
   const [relatedRows, tiers, openReports, duplicateTarget] = await Promise.all([
     prisma.event.findMany({
@@ -48,6 +53,7 @@ async function queryEventCore(id: string) {
         city: event.city,
         date: { gte: sydneyToday() },
         duplicateOfId: null,
+        AND: [...PUBLIC_EVENT_AND],
         OR: [{ category: event.category }, { venueName: event.venueName }],
         ...(event.seriesKey ? { NOT: { seriesKey: event.seriesKey } } : {}),
       },
@@ -74,9 +80,9 @@ async function queryEventCore(id: string) {
     const other = activityTitle(r.title)
     if (ownActivity && other && ownActivity === other && vs >= 0.34) return false
     return true
-  }).slice(0, 6)
+  }).slice(0, 6).map((row) => redactCommunityPublic(row))
 
-  const { _count, promoter, views: _v, ticketClicks: _c, ...rest } = event
+  const { _count, promoter, views: _v, ticketClicks: _c, contactEmail: _email, submitIpHash: _ip, manageTokenHash: _token, emailVerifiedAt: _verifiedAt, communityFlags: _flags, ...rest } = redacted
   const promoterVerified = !!promoter?.proUntil && promoter.proUntil > new Date()
   const payload = {
     event: {
@@ -102,7 +108,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v1'], { revalidate: 120 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v2'], { revalidate: 120 })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 

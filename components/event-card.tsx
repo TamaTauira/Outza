@@ -11,6 +11,7 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
+import { listingCta } from '@/lib/community-shared'
 interface EventData {
   id: string
   title: string
@@ -31,7 +32,9 @@ interface EventData {
   venueAddress?: string | null
   city?: string | null
   ticketUrl: string | null
+  organiserUrl?: string | null
   source?: string | null
+  communityKey?: string | null
   verified?: boolean
 }
 
@@ -61,6 +64,8 @@ export function EventCard({ event, index }: { event: EventData; index: number })
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               crop
               accent={catDef?.color}
+              category={event.category}
+              communityKey={event.communityKey}
             />
 
             {/* Date badge */}
@@ -128,7 +133,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
                 {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
               </span>
               <span className="flex items-center gap-1 text-xs font-medium text-primary group-hover:gap-2 transition-all">
-                Get Tickets <ExternalLink className="w-3 h-3" />
+                {listingCta(event)?.label ?? 'More Info'} <ExternalLink className="w-3 h-3" />
               </span>
             </div>
           </div>
@@ -147,7 +152,7 @@ export function GuideEventRow({ event }: { event: EventData }) {
   return (
     <Link href={eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={event.imageAsset} src={event.imageUrl} kind="card" alt="" sizes="64px" compact crop accent={color} />
+        <EventImage image={event.imageAsset} src={event.imageUrl} kind="card" alt="" sizes="64px" compact crop accent={color} category={event.category} communityKey={event.communityKey} />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>
