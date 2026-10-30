@@ -31,6 +31,8 @@ export interface AiFilters {
   city: string
   /** "near me" / "nearby" — needs the browser's location, not the board city. */
   nearMe: boolean
+  /** True only when the person picked a category (the vibe control). Inferred topics stay soft. */
+  categoryStrict: boolean
 }
 
 const GENERIC = new Set(['live', 'music', 'live music', 'event', 'events', 'things', 'fun', 'stuff', 'show', 'shows', 'activities'])
@@ -128,6 +130,19 @@ export function extractExplicitRange(q: string, today: string): { from: string; 
     const day = validDay(Number(m[3]), Number(m[2]), Number(m[1]))
     return day ? { from: day, to: day } : null
   })
+  // "7 Nov" / "14 November" is that day, not the whole month. Year is inferred.
+  take(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_TOKEN})\\b(?!\\s*,?\\s*20\\d{2})`, 'gi'), (m) => {
+    const month = monthNum(m[2])
+    if (!month) return null
+    const day = validDay(inferYear(month, today, null), month, Number(m[1]))
+    return day ? { from: day, to: day } : null
+  })
+  take(new RegExp(`\\b(${MONTH_TOKEN})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?!\\s*,?\\s*20\\d{2})`, 'gi'), (m) => {
+    const month = monthNum(m[1])
+    if (!month) return null
+    const day = validDay(inferYear(month, today, null), month, Number(m[2]))
+    return day ? { from: day, to: day } : null
+  })
   // Month without a year glued to it ("in January", "January" in "January in 2027").
   take(new RegExp(`\\b(?:in|this|next|during)\\s+(${MONTH_TOKEN})\\b(?!\\s+\\d)`, 'gi'), (m) => {
     const month = monthNum(m[1])
@@ -210,9 +225,39 @@ function suburbHit(q: string): { suburb: string; city: string } | null {
   return { suburb: top.suburb, city: cities.size === 1 ? top.city : '' }
 }
 
+const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+const DATE_WORDS = new Set([
+  'next', 'week', 'weeks', 'month', 'night', 'nights', 'christmas', 'xmas', 'saturday', 'sunday',
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'tonight', 'today', 'tomorrow', 'weekend',
+])
+
+/** Common misspellings and names for the same thing, applied before the rules run. */
+export function correctQueryTypos(q: string): string {
+  return q
+    .replace(/\bmarkts\b/gi, 'markets')
+    .replace(/\bcomdey\b/gi, 'comedy')
+    .replace(/\bjaz\b/gi, 'jazz')
+    .replace(/\bbazaars?\b/gi, 'market')
+    .replace(/\bmakers\s+markets?\b/gi, 'markets')
+}
+
+function stemKeyword(w: string): string {
+  if (w === 'markets' || w === 'markts') return 'market'
+  if (w === 'comedian' || w === 'comedians' || w === 'comdey') return 'comedy'
+  if (w === 'exhibitions') return 'exhibition'
+  if (w === 'theatres' || w === 'theaters' || w === 'theater') return 'theatre'
+  if (w === 'festivals') return 'festival'
+  return w
+}
+
+function nextWeekday(today: string, target: number): string {
+  const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
+  const delta = (target - dow + 7) % 7
+  return addDays(today, delta)
+}
+
 function categoryFromQuery(s: string): { category: string; subTag: string } {
   if (/\b(films?|cinema|screenings?|documentary|documentaries)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Film' }
-  if (/\bmarkets?\b/.test(s)) return { category: 'Community', subTag: 'Markets' }
   if (/\bworkshops?\b/.test(s)) return { category: 'Business', subTag: 'Workshop' }
   if (/\b(exhibitions?|gallery|galleries)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Exhibition' }
   if (/\b(comedy|comedian)\b/.test(s)) return { category: 'Arts & Culture', subTag: 'Comedy' }
@@ -222,7 +267,7 @@ function categoryFromQuery(s: string): { category: string; subTag: string } {
     if (s.includes(head) && (!best || head.length > best.len)) best = { category: cat.name, tag: '', len: head.length }
     for (const tag of cat.subTags) {
       const t = tag.toLowerCase()
-      if (t === 'market') continue
+      if (/^markets?$/.test(t) || t === 'festival' || t === 'party' || t === 'cultural') continue
       if (s.includes(t) && (!best || t.length > best.len)) best = { category: cat.name, tag, len: t.length }
     }
   }
@@ -231,12 +276,19 @@ function categoryFromQuery(s: string): { category: string; subTag: string } {
 }
 
 export function fallbackParse(q: string, today: string) {
+  q = correctQueryTypos(q)
   const s = q.toLowerCase()
-  const out: Record<string, unknown> = { keywords: [] as string[], explicitDates: false, city: '', subTag: '', paidOnly: false }
+  const out: Record<string, unknown> = { keywords: [] as string[], explicitDates: false, city: '', subTag: '', paidOnly: false, categoryStrict: false }
   const range = extractExplicitRange(q, today)
+  const weekday = s.match(/\b(?:on\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?:\s+night)?\b/)
   if (range) {
     out.dateFrom = range.from
     out.dateTo = range.to
+    out.explicitDates = true
+  } else if (/\b(christmas|xmas)\b/.test(s)) {
+    const y = Number(today.slice(0, 4))
+    const thisYear = `${y}-12-25`
+    out.dateFrom = out.dateTo = thisYear >= today ? thisYear : `${y + 1}-12-25`
     out.explicitDates = true
   } else if (/\b(nye|new year'?s eve)\b/.test(s)) {
     const y = Number(today.slice(0, 4))
@@ -249,7 +301,26 @@ export function fallbackParse(q: string, today: string) {
     out.timeOfDay = 'evening'
   } else if (/\btoday\b/.test(s)) out.dateFrom = out.dateTo = today
   else if (/\btomorrow\b/.test(s)) out.dateFrom = out.dateTo = addDays(today, 1)
-  else if (/\bweekend\b/.test(s)) [out.dateFrom, out.dateTo] = weekend(today)
+  else if (/\bnext\s+weekend\b/.test(s)) {
+    const [from, to] = weekend(today)
+    out.dateFrom = addDays(from, 7)
+    out.dateTo = addDays(to, 7)
+    out.explicitDates = true
+  } else if (/\bnext\s+week\b/.test(s)) {
+    const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
+    const toMonday = ((8 - dow) % 7) || 7
+    out.dateFrom = addDays(today, toMonday)
+    out.dateTo = addDays(String(out.dateFrom), 6)
+    out.explicitDates = true
+  } else if (/\bthis\s+month\b/.test(s)) {
+    const bounds = monthBounds(Number(today.slice(0, 4)), Number(today.slice(5, 7)))
+    if (bounds) { out.dateFrom = bounds.from; out.dateTo = bounds.to; out.explicitDates = true }
+  } else if (weekday) {
+    const target = WEEKDAY_NAMES.indexOf(weekday[1] as (typeof WEEKDAY_NAMES)[number])
+    out.dateFrom = out.dateTo = nextWeekday(today, target)
+    if (/\bnight\b/.test(weekday[0])) out.timeOfDay = 'evening'
+    out.explicitDates = true
+  } else if (/\bweekend\b/.test(s)) [out.dateFrom, out.dateTo] = weekend(today)
   if (/\bfree\b/.test(s)) out.isFree = true
   else if (/\bpaid\b/.test(s)) out.paidOnly = true
   if (/\b(lgbt|queer|gay|pride)/.test(s)) out.lgbtiq = true
@@ -264,11 +335,11 @@ export function fallbackParse(q: string, today: string) {
   else if (place?.city) out.city = place.city
   if (place?.suburb) out.suburb = place.suburb
   const city = String(out.city || '')
-  const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'tonight', 'today', 'tomorrow', 'weekend', 'free', 'paid', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music', 'nye', ...SOFT, ...Object.keys(MONTH_FULL), ...Object.keys(MONTH_ABBR), 'may'])
+  const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'free', 'paid', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music', 'nye', 'new', 'year', 'eve', 'bar', ...DATE_WORDS, ...SOFT, ...Object.keys(MONTH_FULL), ...Object.keys(MONTH_ABBR), 'may'])
   if (city) city.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
   if (place?.suburb) place.suburb.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
-  const catWords = `${cat.category} ${cat.subTag}`.toLowerCase()
-  out.keywords = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w) && !catWords.includes(w)).slice(0, 3)
+  const words = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w)).map(stemKeyword)
+  out.keywords = [...new Set(words)].slice(0, 4)
   return out
 }
 
@@ -303,7 +374,7 @@ export function normalise(raw: any, today: string, explicitDates = false): AiFil
     .filter((k: string) => {
       const l = k.toLowerCase()
       if (k.length <= 1 || GENERIC.has(l) || SOFT.has(l) || cityWords.has(l)) return false
-      if (/^20\d{2}$/.test(l) || MONTH_FULL[l] || MONTH_ABBR[l] || l === 'may') return false
+      if (/^20\d{2}$/.test(l) || MONTH_FULL[l] || MONTH_ABBR[l] || l === 'may' || DATE_WORDS.has(l)) return false
       return true
     })
     .slice(0, 4)
@@ -322,6 +393,7 @@ export function normalise(raw: any, today: string, explicitDates = false): AiFil
     soon: false,
     city,
     nearMe: false,
+    categoryStrict: raw?.categoryStrict === true,
   }
 }
 
@@ -340,7 +412,7 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
       ...(ai ?? {}),
       ...fb,
       category: ai?.category || fb.category,
-      keywords: Array.isArray(ai?.keywords) && ai.keywords.length ? ai.keywords : fb.keywords,
+      keywords: fb.keywords,
       isFree: ai?.isFree === true || fb.isFree === true,
       lgbtiq: ai?.lgbtiq === true || fb.lgbtiq === true,
       maxPrice: ai?.maxPrice ?? fb.maxPrice ?? null,
@@ -364,6 +436,8 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   if (fb.paidOnly === true) out.paidOnly = true
   if (fb.isFree === true) out.isFree = true
   if (!out.city && typeof fb.city === 'string' && fb.city) out.city = fb.city
+  if (Array.isArray(fb.keywords) && fb.keywords.length) out.keywords = fb.keywords as string[]
+  out.categoryStrict = false
   out.nearMe = /\b(near me|nearby|around me)\b/i.test(q)
   return out
 }

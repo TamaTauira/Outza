@@ -6,13 +6,14 @@ import { addDays, sydneyNow, toMinutes } from '@/lib/board'
 import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, keywordRelaxAllowed, type AiFilters } from '@/lib/ai-search-parse'
+import { rankAskRows, relaxedKeywords, tagForms, ASK_LIMIT } from '@/lib/ai-search-rank'
+import { isPaidListing } from '@/lib/quality'
 import { nearestCity } from '@/lib/travel'
 import { completeJson, llmConfigured } from '@/lib/llm'
 
 export const dynamic = 'force-dynamic'
 export type { AiFilters }
 
-const RESULTS = 8
 const CAT_NAMES = CATEGORIES.map((c) => c.name)
 
 function weekend(today: string): [string, string] {
@@ -29,7 +30,7 @@ function applyHints(f: AiFilters, h: any, today: string) {
   else if (h?.when === 'weekend') { [f.dateFrom, f.dateTo] = weekend(today); f.timeOfDay = 'any' }
   if (h?.budget === 'free') { f.isFree = true; f.maxPrice = null }
   else if (h?.budget === '30' || h?.budget === '75') { f.isFree = false; f.maxPrice = Number(h.budget) }
-  if (CAT_NAMES.includes(h?.category)) f.category = h.category
+  if (CAT_NAMES.includes(h?.category)) { f.category = h.category; f.categoryStrict = true }
   const area = clean(h?.area)
   if (area) f.suburb = area
   return f
@@ -42,7 +43,7 @@ async function aiParse(q: string, today: string, city: string) {
   const dow = new Date(`${today}T00:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' })
   const system = `You turn an event-search request into JSON filters for an Australian events site. Today is ${dow} ${today}${city ? ` and the user is browsing ${city}` : ''}.
 Return ONLY JSON: {"dateFrom":"YYYY-MM-DD","dateTo":"YYYY-MM-DD","category":one of ${JSON.stringify(CAT_NAMES)} or "","isFree":bool,"maxPrice":number|null,"lgbtiq":bool,"timeOfDay":"morning"|"afternoon"|"evening"|"any","suburb":string,"city":one of ${JSON.stringify(CITY_NAMES)} or "","keywords":[up to 3 short search words such as a genre, artist, venue or activity]}.
-Categories and their sub-types: ${CATEGORIES.map((c) => `${c.name} (${c.subTags.join(', ')})`).join('; ')}. Pick the category whose sub-types contain what the user asked for (e.g. comedy = Arts & Culture, markets = Community).
+Categories and their sub-types: ${CATEGORIES.map((c) => `${c.name} (${c.subTags.join(', ')})`).join('; ')}. Pick a category only when the request names one. Keep the topic words (market, comedy, opera, hip hop) in keywords. Do not turn "markets" into category Community.
 Rules: "this weekend" = the current or coming Saturday and Sunday (if today is Saturday, it is today and tomorrow); "tonight" = today with evening; no date mentioned = today to 13 days ahead. A named year (2027) is 1 January through 31 December of that year. A named month and year (January 2027) is that whole month. Words like "upcoming" do not replace a named year. If the user names a city (${CITY_NAMES.join(', ')}), set "city" to that exact name. Set timeOfDay only if the user mentions a time of day. Only set suburb if a suburb/area is named. Do not invent anything the user did not ask for. Keywords must come from the request, must not repeat the category name, the year, or the city, and leave out generic words (event, things, fun, upcoming).`
   try {
     return await completeJson({
@@ -90,31 +91,31 @@ export async function POST(req: NextRequest) {
     const now = sydneyNow()
 
     const narrowed: Prisma.EventWhereInput[] = [
-      ...(filters.isFree ? [{ OR: [{ isFree: true }, { price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] }] : []),
+      ...(filters.isFree ? [{ OR: [{ isFree: true }, { priceMin: { lte: 0 } }, { price: { contains: 'free', mode: 'insensitive' as const } }] }, { OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] }] : []),
       ...(filters.paidOnly ? [{ NOT: { OR: [{ price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] } }] : []),
       ...(filters.suburb ? [{ OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueName: { contains: filters.suburb, mode: 'insensitive' as const } }] }] : []),
     ]
+    const keywordWhere = (words: string[]): Prisma.EventWhereInput => words.length
+      ? { AND: words.map((word) => ({ OR: [
+          { title: { contains: word, mode: 'insensitive' as const } },
+          { venueName: { contains: word, mode: 'insensitive' as const } },
+          { suburb: { contains: word, mode: 'insensitive' as const } },
+          { venueAddress: { contains: word, mode: 'insensitive' as const } },
+          { subTags: { hasSome: tagForms(word) } },
+        ] })) }
+      : {}
     const base: Prisma.EventWhereInput = {
       date: { gte: new Date(`${filters.dateFrom}T00:00:00.000Z`), lte: new Date(`${filters.dateTo}T00:00:00.000Z`) },
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
       ...(searchCity ? { city: searchCity } : {}),
-      ...(filters.category ? { category: filters.category } : {}),
+      ...(filters.categoryStrict && filters.category ? { category: filters.category } : {}),
       ...(filters.paidOnly ? { isFree: false } : {}),
       ...(filters.lgbtiq ? { isLGBTI: true } : {}),
-      ...(filters.subTag ? { subTags: { has: filters.subTag } } : {}),
       AND: [...narrowed, { deletedAt: null }, { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] }],
     }
-    const kw: Prisma.EventWhereInput = filters.keywords.length
-      ? { AND: [{ OR: filters.keywords.flatMap((k) => [
-          { title: { contains: k, mode: 'insensitive' as const } },
-          { description: { contains: k, mode: 'insensitive' as const } },
-          { venueName: { contains: k, mode: 'insensitive' as const } },
-          { subTags: { has: k[0].toUpperCase() + k.slice(1) } },
-        ]) }] }
-      : {}
     const select = {
-      id: true, title: true, description: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,
+      id: true, title: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,
       isFree: true, price: true, priceMin: true, views: true, _count: { select: { savedBy: true, attendees: true } },
     } as const
     const musicIntent = filters.category === 'Music' || /\b(live music|gigs?|concerts?)\b/i.test(q)
@@ -124,7 +125,13 @@ export async function POST(req: NextRequest) {
     }
 
     const run = async (where: Prisma.EventWhereInput) => {
-      const rows = await prisma.event.findMany({ where, select, take: 400, orderBy: [{ date: 'asc' }, { time: 'asc' }] })
+      const rows = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('statement_timeout', '4000', true)`
+        return tx.event.findMany({ where, select, take: 80, orderBy: [{ date: 'asc' }, { time: 'asc' }] })
+      }, { timeout: 6000 }).catch((err) => {
+        console.error('ai-search query timed out or failed', err instanceof Error ? err.message : err)
+        return [] as Awaited<ReturnType<typeof prisma.event.findMany>>
+      })
       return rows.filter((e) => {
         const mins = toMinutes(e.time)
         if (e.date.toISOString().slice(0, 10) === today && mins !== null && mins < now.minutes - 60) return false
@@ -132,6 +139,7 @@ export async function POST(req: NextRequest) {
         if (filters.timeOfDay === 'morning' && (mins === null || mins >= 12 * 60)) return false
         if (filters.timeOfDay === 'afternoon' && (mins === null || mins < 12 * 60 || mins >= 17 * 60)) return false
         if (filters.timeOfDay === 'evening' && (mins === null || mins < 17 * 60)) return false
+        if (filters.isFree && isPaidListing(e)) return false
         if (filters.maxPrice != null) {
           const p = lowestPrice(e.isFree, e.priceMin, e.price)
           if (p === null || p > filters.maxPrice) return false
@@ -140,27 +148,24 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    let rows = focusMusic((await run({ AND: [base, kw] })).map((e) => presentListing(e)))
+    const load = async (words: string[]) => focusMusic((await run({ AND: [base, keywordWhere(words)] })).map((e) => presentListing(e)))
+    let rows = await load(filters.keywords)
     let relaxed = false
-    if (!rows.length && filters.keywords.length && filters.category && !musicIntent) {
-      // The user's words matter more than a guessed category: try them across every category first.
-      // A live-music ask does not drop the Music category — that is how film and comedy leak in.
-      const { category: _omit, ...noCategory } = base
-      rows = focusMusic((await run({ AND: [noCategory, kw] })).map((e) => presentListing(e)))
-      if (rows.length) filters.category = ''
+    const broader = relaxedKeywords(filters.keywords)
+    if (rows.length < 3 && broader && !musicIntent) {
+      const extra = await load(broader)
+      const seen = new Set(rows.map((row) => row.id))
+      rows = [...rows, ...extra.filter((row) => !seen.has(row.id))]
+      relaxed = extra.length > 0
     }
-    if (!rows.length && keywordRelaxAllowed(filters) && !musicIntent) {
+    if (!rows.length && keywordRelaxAllowed(filters) && !filters.keywords.length && !musicIntent) {
       rows = focusMusic((await run(base)).map((e) => presentListing(e)))
       relaxed = rows.length > 0
     }
 
-    // Soonest first, with a nudge for events people have saved or marked as going.
-    const ranked = rows
-      .map((e, i) => ({ e, s: -i * 0.15 + (e._count.savedBy + e._count.attendees) * 0.5 + Math.min(e.views, 200) / 100 }))
-      .sort((a, b) => b.s - a.s)
-      .slice(0, RESULTS)
-      .map(({ e }) => e)
-      .sort((a, b) => +a.date - +b.date || (toMinutes(a.time) ?? 0) - (toMinutes(b.time) ?? 0))
+    const scope = { ...filters, city: searchCity }
+    let ranked = rankAskRows(rows, scope, ASK_LIMIT)
+    if (ranked.length === 0 && broader) ranked = rankAskRows(rows, { ...scope, keywords: broader }, ASK_LIMIT)
 
     return NextResponse.json({
       filters, ai: !!parsed, relaxed, total: rows.length,
