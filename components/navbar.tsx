@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, Store, Users, Sparkles, ShieldCheck } from 'lucide-react'
+import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, House, Users, Sparkles, ShieldCheck } from 'lucide-react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -29,7 +29,7 @@ const TABS: { key: AppView; label: string; Icon: typeof LayoutList; href: string
 export function viewForPath(pathname: string | null): AppView | null {
   if (pathname === '/map') return 'map'
   if (pathname === '/saved') return 'saved'
-  if (pathname?.startsWith('/local') || pathname?.startsWith('/itinerary') || pathname?.startsWith('/community')) return null
+  if (pathname?.startsWith('/local') || pathname?.startsWith('/itinerary')) return null
   return 'board'
 }
 
@@ -50,19 +50,11 @@ export function Navbar({ savedCount }: NavbarProps) {
         </a>
 
         <nav className="flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(['board', 'map', 'local', 'community', 'saved'] as const).map((key) => {
-            if (key === 'community') {
-              return (
-                <Link key="community" href="/community" className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/community') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Community hub">
-                  <Users className="w-4 h-4" /><span>Community</span>
-                  {pathname?.startsWith('/community') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
-                </Link>
-              )
-            }
+          {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
                 <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
-                  <Store className="w-4 h-4" /><span>Local</span>
+                  <House className="w-4 h-4" /><span>Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
               )

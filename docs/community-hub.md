@@ -2,12 +2,12 @@
 
 Neighbourhood listings that do not have a ticketing site: garage sales, school fundraisers, farmers markets, neighbourhood pop-ups, community sport, charity events, dog-friendly meetups and local art.
 
-VibePeep Local (`/local`) is unchanged. This hub is a separate submit flow that stores a row on `Event` plus audit, email-code, metric and template tables.
+These listings live on VibePeep Local (`/local`) with the garage, clearance and market sales. Submissions are Event rows plus audit, email-code, metric and template tables. `/community` redirects to `/local`.
 
 ## What a visitor gets
 
-- `/community` lists the eight sections.
-- `/community/[section]`, `/community/[section]/[city]`, `/community/[section]/[city]/[suburb]` and an optional when segment (`tonight`, `this-weekend`, `friday`, `saturday`, `sunday`).
+- `/local` is the neighbourhood page (sales and community sections together). Old `/community` URLs 301 here.
+- `/local/in/[section]`, then city, suburb and an optional when segment (`tonight`, `this-weekend`, `friday`, `saturday`, `sunday`).
 - Filters on the page: city, suburb, from, to, when, free. A repeating listing matches a date only when an occurrence falls in that window.
 - Indexing uses `assessIndexability` in `lib/indexability.ts` (5 live listings; suburb pages also need 2 inside the fresh window). Thinner pages render, send `noindex`, and stay out of the sitemap.
 - Listings without a photo use the genre WebPs in `public/placeholders/`.
@@ -16,10 +16,10 @@ VibePeep Local (`/local`) is unchanged. This hub is a separate submit flow that 
 
 ## What an organiser gets
 
-- `/community/submit` on a phone: title, time, suburb, description, email code or magic link, optional photo. Built-in templates prefill a garage sale, a monthly market, a dog walk and a school fete.
+- `/local?tab=submit` on a phone: title, time, suburb, description, email code or magic link, optional photo. Built-in templates prefill a garage sale, a monthly market, a dog walk and a school fete. Warehouse clearances use the same form.
 - After the email is confirmed, low-risk listings go live. School listings, children’s photos and spam signals wait in `/admin/community`.
-- The confirmation email includes a manage link (`/community/manage/[token]`) for edits, postpone, cancel, reschedule, and “save as template”.
-- `/community/poster/[id]` is a printable poster with a QR code pointing at the event page.
+- The confirmation email includes a manage link (`/local/manage/[token]`) for edits, postpone, cancel, reschedule, and “save as template”.
+- `/local/poster/[id]` is a printable poster with a QR code pointing at the event page.
 - Signing in with the same email can attach the listing to that account. Promoter dashboard edits already allow `source = community`. Ingested feeds still cannot be edited, and a refresh will not overwrite a community row.
 
 ## Moderation

@@ -55,7 +55,7 @@ export function CommunityManageForm({ token, listing }: { token: string; listing
       <p className="text-sm text-muted-foreground">Status: {String(listing.approvalState || 'pending').toLowerCase()} · {String(listing.status || 'scheduled').toLowerCase()}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Link href={path} className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 font-semibold text-primary-foreground">More Info</Link>
-        <Link href={`/community/poster/${listing.id}`} className="inline-flex h-12 items-center justify-center rounded-full border border-border px-5 font-semibold">Printable poster</Link>
+        <Link href={`/local/poster/${listing.id}`} className="inline-flex h-12 items-center justify-center rounded-full border border-border px-5 font-semibold">Printable poster</Link>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <button type="button" disabled={busy} onClick={() => send({ action: 'postpone' })} className="h-12 rounded-full border border-border text-sm font-semibold">Postpone</button>

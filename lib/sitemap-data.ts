@@ -73,7 +73,6 @@ export function guidesSitemapXml() {
       { loc: `${origin}/`, lastmod: now },
       { loc: `${origin}/promoters` },
       { loc: `${origin}/local`, lastmod: now },
-      { loc: `${origin}/community`, lastmod: now },
       { loc: `${origin}/how-listings-work` },
     ]
     const [locals, models] = await Promise.all([

@@ -42,6 +42,7 @@ const ALIAS: Record<string, PlaceholderSlug> = {
   garage: 'community',
   warehouse: 'community',
   'garage-sales': 'community',
+  'warehouse-sales': 'community',
   'school-fundraisers': 'family',
   'farmers-markets': 'food-drink',
   'neighbourhood-popups': 'community',
