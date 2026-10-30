@@ -16,6 +16,7 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { EventExtras, EventGallery, HERO_FRAME, SourceLine, shareEvent } from './event-extras'
 import { ListingTrustActions } from '@/components/listing-trust-actions'
 import { ticketHref } from '@/lib/affiliate'
+import { eventOutbound } from '@/lib/listing-link'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { FollowPromoterButton } from '@/components/follow-promoter-button'
 import { FollowListing } from '@/components/follow-listing'
@@ -88,7 +89,19 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const availability = event.quality?.status ? null : event.quality?.availability
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
-  const ticket = event?.ticketUrl ? (ticketHref(event.ticketUrl) ?? event.ticketUrl) : null
+  const outbound = eventOutbound(event)
+  const sponsored = outbound.kind === 'ticket' && !!event.ticketUrl && (ticketHref(event.ticketUrl) ?? event.ticketUrl) !== event.ticketUrl
+  const sourceLink = (
+    <a
+      href={outbound.href}
+      onClick={() => { if (outbound.kind === 'ticket') navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
+      target="_blank"
+      rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+      className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+    >
+      {outbound.label} <ExternalLink className="h-4 w-4" />
+    </a>
+  )
 
   const card = (
     <aside className="rounded-xl border border-border bg-card p-4 shadow-sm lg:sticky lg:top-20 space-y-3">
@@ -125,17 +138,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         </Fact>
       </ul>
 
-      {ticket && (
-        <a
-          href={ticket}
-          onClick={() => { navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
-          target="_blank"
-          rel={ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
-          className="hidden sm:flex items-center justify-center gap-2 w-full h-11 bg-primary text-primary-foreground hover:opacity-90 text-sm font-semibold rounded-lg transition-opacity"
-        >
-          Get Tickets <ExternalLink className="w-4 h-4" />
-        </a>
-      )}
+      <div className="hidden sm:block">{sourceLink}</div>
       <div className="hidden sm:grid grid-cols-4 gap-2">
         <button
           type="button"
@@ -183,6 +186,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   priority
                   crop
                   accent={catDef?.color}
+                  category={event.category}
                 />
                 {event?.isLGBTI && (
                   <div className="absolute top-3 right-3 z-10 rainbow-bg text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-lg">
@@ -265,17 +269,15 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <p className="text-[11px] text-muted-foreground">Price</p>
           <p className="truncate font-bold">{price}</p>
         </div>
-        {ticket && (
-          <a
-            href={ticket}
-            onClick={() => { navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
-            target="_blank"
-            rel={ticketHref(event.ticketUrl) !== event.ticketUrl ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
-            className="ml-auto flex h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground"
-          >
-            Get Tickets <ExternalLink className="h-4 w-4" />
-          </a>
-        )}
+        <a
+          href={outbound.href}
+          onClick={() => { if (outbound.kind === 'ticket') navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
+          target="_blank"
+          rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+          className="ml-auto flex h-12 min-w-[9.5rem] flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground"
+        >
+          {outbound.label} <ExternalLink className="h-4 w-4" />
+        </a>
         <details className="relative">
           <summary className="flex h-11 cursor-pointer list-none items-center rounded-lg border border-border px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">More</summary>
           <div className="absolute bottom-14 right-0 z-50 w-64 space-y-2 rounded-xl border border-border bg-card p-3 shadow-xl">

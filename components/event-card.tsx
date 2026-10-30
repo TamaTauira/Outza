@@ -61,6 +61,7 @@ export function EventCard({ event, index }: { event: EventData; index: number })
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               crop
               accent={catDef?.color}
+              category={event.category}
             />
 
             {/* Date badge */}
@@ -147,7 +148,7 @@ export function GuideEventRow({ event }: { event: EventData }) {
   return (
     <Link href={eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={event.imageAsset} src={event.imageUrl} kind="card" alt="" sizes="64px" compact crop accent={color} />
+        <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" compact crop accent={color} category={event.category} shape="square" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>

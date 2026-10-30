@@ -26,6 +26,8 @@ model Event {
   price       String?
   imageUrl    String?
   ticketUrl   String?
+  /// Original listing page when it is not the same as the ticket link.
+  sourceUrl   String?
   source      String   @default("ticketmaster")
   city        String   @default("Sydney")
   latitude    Float?

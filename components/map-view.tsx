@@ -12,6 +12,8 @@ import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
+import { eventPictureSrc } from '@/lib/placeholders'
+import { variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -27,22 +29,33 @@ interface MapViewProps {
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 const TILE = MAP_TILE
 
+function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, shape: 'wide' | 'square') {
+  const kind: VariantKind = shape === 'square' ? 'square' : 'card'
+  const m = e.imageAsset?.variants
+  const widths = m?.sizes?.[kind]
+  if (m && widths?.length) return variantUrl(m, kind, widths[widths.length - 1], 'webp')
+  return eventPictureSrc(e.imageUrl, e.category, shape)
+}
+
 function popupHtml(e: any, tier?: string) {
   const date = new Date(e?.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
   const p = formatPrice(e?.isFree, e?.price, e?.priceMin, e?.priceMax)
+  const img = pictureSrc(e, 'wide')
   return `<div class="se-pop">${tier ? `<span class="se-pop-tier se-${tier.toLowerCase()}">${esc(tier)}</span>` : ''}
+    <img class="se-pop-img" src="${esc(img)}" alt="" />
     <div class="se-pop-title">${esc(e?.title)}</div>
     <div class="se-pop-meta">${esc(date)}${e?.time ? ` · ${esc(e.time)}` : ''}<br/>${esc(e?.venueName)}</div>
     <div class="se-pop-row"><span class="se-pop-price ${p.kind === 'free' ? 'free' : ''}">${esc(p.prefix ? `${p.prefix} ` : '')}${esc(p.value)}</span>
     <a href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
 }
 
-function markerIcon(L: any, color: string, letter: string, tier?: string) {
+function markerIcon(L: any, e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, color: string, tier?: string) {
   const size = tier === 'GOLD' ? 44 : tier === 'BRONZE' ? 36 : 26
-  const bg = tier === 'GOLD' ? '#F5B700' : color
+  const ring = tier === 'GOLD' ? '#F5B700' : '#fff'
+  const src = pictureSrc(e, 'square')
   return L.divIcon({
     className: 'se-marker-wrap',
-    html: `<div class="se-marker ${tier ? `se-marker-${tier.toLowerCase()}` : ''}" style="width:${size}px;height:${size}px;background:${bg}">${tier === 'GOLD' ? '★' : esc(letter)}</div>`,
+    html: `<div class="se-marker ${tier ? `se-marker-${tier.toLowerCase()}` : ''}" style="width:${size}px;height:${size}px;background-color:${color};border-color:${ring};background-image:url('${esc(src)}')"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
@@ -203,7 +216,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
       const tier = e.promoTier ?? tierById.get(e.id)
       if (tier === 'GOLD') continue // gold rendered separately, always visible
       const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A1A'
-      const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(L, color, e?.category?.[0] ?? 'E', tier), zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
+      const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(L, e, color, tier), title: e?.title, zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
         .bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
       markerById.current.set(e.id, m)
       if (tier === 'BRONZE') gold.addLayer(m)
@@ -211,7 +224,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
     }
     for (const f of featured) {
       if (f.tier !== 'GOLD' || !f.latitude || !f.longitude) continue
-      const goldMarker = L.marker([f.latitude, f.longitude], { icon: markerIcon(L, '#F5B700', '★', 'GOLD'), zIndexOffset: 1000 })
+      const goldMarker = L.marker([f.latitude, f.longitude], { icon: markerIcon(L, f, '#F5B700', 'GOLD'), title: f?.title, zIndexOffset: 1000 })
         .bindPopup(popupHtml(f, 'GOLD'), { className: 'se-popup', maxWidth: 280 })
       markerById.current.set(f.id, goldMarker)
       gold.addLayer(goldMarker)

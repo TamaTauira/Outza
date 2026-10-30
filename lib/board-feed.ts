@@ -10,14 +10,16 @@ import { coordsFitCity } from '@/lib/travel'
 import { correctPin, placeFromText } from '@/lib/venue-place'
 import { confidence } from '@/lib/quality'
 import { verifiedFlags } from '@/lib/listing-trust'
+import { imageAssetSelect } from '@/lib/images/spec'
 
 const BOARD_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
   venueName: true, venueAddress: true, suburb: true, city: true,
   category: true, subTags: true, isLGBTI: true, isFree: true,
-  price: true, priceMin: true, priceMax: true, ticketUrl: true, organiserUrl: true,
-  latitude: true, longitude: true, status: true, statusSource: true, source: true,
+  price: true, priceMin: true, priceMax: true, ticketUrl: true, sourceUrl: true, organiserUrl: true,
+  imageUrl: true, latitude: true, longitude: true, status: true, statusSource: true, source: true,
   lastVerifiedAt: true, updatedAt: true, duplicateOfId: true,
+  imageAsset: { select: imageAssetSelect },
 } as const
 
 export type BoardArgs = {
@@ -145,7 +147,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v3'], { revalidate: 60 })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v4'], { revalidate: 60 })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 

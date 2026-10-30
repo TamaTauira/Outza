@@ -1,5 +1,6 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { CITIES } from '@/lib/cities'
+import { firstListingUrl, humanitixEventUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
 
 function offerList(raw: unknown): any[] {
@@ -71,6 +72,8 @@ export async function fetchFrontierEvents(): Promise<number> {
       const city = CITIES.find((c) => c.match.test(loc))
       if (!/Event$/.test(it?.['@type'] ?? '') || !city) continue
       const offer = frontierPrice(it)
+      const page = usableUrl(typeof it.url === 'string' ? it.url : null)
+      const organiser = firstListingUrl(it?.organizer, ['url', 'sameAs'])
       const ok = await saveEvent({
         title: String(it.name ?? '').replace(/\s+20\d\d$/, ''),
         description: it.description || `${it?.performer?.name ?? it.name} live in ${city.name}, presented by Frontier Touring.`,
@@ -80,7 +83,9 @@ export async function fetchFrontierEvents(): Promise<number> {
         venueAddress: loc,
         genres: ['Music', 'Concert'],
         imageUrl: it.image ?? null,
-        ticketUrl: it.url ?? null,
+        ticketUrl: page && isTicketLink(page, 'frontier', 'ticket') ? page : null,
+        sourceUrl: page,
+        organiserUrl: organiser,
         price: offer.price,
         isFree: offer.isFree,
         source: 'frontier',
@@ -123,6 +128,10 @@ async function saveCosHit(h: any): Promise<boolean> {
   const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
   const free = h.freeEvent === 'true' || h.freeEvent === true
   const price = free ? null : await lookupCosPrice(h)
+  const slug = String(h.slug ?? '').trim().replace(/^\/+|\/+$/g, '')
+  const page = slug && !/^(undefined|null)$/i.test(slug) ? usableUrl(`${COS_ORIGIN}/events/${slug}`) : null
+  const external = firstListingUrl(h, ['bookingUrl', 'bookingLink', 'ticketUrl', 'ticketLink', 'buyUrl', 'externalUrl', 'website', 'websiteUrl'])
+  const ticket = external && isTicketLink(external, 'cityofsydney', 'ticket') ? external : null
   return saveEvent({
     title: h.name,
     description: h.strapline,
@@ -135,7 +144,9 @@ async function saveCosHit(h: any): Promise<boolean> {
     isFree: free,
     price,
     imageUrl: h.tileImageCloudinary?.[0]?.secure_url ?? null,
-    ticketUrl: `${COS_ORIGIN}/events/${h.slug}`,
+    ticketUrl: ticket,
+    sourceUrl: page ?? (external && external !== ticket ? external : null),
+    organiserUrl: external && external !== page && external !== ticket ? external : null,
     source: 'cityofsydney',
   }).catch(() => false)
 }
@@ -238,7 +249,8 @@ export async function fetchHumanitixEvents(): Promise<number> {
         isFree: priced.isFree,
         feesIncluded: e?.pricing?.plusBuyerFee === true ? false : e?.pricing?.plusBuyerFee === false ? true : null,
         imageUrl: e?.bannerImage?.handle ? `https://images.humanitix.com/i/${e.bannerImage.handle}@original` : null,
-        ticketUrl: `${e.hostname ?? 'https://events.humanitix.com/'}${e.slug}`,
+        ticketUrl: humanitixEventUrl(e.hostname ?? e.url, e.slug ?? e.url),
+        sourceUrl: humanitixEventUrl(e.hostname ?? e.url, e.slug ?? e.url),
         source: 'humanitix',
         city: city.name,
       }).catch(() => false)
