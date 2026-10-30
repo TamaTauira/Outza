@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { CITIES } from '@/lib/cities'
 import { cn } from '@/lib/utils'
 import { GoogleButton } from '@/components/google-button'
-import { isPostcode, parseBirthDate } from '@/lib/profile-shared'
+import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
 import { ProfileFields } from '@/components/profile-fields'
 
 function SignupForm() {
@@ -24,7 +24,7 @@ function SignupForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [homeCity, setHomeCity] = useState('Sydney')
-  const [birthDate, setBirthDate] = useState('')
+  const [birthYear, setBirthYear] = useState('')
   const [homePostcode, setHomePostcode] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -35,7 +35,7 @@ function SignupForm() {
     setError('')
     setNotice('')
     if (role === 'CONSUMER') {
-      const p = parseBirthDate(birthDate)
+      const p = parseBirthYear(birthYear)
       if (p.error) { setError(p.error); return }
       if (homePostcode && !isPostcode(homePostcode)) { setError('Postcodes are 4 digits'); return }
     }
@@ -43,7 +43,7 @@ function SignupForm() {
     try {
       const r = await fetch('/api/signup', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role, orgName, homeCity, ...(role === 'CONSUMER' ? { birthDate, homePostcode } : {}) }),
+        body: JSON.stringify({ name, email, password, role, orgName, homeCity, ...(role === 'CONSUMER' ? { birthYear, homePostcode } : {}) }),
       })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) { setError(data.error || 'Could not create account'); return }
@@ -116,7 +116,7 @@ function SignupForm() {
           {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
         </select>
       </div>
-      {role === 'CONSUMER' && <ProfileFields birthDate={birthDate} homePostcode={homePostcode} onBirthDate={setBirthDate} onPostcode={setHomePostcode} />}
+      {role === 'CONSUMER' && <ProfileFields birthYear={birthYear} homePostcode={homePostcode} onBirthYear={setBirthYear} onPostcode={setHomePostcode} />}
       {notice && <p className="text-sm text-foreground" role="status">{notice}</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>

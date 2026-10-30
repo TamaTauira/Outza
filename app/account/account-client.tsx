@@ -9,10 +9,10 @@ import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
 import { cn } from '@/lib/utils'
 import { ProfileFields } from '@/components/profile-fields'
-import { isPostcode, parseBirthDate } from '@/lib/profile-shared'
+import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
 
-type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthDate?: string | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
+type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
@@ -42,32 +42,32 @@ export function AccountClient() {
       toast.success('Preferences saved')
     } catch (err) { console.error(err); toast.error('Could not save') } finally { setSaving(false) }
   }
-  const [dob, setDob] = useState('')
+  const [year, setYear] = useState('')
   const [pc, setPc] = useState('')
-  const loadedAbout = useRef({ dob: '', pc: '' })
+  const loadedAbout = useRef({ year: '', pc: '' })
   useEffect(() => {
     if (!me) return
-    const nextDob = (me.birthDate ?? '').slice(0, 10)
+    const nextYear = me.birthYear ? String(me.birthYear) : ''
     const nextPc = me.homePostcode ?? ''
-    setDob((cur) => (cur === loadedAbout.current.dob ? nextDob : cur))
+    setYear((cur) => (cur === loadedAbout.current.year ? nextYear : cur))
     setPc((cur) => (cur === loadedAbout.current.pc ? nextPc : cur))
-    loadedAbout.current = { dob: nextDob, pc: nextPc }
+    loadedAbout.current = { year: nextYear, pc: nextPc }
   }, [me])
   const saveAbout = async () => {
-    const p = parseBirthDate(dob)
-    if (p.error) { toast.error(p.error); return }
+    const p = parseBirthYear(year)
+    if (p.error || p.year == null) { toast.error(p.error ?? 'Enter the year you were born'); return }
     if (pc && !isPostcode(pc)) { toast.error('Postcodes are 4 digits'); return }
     setSaving(true)
     try {
-      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ birthDate: dob, homePostcode: pc }) })
+      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ birthYear: p.year, homePostcode: pc }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Could not save')
-      const savedDob = (d.user?.birthDate ?? dob).slice(0, 10)
+      const savedYear = d.user?.birthYear ? String(d.user.birthYear) : String(p.year)
       const savedPc = d.user?.homePostcode ?? ''
-      loadedAbout.current = { dob: savedDob, pc: savedPc }
-      setDob(savedDob)
+      loadedAbout.current = { year: savedYear, pc: savedPc }
+      setYear(savedYear)
       setPc(savedPc)
-      setMe((m) => (m ? { ...m, birthDate: savedDob, homePostcode: savedPc || null } : m))
+      setMe((m) => (m ? { ...m, birthYear: Number(savedYear), homePostcode: savedPc || null } : m))
       toast.success('Details saved')
     } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Could not save') } finally { setSaving(false) }
   }
@@ -98,9 +98,9 @@ export function AccountClient() {
 
       <section className={card}>
         <h2 className="font-semibold mb-1">About you</h2>
-        <p className="text-xs text-muted-foreground mb-3">{me.role === 'CONSUMER' ? 'Date of birth is required for event-goer accounts. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
-        <ProfileFields idPrefix="acct" birthDate={dob} homePostcode={pc} onBirthDate={setDob} onPostcode={setPc} showNote={false} />
-        <button onClick={saveAbout} disabled={saving || (dob.slice(0, 10) === (me.birthDate ?? '').slice(0, 10) && pc.trim() === (me.homePostcode ?? ''))} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save Details</button>
+        <p className="text-xs text-muted-foreground mb-3">{me.role === 'CONSUMER' ? 'Year of birth is required for event-goer accounts. We don’t store the day. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
+        <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} />
+        <button onClick={saveAbout} disabled={saving || (year === (me.birthYear ? String(me.birthYear) : '') && pc.trim() === (me.homePostcode ?? ''))} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save Details</button>
       </section>
 
       <VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} />

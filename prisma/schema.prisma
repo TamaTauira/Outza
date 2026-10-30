@@ -244,7 +244,7 @@ model User {
   proUntil            DateTime?
   weeklyReport        Boolean   @default(false) // promoter opted in to a weekly emailed performance report
   lastReportAt        DateTime?
-  birthDate           DateTime? @db.Date // event-goers: required in the app; only ever shown to promoters as grouped age bands
+  birthYear           Int? // event-goers: year only. Age checks use the youngest age that year could be. Full dates are not stored.
   homePostcode        String?   // optional 4-digit AU postcode; only ever shown to promoters as grouped home areas
   vibeProfile         Json?     // optional vibe answers (lib/vibe-shared.ts); own recommendations + grouped stats only
   createdAt           DateTime  @default(now())

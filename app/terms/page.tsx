@@ -19,7 +19,9 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '2. Accounts',
     body: [
-      'You need to be 13 or older to create an event-goer account. Keep your password to yourself. You are responsible for activity under your account.',
+      'You need to be 13 or older to create an event-goer account. We ask for the year you were born, not the full date, and we treat you as the youngest age that year allows. In the EU, the EEA and the UK we do not open accounts when that age is under 16. That country check uses the network’s country and can be wrong or missing.',
+      'If you might still be under 18, you can use VibePeep, but you are left out of organiser audience insights and we do not use your vibe answers or browsing to profile or rank a newsletter for you.',
+      'Keep your password to yourself. You are responsible for activity under your account.',
       'Saved favourites belong to the account that saved them. Signing out, or using a different account, does not show someone else’s saves. An itinerary is stored on the device for the account that is signed in, and is cleared from view when you sign out.',
       'We may suspend an account that is used to break the law, harass people, or interfere with the site.',
     ],

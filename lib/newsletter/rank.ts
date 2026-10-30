@@ -169,7 +169,7 @@ export async function pickEvents(userId: string, opts: { city?: string; edition?
     homePostcode: user.homePostcode,
     preferredCategories: user.preferredCategories,
     vibe: user.vibeProfile,
-    birthDate: user.birthDate,
+    birthYear: user.birthYear,
     reminderOptIn: user.reminderOptIn,
     venueNames: venueFollows.map((v) => v.venueName),
     saved: savedRows.map((s) => anchor(s.event)),

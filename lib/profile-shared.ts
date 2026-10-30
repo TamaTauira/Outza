@@ -1,24 +1,44 @@
-// Client-safe helpers for event-goer profile fields (date of birth, home postcode) and their grouped forms.
+// Client-safe helpers for event-goer profile fields (year of birth, home postcode) and their grouped forms.
 
 export const MIN_AGE = 13
+export const EU_MIN_AGE = 16
+export const ADULT_AGE = 18
 export const MAX_AGE = 110
 /** Groups smaller than this are never shown to promoters. */
 export const MIN_GROUP = 10
 
+/** EU, EEA and the UK. IP country is best-effort; a missing header does not block sign-up. */
+export const UNDER16_BLOCKED_COUNTRIES = new Set([
+  'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+  'IS', 'LI', 'NO',
+  'GB',
+])
+
+export const UNDER16_BLOCK_MESSAGE = 'VibePeep can’t open an account for under-16s in your country. You can join once you are 16.'
+
 /** Shown wherever promoters see audience insights (dashboard and weekly report email). */
-export const AUDIENCE_DISCLAIMER = `Based on saves, "going", ticket taps, shares, itinerary adds and views by signed-in people on VibePeep. VibePeep doesn't sell tickets, so this is interest, not purchaser data. Groups under ${MIN_GROUP} people are hidden, and you never see anyone's age, birthday, postcode, name or email.`
+export const AUDIENCE_DISCLAIMER = `Based on saves, "going", ticket taps, shares, itinerary adds and views by signed-in adults on VibePeep. Under-18s are not included. VibePeep doesn't sell tickets, so this is interest, not purchaser data. Groups under ${MIN_GROUP} people are hidden, and you never see anyone's year of birth, postcode, name or email.`
 
 export const AGE_BANDS = ['Under 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+'] as const
 
-export function ageOn(birth: Date, now = new Date()): number {
-  let a = now.getUTCFullYear() - birth.getUTCFullYear()
-  const m = now.getUTCMonth() - birth.getUTCMonth()
-  if (m < 0 || (m === 0 && now.getUTCDate() < birth.getUTCDate())) a--
-  return a
+function sydneyParts(now: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now)
+  const n = (type: string) => Number(parts.find((p) => p.type === type)?.value)
+  return { year: n('year'), month: n('month'), day: n('day') }
 }
 
-export function ageBand(birth: Date, now = new Date()): string {
-  const a = ageOn(birth, now)
+/**
+ * Youngest age someone born in that year can be. Their birthday is treated as 31 December,
+ * so a check never treats a person as older than they might be.
+ */
+export function conservativeAge(birthYear: number, now = new Date()): number {
+  const { year, month, day } = sydneyParts(now)
+  const hadBirthday = month === 12 && day === 31
+  return year - birthYear - (hadBirthday ? 0 : 1)
+}
+
+export function ageBandForYear(birthYear: number, now = new Date()): string {
+  const a = conservativeAge(birthYear, now)
   if (a < 18) return AGE_BANDS[0]
   if (a < 25) return AGE_BANDS[1]
   if (a < 35) return AGE_BANDS[2]
@@ -28,15 +48,37 @@ export function ageBand(birth: Date, now = new Date()): string {
   return AGE_BANDS[6]
 }
 
-/** Parses a YYYY-MM-DD date of birth. Returns an error message for invalid or out-of-range dates. */
-export function parseBirthDate(v: unknown): { date?: Date; error?: string } {
-  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return { error: 'Enter your date of birth' }
-  const d = new Date(`${v}T00:00:00Z`)
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) return { error: 'That date doesn’t exist' }
-  const age = ageOn(d)
+/** True when the youngest possible age is under 18. A missing year is not treated as a minor. */
+export function isUnder18(birthYear: number | null | undefined, now = new Date()): boolean {
+  return typeof birthYear === 'number' && conservativeAge(birthYear, now) < ADULT_AGE
+}
+
+/** Under-18s are left out of organiser insights, exports and newsletter profiling. */
+export function includeInAudience(birthYear: number | null | undefined, now = new Date()): boolean {
+  return !isUnder18(birthYear, now)
+}
+
+/** Parses a four-digit birth year. The 13+ check uses the youngest age that year could be. */
+export function parseBirthYear(v: unknown, now = new Date()): { year?: number; error?: string } {
+  const raw = typeof v === 'number' ? String(v) : typeof v === 'string' ? v.trim() : ''
+  if (!/^\d{4}$/.test(raw)) return { error: 'Enter the year you were born' }
+  const year = Number(raw)
+  const age = conservativeAge(year, now)
   if (age < MIN_AGE) return { error: `You need to be ${MIN_AGE} or older to use VibePeep` }
   if (age > MAX_AGE) return { error: 'Please check the year of birth' }
-  return { date: d }
+  return { year }
+}
+
+/**
+ * Blocks sign-up in the EU, EEA and UK when the youngest possible age is under 16.
+ * A missing country header does not block: IP geolocation is best-effort.
+ */
+export function under16GeoBlock(country: string | null | undefined, birthYear: number | null | undefined, now = new Date()): string | null {
+  const code = (country ?? '').trim().toUpperCase()
+  if (!code || !UNDER16_BLOCKED_COUNTRIES.has(code)) return null
+  if (typeof birthYear !== 'number') return null
+  if (conservativeAge(birthYear, now) < EU_MIN_AGE) return UNDER16_BLOCK_MESSAGE
+  return null
 }
 
 export const isPostcode = (v: unknown): v is string => typeof v === 'string' && /^\d{4}$/.test(v)
