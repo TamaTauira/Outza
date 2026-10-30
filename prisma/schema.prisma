@@ -873,3 +873,18 @@ model QualityAudit {
   @@index([eventId])
   @@index([status, action])
 }
+
+/// Aggregated guide conversions. One row per landing path and referrer type.
+model LandingStat {
+  id          String   @id @default(cuid())
+  path        String
+  source      String
+  views       Int      @default(0)
+  detailViews Int      @default(0)
+  saves       Int      @default(0)
+  leads       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([path, source])
+  @@index([source])
+}

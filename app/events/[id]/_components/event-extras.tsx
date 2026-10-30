@@ -146,7 +146,7 @@ export function EventExtras({ event }: { event: any }) {
           <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
           {organiserName && <span className="text-foreground">Organised by {organiserName}</span>}
           {organiserUrl && (
-            <a href={organiserUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <a href={organiserUrl} target="_blank" rel="noopener noreferrer" onClick={() => { fetch('/api/landing/hit', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'lead' }), keepalive: true }).catch(() => {}) }} className="inline-flex items-center gap-1 text-primary hover:underline">
               Original organiser listing <ExternalLink className="w-3.5 h-3.5" />
             </a>
           )}

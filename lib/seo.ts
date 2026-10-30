@@ -31,8 +31,12 @@ export type TopicKey =
   | 'events' | 'tonight' | 'this-weekend' | 'free-events' | 'live-music' | 'markets' | 'festivals' | 'family' | 'lgbtiq'
   | 'garage-sales' | 'warehouse-sales' | 'pop-up-sales' | 'community-events'
 
-/** A landing page is only indexed (and listed in the sitemap / guide links) with at least this many genuine listings. */
-export const MIN_INDEX = 5
+/** Re-export of the shared indexability quantity gate. Prefer `assessIndexability` for new pages. */
+export { INDEX_MIN_LISTINGS as MIN_INDEX } from '@/lib/indexability'
+
+/** Stable seasonal URLs. Reserved so they cannot be claimed by a suburb slug. */
+export type SeasonKey = 'christmas' | 'new-years-eve' | 'easter' | 'summer' | 'school-holidays'
+export const SEASON_KEYS: readonly SeasonKey[] = ['christmas', 'new-years-eve', 'easter', 'summer', 'school-holidays']
 
 /** Date facets that can combine with a city, suburb, or activity. Weekday keys are reserved so they cannot be suburb slugs. */
 export type WhenKey = 'tonight' | 'this-weekend' | 'friday' | 'saturday' | 'sunday'
@@ -185,7 +189,7 @@ const ROAD = /\d|^cnr\b|\b(st|rd|dr|tce|pl|ave|hwy|pde|ln|lane|cres|cct|blvd|str
 export function isLandingSuburb(suburb: string | null | undefined, city: CityDef): suburb is string {
   if (!suburb || suburb.trim().length < 3 || ROAD.test(suburb.trim())) return false
   const s = slugify(suburb)
-  if (s === citySlug(city) || TOPICS.some((t) => t.key === s) || (WHEN_KEYS as readonly string[]).includes(s)) return false
+  if (s === citySlug(city) || TOPICS.some((t) => t.key === s) || (WHEN_KEYS as readonly string[]).includes(s) || (SEASON_KEYS as readonly string[]).includes(s)) return false
   return !CITIES.some((c) => citySlug(c) === s)
 }
 

@@ -4,8 +4,10 @@ import type { CityDef } from '@/lib/cities'
 import { formatGuideDay, whenPhrase } from '@/lib/local-seo'
 import { cityPath, suburbPath, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
+import { isLandingPath } from '@/lib/landing-attribution'
 import { PageShell } from '@/components/page-shell'
 import { EventCard, GuideEventRow } from '@/components/event-card'
+import { LandingViewBeacon } from '@/components/landing-beacon'
 import { LocalListingCards } from '@/components/local-listing-cards'
 
 function topCounts(events: LandingEvent[], key: 'category' | 'venueName', n = 3) {
@@ -38,8 +40,11 @@ export function GuideLanding(props: {
   refreshed: Date | null
   related: { href: string; title: string }[]
   crumbs: { name: string; url: string }[]
+  editorial?: { paragraphs: string[]; more?: { href: string; label: string } } | null
+  seasons?: { href: string; title: string }[]
 }) {
-  const { city, topic, suburb, when, heading, blurb, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs } = props
+  const { city, topic, suburb, when, heading, blurb, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
+  const listingQuery = isLandingPath(path) ? `lp=${encodeURIComponent(path)}` : undefined
   const byDay = new Map<string, LandingEvent[]>()
   for (const e of events) {
     const k = e.date.toISOString().slice(0, 10)
@@ -57,6 +62,7 @@ export function GuideLanding(props: {
   return (
     <PageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />
+      <LandingViewBeacon path={path} />
       <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8">
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground mb-5">
           {crumbs.map((c, i) => (
@@ -73,6 +79,12 @@ export function GuideLanding(props: {
             <p className="mt-2 text-primary font-semibold">{formatGuideDay(from)}{from !== to ? ` – ${formatGuideDay(to!)}` : ''}</p>
           )}
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed line-clamp-3 md:line-clamp-none">{blurb}</p>
+          {editorial && editorial.paragraphs.length > 0 && (
+            <div className="mt-4 space-y-3 text-base leading-relaxed text-muted-foreground">
+              {editorial.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              {editorial.more && <p><Link href={editorial.more.href} className="font-semibold text-primary underline">{editorial.more.label}</Link></p>}
+            </div>
+          )}
           {total > 0 && (
             <p className="mt-3 hidden text-muted-foreground leading-relaxed md:block">
               {topic?.key === 'tonight' || when === 'tonight' ? (
@@ -134,10 +146,10 @@ export function GuideLanding(props: {
               <section key={key} aria-labelledby={`d-${key}`} className="scroll-mt-32">
                 <h2 id={`d-${key}`} className="font-display text-xl font-bold mb-4">{formatGuideDay(key)}</h2>
                 <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
-                  {evs.map((e) => <GuideEventRow key={e.id} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
+                  {evs.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
                 </div>
                 <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {evs.map((e, i) => <EventCard key={e.id} index={i} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
+                  {evs.map((e, i) => <EventCard key={e.id} index={i} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
                 </div>
               </section>
             ))}
@@ -145,7 +157,7 @@ export function GuideLanding(props: {
               <section aria-labelledby="local-listings">
                 <h2 id="local-listings" className="font-display text-xl font-bold mb-1">From VibePeep Local</h2>
                 <p className="text-sm text-muted-foreground mb-4">Public community listings added by organisers. <Link href="/local?tab=submit" className="text-primary underline">List yours free</Link>.</p>
-                <LocalListingCards items={local.slice(0, 30)} />
+                <LocalListingCards items={local.slice(0, 30)} listingQuery={listingQuery} />
               </section>
             )}
             {total > 0 && (
@@ -163,6 +175,17 @@ export function GuideLanding(props: {
               <p className="text-center text-muted-foreground">Showing the next {events.length} of {total}. <Link href="/" className="text-primary underline">Open the full board</Link> to filter by date, category and price.</p>
             )}
           </div>
+        )}
+
+        {seasons && seasons.length > 0 && (
+          <section className="mt-12" aria-labelledby="seasons">
+            <h2 id="seasons" className="font-display text-xl font-bold mb-4">Seasonal guides</h2>
+            <div className="flex flex-wrap gap-2">
+              {seasons.map((s) => (
+                <Link key={s.href} href={s.href} className="px-3 py-1.5 rounded-lg bg-card shadow-sm text-sm hover:bg-muted transition-colors">{s.title}</Link>
+              ))}
+            </div>
+          </section>
         )}
 
         {suburbs.length > 0 && (
