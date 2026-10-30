@@ -1,0 +1,118 @@
+{
+  "width": 480,
+  "height": 485,
+  "srcWidth": 1104,
+  "srcHeight": 1115,
+  "layout": {
+    "body": {
+      "left": 0.0,
+      "top": 0.0,
+      "width": 1.0,
+      "height": 1.0,
+      "originX": 0.5,
+      "originY": 0.5
+    },
+    "arm-l": {
+      "left": 0.0625,
+      "top": 0.5758,
+      "width": 0.2255,
+      "height": 0.2206,
+      "originX": 0.6739,
+      "originY": 0.3252
+    },
+    "arm-r": {
+      "left": 0.7274,
+      "top": 0.3067,
+      "width": 0.2681,
+      "height": 0.3211,
+      "originX": 0.2525,
+      "originY": 0.7039
+    },
+    "leg-l": {
+      "left": 0.2083,
+      "top": 0.7498,
+      "width": 0.2826,
+      "height": 0.2457,
+      "originX": 0.6624,
+      "originY": 0.3224
+    },
+    "leg-r": {
+      "left": 0.6014,
+      "top": 0.7381,
+      "width": 0.2518,
+      "height": 0.235,
+      "originX": 0.473,
+      "originY": 0.3085
+    },
+    "antenna": {
+      "left": 0.3007,
+      "top": 0.0045,
+      "width": 0.1404,
+      "height": 0.1444,
+      "originX": 0.7839,
+      "originY": 0.8935
+    },
+    "spark-0": {
+      "left": 0.0734,
+      "top": 0.0969,
+      "width": 0.1096,
+      "height": 0.1247,
+      "originX": 0.4952,
+      "originY": 0.4886
+    },
+    "spark-1": {
+      "left": 0.0045,
+      "top": 0.2206,
+      "width": 0.1277,
+      "height": 0.0816,
+      "originX": 0.4895,
+      "originY": 0.4955
+    },
+    "spark-2": {
+      "left": 0.7726,
+      "top": 0.0287,
+      "width": 0.0806,
+      "height": 0.1184,
+      "originX": 0.4844,
+      "originY": 0.479
+    },
+    "spark-3": {
+      "left": 0.8297,
+      "top": 0.1166,
+      "width": 0.1014,
+      "height": 0.0843,
+      "originX": 0.5048,
+      "originY": 0.4949
+    },
+    "pupil-l": {
+      "left": 0.3243,
+      "top": 0.3363,
+      "width": 0.1748,
+      "height": 0.1731,
+      "originX": 0.6006,
+      "originY": 0.5704
+    },
+    "pupil-r": {
+      "left": 0.5734,
+      "top": 0.2888,
+      "width": 0.1658,
+      "height": 0.1749,
+      "originX": 0.4127,
+      "originY": 0.573
+    }
+  },
+  "order": [
+    "body",
+    "spark-0",
+    "spark-1",
+    "spark-2",
+    "spark-3",
+    "leg-l",
+    "leg-r",
+    "arm-l",
+    "arm-r",
+    "antenna",
+    "pupil-l",
+    "pupil-r"
+  ]
+}
