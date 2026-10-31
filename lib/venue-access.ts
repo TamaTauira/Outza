@@ -5,7 +5,7 @@
 import { randomBytes, randomInt } from 'crypto'
 import { prisma } from '@/lib/db'
 import { sendEmail, escapeHtml } from '@/lib/email'
-import { emailLockup } from '@/lib/email-brand'
+import { emailBodyCell, emailDocument } from '@/lib/email-brand'
 import { notifyTrustTeam } from '@/lib/trust'
 import { siteUrl } from '@/lib/site-url'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
@@ -208,14 +208,19 @@ async function issueCode(purpose: string, subjectId: string, email: string, labe
     },
   })
   const link = `${siteUrl()}/venues/verify?token=${token}`
-  const html = `<div style="font-family:Georgia,serif;color:#1c1c1e;line-height:1.5">
-    ${emailLockup()}
-    <p>Confirm you can manage <strong>${escapeHtml(label)}</strong>.</p>
-    <p style="font-size:32px;letter-spacing:0.2em;font-weight:700">${escapeHtml(code)}</p>
-    <p><a href="${escapeHtml(link)}">Or open this one-time link</a>. It expires in ${CODE_MINUTES} minutes and works once.</p>
-    <p style="font-size:13px;color:#555">Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.</p>
-    <p style="font-size:12px;color:#666"><strong>Acknowledgement of Country.</strong> ${escapeHtml(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>
-  </div>`
+  const home = siteUrl()
+  const html = emailDocument({
+    title: `Your VibePeep code for ${label}`.slice(0, 120),
+    preheader: `Confirm you can manage ${label}`,
+    manageHref: `${home}/account`,
+    homeHref: home,
+    reason: 'Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.',
+    rows: emailBodyCell(`<p style="margin:0 0 12px;">Confirm you can manage <strong>${escapeHtml(label)}</strong>.</p>
+    <p style="font-size:32px;letter-spacing:0.2em;font-weight:700;margin:0 0 12px;">${escapeHtml(code)}</p>
+    <p style="margin:0 0 12px;"><a href="${escapeHtml(link)}">Or open this one-time link</a>. It expires in ${CODE_MINUTES} minutes and works once.</p>
+    <p style="font-size:13px;margin:0 0 12px;">Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.</p>
+    <p style="font-size:12px;margin:0;"><strong>Acknowledgement of Country.</strong> ${escapeHtml(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>`),
+  })
   const sent = await sendEmail({
     to: email,
     subject: `Your VibePeep code for ${label}`.slice(0, 120),
@@ -416,7 +421,13 @@ export async function reportVenueEvent(userId: string, venueId: string, body: Re
     await sendEmail({
       to: event.promoter.email,
       subject: `A venue asked us to check ${event.title}`.slice(0, 120),
-      html: `<p>A venue representative reported “${escapeHtml(event.title)}”. The listing is unchanged while we check it.</p>`,
+      html: emailDocument({
+        title: `A venue asked us to check ${event.title}`.slice(0, 120),
+        preheader: 'The listing is unchanged while we check it.',
+        manageHref: `${siteUrl()}/account`,
+        homeHref: siteUrl(),
+        rows: emailBodyCell(`<p style="margin:0;">A venue representative reported “${escapeHtml(event.title)}”. The listing is unchanged while we check it.</p>`),
+      }),
       text: `A venue reported “${event.title}”. The listing is unchanged while we check it.`,
     })
   }

@@ -3,11 +3,9 @@ import { formatTime } from '@/lib/board'
 import { priceSummary } from '@/lib/quality'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
-import { BRAND_MASCOT_EMAIL_HEIGHT, BRAND_MASCOT_EMAIL_WIDTH, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
-import { CANONICAL_SITE_URL } from '@/lib/site-url'
+import { EMAIL_FONT, emailLockup } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, trackUrl, unsubscribeUrl, type Placement, type UtmCtx } from './links'
-import { MASCOT_EMAIL_URL } from './images'
 import { trustLine } from './taste'
 
 const C = {
@@ -25,15 +23,10 @@ const C = {
   onDark: '#f7f7f7',
   onDarkMuted: '#c8c8c8',
 }
-const FONT = `'Helvetica Neue',Helvetica,Arial,sans-serif`
+const FONT = EMAIL_FONT
 const THUMB = 104
 const HERO_W = 552
 const HERO_H = 311
-const WORD_H = 36
-const WORD_W = Math.round((WORD_H * BRAND_WORDMARK_WIDTH) / BRAND_WORDMARK_HEIGHT)
-const MASCOT_W = 64
-const MASCOT_H = Math.round((MASCOT_W * BRAND_MASCOT_EMAIL_HEIGHT) / BRAND_MASCOT_EMAIL_WIDTH)
-const WORDMARK_URL = `${CANONICAL_SITE_URL}${BRAND_WORDMARK_DARK_SRC}`
 
 export const EDITION_NAME: Record<string, string> = { weekly: 'THE WEEKENDER', daily: 'THE DAILY DROP', monthly: 'THE BIG MONTH' }
 export const CTA_VARIANTS = { A: { hero: 'Check it out', card: 'See details' }, B: { hero: 'See the experience', card: 'Take a look' } } as const
@@ -95,14 +88,6 @@ function button(href: string, label: string) {
 <a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${FONT};font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${safe} &rarr;</a>
 </td></tr></table>
 <!--<![endif]-->`
-}
-
-function wordmark() {
-  return `<img src="${WORDMARK_URL}" alt="VibePeep" width="${WORD_W}" height="${WORD_H}" style="display:block;width:${WORD_W}px;height:${WORD_H}px;border:0;outline:none;text-decoration:none;" />`
-}
-
-function mascot() {
-  return `<img src="${MASCOT_EMAIL_URL}" alt="VibePeep mascot" width="${MASCOT_W}" height="${MASCOT_H}" style="display:block;width:${MASCOT_W}px;height:${MASCOT_H}px;border:0;outline:none;text-decoration:none;" />`
 }
 
 function coverArt(src: string, alt: string, w: number, h: number, href: string, kind: 'hero' | 'thumb') {
@@ -245,6 +230,7 @@ export function renderHtml(r: RenderInput): string {
 
   return `<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta name="color-scheme" content="light dark"/><meta name="supported-color-schemes" content="light dark"/><title>${x(r.subject)}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,600;0,700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" type="text/css"/>
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
 body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
@@ -279,7 +265,7 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 
 <tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:20px 20px 0 0;padding:26px 24px 28px;">
 <table ${T} width="100%"><tr>
-<td valign="middle"><a href="${x(home)}" style="text-decoration:none;">${wordmark()}</a></td>
+<td valign="middle"><a href="${x(home)}" style="text-decoration:none;">${emailLockup({ dark: true })}</a></td>
 <td align="right" valign="middle" style="font-family:${FONT};font-size:11px;line-height:1.3;letter-spacing:1.6px;font-weight:800;color:${C.accent};">${x(ed)}</td>
 </tr></table>
 <table ${T} style="margin-top:18px;"><tr>
@@ -308,12 +294,8 @@ ${button(trackUrl(r.ctx, 'explore', 'explore'), `Explore what’s on in ${r.city
 </td></tr></table></td></tr>
 
 <tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:0 0 20px 20px;padding:28px 24px 32px;">
-<table ${T} width="100%"><tr>
-<td width="${MASCOT_W}" valign="middle" style="width:${MASCOT_W}px;">${mascot()}</td>
-<td valign="middle" style="padding-left:14px;">
 <div style="font-family:${FONT};font-size:16px;line-height:1.3;font-weight:800;color:#ffffff;">See you out there.</div>
 <div style="font-family:${FONT};font-size:13px;line-height:1.45;color:${C.onDarkMuted};padding-top:4px;">Two eyes on your city. Only the nights you asked for.</div>
-</td></tr></table>
 <div style="font-family:${FONT};font-size:13px;line-height:1.7;color:#e4e4e4;padding-top:18px;">${link(prefs, 'Manage preferences')}<span class="fdot"> &middot; </span>${link(prefs, 'Change frequency')}<span class="fdot"> &middot; </span>${link(unsub, 'Unsubscribe')}<span class="fdot"> &middot; </span>${link(`${home}/privacy`, 'Privacy policy')}<span class="fdot"> &middot; </span>${link(`${home}/disclaimer`, 'Disclaimer')}</div>
 <div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#b5b5b5;padding-top:12px;">You’re receiving ${x(ed.toLowerCase().replace(/^the /, 'The '))} (${x(r.editionKey)}) because you opted in to VibePeep emails as <span style="color:#e4e4e4;">${x(r.email)}</span>. Sent by VibePeep, an independent events guide. Sponsored placements are paid for by event organisers and are always labelled. Listings come from organisers and ticketing sites and can change: prices are as last listed and may exclude booking fees, so always confirm with the organiser or ticket seller before you go.</div>
 <div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#b5b5b5;padding-top:14px;border-top:1px solid #2a2a2a;margin-top:16px;"><strong style="color:#e4e4e4;">Acknowledgement of Country.</strong> ${x(ACKNOWLEDGEMENT_OF_COUNTRY)}</div>
