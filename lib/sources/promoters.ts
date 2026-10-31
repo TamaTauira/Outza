@@ -1,4 +1,5 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
+import { extractListingVenue, isStreetAddress, pinFitsCity } from '@/lib/listing-venue'
 import { CITIES } from '@/lib/cities'
 import { firstListingUrl, humanitixEventUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
@@ -37,23 +38,18 @@ function priceFromCosData(raw: unknown): string | null {
   return readPrice(raw).price
 }
 
-const cosPriceCache = new Map<string, string | null>()
+const cosPageCache = new Map<string, { price: string | null; html: string | null }>()
 
-/** City of Sydney publishes priceData on the event page, not on the search hit. */
-async function lookupCosPrice(h: any): Promise<string | null> {
-  const direct = priceFromCosData(h.priceData ?? h.cost ?? h.price)
-  if (direct) return direct
-  if (h.freeEvent === 'true' || h.freeEvent === true) return null
-  // A price page is another fetch. Near the budget, keep the listing and skip it.
-  if (sourceOverBudget() || remainingBudgetMs(20_000) < 8_000) return null
-  const slug = String(h.slug ?? '').replace(/^\/+|\/+$/g, '')
-  if (!slug) return null
-  if (cosPriceCache.has(slug)) return cosPriceCache.get(slug) ?? null
+/** One fetch of the event page covers price and the street address the search hit leaves off. */
+async function loadCosEventPage(slug: string): Promise<{ price: string | null; html: string | null }> {
+  const cached = cosPageCache.get(slug)
+  if (cached) return cached
+  if (sourceOverBudget() || remainingBudgetMs(20_000) < 8_000) return { price: null, html: null }
   const html = await fetchHtml(`${COS_ORIGIN}/events/${slug}`)
   const raw = (html ? extractNextData(html) : null)?.props?.pageProps?.eventData?.priceData
-  const price = priceFromCosData(raw)
-  cosPriceCache.set(slug, price)
-  return price
+  const page = { price: priceFromCosData(raw), html }
+  cosPageCache.set(slug, page)
+  return page
 }
 
 /** Frontier Touring – schema.org MusicEvent JSON-LD for every tour date nationally. */
@@ -131,9 +127,15 @@ async function saveCosHit(h: any): Promise<boolean> {
   if (yieldIfBudget('event pages')) return false
   const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
   const free = h.freeEvent === 'true' || h.freeEvent === true
-  const price = free ? null : await lookupCosPrice(h)
   const slug = String(h.slug ?? '').trim().replace(/^\/+|\/+$/g, '')
   const page = slug && !/^(undefined|null)$/i.test(slug) ? usableUrl(`${COS_ORIGIN}/events/${slug}`) : null
+  const loaded = slug ? await loadCosEventPage(slug) : { price: null, html: null }
+  const listed = loaded.html && page ? extractListingVenue(loaded.html, page) : null
+  const street = isStreetAddress(listed?.address) ? listed!.address : null
+  const price = free ? null : (priceFromCosData(h.priceData ?? h.cost ?? h.price) ?? loaded.price)
+  const pin = listed && listed.lat != null && listed.lng != null && pinFitsCity(listed.lat, listed.lng, 'Sydney', street, h.suburbName)
+    ? { latitude: listed.lat, longitude: listed.lng }
+    : {}
   const external = firstListingUrl(h, ['bookingUrl', 'bookingLink', 'ticketUrl', 'ticketLink', 'buyUrl', 'externalUrl', 'website', 'websiteUrl'])
   const ticket = external && isTicketLink(external, 'cityofsydney', 'ticket') ? external : null
   return saveEvent({
@@ -142,8 +144,9 @@ async function saveCosHit(h: any): Promise<boolean> {
     date: h.upcomingDate ?? h.dates?.[0],
     time: start ? parse12h(start) : null,
     endTime: end ? parse12h(end) : null,
-    venueName: h.venueName || h.suburbName || 'TBA',
-    venueAddress: h.suburbName ? `${h.suburbName}, NSW` : null,
+    venueName: listed?.venueName || h.venueName || h.suburbName || 'TBA',
+    venueAddress: street || (h.suburbName ? `${h.suburbName}, NSW` : null),
+    ...pin,
     genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
     isFree: free,
     price,

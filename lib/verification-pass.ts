@@ -1,7 +1,9 @@
 import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
-import { yieldIfBudget } from '@/lib/source-budget'
+import { remainingBudgetMs, yieldIfBudget } from '@/lib/source-budget'
+import { missingCoordsNotice, type CoordNoticeKind } from '@/lib/listing-venue'
+import { recoverMissingVenueCoordinates } from '@/lib/venue-coords'
 import {
   NEAR_START_WINDOW_MS,
   dateKeyOf,
@@ -30,7 +32,8 @@ async function inBatches<T>(items: T[], fn: (t: T) => Promise<unknown>) {
 /**
  * Normalise upcoming listings and queue exception rows.
  * Idempotent: an open flag for the same listing and action is not inserted again.
- * No feed is fetched here. The scheduled refresh is what updates last-checked.
+ * Missing coordinates are filled from the original listing before a notice is raised.
+ * The scheduled refresh is what updates last-checked.
  */
 export async function runVerificationPass(now = new Date()) {
   if (yieldIfBudget('verification')) return { normalized: 0, flagged: 0, checks: 0 }
@@ -42,7 +45,7 @@ export async function runVerificationPass(now = new Date()) {
     take: 400,
     select: {
       id: true, title: true, date: true, endDate: true, time: true, endTime: true, city: true,
-      venueName: true, venueAddress: true, latitude: true, longitude: true, status: true,
+      venueName: true, venueAddress: true, suburb: true, latitude: true, longitude: true, status: true,
       source: true, sources: true, sourceUrl: true, ticketUrl: true, organiserUrl: true,
       isFree: true, price: true, lastVerifiedAt: true, updatedAt: true, recurrence: true,
       timezone: true, allDay: true, startsAt: true, endsAt: true, confidenceScore: true,
@@ -56,10 +59,12 @@ export async function runVerificationPass(now = new Date()) {
     select: { eventId: true, action: true, detail: true },
     take: 500,
   })
-  const seen = new Set(open.map((row) => `${row.action}:${row.eventId ?? ''}:${row.detail?.slice(0, 40) ?? ''}`))
+  const flagKey = (action: string, eventId: string, detail: string) =>
+    action === 'MISSING_COORDS' ? `${action}:${eventId}` : `${action}:${eventId}:${detail.slice(0, 40)}`
+  const seen = new Set(open.map((row) => flagKey(row.action, row.eventId ?? '', row.detail ?? '')))
   const flags: Flag[] = []
   const push = (flag: Flag) => {
-    const key = `${flag.action}:${flag.eventId}:${flag.detail.slice(0, 40)}`
+    const key = flagKey(flag.action, flag.eventId, flag.detail)
     if (seen.has(key) || flags.length >= FLAG_CAP) return
     seen.add(key)
     flags.push(flag)
@@ -128,6 +133,20 @@ export async function runVerificationPass(now = new Date()) {
 
   if (yieldIfBudget('verification')) return { normalized, flagged: 0, checks: 0 }
 
+  const missingIds = rows.filter((row) => row.latitude == null || row.longitude == null).map((row) => row.id)
+  const coordLimit = remainingBudgetMs(90_000) < 15_000 ? 8 : 60
+  const coords = coordLimit
+    ? await recoverMissingVenueCoordinates({ limit: coordLimit, extraIds: missingIds })
+    : { patches: new Map(), outcomes: new Map<string, CoordNoticeKind | 'fixed'>(), fixed: 0 }
+  for (const row of rows) {
+    const patch = coords.patches.get(row.id)
+    if (!patch) continue
+    row.venueName = patch.venueName
+    row.venueAddress = patch.venueAddress
+    row.latitude = patch.latitude
+    row.longitude = patch.longitude
+  }
+
   const keys = [...new Set(rows.map((row) => venueKey(row.city, row.venueName)))]
   const hours = keys.length
     ? await prisma.venue.findMany({
@@ -172,13 +191,21 @@ export async function runVerificationPass(now = new Date()) {
         detail: `${row.title}: image is ${imageStatus}. The listing stays up.`,
       })
     }
-    const online = /^(online|virtual|tba|tbc)$/i.test(row.venueName.trim())
-    if (row.latitude == null && row.longitude == null && !online && openCount('MISSING_COORDS') < 40) {
-      push({
-        eventId: row.id,
-        action: 'MISSING_COORDS',
-        detail: `${row.title}: no venue coordinates. Left on the board. Not a guarantee either way.`,
-      })
+    if (row.latitude == null && row.longitude == null && openCount('MISSING_COORDS') - coords.fixed < 40) {
+      const named = row.venueName.trim()
+      const outcome = coords.outcomes.get(row.id)
+      const kind: CoordNoticeKind | null = /^(online|virtual)$/i.test(named)
+        ? 'online'
+        : /^(tba|tbc)$/i.test(named)
+          ? 'tba'
+          : outcome && outcome !== 'fixed' ? outcome : null
+      if (kind) {
+        push({
+          eventId: row.id,
+          action: 'MISSING_COORDS',
+          detail: missingCoordsNotice(row.title, kind),
+        })
+      }
     }
   }
 

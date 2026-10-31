@@ -71,6 +71,23 @@ export function makeSeriesKey(title: string, venue: string, city: string): strin
 
 const STATUS_UPDATABLE = new Set(['CANCELLED', 'POSTPONED', 'RESCHEDULED', 'SOLD_OUT', 'SCHEDULED'])
 
+function pinOnly(pin: { lat: number; lng: number } | null, existing: { latitude: number | null; longitude: number | null }) {
+  if (!pin || (existing.latitude != null && existing.longitude != null)) return {}
+  return { latitude: pin.lat, longitude: pin.lng }
+}
+
+function finitePin(lat?: number | null, lng?: number | null): { lat: number; lng: number } | null {
+  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return { lat, lng }
+}
+
+/** Street addresses are geocoded. Pages are fetched only when the feed had no street. */
+async function fillPinFromListing(input: { city: string; venueName: string; address: string | null; url: string | null }) {
+  const { isStreetAddress } = await import('@/lib/listing-venue')
+  const { enrichMissingPin } = await import('@/lib/venue-coords')
+  return enrichMissingPin({ ...input, allowFetch: !isStreetAddress(input.address) })
+}
+
 export async function saveEvent(ev: RawEvent): Promise<boolean> {
   if (!ev.title || !/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return false
   const title = cleanText(ev.title, 250)
@@ -80,8 +97,8 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   if (date < sydneyToday()) return false
   const city = ev.city ?? DEFAULT_CITY
   const rawVenue = cleanText(ev.venueName, 200) || 'TBA'
-  const suburb = reconcileSuburb(null, rawVenue, ev.venueAddress, city)
-  const venueName = tidyVenueName(rawVenue, ev.venueAddress, city)
+  let suburb = reconcileSuburb(null, rawVenue, ev.venueAddress, city)
+  let venueName = tidyVenueName(rawVenue, ev.venueAddress, city)
   const { category, subTags } = classifyCategory(title, description, ev.genres ?? [])
   const isLGBTI = checkLGBTI(title, `${description} ${(ev.genres ?? []).join(' ')}`)
   const parsedPrice = readPrice(ev.price, Boolean(ev.isFree))
@@ -96,7 +113,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const range = { min: parsedPrice.min, max: parsedPrice.max }
   const now = new Date()
   const imageUrl = bestSourceUrl(sanitizeDbUrl(ev.imageUrl, 2000))
-  const venueAddress = ev.venueAddress ? cleanText(ev.venueAddress, 500) : ''
+  let venueAddress = ev.venueAddress ? cleanText(ev.venueAddress, 500) : ''
   const galleryUrls = (ev.galleryUrls ?? []).map((u) => sanitizeDbUrl(u, 2000)).filter((u): u is string => !!u).slice(0, 8)
   // Repair escapes and unpaired surrogates before and after URL normalisation.
   // usableUrl still cuts with slice(), which can split an emoji.
@@ -132,7 +149,6 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const data = {
     description, time, endTime, endDate, category, subTags, isLGBTI, isFree, price,
     imageUrl,
-    latitude: ev.latitude ?? null, longitude: ev.longitude ?? null,
     priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
     status, statusSource: status === 'SCHEDULED' ? null : ev.source, lastVerifiedAt: now,
     timezone: sched.timezone, allDay: sched.allDay, startsAt: sched.startsAt, endsAt: sched.endsAt,
@@ -150,8 +166,26 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
 
   const existing = await prisma.event.findFirst({
     where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
-    select: { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true, communityKey: true },
+    select: { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true, communityKey: true, latitude: true, longitude: true },
   })
+  let pin = finitePin(ev.latitude, ev.longitude)
+  if (!pin && !(existing && existing.latitude != null && existing.longitude != null) && ev.source !== 'community') {
+    const filled = await fillPinFromListing({
+      city,
+      venueName,
+      address: venueAddress || null,
+      url: storedLinks.sourceUrl || storedLinks.ticketUrl || storedLinks.organiserUrl,
+    }).catch(() => null)
+    if (filled) {
+      pin = { lat: filled.lat, lng: filled.lng }
+      if (filled.venueAddress) {
+        venueAddress = cleanText(filled.venueAddress, 500)
+        venueName = tidyVenueName(filled.venueName, venueAddress, city)
+        suburb = reconcileSuburb(suburb, venueName, venueAddress, city)
+      }
+    }
+  }
+  if (pin) Object.assign(data, { latitude: pin.lat, longitude: pin.lng })
   if (existing) {
     if (existing.source === 'community' || existing.communityKey) return false
     const sources = existing.sources.includes(ev.source) ? existing.sources : [...existing.sources, ev.source]
@@ -193,14 +227,14 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       if (await applyProtectedRefresh(existing.id, incomingFields, update)) return true
       // Older organiser edits lock the whole listing. Cancellation from the source still lands.
       if (existing.organiserEditedAt) {
-        await prisma.event.update({ where: { id: existing.id }, data: legacyLock })
+        await prisma.event.update({ where: { id: existing.id }, data: { ...legacyLock, ...pinOnly(pin, existing) } })
         return true
       }
       await prisma.event.update({ where: { id: existing.id }, data: update })
     } else {
       if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) return true
       if (existing.organiserEditedAt) {
-        await prisma.event.update({ where: { id: existing.id }, data: legacyLock })
+        await prisma.event.update({ where: { id: existing.id }, data: { ...legacyLock, ...pinOnly(pin, existing) } })
         return true
       }
       await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
