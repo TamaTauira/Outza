@@ -91,8 +91,8 @@ async function queryFeatured(validCity: string, day: string) {
           duplicateOfId: null,
           deletedAt: null,
           status: { notIn: ['CANCELLED', 'POSTPONED', 'SOLD_OUT'] },
+          ...(validCity ? { city: validCity } : {}),
         },
-        ...(validCity ? { OR: [{ tier: 'FRONTROW' }, { event: { city: validCity } }] } : {}),
       },
       select: { tier: true, eventId: true, event: { select: evSelect } },
       take: 300,
@@ -105,7 +105,7 @@ async function queryFeatured(validCity: string, day: string) {
       const cur = best.get(p.event.id)
       if (!cur || TIER_RANK[t] > TIER_RANK[cur.tier]) best.set(p.event.id, { tier: t, event: p.event })
     }
-    // A front-row add-on always shows, even if its package is in another city
+    // A front-row add-on shows with the event when that event has no other package
     for (const p of promos) if (p.tier === 'FRONTROW' && !best.has(p.eventId)) best.set(p.eventId, { tier: 'SILVER', event: p.event })
 
     const promoted = [...best.values()].sort((a, b) =>
@@ -206,12 +206,13 @@ async function queryFeatured(validCity: string, day: string) {
       sponsored: sponsored as CrowdCard[],
       day,
       city: validCity || 'Sydney',
+      placeCity: validCity,
       nowMinutes: minutesNow(validCity || 'Sydney', now),
     }).map((row) => presentCard(row as Record<string, unknown>))
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v5'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v6'], { revalidate: 60 })
 
 export async function GET(req: NextRequest) {
   try {
