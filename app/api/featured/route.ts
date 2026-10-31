@@ -3,13 +3,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
 import { activePromoWhere } from '@/lib/promotions'
-import { minutesNow, rankBoard, type SlotInput } from '@/lib/listing-window'
-import { mixSponsored } from '@/lib/sponsorship'
+import { minutesNow } from '@/lib/listing-window'
 import { featuredBoosts, recordImpressions } from '@/lib/sponsorship-store'
 import { TIER_KEYS, TIER_RANK, type Tier } from '@/lib/tiers'
 import { CITY_NAMES } from '@/lib/cities'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { publicCacheHeaders } from '@/lib/http-cache'
+import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
+import { buildFeaturedRail, type CrowdCard } from '@/lib/featured-rail'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,21 +22,62 @@ const evSelect = {
   imageAsset: { select: imageAssetSelect },
 } as const
 
-/** Now & next order: on now, then starting soon, then long sessions, then all-day. Ended listings drop out. */
-function hotNowOrder<T extends SlotInput>(rows: T[], city: string, day: string): T[] {
-  const ranked = rankBoard(rows, {
-    window: 'now',
-    day,
-    nowMinutes: minutesNow(city || 'Sydney'),
-    dropEnded: true,
+const DAY_MS = 86400000
+/** Same span as the board's "starting soon" bucket, so the on-now query does not miss it. */
+const SOON_MS = 180 * 60 * 1000
+
+const crowdSelect = {
+  ...evSelect,
+  views: true,
+  _count: { select: { savedBy: true, attendees: true } },
+} as const
+
+const crowdOrder = [
+  { savedBy: { _count: 'desc' as const } },
+  { attendees: { _count: 'desc' as const } },
+  { views: 'desc' as const },
+  { date: 'asc' as const },
+]
+
+function listable(validCity: string, exclude: string[]) {
+  return {
+    duplicateOfId: null,
+    status: { notIn: ['CANCELLED', 'POSTPONED', 'SOLD_OUT'] },
+    ...(exclude.length ? { id: { notIn: exclude } } : {}),
+    ...(validCity ? { city: validCity } : {}),
+  }
+}
+
+function crowdCards<T extends { id: string; views: number; _count: { savedBy: number; attendees: number } }>(rows: T[]) {
+  return rows.map((row) => {
+    const { _count, views, ...rest } = row
+    return {
+      ...rest,
+      views,
+      saves: _count.savedBy,
+      attendees: _count.attendees,
+      tier: 'HOT',
+      frontRow: false,
+      sponsored: false,
+    }
   })
-  return [...ranked.lead, ...ranked.soon, ...ranked.still, ...ranked.allday, ...ranked.possibly]
+}
+
+function presentCard(row: Record<string, unknown>) {
+  const rest = { ...row }
+  delete rest.saves
+  delete rest.attendees
+  delete rest.views
+  delete rest._count
+  return rest
 }
 
 /**
- * Featured = popular & hot events.
- * 1) Paid promotions: Front-row add-on first (nationwide), then Premium/GOLD (nationwide), Spotlight/BRONZE, Featured/SILVER (selected city).
- * 2) Topped up with the most-saved / most-attended upcoming events ("HOT").
+ * Hot right now.
+ * Paid placements stay even when they are not on tonight. The now window only orders them.
+ * Organic cards fill to about 8: on now or soon, then the rest of today by saves, attendees and views,
+ * then the most-saved events in the next 7 days (and days 8-14 if that is still short), soonest first.
+ * Below 4 organic cards, upcoming events with images fill the gap. Sponsored cards stay capped.
  */
 async function queryFeatured(validCity: string, day: string) {
     const today = new Date(`${day}T00:00:00.000Z`)
@@ -43,7 +85,12 @@ async function queryFeatured(validCity: string, day: string) {
       where: {
         ...activePromoWhere(),
         tier: { in: [...TIER_KEYS, 'FRONTROW'] },
-        event: { date: { gte: today } },
+        event: {
+          date: { gte: today },
+          duplicateOfId: null,
+          deletedAt: null,
+          status: { notIn: ['CANCELLED', 'POSTPONED', 'SOLD_OUT'] },
+        },
         ...(validCity ? { OR: [{ tier: 'FRONTROW' }, { event: { city: validCity } }] } : {}),
       },
       select: { tier: true, eventId: true, event: { select: evSelect } },
@@ -81,25 +128,89 @@ async function queryFeatured(validCity: string, day: string) {
       seen.add(id)
       sponsored.push(card)
     }
-    const hot = await prisma.event.findMany({
-      where: {
-        date: { gte: today, lte: new Date(today.getTime() + 30 * 86400000) },
-        id: { notIn: [...seen] },
-        duplicateOfId: null,
-        ...(validCity ? { city: validCity } : {}),
-      },
-      orderBy: [{ savedBy: { _count: 'desc' } }, { attendees: { _count: 'desc' } }, { views: 'desc' }, { date: 'asc' }],
-      take: 40,
-      select: evSelect,
-    })
-    type Card = SlotInput & Record<string, unknown>
-    const organic = hotNowOrder(hot.map((e) => ({ ...e, tier: 'HOT', frontRow: false, sponsored: false })) as Card[], validCity, day)
-    const paid = hotNowOrder(sponsored as Card[], validCity, day)
-    const items = mixSponsored(organic, paid)
+    const now = new Date()
+    const soonAt = new Date(now.getTime() + SOON_MS)
+    const tomorrow = new Date(today.getTime() + DAY_MS)
+    const weekEnd = new Date(today.getTime() + 7 * DAY_MS)
+    const fortnightEnd = new Date(today.getTime() + 14 * DAY_MS)
+    const exclude = [...seen]
+    const open = listable(validCity, exclude)
+    const coverToday = {
+      OR: [
+        { date: { gte: today, lt: tomorrow } },
+        { AND: [{ date: { lt: today } }, { endDate: { gte: today } }] },
+      ],
+    }
+    const [nowRows, todayRows, weekRows, fortnightRows, imageRows] = await Promise.all([
+      prisma.event.findMany({
+        where: {
+          ...open,
+          AND: [
+            ...PUBLIC_EVENT_AND,
+            coverToday,
+            {
+              OR: [
+                { startsAt: { lte: soonAt }, endsAt: { gt: now } },
+                { startsAt: { lte: now }, endsAt: null },
+                { startsAt: { gt: now, lte: soonAt } },
+                { allDay: true, endsAt: { gt: now } },
+                { allDay: true, endsAt: null },
+              ],
+            },
+          ],
+        },
+        orderBy: [{ startsAt: 'desc' }],
+        take: 200,
+        select: crowdSelect,
+      }),
+      prisma.event.findMany({
+        where: { ...open, AND: [...PUBLIC_EVENT_AND, coverToday] },
+        orderBy: crowdOrder,
+        take: 60,
+        select: crowdSelect,
+      }),
+      prisma.event.findMany({
+        where: { ...open, date: { gte: tomorrow, lte: weekEnd }, AND: [...PUBLIC_EVENT_AND] },
+        orderBy: crowdOrder,
+        take: 40,
+        select: crowdSelect,
+      }),
+      prisma.event.findMany({
+        where: { ...open, date: { gt: weekEnd, lte: fortnightEnd }, AND: [...PUBLIC_EVENT_AND] },
+        orderBy: crowdOrder,
+        take: 40,
+        select: crowdSelect,
+      }),
+      prisma.event.findMany({
+        where: {
+          ...open,
+          date: { gte: today },
+          AND: [
+            ...PUBLIC_EVENT_AND,
+            { OR: [{ imageUrl: { not: null } }, { imageAssetId: { not: null } }] },
+          ],
+        },
+        orderBy: [{ date: 'asc' }, { time: 'asc' }],
+        take: 24,
+        select: crowdSelect,
+      }),
+    ])
+    const todayPool = new Map<string, (typeof nowRows)[number]>()
+    for (const row of nowRows) todayPool.set(row.id, row)
+    for (const row of todayRows) todayPool.set(row.id, row)
+    const items = buildFeaturedRail({
+      today: crowdCards([...todayPool.values()]) as CrowdCard[],
+      upcoming: crowdCards([...weekRows, ...fortnightRows]) as CrowdCard[],
+      imaged: crowdCards(imageRows) as CrowdCard[],
+      sponsored: sponsored as CrowdCard[],
+      day,
+      city: validCity || 'Sydney',
+      nowMinutes: minutesNow(validCity || 'Sydney', now),
+    }).map((row) => presentCard(row as Record<string, unknown>))
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v3'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v4'], { revalidate: 60 })
 
 export async function GET(req: NextRequest) {
   try {
