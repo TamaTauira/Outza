@@ -157,6 +157,39 @@ test('paid placements on now lead, and later paid placements stay in package ord
   assert.ok(items.every((row) => row.sponsored))
 })
 
+test('an overnight listing that finished this morning is not still hot', () => {
+  const nowMinutes = 23 * 60 + 4
+  const today = [
+    card({
+      id: 'ended-overnight',
+      date: '2026-10-30T00:00:00.000Z',
+      endDate: `${day}T00:00:00.000Z`,
+      time: '20:30',
+      endTime: '03:00',
+      saves: 80,
+    }),
+    card({
+      id: 'ended-late',
+      date: '2026-10-30T00:00:00.000Z',
+      endDate: `${day}T00:00:00.000Z`,
+      time: '21:00',
+      endTime: '04:00',
+      saves: 40,
+    }),
+    card({
+      id: 'still-today',
+      date: '2026-10-30T00:00:00.000Z',
+      endDate: `${day}T00:00:00.000Z`,
+      time: '10:00',
+      endTime: '23:30',
+      saves: 2,
+    }),
+    card({ id: 'on-now', time: '20:30', endTime: '23:30', saves: 1 }),
+  ]
+  const items = rail({ today, nowMinutes })
+  assert.deepEqual(ids(items), ['on-now', 'still-today'])
+})
+
 test('eight events on now leave no room for a later crowd favourite', () => {
   const today = Array.from({ length: 8 }, (_, i) => card({
     id: `live-${i}`,

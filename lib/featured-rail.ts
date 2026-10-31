@@ -71,6 +71,13 @@ function featuredEnded(ev: SlotInput, day: string, nowMinutes: number): boolean 
   if (start > day) return false
   // A run that continues past today is still on, even after today's clock.
   if (end > day) return false
+  // Opened on an earlier day and finishes today. The finish clock belongs to today,
+  // not as a minute offset from the opening midnight.
+  if (start < day) {
+    const finish = minutesOf(ev.endTime)
+    if (finish == null) return false
+    return nowMinutes >= finish
+  }
   return scheduleFinished(resolveSchedule(ev, day), nowMinutes)
 }
 
