@@ -2,7 +2,7 @@ import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { remainingBudgetMs, yieldIfBudget } from '@/lib/source-budget'
-import { missingCoordsNotice, type CoordNoticeKind } from '@/lib/listing-venue'
+import { coordsNoticeKind, missingCoordsNotice, type CoordNoticeKind } from '@/lib/listing-venue'
 import { recoverMissingVenueCoordinates } from '@/lib/venue-coords'
 import {
   NEAR_START_WINDOW_MS,
@@ -192,13 +192,7 @@ export async function runVerificationPass(now = new Date()) {
       })
     }
     if (row.latitude == null && row.longitude == null && openCount('MISSING_COORDS') - coords.fixed < 40) {
-      const named = row.venueName.trim()
-      const outcome = coords.outcomes.get(row.id)
-      const kind: CoordNoticeKind | null = /^(online|virtual)$/i.test(named)
-        ? 'online'
-        : /^(tba|tbc)$/i.test(named)
-          ? 'tba'
-          : outcome && outcome !== 'fixed' ? outcome : null
+      const kind: CoordNoticeKind | null = coordsNoticeKind(coords.outcomes.get(row.id))
       if (kind) {
         push({
           eventId: row.id,

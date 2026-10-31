@@ -63,6 +63,7 @@ test('CBD is not the suburb for the rest of Sydney, and a city name is not a ven
   assert.equal(displaySuburb('CBD', 'Dolphins Point, Coogee, NSW 2034', 'Sydney'), 'Coogee')
   assert.equal(tidyVenueName('Sydney', 'Lilyfield, NSW', 'Sydney'), 'Lilyfield')
   assert.equal(tidyVenueName('Sydney Opera House', 'Bennelong Point, Sydney NSW 2000', 'Sydney'), 'Sydney Opera House')
+  assert.equal(tidyVenueName('Online', 'Online, NSW', 'Sydney'), 'Online')
 
   const shown = presentListing({
     title: 'Curtains Jazz Festival',
