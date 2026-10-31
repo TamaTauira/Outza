@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { rankBoard } from './listing-window'
+import { dateKeyOf, rankBoard } from './listing-window'
 import {
   CROWD_FLOOR,
   CROWD_TARGET,
@@ -202,4 +202,82 @@ test('eight events on now leave no room for a later crowd favourite', () => {
   const organic = rail({ today, upcoming, nowMinutes: 10 * 60 }).filter((row) => !row.sponsored)
   assert.equal(organic.length, CROWD_TARGET)
   assert.equal(organic.some((row) => row.id === 'blockbuster'), false)
+})
+
+test('duplicate occurrences collapse to the current one and past dates drop', () => {
+  const showDay = '2026-11-01'
+  const nowMinutes = 6 * 60 + 40
+  const sculpture = (id: string, date: string, over: Partial<CrowdCard> = {}) => card({
+    id,
+    title: 'Sculpture by the Sea, Bondi',
+    venueName: 'Bondi to Tamarama Coastal Walk',
+    city: 'Sydney',
+    date: `${date}T00:00:00.000Z`,
+    endDate: '2026-11-02T00:00:00.000Z',
+    time: '06:00',
+    endTime: '18:00',
+    imageUrl: null,
+    ...over,
+  })
+  const items = rail({
+    day: showDay,
+    nowMinutes,
+    today: [
+      sculpture('oct-29', '2026-10-29'),
+      sculpture('oct-30', '2026-10-30'),
+      sculpture('oct-31', '2026-10-31'),
+      sculpture('nov-1', '2026-11-01'),
+    ],
+    sponsored: [
+      paid({
+        id: 'paid-past',
+        title: 'Sculpture by the Sea, Bondi',
+        venueName: 'Bondi to Tamarama Coastal Walk',
+        date: '2026-10-29T00:00:00.000Z',
+        endDate: '2026-11-02T00:00:00.000Z',
+        time: '06:00',
+        endTime: '18:00',
+        seriesKey: 'sculpture-bondi',
+      }),
+    ],
+  })
+  assert.deepEqual(ids(items), ['nov-1'])
+  assert.equal(dateKeyOf(items[0]?.date), showDay)
+  assert.equal(items[0]?.sponsored, false)
+
+  const pastOnly = rail({
+    day: showDay,
+    nowMinutes,
+    today: [
+      sculpture('old-start', '2026-10-29', { seriesKey: 'sculpture-bondi' }),
+      sculpture('later-start', '2026-10-30', { seriesKey: 'sculpture-bondi', title: 'Sculpture by the Sea' }),
+    ],
+  })
+  assert.deepEqual(ids(pastOnly), ['later-start'])
+  assert.equal(dateKeyOf(pastOnly[0]?.date), showDay)
+
+  const finished = rail({
+    day: showDay,
+    nowMinutes,
+    today: [
+      card({
+        id: 'yesterday',
+        title: 'Finished gig',
+        date: '2026-10-30T00:00:00.000Z',
+        endDate: '2026-10-30T00:00:00.000Z',
+        time: '06:00',
+        endTime: '18:00',
+      }),
+      card({
+        id: 'next-week',
+        title: 'Finished gig',
+        venueName: 'Other Room',
+        date: '2026-11-06T00:00:00.000Z',
+        time: '19:00',
+        endTime: '21:00',
+      }),
+    ],
+  })
+  assert.deepEqual(ids(finished), ['next-week'])
+  assert.equal(dateKeyOf(finished[0]?.date), '2026-11-06')
 })

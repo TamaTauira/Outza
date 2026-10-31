@@ -2,6 +2,7 @@
  * Hot right now selection. Paid placements are ordered by the now window and never
  * dropped just because they start later. Organic cards fill in tiers.
  */
+import { normalizeTitle, normalizeVenue } from '@/lib/quality'
 import { addDaysKey } from '@/lib/seo'
 import {
   dateKeyOf,
@@ -35,6 +36,8 @@ export type CrowdCard = SlotInput & {
   imageAsset?: { status?: string | null } | null
   sponsored?: boolean
   tier?: string
+  /** Shared series id when the listing has one. Occurrences also match on title, venue and city. */
+  seriesKey?: string | null
 }
 
 export type FeaturedRailInput<T extends CrowdCard> = {
@@ -106,6 +109,127 @@ function dedupe<T extends CrowdCard>(rows: T[]): T[] {
     out.push(row)
   }
   return out
+}
+
+function listingKey(ev: CrowdCard): string {
+  const title = normalizeTitle(ev.title ?? '')
+  const venue = normalizeVenue(ev.venueName ?? '')
+  const city = (ev.city ?? '').trim()
+  return `${title}|${venue}|${city}`
+}
+
+/** Series id when one is stored, otherwise the same normalised title, venue and city. */
+function seriesLinks(ev: CrowdCard): string[] {
+  const links = [`listing:${listingKey(ev)}`]
+  const series = ev.seriesKey?.trim()
+  if (series) links.push(`series:${series}`)
+  return links
+}
+
+function groupSeries<T extends CrowdCard>(rows: T[]): T[][] {
+  const parent = new Map<string, string>()
+  const find = (id: string): string => {
+    let root = id
+    while (parent.get(root) && parent.get(root) !== root) root = parent.get(root)!
+    let cursor = id
+    while (cursor !== root) {
+      const next = parent.get(cursor) ?? root
+      parent.set(cursor, root)
+      cursor = next
+    }
+    return root
+  }
+  const unite = (a: string, b: string) => {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(rb, ra)
+  }
+  for (const row of rows) parent.set(row.id, row.id)
+  const byLink = new Map<string, string>()
+  for (const row of rows) {
+    for (const link of seriesLinks(row)) {
+      const prev = byLink.get(link)
+      if (prev) unite(prev, row.id)
+      else byLink.set(link, row.id)
+    }
+  }
+  const groups = new Map<string, T[]>()
+  const order: string[] = []
+  for (const row of rows) {
+    const root = find(row.id)
+    const list = groups.get(root)
+    if (list) list.push(row)
+    else {
+      groups.set(root, [row])
+      order.push(root)
+    }
+  }
+  return order.map((root) => groups.get(root)!)
+}
+
+function runEndKey(ev: SlotInput): string {
+  return dateKeyOf(ev.endDate) || dateKeyOf(ev.date)
+}
+
+/** The occurrence is over: its last day is past, or it finishes today and that clock has passed. */
+function occurrenceOver(ev: SlotInput, day: string, nowMinutes: number): boolean {
+  if (ev.duplicateOfId) return true
+  if (ev.status && BLOCKED_STATUS.has(ev.status)) return true
+  const end = runEndKey(ev)
+  if (!end || end < day) return true
+  if (end > day) return false
+  const finish = minutesOf(ev.endTime)
+  if (finish == null) return featuredEnded(ev, day, nowMinutes)
+  return nowMinutes >= finish
+}
+
+function hasStarted(ev: SlotInput, day: string, nowMinutes: number): boolean {
+  const start = dateKeyOf(ev.date)
+  if (!start || start > day) return false
+  if (start < day) return true
+  const mins = minutesOf(ev.time)
+  if (mins == null) return true
+  return mins <= nowMinutes
+}
+
+function byLatestStart(a: CrowdCard, b: CrowdCard): number {
+  return dateKeyOf(b.date).localeCompare(dateKeyOf(a.date))
+    || (minutesOf(b.time) ?? -1) - (minutesOf(a.time) ?? -1)
+    || a.id.localeCompare(b.id)
+}
+
+/** A run that opened on an earlier day is shown against today, not that past start. */
+function showAsCurrent<T extends CrowdCard>(ev: T, day: string): T {
+  if (dateKeyOf(ev.date) >= day) return ev
+  if (runEndKey(ev) < day) return ev
+  const date = typeof ev.date === 'string' ? `${day}T00:00:00.000Z` : new Date(`${day}T00:00:00.000Z`)
+  return { ...ev, date }
+}
+
+function chooseOccurrence<T extends CrowdCard>(group: T[], day: string, nowMinutes: number): T | null {
+  const open = group.filter((row) => !occurrenceOver(row, day, nowMinutes))
+  if (!open.length) return null
+  const started = open.filter((row) => hasStarted(row, day, nowMinutes)).sort(byLatestStart)
+  const upcoming = open.filter((row) => !hasStarted(row, day, nowMinutes)).sort(bySoonest)
+  const pool = started.length ? started : upcoming
+  if (!pool.length) return null
+  const lead = pool[0]
+  const leadDay = dateKeyOf(lead.date)
+  const sponsored = pool.find((row) => row.sponsored && dateKeyOf(row.date) === leadDay)
+  return showAsCurrent(sponsored ?? lead, day)
+}
+
+/** One card per series: the occurrence on now, otherwise the next one. Past occurrences drop. */
+function collapseOccurrences<T extends CrowdCard>(rows: T[], day: string, nowMinutes: number): { cards: T[], links: Set<string> } {
+  const cards: T[] = []
+  const links = new Set<string>()
+  for (const group of groupSeries(dedupe(rows))) {
+    const chosen = chooseOccurrence(group, day, nowMinutes)
+    if (!chosen) continue
+    cards.push(chosen)
+    for (const row of group) for (const link of seriesLinks(row)) links.add(link)
+  }
+  return { cards, links }
 }
 
 /** Board now-window order: on now, then starting soon, then long sessions and all-day. */
@@ -202,8 +326,21 @@ function selectCrowdFavourites<T extends CrowdCard>(
 
 /** Organic tiers, then paid cards interleaved under the sponsored cap. */
 export function buildFeaturedRail<T extends CrowdCard>(input: FeaturedRailInput<T>): T[] {
-  const sponsoredIds = new Set(input.sponsored.map((row) => row.id).filter(Boolean))
-  const organic = selectCrowdFavourites(input, sponsoredIds)
-  const paid = orderPaidPlacements(input.sponsored, input)
-  return mixSponsored(organic, paid)
+  const { day, nowMinutes } = input
+  const primary = collapseOccurrences([...input.sponsored, ...input.today, ...input.upcoming], day, nowMinutes)
+  const paid = primary.cards.filter((row) => row.sponsored)
+  const organic = primary.cards.filter((row) => !row.sponsored)
+  const imageFill = collapseOccurrences(
+    input.imaged.filter((row) => !seriesLinks(row).some((link) => primary.links.has(link))),
+    day,
+    nowMinutes,
+  ).cards.filter((row) => !row.sponsored && hasListingImage(row))
+  const organicPicked = selectCrowdFavourites({
+    ...input,
+    today: organic.filter((row) => dateKeyOf(row.date) <= day),
+    upcoming: organic.filter((row) => dateKeyOf(row.date) > day),
+    imaged: imageFill,
+    sponsored: paid,
+  }, new Set(paid.map((row) => row.id)))
+  return mixSponsored(organicPicked, orderPaidPlacements(paid, input))
 }
