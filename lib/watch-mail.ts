@@ -1,56 +1,112 @@
 import { prisma } from '@/lib/db'
 import { emailSendingEnabled, redactEmails, sendEmail, siteUrl } from '@/lib/email'
+import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { recordMailDelivery } from '@/lib/mail-log'
+import { unsubscribeUrl } from '@/lib/newsletter/links'
 import { eventPath } from '@/lib/seo'
-import { isPastEvent } from '@/lib/seo'
-import { composeWatchEmail, inReminderWindow, mailDue, type MailEvent } from '@/lib/watch-shared'
+import {
+  composeWatchEmail,
+  emailPlace,
+  emailPrice,
+  emailWhen,
+  followedCities,
+  inReminderWindow,
+  mailDue,
+  prepareWatchLists,
+  type MailEvent,
+  type WatchRow,
+} from '@/lib/watch-shared'
 
 const eventBits = {
-  id: true, title: true, date: true, endDate: true, time: true, venueName: true, city: true, category: true, suburb: true,
+  id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true,
+  city: true, category: true, suburb: true, seriesKey: true, status: true, duplicateOfId: true, isFree: true,
+  price: true, priceMin: true, priceMax: true, allDay: true, imageUrl: true,
+  imageAsset: { select: { status: true } },
+  venue: { select: { claimStatus: true } },
 } as const
 
-function whenLabel(ev: { date: Date; time: string | null; city: string }): string {
-  const key = ev.date.toISOString().slice(0, 10)
-  const day = new Date(`${key}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
-  return ev.time ? `${day} ${ev.time}` : day
+type Listed = WatchRow & {
+  imageUrl: string | null
+  imageAsset: { status: string } | null
+  venue: { claimStatus: string } | null
 }
 
-function toMail(ev: { id: string; title: string; date: Date; time: string | null; venueName: string; city: string }): MailEvent {
+function cardImage(ev: { id: string; imageUrl: string | null; imageAsset: { status: string } | null }): string | null {
+  const assetOk = !!ev.imageAsset && ev.imageAsset.status !== 'FAILED'
+  if (!ev.imageUrl && !assetOk) return null
+  return `${CANONICAL_SITE_URL}/api/nl/img?e=${encodeURIComponent(ev.id)}&k=thumb`
+}
+
+function toMail(ev: Listed): MailEvent {
+  const price = emailPrice(ev)
   return {
     id: ev.id,
     title: ev.title,
-    when: whenLabel(ev),
-    venue: `${ev.venueName}, ${ev.city}`,
+    when: emailWhen(ev),
+    venue: emailPlace(ev),
     href: `${siteUrl()}${eventPath(ev)}`,
+    image: cardImage(ev),
+    price: price?.text ?? null,
+    priceKind: price?.kind ?? null,
+    category: ev.category,
+    claimed: ev.venue?.claimStatus === 'CLAIMED' ? 'venue' : null,
   }
 }
 
-async function savedUpcoming(userId: string) {
+async function savedUpcoming(userId: string, now = new Date()) {
   const rows = await prisma.savedEvent.findMany({
-    where: { userId },
+    where: { userId, event: { deletedAt: null } },
     orderBy: { event: { date: 'asc' } },
     take: 40,
     select: { event: { select: eventBits } },
   })
-  return rows.map((row) => row.event).filter((ev) => !isPastEvent(ev))
+  return prepareWatchLists({
+    saved: rows.map((row) => row.event),
+    matches: [],
+    cities: [],
+    interests: [],
+    venues: [],
+    now,
+  }).saved
 }
 
-async function matchingNew(userId: string, savedIds: Set<string>, tags: string[], venues: { venueName: string; city: string | null }[]) {
-  if (!tags.length && !venues.length) return []
+async function matchingNew(
+  saved: Listed[],
+  tags: string[],
+  venues: { venueName: string; city: string | null }[],
+  cities: string[],
+  now = new Date(),
+) {
+  if ((!tags.length && !venues.length) || !cities.length) return { saved: saved.slice(0, 8), matches: [] as Listed[] }
   const or = [
     ...(tags.length ? [{ category: { in: tags } }] : []),
     ...venues.map((venue) => ({
       venueName: { equals: venue.venueName, mode: 'insensitive' as const },
-      ...(venue.city ? { city: venue.city } : {}),
+      ...(venue.city ? { city: { equals: venue.city, mode: 'insensitive' as const } } : {}),
     })),
   ]
   const rows = await prisma.event.findMany({
-    where: { duplicateOfId: null, status: 'SCHEDULED', date: { gte: new Date(Date.now() - 86400000) }, OR: or },
-    orderBy: { date: 'asc' },
-    take: 30,
+    where: {
+      duplicateOfId: null,
+      deletedAt: null,
+      status: { in: ['SCHEDULED', 'RESCHEDULED'] },
+      city: { in: cities },
+      date: { gte: new Date(now.getTime() - 36 * 3600_000) },
+      OR: or,
+    },
+    orderBy: [{ date: 'asc' }, { time: 'asc' }],
+    take: 80,
     select: eventBits,
   })
-  return rows.filter((ev) => !savedIds.has(ev.id) && !isPastEvent(ev)).slice(0, 5)
+  const prepared = prepareWatchLists({
+    saved,
+    matches: rows,
+    cities,
+    interests: tags,
+    venues,
+    now,
+  })
+  return { saved: prepared.saved.slice(0, 8), matches: prepared.matches.slice(0, 5) }
 }
 
 export async function sendWatchDigest(userId: string, opts: { test?: boolean } = {}) {
@@ -58,18 +114,29 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
     where: { id: userId },
     select: {
       id: true, email: true, emailOptIn: true, emailFrequency: true, lastWatchDigestAt: true, preferredCategories: true,
+      preferredCities: true, homeCity: true,
       venueFollows: { select: { venueName: true, city: true } },
     },
   })
   if (!user) return { ok: false as const, error: 'Account not found' }
-  const saved = await savedUpcoming(user.id)
+  const now = new Date()
+  const saved = await savedUpcoming(user.id, now)
+  const cities = followedCities(user.preferredCities, user.homeCity)
   const hasFollows = user.preferredCategories.length > 0 || user.venueFollows.length > 0
   if (!opts.test && !user.emailOptIn) return { ok: false as const, skipped: true as const, reason: 'opt-out' }
   if (!opts.test && !saved.length && user.venueFollows.length === 0) return { ok: false as const, skipped: true as const, reason: 'nothing-to-follow' }
   if (!opts.test && !mailDue(user.lastWatchDigestAt, user.emailFrequency)) return { ok: false as const, skipped: true as const, reason: 'not-due' }
-  const matches = hasFollows ? await matchingNew(user.id, new Set(saved.map((ev) => ev.id)), user.preferredCategories, user.venueFollows) : []
-  const savedMail = saved.slice(0, 8).map(toMail)
-  const mail = composeWatchEmail({ saved: savedMail, matches: matches.map(toMail) })
+  const picked = hasFollows
+    ? await matchingNew(saved, user.preferredCategories, user.venueFollows, cities, now)
+    : { saved: saved.slice(0, 8), matches: [] as typeof saved }
+  const home = siteUrl()
+  const mail = composeWatchEmail({
+    saved: picked.saved.map(toMail),
+    matches: picked.matches.map(toMail),
+    manageHref: `${home}/account`,
+    unsubscribeHref: unsubscribeUrl(user.id),
+    homeHref: home,
+  })
   if (!mail) return { ok: false as const, skipped: true as const, reason: 'empty' }
   if (!emailSendingEnabled()) {
     console.error('[watchlist] digest skipped: email sending is turned off')
@@ -110,7 +177,15 @@ export async function sendDueReminders() {
     const seen = new Set(already.map((row) => row.eventId))
     const fresh = due.filter((ev) => !seen.has(ev.id)).slice(0, 6)
     if (!fresh.length) { skipped++; continue }
-    const mail = composeWatchEmail({ saved: fresh.map(toMail), matches: [], reminders: true })
+    const home = siteUrl()
+    const mail = composeWatchEmail({
+      saved: fresh.map(toMail),
+      matches: [],
+      reminders: true,
+      manageHref: `${home}/account`,
+      unsubscribeHref: unsubscribeUrl(user.id),
+      homeHref: home,
+    })
     if (!mail) { skipped++; continue }
     const result = await sendEmail({ to: user.email, subject: mail.subject, html: mail.html, text: mail.text })
     if (!result.ok) {
