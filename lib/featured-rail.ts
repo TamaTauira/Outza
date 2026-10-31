@@ -12,7 +12,7 @@ import {
   scheduleFinished,
   type SlotInput,
 } from '@/lib/listing-window'
-import { mixSponsored } from '@/lib/sponsorship'
+import { SPONSORED_MAX_FRACTION, SPONSORED_MIX_LENGTH, mixSponsored } from '@/lib/sponsorship'
 
 /** Organic crowd-favourite cards the rail tries to fill. */
 export const CROWD_TARGET = 8
@@ -52,6 +52,8 @@ export type FeaturedRailInput<T extends CrowdCard> = {
   day: string
   city: string
   nowMinutes: number
+  /** City the request asked for. Empty means paid cards are not limited to one city. */
+  placeCity?: string
 }
 
 export function hasListingImage(ev: { imageUrl?: string | null; imageAsset?: { status?: string | null } | null }): boolean {
@@ -276,6 +278,7 @@ function takeMostSavedSoonest<T extends CrowdCard>(rows: T[], count: number): T[
 function selectCrowdFavourites<T extends CrowdCard>(
   input: FeaturedRailInput<T>,
   sponsoredIds: Set<string>,
+  target = CROWD_TARGET,
 ): T[] {
   const { day, city, nowMinutes } = input
   const seen = new Set(sponsoredIds)
@@ -291,14 +294,14 @@ function selectCrowdFavourites<T extends CrowdCard>(
   const open = (rows: T[]) => dedupe(rows).filter((row) => row.id && !seen.has(row.id) && !row.sponsored && !featuredIneligible(row, day, nowMinutes))
 
   const today = open(input.today)
-  take(onNowOrSoon(today, city, day, nowMinutes), CROWD_TARGET)
+  take(onNowOrSoon(today, city, day, nowMinutes), target)
 
-  if (picked.length < CROWD_TARGET) {
+  if (picked.length < target) {
     const restOfToday = today.filter((row) => !seen.has(row.id)).sort(byCrowd)
-    take(restOfToday, CROWD_TARGET)
+    take(restOfToday, target)
   }
 
-  if (picked.length < CROWD_TARGET) {
+  if (picked.length < target) {
     const upcoming = open(input.upcoming)
     const weekEnd = addDaysKey(day, CROWD_WEEK_DAYS)
     const fortnightEnd = addDaysKey(day, CROWD_FORTNIGHT_DAYS)
@@ -307,10 +310,10 @@ function selectCrowdFavourites<T extends CrowdCard>(
       return key > after && key <= until
     }
     const week = upcoming.filter((row) => inBand(row, day, weekEnd))
-    take(takeMostSavedSoonest(week, CROWD_TARGET - picked.length), CROWD_TARGET)
-    if (picked.length < CROWD_TARGET) {
+    take(takeMostSavedSoonest(week, target - picked.length), target)
+    if (picked.length < target) {
       const later = upcoming.filter((row) => inBand(row, weekEnd, fortnightEnd))
-      take(takeMostSavedSoonest(later, CROWD_TARGET - picked.length), CROWD_TARGET)
+      take(takeMostSavedSoonest(later, target - picked.length), target)
     }
   }
 
@@ -324,12 +327,24 @@ function selectCrowdFavourites<T extends CrowdCard>(
   return picked
 }
 
+/** Paid cards stay in the requested city. An empty place keeps every city, as before. */
+function paidForPlace<T extends CrowdCard>(rows: T[], placeCity: string | undefined): T[] {
+  if (!placeCity) return rows
+  return rows.filter((row) => row.city === placeCity)
+}
+
 /** Organic tiers, then paid cards interleaved under the sponsored cap. */
 export function buildFeaturedRail<T extends CrowdCard>(input: FeaturedRailInput<T>): T[] {
   const { day, nowMinutes } = input
-  const primary = collapseOccurrences([...input.sponsored, ...input.today, ...input.upcoming], day, nowMinutes)
+  const sponsored = paidForPlace(input.sponsored, input.placeCity)
+  const primary = collapseOccurrences([...sponsored, ...input.today, ...input.upcoming], day, nowMinutes)
   const paid = primary.cards.filter((row) => row.sponsored)
   const organic = primary.cards.filter((row) => !row.sponsored)
+  const sponsoredCap = Math.floor(SPONSORED_MIX_LENGTH * SPONSORED_MAX_FRACTION)
+  const sponsoredSlots = Math.min(paid.length, sponsoredCap)
+  const organicTarget = input.placeCity
+    ? Math.max(CROWD_TARGET, SPONSORED_MIX_LENGTH - sponsoredSlots)
+    : CROWD_TARGET
   const imageFill = collapseOccurrences(
     input.imaged.filter((row) => !seriesLinks(row).some((link) => primary.links.has(link))),
     day,
@@ -341,6 +356,6 @@ export function buildFeaturedRail<T extends CrowdCard>(input: FeaturedRailInput<
     upcoming: organic.filter((row) => dateKeyOf(row.date) > day),
     imaged: imageFill,
     sponsored: paid,
-  }, new Set(paid.map((row) => row.id)))
+  }, new Set(paid.map((row) => row.id)), organicTarget)
   return mixSponsored(organicPicked, orderPaidPlacements(paid, input))
 }

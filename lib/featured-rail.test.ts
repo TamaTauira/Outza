@@ -281,3 +281,31 @@ test('duplicate occurrences collapse to the current one and past dates drop', ()
   assert.deepEqual(ids(finished), ['next-week'])
   assert.equal(dateKeyOf(finished[0]?.date), '2026-11-06')
 })
+
+test('a city rail drops other cities’ paid cards and fills the gap with organic', () => {
+  const upcoming = Array.from({ length: 12 }, (_, i) => card({
+    id: `org-${i}`,
+    title: `Gig ${i}`,
+    date: '2026-11-06T00:00:00.000Z',
+    time: '19:00',
+    endTime: '22:00',
+    saves: 20 - i,
+  }))
+  const sponsored = [
+    paid({ id: 'syd-paid', title: 'Harbour Hoopla Boat Party 2026!', city: 'Sydney', date: '2026-11-07T00:00:00.000Z', tier: 'GOLD' }),
+    paid({ id: 'mel-paid', title: 'Carlton Food Week Festival', city: 'Melbourne', date: '2027-01-15T00:00:00.000Z', tier: 'SILVER' }),
+  ]
+  const sydney = rail({ upcoming, sponsored, nowMinutes: 10 * 60, placeCity: 'Sydney' })
+  const paidRows = sydney.filter((row) => row.sponsored)
+  const organicRows = sydney.filter((row) => !row.sponsored)
+  assert.deepEqual(paidRows.map((row) => row.id), ['syd-paid'])
+  assert.equal(paidRows[0]?.tier, 'GOLD')
+  assert.equal(organicRows.length, 11)
+  assert.ok(paidRows.length / sydney.length <= 1 / 3 + 1e-9)
+  assert.equal(sydney[0]?.sponsored, false)
+
+  const open = rail({ upcoming, sponsored, nowMinutes: 10 * 60 })
+  assert.ok(open.some((row) => row.id === 'mel-paid' && row.sponsored))
+  assert.ok(open.some((row) => row.id === 'syd-paid' && row.sponsored))
+  assert.equal(open.filter((row) => !row.sponsored).length, 8)
+})
