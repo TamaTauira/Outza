@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 const evSelect = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, suburb: true, city: true,
   category: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, latitude: true, longitude: true,
-  status: true, duplicateOfId: true, allDay: true, startsAt: true, endsAt: true,
+  status: true, duplicateOfId: true, allDay: true, startsAt: true, endsAt: true, seriesKey: true,
   promoter: { select: { id: true, orgName: true, name: true } },
   imageAsset: { select: imageAssetSelect },
 } as const
@@ -69,6 +69,7 @@ function presentCard(row: Record<string, unknown>) {
   delete rest.attendees
   delete rest.views
   delete rest._count
+  delete rest.seriesKey
   return rest
 }
 
@@ -210,7 +211,7 @@ async function queryFeatured(validCity: string, day: string) {
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v4'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v5'], { revalidate: 60 })
 
 export async function GET(req: NextRequest) {
   try {
