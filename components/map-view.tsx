@@ -8,7 +8,8 @@ import { eventPath } from '@/lib/seo'
 import { CATEGORIES, knownCategories } from '@/lib/categories'
 import { cityDef } from '@/lib/cities'
 import { formatPrice } from '@/lib/board'
-import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
+import { createBasemap } from '@/lib/map-basemap'
+import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
@@ -27,7 +28,6 @@ interface MapViewProps {
 }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
-const TILE = MAP_TILE
 
 function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, shape: 'wide' | 'square') {
   const kind: VariantKind = shape === 'square' ? 'square' : 'card'
@@ -125,8 +125,9 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
       const Leaflet = await loadLeaflet()
       if (cancelled || !mapRef.current || mapInstanceRef.current) return
       Lref.current = Leaflet
-      const map = Leaflet.map(mapRef.current, { zoomControl: false }).setView([-33.8688, 151.2093], 12)
+      const map = Leaflet.map(mapRef.current, { zoomControl: false, maxZoom: MAP_MAX_ZOOM }).setView([-33.8688, 151.2093], 12)
       Leaflet.control.zoom({ position: 'bottomright' }).addTo(map)
+      map.attributionControl?.addAttribution(MAP_ATTRIBUTION)
       mapInstanceRef.current = map
       setReady(true)
     })()
@@ -136,16 +137,22 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
     }
   }, [])
 
-  // Theme-aware CARTO basemap
   useEffect(() => {
     const map = mapInstanceRef.current
     const L = Lref.current
     if (!ready || !map || !L) return
-    if (tileRef.current) map.removeLayer(tileRef.current)
-    tileRef.current = L.tileLayer(TILE(dark), {
-      attribution: MAP_ATTRIBUTION,
-      maxZoom: MAP_MAX_ZOOM,
-    }).addTo(map)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const layer = await createBasemap(L, dark)
+        if (cancelled) return
+        if (tileRef.current) map.removeLayer(tileRef.current)
+        tileRef.current = layer.addTo(map)
+      } catch (err) {
+        console.error('Map style failed to load:', err)
+      }
+    })()
+    return () => { cancelled = true }
   }, [ready, dark])
 
   // Re-centre when the city changes

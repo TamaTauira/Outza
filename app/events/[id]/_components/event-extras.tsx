@@ -8,7 +8,6 @@ import { sourceLabel } from '@/lib/quality'
 import { formatUpdated } from '@/lib/listing-window'
 import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
-import { CATEGORIES } from '@/lib/categories'
 import { VenueMap } from '@/components/venue-map'
 
 export const TRANSIT: Record<string, { name: string; url: string }> = {
@@ -101,7 +100,6 @@ export function EventExtras({ event }: { event: any }) {
   const place = placeLine(event)
   const precise = event.latitude != null && event.longitude != null && event.source !== 'promoter'
   const dest = precise ? `${event.latitude},${event.longitude}` : place
-  const cat = CATEGORIES.find((c) => c.name === event.category)
   const dir = (mode: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=${mode}`
   const transit = TRANSIT[event.city]
   const age = event.ageRestriction || quote(event.description, AGE_RE)
@@ -121,7 +119,7 @@ export function EventExtras({ event }: { event: any }) {
         <section>
           <h2 className="font-display font-semibold text-base mb-2 flex items-center gap-1.5"><MapIcon className="w-4 h-4 text-primary" />Where to rock up</h2>
           <div className="relative h-40 sm:h-48 rounded-lg overflow-hidden bg-muted border border-border">
-            <VenueMap lat={precise ? event.latitude : null} lng={precise ? event.longitude : null} query={place} city={event.city} color={cat?.color ?? '#FF7A1A'} letter={event.category?.[0] ?? 'E'} label={event.venueName || event.title} />
+            <VenueMap lat={precise ? event.latitude : null} lng={precise ? event.longitude : null} query={place} city={event.city} letter={event.category?.[0] ?? 'E'} label={event.venueName || event.title} />
           </div>
           {place && <p className="text-sm text-muted-foreground mt-1.5">{place}</p>}
         </section>

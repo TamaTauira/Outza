@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Loader2, MapPinOff } from 'lucide-react'
-import { MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE } from '@/lib/map-style'
+import { createBasemap } from '@/lib/map-basemap'
+import { EVENT_PIN_ANCHOR, EVENT_PIN_SIZE, eventPinHtml, MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -11,7 +12,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 
 type Geo = { lat: number; lng: number }
 
-/** Small single-venue map using the exact same basemap and marker style as the Map page. */
+/** Small single-venue map. Same basemap as the Map page, with the branded event pin. */
 export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â€¢', label }: {
   lat?: number | null; lng?: number | null; query?: string; city?: string | null; color?: string; letter?: string; label?: string
 }) {
@@ -46,8 +47,9 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â
         const Leaflet = await loadLeaflet()
         if (cancelled || !elRef.current || mapRef.current) return
         Lref.current = Leaflet
-        const map = Leaflet.map(elRef.current, { zoomControl: false, scrollWheelZoom: false }).setView([geo.lat, geo.lng], 15)
+        const map = Leaflet.map(elRef.current, { zoomControl: false, scrollWheelZoom: false, maxZoom: MAP_MAX_ZOOM }).setView([geo.lat, geo.lng], 16)
         Leaflet.control.zoom({ position: 'bottomright' }).addTo(map)
+        map.attributionControl?.addAttribution(MAP_ATTRIBUTION)
         mapRef.current = map
         setReady(true)
       } catch (err) {
@@ -62,8 +64,18 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â
     const map = mapRef.current
     const L = Lref.current
     if (!ready || !map || !L) return
-    if (tileRef.current) map.removeLayer(tileRef.current)
-    tileRef.current = L.tileLayer(MAP_TILE(dark), { attribution: MAP_ATTRIBUTION, maxZoom: MAP_MAX_ZOOM }).addTo(map)
+    let cancelled = false
+    ;(async () => {
+      try {
+        const layer = await createBasemap(L, dark)
+        if (cancelled) return
+        if (tileRef.current) map.removeLayer(tileRef.current)
+        tileRef.current = layer.addTo(map)
+      } catch (err) {
+        console.error('Map style failed to load:', err)
+      }
+    })()
+    return () => { cancelled = true }
   }, [ready, dark])
 
   useEffect(() => {
@@ -73,7 +85,7 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â
     if (markerRef.current) map.removeLayer(markerRef.current)
     const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
     markerRef.current = L.marker([geo.lat, geo.lng], {
-      icon: L.divIcon({ className: 'se-marker-wrap', html: `<div class="se-marker" style="width:32px;height:32px;background:${color}">${esc(letter)}</div>`, iconSize: [32, 32], iconAnchor: [16, 16] }),
+      icon: L.divIcon({ className: 'se-pin-wrap', html: eventPinHtml(color, esc(letter)), iconSize: EVENT_PIN_SIZE, iconAnchor: EVENT_PIN_ANCHOR }),
       keyboard: false,
     }).addTo(map)
     if (label) markerRef.current.bindTooltip(label)
