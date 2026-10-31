@@ -72,14 +72,18 @@
   height: 100%;
   z-index: 0;
   font-family: inherit;
-  background: #f2f2f0;
+  background: #f6f1e8;
 }
-.dark .leaflet-container { background: #1b1b1d; }
+.dark .leaflet-container { background: #1c1916; }
+.leaflet-gl-layer, .maplibregl-map { background: transparent; }
+.maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none; }
 
 @keyframes turnstile { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .animate-turnstile { animation: turnstile 45s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .animate-turnstile { animation: none; } }
 
+.se-pin-wrap { background: transparent; border: 0; }
+.se-pin { display: block; filter: drop-shadow(0 3px 6px rgba(28, 25, 22, .35)); }
 .se-marker-wrap { background: transparent; border: 0; }
 .se-marker {
   border-radius: 9999px; border: 2.5px solid #fff; color: #fff; font-size: 11px; font-weight: 700;

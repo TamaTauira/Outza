@@ -1,5 +1,6 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
-import { extractListingVenue, isStreetAddress, pinFitsCity } from '@/lib/listing-venue'
+import { cityOfSydneyPlace } from '@/lib/cos-place'
+import { extractListingVenue } from '@/lib/listing-venue'
 import { CITIES } from '@/lib/cities'
 import { firstListingUrl, humanitixEventUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
@@ -131,11 +132,13 @@ async function saveCosHit(h: any): Promise<boolean> {
   const page = slug && !/^(undefined|null)$/i.test(slug) ? usableUrl(`${COS_ORIGIN}/events/${slug}`) : null
   const loaded = slug ? await loadCosEventPage(slug) : { price: null, html: null }
   const listed = loaded.html && page ? extractListingVenue(loaded.html, page) : null
-  const street = isStreetAddress(listed?.address) ? listed!.address : null
+  const place = cityOfSydneyPlace({
+    listedAddress: listed?.address,
+    listedLat: listed?.lat,
+    listedLng: listed?.lng,
+    suburbName: typeof h.suburbName === 'string' ? h.suburbName : null,
+  })
   const price = free ? null : (priceFromCosData(h.priceData ?? h.cost ?? h.price) ?? loaded.price)
-  const pin = listed && listed.lat != null && listed.lng != null && pinFitsCity(listed.lat, listed.lng, 'Sydney', street, h.suburbName)
-    ? { latitude: listed.lat, longitude: listed.lng }
-    : {}
   const external = firstListingUrl(h, ['bookingUrl', 'bookingLink', 'ticketUrl', 'ticketLink', 'buyUrl', 'externalUrl', 'website', 'websiteUrl'])
   const ticket = external && isTicketLink(external, 'cityofsydney', 'ticket') ? external : null
   return saveEvent({
@@ -145,8 +148,8 @@ async function saveCosHit(h: any): Promise<boolean> {
     time: start ? parse12h(start) : null,
     endTime: end ? parse12h(end) : null,
     venueName: listed?.venueName || h.venueName || h.suburbName || 'TBA',
-    venueAddress: street || (h.suburbName ? `${h.suburbName}, NSW` : null),
-    ...pin,
+    venueAddress: place.venueAddress,
+    ...(place.lat != null && place.lng != null ? { latitude: place.lat, longitude: place.lng } : {}),
     genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
     isFree: free,
     price,
