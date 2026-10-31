@@ -12,6 +12,8 @@ import { venueKey } from '@/lib/listing-window'
 import {
   classifyVenueOutcome,
   extractListingVenue,
+  isOnlineSentinel,
+  isSpecificPlace,
   isStreetAddress,
   mergeVenueFacts,
   missingCoordsNotice,
@@ -79,8 +81,9 @@ export function needsVenueLookup(row: {
   latitude: number | null
   longitude: number | null
 }): boolean {
-  const street = isStreetAddress(row.venueAddress)
-  const pin = row.latitude != null && row.longitude != null
+  const street = isStreetAddress(row.venueAddress) || isSpecificPlace(row.venueAddress)
+  const sentinel = row.latitude != null && row.longitude != null && isOnlineSentinel(row.latitude, row.longitude)
+  const pin = !sentinel && row.latitude != null && row.longitude != null
     && pinFitsCity(row.latitude, row.longitude, row.city, row.venueAddress, row.suburb)
   if (!pin) return true
   if (!street) return true
@@ -226,7 +229,19 @@ async function settleOne(ev: EventRow, pageCache: Map<string, ExtractedVenue | '
     extracted,
     pin,
   })
-  if (kind !== 'fixed' || !pin) return { kind: kind === 'fixed' ? 'unplaced' : kind, patch: null }
+  if (kind !== 'fixed' || !pin) {
+    if (kind === 'online' && ev.latitude != null && ev.longitude != null && (isOnlineSentinel(ev.latitude, ev.longitude) || !pinFitsCity(ev.latitude, ev.longitude, ev.city, ev.venueAddress, ev.suburb))) {
+      await prisma.event.update({
+        where: { id: ev.id },
+        data: {
+          latitude: null,
+          longitude: null,
+          ...(ev.venueName === 'TBA' ? { venueName: 'Online' } : {}),
+        },
+      })
+    }
+    return { kind: kind === 'fixed' ? 'unplaced' : kind, patch: null }
+  }
 
   const venueName = (merged.venueName || ev.venueName).slice(0, 200)
   const venueAddress = address ?? ev.venueAddress
@@ -289,8 +304,8 @@ async function resolvePin(
   suburb: string | null | undefined,
   bucket: 'ingest' | 'recover',
 ): Promise<{ lat: number; lng: number } | null> {
-  if (pagePin && pinFitsCity(pagePin.lat, pagePin.lng, city, address, suburb)) return pagePin
-  if (!isStreetAddress(address)) return null
+  if (pagePin && !isOnlineSentinel(pagePin.lat, pagePin.lng) && pinFitsCity(pagePin.lat, pagePin.lng, city, address, suburb)) return pagePin
+  if (!isStreetAddress(address) && !isSpecificPlace(address)) return null
   const used = bucket === 'ingest' ? ingestGeocodes : recoverGeocodes
   const cap = bucket === 'ingest' ? INGEST_GEOCODE_CAP : 400
   if (used >= cap || yieldIfBudget('venue geocode')) return null

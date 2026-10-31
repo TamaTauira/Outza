@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   classifyVenueOutcome,
+  coordsNoticeKind,
   extractListingVenue,
+  isOnlineSentinel,
+  isSpecificPlace,
   isStreetAddress,
   mergeVenueFacts,
   missingCoordsNotice,
@@ -120,6 +123,61 @@ test('online and TBA listings are not given a guessed street', () => {
   assert.equal(prose.address, null)
 })
 
+function cosPage(eventData: unknown): string {
+  return `<nav>Venue TBA</nav><p>Related event: venue TBA</p><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({ props: { pageProps: { eventData } } })}</script>`
+}
+
+test('City of Sydney addressText is the venue, and a TBA elsewhere on the page is not', () => {
+  const pages = [
+    ['Parliament Unpacked', { name: 'Parliament Unpacked: The Architecture of Democracy', addressText: '6 Macquarie St, Sydney NSW 2000, Australia', locationAdditionalInformation: 'NSW Parliament House', lat: -33.8673212, lng: 151.2127527, eventSuburb: { name: 'Sydney' }, eventVenue: null }, 'NSW Parliament House', '6 Macquarie St, Sydney NSW 2000, Australia'],
+    ['Sydney Comedy Cellar', { name: 'Sydney Comedy Cellar ', addressText: '115 Clarence St, Sydney NSW 2000, Australia', locationAdditionalInformation: 'Sydney Comedy Cellar (Within Barrel Below)', lat: -33.8668802, lng: 151.2048927, eventSuburb: { name: 'Sydney' }, eventVenue: null }, 'Sydney Comedy Cellar (Within Barrel Below)', '115 Clarence St, Sydney NSW 2000, Australia'],
+    ['The Pink Afternoon Tea', { name: 'The Pink Afternoon Tea', addressText: '1 Martin Pl, Sydney NSW 2000, Australia', locationAdditionalInformation: 'The Bar at The Fullerton Hotel Sydney', lat: -33.8676401, lng: 151.2071939, eventSuburb: { name: 'Sydney' }, eventVenue: null }, 'The Bar at The Fullerton Hotel Sydney', '1 Martin Pl, Sydney NSW 2000, Australia'],
+    ['Halloween Horror Escape Room', { name: 'Halloween Horror Escape Room', addressText: '428 George St, Sydney NSW 2000', locationAdditionalInformation: 'Ice Break Escape Room, Suite 1, Level 10', lat: -33.8699555, lng: 151.2071225, eventSuburb: { name: 'Sydney' }, eventVenue: null }, 'Ice Break Escape Room, Suite 1, Level 10', '428 George St, Sydney NSW 2000'],
+  ] as const
+  for (const [label, data, venue, address] of pages) {
+    const got = extractListingVenue(cosPage(data), 'https://whatson.cityofsydney.nsw.gov.au/events/example')
+    assert.equal(got.attendance, 'place', label)
+    assert.equal(got.venueName, venue, label)
+    assert.equal(got.address, address, label)
+    assert.equal(pinFitsCity(got.lat!, got.lng!, 'Sydney', got.address, 'Sydney'), true, label)
+  }
+})
+
+test('a City of Sydney online class is online, not TBA, and the placeholder pin is dropped', () => {
+  const got = extractListingVenue(cosPage({
+    name: 'After School Art Classes',
+    addressText: null,
+    locationAdditionalInformation: 'Global Art Australia',
+    lat: -33.6,
+    lng: 150.75,
+    eventSuburb: { name: 'Online' },
+    eventVenue: { name: 'Online', addressText: 'See event description for details on how to connect.', lat: -33.6, lng: 150.75 },
+  }), 'https://whatson.cityofsydney.nsw.gov.au/events/after-school-art-classes')
+  assert.equal(got.attendance, 'online')
+  assert.equal(got.address, null)
+  assert.equal(got.lat, null)
+  assert.equal(got.lng, null)
+  assert.equal(isOnlineSentinel(-33.6, 150.75), true)
+  assert.equal(pinFitsCity(-33.6, 150.75, 'Sydney', 'Online, NSW', 'Online'), false)
+  assert.equal(classifyVenueOutcome({ fetchFailed: false, hadLink: true, extracted: got, storedAddress: 'Online, NSW', pin: null }), 'online')
+})
+
+test('a coastal walk is a stated place, not a missing address', () => {
+  assert.equal(isSpecificPlace('Bondi to Tamarama Coastal Walk, Bondi NSW 2026'), true)
+  assert.equal(isSpecificPlace('Sydney, NSW'), false)
+  assert.equal(isSpecificPlace('Online, NSW'), false)
+  assert.equal(isSpecificPlace('See event description for details on how to connect., Online, NSW 2000'), false)
+  const got = extractListingVenue(`<p>When NOW ON until 2 November 2026 Where Bondi to Tamarama coastal walk, Sydney, Australia</p>`)
+  assert.notEqual(got.attendance, 'tba')
+  assert.equal(classifyVenueOutcome({
+    fetchFailed: false,
+    hadLink: true,
+    extracted: got,
+    storedAddress: 'Bondi to Tamarama Coastal Walk, Bondi NSW 2026',
+    pin: null,
+  }), 'unplaced')
+})
+
 test('a visible location line is used only when structured data has no street', () => {
   const got = extractListingVenue(`<p>Doors at 7.</p><p>Location 12 Crown St, Surry Hills NSW 2010</p>`)
   assert.equal(got.address, '12 Crown St, Surry Hills NSW 2010')
@@ -146,6 +204,9 @@ test('missing-coordinate notices name the reason and do not use the word verifie
   assert.match(missingCoordsNotice('HALLOWQUEEN', 'no-link'), /no original listing link/)
   assert.equal(classifyVenueOutcome({ fetchFailed: false, hadLink: true, extracted: extractListingVenue(KIKI), pin: { lat: -33.8746795, lng: 151.2155495 } }), 'fixed')
   assert.equal(classifyVenueOutcome({ fetchFailed: true, hadLink: true, extracted: null, pin: null }), 'fetch-failed')
-  assert.equal(classifyVenueOutcome({ fetchFailed: false, hadLink: true, extracted: extractListingVenue(`<p>Location TBA</p>`), pin: null }), 'tba')
+  assert.equal(classifyVenueOutcome({ fetchFailed: false, hadLink: true, extracted: extractListingVenue(`<script>venueName:"TBA",type:"tba",address:""</script>`), pin: null }), 'tba')
+  assert.equal(coordsNoticeKind(undefined), null)
+  assert.equal(coordsNoticeKind('fixed'), null)
+  assert.equal(coordsNoticeKind('tba'), 'tba')
   assert.equal(classifyVenueOutcome({ fetchFailed: false, hadLink: false, extracted: null, pin: null }), 'no-link')
 })

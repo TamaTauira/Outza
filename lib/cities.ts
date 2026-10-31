@@ -85,6 +85,8 @@ export function displaySuburb(suburb: string | null | undefined, address: string
 export function tidyVenueName(venueName: string | null | undefined, address: string | null | undefined, city?: string | null): string {
   const venue = (venueName ?? '').replace(/\s+/g, ' ').trim()
   const cityName = (city ?? '').trim()
+  // The listing said the event is online. That is not the same as an unknown venue.
+  if (/^(online|virtual)$/i.test(venue)) return venue.slice(0, 200)
   const generic = !venue || /^(tba|tbc)$/i.test(venue) || GENERIC_PLACE.test(venue) || (!!cityName && venue.toLowerCase() === cityName.toLowerCase())
   if (!generic) return venue.slice(0, 200)
   const suburb = suburbFromAddress(address)

@@ -33,19 +33,53 @@ export function isStreetAddress(value: string | null | undefined): boolean {
   return /\d/.test(text) || STATE.test(text)
 }
 
+const CONNECT_PLACEHOLDER = /see event description for details on how to connect/i
+
+/** City of Sydney parks online events on this rounded point. It is not a venue. */
+export function isOnlineSentinel(lat: number, lng: number): boolean {
+  return Math.abs(lat + 33.6) < 0.001 && Math.abs(lng - 150.75) < 0.001
+}
+
+function isConnectPlaceholder(value: string | null | undefined): boolean {
+  return CONNECT_PLACEHOLDER.test(clean(value))
+}
+
 /** A location line the page states, including a place without a street number. */
 export function statedPlaceAddress(value: string | null | undefined): string | null {
   const text = clean(value)
-  if (!text || text.length > 240 || ONLINE_NAME.test(text) || TBA_NAME.test(text)) return null
+  if (!text || text.length > 240 || ONLINE_NAME.test(text) || TBA_NAME.test(text) || isConnectPlaceholder(text)) return null
   if (isStreetAddress(text)) return text
   if (STATE.test(text) || /\b\d{4}\b/.test(text)) return text
   return null
+}
+
+/**
+ * A named place we can try to geocode: a street, or a venue line that is more than the city.
+ * "Sydney, NSW" and the online connect blurb are not places.
+ */
+export function isSpecificPlace(value: string | null | undefined): boolean {
+  const text = statedPlaceAddress(value)
+  if (!text || isConnectPlaceholder(text)) return false
+  if (isStreetAddress(text)) return true
+  const stripped = text
+    .replace(/\b(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Australia)\b/gi, ' ')
+    .replace(/\b\d{4}\b/g, ' ')
+    .replace(/[,\s]+/g, ' ')
+    .trim()
+  if (!stripped || stripped.length < 4 || GENERIC_PLACE.test(stripped) || ONLINE_NAME.test(stripped)) return false
+  return true
 }
 
 export function noteNotVenue(name: string | null | undefined): boolean {
   const text = clean(name)
   if (!text) return false
   return /available online|\bonline\b|\bvirtual\b|community hall/i.test(text) && !isStreetAddress(text)
+}
+
+/** A notice is raised only after the original listing has been read. A stored name of TBA is not that reading. */
+export function coordsNoticeKind(outcome: CoordNoticeKind | 'fixed' | undefined): CoordNoticeKind | null {
+  if (!outcome || outcome === 'fixed') return null
+  return outcome
 }
 
 export function missingCoordsNotice(title: string, kind: CoordNoticeKind): string {
@@ -70,6 +104,7 @@ export function missingCoordsNotice(title: string, kind: CoordNoticeKind): strin
 export function pinFitsCity(lat: number, lng: number, city: string, address?: string | null, suburb?: string | null): boolean {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
   if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) return false
+  if (isOnlineSentinel(lat, lng)) return false
   const def = cityDef(city)
   if (!def || def.name !== city) return false
   if (distanceKm({ lat, lng }, { lat: def.lat, lng: def.lng }) > def.radiusKm + 20) return false
@@ -113,19 +148,21 @@ export function extractListingVenue(html: string, pageUrl = ''): ExtractedVenue 
     .sort((a, b) => b.rank - a.rank)[0]
   const coordPart = (street && pair(street.lat, street.lng) ? street : null)
     ?? parts.filter((p) => pair(p.lat, p.lng)).sort((a, b) => b.rank - a.rank)[0]
-  const coords = coordPart ? pair(coordPart.lat, coordPart.lng) : null
-  const visible = visibleAttendance(html)
-  const online = parts.some((p) => p.attendance === 'online') || visible === 'online'
-  const tba = parts.some((p) => p.attendance === 'tba') || visible === 'tba' || TBA_NAME.test(clean(namePart?.venueName))
+  const rawCoords = coordPart ? pair(coordPart.lat, coordPart.lng) : null
+  const coords = rawCoords && !isOnlineSentinel(rawCoords.lat, rawCoords.lng) ? rawCoords : null
+  // Only the event's own venue field. A TBA in the nav, a related event, or a template is ignored.
+  const ownOnline = parts.some((p) => p.attendance === 'online' && !isStreetAddress(p.address) && !isSpecificPlace(p.address))
+  const ownTba = parts.some((p) => p.attendance === 'tba' && !isStreetAddress(p.address) && !isSpecificPlace(p.address))
+  const specific = isStreetAddress(address) || (isSpecificPlace(address) && !ownOnline)
   let attendance: ListingAttendance = 'unknown'
-  if (address) attendance = 'place'
-  else if (online) attendance = 'online'
-  else if (tba) attendance = 'tba'
+  if (specific) attendance = 'place'
+  else if (ownOnline) attendance = 'online'
+  else if (ownTba) attendance = 'tba'
   return {
     venueName: properVenueName(namePart?.venueName, address),
-    address,
-    lat: coords?.lat ?? null,
-    lng: coords?.lng ?? null,
+    address: specific ? address : null,
+    lat: specific ? coords?.lat ?? null : null,
+    lng: specific ? coords?.lng ?? null : null,
     attendance,
   }
 }
@@ -148,13 +185,15 @@ export function classifyVenueOutcome(input: {
   fetchFailed: boolean
   hadLink: boolean
   extracted: ExtractedVenue | null
+  storedAddress?: string | null
   pin: { lat: number; lng: number } | null
 }): CoordNoticeKind | 'fixed' {
   if (input.pin) return 'fixed'
   const attendance = input.extracted?.attendance
-  if (isStreetAddress(input.extracted?.address)) return 'unplaced'
+  const stated = input.extracted?.address || input.storedAddress
   if (attendance === 'online') return 'online'
-  if (attendance === 'tba') return 'tba'
+  if (attendance === 'tba' && !isSpecificPlace(stated)) return 'tba'
+  if (isStreetAddress(stated) || isSpecificPlace(stated)) return 'unplaced'
   if (!input.hadLink) return 'no-link'
   if (input.fetchFailed || !input.extracted) return 'fetch-failed'
   return 'no-address'
@@ -370,7 +409,16 @@ function cityOfSydneyParts(html: string): Part[] {
     ?? eventPin
     ?? venuePin
   const extra = typeof ed.locationAdditionalInformation === 'string' ? ed.locationAdditionalInformation : null
-  const name = (typeof venue?.name === 'string' ? venue.name : null) || extra
+  const venueLabel = typeof venue?.name === 'string' ? venue.name : ''
+  const suburbName = typeof (ed.eventSuburb as { name?: unknown } | null)?.name === 'string'
+    ? String((ed.eventSuburb as { name: string }).name)
+    : ''
+  const online = /^(online|virtual)$/i.test(venueLabel.trim())
+    || /^(online|virtual)$/i.test(suburbName.trim())
+    || isConnectPlaceholder(eventAddress)
+    || isConnectPlaceholder(venueAddress)
+  if (online) return [{ attendance: 'online', rank: 95 }]
+  const name = venueLabel || extra
   if (!address && !coords && !name) return []
   return [{
     venueName: name,
@@ -499,13 +547,6 @@ function mapParts(html: string, pageUrl: string): Part[] {
     if (coords) return [{ lat: coords.lat, lng: coords.lng, rank: 40 }]
   }
   return []
-}
-
-function visibleAttendance(html: string): 'online' | 'tba' | undefined {
-  const text = decode(html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<[^>]+>/g, ' '))
-  if (/\b(?:location|venue|address)\b[^.]{0,60}\b(?:tba|tbc|to be announced|to be confirmed)\b/i.test(text)) return 'tba'
-  if (/\b(?:location|venue|address)\b[^.]{0,60}\b(?:online|virtual)\b/i.test(text)) return 'online'
-  return undefined
 }
 
 function visibleAddress(html: string): string | null {
