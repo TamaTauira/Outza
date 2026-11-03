@@ -83,6 +83,65 @@ export function under16GeoBlock(country: string | null | undefined, birthYear: n
 
 export const isPostcode = (v: unknown): v is string => typeof v === 'string' && /^\d{4}$/.test(v)
 
+export const POSTCODE_ERROR = 'Postcodes are 4 digits'
+
+/** Digits only, capped. Shared by the year and postcode fields so autofill can't leave a controlled input stale. */
+export function profileDigits(raw: string, max = 4): string {
+  return raw.replace(/\D/g, '').slice(0, max)
+}
+
+export type AboutYouStatus = {
+  yearError?: string
+  postcodeError?: string
+  year?: number
+  /** Save Details is on unless a save is in flight or the year/postcode is actually invalid. */
+  canSave: boolean
+}
+
+/**
+ * Event-goer accounts require a birth year (13+ through the usual max age).
+ * A promoter can leave the year blank. Postcode is optional; a partial one is not.
+ * Unchanged values are still saveable — this is not a dirty check.
+ * Accepts a string or a number so a year is never rejected for its type.
+ */
+export function aboutYouStatus(
+  year: unknown,
+  postcode: unknown,
+  opts: { saving?: boolean; yearRequired?: boolean; now?: Date } = {},
+): AboutYouStatus {
+  const yearRequired = opts.yearRequired !== false
+  const rawYear = typeof year === 'number' && Number.isFinite(year) ? String(year) : typeof year === 'string' ? year.trim() : ''
+  let yearError: string | undefined
+  let parsed: number | undefined
+  if (rawYear || yearRequired) {
+    const p = parseBirthYear(rawYear, opts.now ?? new Date())
+    yearError = p.error
+    parsed = p.year
+  }
+  const rawPc = typeof postcode === 'number' && Number.isFinite(postcode) ? String(postcode) : typeof postcode === 'string' ? postcode.trim() : ''
+  const postcodeError = rawPc && !isPostcode(rawPc) ? POSTCODE_ERROR : undefined
+  const canSave = !opts.saving && !yearError && !postcodeError && (!yearRequired || parsed != null)
+  return { yearError, postcodeError, year: parsed, canSave }
+}
+
+/**
+ * Inline copy for the account form. A short year stays quiet until 4 digits or blur,
+ * then the message clears as soon as the value satisfies the age rule.
+ * A partial postcode explains itself immediately and clears at 4 digits or blank.
+ */
+export function visibleAboutErrors(
+  year: string,
+  postcode: string,
+  opts: { yearRequired?: boolean; yearTouched?: boolean; now?: Date } = {},
+): { yearError?: string; postcodeError?: string } {
+  const status = aboutYouStatus(year, postcode, opts)
+  const typed = year.trim()
+  return {
+    yearError: status.yearError && (opts.yearTouched || typed.length >= 4) ? status.yearError : undefined,
+    postcodeError: status.postcodeError,
+  }
+}
+
 // Broad home areas from postcode ranges. Deliberately coarse so no area points to a single street or small suburb.
 const AREAS: [number, number, string][] = [
   // Sydney & NSW
