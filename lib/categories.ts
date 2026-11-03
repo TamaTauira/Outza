@@ -1,5 +1,6 @@
 import { suburbFromAddress, tidyVenueName } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
+import { foldSearchText } from '@/lib/search-fold'
 
 export interface CategoryDef {
   name: string
@@ -206,7 +207,7 @@ export function presentListing<T extends ListingPlace>(ev: T): T {
 }
 
 export function checkLGBTI(title: string, description: string): boolean {
-  const text = `${title} ${description}`.toLowerCase()
+  const text = foldSearchText(`${title} ${description}`)
   return /\b(lgbti|lgbtq|lgbt|pride|queer|gay|lesbian|trans|gender.?diverse|rainbow|drag.?queen|drag.?show|mardi.?gras)\b/.test(text)
 }
 

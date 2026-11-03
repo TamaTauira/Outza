@@ -6,7 +6,8 @@ import { addDays, sydneyNow, toMinutes } from '@/lib/board'
 import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, keywordRelaxAllowed, type AiFilters } from '@/lib/ai-search-parse'
-import { rankAskRows, relaxedKeywords, tagForms, ASK_LIMIT } from '@/lib/ai-search-rank'
+import { askCandidateTake, askDateBounds, askTextWhere } from '@/lib/ai-search-query'
+import { rankAskRows, relaxedKeywords, ASK_LIMIT } from '@/lib/ai-search-rank'
 import { isPaidListing } from '@/lib/quality'
 import { nearestCity } from '@/lib/travel'
 import { completeJson, llmConfigured } from '@/lib/llm'
@@ -95,28 +96,18 @@ export async function POST(req: NextRequest) {
       ...(filters.paidOnly ? [{ NOT: { OR: [{ price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] } }] : []),
       ...(filters.suburb ? [{ OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueName: { contains: filters.suburb, mode: 'insensitive' as const } }] }] : []),
     ]
-    const keywordWhere = (words: string[]): Prisma.EventWhereInput => words.length
-      ? { AND: words.map((word) => ({ OR: [
-          { title: { contains: word, mode: 'insensitive' as const } },
-          { venueName: { contains: word, mode: 'insensitive' as const } },
-          { suburb: { contains: word, mode: 'insensitive' as const } },
-          { venueAddress: { contains: word, mode: 'insensitive' as const } },
-          { subTags: { hasSome: tagForms(word) } },
-        ] })) }
-      : {}
     const base: Prisma.EventWhereInput = {
-      date: { gte: new Date(`${filters.dateFrom}T00:00:00.000Z`), lte: new Date(`${filters.dateTo}T00:00:00.000Z`) },
+      date: askDateBounds(filters.dateFrom, filters.dateTo),
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
       ...(searchCity ? { city: searchCity } : {}),
       ...(filters.categoryStrict && filters.category ? { category: filters.category } : {}),
       ...(filters.paidOnly ? { isFree: false } : {}),
-      ...(filters.lgbtiq ? { isLGBTI: true } : {}),
       AND: [...narrowed, { deletedAt: null }, { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] }],
     }
     const select = {
-      id: true, title: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,
-      isFree: true, price: true, priceMin: true, views: true, _count: { select: { savedBy: true, attendees: true } },
+      id: true, title: true, description: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,
+      isLGBTI: true, isFree: true, price: true, priceMin: true, views: true, _count: { select: { savedBy: true, attendees: true } },
     } as const
     const musicIntent = filters.category === 'Music' || /\b(live music|gigs?|concerts?)\b/i.test(q)
     const focusMusic = <T extends { title: string; description?: string | null; category: string; subTags?: string[] | null }>(list: T[]) => {
@@ -127,7 +118,7 @@ export async function POST(req: NextRequest) {
     const run = async (where: Prisma.EventWhereInput) => {
       const rows = await prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('statement_timeout', '4000', true)`
-        return tx.event.findMany({ where, select, take: 80, orderBy: [{ date: 'asc' }, { time: 'asc' }] })
+        return tx.event.findMany({ where, select, take: askCandidateTake(filters.dateFrom, filters.dateTo), orderBy: [{ date: 'asc' }, { time: 'asc' }] })
       }, { timeout: 6000 }).catch((err) => {
         console.error('ai-search query timed out or failed', err instanceof Error ? err.message : err)
         return [] as Awaited<ReturnType<typeof prisma.event.findMany>>
@@ -148,7 +139,11 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const load = async (words: string[]) => focusMusic((await run({ AND: [base, keywordWhere(words)] })).map((e) => presentListing(e)))
+    const load = async (words: string[]) => {
+      const text = askTextWhere(words, filters.lgbtiq)
+      const where = Object.keys(text).length ? { AND: [base, text] } : base
+      return focusMusic((await run(where)).map((e) => presentListing(e)))
+    }
     let rows = await load(filters.keywords)
     let relaxed = false
     const broader = relaxedKeywords(filters.keywords)
@@ -163,11 +158,11 @@ export async function POST(req: NextRequest) {
       relaxed = rows.length > 0
     }
 
-    const ranked = rankAskRows(rows, { ...filters, city: searchCity }, ASK_LIMIT)
+    const matched = rankAskRows(rows, { ...filters, city: searchCity }, Math.max(rows.length, 1))
 
     return NextResponse.json({
-      filters, ai: !!parsed, relaxed, total: rows.length,
-      results: ranked.map((e) => ({
+      filters, ai: !!parsed, relaxed, total: matched.length,
+      results: matched.slice(0, ASK_LIMIT).map((e) => ({
         id: e.id, title: e.title, date: e.date.toISOString().slice(0, 10), time: e.time, venueName: e.venueName,
         suburb: e.suburb, city: e.city, category: e.category, isFree: e.isFree, price: e.price,
       })),
