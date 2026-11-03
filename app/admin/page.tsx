@@ -15,6 +15,7 @@ const CARDS = [
   { href: '/admin/seo', title: 'SEO', body: 'Guides, indexing, and referrals.' },
   { href: '/admin/images', title: 'Images', body: 'Artwork pipeline.' },
   { href: '/admin/intel', title: 'Intelligence', body: 'Official data sources.' },
+  { href: '/admin/sources', title: 'Event sources', body: 'Source register, duplicate reviews, and ingestion alerts.' },
   { href: '/admin/sponsorship', title: 'Sponsorship', body: 'Paying organisers, repeat purchase, MRR and margin.' },
 ]
 

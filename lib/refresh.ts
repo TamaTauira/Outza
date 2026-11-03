@@ -4,6 +4,8 @@ import { fetchEventbriteEvents } from '@/lib/sources/eventbrite'
 import { fetchFrontierEvents, fetchCityOfSydneyEvents, fetchHumanitixEvents } from '@/lib/sources/promoters'
 import { runQualityPass } from '@/lib/quality-pass'
 import { fetchCuratedEvents } from '@/lib/sources/curated'
+import { fetchBrisbaneCouncilEvents } from '@/lib/sources/brisbane-council'
+import { recordQualityAlert, volumeAlert } from '@/lib/source-health'
 import { runImagePass } from '@/lib/images/runner'
 import { importLocalFromBoard } from '@/lib/local-import'
 import { fetchMoshtixEvents, fetchOztixEvents, fetchTicketekEvents } from '@/lib/sources/ticketing'
@@ -29,6 +31,7 @@ const SOURCES: [string, () => Promise<number>][] = [
   ['Ticketek', fetchTicketekEvents],
   ['Eventbrite', fetchEventbriteEvents],
   ['Popular regulars', fetchCuratedEvents],
+  ['Brisbane City Council', fetchBrisbaneCouncilEvents],
 ]
 
 /** Display names in run order. Match is case-insensitive. */
@@ -177,6 +180,7 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
       })
       if (error) await faultIfSourceRepeated(name, error, sourceLog.id)
     }
+    await noteVolume(name, added, error, sourceLog?.id ?? null)
   }
 
   if (runPost && !opts.chunk) {
@@ -201,6 +205,31 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
   if (hard.length) await reportFullRunFaults(log.id, selected.length, sourceFailed, hard)
   if (runPost) void runImagePass({ trigger: 'refresh' })
   return { eventsAdded: total, errors, sourcesRun }
+}
+
+async function noteVolume(name: string, added: number, error: string | null, logId: string | null) {
+  const prev = await prisma.refreshLog.findFirst({
+    where: {
+      status: sourceLogStatus(name),
+      endedAt: { not: null },
+      ...(logId ? { id: { not: logId } } : {}),
+    },
+    orderBy: { startedAt: 'desc' },
+    select: { eventsAdded: true },
+  })
+  const signal = volumeAlert(prev?.eventsAdded ?? null, added, {
+    timedOut: isBudgetSkip(error),
+    failed: !!error && !isBudgetSkip(error),
+  })
+  if (!signal) return
+  const previous = prev?.eventsAdded ?? 0
+  await recordQualityAlert({
+    kind: signal === 'zero' ? 'ZERO_EVENTS' : 'VOLUME_DROP',
+    source: name,
+    detail: signal === 'zero'
+      ? `${name} saved 0 events after a previous run saved ${previous}. Listings already stored were not deleted.`
+      : `${name} saved ${added} events after a previous run saved ${previous}. Listings already stored were not deleted.`,
+  })
 }
 
 async function runPostSteps() {

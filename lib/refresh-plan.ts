@@ -29,7 +29,7 @@ export const REFRESH_CHUNKS: RefreshChunk[] = [
   { id: 'oztix', minute: 32, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Oztix'] },
   { id: 'ticketek', minute: 38, budgetMs: 160_000, sources: ['Ticketek'] },
   { id: 'eventbrite', minute: 44, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Eventbrite'] },
-  { id: 'curated', minute: 50, budgetMs: 90_000, sources: ['Popular regulars'] },
+  { id: 'curated', minute: 50, budgetMs: 100_000, sources: ['Popular regulars', 'Brisbane City Council'] },
   { id: 'finalize', minute: 56, budgetMs: 200_000, finalize: true },
 ]
 

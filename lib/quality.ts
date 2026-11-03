@@ -16,6 +16,7 @@ export type Recurrence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'RECUR
 export const SOURCES: Record<string, { label: string; kind: 'organiser' | 'official' | 'ticketing'; trust: number }> = {
   promoter: { label: 'the organiser', kind: 'organiser', trust: 45 },
   cityofsydney: { label: 'City of Sydney', kind: 'official', trust: 40 },
+  brisbanecouncil: { label: 'Brisbane City Council', kind: 'official', trust: 40 },
   frontier: { label: 'Frontier Touring', kind: 'organiser', trust: 40 },
   curated: { label: 'the organiser’s official schedule', kind: 'official', trust: 36 },
   ticketmaster: { label: 'Ticketmaster', kind: 'ticketing', trust: 32 },

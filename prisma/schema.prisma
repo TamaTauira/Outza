@@ -1000,6 +1000,18 @@ model QualityAudit {
   @@index([status, action])
 }
 
+/// Ingestion health. Rows are alerts. They do not delete events.
+model DataQualityAlert {
+  id        String   @id @default(cuid())
+  kind      String
+  source    String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+  @@index([source, createdAt])
+}
+
 /// Sellable short-boost placements. Multi-day packages stay on Promotion.
 model PlacementInventory {
   id            String     @id
@@ -1246,10 +1258,18 @@ model SourceRecord {
   missing   Boolean  @default(false)
   changed   Boolean  @default(false)
   conflicts Json?
+  /// Stable id from this source. Null for older rows. Unique per source when set.
+  externalId String?
+  /// Tracking parameters removed. Session and event ids stay.
+  canonicalUrl String? @db.Text
+  /// date|time so two sessions of one show stay distinct.
+  sessionKey String?
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, source])
+  @@unique([source, externalId])
   @@index([missing, changed])
+  @@index([canonicalUrl, sessionKey])
 }
 
 /// Rule-based check. Outcomes are ok, due, flag, or skipped. Never a guarantee.

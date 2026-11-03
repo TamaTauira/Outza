@@ -16,6 +16,7 @@ const LINKS = [
   { href: '/admin/seo', label: 'SEO' },
   { href: '/admin/images', label: 'Images' },
   { href: '/admin/intel', label: 'Intelligence' },
+  { href: '/admin/sources', label: 'Sources' },
   { href: '/admin/sponsorship', label: 'Sponsorship' },
 ]
 
