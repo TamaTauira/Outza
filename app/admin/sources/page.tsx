@@ -29,6 +29,30 @@ export default async function AdminSourcesPage() {
     )
   }
 
+  let freshness: { upcoming: number; stale: number; conflicts: number; lastRefresh: string | null } | null = null
+  try {
+    const today = new Date()
+    today.setUTCHours(0, 0, 0, 0)
+    const staleBefore = new Date(Date.now() - 14 * 86400000)
+    const [upcoming, stale, conflicts, lastRefresh] = await Promise.all([
+      prisma.event.count({ where: { date: { gte: today }, duplicateOfId: null, deletedAt: null, status: 'SCHEDULED' } }),
+      prisma.event.count({
+        where: {
+          date: { gte: today },
+          duplicateOfId: null,
+          deletedAt: null,
+          status: 'SCHEDULED',
+          OR: [{ lastVerifiedAt: null }, { lastVerifiedAt: { lt: staleBefore } }],
+        },
+      }),
+      prisma.event.count({ where: { duplicateOfId: null, deletedAt: null, materialConflict: { not: null } } }),
+      prisma.refreshLog.findFirst({ where: { status: 'completed' }, orderBy: { endedAt: 'desc' }, select: { endedAt: true } }),
+    ])
+    freshness = { upcoming, stale, conflicts, lastRefresh: lastRefresh?.endedAt?.toISOString() ?? null }
+  } catch {
+    freshness = null
+  }
+
   let alerts: { id: string; kind: string; source: string; detail: string | null; createdAt: Date }[] = []
   let reviews: { id: string; action: string; detail: string | null; createdAt: Date }[] = []
   let alertNote: string | null = null
@@ -55,6 +79,19 @@ export default async function AdminSourcesPage() {
         Duplicate links need a score of {DUPLICATE_THRESHOLDS.auto} with a strong id, or {DUPLICATE_THRESHOLDS.corroborate} with a second agreeing fact.
         An empty feed raises an alert and does not delete listings.
       </p>
+
+      <section className="rounded-xl bg-card shadow-sm p-5 mb-6">
+        <h2 className="font-display text-lg font-bold">Freshness</h2>
+        {!freshness && <p className="text-sm text-muted-foreground mt-2">Freshness counts could not be loaded.</p>}
+        {freshness && (
+          <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+            <li>Last finished refresh: {freshness.lastRefresh ?? 'none stored'}. Refreshes are periodic, not live.</li>
+            <li>{freshness.stale.toLocaleString('en-AU')} of {freshness.upcoming.toLocaleString('en-AU')} upcoming scheduled listings have not been re-checked in 14 days.</li>
+            <li>{freshness.conflicts.toLocaleString('en-AU')} listings have a source disagreement waiting on review.</li>
+            <li>An empty or failed feed does not cancel listings that are already stored.</li>
+          </ul>
+        )}
+      </section>
 
       <section className="rounded-xl bg-card shadow-sm p-5 mb-6">
         <h2 className="font-display text-lg font-bold">Alerts</h2>

@@ -17,6 +17,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!exists) return NextResponse.json({ ok: true })
   const me = await getSessionUser()
   const fresh = me ? await recordSignal(me.id, id, kind) : true
-  if (fresh) await prisma.event.update({ where: { id }, data: { [COUNTER[kind]]: { increment: 1 } } }).catch((e) => console.error('signal count failed', e?.message))
+  if (fresh) {
+    await prisma.event.update({ where: { id }, data: { [COUNTER[kind]]: { increment: 1 } } }).catch((e) => console.error('signal count failed', e?.message))
+    if (kind === 'SHARE') {
+      const { bumpEngagement } = await import('@/lib/engagement-store')
+      await bumpEngagement(id, 'SHARE')
+    }
+  }
   return NextResponse.json({ ok: true })
 }

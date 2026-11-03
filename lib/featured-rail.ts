@@ -32,6 +32,8 @@ export type CrowdCard = SlotInput & {
   /** Attendee count. Used for ranking, not sent on the card. */
   attendees?: number
   views?: number
+  /** Recent organic interest. 0 leaves the existing save order in place. Never set on a paid card. */
+  heat?: number
   imageUrl?: string | null
   imageAsset?: { status?: string | null } | null
   sponsored?: boolean
@@ -86,8 +88,10 @@ function featuredEnded(ev: SlotInput, day: string, nowMinutes: number): boolean 
   return scheduleFinished(resolveSchedule(ev, day), nowMinutes)
 }
 
-/** Saves, then attendees, then views. Same-day ties break toward the sooner start. */
+/** Recent heat, then saves, attendees and views. Same-day ties break toward the sooner start. */
 function byCrowd(a: CrowdCard, b: CrowdCard): number {
+  const heat = a.sponsored || b.sponsored ? 0 : (b.heat ?? 0) - (a.heat ?? 0)
+  if (heat) return heat
   return (b.saves ?? 0) - (a.saves ?? 0)
     || (b.attendees ?? 0) - (a.attendees ?? 0)
     || (b.views ?? 0) - (a.views ?? 0)

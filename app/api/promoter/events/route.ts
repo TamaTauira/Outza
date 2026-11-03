@@ -46,8 +46,23 @@ export async function GET() {
       select: { id: true, status: true, createdAt: true, reviewNote: true, event: { select: { id: true, title: true, date: true, city: true, venueName: true } } },
     }),
   ])
+  const ids = events.map((event) => event.id)
+  const reactionCounts = new Map<string, number>()
+  if (ids.length) {
+    try {
+      const grouped = await prisma.eventReaction.groupBy({
+        by: ['eventId'],
+        where: { eventId: { in: ids }, kind: { not: 'GOING' } },
+        _count: { _all: true },
+      })
+      for (const row of grouped) reactionCounts.set(row.eventId, row._count._all)
+    } catch (err) {
+      const code = (err as { code?: string })?.code
+      if (code !== 'P2021' && code !== 'P2022') console.error('promoter reactions failed', (err as Error)?.message)
+    }
+  }
   return NextResponse.json({
-    events,
+    events: events.map((event) => ({ ...event, reactionCount: reactionCounts.get(event.id) ?? 0 })),
     claims,
     ads,
     account: {

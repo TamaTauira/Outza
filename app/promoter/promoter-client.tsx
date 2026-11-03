@@ -22,7 +22,7 @@ import { OrganiserPlans } from './organiser-plans'
 
 type Promo = { id: string; tier: string; days?: number | null; orderId?: string | null; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
 type MyEvent = {
-  id: string; title: string; date: string; endDate?: string | null; city?: string; venueName: string; suburb?: string | null; views?: number; ticketClicks?: number; promotions?: Promo[]; _count?: { savedBy: number; attendees: number }
+  id: string; title: string; date: string; endDate?: string | null; city?: string; venueName: string; suburb?: string | null; views?: number; ticketClicks?: number; reactionCount?: number; promotions?: Promo[]; _count?: { savedBy: number; attendees: number }
   time?: string | null; endTime?: string | null; venueAddress?: string | null; price?: string | null; isFree?: boolean; isLGBTI?: boolean; category?: string; subTags?: string[]; ticketUrl?: string | null; imageUrl?: string | null; description?: string | null
   organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null; organiserEditedAt?: string | null; source?: string | null; status?: string | null
   referrals?: { source: string; count: number }[]
@@ -461,7 +461,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
           <div className="overflow-x-auto -mx-5">
             <table className="w-full text-sm min-w-[720px]">
               <thead><tr className="text-left text-xs text-muted-foreground border-b border-border">
-                <th className="font-medium px-5 py-2">Event</th><th className="font-medium px-3">Status</th><th className="font-medium px-3 text-right">Views</th><th className="font-medium px-3 text-right">Ticket clicks</th><th className="font-medium px-3 text-right">Saves / going</th><th className="px-5" />
+                <th className="font-medium px-5 py-2">Event</th><th className="font-medium px-3">Status</th><th className="font-medium px-3 text-right">Views</th><th className="font-medium px-3 text-right">Ticket clicks</th><th className="font-medium px-3 text-right">Saves / going</th><th className="font-medium px-3 text-right">Reactions</th><th className="px-5" />
               </tr></thead>
               <tbody className="divide-y divide-border">
                 {events.map((ev) => {
@@ -486,9 +486,15 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                           </div>
                         ) : <span className="text-xs text-muted-foreground">Not promoted</span>}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">{unlocked ? (ev.views ?? 0).toLocaleString('en-AU') : <Lock className="w-3.5 h-3.5 inline text-muted-foreground" aria-label="Locked" />}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{unlocked ? (
+                        <>
+                          {(ev.views ?? 0).toLocaleString('en-AU')}
+                          {(ev.views ?? 0) > 0 && <span className="block text-[11px] text-muted-foreground">{((((ev._count?.savedBy ?? 0) + (ev._count?.attendees ?? 0) + (ev.reactionCount ?? 0) + (ev.ticketClicks ?? 0)) / (ev.views || 1)) * 100).toFixed(1)}% engagement</span>}
+                        </>
+                      ) : <Lock className="w-3.5 h-3.5 inline text-muted-foreground" aria-label="Locked" />}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{unlocked ? (ev.ticketClicks ?? 0).toLocaleString('en-AU') : <Lock className="w-3.5 h-3.5 inline text-muted-foreground" aria-label="Locked" />}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{ev._count?.savedBy ?? 0} / {ev._count?.attendees ?? 0}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{ev.reactionCount ?? 0}</td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-2">
                           {promoterCanEditEvent(ev.source) ? <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button> : <Link href={`/events/${ev.id}/manage`} className="h-8 px-3 rounded-md border border-border text-xs font-medium inline-flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</Link>}
@@ -497,7 +503,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                         </div>
                       </td>
                     </tr>
-                    {editing === ev.id && promoterCanEditEvent(ev.source) && <tr><td colSpan={6} className="px-5 pb-4"><EditEventPanel event={ev} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} /></td></tr>}
+                    {editing === ev.id && promoterCanEditEvent(ev.source) && <tr><td colSpan={7} className="px-5 pb-4"><EditEventPanel event={ev} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload() }} /></td></tr>}
                     </Fragment>
                   )
                 })}

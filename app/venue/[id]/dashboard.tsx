@@ -26,7 +26,8 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
   const [tab, setTab] = useState<Tab>('Overview')
   const [events, setEvents] = useState<EventRow[]>([])
   const [mineOnly, setMineOnly] = useState(false)
-  const [analytics, setAnalytics] = useState<Record<string, number | string> | null>(null)
+  const [analytics, setAnalytics] = useState<Record<string, number | string | null> | null>(null)
+  const [trendNote, setTrendNote] = useState<string | null>(null)
   const [range, setRange] = useState('30')
   const [members, setMembers] = useState<Array<{ id: string; name: string | null; email: string; role: string; status: string }>>([])
   const [profile, setProfile] = useState({ description: '', announcement: '', contactEmail: '', openingHours: '', categories: '', facilities: '', accessibilityInfo: '', website: '', address: '' })
@@ -37,7 +38,10 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
 
   useEffect(() => {
     if (tab !== 'Analytics') return
-    fetch(`/api/venues/${venueId}/analytics?range=${range}`).then((r) => r.json()).then((d) => setAnalytics(d.analytics || null)).catch(() => {})
+    fetch(`/api/venues/${venueId}/analytics?range=${range}`).then((r) => r.json()).then((d) => {
+      setAnalytics(d.analytics || null)
+      setTrendNote(typeof d.trendNote === 'string' ? d.trendNote : null)
+    }).catch(() => {})
   }, [tab, range, venueId])
 
   useEffect(() => {
@@ -136,11 +140,22 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
           </div>
           {analytics && (
             <ul className="grid grid-cols-2 gap-2 text-sm">
-              {Object.entries(analytics).filter(([key]) => key !== 'caveat').map(([key, value]) => (
-                <li key={key} className="rounded-xl border border-border p-3"><span className="block text-xs text-muted-foreground">{key}</span><span className="font-semibold">{String(value)}</span></li>
+              {Object.entries(analytics).filter(([key, value]) => key !== 'caveat' && value != null).map(([key, value]) => (
+                <li key={key} className="rounded-xl border border-border p-3"><span className="block text-xs text-muted-foreground">{({
+                  profileViews: 'Profile views',
+                  websiteClicks: 'Website clicks',
+                  directionsClicks: 'Direction clicks',
+                  shares: 'Shares',
+                  saves: 'Saves',
+                  upcomingEvents: 'Upcoming events',
+                  eventViews: 'Event page views',
+                  publicReactions: 'Reactions',
+                  categoryLead: 'Busiest public category',
+                } as Record<string, string>)[key] ?? key}</span><span className="font-semibold">{String(value)}</span></li>
               ))}
             </ul>
           )}
+          {trendNote && <p className="text-sm">{trendNote} This uses public saves, reactions and ticket clicks, not another organiser’s campaign.</p>}
           <p className="text-xs text-muted-foreground">{typeof analytics?.caveat === 'string' ? analytics.caveat : 'Digital views and clicks do not prove physical attendance.'} This view never includes another organiser’s spend.</p>
         </section>
       )}

@@ -25,6 +25,9 @@ import { cityDef, displaySuburb } from '@/lib/cities'
 import { placeLine } from '@/lib/place'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 import { ClaimedTick } from '@/components/ClaimedTick'
+import { EventReactions } from '@/components/event-reactions'
+import { ListingSources } from '@/components/listing-sources'
+import { EventInsightPanel } from '@/components/event-insight-panel'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
 
@@ -148,6 +151,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
       </ul>
 
       <div className="hidden sm:block">{sourceLink}</div>
+      <EventReactions eventId={event.id} signedIn={signedIn} />
       <div className="hidden sm:grid grid-cols-4 gap-2">
         <button
           type="button"
@@ -227,6 +231,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             <StatusBanner status={event.quality?.status ?? null} />
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{event?.title}</h1>
             <SourceLine event={event} />
+            {event?.provenance && <ListingSources provenance={event.provenance} />}
             {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}
             {event?.listingCaution && <p className="text-xs text-muted-foreground">{event.listingCaution}</p>}
             <p className="flex items-start gap-1.5 text-xs leading-snug text-muted-foreground">
@@ -260,6 +265,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                 <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{event.description}</p>
               </section>
             )}
+            <EventInsightPanel insight={event.insight} />
             <EventExtras event={event} />
             <ListingTrustActions event={event} />
           </div>

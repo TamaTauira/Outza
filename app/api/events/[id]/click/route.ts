@@ -14,6 +14,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const me = await getSessionUser().catch(() => null)
     if (me) await recordSignal(me.id, id, 'TICKET')
     await recordCampaignConversion(id, 'TICKET', me?.id)
+    const { bumpEngagement } = await import('@/lib/engagement-store')
+    await bumpEngagement(id, 'TICKET')
   }
   return NextResponse.json({ ok: true })
 }

@@ -27,6 +27,7 @@ export function ManageEvent({ eventId }: { eventId: string }) {
   const [mode, setMode] = useState<'choice' | 'notice' | 'editor' | 'history'>('choice')
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [confirmed, setConfirmed] = useState(false)
+  const [performance, setPerformance] = useState<Record<string, unknown> | null>(null)
 
   const load = () => {
     fetch(`/api/events/${eventId}/overrides`).then(async (res) => {
@@ -40,6 +41,12 @@ export function ManageEvent({ eventId }: { eventId: string }) {
     }).catch(() => setError('Could not load this event.'))
   }
   useEffect(() => { load() }, [eventId])
+  useEffect(() => {
+    fetch(`/api/events/${eventId}/performance`).then(async (res) => {
+      if (!res.ok) return
+      setPerformance(await res.json())
+    }).catch(() => {})
+  }, [eventId])
 
   if (error) return <p className="text-sm">{error}</p>
   if (!data) return <p className="text-sm text-muted-foreground">Loading the listing…</p>
@@ -81,6 +88,24 @@ export function ManageEvent({ eventId }: { eventId: string }) {
     <div className="space-y-4">
       <Link href={`/events/${eventId}`} className="text-sm text-muted-foreground underline">Back to the listing</Link>
       <h1 className="font-display text-2xl font-bold">{data.event.title}</h1>
+      {performance && (
+        <section className="rounded-xl border border-border p-4 space-y-2">
+          <h2 className="font-semibold">Performance</h2>
+          <p className="text-sm text-muted-foreground">Saves {String(performance.saves ?? 0)} · Going {String(performance.going ?? 0)} · Reactions {String(performance.reactions ?? 0)}</p>
+          {performance.views != null && <p className="text-sm text-muted-foreground">Listing views {String(performance.views)} · Signed-in views {String(performance.uniqueViews ?? 0)} · Ticket clicks {String(performance.ticketClicks ?? 0)}{performance.engagementRate != null ? ` · ${performance.engagementRate}% engagement` : ''}</p>}
+          {performance.views == null && <p className="text-sm text-muted-foreground">Listing views and ticket clicks stay on the promoter dashboard for Pro or an active placement. Nothing here is a ticket sale.</p>}
+          {typeof performance.trend === 'string' && <p className="text-sm">{performance.trend}</p>}
+          <p className="text-xs text-muted-foreground">{typeof performance.campaignNote === 'string' ? performance.campaignNote : ''} {typeof performance.benchmarkNote === 'string' ? performance.benchmarkNote : ''}</p>
+          {Array.isArray(performance.campaigns) && performance.campaigns.length > 0 && (
+            <ul className="text-sm space-y-1">
+              {performance.campaigns.map((row) => {
+                const campaign = row as { status?: string; impressions?: number; clicks?: number; startsAt?: string; endsAt?: string }
+                return <li key={`${campaign.startsAt}-${campaign.status}`}>{campaign.status}: {campaign.impressions ?? 0} serves, {campaign.clicks ?? 0} clicks{campaign.startsAt ? `, ${campaign.startsAt.slice(0, 10)} to ${campaign.endsAt?.slice(0, 10) ?? ''}` : ''}</li>
+              })}
+            </ul>
+          )}
+        </section>
+      )}
       {data.notice && <p className="text-sm text-muted-foreground">Some details have been updated directly in VibePeep.</p>}
       {data.event.materialConflict && <p className="text-sm">The original source disagrees on something important. Check it before you treat the listing as confirmed.</p>}
 
