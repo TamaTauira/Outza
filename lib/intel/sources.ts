@@ -1,5 +1,6 @@
 // VibePeep Intelligence: client-safe registry of the six approved sources and the measures we use.
 // Plain-English meaning and limitation text lives here so every card shows the same caveats.
+import { footfallAttribution, footfallLicenceLine, footfallScope } from './curated-refs'
 
 export type SourceKey = 'abs_region' | 'abs_seifa' | 'abs_hsi' | 'tfnsw' | 'dnsw' | 'tra' | 'footfall' | 'google_bp'
 export type DataKind = 'observed' | 'derived' | 'modelled' | 'hypothesis'
@@ -53,11 +54,11 @@ export const INTEL_SOURCES: Record<SourceKey, SourceDef> = {
   footfall: {
     key: 'footfall', name: 'Weekend pedestrian counts', publisher: 'City of Melbourne, City of Sydney and Brisbane City Council',
     url: 'https://data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-monthly-counts-per-hour/information/',
-    licence: 'City of Sydney and Brisbane City Council: CC BY 4.0. City of Melbourne: open data (Victorian catalogue id other-open; the dataset record does not name a Creative Commons deed).',
-    attribution: 'Source: City of Melbourne Pedestrian Counting System. City of Sydney Automatic Hourly Pedestrian Count (CC BY 4.0). Brisbane City Council pedestrian movement counts (CC BY 4.0).',
+    get licence() { return footfallLicenceLine() },
+    get attribution() { return footfallAttribution() },
     scheduleHours: 24 * 7, scheduleLabel: 'Checked weekly',
-    scope: 'Melbourne CBD sensors (ongoing). Sydney CBD sensors on Elizabeth, Market, Park and Bridge streets (trial ended June 2025). Brisbane mall sensors at Queen Street, Brunswick Street and Chinatown.',
-    limitations: 'Counts are movements past a sensor, not attendance and not ticket sales. Melbourne is a mean across CBD sensors, or the nearest sensor within 1 km. Sydney is July 2024–June 2025, not a live feed. Brisbane hours under 25 movements are not published, and the sensor cannot tell a person from a trolley. No free day-of-week pedestrian series is published for the other cities and regions; those reports say so instead of borrowing another city.',
+    get scope() { return footfallScope() },
+    limitations: 'Counts are movements past a sensor, not attendance and not ticket sales. Melbourne is a mean across the city\'s sensors, or the nearest sensor within 1 km. Sydney is July 2024–June 2025, not a live feed; the sensor trial ended in June 2025. Brisbane hours under 25 movements are not published, and the sensor cannot tell a person from a trolley. No free day-of-week pedestrian series is published for the other cities and regions; those reports say so instead of borrowing another city.',
   },
   dnsw: {
     key: 'dnsw', name: 'Destination NSW insights', publisher: 'Destination NSW',

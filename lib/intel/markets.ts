@@ -1,5 +1,6 @@
 // Which published tourism region and which footfall series a listing actually sits in.
 // Regional names are matched before the catalogue city, so a Launceston address filed under Hobart stays Launceston.
+import { brisbaneFootfallGap, footfallCaveat, footfallLicence, footfallSeriesLabel, melbourneFootfallGap, sydneyFootfallGap } from './curated-refs'
 
 export type StateCode = 'NSW' | 'VIC' | 'QLD' | 'SA' | 'WA' | 'TAS' | 'NT' | 'ACT'
 export type FootfallKey = 'melbourne' | 'sydney' | 'brisbane'
@@ -65,10 +66,10 @@ export function footfallSeriesReady(marketId: string) {
   return MARKETS.some((market) => market.id === marketId && market.footfall != null)
 }
 
-export function footfallMissingDetail(marketId: string): string {
-  if (marketId === 'Sydney') return 'City of Sydney published hourly counts for Elizabeth, Market, Park and Bridge streets (CC BY 4.0). The sensor trial ended in June 2025. Those counts are not in the database yet, so there is no Friday-versus-Sunday index. Monthly Opal totals are not a day of the week.'
-  if (marketId === 'Melbourne') return 'The City of Melbourne Pedestrian Counting System publishes hourly CBD counts. They are not in the database yet, so there is no Friday-versus-Sunday index.'
-  if (marketId === 'Brisbane') return 'Brisbane City Council publishes hourly pedestrian movement counts for Queen Street Mall, Brunswick Street Mall and Chinatown Mall (CC BY 4.0). They are not in the database yet, so there is no Friday-versus-Sunday index.'
+export function footfallMissingDetail(marketId: string, asOf = new Date()): string {
+  if (marketId === 'Sydney') return sydneyFootfallGap(asOf)
+  if (marketId === 'Melbourne') return melbourneFootfallGap(asOf)
+  if (marketId === 'Brisbane') return brisbaneFootfallGap(asOf)
   if (['Gold Coast', 'Sunshine Coast', 'Townsville', 'Cairns', 'Toowoomba'].includes(marketId)) {
     return `${marketId} has no day-of-week pedestrian series in the Queensland open-data catalogue. Brisbane’s mall sensors are a different city and are not used as a stand-in. Bikeway counters and state-road vehicle volumes are not a crowd at the venue, so no Friday-versus-Sunday index is invented.`
   }
@@ -77,23 +78,18 @@ export function footfallMissingDetail(marketId: string): string {
 
 export type LoadedFootfall = { seriesLabel: string; caveat: string; url: string; licence: string }
 
-export const FOOTFALL_LOADED: Record<FootfallKey, LoadedFootfall> = {
-  melbourne: {
-    seriesLabel: 'City of Melbourne pedestrian sensors',
-    caveat: 'Hourly counts from the City of Melbourne Pedestrian Counting System. The city figure is the mean across CBD sensors; a venue within 1 km uses the nearest sensor. People passing a sensor, not a queue at the door. The Victorian open-data catalogue lists the dataset as other-open. The dataset record does not name a Creative Commons deed. Attribute the City of Melbourne.',
-    url: 'https://data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-monthly-counts-per-hour/information/',
-    licence: 'City of Melbourne open data (Victorian catalogue: other-open)',
-  },
-  sydney: {
-    seriesLabel: 'City of Sydney sensors on Elizabeth, Market, Park and Bridge streets',
-    caveat: 'Hourly counts from the City of Sydney automatic sensors. The trial ended in June 2025, so this is July 2024 to June 2025, not a live feed. Four CBD streets, not the suburb and not the door. CC BY 4.0.',
-    url: 'https://www.arcgis.com/home/item.html?id=66421e1dfe264bb19c76179ae92281cf',
-    licence: 'CC BY 4.0',
-  },
-  brisbane: {
-    seriesLabel: 'Brisbane mall sensors (Queen Street, Brunswick Street, Chinatown)',
-    caveat: 'Brisbane City Council line sensors in Queen Street Mall, Brunswick Street Mall and Chinatown Mall. A count is a movement across the line, not a unique person, and the sensors cannot tell a person from a trolley. Hours under 25 movements are not published, so the average uses only the hours they release. CC BY 4.0. Not the Gold Coast, and not the venue door.',
-    url: 'https://data.brisbane.qld.gov.au/explore/dataset/pedestrian-movement-counts/',
-    licence: 'CC BY 4.0',
-  },
+const FOOTFALL_URL: Record<FootfallKey, string> = {
+  melbourne: 'https://data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-monthly-counts-per-hour/information/',
+  sydney: 'https://data.nsw.gov.au/data/dataset/5-cityofsydney--pedestrian-counts-from-automated-sensors-sites',
+  brisbane: 'https://data.brisbane.qld.gov.au/explore/dataset/pedestrian-movement-counts/',
+}
+
+/** Loaded-series label, caveat and licence. Named streets and licences are omitted once their check is stale. */
+export function footfallLoaded(key: FootfallKey, asOf = new Date()): LoadedFootfall {
+  return {
+    seriesLabel: footfallSeriesLabel(key, asOf),
+    caveat: footfallCaveat(key, asOf),
+    url: FOOTFALL_URL[key],
+    licence: footfallLicence(key, asOf),
+  }
 }
