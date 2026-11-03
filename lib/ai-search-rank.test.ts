@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { interpretQuery } from './ai-search-parse'
 import { rankAskRows, type AskRow } from './ai-search-rank'
+import { SANS_BOLD_UPPER, styleLetters } from './search-fold'
 
 const FRIDAY = '2026-10-30'
 const markets = JSON.parse(readFileSync(new URL('./ai-search-weekend-markets.json', import.meta.url), 'utf8')) as AskRow[]
@@ -61,7 +62,8 @@ test('named markets, suburbs, typos and topic queries stay on the matching title
   assert.equal(ask('makers market', 'Sydney').some((row) => row.title === 'Picnic Under the Bridge'), false)
 
   const trivia = ask('trivia tonight', 'Sydney')
-  assert.equal(trivia.some((row) => row.title === 'Girls Only Halloween Boat Party'), false)
+  assert.ok(trivia.some((row) => row.id === 'boat'))
+  assert.equal(trivia[0]?.id, 'boat')
   assert.equal(trivia.some((row) => row.id === 'quiz'), false)
 
   const quiz = ask('pub quiz', 'Sydney')
@@ -81,6 +83,58 @@ test('named markets, suburbs, typos and topic queries stay on the matching title
   assert.ok(ask('art exhibition', 'Sydney').some((row) => row.id === 'show'))
   assert.ok(ask('food festival').some((row) => row.id === 'food'))
   assert.deepEqual(ask('comdey', 'Sydney').map((row) => row.id), [])
+})
+
+test('Gay 2027 in Sydney returns BIG GAY BLOCK PARTY and does not invent a listing', () => {
+  const blockTitle = styleLetters('BIG GAY BLOCK PARTY', SANS_BOLD_UPPER)
+  assert.equal(blockTitle, '𝗕𝗜𝗚 𝗚𝗔𝗬 𝗕𝗟𝗢𝗖𝗞 𝗣𝗔𝗥𝗧𝗬')
+  const row = (over: Partial<AskRow> & Pick<AskRow, 'id' | 'title' | 'date'>): AskRow => ({
+    time: '21:00', venueName: 'Somewhere', suburb: 'CBD', city: 'Sydney', category: 'Music', subTags: [],
+    isFree: false, price: '$20', priceMin: 20, isLGBTI: false, description: '',
+    ...over,
+  })
+  const pool: AskRow[] = [
+    row({
+      id: 'big-gay-block-party', title: blockTitle, date: '2027-03-06', time: '21:00',
+      venueName: 'ivy', venueAddress: '320-330 George St, Sydney, NSW 2000', suburb: 'CBD',
+      category: 'Music', subTags: ['Dance'], price: '$99 – $169', priceMin: 99,
+      description: '', isLGBTI: false,
+    }),
+    row({ id: 'ascii-gay', title: 'Big Gay Dance', date: '2027-08-14', time: '22:00' }),
+    row({ id: 'december', title: 'New Year Gay Dance', date: '2027-12-31', time: '22:00' }),
+    row({ id: 'gaylard', title: 'Jack Gatto & Charlie Gaylard ELVIS - LIVE IN CONCERT', date: '2027-02-12', time: '20:00', category: 'Music' }),
+    row({ id: 'drag-race', title: 'Drag Racing at Sydney Dragway', date: '2027-04-04', time: '18:00', category: 'Sports', subTags: ['Motorsport'], description: 'Run club members get a discount.' }),
+    row({ id: 'pride', title: 'Sydney Pride Parade', date: '2027-03-01', time: '12:00', isLGBTI: true, category: 'Community' }),
+    row({ id: 'flag-only', title: 'Harbour Lights', date: '2027-05-01', time: '19:00', isLGBTI: true, description: 'A harbour party.' }),
+    row({ id: 'desc-only', title: 'Harbour Dance', date: '2027-04-02', time: '22:00', description: 'A queer community night.' }),
+    row({ id: 'plain', title: 'Jazz at the basin', date: '2027-06-01', time: '20:00', description: 'A normal gig.' }),
+    row({ id: 'melbourne', title: 'Big Gay Dance Melbourne', date: '2027-03-06', city: 'Melbourne' }),
+    row({ id: 'before', title: 'Big Gay Picnic', date: '2026-12-31' }),
+    row({ id: 'after', title: 'Big Gay Brunch', date: '2028-01-01' }),
+  ]
+
+  const filters = interpretQuery('Gay 2027', '2026-11-03')
+  const results = rankAskRows(pool, { ...filters, city: 'Sydney' })
+  assert.equal(results[0]?.id, 'big-gay-block-party')
+  for (const id of ['ascii-gay', 'december', 'pride', 'flag-only', 'desc-only']) {
+    assert.ok(results.some((row) => row.id === id), id)
+  }
+  for (const id of ['gaylard', 'drag-race', 'plain', 'melbourne', 'before', 'after']) {
+    assert.equal(results.some((row) => row.id === id), false, id)
+  }
+  const block = results.find((row) => row.id === 'big-gay-block-party')
+  const flag = results.find((row) => row.id === 'flag-only')
+  assert.ok(block && flag && results.indexOf(block) < results.indexOf(flag))
+
+  for (const word of ['queer', 'lgbt', 'pride', 'lgbtiq']) {
+    const found = rankAskRows(pool, { ...interpretQuery(`${word} 2027`, '2026-11-03'), city: 'Sydney' })
+    assert.ok(found.some((row) => row.id === 'big-gay-block-party'), word)
+    assert.equal(found.some((row) => row.id === 'plain'), false, word)
+    assert.equal(found.some((row) => row.id === 'drag-race'), false, word)
+  }
+
+  const prideFirst = rankAskRows(pool, { ...interpretQuery('pride 2027', '2026-11-03'), city: 'Sydney' })
+  assert.equal(prideFirst[0]?.id, 'pride')
 })
 
 test('free excludes a paid listing even when isFree was set', () => {

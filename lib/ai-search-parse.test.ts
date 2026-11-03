@@ -172,6 +172,28 @@ test('topic words survive category guesses, and typos fold in', () => {
   assert.deepEqual(free.keywords, [])
 })
 
+test('Gay 2027 is the whole year, with LGBTIQ+ inferred and the word kept', () => {
+  const gay = interpretQuery('Gay 2027', '2026-11-03')
+  assert.equal(gay.dateFrom, '2027-01-01')
+  assert.equal(gay.dateTo, '2027-12-31')
+  assert.equal(gay.lgbtiq, true)
+  assert.equal(gay.categoryStrict, false)
+  assert.deepEqual(gay.keywords, ['gay'])
+  assert.equal(gay.city, '')
+
+  for (const word of ['queer', 'lgbt', 'pride', 'lgbtiq', 'lesbian']) {
+    const parsed = interpretQuery(`${word} 2027`, '2026-11-03')
+    assert.equal(parsed.lgbtiq, true, word)
+    assert.equal(parsed.dateFrom, '2027-01-01', word)
+    assert.equal(parsed.dateTo, '2027-12-31', word)
+    assert.ok(parsed.keywords.includes(word), word)
+  }
+
+  const gaylard = interpretQuery('Charlie Gaylard', '2026-11-03')
+  assert.equal(gaylard.lgbtiq, false)
+  assert.deepEqual(gaylard.keywords, ['charlie', 'gaylard'])
+})
+
 test('relative dates still resolve when no year is named', () => {
   const tonight = interpretQuery('live music tonight', TODAY)
   assert.equal(tonight.dateFrom, TODAY)

@@ -328,7 +328,7 @@ export function fallbackParse(q: string, today: string) {
   } else if (/\bweekend\b/.test(s)) [out.dateFrom, out.dateTo] = weekend(today)
   if (/\bfree\b/.test(s)) out.isFree = true
   else if (/\bpaid\b/.test(s)) out.paidOnly = true
-  if (/\b(lgbt|queer|gay|pride)/.test(s)) out.lgbtiq = true
+  if (/\b(lgbt\w*|queers?|gays?|prides?|lesbians?)\b/.test(s)) out.lgbtiq = true
   const money = s.match(/(?:under|below|less than)\s*\$?(\d+)/)
   if (money) out.maxPrice = Number(money[1])
   const cat = categoryFromQuery(s)
@@ -440,6 +440,7 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   if (typeof fb.subTag === 'string' && fb.subTag) out.subTag = fb.subTag
   if (fb.paidOnly === true) out.paidOnly = true
   if (fb.isFree === true) out.isFree = true
+  if (fb.lgbtiq === true) out.lgbtiq = true
   if (!out.city && typeof fb.city === 'string' && fb.city) out.city = fb.city
   if (Array.isArray(fb.keywords) && fb.keywords.length) out.keywords = fb.keywords as string[]
   out.categoryStrict = false

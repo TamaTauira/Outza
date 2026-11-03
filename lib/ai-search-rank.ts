@@ -1,5 +1,6 @@
 import { isPaidListing } from '@/lib/quality'
 import type { AiFilters } from '@/lib/ai-search-parse'
+import { foldSearchText, hasLgbtiText, isLgbtiTerm } from '@/lib/search-fold'
 
 export const ASK_LIMIT = 8
 
@@ -18,6 +19,8 @@ export interface AskRow {
   isFree: boolean
   price: string | null
   priceMin: number | null
+  /** Stored flag. Ask treats it as a wider net, not a requirement, when the query inferred LGBTIQ+. */
+  isLGBTI?: boolean
   views?: number
   _count?: { savedBy: number; attendees: number }
 }
@@ -28,12 +31,7 @@ function dayKey(date: Date | string): string {
 }
 
 function fold(value: string | null | undefined): string {
-  return (value ?? '')
-    .toLowerCase()
-    .replace(/[-–—'’]/g, ' ')
-    .replace(/[^a-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return foldSearchText(value)
 }
 
 /** Singular/plural and the Market vs Markets tag the catalogue actually stores. */
@@ -64,9 +62,9 @@ function tagBlob(row: AskRow): string {
   return fold((row.subTags ?? []).join(' '))
 }
 
-type Strength = 'title' | 'place' | 'tag' | 'none'
+type Strength = 'title' | 'description' | 'place' | 'tag' | 'lgbti' | 'none'
 
-/** Whole words only, so "market" matches Markets but not Haymarket. */
+/** Whole words only, so "market" matches Markets but not Haymarket, and "gay" does not match Gaylard. */
 function hasWord(blob: string, word: string): boolean {
   const forms = new Set([word])
   if (word.length > 3 && word.endsWith('s')) forms.add(word.slice(0, -1))
@@ -74,15 +72,40 @@ function hasWord(blob: string, word: string): boolean {
   return blob.split(' ').some((token) => forms.has(token))
 }
 
-function strengthFor(row: AskRow, keywords: string[]): Strength {
-  if (!keywords.length) return 'title'
+function tagHit(row: AskRow, word: string): boolean {
+  return tagForms(word).some((form) => (row.subTags ?? []).some((tag) => tag.toLowerCase() === form.toLowerCase()))
+}
+
+function wordInRow(row: AskRow, blobs: string[], word: string): boolean {
+  return blobs.some((blob) => hasWord(blob, word)) || tagHit(row, word)
+}
+
+/**
+ * Title and description are both real matches. A queer synonym in the title counts
+ * for any of gay / queer / lgbt / pride / lgbtiq. The stored flag only adds rows.
+ */
+function strengthFor(row: AskRow, keywords: string[], widen: boolean): Strength {
+  if (!keywords.length && !widen) return 'title'
   const title = titleBlob(row)
+  const description = fold(row.description)
   const place = placeBlob(row)
   const tags = tagBlob(row)
-  if (keywords.every((word) => hasWord(title, word))) return 'title'
-  if (keywords.every((word) => hasWord(place, word))) return 'place'
-  const inTag = keywords.every((word) => hasWord(tags, word) || tagForms(word).some((form) => (row.subTags ?? []).some((tag) => tag.toLowerCase() === form.toLowerCase())))
-  return inTag ? 'tag' : 'none'
+  const blobs = [title, description, place, tags]
+  const required = keywords.filter((word) => !isLgbtiTerm(word))
+  if (required.length && !required.every((word) => wordInRow(row, blobs, word))) return 'none'
+
+  const inTitle = (word: string) => (isLgbtiTerm(word) ? hasLgbtiText(title) : hasWord(title, word))
+  if (keywords.length && keywords.every(inTitle) && required.every((word) => hasWord(title, word))) return 'title'
+  if (widen && hasLgbtiText(title) && required.every((word) => hasWord(title, word))) return 'title'
+
+  const inDescription = (word: string) => (isLgbtiTerm(word) ? hasLgbtiText(description) : hasWord(description, word))
+  if (keywords.length && keywords.every((word) => inDescription(word) || hasWord(title, word)) && required.every((word) => hasWord(title, word) || hasWord(description, word))) return 'description'
+  if (widen && hasLgbtiText(description) && required.every((word) => hasWord(title, word) || hasWord(description, word))) return 'description'
+
+  if (keywords.length && keywords.every((word) => hasWord(place, word) || (isLgbtiTerm(word) && hasLgbtiText(place)))) return 'place'
+  if (keywords.length && keywords.every((word) => hasWord(tags, word) || tagHit(row, word) || (isLgbtiTerm(word) && hasLgbtiText(tags)))) return 'tag'
+  if (widen && row.isLGBTI) return 'lgbti'
+  return 'none'
 }
 
 function inRange(row: AskRow, filters: Pick<AiFilters, 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree'>): boolean {
@@ -99,28 +122,37 @@ function inRange(row: AskRow, filters: Pick<AiFilters, 'dateFrom' | 'dateTo' | '
 }
 
 /**
- * Keep title matches ahead of a sub-tag-only hit, and drop description-only noise
- * when a real title match exists. A keyword query with no title or tag hit returns nothing.
+ * Title matches come first. A description match still counts when nothing in a
+ * title says the word. An inferred LGBTIQ+ topic adds tagged listings behind
+ * those title matches; it never removes a listing whose title or description hit.
  */
-export function rankAskRows<T extends AskRow>(rows: T[], filters: Pick<AiFilters, 'keywords' | 'category' | 'subTag' | 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree'>, limit = ASK_LIMIT): T[] {
+export function rankAskRows<T extends AskRow>(rows: T[], filters: Pick<AiFilters, 'keywords' | 'category' | 'subTag' | 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree' | 'lgbtiq'>, limit = ASK_LIMIT): T[] {
   const keywords = filters.keywords.map((word) => word.toLowerCase())
+  const widen = filters.lgbtiq || keywords.some((word) => isLgbtiTerm(word))
   const pool = rows.filter((row) => inRange(row, filters))
-  const scored = pool.map((row) => ({ row, strength: strengthFor(row, keywords) }))
+  const scored = pool.map((row) => ({ row, strength: strengthFor(row, keywords, widen) }))
   const titles = scored.filter((item) => item.strength === 'title')
+  const descriptions = scored.filter((item) => item.strength === 'description')
   const places = scored.filter((item) => item.strength === 'place')
   const tags = scored.filter((item) => item.strength === 'tag')
+  const flags = scored.filter((item) => item.strength === 'lgbti')
   let chosen = titles
-  if (!keywords.length) chosen = scored
-  else if (titles.length) chosen = titles
-  else if (places.length) chosen = places
-  else chosen = tags
+  if (!keywords.length && !widen) chosen = scored
+  else if (titles.length && !widen) chosen = titles
+  else if (titles.length) chosen = [...titles, ...descriptions, ...flags]
+  else if (descriptions.length) chosen = [...descriptions, ...flags]
+  else if (places.length) chosen = [...places, ...flags]
+  else if (tags.length) chosen = [...tags, ...flags]
+  else chosen = flags
+  const strengthScore: Record<Strength, number> = { title: 5, description: 3, place: 2, tag: 2, lgbti: 1, none: 0 }
   const ranked = chosen
     .map((item) => {
       const title = titleBlob(item.row)
-      const hits = keywords.reduce((n, word) => n + (title.includes(word) ? 2 : 0), 0)
+      const hits = keywords.reduce((n, word) => n + (hasWord(title, word) ? 2 : 0), 0)
+      const synonym = widen && hasLgbtiText(title) ? 1 : 0
       const categoryBoost = filters.category && item.row.category === filters.category ? 1 : 0
       const pop = (item.row._count?.savedBy ?? 0) + (item.row._count?.attendees ?? 0) + Math.min(item.row.views ?? 0, 50) / 50
-      return { item, score: hits * 10 + categoryBoost + pop }
+      return { item, score: strengthScore[item.strength] * 100 + hits * 10 + synonym + categoryBoost + pop }
     })
     .sort((a, b) => b.score - a.score || dayKey(a.item.row.date).localeCompare(dayKey(b.item.row.date)) || (a.item.row.time ?? '').localeCompare(b.item.row.time ?? ''))
   return ranked.slice(0, limit).map((entry) => entry.item.row)
