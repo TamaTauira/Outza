@@ -6,10 +6,21 @@ import type { DataKind, InsightSource } from './sources'
 import type { Voice } from './voice'
 import { confidenceFor, ptsDiff } from './util'
 import { visitorCopy, weekendCopy, type VisitorSignal, type WeekendSignal } from './crowd-shape'
+import {
+  BRISBANE_PRIDE, DNA, FEAST, FROOTY, FUSE, GOLD_COAST_PRIDE, JOY, MARDI, MIDSUMMA, NEWCASTLE_PRIDE,
+  OUTINPERTH, PRIDE_WA, QNEWS, SPRINGOUT, STAR, STONEWALL, TASPRIDE, TOP_END, visibleRefs, type CuratedRef,
+} from './curated-refs'
 import { footfallMissingDetail, footfallSeriesReady } from './markets'
 
 export type Confidence = 'high' | 'medium' | 'low' | 'insufficient'
-export type InsightLink = { name: string; url: string; note: string }
+export type InsightLink = {
+  name: string
+  url: string
+  note: string
+  /** Set on a curated external reference. Absent on the VibePeep filter link. */
+  lastVerified?: string
+  sourceUrl?: string
+}
 export type Insight = {
   title: string
   detail: string
@@ -444,99 +455,45 @@ function seifaInsight(f: EventFacts, a: AreaSignals): Insight | null {
     `${a.seifa.area} is state decile ${a.seifa.decile} of 10 on economic resources (IER, SEIFA 2021). 10 means the most resources. That is not a rank of the people who will turn up.${other}${band}`)
 }
 
-type Ch = InsightLink
-
-const STAR: Ch = {
-  name: 'Star Observer',
-  url: 'https://www.starobserver.com.au/',
-  note: 'LGBTIQA+ masthead based in Sydney, read nationally. A publisher to pitch the date to, not a ticket outlet, and not a measured audience.',
-}
-const DNA: Ch = {
-  name: 'DNA Magazine',
-  url: 'https://www.dnamagazine.com.au/',
-  note: 'National gay men’s title, in print and online. A fit when the room actually skews that way.',
-}
-const FROOTY: Ch = {
-  name: 'FROOTY',
-  url: 'https://frooty.com.au/',
-  note: 'LGBTQ+ pages distributed with Scenestr street press, so they sit next to gig guides. Useful for music, nightlife and arts.',
-}
-const MARDI: Ch = {
-  name: 'Sydney Gay and Lesbian Mardi Gras',
-  url: 'https://www.mardigras.org.au/',
-  note: 'Summer into early autumn is when Sydney looks for queer events. The festival program and community channels, separate from the parade itself.',
-}
-const OXFORD: Ch = {
-  name: 'Oxford Street and Stonewall Hotel',
-  url: 'https://www.stonewallhotel.com/',
-  note: 'Oxford Street, Darlinghurst, is still where a lot of Sydney’s queer nights sit. Stonewall Hotel is one long-running room on it — ask what they are programming, and name the street in the ad.',
-}
-
-function cityChannels(city: string): Ch[] {
+function cityChannels(city: string): CuratedRef[] {
   switch (city) {
     case 'Sydney':
-      return [STAR, MARDI, OXFORD]
+      return [STAR, MARDI, STONEWALL]
     case 'Newcastle':
-      return [STAR, { ...MARDI, note: 'Newcastle has no separate queer masthead in this list. Mardi Gras season and Star Observer are the NSW channels that already cover this audience.' }]
+      return [STAR, NEWCASTLE_PRIDE]
     case 'Melbourne':
-      return [
-        { name: 'JOY 94.9', url: 'https://joy.org.au/', note: 'Melbourne’s LGBTIQA+ community radio station. Spots and community announcements, not a national network buy.' },
-        { name: 'Midsumma Festival', url: 'https://www.midsumma.org.au/', note: 'Melbourne’s queer festival, January and February. They sell the printed festival guide — a real booking, not a vibe.' },
-        STAR,
-      ]
+      return [JOY, MIDSUMMA, STAR]
     case 'Brisbane':
+      return [QNEWS, BRISBANE_PRIDE, STAR]
     case 'Gold Coast':
-      return [
-        { name: 'QNews', url: 'https://qnews.com.au/', note: city === 'Gold Coast' ? 'Queensland’s LGBTIQA+ masthead. The Gold Coast does not have a separate outlet in this list.' : 'Brisbane’s long-running LGBTIQA+ masthead, read across Queensland.' },
-        { name: 'Brisbane Pride Festival', url: 'https://www.brisbanepride.org.au/', note: 'Fair Day, the march and the Queens Ball. The Queensland festival to be in, or next to, when the season is on.' },
-        STAR,
-      ]
+      return [QNEWS, GOLD_COAST_PRIDE, STAR]
     case 'Perth':
-      return [
-        { name: 'OUTinPerth', url: 'https://www.outinperth.com/', note: 'Western Australia’s LGBTIQA+ publication. The local masthead before a national one.' },
-        { name: 'Pride WA', url: 'https://pridewa.com.au/', note: 'Perth’s Pride festival organisation. Program and community channels around PrideFEST.' },
-        STAR,
-      ]
+      return [OUTINPERTH, PRIDE_WA, STAR]
     case 'Adelaide':
-      return [
-        { name: 'Feast Festival', url: 'https://feast.org.au/', note: 'Adelaide’s LGBTQIA+ arts festival, held in November. The local program to be listed in, or advertised beside.' },
-        DNA,
-        STAR,
-      ]
+      return [FEAST, DNA, STAR]
     case 'Canberra':
-      return [
-        { name: 'FUSE Magazine', url: 'https://fusemagazine.com.au/', note: 'Canberra and inner-Sydney LGBTIQA+ magazine, and SpringOUT’s media partner. Print and their site.' },
-        { name: 'SpringOUT', url: 'https://springout.com.au/', note: 'Canberra’s Pride festival, running through late spring. The program guide is the local listing that matters.' },
-        STAR,
-      ]
+      return [FUSE, SPRINGOUT, STAR]
     case 'Hobart':
-      return [
-        { name: 'TasPride', url: 'https://www.taspride.com/', note: 'Tasmania’s Pride festival. The program and parade are the island-wide channels; there is no separate Hobart masthead in this list.' },
-        STAR,
-        DNA,
-      ]
+      return [TASPRIDE, STAR, DNA]
     case 'Darwin':
-      return [
-        { name: 'Top End Pride', url: 'https://topendpride.com.au/', note: 'Runs Darwin Pride Festival. The Territory program to be part of, or to advertise beside, in the festival window.' },
-        STAR,
-        DNA,
-      ]
+      return [TOP_END, STAR, DNA]
     default:
       return [STAR, DNA]
   }
 }
 
-/** Real publishers, radio and festivals. No rate cards and no audience sizes — we have not imported those. */
-export function queerPromoLinks(city: string, category: string): InsightLink[] {
-  const outza: Ch = {
+/** Real publishers, radio and festivals. No rate cards and no audience sizes — we have not imported those.
+ *  A curated reference with no source, or a check older than six months, is left out. */
+export function queerPromoLinks(city: string, category: string, asOf = new Date()): InsightLink[] {
+  const outza: InsightLink = {
     name: `VibePeep LGBTIQ+ events in ${city}`,
     url: `/${citySlug(city)}/lgbtiq`,
     note: 'The filter people use when they already want a queer night in this city. The listing is the ad. Everything else is another room for the same date.',
   }
   const extra = ['Music', 'Nightlife', 'Arts & Culture'].includes(category) ? [FROOTY] : []
   const seen = new Set<string>()
-  const links: Ch[] = []
-  for (const link of [outza, ...cityChannels(city), ...extra]) {
+  const links: InsightLink[] = []
+  for (const link of [outza, ...visibleRefs(cityChannels(city), asOf), ...visibleRefs(extra, asOf)]) {
     if (seen.has(link.url)) continue
     seen.add(link.url)
     links.push(link)

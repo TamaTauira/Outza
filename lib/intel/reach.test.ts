@@ -183,16 +183,16 @@ test('a pinned venue with no ABS rows says the profile needs an import', () => {
 test('queer listings get an VibePeep line plus real channels, and no made-up audience size', () => {
   const cities = ['Sydney', 'Melbourne', 'Brisbane', 'Gold Coast', 'Perth', 'Adelaide', 'Canberra', 'Hobart', 'Darwin', 'Newcastle'] as const
   const must: Record<string, string[]> = {
-    Sydney: ['starobserver.com.au', 'mardigras.org.au', 'stonewallhotel.com', '/sydney/lgbtiq'],
+    Sydney: ['starobserver.com.au', 'mardigras.org.au', 'stonewallnewtown.com.au', '/sydney/lgbtiq'],
     Melbourne: ['joy.org.au', 'midsumma.org.au', '/melbourne/lgbtiq'],
     Brisbane: ['qnews.com.au', 'brisbanepride.org.au', '/brisbane/lgbtiq'],
-    'Gold Coast': ['qnews.com.au', '/gold-coast/lgbtiq'],
+    'Gold Coast': ['qnews.com.au', 'gcpridecollective.com', '/gold-coast/lgbtiq'],
     Perth: ['outinperth.com', 'pridewa.com.au', '/perth/lgbtiq'],
     Adelaide: ['feast.org.au', 'dnamagazine.com.au', '/adelaide/lgbtiq'],
     Canberra: ['fusemagazine.com.au', 'springout.com.au', '/canberra/lgbtiq'],
     Hobart: ['taspride.com', '/hobart/lgbtiq'],
     Darwin: ['topendpride.com.au', '/darwin/lgbtiq'],
-    Newcastle: ['starobserver.com.au', 'mardigras.org.au', '/newcastle/lgbtiq'],
+    Newcastle: ['starobserver.com.au', 'newcastlepride.com.au', '/newcastle/lgbtiq'],
   }
   for (const city of cities) {
     const links = queerPromoLinks(city, 'Music')
@@ -201,7 +201,17 @@ test('queer listings get an VibePeep line plus real channels, and no made-up aud
     assert.ok(links.length <= 5)
     const notes = links.map((l) => l.note).join('\n')
     assert.doesNotMatch(notes, /\d+(\.\d+)?%|million|listeners|readers|followers/)
+    for (const link of links) {
+      if (link.url.startsWith('/')) continue
+      assert.ok(link.lastVerified, `${city} ${link.name} has no lastVerified`)
+      assert.ok(link.sourceUrl, `${city} ${link.name} has no source`)
+    }
   }
+  const sydney = queerPromoLinks('Sydney', 'Nightlife').map((l) => `${l.name} ${l.note} ${l.url}`).join('\n')
+  assert.match(sydney, /157 King Street, Newtown/)
+  assert.doesNotMatch(sydney, /stonewallhotel\.com|long-running room on it/)
+  assert.equal(queerPromoLinks('Gold Coast', 'Music').some((l) => l.url.includes('brisbanepride')), false)
+  assert.equal(queerPromoLinks('Sydney', 'Music', new Date('2030-06-01T00:00:00Z')).map((l) => l.url).join(' '), '/sydney/lgbtiq')
   assert.equal(queerPromoLinks('Newcastle', 'Music').some((l) => l.url.includes('stonewall')), false)
   assert.equal(queerPromoLinks('Sydney', 'Business').some((l) => l.url.includes('frooty')), false)
   assert.equal(queerPromoLinks('Sydney', 'Music').some((l) => l.url.includes('frooty')), true)

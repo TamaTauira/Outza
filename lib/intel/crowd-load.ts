@@ -2,7 +2,7 @@
 import { readObs } from './store'
 import { haversineKm } from './util'
 import { regionSlug } from './tra-parse'
-import { FOOTFALL_LOADED, type Market } from './markets'
+import { footfallLoaded, type Market } from './markets'
 import { buildVisitor, buildWeekend, type VisitorSignal, type WeekendSignal } from './crowd-shape'
 
 const SITES: Record<string, string | null> = { melbourne: 'melbourne_sites', brisbane: 'brisbane_sites', sydney: null }
@@ -23,7 +23,7 @@ export async function loadVisitor(market: Market, month: number): Promise<Visito
 export async function loadWeekend(market: Market, lat: number | null, lng: number | null): Promise<WeekendSignal | null> {
   const key = market.footfall
   if (!key) return null
-  const meta = FOOTFALL_LOADED[key]
+  const meta = footfallLoaded(key)
   const sitesDataset = SITES[key]
   let rows = await readObs('footfall', key, { geoType: 'CITY', geoCode: CITY[key] })
   let seriesLabel = meta.seriesLabel
