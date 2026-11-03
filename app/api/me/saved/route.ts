@@ -58,6 +58,8 @@ export async function POST(req: Request) {
         await prisma.savedEvent.createMany({ data: [{ userId: me.id, eventId: ev.id }], skipDuplicates: true })
         const jar = await cookies()
         await recordLandingFromCookieJar((name) => jar.get(name)?.value, 'save')
+        const { bumpEngagement } = await import('@/lib/engagement-store')
+        await bumpEngagement(ev.id, 'SAVE')
       }
     } else {
       await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: b.eventId } })

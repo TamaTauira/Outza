@@ -18,7 +18,7 @@ export type OverrideField = (typeof OVERRIDE_FIELDS)[number]
 
 export const MATERIAL_FIELDS = ['date', 'time', 'endTime', 'venueName', 'venueAddress', 'status'] as const
 
-export const ORGANISER_UPDATE_TITLE = 'Organiser update'
+export const ORGANISER_UPDATE_TITLE = 'Updated by organiser'
 export const ORGANISER_UPDATE_BODY =
   'This event information has been updated directly by the event organiser on VibePeep and may differ from the original listing.'
 
@@ -571,6 +571,8 @@ export type VenueMetrics = {
   shares: number
   upcomingEvents: number
   eventViews: number
+  publicReactions: number
+  categoryLead: string | null
   caveat: string
 }
 
@@ -582,6 +584,8 @@ export function venueAnalyticsView(input: {
   shares?: number
   upcomingEvents?: number
   eventViews?: number
+  publicReactions?: number
+  categoryLead?: string | null
   spend?: number
   campaignSpend?: number
   audience?: unknown
@@ -596,6 +600,8 @@ export function venueAnalyticsView(input: {
     shares: input.shares ?? 0,
     upcomingEvents: input.upcomingEvents ?? 0,
     eventViews: input.eventViews ?? 0,
+    publicReactions: input.publicReactions ?? 0,
+    categoryLead: input.categoryLead ?? null,
     caveat: ANALYTICS_CAVEAT,
   }
 }

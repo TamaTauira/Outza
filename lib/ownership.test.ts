@@ -180,7 +180,7 @@ test('3 — the direct-edit notice says VibePeep may differ from the source', ()
 test('4 — an active organiser override is named on the public listing and hidden once cleared', () => {
   const notice = publicOrganiserNotice([{ fieldName: 'time', overrideValue: '19:30', originalSourceValue: '19:00', active: true }], '2026-10-30T08:00:00.000Z')
   assert.equal(notice?.title, ORGANISER_UPDATE_TITLE)
-  assert.equal(notice?.title, 'Organiser update')
+  assert.equal(notice?.title, 'Updated by organiser')
   assert.equal(notice?.body, ORGANISER_UPDATE_BODY)
   assert.match(notice?.body ?? '', /may differ from the original listing/)
   assert.doesNotMatch(`${notice?.title} ${notice?.body}`, /verified/i)

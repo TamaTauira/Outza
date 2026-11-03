@@ -48,7 +48,7 @@ export function retireOnEmpty(_received: number): false {
   return false
 }
 
-export type QualityAlertKind = 'ZERO_EVENTS' | 'VOLUME_DROP' | 'DUPLICATE_SPIKE' | 'PARSE_FAILURES' | 'VENUE_GAP'
+export type QualityAlertKind = 'ZERO_EVENTS' | 'VOLUME_DROP' | 'DUPLICATE_SPIKE' | 'PARSE_FAILURES' | 'VENUE_GAP' | 'STALE_LISTINGS'
 
 function missingRelation(err: unknown): boolean {
   const code = (err as { code?: string })?.code

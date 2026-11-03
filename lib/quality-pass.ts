@@ -8,6 +8,7 @@ import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
 import { fieldConflicts } from '@/lib/listing-window'
 import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
 import { duplicateSpikeAlert, recordQualityAlert } from '@/lib/source-health'
+import { STALE_AFTER_DAYS, staleAlertDetail, staleShareAlert } from '@/lib/listing-freshness'
 import { runVerificationPass } from '@/lib/verification-pass'
 import { yieldIfBudget } from '@/lib/source-budget'
 
@@ -236,6 +237,27 @@ async function runQualityPassInner() {
         detail: row.detail,
         status: row.action === 'DUPLICATE_MERGED' ? null : 'OPEN',
       })),
+    })
+  }
+
+  const upcomingCount = await prisma.event.count({
+    where: { date: { gte: today }, duplicateOfId: null, deletedAt: null, status: 'SCHEDULED' },
+  })
+  const staleBefore = new Date(Date.now() - STALE_AFTER_DAYS * 86400000)
+  const staleCount = await prisma.event.count({
+    where: {
+      date: { gte: today },
+      duplicateOfId: null,
+      deletedAt: null,
+      status: 'SCHEDULED',
+      OR: [{ lastVerifiedAt: null }, { lastVerifiedAt: { lt: staleBefore } }],
+    },
+  })
+  if (staleShareAlert(upcomingCount, staleCount)) {
+    await recordQualityAlert({
+      kind: 'STALE_LISTINGS',
+      source: 'quality-pass',
+      detail: staleAlertDetail(staleCount, upcomingCount),
     })
   }
 

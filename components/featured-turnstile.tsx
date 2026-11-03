@@ -43,7 +43,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
             <Star className="w-4 h-4 text-[#F5B700] fill-current" />
             <h2 className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Hot right now</h2>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Promoted picks and crowd favourites, front and centre.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Promoted picks stay labelled Sponsored. Everything else is ranked on recent interest.</p>
         </div>
         <Link href="/promoters" className="text-xs font-semibold text-primary hover:underline">Feature Your Event →</Link>
       </div>

@@ -124,6 +124,9 @@ model Event {
   overrideHistory  EventOverrideHistory[]
   editAcks         EventEditAck[]
   venueReports     VenueEventReport[]
+  reactions        EventReaction[]
+  engagementDays   EngagementDay[]
+  insight          EventInsight?
 
   @@index([date])
   @@index([category])
@@ -266,6 +269,7 @@ model User {
   eventReports    EventReport[]
   eventClaims     EventClaim[]
   eventSignals    EventSignal[]
+  reactions       EventReaction[]
   togetherPlans   TogetherPlan[]
   togetherMembers TogetherMember[]
   venueFollows    VenueFollow[]
@@ -1531,4 +1535,60 @@ model SecurityAudit {
 
   @@index([targetType, targetId])
   @@index([createdAt])
+}
+
+/// One active reaction of each kind per signed-in person per event. Going stays in sync with Attendance.
+model EventReaction {
+  userId    String
+  eventId   String
+  kind      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([userId, eventId, kind])
+  @@index([eventId, kind])
+  @@index([userId, updatedAt])
+}
+
+/// Daily totals only. No person identifier. Used for time-decayed popularity.
+model EngagementDay {
+  id      String @id @default(cuid())
+  eventId String
+  day     String
+  kind    String
+  count   Int    @default(0)
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, day, kind])
+  @@index([day])
+}
+
+/// One cached city edition. The transcript is shared. It is not generated per person.
+model DailyBriefing {
+  id          String   @id @default(cuid())
+  city        String
+  edition     String
+  day         String
+  contentHash String
+  transcript  Json
+  spoken      String   @db.Text
+  eventIds    String[] @default([])
+  audioStatus String   @default("NONE")
+  audioPath   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([city, edition, day])
+}
+
+/// Optional short AI rewrite of a listing summary. Facts stay on the event. Regenerated when the hash changes.
+model EventInsight {
+  eventId     String   @id
+  contentHash String
+  rewrite     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }

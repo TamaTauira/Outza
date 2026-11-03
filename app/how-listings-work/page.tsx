@@ -13,12 +13,20 @@ export const metadata: Metadata = {
 
 const SECTIONS: { title: string; body: string[] }[] = [
   { title: 'Where listings come from', body: [
-    'We collect public event information from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring, City of Sydney and official venue and market websites, and from organisers who list events with us directly.',
+    'We collect public event information from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring, City of Sydney, Brisbane City Council’s open events and official venue and market websites, and from organisers who list events with us directly.',
     'Each event page has one short line: the source, linked when we have a page, and when the listing was updated, next to the event’s times.',
   ] },
   { title: 'What we never make up', body: [
     'We never invent prices, dates or ticket availability. If a source doesn’t publish a price we say so. Accessibility, age and transport details appear only when the organiser or source provides them.',
     'Sold out, cancelled, postponed and rescheduled are shown only when the source reports that status. Past and cancelled events drop off city guides and search-engine sitemaps.',
+  ] },
+  { title: 'How fresh the details are', body: [
+    'Listings are re-checked on a schedule when we refresh a source. The time on an event page is the last check we have stored. It is not a live confirmation of tickets, prices or whether the event is still on.',
+    'A source that is temporarily unavailable does not make us mark events cancelled. Cancelled, postponed and rescheduled stay reserved for a status the source or the organiser actually reported.',
+  ] },
+  { title: 'When an organiser updates a listing', body: [
+    'An organiser who has claimed a listing can correct it on VibePeep. The page then says “Updated by organiser”, with the claimed tick. That means they edited it here. It does not mean VibePeep re-checked every word against the original source.',
+    'Some event details were updated directly in VibePeep and may differ from the original event source. We keep the earlier source value and an edit history.',
   ] },
   { title: 'Duplicates', body: [
     'The same event often appears on several ticketing sites. We merge these into one listing and keep every source attached, so you can still see where the information came from.',

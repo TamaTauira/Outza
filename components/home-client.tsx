@@ -19,6 +19,7 @@ import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
+import { DailyBriefing } from '@/components/daily-briefing';
 import { HomeRails } from '@/components/home-rails';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
@@ -305,6 +306,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         ) : null}
 
         {view === 'board' && <FeaturedTurnstile city={city} />}
+        {view === 'board' && <DailyBriefing city={city} />}
         {view === 'board' && today && (
           <HomeRails
             city={city}

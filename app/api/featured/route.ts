@@ -11,6 +11,7 @@ import { imageAssetSelect } from '@/lib/images/spec'
 import { publicCacheHeaders } from '@/lib/http-cache'
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 import { buildFeaturedRail, type CrowdCard } from '@/lib/featured-rail'
+import { heatForEvents } from '@/lib/engagement-store'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,6 +69,7 @@ function presentCard(row: Record<string, unknown>) {
   delete rest.saves
   delete rest.attendees
   delete rest.views
+  delete rest.heat
   delete rest._count
   delete rest.seriesKey
   return rest
@@ -199,10 +201,15 @@ async function queryFeatured(validCity: string, day: string) {
     const todayPool = new Map<string, (typeof nowRows)[number]>()
     for (const row of nowRows) todayPool.set(row.id, row)
     for (const row of todayRows) todayPool.set(row.id, row)
+    const todayCards = crowdCards([...todayPool.values()])
+    const upcomingCards = crowdCards([...weekRows, ...fortnightRows])
+    const imageCards = crowdCards(imageRows)
+    const heat = await heatForEvents([...todayCards, ...upcomingCards, ...imageCards].map((row) => row.id))
+    const withHeat = <T extends { id: string }>(rows: T[]) => rows.map((row) => ({ ...row, heat: heat.get(row.id) ?? 0 }))
     const items = buildFeaturedRail({
-      today: crowdCards([...todayPool.values()]) as CrowdCard[],
-      upcoming: crowdCards([...weekRows, ...fortnightRows]) as CrowdCard[],
-      imaged: crowdCards(imageRows) as CrowdCard[],
+      today: withHeat(todayCards) as CrowdCard[],
+      upcoming: withHeat(upcomingCards) as CrowdCard[],
+      imaged: withHeat(imageCards) as CrowdCard[],
       sponsored: sponsored as CrowdCard[],
       day,
       city: validCity || 'Sydney',
@@ -212,7 +219,7 @@ async function queryFeatured(validCity: string, day: string) {
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v6'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v7'], { revalidate: 60 })
 
 export async function GET(req: NextRequest) {
   try {

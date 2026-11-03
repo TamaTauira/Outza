@@ -309,3 +309,24 @@ test('a city rail drops other cities’ paid cards and fills the gap with organi
   assert.ok(open.some((row) => row.id === 'syd-paid' && row.sponsored))
   assert.equal(open.filter((row) => !row.sponsored).length, 8)
 })
+
+test('recent heat outranks lifetime saves and paid cards ignore heat', () => {
+  const nowMinutes = 10 * 60
+  const today = [
+    card({ id: 'old-saves', time: '21:00', endTime: '23:00', saves: 80, heat: 0 }),
+    card({ id: 'recent', time: '21:30', endTime: '23:00', saves: 1, heat: 20 }),
+  ]
+  const organic = rail({ today, nowMinutes }).filter((row) => !row.sponsored)
+  assert.ok(organic.findIndex((row) => row.id === 'recent') < organic.findIndex((row) => row.id === 'old-saves'))
+
+  const sponsored = [
+    paid({ id: 'quiet-paid', date: '2026-11-02T00:00:00.000Z', tier: 'GOLD', heat: 0 }),
+    paid({ id: 'loud-paid', date: '2026-11-08T00:00:00.000Z', tier: 'SILVER', heat: 500 }),
+  ]
+  assert.deepEqual(ids(orderPaidPlacements(sponsored, { day, city, nowMinutes })), ['quiet-paid', 'loud-paid'])
+  const mixed = rail({ today, sponsored, nowMinutes })
+  const paidRows = mixed.filter((row) => row.sponsored)
+  assert.deepEqual(ids(paidRows), ['quiet-paid'])
+  assert.equal(paidRows[0]?.tier, 'GOLD')
+  assert.ok(paidRows.length / mixed.length <= 1 / 3 + 1e-9)
+})
