@@ -84,6 +84,15 @@ export const PROVIDER_POLICY: Record<string, {
     obligations: ['Never scrape or bypass blocks on the Ticketek website', 'Use the affiliate tracking link for ticket clicks and label it', 'Images only if the licence allows (TICKETEK_IMAGES_ALLOWED)', 'Do not imply live availability'],
     toConfirm: 'Apply to the Ticketek affiliate program on impact.com (catalog + tracking links) and/or Ticketek’s partner team for an event API, then add the credentials to switch the source on.',
   },
+  brisbanecouncil: {
+    name: 'Brisbane City Council',
+    access: 'OpenDataSoft records API for the published Events dataset',
+    termsUrl: 'https://data.brisbane.qld.gov.au/explore/dataset/brisbane-city-council-events/',
+    data: 'TERMS_ONLY',
+    images: 'NEEDS_REVIEW',
+    obligations: ['Attribute © Brisbane City Council', 'Link to the original event', 'CC BY 4.0', 'Do not copy event photos until image rights are confirmed'],
+    toConfirm: 'The dataset page states CC BY 4.0. Re-check before copying photographs. The importer currently stores facts only.',
+  },
   frontier: {
     name: 'Frontier Touring', access: 'Public tour listings', termsUrl: 'https://www.frontiertouring.com/',
     data: 'NEEDS_REVIEW', images: 'NEEDS_REVIEW',

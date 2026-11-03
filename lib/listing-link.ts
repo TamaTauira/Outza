@@ -109,6 +109,8 @@ export function sourceSearchUrl(source?: string | null, title?: string | null): 
       return `https://premier.ticketek.com.au/search/SearchResults.aspx?k=${q(name)}`
     case 'cityofsydney':
       return `https://whatson.cityofsydney.nsw.gov.au/search?q=${q(name)}`
+    case 'brisbanecouncil':
+      return 'https://www.brisbane.qld.gov.au/events-arts-and-culture/what-s-on-in-brisbane'
     case 'frontier':
       return `https://www.frontiertouring.com/?s=${q(name)}`
     case 'curated':

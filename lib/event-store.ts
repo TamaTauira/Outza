@@ -3,7 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { classifyCategory, checkLGBTI, reconcileSuburb } from '@/lib/categories'
 import { DEFAULT_CITY, tidyVenueName } from '@/lib/cities'
 import { normalizeTitle, normalizeVenue } from '@/lib/quality'
-import { fieldConflicts, sameRealWorldEvent, scheduleFields } from '@/lib/listing-window'
+import { fieldConflicts, scheduleFields } from '@/lib/listing-window'
+import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
+import { findEventIdBySourceKey, rememberSource } from '@/lib/source-record'
 import { recordFieldConflict } from '@/lib/listing-audit'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
@@ -42,6 +44,8 @@ export interface RawEvent {
   ageRestriction?: string | null
   organiserName?: string | null
   organiserUrl?: string | null
+  /** Stable id from the source. Different ids from the same source are different sessions. */
+  externalId?: string | null
 }
 
 export function makeDedupeHash(title: string, date: string, venue: string): string {
@@ -164,10 +168,20 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     ...(ev.organiserName ? { organiserName: cleanText(ev.organiserName, 160) } : {}),
   }
 
-  const existing = await prisma.event.findFirst({
-    where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
-    select: { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true, communityKey: true, latitude: true, longitude: true },
-  })
+  const eventSelect = { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true, communityKey: true, latitude: true, longitude: true } as const
+  const externalId = ev.externalId?.trim() || null
+  const identityUrl = storedLinks.sourceUrl || storedLinks.ticketUrl
+  const linkedId = await findEventIdBySourceKey({ source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+  let existing = linkedId
+    ? await prisma.event.findUnique({ where: { id: linkedId }, select: eventSelect })
+    : null
+  if (!existing) {
+    existing = await prisma.event.findFirst({
+      where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
+      select: eventSelect,
+    })
+  }
+  const identityHit = !!existing && existing.id === linkedId
   let pin = finitePin(ev.latitude, ev.longitude)
   if (!pin && !(existing && existing.latitude != null && existing.longitude != null) && ev.source !== 'community') {
     const filled = await fillPinFromListing({
@@ -211,7 +225,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       }
       if (dedupeHash !== existing.dedupeHash) {
         const clash = await prisma.event.findUnique({ where: { dedupeHash }, select: { id: true } })
-        if (!clash) update.dedupeHash = dedupeHash
+        if (!clash) {
+          update.dedupeHash = dedupeHash
+          if (identityHit) update.date = date
+        }
       }
       // Admin-replaced artwork is locked; a source that drops its image keeps the one we have
       if (!existing.imageLocked && imageUrl && imageUrl !== existing.imageUrl) {
@@ -224,20 +241,35 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         }
       }
       // Per-field organiser overrides keep their values. Other fields, including artwork, still refresh.
-      if (await applyProtectedRefresh(existing.id, incomingFields, update)) return true
-      // Older organiser edits lock the whole listing. Cancellation from the source still lands.
-      if (existing.organiserEditedAt) {
-        await prisma.event.update({ where: { id: existing.id }, data: { ...legacyLock, ...pinOnly(pin, existing) } })
+      if (await applyProtectedRefresh(existing.id, incomingFields, update)) {
+        await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         return true
       }
-      await prisma.event.update({ where: { id: existing.id }, data: update })
-    } else {
-      if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) return true
+      // Older organiser edits lock the whole listing. Cancellation from the source still lands.
       if (existing.organiserEditedAt) {
-        await prisma.event.update({ where: { id: existing.id }, data: { ...legacyLock, ...pinOnly(pin, existing) } })
+        const locked = { ...legacyLock, ...pinOnly(pin, existing) }
+        assertNoOwnershipTransfer(locked)
+        await prisma.event.update({ where: { id: existing.id }, data: locked })
+        await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        return true
+      }
+      assertNoOwnershipTransfer(update)
+      await prisma.event.update({ where: { id: existing.id }, data: update })
+      await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+    } else {
+      if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) {
+        await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        return true
+      }
+      if (existing.organiserEditedAt) {
+        const locked = { ...legacyLock, ...pinOnly(pin, existing) }
+        assertNoOwnershipTransfer(locked)
+        await prisma.event.update({ where: { id: existing.id }, data: locked })
+        await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         return true
       }
       await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
+      await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     }
     return true
   }
@@ -251,14 +283,23 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     select: { id: true, title: true, venueName: true, time: true, sources: true, source: true, organiserName: true },
     take: 400,
   })
-  const dup = candidates.find((c) => sameRealWorldEvent(c, { title, venueName, time, source: ev.source, organiserName: ev.organiserName }))
+  const incomingIdentity = {
+    title, venueName, city, date: ev.date, time, source: ev.source, organiserName: ev.organiserName,
+    externalId, url: identityUrl, address: venueAddress || null, status,
+  }
+  const dup = candidates.find((c) => decideDuplicate(
+    { title: c.title, venueName: c.venueName, city, date: ev.date, time: c.time, source: c.source, organiserName: c.organiserName },
+    incomingIdentity,
+  ).action === 'link')
   if (dup) {
     const sources = dup.sources.includes(ev.source) ? dup.sources : [...dup.sources, ev.source]
     await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
+    await rememberSource({ eventId: dup.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     return false
   }
 
-  await prisma.event.create({
+  assertNoOwnershipTransfer(data)
+  const created = await prisma.event.create({
     data: {
       ...data, title, date, venueName,
       venueAddress: venueAddress || null,
@@ -267,6 +308,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       seriesKey: makeSeriesKey(title, venueName, city),
     },
   })
+  await rememberSource({ eventId: created.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
   return true
 }
 
@@ -306,6 +348,7 @@ async function mergeInto(
   if (!cur.price && f.price) Object.assign(fill, { price: f.price, priceMin: f.range.min, priceMax: f.range.max })
   // Cancellations and postponements matter more than which source reported them first
   if (cur.status === 'SCHEDULED' && f.status !== 'SCHEDULED') Object.assign(fill, { status: f.status, statusSource: source })
+  assertNoOwnershipTransfer(fill)
   await prisma.event.update({ where: { id }, data: fill })
 }
 

@@ -5,7 +5,9 @@ import { reconcileSuburb, refineStoredCategory } from '@/lib/categories'
 import { tidyVenueName } from '@/lib/cities'
 import { repairKnownListingUrl, usableUrl } from '@/lib/listing-link'
 import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
-import { fieldConflicts, sameRealWorldEvent } from '@/lib/listing-window'
+import { fieldConflicts } from '@/lib/listing-window'
+import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
+import { duplicateSpikeAlert, recordQualityAlert } from '@/lib/source-health'
 import { runVerificationPass } from '@/lib/verification-pass'
 import { yieldIfBudget } from '@/lib/source-budget'
 
@@ -57,10 +59,11 @@ async function runQualityPassInner() {
   const rows = await prisma.event.findMany({
     where: { ...upcoming, duplicateOfId: null },
     select: {
-      id: true, title: true, venueName: true, time: true, endTime: true, price: true, city: true, date: true,
+      id: true, title: true, venueName: true, venueAddress: true, time: true, endTime: true, price: true, city: true, date: true,
       source: true, sources: true, promoterId: true, createdAt: true, status: true, statusSource: true,
-      organiserName: true,
+      organiserName: true, organiserEditedAt: true,
       ticketUrl: true, sourceUrl: true, organiserUrl: true,
+      fieldOverrides: { where: { active: true }, select: { id: true }, take: 1 },
       _count: { select: { savedBy: true, attendees: true, promotions: true } },
     },
   })
@@ -71,7 +74,7 @@ async function runQualityPassInner() {
   }
   // Organiser-owned and promoted listings always win; then the most trusted source; then community activity
   const rank = (r: (typeof rows)[number]) =>
-    (r.promoterId || r._count.promotions ? 1000 : 0) + (SOURCES[r.source]?.trust ?? 20) + r._count.savedBy + r._count.attendees
+    (r.promoterId || r._count.promotions || r.organiserEditedAt || r.fieldOverrides.length ? 1000 : 0) + (SOURCES[r.source]?.trust ?? 20) + r._count.savedBy + r._count.attendees
   let merged = 0
   const audits: { eventId: string; action: string; detail: string }[] = []
   for (const list of groups.values()) {
@@ -80,7 +83,22 @@ async function runQualityPassInner() {
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
       used.add(primary.id)
-      const blocked = sorted.filter((o) => !used.has(o.id) && (o.promoterId || o._count.promotions) && sameRealWorldEvent(primary, o))
+      const asIdentity = (row: (typeof rows)[number]) => ({
+        title: row.title,
+        venueName: row.venueName,
+        city: row.city,
+        date: row.date.toISOString().slice(0, 10),
+        time: row.time,
+        source: row.source,
+        organiserName: row.organiserName,
+        address: row.venueAddress,
+        status: row.status,
+        price: row.price,
+      })
+      const linked = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'link'
+      const review = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'review'
+      const protectedRow = (o: (typeof rows)[number]) => !!(o.promoterId || o._count.promotions || o.organiserEditedAt || o.fieldOverrides.length)
+      const blocked = sorted.filter((o) => !used.has(o.id) && protectedRow(o) && (linked(o) || review(o)))
       for (const other of blocked) {
         audits.push({
           eventId: other.id,
@@ -88,7 +106,15 @@ async function runQualityPassInner() {
           detail: `Likely duplicate of ${primary.id} (${primary.title}). Left in place because it is organiser-owned or promoted.`,
         })
       }
-      const dups = sorted.filter((o) => !used.has(o.id) && !o.promoterId && !o._count.promotions && sameRealWorldEvent(primary, o))
+      const reviews = sorted.filter((o) => !used.has(o.id) && !protectedRow(o) && review(o))
+      for (const other of reviews) {
+        audits.push({
+          eventId: other.id,
+          action: 'DUPLICATE_REVIEW',
+          detail: `Possible duplicate of ${primary.id} (${primary.title}). Left public because the match is not certain.`,
+        })
+      }
+      const dups = sorted.filter((o) => !used.has(o.id) && !protectedRow(o) && linked(o))
       if (!dups.length) continue
       dups.forEach((d) => used.add(d.id))
       for (const dup of dups) {
@@ -118,10 +144,18 @@ async function runQualityPassInner() {
       if (!primary.price) fill.price = dups.find((d) => d.price)?.price ?? null
       const flagged = dups.find((d) => d.status !== 'SCHEDULED')
       if (primary.status === 'SCHEDULED' && flagged) Object.assign(fill, { status: flagged.status, statusSource: flagged.statusSource ?? flagged.source })
+      assertNoOwnershipTransfer(fill)
       await prisma.event.update({ where: { id: primary.id }, data: fill })
       await prisma.event.updateMany({ where: { id: { in: dups.map((d) => d.id) } }, data: { duplicateOfId: primary.id } })
       merged += dups.length
     }
+  }
+  if (duplicateSpikeAlert(rows.length, merged)) {
+    await recordQualityAlert({
+      kind: 'DUPLICATE_SPIKE',
+      source: 'quality-pass',
+      detail: `${merged} of ${rows.length} upcoming listings were linked as duplicates in one pass. Listings were linked, not deleted.`,
+    })
   }
 
   // 3) Recurring series: same normalised title + venue + city on 3+ upcoming dates

@@ -14,6 +14,7 @@ import { addDaysStr, diffDays, isTimeStr, lastDate, localDupKey, occurrences, to
 export const LOCAL_IMPORT_SOURCES: Record<string, string> = {
   curated: 'the organiser’s official website',
   cityofsydney: 'City of Sydney What’s On',
+  brisbanecouncil: 'Brisbane City Council',
   eventbrite: 'Eventbrite',
   humanitix: 'Humanitix',
   moshtix: 'Moshtix',
