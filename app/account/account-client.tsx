@@ -9,7 +9,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
 import { cn } from '@/lib/utils'
 import { ProfileFields } from '@/components/profile-fields'
-import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
+import { aboutYouStatus, profileDigits, visibleAboutErrors } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
 
 type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
@@ -44,32 +44,52 @@ export function AccountClient() {
   }
   const [year, setYear] = useState('')
   const [pc, setPc] = useState('')
+  const [yearTouched, setYearTouched] = useState(false)
+  const yearRef = useRef<HTMLInputElement>(null)
+  const pcRef = useRef<HTMLInputElement>(null)
+  const savingRef = useRef(false)
   const loadedAbout = useRef({ year: '', pc: '' })
   useEffect(() => {
     if (!me) return
-    const nextYear = me.birthYear ? String(me.birthYear) : ''
+    const nextYear = me.birthYear == null ? '' : String(me.birthYear)
     const nextPc = me.homePostcode ?? ''
     setYear((cur) => (cur === loadedAbout.current.year ? nextYear : cur))
     setPc((cur) => (cur === loadedAbout.current.pc ? nextPc : cur))
     loadedAbout.current = { year: nextYear, pc: nextPc }
   }, [me])
   const saveAbout = async () => {
-    const p = parseBirthYear(year)
-    if (p.error || p.year == null) { toast.error(p.error ?? 'Enter the year you were born'); return }
-    if (pc && !isPostcode(pc)) { toast.error('Postcodes are 4 digits'); return }
+    if (!me || savingRef.current) return
+    // Read the inputs themselves. On iOS the tap that leaves the field can land
+    // before React state catches the last digit or an autofill.
+    const yearNow = profileDigits(yearRef.current?.value ?? year, 4)
+    const pcNow = profileDigits(pcRef.current?.value ?? pc, 4)
+    const yearRequired = me.role === 'CONSUMER'
+    const check = aboutYouStatus(yearNow, pcNow, { yearRequired })
+    if (yearNow !== year) setYear(yearNow)
+    if (pcNow !== pc) setPc(pcNow)
+    if (!check.canSave) { setYearTouched(true); return }
+    savingRef.current = true
     setSaving(true)
     try {
-      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ birthYear: p.year, homePostcode: pc }) })
+      const body: { birthYear?: number; homePostcode: string } = { homePostcode: pcNow }
+      if (check.year != null) body.birthYear = check.year
+      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       const d = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(d?.error ?? 'Could not save')
-      const savedYear = d.user?.birthYear ? String(d.user.birthYear) : String(p.year)
-      const savedPc = d.user?.homePostcode ?? ''
+      if (!res.ok) throw new Error(typeof d?.error === 'string' ? d.error : 'Could not save')
+      const again = await fetch('/api/me')
+      const fresh = again.ok ? await again.json().catch(() => null) : null
+      const savedUser = fresh?.user ?? d.user
+      if (!savedUser) throw new Error('Could not save')
+      if (check.year != null && Number(savedUser.birthYear) !== check.year) throw new Error('Could not save')
+      const savedPc = typeof savedUser.homePostcode === 'string' ? savedUser.homePostcode : ''
+      if (savedPc !== pcNow) throw new Error('Could not save')
+      const savedYear = savedUser.birthYear == null ? '' : String(savedUser.birthYear)
       loadedAbout.current = { year: savedYear, pc: savedPc }
       setYear(savedYear)
       setPc(savedPc)
-      setMe((m) => (m ? { ...m, birthYear: Number(savedYear), homePostcode: savedPc || null } : m))
+      setMe((m) => (m ? { ...m, ...savedUser, birthYear: savedYear ? Number(savedYear) : null, homePostcode: savedPc || null } : m))
       toast.success('Details saved')
-    } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Could not save') } finally { setSaving(false) }
+    } catch (err) { console.error(err); toast.error(err instanceof Error ? err.message : 'Could not save') } finally { savingRef.current = false; setSaving(false) }
   }
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
 
@@ -88,6 +108,10 @@ export function AccountClient() {
 
   if (!me) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
 
+  const yearRequired = me.role === 'CONSUMER'
+  const about = aboutYouStatus(year, pc, { saving, yearRequired })
+  const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
+
   return (
     <main className="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
@@ -98,9 +122,14 @@ export function AccountClient() {
 
       <section className={card}>
         <h2 className="font-semibold mb-1">About you</h2>
-        <p className="text-xs text-muted-foreground mb-3">{me.role === 'CONSUMER' ? 'Year of birth is required for event-goer accounts. We don’t store the day. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
-        <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} />
-        <button onClick={saveAbout} disabled={saving || (year === (me.birthYear ? String(me.birthYear) : '') && pc.trim() === (me.homePostcode ?? ''))} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save Details</button>
+        <p className="text-xs text-muted-foreground mb-3">{yearRequired ? 'Year of birth is required for event-goer accounts. We don’t store the day. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
+        <form noValidate onSubmit={(e) => { e.preventDefault(); void saveAbout() }}>
+          <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} yearRequired={yearRequired} yearError={shown.yearError} postcodeError={shown.postcodeError} onBirthYearBlur={() => setYearTouched(true)} onEnter={() => { void saveAbout() }} yearRef={yearRef} postcodeRef={pcRef} />
+          {/* pointer-events-none while disabled lets the same tap read the inputs. iOS can commit the last digit on blur after the button has already ignored the click. */}
+          <span className="inline-flex" onClick={() => { void saveAbout() }}>
+            <button type="button" disabled={!about.canSave} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none touch-manipulation">{saving ? 'Saving…' : 'Save Details'}</button>
+          </span>
+        </form>
       </section>
 
       <VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} />
