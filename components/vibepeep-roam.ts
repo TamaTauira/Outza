@@ -45,6 +45,7 @@ export function attachRoam(root: HTMLElement): () => void {
   if (!slot || !button || !bubble || !live) return () => {}
 
   const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)')
+  if (/walkdemo|walkstill/.test(location.search)) document.documentElement.dataset.walkstill = '1'
   const mobileMq = window.matchMedia('(max-width: 639px)')
   const navMq = window.matchMedia('(max-width: 1023px), (pointer: coarse) and (orientation: portrait) and (max-width: 1400px), (horizontal-viewport-segments: 2), (spanning: single-fold-vertical)')
   let navOffset = 0
@@ -935,7 +936,8 @@ export function attachRoam(root: HTMLElement): () => void {
   let decoded = false
   const show = () => {
     if (!decoded || root.dataset.ready !== '1') return
-    if (desktopBoard() && !reduce && boardPhase === 'wait') return
+    const demo = /peepclose|peepshow|peepdrive/.test(location.search)
+    if (!demo && desktopBoard() && !reduce && boardPhase === 'wait') return
     root.dataset.placed = '1'
   }
   readChrome()

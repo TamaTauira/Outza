@@ -94,22 +94,19 @@ export function VibePeepFigure() {
         <span className="vp-zap vp-zap-c" aria-hidden="true" />
       </span>
       <span className="vp-profile" aria-hidden="true">
-        <span className="vp-part vp-s-leg-b" style={sideBox(0.26, 0.62, 0.34, 0.4, 0.5, 0.05)}>
+        <span className="vp-part vp-s-leg-b" style={sideBox(0.3, 0.64, 0.32, 0.38, 0.5, 0.08)}>
           <img src="/mascot/parts/leg-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-arm-b" style={sideBox(0.12, 0.42, 0.24, 0.36, 0.6, 0.05)}>
-          <img src="/mascot/parts/arm-side.png" alt="" draggable={false} />
-        </span>
-        <span className="vp-part vp-s-body" style={sideBox(0.14, 0.08, 0.7, 0.74, 0.5, 0.4)}>
+        <span className="vp-part vp-s-body" style={sideBox(0.16, 0.1, 0.66, 0.7, 0.5, 0.42)}>
           <img src="/mascot/parts/body-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-leg-f" style={sideBox(0.4, 0.6, 0.36, 0.42, 0.42, 0.05)}>
+        <span className="vp-part vp-s-leg-f" style={sideBox(0.42, 0.62, 0.34, 0.4, 0.46, 0.08)}>
           <img src="/mascot/parts/leg-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-arm-f" style={sideBox(0.5, 0.4, 0.28, 0.4, 0.3, 0.05)}>
+        <span className="vp-part vp-s-arm-f" style={sideBox(0.46, 0.4, 0.24, 0.38, 0.5, 0.08)}>
           <img src="/mascot/parts/arm-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-ant" style={sideBox(0.48, 0.018, 0.15, 0.125, 0.5, 0.9)}>
+        <span className="vp-part vp-s-ant" style={sideBox(0.4, -0.01, 0.2, 0.2, 0.5, 1)}>
           <img className="vp-ant-stalk" src="/mascot/parts/antenna-stalk.png" alt="" draggable={false} />
           <img className="vp-ant-tip" src="/mascot/parts/antenna-tip.png" alt="" draggable={false} />
         </span>

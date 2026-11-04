@@ -185,6 +185,8 @@ export function VibePeepMascot({
       const root = slotRef.current?.closest<HTMLElement>('.vp-roam')
       if (!root) return
       root.dataset.showoff = '1'
+      root.dataset.ready = '1'
+      root.dataset.placed = '1'
       if (closeup) {
         root.dataset.closeup = '1'
         document.documentElement.dataset.peepclose = '1'
@@ -198,6 +200,8 @@ export function VibePeepMascot({
     const root = slot?.closest<HTMLElement>('.vp-roam')
     if (!slot || !button || !root) return
     root.dataset.showoff = '1'
+    root.dataset.ready = '1'
+    root.dataset.placed = '1'
     if (closeup) {
       root.dataset.closeup = '1'
       document.documentElement.dataset.peepclose = '1'
@@ -216,7 +220,8 @@ export function VibePeepMascot({
           { move: 'idle', face: 'right', ms: 700 },
           { move: 'hop', face: 'left', ms: 1680 },
           { move: 'idle', face: 'right', ms: 600 },
-          { move: 'spin', react: 'spin', face: 'right', ms: 1600 },
+          { move: 'spin', react: 'spin', face: 'right', ms: 1200 },
+          { dance: 'disco-point', face: 'right' as const, ms: 3200 },
           ...DANCE_IDS.map((dance) => ({ dance, face: 'right' as const, ms: danceMs })),
         ]
       : [

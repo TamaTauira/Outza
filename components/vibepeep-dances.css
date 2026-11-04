@@ -98,11 +98,42 @@
   clip-path: inset(58% 0 0 0);
 }
 
+.vp-roam[data-showoff='1'] .vp-hit[data-dance='disco-point'] .vp-show,
+.vp-roam[data-closeup='1'] .vp-hit[data-dance='disco-point'] .vp-show,
 .vp-hit[data-dance='disco-point'] .vp-show {
   left: 50%;
-  top: 0.5%;
-  width: 34%;
-  transform: translate(-50%, 12%);
+  top: 0;
+  width: 42%;
+  height: auto;
+  aspect-ratio: 1;
+  transform: translate(-50%, -52%) !important;
+  z-index: 12;
+  overflow: visible;
+}
+.vp-hit[data-dance='disco-point'] .vp-show::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 72%;
+  width: 18%;
+  height: 46%;
+  transform: translateX(-50%);
+  border-radius: 40% 40% 8px 8px;
+  background: linear-gradient(90deg, #141416 0%, #3c3a3e 38%, #2a2a2c 70%, #101012 100%);
+  z-index: -1;
+}
+.vp-roam[data-showoff='1'] .vp-hit[data-dance='disco-point'] .vp-show,
+.vp-roam[data-closeup='1'] .vp-hit[data-dance='disco-point'] .vp-show,
+.vp-hit[data-dance='disco-point'] .vp-show,
+.vp-roam[data-showoff='1'] .vp-hit[data-dance='disco-point'] .vp-disco-ball,
+.vp-roam[data-closeup='1'] .vp-hit[data-dance='disco-point'] .vp-disco-ball,
+.vp-hit[data-dance='disco-point'] .vp-disco-ball,
+.vp-roam[data-showoff='1'] .vp-hit[data-dance='disco-point'] .vp-beams,
+.vp-hit[data-dance='disco-point'] .vp-beams,
+.vp-hit[data-dance='disco-point'] .vp-glint {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .vp-hit[data-dance='disco-point'] .vp-disco-ball {
@@ -176,7 +207,7 @@
 
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }
 .vp-s-arm-b { display: none; }
-.vp-front > .vp-snake { left: -10%; top: 54%; width: 118%; height: auto; z-index: 8; }
+.vp-front > .vp-snake { left: -16%; top: 58%; width: 132%; height: auto; z-index: 5; }
 .vp-snake { opacity: 0; }
 .vp-hit[data-dance='snake'] .vp-snake { opacity: 1; }
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }

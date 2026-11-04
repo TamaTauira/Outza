@@ -105,6 +105,10 @@
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 70%);
 }
 
+html[data-walkstill='1'] .vp-hero-clock {
+  visibility: hidden;
+}
+
 .vp-roam .vp-actor {
   position: relative;
   z-index: 1;

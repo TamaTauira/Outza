@@ -118,6 +118,7 @@ for (const [move, dance, face] of poses) {
         return JSON.stringify({
           ballDisplay: bs.display,
           ballOpacity: Number(bs.opacity),
+          ballVis: bs.visibility,
           stalkVis: ss.visibility,
           stalkClip: ss.clipPath || ss.webkitClipPath || '',
           ballW: Math.round(br.width),
@@ -131,7 +132,7 @@ for (const [move, dance, face] of poses) {
       if (extra.error) bad.push(extra.error)
       else {
         if (extra.stalkVis === 'hidden') bad.push('stalk hidden')
-        if (extra.ballDisplay === 'none' || extra.ballOpacity < 0.5) bad.push('ball hidden')
+        if (extra.ballDisplay === 'none' || extra.ballOpacity < 0.5 || extra.ballVis === 'hidden') bad.push('ball hidden')
         if (extra.ballW < extra.headW * 0.35) bad.push('ball smaller than half a head')
         if (extra.stalkH < 8) bad.push('no stalk')
         if (extra.ballBottom < extra.stalkTop - 6) bad.push('ball detached from stalk')
