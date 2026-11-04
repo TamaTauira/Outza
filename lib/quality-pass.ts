@@ -62,6 +62,7 @@ async function runQualityPassInner() {
     where: { ...upcoming, duplicateOfId: null },
     select: {
       id: true, title: true, venueName: true, venueAddress: true, time: true, endTime: true, price: true, city: true, date: true,
+      latitude: true, longitude: true,
       source: true, sources: true, promoterId: true, createdAt: true, status: true, statusSource: true,
       organiserName: true, organiserEditedAt: true,
       ticketUrl: true, sourceUrl: true, organiserUrl: true,
@@ -97,6 +98,8 @@ async function runQualityPassInner() {
         status: row.status,
         price: row.price,
         url: row.sourceUrl || row.ticketUrl,
+        lat: row.latitude,
+        lng: row.longitude,
       })
       const linked = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'link'
       const review = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'review'

@@ -18,6 +18,11 @@ function row(partial: Partial<IdentityEvent> & Pick<IdentityEvent, 'title' | 've
 test('tracking parameters drop and session ids stay', () => {
   const url = canonicalizeListingUrl('https://www.Example.com/events/show/?utm_source=news&eventid=55&fbclid=abc')
   assert.equal(url, 'https://www.example.com/events/show?eventid=55')
+  const affiliate = canonicalizeListingUrl('https://www.example.com/events/show?aff=partner&ref=mail')
+  assert.equal(affiliate, 'https://www.example.com/events/show')
+  const councilA = canonicalizeListingUrl('https://www.brisbane.qld.gov.au/trumba?trumbaEmbed=view%3Devent%26eventid%3D1')
+  const councilB = canonicalizeListingUrl('https://www.brisbane.qld.gov.au/trumba?trumbaEmbed=view%3Devent%26eventid%3D2')
+  assert.notEqual(councilA, councilB)
   assert.equal(canonicalizeListingUrl('https://tickets.example/search?q=jazz'), null)
 })
 
@@ -151,6 +156,54 @@ test('the same listing page links even when the venue strings differ, and a late
   )
   assert.equal(nextWeek.action, 'review')
   assert.equal(nextWeek.layer, 'exact_url')
+})
+
+test('ticket tiers, scarcity notes and tour subtitles link, and a different package or age group does not', () => {
+  const stakes = decideDuplicate(
+    row({ title: 'CBT Keith Noud Stakes Day - Owners Admission Tickets', venueName: 'Brisbane Racing Club - Doomben Racecourse', time: '10:00', source: 'ticketmaster', externalId: 'ga' }),
+    row({ title: 'CBT Keith Noud Stakes Day - General Admission', venueName: 'Brisbane Racing Club - Doomben Racecourse', time: '10:00', source: 'ticketmaster', externalId: 'owners' }),
+  )
+  assert.equal(stakes.action, 'link')
+  const packageSeat = decideDuplicate(
+    row({ title: 'Crown Oaks Day - General Admission', venueName: 'Flemington Racecourse', time: '11:30', source: 'ticketmaster' }),
+    row({ title: 'Crown Oaks Day - The Peak', venueName: 'Flemington Racecourse', time: '11:30', source: 'ticketmaster' }),
+  )
+  assert.notEqual(packageSeat.action, 'link')
+  const ages = decideDuplicate(
+    row({ title: 'Fun soccer for 2-3 years', venueName: 'Ferny Grove Picnic Ground Park', time: '15:30', source: 'brisbanecouncil' }),
+    row({ title: 'Fun soccer for 4-5 years', venueName: 'Ferny Grove Picnic Ground Park', time: '16:05', source: 'brisbanecouncil' }),
+  )
+  assert.notEqual(ages.action, 'link')
+  const tour = decideDuplicate(
+    row({ title: 'Hoodoo Gurus', venueName: 'Hindley Street Music Hall', time: '18:00', source: 'frontier' }),
+    row({ title: 'Hoodoo Gurus Rewind Tour - All Killer, No Filler', venueName: 'Hindley St Music Hall', time: '18:00', source: 'ticketmaster' }),
+  )
+  assert.equal(tour.action, 'link')
+  const scarce = decideDuplicate(
+    row({ title: 'Rick Price "Call On Me" Tour 2026', venueName: 'The Duke of George', time: '19:30', source: 'ticketmaster' }),
+    row({ title: 'Rick Price "Call On Me" Tour 2026 | 3 x TICKETS LEFT', venueName: 'The Duke of George', time: '19:30', source: 'ticketmaster' }),
+  )
+  assert.equal(scarce.action, 'link')
+  const freeNote = decideDuplicate(
+    row({ title: 'POOF DOOF 15th Birthday - Sat 7th November', venueName: 'Chasers Nightclub', time: '22:00' }),
+    row({ title: 'POOF DOOF 15th Birthday - Sat 7th November (Free Event)', venueName: 'Chasers Nightclub', time: '22:00' }),
+  )
+  assert.equal(freeNote.action, 'link')
+  const pin = decideDuplicate(
+    row({ title: 'Night market', venueName: 'North lawn', time: '17:00', lat: -33.8688, lng: 151.2093 }),
+    row({ title: 'Night market', venueName: 'South gate', time: '17:00', lat: -33.8689, lng: 151.2094 }),
+  )
+  assert.equal(pin.action, 'link')
+  const twoShow = decideDuplicate(
+    row({ title: 'Spacey Jane', venueName: 'Riverstage', time: '17:00', source: 'frontier' }),
+    row({ title: 'Spacey Jane | Heading Back Down Under Australian Tour - Two Show Pass', venueName: 'Riverstage', time: '17:00', source: 'ticketmaster' }),
+  )
+  assert.notEqual(twoShow.action, 'link')
+  const support = decideDuplicate(
+    row({ title: 'Killswitch Engage', venueName: 'Metropolis Fremantle', time: '19:00' }),
+    row({ title: 'SLIPKNOT vs SYSTEM OF A DOWN + KILLSWITCH ENGAGE', venueName: 'Metropolis Fremantle', time: '19:00' }),
+  )
+  assert.notEqual(support.action, 'link')
 })
 
 test('a source link cannot move ownership, and the public event path stays id-based', () => {
