@@ -133,15 +133,16 @@ export function roamBounds(
   vw: number,
   vh: number,
   size: number,
-  opts: { mobile: boolean; map: boolean; bottomInset?: number; height?: number },
+  opts: { mobile: boolean; map: boolean; bottomInset?: number; height?: number; rightInset?: number },
 ): Bounds {
   const top = opts.map ? 168 : 112
   const bottomInset = opts.bottomInset ?? (opts.map ? (opts.mobile ? 176 : 36) : opts.mobile ? 96 : 20)
   const side = 8
+  const right = opts.rightInset ?? (opts.map ? 64 : side)
   const h = Math.max(size, opts.height ?? size)
   const minX = side
   const minY = Math.min(top, Math.max(0, vh - h))
-  const maxX = Math.max(minX, vw - size - side)
+  const maxX = Math.max(minX, vw - size - right)
   const maxY = Math.max(minY, vh - h - bottomInset)
   return { minX, minY, maxX, maxY }
 }

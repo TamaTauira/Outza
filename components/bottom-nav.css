@@ -82,6 +82,12 @@
     bottom: calc(var(--vp-bottom-nav-offset) + 1.25rem) !important;
   }
 
+  .vp-roam-map:not([data-ready]),
+  .vp-roam-map.vp-roam-parked {
+    right: 4.5rem !important;
+    bottom: calc(var(--vp-bottom-nav-offset) + 8.75rem) !important;
+  }
+
   .vp-ticket-bar {
     bottom: var(--vp-bottom-nav-offset);
   }
@@ -282,8 +288,9 @@
   left: 0 !important;
   right: 0 !important;
   bottom: var(--vp-bottom-nav-offset) !important;
+  z-index: 80 !important;
   width: auto !important;
-  max-height: min(78dvh, 40rem);
+  max-height: min(85dvh, calc(100dvh - 4.5rem), 40rem);
   overflow: auto;
   border-top-left-radius: 1.25rem;
   border-top-right-radius: 1.25rem;
@@ -293,9 +300,25 @@
 /* Cover the bar. Sitting above --vp-bottom-nav-offset left a strip beside the raised Ask button. */
 .vp-menu-sheet {
   bottom: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
+}
+
+.vp-menu-sheet ul {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The sheet backdrop has to cover map cards, chips and markers, which used to paint above z-50. */
+html.vp-menu-open [data-state='open'].fixed.inset-0,
+html.vp-ask-open [data-state='open'].fixed.inset-0 {
+  z-index: 70;
 }
 
 @keyframes vp-tab-pop {
@@ -440,6 +463,11 @@
 
   .vp-map-main {
     height: calc(env(viewport-segment-height 0 0) - 3.5rem) !important;
+  }
+
+  .vp-menu-sheet,
+  .vp-ask-sheet {
+    max-height: calc(env(viewport-segment-height 0 0) - 4.5rem);
   }
 
   .vp-hinge {
@@ -593,6 +621,11 @@ html[data-vp-fold='stack'] body {
   padding-bottom: 0;
 }
 
+html[data-vp-fold='stack'] .vp-menu-sheet,
+html[data-vp-fold='stack'] .vp-ask-sheet {
+  max-height: calc((100dvh - 24px) / 2 - 3.5rem);
+}
+
 html[data-vp-fold='stack'] .vp-hinge {
   display: block;
   position: fixed;
@@ -620,6 +653,11 @@ html[data-vp-fold='stack'] .vp-hinge {
   .vp-map-screen {
     height: env(fold-top);
     max-height: env(fold-top);
+  }
+
+  .vp-menu-sheet,
+  .vp-ask-sheet {
+    max-height: calc(env(fold-top) - 4.5rem);
   }
 
   .vp-hinge {

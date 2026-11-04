@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Bookmark, Building2, CalendarRange, LogOut, Megaphone, Settings, ShieldCheck, Sparkles, User, Users } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { TrustCount } from '@/components/admin-nav'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 type Item = {
   href?: string
@@ -56,10 +56,11 @@ export function MenuSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" id="vp-menu-sheet" className="vp-ask-sheet vp-menu-sheet">
-        <SheetHeader className="space-y-1 pr-8 text-left">
+        <SheetHeader className="shrink-0 space-y-1 pr-8 text-left">
           <SheetTitle className="font-display">{signedIn ? name : 'Menu'}</SheetTitle>
+          <SheetDescription className="sr-only">Account and site links</SheetDescription>
         </SheetHeader>
-        <ul className="mt-2">
+        <ul className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-1">
           {items.map((item) => {
             const { Icon } = item
             const className = 'flex min-h-11 w-full items-center gap-3 rounded-xl px-2 text-left text-base font-medium hover:bg-muted'

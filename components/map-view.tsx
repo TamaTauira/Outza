@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type CSSProperties, type ReactNode } from 'react'
 import { useTheme } from 'next-themes'
 import { FilterState } from '@/components/filter-panel'
 import { Loader2, LocateFixed, X } from 'lucide-react'
@@ -26,6 +26,8 @@ interface MapViewProps {
   city?: string
   /** Fill the parent. Desktop gets a side list; mobile gets a card strip. */
   bleed?: boolean
+  /** Category chips. They sit in the map column, never over the list. */
+  chips?: ReactNode
 }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
@@ -66,7 +68,7 @@ function markerIcon(L: any, e: { imageUrl?: string | null; imageAsset?: ClientIm
 const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coordinates are never stored)
 type LocState = 'idle' | 'asking' | 'locating' | 'found' | 'denied' | 'unavailable'
 
-export function MapView({ filters, searchQuery, city = '', bleed = false }: MapViewProps) {
+export function MapView({ filters, searchQuery, city = '', bleed = false, chips = null }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileRef = useRef<any>(null)
@@ -81,6 +83,8 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
   const Lref = useRef<any>(null)
   const fetchSeq = useRef(0)
   const [loc, setLoc] = useState<LocState>('idle')
+  const cardsRef = useRef<HTMLDivElement>(null)
+  const [dock, setDock] = useState(0)
   const { resolvedTheme } = useTheme()
   const dark = resolvedTheme !== 'light'
 
@@ -215,37 +219,65 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
     const mcg = L.markerClusterGroup
       ? L.markerClusterGroup({
           showCoverageOnHover: false,
-          iconCreateFunction: (cl: any) => L.divIcon({ className: 'se-cluster-wrap', html: `<div class="se-cluster">${cl.getChildCount()}</div>`, iconSize: [40, 40] }),
+          spiderfyOnMaxZoom: true,
+          zoomToBoundsOnClick: true,
+          disableClusteringAtZoom: 17,
+          maxClusterRadius: (zoom: number) => (zoom >= 15 ? 48 : zoom >= 13 ? 64 : 84),
+          spiderfyDistanceMultiplier: 2,
+          iconCreateFunction: (cl: any) => L.divIcon({
+            className: 'se-cluster-wrap',
+            html: `<div class="se-cluster">${cl.getChildCount()}</div>`,
+            iconSize: [40, 40],
+            iconAnchor: [20, 20],
+          }),
         })
       : L.layerGroup()
-    const gold = L.layerGroup()
+
+    const addMarker = (e: any, tier?: string) => {
+      if (!e?.latitude || !e?.longitude) return
+      const color = tier === 'GOLD' ? '#F5B700' : (CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A1A')
+      const m = L.marker([e.latitude, e.longitude], {
+        icon: markerIcon(L, e, color, tier),
+        title: e?.title,
+        zIndexOffset: tier === 'GOLD' ? 1000 : tier === 'BRONZE' ? 500 : 0,
+      }).bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
+      markerById.current.set(e.id, m)
+      mcg.addLayer(m)
+    }
 
     for (const e of events) {
-      if (!e?.latitude || !e?.longitude) continue
       const tier = e.promoTier ?? tierById.get(e.id)
-      if (tier === 'GOLD') continue // gold rendered separately, always visible
-      const color = CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A1A'
-      const m = L.marker([e.latitude, e.longitude], { icon: markerIcon(L, e, color, tier), title: e?.title, zIndexOffset: tier === 'BRONZE' ? 500 : 0 })
-        .bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
-      markerById.current.set(e.id, m)
-      if (tier === 'BRONZE') gold.addLayer(m)
-      else mcg.addLayer(m)
+      if (tier === 'GOLD') continue
+      addMarker(e, tier)
     }
     for (const f of featured) {
-      if (f.tier !== 'GOLD' || !f.latitude || !f.longitude) continue
-      const goldMarker = L.marker([f.latitude, f.longitude], { icon: markerIcon(L, f, '#F5B700', 'GOLD'), title: f?.title, zIndexOffset: 1000 })
-        .bindPopup(popupHtml(f, 'GOLD'), { className: 'se-popup', maxWidth: 280 })
-      markerById.current.set(f.id, goldMarker)
-      gold.addLayer(goldMarker)
+      if (f.tier !== 'GOLD') continue
+      addMarker(f, 'GOLD')
     }
     map.addLayer(mcg)
-    map.addLayer(gold)
     markersRef.current = mcg
-    goldRef.current = gold
+    goldRef.current = null
   }, [events, featured, ready])
 
   const count = events.filter((e: any) => e?.latitude && e?.longitude).length
   const pinned = events.filter((e: any) => e?.latitude && e?.longitude).slice(0, 40)
+  const showCards = bleed && pinned.length > 0
+  useEffect(() => {
+    const el = cardsRef.current
+    if (!showCards || !el) { setDock(0); return }
+    const measure = () => {
+      const hidden = getComputedStyle(el).display === 'none' || el.getClientRects().length === 0
+      setDock(hidden ? 0 : Math.ceil(el.getBoundingClientRect().height))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [showCards, pinned.length])
   const focus = (e: any) => {
     const map = mapInstanceRef.current
     if (!map || !e?.latitude || !e?.longitude) return
@@ -258,21 +290,24 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
     const id = requestAnimationFrame(() => map?.invalidateSize())
     return () => cancelAnimationFrame(id)
   }, [ready, bleed, pinned.length])
+  const stageStyle = { '--vp-map-dock': `${dock}px` } as CSSProperties
   return (
-    <div className={bleed ? 'relative flex h-full min-h-0 w-full' : 'relative w-full h-[70vh] min-h-[420px] sm:h-[calc(100vh-200px)] sm:min-h-[500px]'}>
+    <div className={bleed ? 'relative flex h-full min-h-0 w-full' : 'relative h-[70vh] min-h-[420px] w-full sm:h-[calc(100vh-200px)] sm:min-h-[500px]'}>
+      <div className={bleed ? 'flex min-h-0 min-w-0 flex-1' : 'h-full min-h-0'}>
       {bleed && (
-        <aside className="hidden h-full w-80 shrink-0 flex-col border-r border-border bg-background lg:flex">
-          <div className="border-b border-border px-4 py-3">
+        <aside className="vp-map-rail hidden h-full w-80 shrink-0 flex-col overflow-hidden border-r border-border bg-background lg:flex">
+          <div className="shrink-0 border-b border-border px-4 py-3">
             <p className="font-display text-lg font-bold">In view</p>
             <p className="text-xs text-muted-foreground">{loading ? 'Loading pins…' : `${count} events with a pin`}</p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {pinned.map((e) => {
               const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
+              const when = `${boardClockLine(e) || 'All day'} · ${e.venueName} · ${price.value}`
               return (
-                <button key={e.id} type="button" onClick={() => focus(e)} className="block w-full border-b border-border px-4 py-3 text-left hover:bg-muted">
-                  <span className="block truncate font-semibold">{e.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{boardClockLine(e) || 'All day'} · {e.venueName} · {price.value}</span>
+                <button key={e.id} type="button" onClick={() => focus(e)} title={e.title} className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5 overflow-hidden border-b border-border px-4 py-3 text-left hover:bg-muted">
+                  <span className="truncate font-semibold">{e.title}</span>
+                  <span className="truncate text-xs text-muted-foreground">{when}</span>
                 </button>
               )
             })}
@@ -280,21 +315,27 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
           </div>
         </aside>
       )}
-      <div className="relative min-h-0 min-w-0 flex-1">
+      <div className={bleed ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'relative h-full min-h-0 min-w-0'}>
+      {bleed && chips ? (
+        <div className="vp-map-chips flex min-w-0 shrink-0 touch-pan-x gap-1.5 overflow-x-auto overscroll-x-contain border-b border-border bg-background px-3 py-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden" role="toolbar" aria-label="Map categories">
+          {chips}
+        </div>
+      ) : null}
+      <div className={bleed ? 'vp-map-stage relative min-h-0 w-full flex-1' : 'vp-map-stage relative h-full min-h-0 w-full'} style={stageStyle}>
       {loading && (
-        <div className="absolute inset-0 z-[500] flex items-center justify-center bg-background/40">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/40">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
-      <div ref={mapRef} className={bleed ? 'se-map h-full w-full overflow-hidden' : 'se-map w-full h-full rounded-2xl overflow-hidden'} />
-      <div className={bleed ? 'absolute top-16 left-3 z-[500] max-w-[calc(100%-8rem)] truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg lg:hidden' : 'absolute top-4 left-1/2 z-[500] max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full px-4 py-2 text-sm font-medium bg-white/80 text-neutral-900 dark:bg-neutral-900/75 dark:text-white backdrop-blur-xl shadow-lg sm:left-4 sm:max-w-none sm:translate-x-0'}>
-        {loading ? <span>Loading map…</span> : <><span className="text-primary font-bold">{count}</span> events on map</>}
+      <div ref={mapRef} className={bleed ? 'se-map absolute inset-0 overflow-hidden' : 'se-map absolute inset-0 overflow-hidden rounded-2xl'} />
+      <div className={bleed ? 'vp-map-float vp-map-count absolute left-3 top-3 z-20 max-w-[calc(100%-4.75rem)] truncate rounded-full bg-white/80 px-3 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white lg:hidden' : 'vp-map-float absolute left-1/2 top-4 z-20 max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white sm:left-4 sm:max-w-none sm:translate-x-0'}>
+        {loading ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> events on map</>}
       </div>
       {!loading && count === 0 && (
-        <div className="absolute inset-0 z-[450] flex items-center justify-center p-6 pointer-events-none">
-          <div className="pointer-events-auto max-w-sm rounded-2xl bg-card/95 text-card-foreground shadow-xl ring-1 ring-border px-5 py-4 text-center">
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6">
+          <div className="pointer-events-auto max-w-sm rounded-2xl bg-card/95 px-5 py-4 text-center text-card-foreground shadow-xl ring-1 ring-border">
             <VibePeepMascot className="mx-auto mb-2 w-20" alt="" />
-            <p className="font-display font-bold text-lg">No pins from up here.</p>
+            <p className="font-display text-lg font-bold">No pins from up here.</p>
             <p className="mt-1 text-sm text-muted-foreground">{searchQuery ? `Nothing matches “${searchQuery}” here. Try another city, or clear the search.` : 'Nothing with a map pin matches these filters. Try another city or loosen the filters.'}</p>
           </div>
         </div>
@@ -303,51 +344,53 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
         <button
           onClick={locate}
           disabled={loc === 'locating'}
-          className={bleed ? 'absolute top-16 right-3 z-[500] inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-white/90 text-neutral-900 dark:bg-neutral-900/80 dark:text-white backdrop-blur-xl shadow-lg lg:top-4' : 'absolute top-4 right-4 z-[500] inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold bg-white/90 text-neutral-900 dark:bg-neutral-900/80 dark:text-white backdrop-blur-xl shadow-lg hover:bg-white dark:hover:bg-neutral-900 disabled:opacity-60'}
+          className={bleed ? 'vp-map-float absolute right-3 top-3 z-20 inline-flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-white/90 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white sm:w-auto sm:px-4' : 'vp-map-float absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl hover:bg-white disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white dark:hover:bg-neutral-900'}
           aria-label="Zoom to my location"
         >
-          {loc === 'locating' ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <LocateFixed className="w-4 h-4 text-primary" />}
+          {loc === 'locating' ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <LocateFixed className="h-4 w-4 text-primary" />}
           <span className="hidden sm:inline">Near Me</span>
         </button>
       )}
       {loc === 'asking' && (
-        <div className={bleed ? 'absolute left-4 right-4 bottom-36 z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4 lg:bottom-4 lg:left-auto lg:right-4 lg:w-[340px]' : 'absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-2xl bg-card text-card-foreground shadow-2xl ring-1 ring-border p-4'}>
-          <button onClick={declineLocation} className="absolute top-2 right-2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
-            <X className="w-4 h-4" />
+        <div className={bleed ? 'absolute bottom-[calc(var(--vp-map-dock,0px)+0.75rem)] left-3 right-3 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'absolute bottom-20 left-4 right-4 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
+          <button onClick={declineLocation} className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Dismiss">
+            <X className="h-4 w-4" />
           </button>
-          <p className="font-display font-bold text-lg leading-tight pr-6">Where you at?</p>
+          <p className="pr-6 font-display text-lg font-bold leading-tight">Where you at?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">Share your location and we'll zoom straight to the action around you.</p>
           <p className="mt-2 text-xs text-muted-foreground">Your location is only used in your browser to centre the map. We don't store it.</p>
           <div className="mt-3 flex gap-2">
-            <button onClick={locate} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Share My Location</button>
-            <button onClick={declineLocation} className="h-10 px-4 rounded-lg border border-border text-sm font-medium hover:bg-muted">Not Now</button>
+            <button onClick={locate} className="h-10 flex-1 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90">Share My Location</button>
+            <button onClick={declineLocation} className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Not Now</button>
           </div>
         </div>
       )}
       {(loc === 'denied' || loc === 'unavailable') && (
-        <div className={bleed ? 'absolute left-4 right-4 bottom-36 z-[600] rounded-xl bg-card p-3 pr-9 text-sm shadow-xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-4 lg:w-[340px]' : 'absolute left-4 right-4 bottom-20 sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px] z-[600] rounded-xl bg-card text-card-foreground shadow-xl ring-1 ring-border p-3 pr-9 text-sm'}>
-          <button onClick={() => setLoc('idle')} className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Dismiss">
-            <X className="w-4 h-4" />
+        <div className={bleed ? 'absolute bottom-[calc(var(--vp-map-dock,0px)+0.75rem)] left-3 right-3 z-30 rounded-xl bg-card p-3 pr-9 text-sm shadow-xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'absolute bottom-20 left-4 right-4 z-30 rounded-xl bg-card p-3 pr-9 text-sm text-card-foreground shadow-xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
+          <button onClick={() => setLoc('idle')} className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Dismiss">
+            <X className="h-4 w-4" />
           </button>
           {loc === 'denied'
             ? 'No worries. Location access is off, so we\'ll stick to the city view. You can turn it on in your browser settings any time.'
             : 'We couldn\'t pin you down just now. Give Near Me another tap in a moment.'}
         </div>
       )}
-      {bleed && (
-        <div className="absolute inset-x-0 bottom-0 z-[550] flex gap-2 overflow-x-auto px-3 pb-3 pt-6 [scrollbar-width:none] lg:hidden bg-gradient-to-t from-background/80 to-transparent">
+      {showCards && (
+        <div ref={cardsRef} className="vp-map-cards pointer-events-none absolute inset-x-0 bottom-0 z-20 flex gap-2 overflow-x-auto bg-gradient-to-t from-background via-background/85 to-transparent px-3 pb-3 pt-4 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
           {pinned.slice(0, 12).map((e) => {
             const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
             return (
-              <button key={e.id} type="button" onClick={() => focus(e)} className="w-44 shrink-0 rounded-xl border border-border bg-card p-3 text-left shadow-lg">
+              <button key={e.id} type="button" onClick={() => focus(e)} title={e.title} className="pointer-events-auto w-44 shrink-0 rounded-xl border border-border bg-card p-3 text-left shadow-lg">
                 <span className="block truncate text-sm font-semibold">{e.title}</span>
-                <span className="block truncate text-xs text-muted-foreground">{e.venueName}</span>
-                <span className="mt-1 block font-mono text-xs">{price.value}</span>
+                <span className="vp-map-card-venue block truncate text-xs text-muted-foreground">{e.venueName}</span>
+                <span className="mt-1 block truncate font-mono text-xs">{price.value}</span>
               </button>
             )
           })}
         </div>
       )}
+      </div>
+      </div>
       </div>
     </div>
   )
