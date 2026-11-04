@@ -60,7 +60,7 @@ const toUTC = (d: string) => new Date(`${d}T00:00:00Z`)
 const fromUTC = (t: Date) => t.toISOString().slice(0, 10)
 export const addDaysStr = (d: string, n: number) => { const t = toUTC(d); t.setUTCDate(t.getUTCDate() + n); return fromUTC(t) }
 export const diffDays = (a: string, b: string) => Math.round((toUTC(b).getTime() - toUTC(a).getTime()) / 86400000)
-export const todayIn = (tz: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+export const todayIn = (tz: string, now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
 export const isDateStr = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(toUTC(s).getTime())
 export const isTimeStr = (s: unknown): s is string => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s)
 

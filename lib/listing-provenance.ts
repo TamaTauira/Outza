@@ -2,6 +2,7 @@
  * Public source line for an event page. Cards stay as they are.
  * "Updated by organiser" is the label. The word verified is not used.
  */
+import { filledSourceNote } from '@/lib/linked-fill'
 import { sourceLabel } from '@/lib/quality'
 import { reportedStatusNote, sourceOutageSentence } from '@/lib/listing-freshness'
 
@@ -29,6 +30,7 @@ export type ListingProvenance = {
   organiserFields: string[]
   organiserNote: string | null
   statusNote: string | null
+  filledNote: string | null
 }
 
 function httpUrl(value: string | null | undefined): string | null {
@@ -49,6 +51,7 @@ export function listingProvenance(input: {
   organiserFields?: string[] | null
   status?: string | null
   statusSource?: string | null
+  fieldSources?: Record<string, string> | null
 }): ListingProvenance {
   const primary = sourceLabel(input.source).replace(/\bverified\b/ig, '').replace(/\s{2,}/g, ' ').trim() || 'a listing site'
   const link = httpUrl(input.sourceUrl) || httpUrl(input.organiserUrl) || httpUrl(input.ticketUrl)
@@ -70,5 +73,6 @@ export function listingProvenance(input: {
     organiserFields: fields,
     organiserNote,
     statusNote: reportedStatusNote(input.status, input.statusSource ? sourceLabel(input.statusSource) : null),
+    filledNote: filledSourceNote(input.source, input.fieldSources),
   }
 }

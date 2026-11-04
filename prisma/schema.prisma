@@ -1268,6 +1268,8 @@ model SourceRecord {
   canonicalUrl String? @db.Text
   /// date|time so two sessions of one show stay distinct.
   sessionKey String?
+  /// Fields this source filled because the canonical listing left them blank.
+  contributed Json?
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, source])

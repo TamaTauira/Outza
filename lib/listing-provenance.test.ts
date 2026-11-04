@@ -20,6 +20,20 @@ test('provenance names the source and an organiser update without saying verifie
   assert.match(row.checkNote, /not a live ticket check/)
   assert.deepEqual(row.otherSources, ['Eventbrite'])
   assert.doesNotMatch(JSON.stringify(row), /verified/i)
+  assert.equal(row.filledNote, null)
+})
+
+test('a blank filled from another source is named on the listing', () => {
+  const row = listingProvenance({
+    source: 'frontier',
+    sources: ['frontier', 'ticketmaster'],
+    fieldSources: { time: 'ticketmaster', endTime: 'ticketmaster', price: 'ticketmaster' },
+  })
+  assert.match(row.filledNote ?? '', /Ticketmaster/)
+  assert.match(row.filledNote ?? '', /start time/)
+  assert.match(row.filledNote ?? '', /price/)
+  assert.match(row.filledNote ?? '', /left them blank/)
+  assert.doesNotMatch(row.filledNote ?? '', /verified/i)
 })
 
 test('a missing source does not cancel a listing, and a confident report can', () => {

@@ -23,6 +23,7 @@ export function ListingSources({ provenance }: { provenance: ListingProvenance }
         {provenance.organiserName && <p>Organiser on the listing: {provenance.organiserName}</p>}
         {provenance.venueName && <p>Venue: {provenance.venueName}</p>}
         {provenance.otherSources.length > 0 && <p>Also seen on {provenance.otherSources.join(', ')}. Those copies are kept on this one listing.</p>}
+        {provenance.filledNote && <p>{provenance.filledNote}</p>}
         {provenance.organiserNote && <p>{provenance.organiserNote}</p>}
         {provenance.statusNote && <p>{provenance.statusNote}</p>}
         <p>{provenance.checkNote}</p>

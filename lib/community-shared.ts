@@ -226,7 +226,7 @@ export function parseCommunity(body: Record<string, unknown>, now = new Date()):
   if (looksLikeStreetAddress(suburb)) return { error: 'Pop the suburb in that box, not the street address.' }
 
   const tz = CITIES.find((c) => c.name === city)!.tz
-  const today = todayIn(tz)
+  const today = todayIn(tz, now)
   if (!isDateStr(body.startDate)) return { error: 'Pick a date.' }
   const startDate = body.startDate
   if (startDate < today) return { error: 'That date has already packed up. Pick today or a day ahead.' }
