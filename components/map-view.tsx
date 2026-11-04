@@ -8,6 +8,7 @@ import { eventPath } from '@/lib/seo'
 import { CATEGORIES, knownCategories } from '@/lib/categories'
 import { cityDef } from '@/lib/cities'
 import { formatPrice } from '@/lib/board'
+import { boardClockLine } from '@/lib/listing-window'
 import { createBasemap } from '@/lib/map-basemap'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
@@ -39,12 +40,13 @@ function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | nu
 
 function popupHtml(e: any, tier?: string) {
   const date = new Date(e?.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const clock = boardClockLine(e)
   const p = formatPrice(e?.isFree, e?.price, e?.priceMin, e?.priceMax)
   const img = pictureSrc(e, 'wide')
   return `<div class="se-pop">${tier ? `<span class="se-pop-tier se-${tier.toLowerCase()}">${esc(tier)}</span>` : ''}
     <img class="se-pop-img" src="${esc(img)}" alt="" />
     <div class="se-pop-title">${esc(e?.title)}</div>
-    <div class="se-pop-meta">${esc(date)}${e?.time ? ` · ${esc(e.time)}` : ''}<br/>${esc(e?.venueName)}</div>
+    <div class="se-pop-meta">${esc(date)}${clock ? ` · ${esc(clock)}` : ''}<br/>${esc(e?.venueName)}</div>
     <div class="se-pop-row"><span class="se-pop-price ${p.kind === 'free' ? 'free' : ''}">${esc(p.prefix ? `${p.prefix} ` : '')}${esc(p.value)}</span>
     <a href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
 }
@@ -270,7 +272,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false }: MapV
               return (
                 <button key={e.id} type="button" onClick={() => focus(e)} className="block w-full border-b border-border px-4 py-3 text-left hover:bg-muted">
                   <span className="block truncate font-semibold">{e.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{e.time || 'All day'} · {e.venueName} · {price.value}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{boardClockLine(e) || 'All day'} · {e.venueName} · {price.value}</span>
                 </button>
               )
             })}

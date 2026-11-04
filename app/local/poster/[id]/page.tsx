@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { siteUrl } from '@/lib/site-url'
 import { eventPath } from '@/lib/seo'
 import { redactCommunityPublic, sectionByKey } from '@/lib/community-shared'
+import { boardClockLine } from '@/lib/listing-window'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = { title: 'Printable poster | VibePeep', robots: { index: false, follow: false } }
@@ -25,6 +26,7 @@ export default async function CommunityPosterPage({ params }: { params: Promise<
   const url = `${siteUrl()}${eventPath(ev)}`
   const svg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' })
   const when = ev.date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const clock = boardClockLine(ev)
   const where = [safe.venueName, safe.suburb, safe.city].filter((part, i, all) => part && all.indexOf(part) === i).join(', ')
   return (
     <main className="mx-auto max-w-xl bg-white px-6 py-8 text-neutral-900 print:max-w-none">
@@ -32,7 +34,7 @@ export default async function CommunityPosterPage({ params }: { params: Promise<
       <h1 className="mt-3 font-display text-4xl font-bold leading-tight">{ev.title}</h1>
       {ev.status === 'CANCELLED' && <p className="mt-2 text-lg font-semibold">Cancelled</p>}
       {ev.status === 'POSTPONED' && <p className="mt-2 text-lg font-semibold">Postponed</p>}
-      <p className="mt-4 text-lg">{when}{ev.time ? ` · ${ev.time}${ev.endTime ? `–${ev.endTime}` : ''}` : ''}</p>
+      <p className="mt-4 text-lg">{when}{clock ? ` · ${clock}` : ''}</p>
       <p className="text-lg">{where}</p>
       <p className="mt-2 text-lg font-semibold">{ev.isFree ? 'Free' : (ev.price || 'See the listing')}</p>
       {safe.description && <p className="mt-4 text-base leading-relaxed">{safe.description}</p>}

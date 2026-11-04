@@ -11,6 +11,7 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
+import { boardClockLine } from '@/lib/listing-window'
 interface EventData {
   id: string
   title: string
@@ -38,6 +39,7 @@ interface EventData {
 }
 
 export function EventCard({ event, index, listingQuery }: { event: EventData; index: number; listingQuery?: string }) {
+  const clock = boardClockLine(event)
   const dateObj = new Date(event.date)
   const day = dateObj.getUTCDate()
   const month = dateObj.toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' })
@@ -118,10 +120,10 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               </span>
             </div>
 
-            {event.time && (
+            {clock && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="w-3 h-3" />
-                {event.time}
+                {clock}
               </div>
             )}
             {event.availabilityKind === 'possibly' && (
@@ -150,6 +152,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
   const color = catDef?.color ?? '#FF7A1A'
   const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
+  const clock = boardClockLine(event)
   return (
     <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
@@ -158,7 +161,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>
         <p className="truncate text-sm text-muted-foreground">
-          {event.availabilityKind === 'possibly' ? 'Possibly available' : (event.time ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
+          {event.availabilityKind === 'possibly' ? 'Possibly available' : (clock ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
         </p>
       </div>
       <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{price.value}</span>

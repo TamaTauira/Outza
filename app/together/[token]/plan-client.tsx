@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Car, Check, Copy, Loader2, MapPin, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
+import { boardClockLine } from '@/lib/listing-window'
 import { togetherLeg } from '@/lib/together'
 import { StopForm, emptyStop, type StopFormValues } from '@/app/itinerary/stop-form'
 
@@ -181,7 +182,7 @@ export function PlanClient({ token }: { token: string }) {
                           <p className="font-semibold">{item.title}</p>
                         )}
                         <p className="text-sm text-muted-foreground mt-1">
-                          {[item.date, item.time && item.endTime ? `${item.time}–${item.endTime}` : item.time, item.place].filter(Boolean).join(' · ')}
+                          {[item.date, boardClockLine({ date: item.date ?? '', time: item.time, endTime: item.endTime, city: item.city }), item.place].filter(Boolean).join(' · ')}
                         </p>
                         {item.note && <p className="text-sm mt-1">{item.note}</p>}
                       </div>

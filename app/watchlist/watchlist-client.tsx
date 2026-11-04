@@ -7,6 +7,7 @@ import { Bookmark, Calendar, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSaved } from '@/lib/saved'
 import { eventsToIcs } from '@/lib/ics'
+import { boardClockLine } from '@/lib/listing-window'
 import { eventPath } from '@/lib/seo'
 import { EmptyState } from '@/components/empty-state'
 
@@ -106,15 +107,18 @@ export function WatchlistClient() {
           />
         )}
         <ul className="space-y-2">
-          {saved.map((ev) => (
+          {saved.map((ev) => {
+            const clock = boardClockLine(ev)
+            return (
             <li key={ev.id} className="rounded-xl border border-border bg-card px-4 py-3 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <Link href={ev.href ?? eventPath(ev)} className="font-semibold hover:text-primary">{ev.title}</Link>
-                <p className="text-sm text-muted-foreground mt-0.5">{ev.date.slice(0, 10)}{ev.time ? ` · ${ev.time}` : ''} · {ev.venueName}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{ev.date.slice(0, 10)}{clock ? ` · ${clock}` : ''} · {ev.venueName}</p>
               </div>
               <button type="button" aria-label="Unsave" onClick={() => isSaved(ev.id) && toggle(ev)} className="text-primary p-1"><Bookmark className="w-4 h-4 fill-current" /></button>
             </li>
-          ))}
+            )
+          })}
         </ul>
       </section>
 

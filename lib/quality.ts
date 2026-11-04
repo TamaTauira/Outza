@@ -6,6 +6,7 @@
  * and checks. Do not show it as a Verified badge.
  */
 import { CITIES } from '@/lib/cities'
+import { boardClockLine } from '@/lib/listing-window'
 import { cityToday } from '@/lib/seo'
 import { readPrice } from '@/lib/price'
 
@@ -310,13 +311,15 @@ export function scheduleCue(ev: { time?: string | null; endTime?: string | null;
   const endKey = ev.endDate ? (typeof ev.endDate === 'string' ? ev.endDate : ev.endDate.toISOString()).slice(0, 10) : ''
   const multi = !!(startKey && endKey && endKey > startKey)
   const overnight = !!(start && end && (minsOf(ev.endTime) ?? 0) < (minsOf(ev.time) ?? 0))
+  const clock = boardClockLine({ date: ev.date ?? (startKey || '1970-01-01'), endDate: ev.endDate, time: ev.time, endTime: ev.endTime })
   if (start && end && (overnight || multi)) {
-    const tail = overnight ? `${ev.time} – ${ev.endTime} the next day` : `${ev.time} – ${ev.endTime}`
+    const formatted = clock ?? `${ev.time} – ${ev.endTime}`
+    const tail = overnight && !formatted.includes('until ') ? `${formatted} the next day` : formatted
     return { label: multi ? 'More than one day' : 'Runs past midnight', detail: `${tail}. Confirm the finish with the organiser if the time looks off.` }
   }
-  if (start && end) return { label: 'Start and finish listed', detail: `${ev.time} – ${ev.endTime}. Confirm with the organiser if the time looks off.` }
+  if (start && end) return { label: 'Start and finish listed', detail: `${clock ?? `${ev.time} – ${ev.endTime}`}. Confirm with the organiser if the time looks off.` }
   if (multi) return { label: 'More than one day', detail: `Runs from ${startKey} to ${endKey}.` }
-  if (start) return { label: 'Start time listed', detail: `${ev.time}. A finish time was not on the source listing.` }
+  if (start) return { label: 'Start time listed', detail: `${clock ?? ev.time}. A finish time was not on the source listing.` }
   return { label: 'Start time not listed', detail: 'The source did not include a start time. Check the organiser before you go.' }
 }
 

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { orderedDayParts } from './board'
 import {
   fieldConflicts,
+  boardClockLine,
   formatBoardRange,
   formatUpdated,
   listingBucket,
@@ -191,6 +192,17 @@ test('overnight finishes keep a later date, and a backwards morning clock is not
   assert.equal(noEnd.endLine, null)
   assert.equal(resolveSchedule({ ...base, time: '17:00', endTime: '16:59' }, day).overnight, true)
   assert.equal(resolveSchedule({ ...base, time: '06:15', endTime: '06:00' }, day).bogusEnd, true)
+})
+
+test('the public clock line is the board formatter, in the event timezone', () => {
+  assert.equal(boardClockLine({ ...base, time: '19:00' }), '7:00 pm')
+  assert.equal(boardClockLine({ ...base, time: '19:30', endTime: '22:30' }), '7:30 pm – 10:30 pm')
+  assert.equal(boardClockLine({ ...base, time: '18:00', endTime: '01:00' }), '6:00 pm – 1:00 am')
+  assert.equal(boardClockLine({ ...base, time: '20:00' }), '8:00 pm')
+  assert.equal(boardClockLine({ ...base, time: '06:00', endTime: '18:00', endDate: '2026-11-02T00:00:00.000Z' }), '6:00 am – 6:00 pm · until 2 Nov')
+  assert.equal(boardClockLine({ ...base, time: null }), null)
+  assert.equal(boardClockLine({ date: '2026-11-04', city: 'Brisbane', startsAt: '2026-11-04T09:00:00.000Z' }), '7:00 pm')
+  assert.equal(boardClockLine({ date: '2026-11-04', city: 'Sydney', startsAt: '2026-11-04T09:00:00.000Z' }), '8:00 pm')
 })
 
 test('a finish before 6am the next morning is same-night, without the end date', () => {

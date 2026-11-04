@@ -22,6 +22,7 @@ import { FollowPromoterButton } from '@/components/follow-promoter-button'
 import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
+import { boardClockLine } from '@/lib/listing-window'
 import { placeLine } from '@/lib/place'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 import { ClaimedTick } from '@/components/ClaimedTick'
@@ -87,6 +88,16 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const where = placeLine({ ...event, suburb })
   const dateObj = new Date(event.date)
   const formattedDate = dateObj.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: city.tz })
+  const clock = boardClockLine({
+    date: event.date,
+    endDate: event.endDate,
+    time: event.time,
+    endTime: event.endTime,
+    city: event.city,
+    allDay: event.allDay,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+  })
   const catDef = CATEGORIES.find((c) => c.name === event?.category)
   const schedule = event.quality?.schedule
   const scheduleNote = schedule && !REDUNDANT_SCHEDULE.has(schedule.label) && schedule.label !== 'Start time not listed' ? schedule : null
@@ -114,9 +125,9 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <span>{formattedDate}</span>
           {scheduleNote && <span className="block text-xs text-muted-foreground mt-0.5">{scheduleNote.label}. {scheduleNote.detail}</span>}
         </Fact>
-        {event?.time ? (
+        {clock ? (
           <Fact icon={Clock}>
-            {event.time}{event?.endTime ? ` – ${event.endTime}` : ''}{schedule?.label === 'Runs past midnight' ? ' (next day)' : ''}
+            {clock}
             <span className="text-xs text-muted-foreground"> · {city.name} time</span>
           </Fact>
         ) : (
