@@ -1,8 +1,15 @@
 /** Australia-only address lookup. Photon first, Nominatim as backup. No API key. */
 
+import { hasSourceBudget, isAbortLike, pauseSourceGeocode, remainingBudgetMs, sourceGeocodeBlocked } from '@/lib/source-budget'
+
 export type Geo = { lat: number; lng: number } | null
 
 const cache = new Map<string, Geo>()
+/** Misses during a source run. Not used for interactive lookups. */
+const misses = new Map<string, number>()
+const MISS_TTL_MS = 15 * 60_000
+const OPEN_TIMEOUT_MS = 6_000
+const BUDGET_TIMEOUT_MS = 2_500
 
 const inAu = (lat: number, lng: number) => lat > -44.5 && lat < -9 && lng > 112 && lng < 154.5
 
@@ -30,10 +37,10 @@ function coordsOf(lat: unknown, lng: unknown): Geo {
   return Number.isFinite(a) && Number.isFinite(b) && inAu(a, b) ? { lat: a, lng: b } : null
 }
 
-async function photon(q: string): Promise<Geo> {
+async function photon(q: string, timeoutMs: number): Promise<Geo> {
   const res = await fetch(`https://photon.komoot.io/api/?limit=5&lang=en&bbox=112,-44.5,154.5,-9&q=${encodeURIComponent(q)}`, {
     headers: { 'User-Agent': 'VibePeep venue maps (events platform)' },
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!res.ok) throw new Error(`Photon ${res.status}`)
   const features = (await res.json())?.features
@@ -49,10 +56,10 @@ async function photon(q: string): Promise<Geo> {
   return null
 }
 
-async function nominatim(q: string): Promise<Geo> {
+async function nominatim(q: string, timeoutMs: number): Promise<Geo> {
   const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=au&q=${encodeURIComponent(q)}`, {
     headers: { 'User-Agent': 'VibePeep itinerary (events platform)', 'Accept-Language': 'en-AU' },
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!res.ok) throw new Error(`Nominatim ${res.status}`)
   const rows = await res.json()
@@ -70,19 +77,44 @@ export function geocodeCached(q: string): boolean {
   return cache.has(q.toLowerCase().trim())
 }
 
-/** Photon first, Nominatim as backup. Only successful lookups are cached. */
+function budgetedMiss(key: string): boolean {
+  if (!hasSourceBudget()) return false
+  const until = misses.get(key)
+  return until != null && until > Date.now()
+}
+
+function rememberMiss(key: string) {
+  if (!hasSourceBudget()) return
+  if (misses.size > 500) misses.clear()
+  misses.set(key, Date.now() + MISS_TTL_MS)
+}
+
+/**
+ * Photon first, Nominatim as backup. Only successful lookups are cached for interactive use.
+ * Inside a source budget a timeout stops further geocoding for that run instead of stalling it.
+ */
 export async function geocode(q: string): Promise<Geo> {
   const key = q.toLowerCase().trim()
   if (!key) return null
   if (cache.has(key)) return cache.get(key) ?? null
+  if (budgetedMiss(key) || sourceGeocodeBlocked()) return null
+  const timeoutMs = hasSourceBudget() ? Math.min(BUDGET_TIMEOUT_MS, Math.max(1, remainingBudgetMs(BUDGET_TIMEOUT_MS))) : OPEN_TIMEOUT_MS
+  let timedOut = false
   for (const provider of [photon, nominatim]) {
+    if (sourceGeocodeBlocked()) return null
     try {
-      const geo = await provider(q)
+      const geo = await provider(q, timeoutMs)
       if (geo) { cache.set(key, geo); return geo }
     } catch (err) {
       console.error('Geocode failed:', err)
+      if (hasSourceBudget() && isAbortLike(err)) {
+        pauseSourceGeocode()
+        timedOut = true
+        break
+      }
     }
   }
+  if (!timedOut) rememberMiss(key)
   return null
 }
 
@@ -98,7 +130,7 @@ export async function locateAddress(query: string, city?: string | null): Promis
   if (!q) return null
   const full = city && !q.toLowerCase().includes(city.toLowerCase()) ? `${q}, ${city}` : q
   const first = await geocode(full)
-  if (first) return first
+  if (first || sourceGeocodeBlocked()) return first
   const short = simplifyQuery(full)
   if (!short) return null
   return geocode(short)

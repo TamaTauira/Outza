@@ -23,7 +23,7 @@ import {
   type CoordNoticeKind,
   type ExtractedVenue,
 } from '@/lib/listing-venue'
-import { yieldIfBudget } from '@/lib/source-budget'
+import { hasSourceBudget, isAbortLike, pauseSourcePageFetch, remainingBudgetMs, sourceGeocodeBlocked, sourceOverBudget, sourcePageFetchBlocked, yieldIfBudget } from '@/lib/source-budget'
 import { distanceKm } from '@/lib/travel'
 import { placeFromText } from '@/lib/venue-place'
 
@@ -101,10 +101,13 @@ export async function enrichMissingPin(input: {
   if (yieldIfBudget('venue coordinates')) return null
   let extracted: ExtractedVenue | null = null
   const url = usableUrl(input.url)
-  if (input.allowFetch && url && ingestFetches < INGEST_FETCH_CAP) {
-    ingestFetches++
-    const page = await fetchListingPage(url)
-    if (page && !blockedPage(page.html)) extracted = extractListingVenue(page.html, page.finalUrl)
+  if (input.allowFetch && url && ingestFetches < INGEST_FETCH_CAP && !sourcePageFetchBlocked()) {
+    const timeout = ingestPageTimeout()
+    if (timeout != null) {
+      ingestFetches++
+      const page = await fetchListingPage(url, { timeoutMs: timeout, budgeted: true })
+      if (page && !blockedPage(page.html)) extracted = extractListingVenue(page.html, page.finalUrl)
+    }
   }
   const merged = extracted
     ? mergeVenueFacts({ venueName: input.venueName, venueAddress: input.address }, extracted)
@@ -309,6 +312,7 @@ async function resolvePin(
   const used = bucket === 'ingest' ? ingestGeocodes : recoverGeocodes
   const cap = bucket === 'ingest' ? INGEST_GEOCODE_CAP : 400
   if (used >= cap || yieldIfBudget('venue geocode')) return null
+  if (bucket === 'ingest' && sourceGeocodeBlocked()) return null
   if (bucket === 'ingest') ingestGeocodes++
   else recoverGeocodes++
   const state = cityDef(city).state
@@ -318,24 +322,36 @@ async function resolvePin(
   return geo
 }
 
-export async function fetchListingPage(url: string): Promise<{ html: string; finalUrl: string } | null> {
+function ingestPageTimeout(): number | null {
+  if (!hasSourceBudget()) return 12_000
+  if (sourceOverBudget()) return null
+  const remaining = remainingBudgetMs(4_000)
+  if (remaining < 1_500) return null
+  return remaining
+}
+
+export async function fetchListingPage(url: string, opts: { timeoutMs?: number; budgeted?: boolean } = {}): Promise<{ html: string; finalUrl: string } | null> {
   let parsed: URL
   try { parsed = new URL(url) } catch { return null }
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null
   const host = parsed.hostname.toLowerCase()
   if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.localhost')) return null
+  if (opts.budgeted && sourcePageFetchBlocked()) return null
+  const timeoutMs = opts.timeoutMs ?? 12_000
   try {
     const res = await fetch(parsed, {
       redirect: 'follow',
       headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml' },
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     if (!res.ok) return null
     const type = res.headers.get('content-type') ?? ''
     if (type && !/html|xml|text\/plain/i.test(type)) return null
     const html = (await res.text()).slice(0, 800_000)
     return html ? { html, finalUrl: res.url || url } : null
-  } catch {
+  } catch (err) {
+    // One hung page must not stall the rest of a source run. Later ingest fetches skip until the next run.
+    if (opts.budgeted && isAbortLike(err)) pauseSourcePageFetch()
     return null
   }
 }
