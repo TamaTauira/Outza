@@ -220,7 +220,7 @@ test('queer listings get an VibePeep line plus real channels, and no made-up aud
   const card = insights.find((i) => i.highlight)
   assert.ok(card)
   assert.match(card.detail, /LGBTIQ\+ filter/)
-  assert.match(card.detail, /best place to advertise/)
+  assert.match(card.detail, /Start with the LGBTIQ\+ filter/)
   assert.match(card.detail, /have not measured one/)
   assert.doesNotMatch(card.detail, BANNED)
   assert.doesNotMatch(insightText([card], []), /\d+(\.\d+)?%/)

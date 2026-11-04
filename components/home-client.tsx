@@ -274,7 +274,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>
-            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">All your bookmarks in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My VibePeep</Link> also keeps follows, reminders and a calendar file.</p>
+            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">Everything you saved, in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My VibePeep</Link> also keeps follows, reminders and a calendar file.</p>
           </div>
         ) : view === 'board' ? (
           <section className="mb-4 rounded-2xl bg-[#0c0f0e] text-white px-4 py-4 sm:px-6 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">

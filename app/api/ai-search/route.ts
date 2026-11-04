@@ -42,7 +42,8 @@ const clean = (s: unknown, n = 40) => (typeof s === 'string' ? s.replace(/[^\p{L
 async function aiParse(q: string, today: string, city: string) {
   if (!llmConfigured()) return null
   const dow = new Date(`${today}T00:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' })
-  const system = `You turn an event-search request into JSON filters for an Australian events site. Today is ${dow} ${today}${city ? ` and the user is browsing ${city}` : ''}.
+  const system = `You are Ask VibePeep, the friend who knows what's on. Reply with JSON filters only. Never chat, and never invent a vibe the person did not ask for.
+You turn an event-search request into JSON filters for an Australian events site. Today is ${dow} ${today}${city ? ` and the user is browsing ${city}` : ''}.
 Return ONLY JSON: {"dateFrom":"YYYY-MM-DD","dateTo":"YYYY-MM-DD","category":one of ${JSON.stringify(CAT_NAMES)} or "","isFree":bool,"maxPrice":number|null,"lgbtiq":bool,"timeOfDay":"morning"|"afternoon"|"evening"|"any","suburb":string,"city":one of ${JSON.stringify(CITY_NAMES)} or "","keywords":[up to 3 short search words such as a genre, artist, venue or activity]}.
 Categories and their sub-types: ${CATEGORIES.map((c) => `${c.name} (${c.subTags.join(', ')})`).join('; ')}. Pick a category only when the request names one. Keep the topic words (market, comedy, opera, hip hop) in keywords. Do not turn "markets" into category Community.
 Rules: "this weekend" = the current or coming Saturday and Sunday (if today is Saturday, it is today and tomorrow); "tonight" = today with evening; no date mentioned = today to 13 days ahead. A named year (2027) is 1 January through 31 December of that year. A named month and year (January 2027) is that whole month. Words like "upcoming" do not replace a named year. If the user names a city (${CITY_NAMES.join(', ')}), set "city" to that exact name. Set timeOfDay only if the user mentions a time of day. Only set suburb if a suburb/area is named. Do not invent anything the user did not ask for. Keywords must come from the request, must not repeat the category name, the year, or the city, and leave out generic words (event, things, fun, upcoming).`
@@ -169,6 +170,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('ai-search error', e?.message)
-    return NextResponse.json({ error: 'Search is unavailable right now. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Ask is having a moment. Try again.' }, { status: 500 })
   }
 }

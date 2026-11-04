@@ -62,7 +62,7 @@ export function TogetherHome() {
           </label>
         </div>
         <button disabled={busy} className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 disabled:opacity-60">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}Start a Plan
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}Start Together
         </button>
       </form>
 
@@ -71,7 +71,7 @@ export function TogetherHome() {
         {plans === null && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
         {plans?.length === 0 && (
           <EmptyState
-            title="No plans yet."
+            title="No Together plans yet."
             lede="Shortlist a few events, send one link, and vote. Guests can join without an account."
             action={{ href: '/', label: 'Browse events' }}
             examples={['Saturday in Newtown · 3 options', 'Sunday with the kids · 2 options', 'Friday drinks · 4 options']}

@@ -54,7 +54,7 @@ async function accessToken(conn: { refreshTokenEnc: string }) {
     body: new URLSearchParams({ refresh_token: decryptSecret(conn.refreshTokenEnc), client_id: process.env.GOOGLE_CLIENT_ID ?? '', client_secret: process.env.GOOGLE_CLIENT_SECRET ?? '', grant_type: 'refresh_token' }),
   })
   const j = await res.json()
-  if (!res.ok) throw new GbpError(`Google refused the stored authorisation (${j?.error ?? res.status}). Please reconnect.`, 'error')
+  if (!res.ok) throw new GbpError(`Google refused the stored authorisation (${j?.error ?? res.status}). Reconnect to try again.`, 'error')
   return j.access_token as string
 }
 

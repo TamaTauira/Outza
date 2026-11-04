@@ -26,13 +26,13 @@ export const DURATIONS: { days: Duration; label: string; note?: string }[] = [
  *  DB keys stay SILVER/BRONZE/GOLD so existing promotions keep working. */
 export const TIERS: TierDef[] = [
   {
-    key: 'SILVER', name: 'Boost', priceCents: 1900, days: 7, headlineDays: 7, color: '#C0C7D1', tagline: 'Low-friction entry point',
-    perks: ['Highlighted event card with a “Boost” badge', 'Placed in the Featured band for your event’s city', 'Basic reporting: listing views & ticket clicks'],
+    key: 'SILVER', name: 'Boost', priceCents: 1900, days: 7, headlineDays: 7, color: '#C0C7D1', tagline: 'The easy first boost',
+    perks: ['Highlighted event card with a “Boost” badge', 'Placed in the Featured band for your event’s city', 'Basic reporting: listing views and ticket opens'],
     prices: { 7: 1900, 14: 2900, 30: 4900 },
   },
   {
-    key: 'BRONZE', name: 'Spotlight', priceCents: 4900, days: 14, headlineDays: 14, color: '#CD7F32', tagline: 'Homepage placement with geo targeting',
-    perks: ['Everything in Boost', 'Homepage placement, ranked above Boost', 'Geo targeting: larger highlighted pin on your city’s map', 'Click reporting for every ticket click'],
+    key: 'BRONZE', name: 'Spotlight', priceCents: 4900, days: 14, headlineDays: 14, color: '#CD7F32', tagline: 'Homepage placement, pinned to your city',
+    perks: ['Everything in Boost', 'Homepage placement, ranked above Boost', 'A larger pin on your city’s map', 'See every ticket link that gets opened'],
     prices: { 7: 2900, 14: 4900, 30: 7900 },
   },
   {
@@ -55,7 +55,7 @@ export const PRO_PLAN = {
   priceCents: 2900,
   days: 30,
   discountPct: 15,
-  perks: ['15% off packages, add-ons and short boosts', 'Promoter Pro on your account', 'Views & ticket-click analytics on all your events'],
+  perks: ['15% off packages, add-ons and short boosts', 'Promoter Pro on your account', 'Views and ticket-link analytics on all your events'],
 }
 
 /** Monthly organiser plans. Purchase and plan changes live in the promoter dashboard. */

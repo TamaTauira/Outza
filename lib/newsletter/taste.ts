@@ -304,7 +304,7 @@ function matchesExplicitInterest(event: ScopeEvent, profile: TasteProfile): bool
 }
 
 function askedWhy(event: ScopeEvent, profile: TasteProfile): string {
-  if (profile.savedIds.has(event.id)) return 'On your watchlist'
+  if (profile.savedIds.has(event.id)) return 'One of your keepers'
   const venue = venueHit(event.venueName, profile.venueNames)
   if (venue) return `Because you follow ${event.venueName}`
   if (comedyOptIn(profile) && comedyish(event)) return 'Because you follow comedy'
@@ -444,9 +444,9 @@ export function scoreEvent<T extends DigestEvent>(event: T, profile: TasteProfil
   const add = (code: string, points: number, line: string) => {
     if (points >= 4) reasons.push({ code, points, line })
   }
-  if (profile.togetherIds.has(event.id)) add('together', 42, 'On your Together plan')
-  if (profile.savedIds.has(event.id)) add('saved', 40, 'On your watchlist')
-  if (profile.itineraryIds.has(event.id)) add('itinerary', 30, 'You popped this on an itinerary')
+  if (profile.togetherIds.has(event.id)) add('together', 42, 'On your VibePeep Together plan')
+  if (profile.savedIds.has(event.id)) add('saved', 40, 'One of your keepers')
+  if (profile.itineraryIds.has(event.id)) add('itinerary', 30, 'On your Itinerary')
   const venue = venueHit(event.venueName, profile.venueNames)
   if (venue) add('venue', 36, `Because you follow ${event.venueName}`)
   if (comedyOptIn(profile) && comedyish(event)) add('interest', 24, 'Because you follow comedy')

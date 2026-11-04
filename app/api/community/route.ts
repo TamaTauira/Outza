@@ -13,6 +13,6 @@ export async function POST(req: Request) {
     return NextResponse.json(result)
   } catch (err: unknown) {
     console.error('community submit failed', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'Could not save your listing. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save your listing. Try again.' }, { status: 500 })
   }
 }

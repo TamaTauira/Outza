@@ -11,7 +11,7 @@ const CAPABILITIES: [string, boolean][] = [
   ['Claiming existing listings', true],
   ['Billing & payment history', true],
   ['Campaign upgrades & renewal', true],
-  ['Ticket-click reporting', true],
+  ['Ticket-link reporting', true],
   ['Listing edits', true],
   ['Referral traffic', true],
   ['Invoice downloads', true],

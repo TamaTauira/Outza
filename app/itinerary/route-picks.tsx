@@ -50,7 +50,7 @@ export function RoutePicks({ picks, isAdded, onAdd, onOpen }: { picks: RoutePick
                   {added ? (
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground"><Check className="w-3.5 h-3.5 text-primary" />In your itinerary</span>
                   ) : (
-                    <button type="button" onClick={() => onAdd(p)} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><Plus className="w-3.5 h-3.5" />Add to My Itinerary</button>
+                    <button type="button" onClick={() => onAdd(p)} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><Plus className="w-3.5 h-3.5" />Add to Itinerary</button>
                   )}
                   <a href={`/api/local-ads/${p.id}/go`} target="_blank" rel="sponsored noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">Visit {p.host || 'website'}<ExternalLink className="w-3 h-3" /></a>
                 </div>

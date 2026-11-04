@@ -120,7 +120,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                   className={cn('flex items-center justify-center gap-2 w-full py-3 rounded-lg border font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
                 >
                   <Bookmark className={cn('w-4 h-4', isSaved(ev.id) && 'fill-current')} />
-                  {isSaved(ev.id) ? 'Saved to favourites' : 'Save to favourites'}
+                  {isSaved(ev.id) ? 'Saved' : 'Save'}
                 </button>
               </div>
             </div>

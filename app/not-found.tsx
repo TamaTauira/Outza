@@ -10,7 +10,7 @@ export default function NotFound() {
         <VibePeepMascot className="w-40 sm:w-48" priority alt="VibePeep the robot, looking around and waving" />
         <h1 className="mt-4 font-display text-3xl font-bold tracking-tight sm:text-4xl">I peeked everywhere.</h1>
         <p className="mt-2 text-base text-muted-foreground">This page isn&apos;t on. Not tonight, not in any city.</p>
-        <Button asChild className="mt-6"><Link href="/">Back to what&apos;s on</Link></Button>
+        <Button asChild className="mt-6"><Link href="/">Back to events</Link></Button>
       </main>
     </PageShell>
   )

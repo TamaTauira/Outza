@@ -3,7 +3,7 @@ import { InfoPage } from '@/components/info-page'
 
 export const metadata: Metadata = {
   title: 'FAQ — VibePeep',
-  description: 'Common questions about VibePeep listings, promotion and accounts.',
+  description: 'Quick answers on VibePeep listings, promotion and your account.',
 }
 
 export default function FaqPage() {

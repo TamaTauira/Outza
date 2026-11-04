@@ -50,6 +50,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   } catch (err) {
     console.error('venue checkout failed', err instanceof Error ? err.message : err)
     await prisma.venuePlacement.update({ where: { id: started.placement.id }, data: { status: 'CANCELLED' } })
-    return NextResponse.json({ error: 'Payment could not be started. Please try again.' }, { status: 502 })
+    return NextResponse.json({ error: 'Payment could not be started. Try again.' }, { status: 502 })
   }
 }

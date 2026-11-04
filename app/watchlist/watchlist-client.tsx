@@ -91,8 +91,8 @@ export function WatchlistClient() {
         <button type="button" onClick={download} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2">
           <Calendar className="w-4 h-4" />Download Calendar
         </button>
-        <Link href="/saved" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Open the Keepers</Link>
-        <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Plan Together</Link>
+        <Link href="/saved" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Open The Keepers</Link>
+        <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">VibePeep Together</Link>
       </div>
 
       <section className="mt-8">
@@ -100,7 +100,7 @@ export function WatchlistClient() {
         {!saved.length && status !== 'loading' && (
           <EmptyState
             title={status === 'authenticated' ? 'Nothing saved yet' : 'Sign in to see your saved events'}
-            lede={status === 'authenticated' ? 'Use the bookmark on the board or an event page.' : 'Saves, follows and reminders belong to your account.'}
+            lede={status === 'authenticated' ? 'Tap Save on the board or an event page.' : 'Saves, follows and reminders belong to your account.'}
             action={status === 'authenticated' ? { href: '/', label: 'Browse events' } : { href: '/login?next=/watchlist', label: 'Sign in' }}
             secondary={status === 'authenticated' ? undefined : { href: '/', label: 'Browse events' }}
             examples={['Friday · Outdoor yoga · Rose Bay', 'Saturday · Live music · The Rocks', 'Sunday · Market · Bondi']}
@@ -163,7 +163,7 @@ export function WatchlistClient() {
                 const next = e.target.checked
                 if (await patchMe({ emailOptIn: next })) setEmailOptIn(next)
               }} />
-              <span>Send a watchlist digest ({emailFrequency}). It lists upcoming saves and new events at venues you follow. Interest picks also feed the usual VibePeep newsletter.</span>
+              <span>Send a My VibePeep note ({emailFrequency}). It lists upcoming saves and new events at venues you follow. Interest picks also feed your VibePeep email.</span>
             </label>
             <label className="flex items-start gap-3 text-sm">
               <input type="checkbox" className="mt-1 accent-[hsl(var(--primary))]" checked={reminderOptIn} onChange={async (e) => {

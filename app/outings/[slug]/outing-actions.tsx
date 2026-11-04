@@ -25,7 +25,7 @@ export function OutingActions({ plan }: { plan: { title: string; city: string; d
       return
     }
     for (const ev of plan.events) if (!isSaved(ev.id)) toggle(asSaved(ev))
-    toast.success('Saved to My VibePeep', { action: { label: 'View', onClick: () => router.push('/watchlist') } })
+    toast.success('Saved', { action: { label: 'View', onClick: () => router.push('/saved') } })
   }
   const toPlan = async () => {
     setBusy(true)

@@ -59,7 +59,7 @@ export const ROAM_ACT_MS: Record<RoamAct, number> = {
 }
 
 export const ROAM_LINES: Record<RoamAct, readonly string[]> = {
-  hop: ['Off I wander.', 'This way looks good.', 'Just a stickybeak.'],
+  hop: ['Off I wander.', 'This way looks good.', 'Just having a look.'],
   jump: ['Boing!', 'Up we go.', 'Too easy.'],
   dance: ['Little boogie.', 'Having a dance.', 'This one’s a bop.'],
   spin: ['Full twirl.', 'Watch this.', 'Still dizzy. Worth it.'],
@@ -67,7 +67,7 @@ export const ROAM_LINES: Record<RoamAct, readonly string[]> = {
   wiggle: ['Wiggle wiggle.', 'Can’t sit still.', 'Silly mode.'],
   peek: ['Peekaboo.', 'Just looking.', 'Didn’t see me, eh?'],
   nap: ['Just a little nap.', 'Zzz… poke me.', 'Eyes closed. Not really.'],
-  cheer: ['Made it. Legend.', 'Bottom of the page. Bonza.', 'You scrolled the lot.'],
+  cheer: ['Made it. Legend.', 'Bottom of the page. Nice.', 'You scrolled the lot.'],
   chase: ['Wait for me!', 'Coming through.', 'Oi, slow down.'],
   bounce: ['Boing, walls.', 'Pinball time.', 'Didn’t bounce that hard.'],
   perch: ['Nice spot up here.', 'Good view from here.', 'I’ll sit for a bit.'],

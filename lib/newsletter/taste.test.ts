@@ -119,7 +119,7 @@ test('ranking explains follows, suburbs and saved gigs, and skips past, duplicat
   assert.equal(venue?.whyLine, 'Because you follow Enmore Theatre')
   assert.equal(ids.includes('near'), false)
   assert.equal(picked.saved.some((e) => e.id === 'saved-gig'), true)
-  assert.match(picked.saved.find((e) => e.id === 'saved-gig')?.whyLine ?? '', /watchlist|Together|itinerary|follow|Near|peep|gig/)
+  assert.match(picked.saved.find((e) => e.id === 'saved-gig')?.whyLine ?? '', /keepers|Together|Itinerary|follow|Near|peep|gig/)
   assert.equal(ids.filter((id) => id === 'like-gig' || id === 'same-name').length <= 1, true)
   const titles = [picked.hero, ...picked.weekend, ...picked.because, ...picked.free].map((e) => e?.title.toLowerCase())
   assert.equal(titles.filter((t) => t?.startsWith('another band')).length <= 1, true)
@@ -245,7 +245,7 @@ test('music and comedy preferences never include wellness', () => {
   assert.ok(picked.free.every((e) => e.category === 'Music' || /comedy|stand-?up/i.test(`${e.category} ${e.title} ${e.subTags.join(' ')}`)))
   for (const e of all) {
     assert.doesNotMatch(e.whyLine, /wellness/i)
-    assert.match(e.whyLine, /Music|comedy|watchlist|gig|follow|peep|Free|Surry Hills|itinerary|Together/i)
+    assert.match(e.whyLine, /Music|comedy|keepers|gig|follow|peep|Free|Surry Hills|Itinerary|Together/i)
   }
   assert.equal(all.length < 7, true)
 })
@@ -288,7 +288,7 @@ test('a saved event outside your categories still shows, and does not open that 
   assert.equal(all.some((e) => e.id === 'gig'), true)
   const savedYoga = all.find((e) => e.id === 'yoga-saved')
   assert.ok(savedYoga)
-  assert.match(savedYoga?.whyLine ?? '', /watchlist/)
+  assert.match(savedYoga?.whyLine ?? '', /keepers/)
 })
 
 test('a followed venue can include that venue outside your categories', () => {

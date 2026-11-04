@@ -16,7 +16,7 @@ export default function Page() {
         name: BRAND_NAME,
         url: `${origin}/`,
         inLanguage: 'en-AU',
-        description: `${BRAND_SUBLINE} Gigs, markets and things to do across Australian cities.`,
+        description: `${BRAND_SUBLINE} The friend who knows what’s on: gigs, markets and things to do across Australian cities.`,
       },
       {
         '@type': 'Organization',

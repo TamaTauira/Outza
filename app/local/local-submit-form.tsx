@@ -48,7 +48,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (image && !imageRights) { toast.error('Please confirm you own the photo or have permission to use it, or remove it.'); return }
+    if (image && !imageRights) { toast.error('Confirm you own the photo or have permission to use it, or remove it.'); return }
     setBusy(true)
     try {
       const res = await fetch('/api/local', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, endDate: f.endDate || null, recurUntil: f.recurUntil || null, startedAt: startedAt.current || null, imagePath: image?.path ?? null, imageRights }) })

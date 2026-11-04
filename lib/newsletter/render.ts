@@ -28,7 +28,7 @@ const THUMB = 104
 const HERO_W = 552
 const HERO_H = 311
 
-export const EDITION_NAME: Record<string, string> = { weekly: 'THE WEEKENDER', daily: 'THE DAILY DROP', monthly: 'THE BIG MONTH' }
+export const EDITION_NAME: Record<string, string> = { weekly: 'The Weekender', daily: 'The Daily Drop', monthly: 'The Big Month' }
 export const CTA_VARIANTS = { A: { hero: 'Check it out', card: 'See details' }, B: { hero: 'See the experience', card: 'Take a look' } } as const
 export type CtaVariant = keyof typeof CTA_VARIANTS
 
@@ -218,7 +218,7 @@ function section(r: RenderInput, slots: Slot[], placement: Placement, title: str
 }
 
 export function renderHtml(r: RenderInput): string {
-  const ed = EDITION_NAME[r.editionKey] ?? 'THE WEEKENDER'
+  const ed = EDITION_NAME[r.editionKey] ?? 'The Weekender'
   const last = new Date(r.to.getTime() - 86400e3)
   const range = `${day(r.from, { weekday: 'short', day: 'numeric', month: 'short' })} – ${day(last, { weekday: 'short', day: 'numeric', month: 'short' })}`
   const prefs = trackUrl(r.ctx, 'footer', 'prefs')
@@ -282,9 +282,9 @@ ${r.hero ? `<tr><td class="px" style="padding:26px 24px 12px;"><div style="font-
 ${section(r, r.weekend, 'weekend', r.nearTitle)}
 ${section(r, r.because, 'because', because)}
 ${r.sponsoredPos === 'mid' ? sponsoredBlock(r) : ''}
-${section(r, r.saved, 'saved', 'Saved events coming up', 'Still on your list')}
+${section(r, r.saved, 'saved', 'The keepers, coming up', 'Still saved')}
 ${section(r, r.free, 'free', 'Free or cheap')}
-${section(r, r.popular, 'popular', `Popular in ${r.city}`, 'A starting point while we learn your taste')}
+${section(r, r.popular, 'popular', `Also on in ${r.city}`, 'A starting point while we learn your taste')}
 ${r.sponsoredPos === 'end' ? sponsoredBlock(r) : ''}
 
 <tr><td class="px" style="padding:20px 24px 8px;"><table ${T} width="100%" bgcolor="${C.head}" style="background:${C.head};border-radius:18px;"><tr><td align="center" style="padding:28px 22px;">
@@ -306,10 +306,10 @@ ${r.trackOpens ? `<img src="${x(openPixelUrl(r.ctx.sendId))}" width="1" height="
 }
 
 export function renderText(r: RenderInput): string {
-  const ed = EDITION_NAME[r.editionKey] ?? 'THE WEEKENDER'
+  const ed = EDITION_NAME[r.editionKey] ?? 'The Weekender'
   const block = (s: Slot, p: Placement) => {
     const trust = trustLine(s.ev.source, s.ev.lastVerifiedAt ?? s.ev.updatedAt)
-    const reminder = p === 'saved' ? (r.reminderOptIn ? 'Reminder: you asked for a nudge, and this one is coming up.' : 'Reminder: still on your list.') : ''
+    const reminder = p === 'saved' ? (r.reminderOptIn ? 'Reminder: you asked for a nudge, and this one is coming up.' : 'Reminder: still in The keepers.') : ''
     const why = s.ev.whyLine ? `Why you're seeing this: ${s.ev.whyLine}` : ''
     return [s.ev.title, why, s.ev.travel, reminder, `${s.ev.category} | ${whenLine(s.ev)}`, whereLine(s.ev), priceLine(s.ev), trust, statusNote(s.ev), s.blurb, trackUrl(r.ctx, p, 'detail', s.ev.id)].filter(Boolean).join('\n')
   }
@@ -322,9 +322,9 @@ export function renderText(r: RenderInput): string {
     chunk(r.nearTitle.toUpperCase(), r.weekend, 'weekend'),
     chunk((r.becauseTitle ?? 'BECAUSE YOU LIKED IT').toUpperCase(), r.because, 'because'),
     r.sponsoredPos === 'mid' && r.sponsored.length && `HOT AND PROMOTED - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
-    chunk('SAVED EVENTS COMING UP', r.saved, 'saved'),
+    chunk('THE KEEPERS, COMING UP', r.saved, 'saved'),
     chunk('FREE OR CHEAP', r.free, 'free'),
-    chunk(`POPULAR IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
+    chunk(`ALSO ON IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
     r.sponsoredPos === 'end' && r.sponsored.length && `HOT AND PROMOTED - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
     `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${trackUrl(r.ctx, 'explore', 'explore')}`,
     `---\nVibePeep. Take a peep at what's happening.\nSee you out there.\nManage preferences / change frequency: ${trackUrl(r.ctx, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,

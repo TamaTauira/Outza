@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Day and night plans',
-  description: 'Suggested days out built from real VibePeep listings, with dining and transport notes.',
+  description: 'Day and night plans built from real listings, with a meal idea and how to get there. VibePeep does not book the table or the ticket.',
   robots: { index: false, follow: true },
 }
 

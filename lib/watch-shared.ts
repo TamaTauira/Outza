@@ -250,7 +250,7 @@ export function composeWatchEmail(input: {
   homeHref?: string
 }): { subject: string; html: string; text: string } | null {
   if (!input.saved.length && !input.matches.length) return null
-  const subject = input.reminders ? 'A saved VibePeep event is coming up' : 'Your VibePeep watchlist'
+  const subject = input.reminders ? 'A saved event is coming up' : 'From My VibePeep'
   const home = input.homeHref ?? CANONICAL_SITE_URL
   const manage = input.manageHref ?? `${home}/account`
   const unsubscribe = input.unsubscribeHref ?? manage
@@ -279,7 +279,7 @@ export function composeWatchEmail(input: {
   const rows = [sectionRows(savedHeading, input.saved), sectionRows(matchHeading, input.matches)].join('')
   const html = emailDocument({
     title: subject,
-    preheader: input.reminders ? 'A saved event is coming up.' : 'Saved events still ahead, and new listings in the cities you follow.',
+    preheader: input.reminders ? 'One of your keepers is coming up.' : 'Saves still ahead, and new listings in the cities you follow.',
     rows,
     manageHref: manage,
     unsubscribeHref: unsubscribe,

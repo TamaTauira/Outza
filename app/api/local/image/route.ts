@@ -17,9 +17,9 @@ export async function POST(req: Request) {
   try {
     const form = await req.formData().catch(() => null)
     const file = form?.get('image')
-    if (!file || typeof file === 'string') return NextResponse.json({ error: 'Please choose an image.' }, { status: 400 })
-    if (!TYPES.includes(file.type)) return NextResponse.json({ error: 'Please upload a JPG, PNG, WebP or HEIC image.' }, { status: 400 })
-    if (file.size > MAX_BYTES) return NextResponse.json({ error: 'That image is over 8 MB. Please choose a smaller one.' }, { status: 400 })
+    if (!file || typeof file === 'string') return NextResponse.json({ error: 'Choose an image.' }, { status: 400 })
+    if (!TYPES.includes(file.type)) return NextResponse.json({ error: 'Upload a JPG, PNG, WebP or HEIC image.' }, { status: 400 })
+    if (file.size > MAX_BYTES) return NextResponse.json({ error: 'That image is over 8 MB. Choose a smaller one.' }, { status: 400 })
     const input = Buffer.from(await file.arrayBuffer())
     const out = await sharp(input).rotate().resize({ width: 2400, height: 2400, fit: 'inside', withoutEnlargement: true }).webp({ quality: 92 }).toBuffer()
       .catch(() => null)
@@ -29,6 +29,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ cloud_storage_path: path, url: publicUrl(path) })
   } catch (err: any) {
     console.error('Local image upload failed:', err?.message)
-    return NextResponse.json({ error: 'Image upload failed. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Image upload failed. Try again.' }, { status: 500 })
   }
 }

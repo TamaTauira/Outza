@@ -69,15 +69,15 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     preheader: 'How your listings are tracking on VibePeep.',
     manageHref: `${base}/account`,
     homeHref: base,
-    reason: 'You are receiving this because you requested a report or turned on weekly reports in your promoter dashboard. You can switch weekly reports off there at any time.',
+    reason: 'You asked for this, or you turned on weekly reports in the Promoter dashboard. Switch them off there any time.',
     rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 6px">Your event performance report</h1>
-  <p style="font-size:14px;color:#444;margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's how your listings are tracking on VibePeep. Figures are totals since each listing went live.</p>
+  <p style="font-size:14px;color:#444;margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's the read on your listings. Figures are totals since each one went live.</p>
   <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#777;font-size:12px;text-align:left"><th style="padding:6px">Event</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">CTR</th><th style="padding:6px;text-align:right">Saves / going</th></tr></thead><tbody>${rows}</tbody></table>
   <h2 style="font-size:15px;margin:24px 0 6px">Where visitors came from</h2>
   <table style="width:100%;border-collapse:collapse;font-size:13px">${refRows}</table>
   ${audience}
   ${pro ? '' : '<p style="font-size:12px;color:#777;margin-top:12px">"Locked" figures unlock when an event is promoted, or for every event with Promoter Pro.</p>'}
-  <p style="margin:24px 0"><a href="${base}/promoter" style="background:#E24B2A;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px">Open your dashboard</a></p>
+  <p style="margin:24px 0"><a href="${base}/promoter" style="background:#E24B2A;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px">Open Promoter Dashboard</a></p>
   `),
   })
 

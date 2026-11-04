@@ -12,7 +12,7 @@ import { DashboardPreview } from './dashboard-preview'
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'For promoters — VibePeep',
-  description: 'Promote your events to people actively looking for something to do in 10 Australian cities. Boost, Spotlight and Headliner packages from $19.',
+  description: 'Get your event in front of people already looking for a night out. Boost, Spotlight and Headliner, from $19.',
 }
 
 const addonIcons = { FRONTROW: Star, SPOTLIGHT: Mail } as const
@@ -22,7 +22,7 @@ export default async function PromotersPage() {
   const role = (session?.user as { role?: string } | undefined)?.role
   const isPromoter = role === 'PROMOTER' || role === 'ADMIN'
   const primary = isPromoter
-    ? { href: '/promoter', label: 'Go to your dashboard' }
+    ? { href: '/promoter', label: 'Open Promoter Dashboard' }
     : session?.user ? { href: '/promoter', label: 'Switch to a promoter account' } : { href: '/signup?role=promoter', label: 'Create a free promoter account' }
 
   return (
@@ -79,7 +79,7 @@ export default async function PromotersPage() {
             <div className="mt-8 grid md:grid-cols-3 gap-5">
               {TIERS.map((t) => (
                 <div key={t.key} className={`relative rounded-2xl bg-card border p-6 shadow-sm flex flex-col ${t.key === 'BRONZE' ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}>
-                  {t.key === 'BRONZE' && <span className="absolute -top-3 left-6 rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-2.5 py-0.5">MOST POPULAR</span>}
+                  {t.key === 'BRONZE' && <span className="absolute -top-3 left-6 rounded-full bg-primary text-primary-foreground text-[11px] font-bold px-2.5 py-0.5">Start here</span>}
                   <span className="h-1.5 w-12 rounded-full" style={{ backgroundColor: t.color }} />
                   <p className="mt-4 font-display text-xl font-bold">{t.name}</p>
                   <p className="text-sm text-muted-foreground">{t.tagline}</p>

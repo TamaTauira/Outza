@@ -22,7 +22,7 @@ export async function POST() {
   if (!isPromoter(me.role)) return forbidden()
   const u = await prisma.user.findUnique({ where: { id: me.id }, select: { lastReportAt: true } })
   if (u?.lastReportAt && Date.now() - u.lastReportAt.getTime() < 10 * 60000) {
-    return NextResponse.json({ error: 'A report was sent a few minutes ago. Please check your inbox.' }, { status: 429 })
+    return NextResponse.json({ error: 'A report was sent a few minutes ago. Check your inbox.' }, { status: 429 })
   }
   const r = await sendPromoterReport(me.id)
   if (!r.ok) {

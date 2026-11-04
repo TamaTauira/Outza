@@ -56,19 +56,19 @@ export interface TopicDef {
 }
 
 export const TOPICS: TopicDef[] = [
-  { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `Gigs, shows, markets and festivals: every upcoming thing to do in ${c}, sorted by date.` },
-  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on from 5pm`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `Evening plans from 5pm in ${c}. Listings without a start time are marked possibly available and shown after the timed ones.` },
-  { key: 'this-weekend', label: 'This weekend', title: (c) => `What’s on in ${c} this weekend`, heading: (c) => `Things to do in ${c} this weekend`, blurb: (c) => `Friday to Sunday sorted: live music, markets, theatre, sport and family days out in ${c}.` },
+  { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `The friend who knows ${c}: gigs, shows, markets and festivals, sorted by when they start.` },
+  { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on from 5pm`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `What’s on from 5pm in ${c}. Listings without a start time are marked possibly available and sit after the timed ones.` },
+  { key: 'this-weekend', label: 'This weekend', title: (c) => `What’s on in ${c} this weekend`, heading: (c) => `Things to do in ${c} this weekend`, blurb: (c) => `Friday to Sunday, sorted: live music, markets, theatre, sport and family days out in ${c}.` },
   { key: 'free-events', label: 'Free events', heading: (c) => `Free events in ${c}`, blurb: (c) => `Zero dollars, full fun: free festivals, markets, talks and exhibitions in ${c}.` },
   { key: 'live-music', label: 'Live music', title: (c) => `Live music & gigs in ${c}`, heading: (c) => `Live music in ${c}`, blurb: (c) => `From sticky-floor pub gigs to arena tours, here’s every upcoming show in ${c}.` },
-  { key: 'markets', label: 'Markets', local: 'MARKET', heading: (c) => `Markets in ${c}`, blurb: (c) => `Farmers, night, makers and food markets: every upcoming market in ${c}.` },
-  { key: 'festivals', label: 'Festivals', heading: (c) => `Festivals in ${c}`, blurb: (c) => `Music, food, culture and street festivals: every upcoming festival in ${c}, all in one spot.` },
+  { key: 'markets', label: 'Markets', local: 'MARKET', heading: (c) => `Markets in ${c}`, blurb: (c) => `Farmers, night, makers and food: the markets worth a wander in ${c}.` },
+  { key: 'festivals', label: 'Festivals', heading: (c) => `Festivals in ${c}`, blurb: (c) => `Music, food, culture and street festivals coming up in ${c}, all in one spot.` },
   { key: 'family', label: 'Family & kids', title: (c) => `Family activities & things to do with kids in ${c}`, heading: (c) => `Family activities in ${c}`, blurb: (c) => `Little legends welcome: shows, workshops, holiday fun and family days out in ${c}.` },
   { key: 'lgbtiq', label: 'LGBTIQ+', title: (c) => `LGBTIQ+ events in ${c}: queer nights, drag & Pride`, heading: (c) => `LGBTIQ+ events in ${c}`, blurb: (c) => `Drag, dance floors, Pride and queer community events happening in ${c}.` },
   { key: 'garage-sales', label: 'Garage sales', local: 'GARAGE', title: (c) => `Garage sales in ${c} this week`, heading: (c) => `Garage sales in ${c}`, blurb: (c) => `One person’s clutter, your next treasure: public garage, moving and car boot sales around ${c}.` },
-  { key: 'warehouse-sales', label: 'Warehouse sales', local: 'WAREHOUSE', heading: (c) => `Warehouse sales in ${c}`, blurb: (c) => `Clearances, sample sales and stock sell-offs from brands and retailers around ${c}.` },
+  { key: 'warehouse-sales', label: 'Warehouse sales', local: 'WAREHOUSE', heading: (c) => `Warehouse sales in ${c}`, blurb: (c) => `Clearances and sample sales around ${c}. Here for a minute, gone the next.` },
   { key: 'pop-up-sales', label: 'Pop-up sales', local: 'MARKET', heading: (c) => `Pop-up sales & shops in ${c}`, blurb: (c) => `Here today, gone tomorrow: pop-up shops, stalls and limited-time sales around ${c}.` },
-  { key: 'community-events', label: 'Community', local: 'COMMUNITY', title: (c) => `Community events in ${c}: fetes, fundraisers & meetups`, heading: (c) => `Community events in ${c}`, blurb: (c) => `School fetes, fundraisers, swaps and neighbourhood get-togethers around ${c}.` },
+  { key: 'community-events', label: 'Community', local: 'COMMUNITY', title: (c) => `Community events in ${c}: fetes, fundraisers & meetups`, heading: (c) => `Community events in ${c}`, blurb: (c) => `School fetes, fundraisers and neighbourhood catch-ups around ${c}.` },
 ]
 export const topicDef = (key: string) => TOPICS.find((t) => t.key === key)
 

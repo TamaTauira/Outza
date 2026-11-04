@@ -1,4 +1,4 @@
-import { pickDance, type DanceId } from '@/lib/mascot-dances'
+import { DANCE_LABELS, pickDance, type DanceId } from '@/lib/mascot-dances'
 import {
   HOVER_LINES,
   HOVER_POOL,
@@ -136,10 +136,12 @@ export function attachMascot(slot: HTMLElement): () => void {
     button.style.setProperty('--vp-y', '0')
     button.removeAttribute('data-mood')
     let gen = 0
+    let partyLabel: string | null = null
     if (id === 'party') {
       gen = ++partyGen
       const dance = pickDance(lastDance)
       lastDance = dance
+      partyLabel = DANCE_LABELS[dance]
       // Drop the attribute and reflow so the next routine's animation actually restarts.
       // Without this, a second double-click keeps the first dance's timeline (Safari and Chrome).
       button.removeAttribute('data-dance')
@@ -152,7 +154,7 @@ export function attachMascot(slot: HTMLElement): () => void {
       button.removeAttribute('data-dance-run')
     }
     button.setAttribute('data-react', id)
-    setLine(line ?? (id === 'party' ? PARTY_LINE : REACTION_LINES[id]))
+    setLine(line ?? partyLabel ?? (id === 'party' ? PARTY_LINE : REACTION_LINES[id]))
     spawnBits(fx, id)
     const ms = reduce ? 1400 : id === 'party' ? PARTY_MS : REACTION_MS[id]
     later(() => {

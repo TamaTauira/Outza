@@ -58,7 +58,7 @@ function slot(event: NlEvent, img: string | null): Slot {
 function input(): RenderInput {
   const hero = ev({ id: 'hero1', title: 'Big Friday gig', whyLine: 'Because you follow Music' })
   const weekend = ev({ id: 'week1', title: 'Saturday market', category: 'Community', suburb: 'Surry Hills', venueName: 'Crown Street', whyLine: 'Near Surry Hills', isFree: true, priceMin: 0, price: 'Free' })
-  const saved = ev({ id: 'save1', title: 'The gig you kept', whyLine: 'On your watchlist', travel: 'About 18 min walk from The Imperial', date: new Date('2026-10-31T00:00:00.000Z') })
+  const saved = ev({ id: 'save1', title: 'The gig you kept', whyLine: 'One of your keepers', travel: 'About 18 min walk from The Imperial', date: new Date('2026-10-31T00:00:00.000Z') })
   const cheap = ev({ id: 'free1', title: 'Cheap laughs', category: 'Arts & Culture', whyLine: 'Because you follow comedy', isFree: true, priceMin: 0, price: 'Free', imageUrl: null, hasImage: false })
   return {
     ctx: { sendId: 'preview', edition: 'weekly', issueDate: '2026-10-29', city: 'Sydney' },
@@ -97,7 +97,7 @@ test('the digest html is personal, table-based, and Gmail-safe', () => {
   assert.match(html, /Because you follow Music/)
   assert.match(html, /This weekend near you/)
   assert.match(html, /Near Surry Hills/)
-  assert.match(html, /Saved events coming up/)
+  assert.match(html, /The keepers, coming up/)
   assert.match(html, /Reminder: you asked for a nudge/)
   assert.match(html, /About 18 min walk from The Imperial/)
   assert.match(html, /Free or cheap/)

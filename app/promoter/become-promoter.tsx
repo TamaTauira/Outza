@@ -23,7 +23,7 @@ export function BecomePromoter() {
       router.refresh()
     } catch (e) {
       console.error(e)
-      toast.error('Could not switch your account. Please try again.')
+      toast.error('Could not switch your account. Try again.')
       setLoading(false)
     }
   }
