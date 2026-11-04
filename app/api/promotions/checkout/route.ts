@@ -6,6 +6,7 @@ import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/sessi
 import { PRO_PLAN, isAddon, isDuration, isTier, quote, type Addon } from '@/lib/tiers'
 import { activateOrder, activateProPass, isProActive } from '@/lib/promotions'
 import { notifyPromotionPurchased, notifyProPurchased } from '@/lib/promotion-email'
+import { unpaidTestCheckoutAllowed } from '@/lib/checkout-gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,10 @@ export async function POST(req: Request) {
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
   const body = await req.json().catch(() => ({}))
-  const secretKey = process.env.STRIPE_SECRET_KEY
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim() || ''
+  if (!secretKey && !unpaidTestCheckoutAllowed()) {
+    return NextResponse.json({ error: 'Payments are not switched on yet.' }, { status: 503 })
+  }
   const origin = req.headers.get('origin') || new URL(req.url).origin
 
   if (body?.plan === 'PRO') {
