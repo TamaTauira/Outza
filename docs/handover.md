@@ -240,27 +240,30 @@ More owner preferences:
 
 ---
 
-## 9. Open to-do list (from the owner's latest requests)
+## 9. Open to-do list
 
-**Done in preview, not deployed:** `/map` + `/saved` URLs (Back works, bookmarkable); Saved badge/list mismatch; board search double ×; selected Free chip readable; whole board row clickable with focus state; titles wrap to 2 lines; hide ended events by default ("Show ended" opt-in, default "Now & next"); comedy/theatre no longer classed as Music for **new** rows.
+The 27 Oct list is kept here so older notes are not lost. Items retested on 4 Nov 2026 are marked. New findings from that audit are merged into the same list rather than copied into a second backlog. The full evidence is in `docs/qa/VIBEPEEP-QA-REPORT.md`.
 
-**Not done yet (priority order):**
-1. **VibePeep Local "Publish free listing" is blocked** by the browser message "Please enter a URL": the import card's `required` URL input sits inside the same `<form>` as the listing form. Split them into separate forms (`app/local/local-submit-form.tsx`, `app/local/local-import-card.tsx`, `app/local/local-client.tsx`).
-2. Local title: add `maxLength={100}` + "n/100" counter (server already trims to 100 in `lib/local.ts` `parseLocal`).
-3. Local tab: first tap sometimes does nothing / no loading indicator (`local-client.tsx` `setTab` uses `router.replace`). Local list titles get cut off (allow 2 lines).
-4. `/login`: wrong password shows no error (`app/login/page.tsx`: `signIn(..., { redirect: false })`, then check `res?.error` and show a message). Login/signup pages have no site navigation (`components/auth-shell.tsx`).
-5. Itinerary page header: guest links (For promoters / Sign In / Sign Up) hidden on small screens. Make them reachable on mobile (e.g. in a menu) without a redesign.
-6. Ask VibePeep: layout shift when results open (reserve space / min-height in `components/ai-search-bar.tsx`).
-7. Event detail with no image: branded fallback hero (category colour + title) instead of an empty block (`event-detail-client.tsx`, `components/event-image.tsx`).
-8. Map: skeleton while loading and show the list meanwhile (`components/map-view.tsx`).
-9. "Hot right now" carousel: pause control, respect `prefers-reduced-motion`, consistent aspect ratio, subtle overlay for text legibility (`components/featured-turnstile.tsx`).
-10. Existing DB rows: comedy/theatre still tagged Music until refreshed; consider a one-off safe re-classify script (update only, no deletes).
-11. "Tai Chi for Eveyone" typo: check whether the source feed spells it that way. Don't overwrite moderated or organiser data without the owner's OK.
-12. Accessibility pass: text ≥14px (16px mobile), contrast 4.5:1 site-wide.
-13. Ask the owner whether past events should also be hidden on promoter/admin dashboards.
-14. `app/error.tsx` back link should use the Back-to-events component.
-15. VibePeep Intelligence remaining work (§4.12).
-16. Not yet browser-tested: adding to the itinerary while saving (should never change the Saved count).
+**Retested and no longer open**
+1. Local publish is not blocked by a required import URL. The live form is `app/local/community-submit-form.tsx` (`/local?tab=submit`). A browser check found no `input[type=url]`.
+2. Local title already has `maxLength={100}`. The live form now also shows an `n/100` counter.
+4. A wrong password on `/login` shows “That email or password didn’t match.” Confirmed in a browser against production. Auth pages still use the logo as the way home; they do not have the full site menu (still open, below).
+
+**Still open (priority order)**
+1. Home mobile Lighthouse performance was 70, with LCP about 7.2s, on a lab phone profile (4 Nov 2026). API reads were mostly under half a second. This needs a focused performance pass, not a redesign.
+2. `POST /api/events/[id]/click` increments ticket clicks with no session. Add a limit that does not punish a real guest tapping Get Tickets.
+3. Signup has no rate limit. Password minimum is 6 characters.
+4. About 5,500 active events have no coordinates, so they cannot be mapped. Do not bulk-geocode without a reviewed job.
+5. Past events are hidden on the public board and return 404, but thousands of past rows are still `SCHEDULED`. Do not delete them. Ask the owner before hiding them on promoter and admin dashboards.
+6. Some imported titles or descriptions still say “sold out” or “selling fast”. Do not rewrite organiser copy without a review.
+7. Accessibility: the mobile Filters control had no accessible name, and the mascot minimise control was under 24px. Both are fixed in code; retest Lighthouse after deploy. A full contrast and type-size pass is still open.
+8. Login and signup have no full site navigation, only the logo home link.
+9. Ask VibePeep can still match a venue whose name contains the query (“theatre” in a venue name) when no title does.
+10. Push notifications, a service worker and geofenced alerts are not built. Do not treat that as a broken feature.
+11. VibePeep Intelligence remaining work (§4.12).
+12. “Tai Chi for Eveyone”: check the source spelling before changing a listing.
+13. Not yet browser-tested: adding to the itinerary while saving (should never change the Saved count).
+14. Owner configuration still required: `AI_GATEWAY_API_KEY` or OIDC for model search, a verified Resend from-address, and `BUSINESS_ABN` when there is a real ABN. Do not invent an ABN.
 
 ---
 

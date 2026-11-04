@@ -13,6 +13,7 @@ import { CITIES } from '@/lib/cities'
 import { cn } from '@/lib/utils'
 import { GoogleButton } from '@/components/google-button'
 import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
+import { safeNextPath } from '@/lib/safe-next'
 import { ProfileFields } from '@/components/profile-fields'
 
 function SignupForm() {
@@ -56,12 +57,12 @@ function SignupForm() {
         setNotice('')
         setError('Account created. Sign in with the email and password you just chose.')
         const q = new URLSearchParams({ created: '1', email: email.trim().toLowerCase() })
-        const next = params.get('next')
+        const next = safeNextPath(params.get('next'), '')
         if (next) q.set('next', next)
         router.push(`/login?${q.toString()}`)
         return
       }
-      router.replace(params.get('next') || (role === 'PROMOTER' ? '/promoter' : '/account'))
+      router.replace(safeNextPath(params.get('next'), role === 'PROMOTER' ? '/promoter' : '/account'))
     } catch (err) {
       console.error(err)
       setError('Something went wrong. Try again in a moment.')

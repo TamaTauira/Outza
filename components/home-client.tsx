@@ -473,7 +473,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   <ToggleChip active={filters.isLGBTI} onClick={() => update({ isLGBTI: !filters.isLGBTI })} label="LGBTIQ+" />
                   <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
                   <button
+                  type="button"
                   onClick={() => setShowFilters(true)}
+                  aria-label="Filters"
                   className={cn('h-9 flex items-center gap-2 px-3 rounded-md border text-sm transition-colors', advancedCount ? 'border-primary text-primary' : 'border-border hover:bg-muted')}>
                   
                     <SlidersHorizontal className="w-4 h-4" />

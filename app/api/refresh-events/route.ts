@@ -2,12 +2,16 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 import { NextRequest, NextResponse } from 'next/server'
+import { cronAuthorized } from '@/lib/cron-auth'
 import { refreshSources } from '@/lib/refresh'
 import { REFRESH_CHUNKS, REFRESH_INVOCATION_BUDGET_MS } from '@/lib/refresh-plan'
+import { getSessionUser } from '@/lib/session'
 
-/** POST /api/refresh-events?source=Ticketmaster or ?sources=Moshtix,Oztix or ?finalize=1 */
+/** POST /api/refresh-events?source=Ticketmaster or ?sources=Moshtix,Oztix or ?finalize=1. Cron and admins only. */
 export async function POST(request: NextRequest) {
   try {
+    const me = await getSessionUser().catch(() => null)
+    if (!cronAuthorized(request, me?.role)) return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
     const sp = request.nextUrl.searchParams
     const raw = sp.get('sources') ?? sp.get('source') ?? ''
     const sources = raw.split(',').map((s) => s.trim()).filter(Boolean)

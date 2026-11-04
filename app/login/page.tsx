@@ -4,6 +4,7 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { establishSession } from '@/lib/establish-session'
+import { safeNextPath } from '@/lib/safe-next'
 import { Loader2, Megaphone, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
@@ -18,7 +19,7 @@ function LoginForm() {
   const params = useSearchParams()
   const nextParam = params.get('next')
   const [mode, setMode] = useState<'CONSUMER' | 'PROMOTER'>(params.get('as') === 'promoter' || nextParam?.startsWith('/promoter') ? 'PROMOTER' : 'CONSUMER')
-  const next = nextParam || (mode === 'PROMOTER' ? '/promoter' : '/')
+  const next = safeNextPath(nextParam, mode === 'PROMOTER' ? '/promoter' : '/')
   const [email, setEmail] = useState(() => params.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -89,7 +90,7 @@ function LoginForm() {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground text-center">
-          New here? <Link href={`/signup${nextParam && nextParam !== '/' ? `?next=${encodeURIComponent(nextParam)}` : ''}`} className="text-primary font-medium hover:underline">Create an account</Link>
+          New here? <Link href={`/signup${next !== '/' ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-primary font-medium hover:underline">Create an account</Link>
         </p>
       )}
     </form>

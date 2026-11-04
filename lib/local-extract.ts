@@ -16,8 +16,10 @@ const KEYS: (keyof ExtractedListing)[] = ['title', 'category', 'description', 'a
 export class ExtractError extends Error {}
 
 const BLOCKED_HOSTS = /(^|\.)(facebook\.com|fb\.me|fb\.com|instagram\.com|messenger\.com|whatsapp\.com)$/i
-const privateIp = (ip: string) =>
-  /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(ip) || ip === '::1' || /^f[cd]/i.test(ip) || /^fe80/i.test(ip)
+/** True for loopback, link-local, private and shared (CGNAT) addresses. */
+export function isPrivateAddress(ip: string): boolean {
+  return /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(ip) || ip === '::1' || /^f[cd]/i.test(ip) || /^fe80/i.test(ip)
+}
 
 /** Fetches a public web page safely (no private networks, size and time capped) and returns readable text. */
 export async function readPage(raw: string): Promise<{ text: string; url: string }> {
@@ -29,7 +31,7 @@ export async function readPage(raw: string): Promise<{ text: string; url: string
   if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) throw new ExtractError('That link can’t be imported.')
   const addrs = isIP(host) ? [{ address: host }] : await lookup(host, { all: true }).catch(() => [])
   if (!addrs.length) throw new ExtractError('We couldn’t reach that website. Check the link and try again.')
-  if (addrs.some((a) => privateIp(a.address))) throw new ExtractError('That link can’t be imported.')
+  if (addrs.some((a) => isPrivateAddress(a.address))) throw new ExtractError('That link can’t be imported.')
 
   const res = await fetch(u, {
     redirect: 'follow', signal: AbortSignal.timeout(12000),
@@ -37,6 +39,13 @@ export async function readPage(raw: string): Promise<{ text: string; url: string
   }).catch(() => null)
   if (!res || !res.ok) throw new ExtractError(`We couldn’t open that page${res ? ` (error ${res.status})` : ''}. Try uploading the flyer instead.`)
   if (res.url && BLOCKED_HOSTS.test(new URL(res.url).hostname)) throw new ExtractError('We don’t read Facebook or Instagram pages. Upload the flyer or paste the details instead.')
+  // A redirect can land on a private host even when the first URL was public.
+  if (res.url) {
+    const landed = new URL(res.url).hostname.replace(/^\[|\]$/g, '')
+    if (landed === 'localhost' || landed.endsWith('.local') || landed.endsWith('.internal')) throw new ExtractError('That link can’t be imported.')
+    const landedAddrs = isIP(landed) ? [{ address: landed }] : await lookup(landed, { all: true }).catch(() => [])
+    if (landedAddrs.some((a) => isPrivateAddress(a.address))) throw new ExtractError('That link can’t be imported.')
+  }
   const type = res.headers.get('content-type') ?? ''
   if (!/html|text\/plain/i.test(type)) throw new ExtractError('That link isn’t a web page. If it’s a PDF, download it and upload it here instead.')
   const html = (await res.text()).slice(0, 600_000)

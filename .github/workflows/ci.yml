@@ -1,0 +1,40 @@
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: corepack enable && corepack yarn install --immutable
+      - name: Generate Prisma client
+        run: corepack yarn exec prisma generate
+      - name: Unit tests
+        run: corepack yarn test
+
+  browser:
+    name: browser smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: corepack enable && corepack yarn install --immutable
+      - name: Install Chromium
+        run: corepack yarn exec playwright install --with-deps chromium
+      - name: Public smoke and axe
+        run: corepack yarn exec playwright test
+        env:
+          CI: '1'
+          PLAYWRIGHT_BASE_URL: https://outza-outza.vercel.app
