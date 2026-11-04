@@ -136,6 +136,11 @@ export function attachRoam(root: HTMLElement): () => void {
     return { width, height }
   }
 
+  const edgeGap = () => {
+    const bar = Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+    return mobileMq.matches ? 12 : bar + 12
+  }
+
   const bounds = (): Bounds => {
     const fullW = window.innerWidth
     const fullH = window.innerHeight
@@ -155,16 +160,20 @@ export function attachRoam(root: HTMLElement): () => void {
         segmentLimited: limitedH,
       }),
     })
-    if (!map) return base
+    const gutter = edgeGap()
+    const insetX = Math.max(base.minX, 12)
+    const insetMaxX = Math.max(insetX, fullW - box.width - 4 - gutter)
+    const insetMinY = Math.max(base.minY, 16)
+    if (!map) return { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
     const stage = document.querySelector<HTMLElement>('.vp-map-stage')
-    if (!stage) return base
+    if (!stage) return { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
     const rect = stage.getBoundingClientRect()
-    if (rect.width < 48 || rect.height < 48) return base
+    if (rect.width < 48 || rect.height < 48) return { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
     const dock = Number.parseFloat(getComputedStyle(stage).getPropertyValue('--vp-map-dock')) || 0
     const crowded = rect.height < box.height + dock + 160
-    const minX = Math.max(8, rect.left + (crowded ? 8 : 24))
-    const minY = Math.max(8, rect.top + (crowded ? 52 : 120))
-    const maxX = Math.max(minX, rect.right - box.width - (crowded ? 48 : 72))
+    const minX = Math.max(insetX, rect.left + (crowded ? 8 : 24))
+    const minY = Math.max(insetMinY, rect.top + (crowded ? 52 : 120))
+    const maxX = Math.max(minX, Math.min(insetMaxX, rect.right - box.width - (crowded ? 48 : 72)))
     const maxY = Math.max(minY, rect.bottom - box.height - dock - (crowded ? 12 : 96))
     return { minX, minY, maxX, maxY }
   }
@@ -183,10 +192,9 @@ export function attachRoam(root: HTMLElement): () => void {
   const coversCopy = (x: number, y: number) => {
     const s = size()
     const h = Math.max(s, figure().height)
-    const closeTop = mobileMq.matches ? 42 : 36
     const boxes = [
       { left: x, top: y, right: x + s, bottom: y + h },
-      { left: x + s * 0.64 + 12, top: y - closeTop, right: x + s * 0.64 + 32, bottom: y - closeTop + 20 },
+      { left: x + s - 16, top: y - 4, right: x + s + 4, bottom: y + 16 },
     ]
     const pad = 8
     const nodes = document.querySelectorAll(BLOCK)
@@ -233,13 +241,43 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const park = () => {
     const box = bounds()
-    let spot = null
-    if (!mobileMq.matches && location.pathname.startsWith('/local')) {
+    const s = size()
+    const gutter = edgeGap()
+    const maxX = Math.min(box.maxX, window.innerWidth - s - 4 - gutter)
+    let spot: Point | null = null
+    const path = location.pathname
+    if (!mobileMq.matches && (path === '/' || path === '')) {
+      const feature = Array.from(document.querySelectorAll('a')).find((el) => /feature your event/i.test(el.textContent || ''))
+      const hero = document.querySelector('main section.rounded-2xl')
+      if (feature && hero) {
+        const fr = feature.getBoundingClientRect()
+        const hr = hero.getBoundingClientRect()
+        const x = Math.max(box.minX, Math.min(maxX, fr.right + 16))
+        for (let y = Math.max(box.minY, hr.bottom + 8); y <= Math.min(box.maxY, hr.bottom + 180); y += 8) {
+          if (!coversCopy(x, y)) {
+            spot = { x, y }
+            break
+          }
+        }
+      }
+    } else if (mobileMq.matches && (path === '/' || path.startsWith('/local'))) {
+      const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - 4 - 16))
+      let y = box.minY
+      if (path.startsWith('/local')) {
+        const heading = document.querySelector('main h1')
+        if (heading) y = Math.max(y, heading.getBoundingClientRect().bottom + 16)
+      }
+      for (let yy = y; yy <= box.maxY; yy += 12) {
+        if (!coversCopy(x, yy)) {
+          spot = { x, y: yy }
+          break
+        }
+      }
+    } else if (!mobileMq.matches && path.startsWith('/local')) {
       const tab = Array.from(document.querySelectorAll('main button')).find((el) => /nearby|list something/i.test(el.textContent || ''))
       const bar = tab?.parentElement?.getBoundingClientRect()
       if (bar && bar.bottom > 40) {
-        const s = size()
-        const x = Math.max(8, window.innerWidth - (s * 0.64 + 32) - 8)
+        const x = Math.max(box.minX, maxX)
         for (let y = Math.max(box.minY, bar.bottom + 16); y <= Math.min(box.maxY, bar.bottom + 320); y += 12) {
           if (!coversCopy(x, y)) {
             spot = { x, y }
@@ -248,7 +286,7 @@ export function attachRoam(root: HTMLElement): () => void {
         }
       }
     }
-    pos = spot ?? firstClear(box)
+    pos = spot ?? firstClear({ ...box, maxX })
     face = 'right'
     root.dataset.ready = '1'
     setMove('still')

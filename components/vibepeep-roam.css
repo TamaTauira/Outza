@@ -19,9 +19,9 @@
 
 @media (max-width: 639px) {
   .vp-roam .vp-buddy-min {
-    top: -42px;
-    left: calc(64% + 14px);
-    right: auto;
+    top: -4px;
+    right: -4px;
+    left: auto;
     translate: none;
   }
 }
@@ -32,9 +32,9 @@
   }
 
   .vp-roam .vp-buddy-min {
-    top: -36px;
-    left: calc(64% + 12px);
-    right: auto;
+    top: -4px;
+    right: -4px;
+    left: auto;
     translate: none;
   }
 

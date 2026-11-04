@@ -1182,7 +1182,7 @@ html[data-peepclose='1'] .vp-roam {
 
 .vp-roam[data-closeup='1'][data-move='hop'] .vp-dance-label,
 .vp-roam[data-closeup='1'][data-move='idle'] .vp-dance-label {
-  top: 16px;
+  top: calc(100% + 6px);
   bottom: auto;
 }
 
@@ -1269,13 +1269,13 @@ html[data-peepclose='1'] .vp-roam {
 }
 
 .vp-roam[data-showoff='1'] .vp-dance-label {
-  position: fixed;
+  position: absolute;
   left: 50%;
   right: auto;
-  top: auto;
-  bottom: 18px;
+  top: calc(100% + 6px);
+  bottom: auto;
   translate: -50% 0;
-  font-size: 28px;
+  font-size: 22px;
   z-index: 40;
 }
 
@@ -1284,9 +1284,9 @@ html[data-peepclose='1'] .vp-roam {
     position: absolute;
     left: 50%;
     right: auto;
-    top: auto;
-    bottom: -2px;
-    translate: -50% 100%;
+    top: calc(100% + 6px);
+    bottom: auto;
+    translate: -50% 0;
     font-size: 11px;
     z-index: 7;
   }
