@@ -7,7 +7,8 @@
  */
 import { prisma } from '../lib/prisma'
 import { canonicalizeListingUrl, decideDuplicate, sessionDate } from '../lib/event-identity'
-import { frontierShowsFromHtml } from '../lib/frontier-shows'
+import { duplicateGroupKeys } from '../lib/duplicate-peers'
+import { frontierShowsFromHtml, type FrontierShow } from '../lib/frontier-shows'
 import { isWeakVenueName } from '../lib/place-match'
 import { planLinkedFill, type FillEvent } from '../lib/linked-fill'
 import { makeDedupeHash, makeSeriesKey } from '../lib/event-store'
@@ -79,12 +80,11 @@ async function mergeDuplicates(rows: Row[]) {
   const groups = new Map<string, Row[]>()
   for (const row of rows) {
     if (protectedRow(row)) continue
-    const day = row.date.toISOString().slice(0, 10)
-    const keys = new Set<string>([`${row.city}|${day}`])
-    for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
-      const url = canonicalizeListingUrl(raw)
-      if (url) keys.add(`url:${url}|${day}`)
-    }
+    const keys = duplicateGroupKeys({
+      city: row.city,
+      date: row.date.toISOString().slice(0, 10),
+      urls: [row.sourceUrl, row.ticketUrl, row.organiserUrl],
+    })
     for (const key of keys) groups.set(key, [...(groups.get(key) ?? []), row])
   }
   const rank = (row: Row) => (SOURCES[row.source]?.trust ?? 20) + (isWeakVenueName(row.venueName, row.venueAddress) ? 0 : 5)
@@ -247,11 +247,67 @@ async function realignSessions() {
   return moved
 }
 
-/** The tour page lists the venue for each date. Copy that venue back onto the row for that date. */
-async function alignFrontierVenues(rows: Row[]) {
+async function frontierTourPage(): Promise<FrontierShow[]> {
   const res = await fetch('https://www.frontiertouring.com/', { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' } })
   if (!res.ok) throw new Error(`frontier homepage ${res.status}`)
-  const shows = frontierShowsFromHtml(await res.text())
+  return frontierShowsFromHtml(await res.text())
+}
+
+/**
+ * Each tour date gets its own source id (slug|date).
+ * The next import then updates that date, not whichever row last saw the shared page.
+ */
+async function lockFrontierShows(shows: FrontierShow[]) {
+  const from = process.env.REPAIR_FROM
+  const to = process.env.REPAIR_TO
+  const rows = await prisma.event.findMany({
+    where: {
+      source: 'frontier',
+      deletedAt: null,
+      duplicateOfId: null,
+      ...(from && to ? { date: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T00:00:00.000Z`) } } : {}),
+    },
+    select: { id: true, date: true, time: true, sourceUrl: true, ticketUrl: true },
+  })
+  const byKey = new Map(shows.map((show) => [`${canonicalizeListingUrl(show.url)}|${show.date}`, show]))
+  let locked = 0
+  for (const row of rows) {
+    const day = row.date.toISOString().slice(0, 10)
+    const stored = row.sourceUrl || row.ticketUrl
+    const canonical = canonicalizeListingUrl(stored)
+    const show = canonical ? byKey.get(`${canonical}|${day}`) : undefined
+    if (!show) continue
+    locked++
+    if (dry) continue
+    const data = {
+      externalId: show.externalId,
+      sessionKey: `${day}|${row.time ?? ''}`,
+      canonicalUrl: canonical,
+      sourceUrl: stored,
+      missing: false,
+      seenAt: new Date(),
+    }
+    try {
+      await prisma.sourceRecord.upsert({
+        where: { eventId_source: { eventId: row.id, source: 'frontier' } },
+        create: { eventId: row.id, source: 'frontier', ...data },
+        update: data,
+      })
+    } catch (err) {
+      const code = (err as { code?: string }).code
+      if (code === 'P2002') {
+        console.log(`[repair] frontier id ${show.externalId} already kept on another row`)
+        continue
+      }
+      throw err
+    }
+  }
+  console.log(`[repair] ${locked} frontier dates locked to their own start${dry ? ' (dry run)' : ''}`)
+  return locked
+}
+
+/** The tour page lists the venue for each date. Copy that venue back onto the row for that date. */
+async function alignFrontierVenues(rows: Row[], shows: FrontierShow[]) {
   const byKey = new Map(shows.map((show) => [`${canonicalizeListingUrl(show.url)}|${show.date}`, show]))
   let restored = 0
   for (const row of rows) {
@@ -287,12 +343,14 @@ async function alignFrontierVenues(rows: Row[]) {
 }
 
 async function main() {
+  const shows = await frontierTourPage()
   const sessions = await realignSessions()
   const rows = await loadRows()
-  const venues = await alignFrontierVenues(rows)
+  const venues = await alignFrontierVenues(rows, shows)
+  const locked = await lockFrontierShows(shows)
   const merged = await mergeDuplicates(rows)
   const tags = process.env.REPAIR_SKIP_RETAG === '1' ? null : await retag()
-  console.log('[repair] done', { sessions, venues, merged, ...(tags ?? {}), dry })
+  console.log('[repair] done', { sessions, venues, locked, merged, ...(tags ?? {}), dry })
 }
 
 main()
