@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
 import { ORGANISER_PLANS, isPlanId, refundEligible, refundWindowHours } from '@/lib/sponsorship'
-import { cancelPlan, changePlan, createPlanSession, payments, planPriceId, prepareCatalog, refundSubscription } from '@/lib/sponsorship-billing'
+import { cancelPlan, changePlan, createPlanSession, payments, planPriceId, prepareCatalog, refundSubscription, trialAlreadyUsed } from '@/lib/sponsorship-billing'
 import { activePlan, missingTable, planKeyOf } from '@/lib/sponsorship-store'
+import { unverifiedGate } from '@/lib/account-flow'
+import { trialConsentCopy, trialPeriodDays } from '@/lib/account-trust'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +61,9 @@ export async function GET() {
         hostedUrl: row.hostedUrl,
       })),
       refund: refund.ok ? { eligible: true, reason: '' } : { eligible: false, reason: refund.reason },
+      trialDays: trialPeriodDays(),
+      trialAvailable: !(await trialAlreadyUsed(me.id).catch(() => true)),
+      trialConsent: trialConsentCopy(trialPeriodDays(), !(await trialAlreadyUsed(me.id).catch(() => true))),
     })
   } catch (error) {
     if (missingTable(error)) {
@@ -83,6 +88,10 @@ export async function POST(req: Request) {
   if (!isPromoter(me.role)) return forbidden()
   const body = await req.json().catch(() => ({}))
   const action = body?.action
+  if (action === 'checkout' || action === 'change') {
+    const gate = await unverifiedGate(me.id)
+    if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     if (action === 'cancel') {
       const result = await cancelPlan(me.id)
@@ -113,7 +122,8 @@ export async function POST(req: Request) {
       return NextResponse.json(changed)
     }
     if (body?.consent !== true) {
-      return NextResponse.json({ error: 'Tick the box. The plan charges today and then monthly until you cancel. There is no free trial.' }, { status: 400 })
+      const eligible = !(await trialAlreadyUsed(me.id).catch(() => true))
+      return NextResponse.json({ error: `Tick the box. ${trialConsentCopy(trialPeriodDays(), eligible)}` }, { status: 400 })
     }
     const plan = ORGANISER_PLANS.find((row) => row.id === body.planId)!
     const pending = await prisma.organiserSubscription.create({

@@ -48,14 +48,14 @@ export async function ensureCatalog() {
 
 export async function activePlan(userId: string) {
   return prisma.organiserSubscription.findFirst({
-    where: { userId, status: 'ACTIVE' },
+    where: { userId, status: { in: ['ACTIVE', 'TRIALING'] } },
     orderBy: { amountCents: 'desc' },
     include: { plan: true },
   })
 }
 
 export function planKeyOf(sub: { planId: string; status: string; currentPeriodEnd: Date | null } | null): PlanId | null {
-  if (!sub || sub.status !== 'ACTIVE') return null
+  if (!sub || (sub.status !== 'ACTIVE' && sub.status !== 'TRIALING')) return null
   if (sub.currentPeriodEnd && sub.currentPeriodEnd <= new Date()) return null
   return planDef(sub.planId)?.id ?? null
 }

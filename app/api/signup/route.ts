@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { isPostcode, parseBirthYear, under16GeoBlock } from '@/lib/profile-shared'
+import { sendVerification } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +37,11 @@ export async function POST(req: Request) {
       data: { email, name, role, orgName, homeCity, birthYear, homePostcode: pc || null, password: await bcrypt.hash(password, 10) },
       select: { id: true, email: true, role: true },
     })
-    return NextResponse.json({ ok: true, user })
+    const verification = await sendVerification(user.id, user.email).catch((err) => {
+      console.error('[account] verification mail failed', err instanceof Error ? err.message : err)
+      return { sent: false as const }
+    })
+    return NextResponse.json({ ok: true, user, verificationSent: verification.sent })
   } catch (e) {
     console.error('signup error', e)
     return NextResponse.json({ error: 'Could not create account' }, { status: 500 })

@@ -36,26 +36,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user?.password) return null
         const ok = await bcrypt.compare(password, user.password)
         if (!ok) return null
-        return { id: user.id, email: user.email, name: user.name, role: user.role }
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          sessionVersion: user.sessionVersion,
+          emailVerified: user.emailVerified,
+        }
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'google' && user.id && (profile as { email_verified?: boolean } | undefined)?.email_verified !== false) {
+        await prisma.user.updateMany({ where: { id: user.id, emailVerified: null }, data: { emailVerified: new Date() } }).catch((err) => {
+          console.error('[auth] google verify', err instanceof Error ? err.message : err)
+        })
+      }
+      return true
+    },
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string
         token.role = (user as { role?: string }).role ?? 'CONSUMER'
+        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0
+        token.emailVerified = !!(user as { emailVerified?: Date | null }).emailVerified
+        return token
       }
-      if (trigger === 'update' && token.id) {
-        const u = await prisma.user.findUnique({ where: { id: token.id }, select: { role: true, name: true } })
-        if (u) { token.role = u.role; token.name = u.name }
+      if (!token.id) return token
+      const row = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: { sessionVersion: true, role: true, name: true, emailVerified: true },
+      })
+      if (!row || row.sessionVersion !== (typeof token.sv === 'number' ? token.sv : 0)) {
+        token.id = ''
+        token.role = undefined
+        token.emailVerified = false
+        return token
       }
+      token.role = row.role
+      token.name = row.name
+      token.emailVerified = !!row.emailVerified
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id
+        session.user.id = token.id || ''
         session.user.role = token.role
+        session.user.verified = !!token.emailVerified
       }
       return session
     },

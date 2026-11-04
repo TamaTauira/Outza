@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { ownershipUiEnabled } from '@/lib/ownership'
 import { canManageVenue, publicVenue, updateVenue } from '@/lib/venue-access'
+import { unverifiedGate } from '@/lib/account-flow'
 import { prisma } from '@/lib/db'
 import { profileCompleteness } from '@/lib/ownership'
 
@@ -37,6 +38,8 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!ownershipUiEnabled()) return NextResponse.json({ error: 'These tools are turned off.' }, { status: 404 })
   const me = await getSessionUser()
   if (!me) return unauthorized()
+  const gate = await unverifiedGate(me.id)
+  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
   const body = await req.json().catch(() => ({}))
   const result = await updateVenue(me.id, id, body)

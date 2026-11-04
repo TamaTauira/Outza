@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import { submitClaim } from '@/lib/claims'
+import { unverifiedGate } from '@/lib/account-flow'
 import { recordLandingFromCookieJar } from '@/lib/landing-stats'
 
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await getSessionUser()
   if (!me) return unauthorized()
+  const gate = await unverifiedGate(me.id)
+  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
   const b = await req.json().catch(() => ({}))
   const r = await submitClaim(me, id, b)

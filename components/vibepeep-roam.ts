@@ -1044,11 +1044,8 @@ export function attachRoam(root: HTMLElement): () => void {
   root.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', onResize, { once: true })
   })
-  const phaseKind = phase.type
-  if (!reduce && phaseKind !== 'goto' && phaseKind !== 'turn') {
+  if (!reduce) {
     phase = { type: 'pause', until: performance.now() + 1600 }
-    kick()
-  } else if (!reduce) {
     kick()
   }
 

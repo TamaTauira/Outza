@@ -10,6 +10,7 @@ import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-
 import { eventPath } from '@/lib/seo'
 import { dedupeFeed, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
 import { aiModeration, expiryFor, findDuplicate, hardBlock, ipHash, parseLocal, recentCount, spamSignals, validateAddress } from '@/lib/local'
+import { unverifiedGate } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -134,6 +135,10 @@ export async function POST(req: Request) {
     if (blocked) return NextResponse.json({ error: blocked }, { status: 400 })
 
     const me = await getSessionUser().catch(() => null)
+    if (me) {
+      const gate = await unverifiedGate(me.id)
+      if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+    }
     const hash = ipHash(req)
     if ((await recentCount(hash, i.contactEmail)) >= 5) return NextResponse.json({ error: 'You’ve added a lot of listings today. Try again tomorrow, or contact us if you run a market or venue.' }, { status: 429 })
 
