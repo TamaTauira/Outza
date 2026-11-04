@@ -274,7 +274,54 @@ export function attachRoam(root: HTMLElement): () => void {
     return best
   }
 
+  const desktopBoard = () => !mobileMq.matches && (location.pathname === '/' || location.pathname === '')
+
+  /** One spot on desktop Board: centred in the Hot right now row, × on screen, clear of the feature link. */
+  const boardSpot = (): Point | null => {
+    if (!desktopBoard()) return null
+    const feature = document.querySelector('[aria-label="Hot right now"] a')
+    const row = feature?.parentElement
+    if (!(feature instanceof HTMLElement) || !(row instanceof HTMLElement)) return null
+    if (!/feature your event/i.test(feature.textContent || '')) return null
+    const fr = feature.getBoundingClientRect()
+    const rr = row.getBoundingClientRect()
+    if (fr.width < 8 || rr.height < 8) return null
+    const s = size()
+    const rig = root.querySelector<HTMLElement>('.vp-rig')
+    const h = rig && rig.clientHeight > 8 ? rig.clientHeight : s * (1092 / 763)
+    const rigBox = rig?.getBoundingClientRect()
+    const btnBox = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
+    const overhang = rigBox && btnBox ? Math.max(4, btnBox.right - rigBox.right) : 4
+    const maxRight = Math.min(fr.left - 16, window.innerWidth - 8)
+    return {
+      x: Math.round(maxRight - s - overhang),
+      y: Math.round(rr.top + (rr.height - h) / 2),
+    }
+  }
+
+  const pinBoard = () => {
+    const fixed = boardSpot()
+    if (!fixed) return false
+    pos = fixed
+    face = 'right'
+    root.dataset.ready = '1'
+    setMove('still')
+    apply()
+    return true
+  }
+
   const park = () => {
+    if (desktopBoard()) {
+      if (!pinBoard()) {
+        let tries = 0
+        const retry = () => {
+          if (!running || pinBoard() || tries++ > 90) return
+          requestAnimationFrame(retry)
+        }
+        requestAnimationFrame(retry)
+      }
+      return
+    }
     const box = bounds()
     const s = size()
     const gutter = edgeGap()
@@ -295,24 +342,7 @@ export function attachRoam(root: HTMLElement): () => void {
       }
       return false
     }
-    if (!mobileMq.matches && (path === '/' || path === '')) {
-      const feature = Array.from(document.querySelectorAll('a')).find((el) => /feature your event/i.test(el.textContent || ''))
-      const row = feature?.parentElement
-      const hero = document.querySelector('main > section.rounded-2xl')
-      if (feature && row) {
-        const fr = feature.getBoundingClientRect()
-        const rr = row.getBoundingClientRect()
-        const h = rigH()
-        const x = fr.left - s - 16
-        let y = rr.bottom - h
-        if (hero) y = Math.max(y, hero.getBoundingClientRect().bottom + 14)
-        if (!place(x, y)) {
-          for (let yy = y; yy <= y + 36; yy += 2) {
-            if (place(x, yy)) break
-          }
-        }
-      }
-    } else if (mobileMq.matches && path === '/') {
+    if (mobileMq.matches && path === '/') {
       const hero = document.querySelector('main > section.rounded-2xl')
       const hot = Array.from(document.querySelectorAll('h2')).find((el) => /hot right now/i.test(el.textContent || ''))
       const x = window.innerWidth - s - 4 - 12
@@ -412,7 +442,9 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const pauseNext = (ms?: number) => {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
-    if (!spotClear(pos.x, pos.y)) {
+    if (desktopBoard()) {
+      pinBoard()
+    } else if (!spotClear(pos.x, pos.y)) {
       pos = firstClear(bounds())
       apply()
     }
@@ -435,6 +467,11 @@ export function attachRoam(root: HTMLElement): () => void {
     if (!running || reduce) return 'sleep'
     lastAct = act
     const box = bounds()
+    if (desktopBoard() && (act === 'hop' || act === 'perch' || act === 'peek' || act === 'bounce' || act === 'chase')) {
+      pinBoard()
+      pauseNext()
+      return 'sleep'
+    }
     if (act === 'hop' || act === 'perch') {
       const pathClear = (from: Point, to: Point) => {
         const steps = Math.max(4, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 16))
@@ -631,7 +668,7 @@ export function attachRoam(root: HTMLElement): () => void {
   const onResize = () => {
     cachedSize = 0
     readChrome()
-    if (reduce) {
+    if (reduce || desktopBoard()) {
       park()
       return
     }
@@ -737,6 +774,10 @@ export function attachRoam(root: HTMLElement): () => void {
   const settle = () => {
     if (!running || dragging) return
     if (phase.type === 'goto' || phase.type === 'bounce' || phase.type === 'chase') return
+    if (desktopBoard()) {
+      pinBoard()
+      return
+    }
     if (!coversCopy(pos.x, pos.y)) return
     park()
   }

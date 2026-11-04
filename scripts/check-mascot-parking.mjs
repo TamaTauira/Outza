@@ -79,8 +79,13 @@ const probe = `(() => {
     right: Math.round(innerWidth - box.right),
     move: root.dataset.move || '',
     overlaps: [...new Set(names)].slice(0, 8),
+    rowTop: row ? Math.round(row.top) : null,
     rowBottom: row ? Math.round(row.bottom) : null,
     featureLeft: feature ? Math.round(feature.getBoundingClientRect().left) : null,
+    btnLeft: Math.round(btn.left),
+    btnRight: Math.round(btn.right),
+    btnTop: Math.round(btn.top),
+    btnBottom: Math.round(btn.bottom),
     heroBottom: hero ? Math.round(hero.bottom) : null,
     hotTop: hot ? Math.round(hot.top) : null,
     gridTop: grid ? Math.round(grid.top) : null,
@@ -110,9 +115,12 @@ for (const [name, w, h, mobile, path] of pages) {
   note(name, info)
   if (info && !info.error) {
     if (name === 'board-desktop') {
-      if (info.heroBottom != null && info.boxTop < info.heroBottom) failures.push(name + ': overlaps the hero')
-      if (info.rowBottom != null && Math.abs(info.feet - info.rowBottom) > 8) failures.push(name + ': feet ' + info.feet + ' vs row ' + info.rowBottom)
-      if (info.featureLeft != null && info.vw - info.right > info.featureLeft - 4) failures.push(name + ': not left of Feature Your Event')
+      const mid = info.y + info.ch / 2
+      const rowMid = info.rowTop != null && info.rowBottom != null ? (info.rowTop + info.rowBottom) / 2 : null
+      if (rowMid != null && Math.abs(mid - rowMid) > 2) failures.push(name + ': centre ' + mid + ' vs row ' + rowMid)
+      if (info.featureLeft != null && info.vw - info.right > info.featureLeft - 16) failures.push(name + ': right edge past Feature Your Event')
+      if (info.right < 8) failures.push(name + ': box closer than 8px, inset ' + info.right)
+      if (info.btnLeft < 0 || info.btnTop < 0 || info.btnRight > info.vw) failures.push(name + ': close button off screen')
     }
     if (name === 'board-phone') {
       if (info.right < 10 || info.right > 16) failures.push(name + ': right inset ' + info.right)
@@ -123,6 +131,42 @@ for (const [name, w, h, mobile, path] of pages) {
       failures.push(name + ': inside the listings grid')
     }
   }
+}
+
+await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false, scale: 1 })
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
+await send('Page.navigate', { url: base + '/?parkcheck=live' })
+const ready = async () => {
+  for (let i = 0; i < 40; i++) {
+    const ok = await ev(`location.search.includes('parkcheck=live') && !!document.querySelector('.vp-roam[data-ready] .vp-rig')`)
+    if (ok) return true
+    await sleep(100)
+  }
+  return false
+}
+if (!(await ready())) failures.push('board-desktop t0: mascot never parked')
+const live = []
+for (const label of ['t0', 't1', 't2']) {
+  if (label !== 't0') await sleep(1000)
+  await ev(`document.querySelectorAll('nextjs-portal').forEach((el) => el.remove())`)
+  const raw = await ev(probe)
+  let info
+  try { info = JSON.parse(raw) } catch { info = { error: String(raw) } }
+  console.log('board-desktop', label, JSON.stringify(info))
+  note('board-desktop ' + label, info)
+  live.push(info)
+  if (info && !info.error) {
+    const mid = info.y + info.ch / 2
+    const rowMid = info.rowTop != null && info.rowBottom != null ? (info.rowTop + info.rowBottom) / 2 : null
+    if (rowMid != null && Math.abs(mid - rowMid) > 2) failures.push(label + ': centre ' + mid + ' vs row ' + rowMid)
+    if (info.featureLeft != null && info.vw - info.right > info.featureLeft - 16) failures.push(label + ': right edge past Feature Your Event')
+    if (info.right < 8) failures.push(label + ': box closer than 8px, inset ' + info.right)
+    if (info.btnLeft < 0 || info.btnTop < 0 || info.btnRight > info.vw) failures.push(label + ': close button off screen')
+  }
+}
+if (live.length === 3 && live.every((info) => info && !info.error)) {
+  const same = live.every((info) => Math.abs(info.x - live[0].x) <= 2 && Math.abs(info.y - live[0].y) <= 2)
+  if (!same) failures.push('board-desktop moved after load: ' + live.map((info) => info.x + ',' + info.y).join(' -> '))
 }
 
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
