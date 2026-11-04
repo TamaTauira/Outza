@@ -72,9 +72,9 @@
   height: 100%;
   z-index: 0;
   font-family: inherit;
-  background: #f6f1e8;
+  background: #f2f3f0;
 }
-.dark .leaflet-container { background: #1c1916; }
+.dark .leaflet-container { background: #0c0c0c; }
 .leaflet-gl-layer, .maplibregl-map { background: transparent; }
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none; }
 
@@ -126,6 +126,35 @@
 .se-map .leaflet-control-attribution { background: rgba(255,255,255,.6); border-radius: 8px 0 0 0; font-size: 10px; }
 .dark .se-map .leaflet-control-attribution { background: rgba(0,0,0,.5); color: #bbb; }
 .dark .se-map .leaflet-control-attribution a { color: #ddd; }
+
+/* Map chrome stays inside the page. Sheets, Ask and dialogs portal above it. */
+.vp-map-main {
+  isolation: isolate;
+  z-index: 0;
+}
+.vp-map-stage { --vp-map-dock: 0px; }
+.vp-map-stage .leaflet-bottom { bottom: var(--vp-map-dock, 0px); }
+.vp-map-stage .leaflet-bottom.leaflet-left {
+  max-width: calc(100% - 4.75rem);
+}
+.vp-map-stage .leaflet-control-attribution {
+  display: block;
+  max-width: 100%;
+  margin-bottom: 6px !important;
+  margin-left: 6px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-height: 520px) {
+  .vp-map-toolbar { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+  .vp-map-chips { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+  .vp-map-count { display: none; }
+  .vp-map-stage .leaflet-control-zoom { display: none; }
+  .vp-map-cards { padding-top: 0.25rem; padding-bottom: 0.35rem; gap: 0.4rem; }
+  .vp-map-cards button { padding: 0.4rem 0.65rem; }
+  .vp-map-card-venue { display: none; }
+}
 
 .rainbow-badge {
   background: linear-gradient(90deg, #FF0018, #FFA52C, #FFFF41, #008018, #0000F9, #86007D);

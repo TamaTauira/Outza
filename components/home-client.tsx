@@ -13,7 +13,7 @@ import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
-import { CalendarDays, Check, LayoutGrid, MapPin, Search, SlidersHorizontal, X } from 'lucide-react';
+import { CalendarDays, Check, LayoutGrid, MapPin, Search, SlidersHorizontal, Ticket, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -270,7 +270,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
       <Navbar savedCount={saved.length} />
 
-      <main className={view === 'map' ? 'vp-map-main relative h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
+      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>
@@ -323,31 +323,45 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           />
         )}
         {view === 'map' && (
-          <>
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-[700] flex flex-col gap-2 p-3">
-              <div className="pointer-events-auto flex gap-2">
-                <label className="inline-flex h-11 w-[46%] max-w-[220px] items-center gap-2 rounded-full border border-border bg-background/95 px-3 shadow-lg backdrop-blur sm:w-[200px]">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="vp-map-toolbar flex shrink-0 items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4 lg:gap-0 lg:px-0">
+              <div className="w-[46%] max-w-[220px] shrink-0 lg:w-80 lg:max-w-none lg:px-4">
+                <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
                   <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                  <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 bg-transparent text-sm font-medium focus:outline-none" aria-label="Choose a city">
+                  <span className="sr-only">Choose a city</span>
+                  <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium focus:outline-none" aria-label="Choose a city">
                     <option value="">All of Australia</option>
                     {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                   </select>
                 </label>
-                <div className="pointer-events-auto relative min-w-0 flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-                  <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search the map" aria-label="Search events" className="h-11 w-full rounded-full border border-border bg-background/95 pl-9 pr-3 text-sm shadow-lg backdrop-blur focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <div className="min-w-0 flex-1 lg:px-4">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                  <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search the map" aria-label="Search events" className="h-11 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
               </div>
-              <div className="pointer-events-auto flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
-                <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
-                {CATEGORIES.map((c) => (
-                  <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
-                ))}
-                <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
+            </div>
+            <div className="relative min-h-0 flex-1">
+              <div className="absolute inset-0">
+              <MapView
+                filters={filters}
+                searchQuery={searchQuery}
+                city={city}
+                bleed
+                chips={(
+                  <>
+                    <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
+                    {CATEGORIES.map((c) => (
+                      <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
+                    ))}
+                    <CategoryChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" Icon={Ticket} />
+                  </>
+                )}
+              />
               </div>
             </div>
-            <MapView filters={filters} searchQuery={searchQuery} city={city} bleed />
-          </>
+          </div>
         )}
 
         {view !== 'map' && <div ref={boardRef} className="scroll-mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
@@ -546,24 +560,24 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         </div>
       }
 
-      <Footer lastRefresh={lastRefresh} quickLinks={quickLinks} city={city} />
-      <SuggestionButton />
+      {view !== 'map' && <Footer lastRefresh={lastRefresh} quickLinks={quickLinks} city={city} />}
+      {view !== 'map' && <SuggestionButton />}
     </div>);
 
 }
 
-function CategoryChip({ active, onClick, label, Icon, color }: {active: boolean;onClick: () => void;label: string;Icon: typeof LayoutGrid;color?: string;}) {
+function CategoryChip({ active, onClick, label, Icon, color }: {active: boolean;onClick: () => void;label: string;Icon?: typeof LayoutGrid;color?: string;}) {
   return (
     <button
       type="button"
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'shrink-0 flex items-center gap-2 px-3 h-9 rounded-full text-sm transition-colors',
+        'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors',
         active ? 'bg-muted text-foreground ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'
       )}>
       
-      <Icon className="w-3.5 h-3.5" style={color ? { color } : undefined} />
+      {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" style={color ? { color } : undefined} /> : null}
       {label}
     </button>);
 

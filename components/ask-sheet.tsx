@@ -44,7 +44,7 @@ export function AskSheet({
       <SheetContent
         side="bottom"
         id="vp-ask-sheet"
-        className="vp-ask-sheet"
+        className="vp-ask-sheet z-[80]"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <SheetHeader className="space-y-1 pr-8 text-left">

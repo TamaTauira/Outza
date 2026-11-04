@@ -22,7 +22,7 @@ import {
 } from '@/lib/mascot-roam'
 import { roamBottomChrome } from '@/lib/bottom-nav'
 
-const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, [role="button"], [role="link"], [role="tab"], [data-sonner-toaster]'
+const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, [role="button"], [role="link"], [role="tab"], [data-sonner-toaster], .leaflet-control, .leaflet-marker-icon, .se-cluster, .vp-map-float, .vp-map-cards, .vp-map-rail, .vp-map-toolbar, .vp-map-chips'
 
 type Phase =
   | { type: 'pause'; until: number }
@@ -144,7 +144,7 @@ export function attachRoam(root: HTMLElement): () => void {
     const mobile = mobileMq.matches
     const map = root.dataset.map === '1'
     const box = figure()
-    return roamBounds(limitedW ? segment.w : fullW, limitedH ? segment.h : fullH, box.width, {
+    const base = roamBounds(limitedW ? segment.w : fullW, limitedH ? segment.h : fullH, box.width, {
       mobile,
       map,
       height: box.height,
@@ -155,6 +155,18 @@ export function attachRoam(root: HTMLElement): () => void {
         segmentLimited: limitedH,
       }),
     })
+    if (!map) return base
+    const stage = document.querySelector<HTMLElement>('.vp-map-stage')
+    if (!stage) return base
+    const rect = stage.getBoundingClientRect()
+    if (rect.width < 48 || rect.height < 48) return base
+    const dock = Number.parseFloat(getComputedStyle(stage).getPropertyValue('--vp-map-dock')) || 0
+    const crowded = rect.height < box.height + dock + 160
+    const minX = Math.max(8, rect.left + (crowded ? 8 : 24))
+    const minY = Math.max(8, rect.top + (crowded ? 52 : 120))
+    const maxX = Math.max(minX, rect.right - box.width - (crowded ? 48 : 72))
+    const maxY = Math.max(minY, rect.bottom - box.height - dock - (crowded ? 12 : 96))
+    return { minX, minY, maxX, maxY }
   }
 
   const setMove = (move: string) => {
@@ -205,9 +217,12 @@ export function attachRoam(root: HTMLElement): () => void {
   const spotClear = (x: number, y: number) => {
     const s = size()
     const samples: Array<[number, number]> = [
-      [x + s * 0.5, y + s * 0.42],
-      [x + s * 0.22, y + s * 0.7],
-      [x + s * 0.78, y + s * 0.55],
+      [x + s * 0.5, y + s * 0.4],
+      [x + s * 0.28, y + s * 0.62],
+      [x + s * 0.72, y + s * 0.62],
+      [x + s * 0.5, y + s * 0.78],
+      [x + s * 0.38, y + s * 0.3],
+      [x + s * 0.62, y + s * 0.3],
     ]
     for (const [px, py] of samples) {
       if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) continue
