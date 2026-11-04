@@ -76,8 +76,17 @@ export function VibePeepFigure() {
           <img className="vp-arm-hip" src="/mascot/parts/arm-hip-r.png" alt="" draggable={false} />
           <img className="vp-finger" src="/mascot/parts/arm-point-r.png" alt="" draggable={false} />
         </Part>
-        <span className="vp-prop vp-snake" aria-hidden="true">
-          <img src="/mascot/parts/python.png" alt="" draggable={false} />
+        <span className="vp-prop vp-snake vp-snake-back" aria-hidden="true">
+          <img src="/mascot/parts/python-back.png" alt="" draggable={false} />
+        </span>
+        <span className="vp-prop vp-snake vp-snake-front" aria-hidden="true">
+          <img src="/mascot/parts/python-front.png" alt="" draggable={false} />
+        </span>
+        <span className="vp-part vp-grip vp-grip-under vp-grip-l" style={place('arm-l')} aria-hidden="true">
+          <img src="/mascot/parts/arm-l.png" alt="" draggable={false} />
+        </span>
+        <span className="vp-part vp-grip vp-grip-under vp-grip-r" style={place('arm-r')} aria-hidden="true">
+          <img src="/mascot/parts/arm-r.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-grip vp-grip-l" style={place('arm-l')} aria-hidden="true">
           <img src="/mascot/parts/arm-l.png" alt="" draggable={false} />
@@ -94,16 +103,16 @@ export function VibePeepFigure() {
         <span className="vp-zap vp-zap-c" aria-hidden="true" />
       </span>
       <span className="vp-profile" aria-hidden="true">
-        <span className="vp-part vp-s-leg-b" style={sideBox(0.3, 0.64, 0.32, 0.38, 0.5, 0.08)}>
-          <img src="/mascot/parts/leg-side.png" alt="" draggable={false} />
+        <span className="vp-part vp-s-leg-b" style={sideBox(0.36, 0.58, 0.4, 0.28, 0.2, 0.12)}>
+          <img src="/mascot/parts/leg-side-b.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-body" style={sideBox(0.14, 0.12, 0.72, 0.64, 0.5, 0.42)}>
+        <span className="vp-part vp-s-body" style={sideBox(0.06, 0.0, 0.88, 0.94, 0.5, 0.55)}>
           <img src="/mascot/parts/body-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-leg-f" style={sideBox(0.42, 0.62, 0.34, 0.4, 0.46, 0.08)}>
+        <span className="vp-part vp-s-leg-f" style={sideBox(0.02, 0.56, 0.44, 0.32, 0.72, 0.16)}>
           <img src="/mascot/parts/leg-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-arm-f" style={sideBox(0.46, 0.4, 0.24, 0.38, 0.5, 0.08)}>
+        <span className="vp-part vp-s-arm-f" style={sideBox(0.08, 0.4, 0.34, 0.28, 0.85, 0.35)}>
           <img src="/mascot/parts/arm-side.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-ant" style={sideBox(0.4, -0.01, 0.2, 0.2, 0.5, 1)}>
