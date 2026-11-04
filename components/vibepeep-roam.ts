@@ -182,6 +182,16 @@ export function attachRoam(root: HTMLElement): () => void {
         lane = { minX, minY, maxX, maxY }
       }
     }
+    if (mobile && location.pathname.startsWith('/local')) {
+      const grid = document.querySelector<HTMLElement>('.vp-local-grid')
+      const ceiling = grid?.getBoundingClientRect().top ?? 0
+      if (ceiling > 80) {
+        const floor = introFloor(ceiling)
+        const minY = Math.max(lane.minY, floor + 5)
+        const maxY = ceiling - box.height - 1
+        if (minY <= maxY) lane = { ...lane, minY, maxY }
+      }
+    }
     if (!mobile && !map && location.pathname.startsWith('/local')) {
       const grid = document.querySelector<HTMLElement>('.vp-local-grid')
       const listBtn = Array.from(document.querySelectorAll('button')).find((el) => /list your thing free/i.test(el.textContent || '') && !el.closest('.vp-local-grid'))
@@ -219,16 +229,34 @@ export function attachRoam(root: HTMLElement): () => void {
     if (slot.dataset.bubble !== side) slot.dataset.bubble = side
   }
 
+  /** Lowest control above `ceiling` on Local, so the figure can sit in the gap under the filters. */
+  const introFloor = (ceiling: number) => {
+    let floor = 0
+    for (const el of document.querySelectorAll('main header, main h1, main button, main a, main select, main input')) {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam') || el.closest('.vp-local-grid')) continue
+      const r = el.getBoundingClientRect()
+      if (r.width < 8 || r.height < 8 || r.bottom > ceiling - 4) continue
+      floor = Math.max(floor, r.bottom)
+    }
+    return floor
+  }
+
   const coversCopy = (x: number, y: number) => {
     const s = size()
     const h = Math.max(s, figure().height)
-    const boxes = [
-      { left: x, top: y, right: x + s, bottom: y + h },
-      { left: x + s - 24, top: y - 4, right: x + s + 4, bottom: y + 24 },
-    ]
+    const onMap = location.pathname.startsWith('/map')
+    const boxes = onMap
+      ? [
+          { left: x, top: y, right: x + s, bottom: y + h },
+          { left: x + s - 28, top: y - 12, right: x + s + 12, bottom: y + 30 },
+        ]
+      : [
+          { left: x, top: y, right: x + s, bottom: y + h },
+          { left: x + s - 24, top: y - 4, right: x + s + 4, bottom: y + 24 },
+        ]
     const pad = 8
     const gapFor = (el: Element) =>
-      el.matches('.leaflet-marker-icon, .leaflet-control, .se-cluster, .vp-map-float, .vp-map-ask, .vp-map-cards, .vp-map-toolbar') ? 16 : pad
+      el.matches('.leaflet-marker-icon, .leaflet-control, .se-cluster, .vp-map-float, .vp-map-ask, .vp-map-cards, .vp-map-toolbar') ? 32 : pad
     const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
@@ -244,7 +272,11 @@ export function attachRoam(root: HTMLElement): () => void {
     for (const el of nodes) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
       let rects: DOMRect[] = []
-      if (el.matches(textEl)) {
+      if (el.matches('h1, h2, h3, h4') && !location.pathname.startsWith('/map')) {
+        const full = el.getBoundingClientRect()
+        if (full.width > window.innerWidth * 0.7 && full.height > 8) rects = [full]
+      }
+      if (!rects.length && el.matches(textEl)) {
         const range = document.createRange()
         range.selectNodeContents(el)
         rects = Array.from(range.getClientRects()).filter((r) => r.width > 8 && r.height > 8)
@@ -423,14 +455,23 @@ export function attachRoam(root: HTMLElement): () => void {
         }
       }
     } else if (mobileMq.matches && path.startsWith('/local')) {
+      const grid = document.querySelector('.vp-local-grid')
+      const ceiling = grid?.getBoundingClientRect().top ?? 0
+      const h = rigH()
       const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - 4 - 16))
-      let y = box.minY
-      const heading = document.querySelector('main h1')
-      if (heading) y = Math.max(y, heading.getBoundingClientRect().bottom + 16)
-      for (let yy = y; yy <= box.maxY; yy += 12) {
-        if (!coversCopy(x, yy)) {
-          spot = { x, y: yy }
-          break
+      if (ceiling > 80) {
+        const y = Math.min(ceiling - h - 1, Math.max(box.minY, introFloor(ceiling) + 5))
+        if (y >= introFloor(ceiling) + 4 && y + h <= ceiling - 1) spot = { x, y }
+      }
+      if (!spot) {
+        let y = box.minY
+        const heading = document.querySelector('main h1')
+        if (heading) y = Math.max(y, heading.getBoundingClientRect().bottom + 16)
+        for (let yy = y; yy <= box.maxY; yy += 12) {
+          if (!coversCopy(x, yy)) {
+            spot = { x, y: yy }
+            break
+          }
         }
       }
     } else if (!mobileMq.matches && path.startsWith('/local')) {
@@ -978,18 +1019,26 @@ export function attachRoam(root: HTMLElement): () => void {
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
 
   let pinTimer = 0
-  const pinWatch = new MutationObserver(() => {
+  const shoveOffPins = () => {
+    if (!running || dragging || desktopBoard()) return
+    if (!location.pathname.startsWith('/map')) return
+    if (!spotClear(pos.x, pos.y)) {
+      pos = firstClear(bounds())
+      apply()
+    }
+  }
+  const pinWatch = new MutationObserver((records) => {
     if (!location.pathname.startsWith('/map') || dragging || desktopBoard()) return
+    const moved = records.some((record) => record.target instanceof Element && !record.target.closest('.vp-roam'))
+    if (!moved) return
     window.clearTimeout(pinTimer)
-    pinTimer = window.setTimeout(() => {
-      if (!running) return
-      if (!spotClear(pos.x, pos.y)) {
-        pos = firstClear(bounds())
-        apply()
-      }
-    }, 160)
+    pinTimer = window.setTimeout(shoveOffPins, 160)
   })
-  if (location.pathname.startsWith('/map')) pinWatch.observe(document.body, { childList: true, subtree: true })
+  let pinPoll = 0
+  if (location.pathname.startsWith('/map')) {
+    pinWatch.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'transform'] })
+    pinPoll = window.setInterval(shoveOffPins, 400)
+  }
 
   return () => {
     running = false
@@ -1002,6 +1051,7 @@ export function attachRoam(root: HTMLElement): () => void {
     mo.disconnect()
     pinWatch.disconnect()
     window.clearTimeout(pinTimer)
+    window.clearInterval(pinPoll)
     button.removeEventListener('pointerdown', onDown)
     button.removeEventListener('pointermove', onDrag)
     button.removeEventListener('pointerup', onUp)

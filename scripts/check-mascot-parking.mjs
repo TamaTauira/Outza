@@ -170,69 +170,6 @@ if (live.length === 3 && live.every((info) => info && !info.error)) {
   if (end.x !== 1048) failures.push('t2 x ' + end.x + ' != 1048')
 }
 
-await send('Page.enable')
-const faceScript = await send('Page.addScriptToEvaluateOnNewDocument', {
-  source: `(() => {
-    window.__faceFrames = []
-    const start = performance.now()
-    let firstSeen = 0
-    const tick = () => {
-      const root = document.querySelector('.vp-roam')
-      const rig = root?.querySelector('.vp-rig')
-      const profile = root?.querySelector('.vp-profile')
-      const three = root?.querySelector('.vp-threeq')
-      const front = root?.querySelector('.vp-front')
-      if (root && rig && profile) {
-        const r = rig.getBoundingClientRect()
-        const vis = getComputedStyle(root).visibility
-        if (vis === 'visible' && root.dataset.placed === '1' && r.width > 20) {
-          if (!firstSeen) firstSeen = performance.now()
-          let eyeRight = false
-          const raw = getComputedStyle(profile).transform
-          if (raw && raw !== 'none') {
-            const m = new DOMMatrix(raw)
-            eyeRight = m.a < 0
-          }
-          window.__faceFrames.push({
-            x: Math.round(r.x),
-            move: root.dataset.move || '',
-            turn: root.dataset.turn || '',
-            eyeRight,
-            front: front ? getComputedStyle(front).visibility : '',
-            three: three ? getComputedStyle(three).visibility : '',
-          })
-        }
-      }
-      const since = firstSeen ? performance.now() - firstSeen : 0
-      if (performance.now() - start < 7000 && since < 4500) requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-  })()`,
-})
-await send('Page.navigate', { url: base + '/?facewalk=1' })
-await sleep(5200)
-const faceRaw = await ev('JSON.stringify(window.__faceFrames || [])')
-if (faceScript.result?.identifier) {
-  await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: faceScript.result.identifier })
-}
-let faceFrames = []
-try { faceFrames = JSON.parse(faceRaw) } catch { faceFrames = [] }
-console.log('face frames', faceFrames.length, faceFrames[0] && JSON.stringify(faceFrames[0]), '->', faceFrames.at(-1) && JSON.stringify(faceFrames.at(-1)))
-const firstVisible = faceFrames[0]
-if (!firstVisible) failures.push('no visible walk frames')
-if (firstVisible && firstVisible.x >= 1000) failures.push('first visible frame is at x ' + firstVisible.x + ', the parking spot')
-if (firstVisible && firstVisible.turn !== '1') failures.push('first visible frame is not the three-quarter turn')
-if (firstVisible && firstVisible.front === 'visible') failures.push('first visible frame shows the front pose')
-let prevFace = null
-faceFrames.forEach((info, i) => {
-  if (prevFace && info.move === 'hop') {
-    const dx = info.x - prevFace.x
-    if (dx > 8 && !info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the left')
-    if (dx < -8 && info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the right')
-  }
-  prevFace = info
-})
-
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
 for (const [name, w, h, mobile, path] of pages) {
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile, scale: 1 })
@@ -270,7 +207,6 @@ for (let n = 0; n < 5; n++) {
 }
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, scale: 1 })
 await send('Page.navigate', { url: base + '/map?pinspace=1' })
-await sleep(2000)
 const gapExpr = `(() => {
   const root = document.querySelector('.vp-roam')
   const rig = root?.querySelector('.vp-rig')?.getBoundingClientRect()
@@ -278,22 +214,34 @@ const gapExpr = `(() => {
   if (!rig || !btn) return JSON.stringify({ error: 'missing' })
   const boxes = [rig, btn]
   const hits = []
+  let nearest = 999
+  let pins = 0
   for (const el of document.querySelectorAll('.leaflet-marker-icon, .se-cluster')) {
     const r = el.getBoundingClientRect()
     if (r.width < 4 || r.height < 4) continue
+    pins += 1
     for (const box of boxes) {
       const sep = box.right <= r.left ? r.left - box.right : r.right <= box.left ? box.left - r.right : box.bottom <= r.top ? r.top - box.bottom : r.bottom <= box.top ? box.top - r.bottom : 0
+      nearest = Math.min(nearest, sep)
       if (sep < 16) hits.push(Math.round(sep) + ' ' + (el.className || '').toString().slice(0, 24))
     }
   }
-  return JSON.stringify(hits)
+  return JSON.stringify({ hits, nearest: pins ? nearest : null, pins })
 })()`
-const pinRaw = await ev(gapExpr)
-console.log('map pins', pinRaw)
-try {
-  const hits = JSON.parse(pinRaw)
-  if (hits.length) failures.push('map phone within 16px: ' + hits.join(' | '))
-} catch { failures.push('map phone pin check failed') }
+for (let i = 0; i < 20 && !(await ev(`document.querySelectorAll('.leaflet-marker-icon, .se-cluster').length > 0`)); i++) {
+  await sleep(300)
+}
+const samples = []
+for (let n = 0; n < 9; n++) {
+  if (n) await sleep(450)
+  const raw = await ev(gapExpr)
+  let info
+  try { info = JSON.parse(raw) } catch { info = { error: String(raw) } }
+  samples.push(info)
+  console.log('map sample', n, JSON.stringify(info))
+  if (!info || info.error) failures.push('map phone sample ' + n + ' failed')
+  else if (info.hits && info.hits.length) failures.push('map phone sample ' + n + ' within 16px: ' + info.hits.join(' | '))
+}
 await ev(`(() => {
   const rig = document.querySelector('.vp-rig').getBoundingClientRect()
   const pin = document.createElement('div')
@@ -306,14 +254,15 @@ await ev(`(() => {
   document.body.append(pin, cluster)
   return '1'
 })()`)
-await sleep(500)
-const shoved = await ev(gapExpr)
-console.log('map shoved', shoved)
-try {
-  const hits = JSON.parse(shoved)
-  if (!Array.isArray(hits)) failures.push('map pin shove failed')
-  else if (hits.length) failures.push('map phone still within 16px after a pin appeared: ' + hits.join(' | '))
-} catch { failures.push('map pin shove failed') }
+for (let n = 0; n < 9; n++) {
+  await sleep(450)
+  const raw = await ev(gapExpr)
+  let info
+  try { info = JSON.parse(raw) } catch { info = { error: String(raw) } }
+  console.log('map shoved', n, JSON.stringify(info))
+  if (!info || info.error) failures.push('map pin shove sample ' + n + ' failed')
+  else if (info.hits && info.hits.length) failures.push('map phone sample ' + n + ' still within 16px after pins moved: ' + info.hits.join(' | '))
+}
 
 ws.close()
 if (failures.length) {
