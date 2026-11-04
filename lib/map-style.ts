@@ -1,16 +1,16 @@
 /** Single source of truth for the VibePeep map look (Map page + every detail-page map). */
 
-import type { StyleSpecification } from 'maplibre-gl'
-import lightStyle from '@/lib/maps/vibe-light.json'
-import darkStyle from '@/lib/maps/vibe-dark.json'
+/** Stock OpenFreeMap styles. Light is Positron. Dark is OpenFreeMap's dark style. */
+export const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron'
+export const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark'
 
 /** Keyless OpenFreeMap vector tiles (OpenMapTiles schema). Commercial use is allowed. Attribution is required. */
-export const MAP_ATTRIBUTION = 'OpenFreeMap © OpenMapTiles © OpenStreetMap contributors'
+export const MAP_ATTRIBUTION = 'OpenFreeMap © OpenMapTiles, data © OpenStreetMap'
 export const MAP_MAX_ZOOM = 18
 
-export function vibeMapStyle(dark: boolean): StyleSpecification {
-  const style = (dark ? darkStyle : lightStyle) as StyleSpecification
-  return JSON.parse(JSON.stringify(style)) as StyleSpecification
+/** Style URL for the current site theme. MapLibre loads it inside the Leaflet map. */
+export function vibeMapStyle(dark: boolean): string {
+  return dark ? MAP_STYLE_DARK : MAP_STYLE_LIGHT
 }
 
 /** Orange teardrop. The tip is the place, so the icon anchors at the bottom. */

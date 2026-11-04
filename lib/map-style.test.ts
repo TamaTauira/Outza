@@ -1,23 +1,15 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { eventPinHtml } from './map-style'
-import light from './maps/vibe-light.json'
-import dark from './maps/vibe-dark.json'
+import { eventPinHtml, MAP_ATTRIBUTION, MAP_STYLE_DARK, MAP_STYLE_LIGHT, vibeMapStyle } from './map-style'
 
-const layer = (style: { layers: { id: string; paint?: Record<string, unknown> }[] }, id: string) =>
-  style.layers.find((item) => item.id === id)
-
-test('branded map styles stay labelled and attribute OpenFreeMap', () => {
-  const attribution = (light as { sources: { openmaptiles: { attribution: string } } }).sources.openmaptiles.attribution
-  assert.match(attribution, /OpenFreeMap/)
-  assert.match(attribution, /OpenStreetMap/)
-  for (const id of ['park', 'water', 'poi_transit', 'highway-name-minor', 'highway-name-major', 'label_city', 'building']) {
-    assert.ok(layer(light as never, id), id)
-    assert.ok(layer(dark as never, id), id)
-  }
-  assert.equal(layer(light as never, 'road_motorway')?.paint?.['line-color'], '#f0782a')
-  assert.equal(layer(dark as never, 'background')?.paint?.['background-color'], '#1c1916')
-  assert.equal(layer(dark as never, 'road_motorway')?.paint?.['line-color'], '#ff7a1a')
+test('the basemap uses OpenFreeMap stock styles and keeps attribution', () => {
+  assert.equal(vibeMapStyle(false), MAP_STYLE_LIGHT)
+  assert.equal(vibeMapStyle(true), MAP_STYLE_DARK)
+  assert.equal(MAP_STYLE_LIGHT, 'https://tiles.openfreemap.org/styles/positron')
+  assert.equal(MAP_STYLE_DARK, 'https://tiles.openfreemap.org/styles/dark')
+  assert.match(MAP_ATTRIBUTION, /OpenFreeMap/)
+  assert.match(MAP_ATTRIBUTION, /OpenMapTiles/)
+  assert.match(MAP_ATTRIBUTION, /OpenStreetMap/)
 })
 
 test('the event pin is an orange teardrop', () => {

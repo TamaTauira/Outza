@@ -72,9 +72,9 @@
   height: 100%;
   z-index: 0;
   font-family: inherit;
-  background: #f6f1e8;
+  background: #f2f3f0;
 }
-.dark .leaflet-container { background: #1c1916; }
+.dark .leaflet-container { background: #0c0c0c; }
 .leaflet-gl-layer, .maplibregl-map { background: transparent; }
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none; }
 
