@@ -149,12 +149,17 @@ export function titleIsTourOf(a?: string | null, b?: string | null): boolean {
   const right = showTitle(b)
   if (!left || !right || left === right) return false
   const [short, long] = left.length <= right.length ? [left, right] : [right, left]
+  const rawLong = (left.length <= right.length ? b : a) ?? ''
   if (!long.startsWith(`${short} `)) return false
   const shortTokens = short.split(' ').filter((word) => word.length > 1)
-  if (shortTokens.length < 2) return false
+  const oneArtist = shortTokens.length === 1 && shortTokens[0].length >= 4
+  if (shortTokens.length < 2 && !oneArtist) return false
   const rest = long.slice(short.length)
   if (/\b(pass|session|matinee|encore|ages)\b/.test(rest)) return false
-  return /\b(tour|live|world|rewind|unplugged|presents)\b/.test(rest)
+  // showTitle removes "tour" and "world" before this comparison, so a subtitle
+  // such as "BRITPOP WORLD TOUR" has to be read from the original title.
+  if (oneArtist) return /\btour\b/i.test(rawLong)
+  return /\b(tour|live|world|rewind|unplugged|presents)\b/i.test(rawLong)
 }
 
 function venueKey(value?: string | null): string {

@@ -6,6 +6,7 @@ import {
   canonicalizeListingUrl,
   compareCatalogue,
   decideDuplicate,
+  matchSourceSession,
   type IdentityEvent,
 } from './event-identity'
 
@@ -24,6 +25,10 @@ test('tracking parameters drop and session ids stay', () => {
   const councilB = canonicalizeListingUrl('https://www.brisbane.qld.gov.au/trumba?trumbaEmbed=view%3Devent%26eventid%3D2')
   assert.notEqual(councilA, councilB)
   assert.equal(canonicalizeListingUrl('https://tickets.example/search?q=jazz'), null)
+  const coredna = canonicalizeListingUrl('https://frontiertouringcom.coredna.site/bensonboone')
+  const www = canonicalizeListingUrl('https://www.frontiertouring.com/bensonboone/')
+  assert.equal(coredna, www)
+  assert.equal(coredna, 'https://www.frontiertouring.com/bensonboone')
 })
 
 test('same source id links a reschedule and a different id stays a separate session', () => {
@@ -204,6 +209,64 @@ test('ticket tiers, scarcity notes and tour subtitles link, and a different pack
     row({ title: 'SLIPKNOT vs SYSTEM OF A DOWN + KILLSWITCH ENGAGE', venueName: 'Metropolis Fremantle', time: '19:00' }),
   )
   assert.notEqual(support.action, 'link')
+  const britpop = decideDuplicate(
+    row({ title: 'Robbie Williams', venueName: 'Marvel Stadium', time: null, source: 'frontier', url: 'https://frontiertouringcom.coredna.site/robbiewilliams' }),
+    row({ title: 'Robbie Williams - BRITPOP WORLD TOUR', venueName: 'Marvel Stadium', time: '17:00', source: 'ticketmaster', url: 'https://www.ticketmaster.com.au/robbie-williams' }),
+  )
+  assert.equal(britpop.action, 'link')
+  const oneWord = decideDuplicate(
+    row({ title: 'Searows', venueName: 'The Triffid', time: null, source: 'frontier' }),
+    row({ title: 'Searows - Death in the Business of Whaling Tour', venueName: 'The Triffid', time: '19:00', source: 'ticketmaster' }),
+  )
+  assert.equal(oneWord.action, 'link')
+  const asked = decideDuplicate(
+    row({ title: 'DOMi & JD BECK', venueName: '170 Russell', time: '19:30', source: 'frontier', url: 'https://frontiertouringcom.coredna.site/domiandjdbeck' }),
+    row({ title: 'DOMi & JD BECK - WHO ASKED? Tour', venueName: '170 Russell', time: '19:30', source: 'ticketmaster', url: 'https://www.moshtix.com.au/v2/event/domi-jd-beck-who-asked-tour/198645' }),
+  )
+  assert.equal(asked.action, 'link')
+  const otherRoom = decideDuplicate(
+    row({ title: 'Daine', venueName: 'Metro Social', time: '19:30', source: 'moshtix', address: '624 George St, Sydney, NSW 2000' }),
+    row({ title: 'daine - the In Endless Awe & Agony tour (18+)', venueName: 'Metro Theatre', time: '19:30', source: 'ticketmaster', address: '624 George Street, Sydney' }),
+  )
+  assert.notEqual(otherRoom.action, 'link')
+})
+
+test('the same listing URL and start is one row, and another night on that page is not', () => {
+  const page = 'https://frontiertouringcom.coredna.site/bensonboone'
+  const again = decideDuplicate(
+    row({ title: 'Benson Boone', venueName: 'Sydney Opera House Concert Hall', date: '2026-11-06', time: null, source: 'frontier', url: page }),
+    row({ title: 'Benson Boone', venueName: 'Sydney Opera House, Drama Theatre', date: '2026-11-06', time: null, source: 'frontier', url: 'https://www.frontiertouring.com/bensonboone' }),
+  )
+  assert.equal(again.action, 'link')
+  assert.equal(again.layer, 'exact_url')
+  const nextNight = decideDuplicate(
+    row({ title: 'Benson Boone', venueName: 'Brisbane Entertainment Centre', date: '2026-11-06', time: null, source: 'frontier', url: page }),
+    row({ title: 'Benson Boone', venueName: 'Brisbane Entertainment Centre', date: '2026-11-07', time: null, source: 'frontier', url: page }),
+  )
+  assert.equal(nextNight.action, 'review')
+  const laterClock = decideDuplicate(
+    row({ title: 'Lassù Parramatta', venueName: 'Rosehill Gardens Racecourse', date: '2026-11-14', time: '18:00', source: 'ticketmaster', url: 'https://www.universe.com/events/lassu-parramatta-tickets-VFJHS5?ref=ticketmaster' }),
+    row({ title: 'Lassù Parramatta', venueName: 'Rosehill Gardens Racecourse', date: '2026-11-05', time: '18:00', source: 'ticketmaster', url: 'https://www.universe.com/events/lassu-parramatta-tickets-VFJHS5' }),
+  )
+  assert.equal(laterClock.action, 'review')
+})
+
+test('a shared tour URL matches its own start and not another date', () => {
+  const rows = [
+    { eventId: 'night-6', sessionKey: '2026-11-06|' },
+    { eventId: 'night-7', sessionKey: '2026-11-07|' },
+  ]
+  assert.equal(matchSourceSession(rows, { date: '2026-11-06', time: null }), 'night-6')
+  assert.equal(matchSourceSession([{ eventId: 'only', sessionKey: '2026-11-06|' }], { date: '2026-11-14', time: null }), null)
+  assert.equal(matchSourceSession([{ eventId: 'open', sessionKey: '2026-11-10|' }], { date: '2026-11-10', time: '19:30' }), 'open')
+  assert.equal(matchSourceSession([
+    { eventId: 'early', sessionKey: '2026-11-14|14:00' },
+    { eventId: 'late', sessionKey: '2026-11-14|19:30' },
+  ], { date: '2026-11-14', time: '19:30:00' }), 'late')
+  assert.equal(matchSourceSession([
+    { eventId: 'early', sessionKey: '2026-11-14|14:00' },
+    { eventId: 'late', sessionKey: '2026-11-14|19:30' },
+  ], { date: '2026-11-14', time: null }), null)
 })
 
 test('a source link cannot move ownership, and the public event path stays id-based', () => {

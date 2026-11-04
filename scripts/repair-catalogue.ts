@@ -6,11 +6,13 @@
  * Dry run: REPAIR_DRY=1 npx tsx --require dotenv/config scripts/repair-catalogue.ts
  */
 import { prisma } from '../lib/prisma'
-import { decideDuplicate } from '../lib/event-identity'
+import { canonicalizeListingUrl, decideDuplicate, sessionDate } from '../lib/event-identity'
+import { frontierShowsFromHtml } from '../lib/frontier-shows'
 import { isWeakVenueName } from '../lib/place-match'
 import { planLinkedFill, type FillEvent } from '../lib/linked-fill'
-import { makeSeriesKey } from '../lib/event-store'
-import { CATEGORIES, refineStoredCategory, retagLgbti } from '../lib/categories'
+import { makeDedupeHash, makeSeriesKey } from '../lib/event-store'
+import { reconcileSuburb, CATEGORIES, refineStoredCategory, retagLgbti } from '../lib/categories'
+import { tidyVenueName } from '../lib/cities'
 import { isPaidListing, SOURCES } from '../lib/quality'
 import { readPrice } from '../lib/price'
 import { recordContribution } from '../lib/source-record'
@@ -77,13 +79,19 @@ async function mergeDuplicates(rows: Row[]) {
   const groups = new Map<string, Row[]>()
   for (const row of rows) {
     if (protectedRow(row)) continue
-    const key = `${row.city}|${row.date.toISOString().slice(0, 10)}`
-    groups.set(key, [...(groups.get(key) ?? []), row])
+    const day = row.date.toISOString().slice(0, 10)
+    const keys = new Set<string>([`${row.city}|${day}`])
+    for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
+      const url = canonicalizeListingUrl(raw)
+      if (url) keys.add(`url:${url}|${day}`)
+    }
+    for (const key of keys) groups.set(key, [...(groups.get(key) ?? []), row])
   }
   const rank = (row: Row) => (SOURCES[row.source]?.trust ?? 20) + (isWeakVenueName(row.venueName, row.venueAddress) ? 0 : 5)
   const pairs: { primary: Row; duplicate: Row }[] = []
+  const consumed = new Set<string>()
   for (const list of groups.values()) {
-    const used = new Set<string>()
+    const used = new Set<string>(consumed)
     const sorted = [...list].sort((a, b) => rank(b) - rank(a) || a.createdAt.getTime() - b.createdAt.getTime())
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
@@ -91,6 +99,7 @@ async function mergeDuplicates(rows: Row[]) {
       const dups = sorted.filter((other) => !used.has(other.id) && !protectedRow(other) && decideDuplicate(asIdentity(primary), asIdentity(other)).action === 'link')
       for (const duplicate of dups) {
         used.add(duplicate.id)
+        consumed.add(duplicate.id)
         pairs.push({ primary, duplicate })
       }
     }
@@ -207,11 +216,83 @@ async function retag() {
   return { updates: updates.length, categoryChanges, lgbtiBefore, lgbtiAfter, freeBefore, freeAfter }
 }
 
+/** A source record whose session date is not the listing's date was pointed at another night. */
+async function realignSessions() {
+  const from = process.env.REPAIR_FROM
+  const to = process.env.REPAIR_TO
+  const records = await prisma.sourceRecord.findMany({
+    where: {
+      event: {
+        duplicateOfId: null,
+        deletedAt: null,
+        ...(from && to ? { date: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T00:00:00.000Z`) } } : {}),
+      },
+    },
+    select: { eventId: true, source: true, sessionKey: true, event: { select: { date: true, time: true } } },
+  })
+  let moved = 0
+  for (const record of records) {
+    const day = record.event.date.toISOString().slice(0, 10)
+    if (!sessionDate(record.sessionKey) || sessionDate(record.sessionKey) === day) continue
+    const sessionKey = `${day}|${record.event.time ?? ''}`
+    console.log(`[repair] session ${record.source} ${record.eventId} ${record.sessionKey} → ${sessionKey}`)
+    moved++
+    if (dry) continue
+    await prisma.sourceRecord.update({
+      where: { eventId_source: { eventId: record.eventId, source: record.source } },
+      data: { sessionKey },
+    })
+  }
+  console.log(`[repair] ${moved} source sessions pointed at another date${dry ? ' (dry run)' : ''}`)
+  return moved
+}
+
+/** The tour page lists the venue for each date. Copy that venue back onto the row for that date. */
+async function alignFrontierVenues(rows: Row[]) {
+  const res = await fetch('https://www.frontiertouring.com/', { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html' } })
+  if (!res.ok) throw new Error(`frontier homepage ${res.status}`)
+  const shows = frontierShowsFromHtml(await res.text())
+  const byKey = new Map(shows.map((show) => [`${canonicalizeListingUrl(show.url)}|${show.date}`, show]))
+  let restored = 0
+  for (const row of rows) {
+    if (row.source !== 'frontier') continue
+    const url = canonicalizeListingUrl(row.sourceUrl || row.ticketUrl)
+    const day = row.date.toISOString().slice(0, 10)
+    const show = url ? byKey.get(`${url}|${day}`) : undefined
+    if (!show) continue
+    const venueName = tidyVenueName(show.venueName, show.venueAddress, show.city)
+    if (venueName === row.venueName && show.city === row.city) continue
+    const hash = makeDedupeHash(row.title, day, venueName)
+    const clash = await prisma.event.findUnique({ where: { dedupeHash: hash }, select: { id: true } })
+    console.log(`[repair] frontier venue ${row.city} ${row.id} ${day} ${row.venueName} → ${show.city} ${venueName}`)
+    restored++
+    row.venueName = venueName
+    row.venueAddress = show.venueAddress
+    row.city = show.city
+    if (dry) continue
+    await prisma.event.update({
+      where: { id: row.id },
+      data: {
+        venueName,
+        venueAddress: show.venueAddress,
+        city: show.city,
+        suburb: reconcileSuburb(row.suburb, venueName, show.venueAddress, show.city),
+        seriesKey: makeSeriesKey(row.title, venueName, show.city),
+        ...(clash && clash.id !== row.id ? {} : { dedupeHash: hash }),
+      },
+    })
+  }
+  console.log(`[repair] ${restored} frontier venues restored from the tour page${dry ? ' (dry run)' : ''}`)
+  return restored
+}
+
 async function main() {
+  const sessions = await realignSessions()
   const rows = await loadRows()
+  const venues = await alignFrontierVenues(rows)
   const merged = await mergeDuplicates(rows)
   const tags = process.env.REPAIR_SKIP_RETAG === '1' ? null : await retag()
-  console.log('[repair] done', { merged, ...(tags ?? {}), dry })
+  console.log('[repair] done', { sessions, venues, merged, ...(tags ?? {}), dry })
 }
 
 main()

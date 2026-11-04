@@ -4,7 +4,7 @@
  */
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { canonicalizeListingUrl } from '@/lib/event-identity'
+import { canonicalizeListingUrl, listingUrlAliases, matchSourceSession, sessionDate } from '@/lib/event-identity'
 import { fieldSourcesFromRecords } from '@/lib/linked-fill'
 
 function missingRelation(err: unknown): boolean {
@@ -16,33 +16,41 @@ export function sessionKeyOf(date: string, time?: string | null): string {
   return `${date}|${time ?? ''}`
 }
 
+export type SourceKeyHit = {
+  eventId: string
+  /** The source id moved to a new date. A shared listing URL must not do this. */
+  reschedule: boolean
+}
+
 export async function findEventIdBySourceKey(input: {
   source: string
   externalId?: string | null
   url?: string | null
   date: string
   time?: string | null
-}): Promise<string | null> {
+}): Promise<SourceKeyHit | null> {
   try {
     if (input.externalId) {
-      const hit = await prisma.sourceRecord.findFirst({
+      const hits = await prisma.sourceRecord.findMany({
         where: { source: input.source, externalId: input.externalId },
-        select: { eventId: true },
+        select: { eventId: true, sessionKey: true },
       })
-      if (hit) return hit.eventId
+      const matched = matchSourceSession(hits, input)
+      if (matched) return { eventId: matched, reschedule: false }
+      // One source id changing date is a reschedule. A tour page is not one id.
+      if (hits.length === 1 && sessionDate(hits[0].sessionKey) && sessionDate(hits[0].sessionKey) !== input.date) {
+        return { eventId: hits[0].eventId, reschedule: true }
+      }
+      if (hits.length === 1 && !hits[0].sessionKey) return { eventId: hits[0].eventId, reschedule: false }
     }
-    const canonicalUrl = canonicalizeListingUrl(input.url)
-    if (!canonicalUrl) return null
+    const urls = listingUrlAliases(input.url)
+    if (!urls.length) return null
     const rows = await prisma.sourceRecord.findMany({
-      where: { canonicalUrl },
+      where: { canonicalUrl: { in: urls } },
       select: { eventId: true, sessionKey: true },
-      take: 20,
     })
-    const sessionKey = sessionKeyOf(input.date, input.time)
-    const same = rows.find((row) => row.sessionKey === sessionKey)
-    if (same) return same.eventId
-    if (rows.length === 1) return rows[0].eventId
-    return null
+    const matched = matchSourceSession(rows, input)
+    return matched ? { eventId: matched, reschedule: false } : null
   } catch (err) {
     if (missingRelation(err)) return null
     throw err
