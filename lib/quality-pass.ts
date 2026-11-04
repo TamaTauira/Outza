@@ -10,6 +10,7 @@ import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity
 import { duplicateSpikeAlert, recordQualityAlert } from '@/lib/source-health'
 import { STALE_AFTER_DAYS, staleAlertDetail, staleShareAlert } from '@/lib/listing-freshness'
 import { runVerificationPass } from '@/lib/verification-pass'
+import { runLinkedFill } from '@/lib/linked-fill-run'
 import { yieldIfBudget } from '@/lib/source-budget'
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
@@ -135,14 +136,13 @@ async function runQualityPassInner() {
       }
       const sources = [...new Set([...primary.sources, primary.source, ...dups.flatMap((d) => [d.source, ...d.sources])])]
       const fill: Record<string, unknown> = { sources }
-      for (const key of ['ticketUrl', 'sourceUrl', 'organiserUrl'] as const) {
+      // Price, times, ticket link, image, address and description are filled by the linked-field pass
+      // so the source that supplied each blank is recorded. A review pair never reaches this list.
+      for (const key of ['sourceUrl', 'organiserUrl'] as const) {
         if (usableUrl(primary[key])) continue
         const found = dups.map((d) => usableUrl(repairKnownListingUrl(d[key], d.source))).find((u): u is string => !!u)
         if (found) fill[key] = found
       }
-      if (!primary.time) fill.time = dups.find((d) => d.time)?.time ?? null
-      if (!primary.endTime) fill.endTime = dups.find((d) => d.endTime)?.endTime ?? null
-      if (!primary.price) fill.price = dups.find((d) => d.price)?.price ?? null
       const flagged = dups.find((d) => d.status !== 'SCHEDULED')
       if (primary.status === 'SCHEDULED' && flagged) Object.assign(fill, { status: flagged.status, statusSource: flagged.statusSource ?? flagged.source })
       assertNoOwnershipTransfer(fill)
@@ -151,6 +151,15 @@ async function runQualityPassInner() {
       merged += dups.length
     }
   }
+  let linkedFill: { wouldUpdate: number; updated: number; gainPrice: number; gainTime: number } | null = null
+  if (!yieldIfBudget('linked fill')) {
+    try {
+      linkedFill = await runLinkedFill({ dryRun: false })
+    } catch (err) {
+      console.error('[quality] linked fill failed', (err as { message?: string })?.message)
+    }
+  }
+
   if (duplicateSpikeAlert(rows.length, merged)) {
     await recordQualityAlert({
       kind: 'DUPLICATE_SPIKE',
@@ -264,7 +273,7 @@ async function runQualityPassInner() {
   const verification = yieldIfBudget('quality pass')
     ? { normalized: 0, flagged: 0, checks: 0 }
     : await runVerificationPass()
-  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired, verification }
+  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired, verification, linkedFill }
   console.log('[quality] pass complete', result)
   return result
 }

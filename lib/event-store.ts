@@ -5,7 +5,8 @@ import { DEFAULT_CITY, tidyVenueName } from '@/lib/cities'
 import { normalizeTitle, normalizeVenue } from '@/lib/quality'
 import { fieldConflicts, scheduleFields } from '@/lib/listing-window'
 import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
-import { findEventIdBySourceKey, rememberSource } from '@/lib/source-record'
+import { guardAgainstWeakerSource, planLinkedFill } from '@/lib/linked-fill'
+import { findEventIdBySourceKey, recordContribution, rememberSource } from '@/lib/source-record'
 import { recordFieldConflict } from '@/lib/listing-audit'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
@@ -168,7 +169,12 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     ...(ev.organiserName ? { organiserName: cleanText(ev.organiserName, 160) } : {}),
   }
 
-  const eventSelect = { id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true, organiserEditedAt: true, communityKey: true, latitude: true, longitude: true } as const
+  const eventSelect = {
+    id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true,
+    organiserEditedAt: true, communityKey: true, latitude: true, longitude: true, title: true, venueName: true,
+    venueAddress: true, city: true, date: true, status: true, time: true, endTime: true, endDate: true,
+    price: true, priceMin: true, priceMax: true, isFree: true, feesIncluded: true, description: true, lastVerifiedAt: true,
+  } as const
   const externalId = ev.externalId?.trim() || null
   const identityUrl = storedLinks.sourceUrl || storedLinks.ticketUrl
   const linkedId = await findEventIdBySourceKey({ source: ev.source, externalId, url: identityUrl, date: ev.date, time })
@@ -200,6 +206,15 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     }
   }
   if (pin) Object.assign(data, { latitude: pin.lat, longitude: pin.lng })
+  const crossFill = {
+    time, endTime, price, isFree, priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
+    status, imageUrl, description, title, venueName,
+    endDate: ev.endDate && ev.endDate !== ev.date ? ev.endDate : null,
+    venueAddress: venueAddress || null,
+    latitude: pin?.lat ?? null,
+    longitude: pin?.lng ?? null,
+    ...storedLinks,
+  }
   if (existing) {
     if (existing.source === 'community' || existing.communityKey) return false
     const sources = existing.sources.includes(ev.source) ? existing.sources : [...existing.sources, ev.source]
@@ -253,8 +268,9 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         return true
       }
-      assertNoOwnershipTransfer(update)
-      await prisma.event.update({ where: { id: existing.id }, data: update })
+      const guarded = guardAgainstWeakerSource(existing, update)
+      assertNoOwnershipTransfer(guarded)
+      await prisma.event.update({ where: { id: existing.id }, data: guarded })
       await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     } else {
       if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) {
@@ -268,7 +284,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         return true
       }
-      await mergeInto(existing.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
+      await mergeInto(existing.id, ev.source, sources, crossFill)
       await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     }
     return true
@@ -293,7 +309,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   ).action === 'link')
   if (dup) {
     const sources = dup.sources.includes(ev.source) ? dup.sources : [...dup.sources, ev.source]
-    await mergeInto(dup.id, ev.source, sources, { time, endTime, price, range, status, imageUrl, ...storedLinks })
+    await mergeInto(dup.id, ev.source, sources, crossFill)
     await rememberSource({ eventId: dup.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     return false
   }
@@ -312,7 +328,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   return true
 }
 
-/** Another source confirmed an event we already list: record it and fill gaps, never overwrite the primary details. */
+/** Another source confirmed an event we already list: record it and fill gaps, never overwrite a reliable value. */
 async function mergeInto(
   id: string,
   source: string,
@@ -320,10 +336,20 @@ async function mergeInto(
   f: {
     time: string | null
     endTime: string | null
+    endDate?: string | null
     price: string | null
-    range: { min: number | null; max: number | null }
+    isFree?: boolean
+    priceMin?: number | null
+    priceMax?: number | null
+    feesIncluded?: boolean | null
     status: string
     imageUrl?: string | null
+    description?: string | null
+    title?: string
+    venueName?: string
+    venueAddress?: string | null
+    latitude?: number | null
+    longitude?: number | null
     ticketUrl?: string | null
     sourceUrl?: string | null
     organiserUrl?: string | null
@@ -331,25 +357,60 @@ async function mergeInto(
 ) {
   const cur = await prisma.event.findUnique({
     where: { id },
-    select: { time: true, endTime: true, price: true, priceMin: true, status: true, imageUrl: true, ticketUrl: true, sourceUrl: true, organiserUrl: true },
+    select: {
+      id: true, title: true, venueName: true, venueAddress: true, suburb: true, city: true, date: true,
+      time: true, endTime: true, endDate: true, price: true, priceMin: true, priceMax: true, isFree: true,
+      feesIncluded: true, latitude: true, longitude: true, ticketUrl: true, sourceUrl: true, organiserUrl: true,
+      imageUrl: true, imageLocked: true, description: true, source: true, sources: true, status: true,
+      organiserEditedAt: true, communityKey: true, lastVerifiedAt: true,
+    },
   })
-  if (!cur) return
-  const fill: Record<string, unknown> = { sources, lastVerifiedAt: new Date() }
-  if (!cur.imageUrl && f.imageUrl) fill.imageUrl = f.imageUrl
-  if (!usableUrl(cur.ticketUrl) && f.ticketUrl) fill.ticketUrl = f.ticketUrl
+  if (!cur || cur.organiserEditedAt || cur.communityKey) return
+  const plan = planLinkedFill({ ...cur, sources }, [{
+    relation: 'linked',
+    source,
+    title: f.title || cur.title,
+    venueName: f.venueName || cur.venueName,
+    city: cur.city,
+    date: cur.date,
+    time: f.time,
+    endTime: f.endTime,
+    endDate: f.endDate,
+    price: f.price,
+    isFree: f.isFree,
+    priceMin: f.priceMin,
+    priceMax: f.priceMax,
+    feesIncluded: f.feesIncluded,
+    venueAddress: f.venueAddress,
+    latitude: f.latitude,
+    longitude: f.longitude,
+    ticketUrl: f.ticketUrl,
+    imageUrl: f.imageUrl,
+    description: f.description,
+    status: f.status,
+  }])
+  const fill: Record<string, unknown> = { ...plan.patch, sources, lastVerifiedAt: new Date() }
   if (!usableUrl(cur.sourceUrl) && f.sourceUrl) fill.sourceUrl = f.sourceUrl
   if (!usableUrl(cur.organiserUrl) && f.organiserUrl) fill.organiserUrl = f.organiserUrl
-  if (!cur.time && f.time) fill.time = f.time
-  if (!cur.endTime && f.endTime) fill.endTime = f.endTime
   const conflicts = fieldConflicts(cur, f).filter((line) => line.startsWith('time ') || line.startsWith('end '))
   if (conflicts.length) {
     await recordFieldConflict(id, `Kept the original times. ${source} disagreed: ${conflicts.join('; ')}. Provenance stays on sources.`)
   }
-  if (!cur.price && f.price) Object.assign(fill, { price: f.price, priceMin: f.range.min, priceMax: f.range.max })
   // Cancellations and postponements matter more than which source reported them first
   if (cur.status === 'SCHEDULED' && f.status !== 'SCHEDULED') Object.assign(fill, { status: f.status, statusSource: source })
   assertNoOwnershipTransfer(fill)
   await prisma.event.update({ where: { id }, data: fill })
+  const contributed = plan.filled.filter((row) => row.source === source).map((row) => row.field)
+  if (contributed.length) {
+    await recordContribution({
+      eventId: id,
+      source,
+      fields: contributed,
+      url: f.sourceUrl || f.ticketUrl,
+      date: cur.date.toISOString().slice(0, 10),
+      time: typeof fill.time === 'string' ? fill.time : cur.time,
+    })
+  }
 }
 
 export async function fetchHtml(url: string, retries = 2): Promise<string | null> {

@@ -16,6 +16,7 @@ import { VENUE_MANAGED_LABEL } from '@/lib/ownership'
 import { recordCampaignConversion } from '@/lib/sponsorship-store'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 import { listingProvenance } from '@/lib/listing-provenance'
+import { contributedFieldSources } from '@/lib/source-record'
 import { buildEventInsight, type InsightPrefs } from '@/lib/event-insight'
 import { eventInsightAiEnabled } from '@/lib/feature-flags'
 import { cityDef } from '@/lib/cities'
@@ -56,7 +57,7 @@ async function queryEventCore(id: string) {
   const redacted = redactCommunityPublic(event)
   if (!redacted.imageUrl) redacted.imageAsset = null
 
-  const [relatedRows, tiers, duplicateTarget] = await Promise.all([
+  const [relatedRows, tiers, duplicateTarget, fieldSources] = await Promise.all([
     prisma.event.findMany({
       where: {
         id: { not: event.id },
@@ -75,6 +76,7 @@ async function queryEventCore(id: string) {
     event.duplicateOfId
       ? prisma.event.findUnique({ where: { id: event.duplicateOfId }, select: { id: true, title: true } })
       : Promise.resolve(null),
+    contributedFieldSources(event.id, event.source),
   ])
 
   const ownActivity = activityTitle(event.title)
@@ -121,6 +123,7 @@ async function queryEventCore(id: string) {
         organiserFields: presentation.notice?.fields ?? [],
         status: event.status,
         statusSource: event.statusSource,
+        fieldSources,
       }),
     },
     related,
@@ -129,7 +132,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v5'], { revalidate: 120 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v6'], { revalidate: 120 })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 
