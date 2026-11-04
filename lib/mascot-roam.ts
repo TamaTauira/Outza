@@ -126,21 +126,23 @@ export function pickRoamLine(act: RoamAct, rand: () => number = Math.random): st
 
 /**
  * Safe box inside the viewport. Stays under the header (and a speech bubble),
- * and above the mobile ticket bar. The map keeps a taller top and bottom gutter.
+ * and above the mobile ticket bar. Pass `bottomInset` when a bottom nav or a
+ * fold segment changes that gutter. The map keeps a taller top and bottom gutter.
  */
 export function roamBounds(
   vw: number,
   vh: number,
   size: number,
-  opts: { mobile: boolean; map: boolean },
+  opts: { mobile: boolean; map: boolean; bottomInset?: number; height?: number },
 ): Bounds {
   const top = opts.map ? 168 : 112
-  const bottomInset = opts.map ? (opts.mobile ? 176 : 36) : opts.mobile ? 96 : 20
+  const bottomInset = opts.bottomInset ?? (opts.map ? (opts.mobile ? 176 : 36) : opts.mobile ? 96 : 20)
   const side = 8
+  const h = Math.max(size, opts.height ?? size)
   const minX = side
-  const minY = Math.min(top, Math.max(0, vh - size))
+  const minY = Math.min(top, Math.max(0, vh - h))
   const maxX = Math.max(minX, vw - size - side)
-  const maxY = Math.max(minY, vh - size - bottomInset)
+  const maxY = Math.max(minY, vh - h - bottomInset)
   return { minX, minY, maxX, maxY }
 }
 

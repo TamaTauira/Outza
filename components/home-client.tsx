@@ -267,10 +267,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-clip">
+    <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
       <Navbar savedCount={saved.length} />
 
-      <main className={view === 'map' ? 'relative h-[calc(100dvh-3.5rem)] sm:h-[calc(100dvh-4rem)]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
+      <main className={view === 'map' ? 'vp-map-main relative h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>

@@ -4,6 +4,7 @@ import '@/components/vibepeep-mascot.css'
 import '@/components/vibepeep-roam.css'
 import '@/components/vibepeep-rig.css'
 import '@/components/vibepeep-dances.css'
+import '@/components/bottom-nav.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
@@ -59,6 +60,7 @@ export const metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover' as const,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f6f4ee' },
     { media: '(prefers-color-scheme: dark)', color: theme },
@@ -79,6 +81,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <div className="vp-hinge" aria-hidden="true" />
           <Providers>{children}</Providers>
           <VibePeepBuddySlot />
           <Toaster />

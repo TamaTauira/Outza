@@ -73,6 +73,12 @@ test('bounds keep him under the header and off the mobile ticket bar', () => {
   const tiny = roamBounds(40, 40, 72, { mobile: true, map: false })
   assert.ok(tiny.maxX >= tiny.minX)
   assert.ok(tiny.maxY >= tiny.minY)
+
+  const withBar = roamBounds(390, 844, 120, { mobile: true, map: false, bottomInset: 202 })
+  assert.ok(844 - 120 - withBar.maxY >= 200)
+
+  const tall = roamBounds(820, 1180, 176, { mobile: false, map: false, bottomInset: 92, height: 229 })
+  assert.ok(1180 - tall.maxY >= 229 + 92)
 })
 
 test('walk maths hops, faces the travel direction, and parks on an edge', () => {
