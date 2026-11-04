@@ -19,14 +19,16 @@ export function duplicateGroupKeys(row: {
   return [...keys]
 }
 
-/** Other public rows that can be the same listing: same city and day, or the same URL that day in any city. */
-export function duplicatePeerWhere(row: {
+type PeerRow = {
   city: string
   date: Date
   sourceUrl?: string | null
   ticketUrl?: string | null
   organiserUrl?: string | null
-}): Prisma.EventWhereInput[] {
+}
+
+/** Other public rows that can be the same listing: same city and day, or the same URL that day in any city. */
+export function duplicatePeerWhere(row: PeerRow): Prisma.EventWhereInput[] {
   const clauses: Prisma.EventWhereInput[] = [{ city: row.city, date: row.date }]
   const seen = new Set<string>()
   for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
@@ -37,6 +39,21 @@ export function duplicatePeerWhere(row: {
         date: row.date,
         OR: [{ sourceUrl: url }, { ticketUrl: url }, { organiserUrl: url }],
       })
+    }
+  }
+  return clauses
+}
+
+/** One clause per city-day and per listing URL on that day. Repeated touches do not widen the read. */
+export function duplicatePeerClauses(rows: PeerRow[]): Prisma.EventWhereInput[] {
+  const seen = new Set<string>()
+  const clauses: Prisma.EventWhereInput[] = []
+  for (const row of rows) {
+    for (const clause of duplicatePeerWhere(row)) {
+      const key = JSON.stringify(clause, (_name, value) => value instanceof Date ? value.toISOString() : value)
+      if (seen.has(key)) continue
+      seen.add(key)
+      clauses.push(clause)
     }
   }
   return clauses

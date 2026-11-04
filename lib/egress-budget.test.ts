@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { latestIso } from './board'
-import { duplicateGroupKeys } from './quality-pass'
+import { duplicateGroupKeys, duplicatePeerClauses } from './duplicate-peers'
 import { boardArgsFromSearch, BOARD_SELECT } from './board-feed'
 import { estimateEgress, jsonBytes, routePayloadBytes, sampleListEvent } from './egress-budget'
 import { PUBLIC_S_MAXAGE_SECONDS, PUBLIC_SWR_SECONDS, publicCacheHeaders } from './http-cache'
@@ -47,26 +47,29 @@ test('page size for the board and map stays capped', () => {
   assert.match(map, /params\.set\('limit', '300'\)/)
 })
 
-test('a shared source URL is compared across cities and dates', () => {
-  const day = new Date('2026-11-07T00:00:00.000Z')
-  const otherDay = new Date('2026-11-08T00:00:00.000Z')
-  const sydney = duplicateGroupKeys({
-    city: 'Sydney', date: day,
-    sourceUrl: 'https://www.frontiertouring.com/bensonboone/',
-    ticketUrl: null, organiserUrl: null,
-  })
-  const melbourne = duplicateGroupKeys({
-    city: 'Melbourne', date: otherDay,
-    sourceUrl: 'https://www.frontiertouring.com/bensonboone',
-    ticketUrl: null, organiserUrl: null,
-  })
+test('a shared source URL and start is one group in any city, and another night is not', () => {
+  const page = 'https://www.frontiertouring.com/bensonboone'
+  const sydney = duplicateGroupKeys({ city: 'Sydney', date: '2026-11-07', urls: [page] })
+  const melbourne = duplicateGroupKeys({ city: 'Melbourne', date: '2026-11-07', urls: [`${page}/`] })
+  const nextNight = duplicateGroupKeys({ city: 'Melbourne', date: '2026-11-08', urls: [page] })
   const sydneyUrl = sydney.find((key) => key.startsWith('url:'))
   const melbourneUrl = melbourne.find((key) => key.startsWith('url:'))
   assert.ok(sydneyUrl)
   assert.equal(sydneyUrl, melbourneUrl)
   assert.equal(sydneyUrl!.includes('Sydney'), false)
-  assert.equal(sydneyUrl!.includes('2026-11-07'), false)
-  assert.notEqual(sydney.find((key) => key.startsWith('city:')), melbourne.find((key) => key.startsWith('city:')))
+  assert.equal(sydneyUrl!.includes('2026-11-07'), true)
+  assert.notEqual(sydneyUrl, nextNight.find((key) => key.startsWith('url:')))
+  const clauses = duplicatePeerClauses([
+    { city: 'Melbourne', date: new Date('2026-11-07T00:00:00.000Z'), sourceUrl: 'https://frontiertouringcom.coredna.site/bensonboone', ticketUrl: null, organiserUrl: null },
+    { city: 'Melbourne', date: new Date('2026-11-07T00:00:00.000Z'), sourceUrl: 'https://frontiertouringcom.coredna.site/bensonboone', ticketUrl: null, organiserUrl: null },
+  ])
+  assert.equal(clauses.filter((clause) => clause.city === 'Melbourne').length, 1)
+  const urlClause = clauses.find((clause) => !clause.city)
+  assert.equal((urlClause?.date as Date).toISOString(), '2026-11-07T00:00:00.000Z')
+  const quality = read('./quality-pass.ts')
+  assert.match(quality, /duplicatePeerClauses/)
+  assert.match(quality, /duplicateGroupKeys/)
+  assert.equal(quality.includes('sourceUrl: { in:'), false)
 })
 
 test('jobs no longer scan the old wide sets', () => {
