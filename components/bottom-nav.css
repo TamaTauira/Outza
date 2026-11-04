@@ -55,7 +55,8 @@
     transition: transform 220ms ease;
   }
 
-  .vp-top-links {
+  .vp-top-links,
+  .vp-header-account {
     display: none !important;
   }
 
@@ -289,6 +290,14 @@
   padding-bottom: 1.25rem;
 }
 
+/* Cover the bar. Sitting above --vp-bottom-nav-offset left a strip beside the raised Ask button. */
+.vp-menu-sheet {
+  bottom: 0 !important;
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 @keyframes vp-tab-pop {
   0% { transform: translateX(-50%) scale(1); }
   40% { transform: translateX(-50%) scale(0.82); }
@@ -473,7 +482,8 @@ html[data-vp-fold='side'] body {
   padding-bottom: var(--vp-bottom-nav-offset);
 }
 
-html[data-vp-fold='side'] .vp-top-links {
+html[data-vp-fold='side'] .vp-top-links,
+html[data-vp-fold='side'] .vp-header-account {
   display: none !important;
 }
 

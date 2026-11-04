@@ -13,11 +13,11 @@ import './bottom-nav.css'
 const LEFT = [
   { key: 'board', label: 'Board', href: '/', Icon: LayoutList },
   { key: 'map', label: 'Map', href: '/map', Icon: MapPin },
-  { key: 'itinerary', label: 'Itinerary', href: '/itinerary', Icon: CalendarRange },
+  { key: 'local', label: 'Local', href: '/local', Icon: House },
 ] as const
 
 const RIGHT = [
-  { key: 'local', label: 'Local', href: '/local', Icon: House },
+  { key: 'itinerary', label: 'Itinerary', href: '/itinerary', Icon: CalendarRange },
   { key: 'saved', label: 'Saved', href: '/saved', Icon: Bookmark },
 ] as const
 
