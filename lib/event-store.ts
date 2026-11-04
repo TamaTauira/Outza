@@ -174,6 +174,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     organiserEditedAt: true, communityKey: true, latitude: true, longitude: true, title: true, venueName: true,
     venueAddress: true, city: true, date: true, status: true, time: true, endTime: true, endDate: true,
     price: true, priceMin: true, priceMax: true, isFree: true, feesIncluded: true, description: true, lastVerifiedAt: true,
+    duplicateOfId: true,
   } as const
   const externalId = ev.externalId?.trim() || null
   const identityUrl = storedLinks.sourceUrl || storedLinks.ticketUrl
@@ -186,6 +187,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
       select: eventSelect,
     })
+  }
+  if (existing?.duplicateOfId) {
+    const canonical = await prisma.event.findUnique({ where: { id: existing.duplicateOfId }, select: eventSelect })
+    if (canonical && !canonical.duplicateOfId) existing = canonical
   }
   const identityHit = !!existing && existing.id === linkedId
   let pin = finitePin(ev.latitude, ev.longitude)
@@ -296,7 +301,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   // Cross-source duplicate: a fuzzy title/venue/time match on the same day in the same city
   const candidates = await prisma.event.findMany({
     where: { date, city, duplicateOfId: null, communityKey: null },
-    select: { id: true, title: true, venueName: true, time: true, sources: true, source: true, organiserName: true },
+    select: {
+      id: true, title: true, venueName: true, venueAddress: true, time: true, sources: true, source: true, organiserName: true,
+      ticketUrl: true, sourceUrl: true,
+    },
     take: 400,
   })
   const incomingIdentity = {
@@ -304,7 +312,10 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     externalId, url: identityUrl, address: venueAddress || null, status,
   }
   const dup = candidates.find((c) => decideDuplicate(
-    { title: c.title, venueName: c.venueName, city, date: ev.date, time: c.time, source: c.source, organiserName: c.organiserName },
+    {
+      title: c.title, venueName: c.venueName, city, date: ev.date, time: c.time, source: c.source, organiserName: c.organiserName,
+      address: c.venueAddress, url: c.sourceUrl || c.ticketUrl,
+    },
     incomingIdentity,
   ).action === 'link')
   if (dup) {

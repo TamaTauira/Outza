@@ -130,6 +130,29 @@ test('the same title and start time link when the venue matches or the street is
   assert.equal(later.action, 'separate')
 })
 
+test('the same listing page links even when the venue strings differ, and a later week stays separate', () => {
+  const page = 'https://whatson.cityofsydney.nsw.gov.au/events/slice-of-the-point'
+  const sameNight = decideDuplicate(
+    row({ title: 'Slice of the Point', venueName: 'Llankelly Pl', time: '17:00', source: 'cityofsydney', url: page, address: 'Llankelly Pl, Potts Point NSW 2011' }),
+    row({ title: 'Slice of the Point', venueName: 'PIÑA, Room Ten and Dear Sainte Éloise', time: '17:00', source: 'cityofsydney', url: page, address: 'Llankelly Pl, Potts Point NSW 2011' }),
+  )
+  assert.equal(sameNight.action, 'link')
+  assert.equal(sameNight.layer, 'exact_url')
+
+  const suburbLabel = decideDuplicate(
+    row({ title: 'Anticipated Collapse.', venueName: 'Darlinghurst', time: '19:00', source: 'cityofsydney', url: 'https://whatson.cityofsydney.nsw.gov.au/events/anticipated-collapse' }),
+    row({ title: 'Anticipated Collapse.', venueName: 'East Sydney Community and Arts Centre (ESCAC)', time: '19:00', source: 'cityofsydney', url: 'https://whatson.cityofsydney.nsw.gov.au/events/anticipated-collapse' }),
+  )
+  assert.equal(suburbLabel.action, 'link')
+
+  const nextWeek = decideDuplicate(
+    row({ title: 'Jazz Wednesdays - A Midweek Taste of Paris', venueName: 'Cardea Barangaroo', date: '2026-10-27', time: null, source: 'cityofsydney', url: 'https://whatson.cityofsydney.nsw.gov.au/events/wednesdays-unplugged-at-cardea-barangaroo' }),
+    row({ title: 'Jazz Wednesdays - A Midweek Taste of Paris', venueName: 'Cardea Barangaroo', date: '2026-11-04', time: '17:30', source: 'cityofsydney', url: 'https://whatson.cityofsydney.nsw.gov.au/events/wednesdays-unplugged-at-cardea-barangaroo' }),
+  )
+  assert.equal(nextWeek.action, 'review')
+  assert.equal(nextWeek.layer, 'exact_url')
+})
+
 test('a source link cannot move ownership, and the public event path stays id-based', () => {
   assert.throws(() => assertNoOwnershipTransfer({ promoterId: 'ada' }), /promoterId/)
   assert.doesNotThrow(() => assertNoOwnershipTransfer({ sources: ['brisbanecouncil'], ticketUrl: 'https://example.com/go' }))

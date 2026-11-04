@@ -7,6 +7,7 @@
  */
 import { prisma } from '../lib/prisma'
 import { decideDuplicate } from '../lib/event-identity'
+import { isWeakVenueName } from '../lib/place-match'
 import { planLinkedFill, type FillEvent } from '../lib/linked-fill'
 import { makeSeriesKey } from '../lib/event-store'
 import { CATEGORIES, refineStoredCategory, retagLgbti } from '../lib/categories'
@@ -49,6 +50,7 @@ function asIdentity(row: Row) {
     organiserName: row.organiserName,
     address: row.venueAddress,
     status: row.status,
+    url: row.sourceUrl || row.ticketUrl,
   }
 }
 
@@ -70,7 +72,7 @@ async function mergeDuplicates(rows: Row[]) {
     const key = `${row.city}|${row.date.toISOString().slice(0, 10)}`
     groups.set(key, [...(groups.get(key) ?? []), row])
   }
-  const rank = (row: Row) => (SOURCES[row.source]?.trust ?? 20)
+  const rank = (row: Row) => (SOURCES[row.source]?.trust ?? 20) + (isWeakVenueName(row.venueName, row.venueAddress) ? 0 : 5)
   const pairs: { primary: Row; duplicate: Row }[] = []
   for (const list of groups.values()) {
     const used = new Set<string>()
