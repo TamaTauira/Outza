@@ -5,7 +5,7 @@
   z-index: 34;
   left: 0;
   top: 0;
-  width: 7.5rem;
+  width: var(--vp-size-phone);
   pointer-events: none;
 }
 
@@ -17,9 +17,25 @@
   bottom: max(5.75rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
+@media (max-width: 639px) {
+  .vp-roam .vp-buddy-min {
+    top: -42px;
+    left: calc(64% + 14px);
+    right: auto;
+    translate: none;
+  }
+}
+
 @media (min-width: 640px) {
   .vp-roam {
-    width: 11rem;
+    width: var(--vp-size-desktop);
+  }
+
+  .vp-roam .vp-buddy-min {
+    top: -36px;
+    left: calc(64% + 12px);
+    right: auto;
+    translate: none;
   }
 
   .vp-roam:not([data-ready]) {
@@ -29,7 +45,13 @@
 }
 
 .vp-roam-map {
-  width: 5.5rem;
+  width: var(--vp-size-phone);
+}
+
+@media (min-width: 640px) {
+  .vp-roam-map {
+    width: var(--vp-size-desktop);
+  }
 }
 
 .vp-roam-parked {

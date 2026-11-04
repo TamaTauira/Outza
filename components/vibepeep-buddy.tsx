@@ -21,8 +21,13 @@ function readMinimised() {
 export function VibePeepBuddy() {
   const path = usePathname()
   const onMap = path === '/map'
-  const [minimised, setMinimised] = useState(() => readMinimised())
+  // null until after mount so server and client render the same tree.
+  const [minimised, setMinimised] = useState<boolean | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMinimised(readMinimised())
+  }, [])
 
   const save = (next: boolean) => {
     setMinimised(next)
@@ -33,9 +38,11 @@ export function VibePeepBuddy() {
 
   useEffect(() => {
     const root = rootRef.current
-    if (!root || minimised) return
+    if (!root || minimised !== false) return
     return attachRoam(root)
   }, [minimised, onMap])
+
+  if (minimised === null) return null
 
   if (minimised) {
     return (

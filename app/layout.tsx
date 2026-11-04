@@ -13,6 +13,7 @@ import { Providers } from '@/components/providers'
 import { VibePeepBuddySlot } from '@/components/vibepeep-buddy-slot'
 import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_OG_IMAGE, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
+import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' })
 const jakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-display' })
@@ -75,6 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en-AU" suppressHydrationWarning>
       <body className={`${dmSans.variable} ${jakartaSans.variable} ${jetbrainsMono.variable} font-sans`}>
+        <style>{`:root{--vp-size-phone:${MASCOT_PHONE_WIDTH};--vp-size-desktop:${MASCOT_DESKTOP_WIDTH}}`}</style>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

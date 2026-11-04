@@ -22,7 +22,7 @@ import {
 } from '@/lib/mascot-roam'
 import { roamBottomChrome } from '@/lib/bottom-nav'
 
-const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, [role="button"], [role="link"], [role="tab"], [data-sonner-toaster], .leaflet-control, .leaflet-marker-icon, .se-cluster, .vp-map-float, .vp-map-cards, .vp-map-rail, .vp-map-toolbar, .vp-map-chips'
+const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, [role="button"], [role="link"], [role="tab"], [data-sonner-toaster], .leaflet-control, .leaflet-marker-icon, .se-cluster, .vp-map-float, .vp-map-cards, .vp-map-rail, .vp-map-toolbar, .vp-map-chips, .vp-map-ask, .rounded-xl, .rounded-2xl, p, h1, h2, h3, h4, li'
 
 type Phase =
   | { type: 'pause'; until: number }
@@ -180,15 +180,75 @@ export function attachRoam(root: HTMLElement): () => void {
     if (slot.dataset.bubble !== side) slot.dataset.bubble = side
   }
 
+  const coversCopy = (x: number, y: number) => {
+    const s = size()
+    const h = Math.max(s, figure().height)
+    const closeTop = mobileMq.matches ? 42 : 36
+    const boxes = [
+      { left: x, top: y, right: x + s, bottom: y + h },
+      { left: x + s * 0.64 + 12, top: y - closeTop, right: x + s * 0.64 + 32, bottom: y - closeTop + 20 },
+    ]
+    const pad = 8
+    const nodes = document.querySelectorAll(BLOCK)
+    const textEl = 'p, h1, h2, h3, h4, li'
+    for (const el of nodes) {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
+      let rects: DOMRect[] = []
+      if (el.matches(textEl)) {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        rects = Array.from(range.getClientRects()).filter((r) => r.width > 8 && r.height > 8)
+      }
+      if (!rects.length) {
+        const r = el.getBoundingClientRect()
+        if (r.width < 12 || r.height < 10) continue
+        if (r.width > window.innerWidth * 0.92 && r.height > 180) continue
+        rects = [r]
+      }
+      for (const r of rects) {
+        for (const b of boxes) {
+          if (!(b.right < r.left - pad || b.left > r.right + pad || b.bottom < r.top - pad || b.top > r.bottom + pad)) return true
+        }
+      }
+    }
+    return false
+  }
+
+  const firstClear = (box: Bounds): Point => {
+    const stride = 24
+    let best = { x: box.maxX, y: box.minY }
+    let bestScore = Number.POSITIVE_INFINITY
+    for (let y = box.minY; y <= box.maxY; y += stride) {
+      for (let x = box.maxX; x >= box.minX; x -= stride) {
+        if (!coversCopy(x, y)) return { x, y }
+        const score = y + (box.maxX - x) * 0.01
+        if (score < bestScore) {
+          best = { x, y }
+          bestScore = score
+        }
+      }
+    }
+    return best
+  }
+
   const park = () => {
     const box = bounds()
-    const corners = [
-      { x: box.maxX, y: box.maxY },
-      { x: box.minX, y: box.maxY },
-      { x: box.maxX, y: Math.max(box.minY, box.maxY - size()) },
-      { x: box.minX, y: Math.max(box.minY, box.maxY - size()) },
-    ]
-    pos = corners.find((corner) => spotClear(corner.x, corner.y)) ?? corners[0]!
+    let spot = null
+    if (!mobileMq.matches && location.pathname.startsWith('/local')) {
+      const tab = Array.from(document.querySelectorAll('main button')).find((el) => /nearby|list something/i.test(el.textContent || ''))
+      const bar = tab?.parentElement?.getBoundingClientRect()
+      if (bar && bar.bottom > 40) {
+        const s = size()
+        const x = Math.max(8, window.innerWidth - (s * 0.64 + 32) - 8)
+        for (let y = Math.max(box.minY, bar.bottom + 16); y <= Math.min(box.maxY, bar.bottom + 320); y += 12) {
+          if (!coversCopy(x, y)) {
+            spot = { x, y }
+            break
+          }
+        }
+      }
+    }
+    pos = spot ?? firstClear(box)
     face = 'right'
     root.dataset.ready = '1'
     setMove('still')
@@ -214,24 +274,7 @@ export function attachRoam(root: HTMLElement): () => void {
     say(pickRoamLine(act))
   }
 
-  const spotClear = (x: number, y: number) => {
-    const s = size()
-    const samples: Array<[number, number]> = [
-      [x + s * 0.5, y + s * 0.4],
-      [x + s * 0.28, y + s * 0.62],
-      [x + s * 0.72, y + s * 0.62],
-      [x + s * 0.5, y + s * 0.78],
-      [x + s * 0.38, y + s * 0.3],
-      [x + s * 0.62, y + s * 0.3],
-    ]
-    for (const [px, py] of samples) {
-      if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) continue
-      const el = document.elementFromPoint(px, py)
-      if (!el || el.closest('.vp-roam')) continue
-      if (el.closest(BLOCK)) return false
-    }
-    return true
-  }
+  const spotClear = (x: number, y: number) => !coversCopy(x, y)
 
   const randomClear = (box: Bounds, from: Point) => {
     const s = size()
@@ -239,16 +282,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const point = destination(box, from, Math.random, Math.min(120, s * 1.6))
       if (spotClear(point.x, point.y)) return point
     }
-    const corners = [
-      { x: box.minX, y: box.maxY },
-      { x: box.maxX, y: box.maxY },
-      { x: box.minX, y: box.minY + 24 },
-      { x: box.maxX, y: box.minY + 24 },
-    ]
-    for (const corner of corners) {
-      if (spotClear(corner.x, corner.y)) return corner
-    }
-    return clampPoint(from, box)
+    return firstClear(box)
   }
 
   const findPerch = (box: Bounds): Point | null => {
@@ -274,6 +308,10 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const pauseNext = (ms?: number) => {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
+    if (!spotClear(pos.x, pos.y)) {
+      pos = firstClear(bounds())
+      apply()
+    }
     setMove('idle')
     phase = { type: 'pause', until: performance.now() + wait }
   }

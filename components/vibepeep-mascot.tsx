@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { VibePeepFigure } from '@/components/vibepeep-figure'
+import { DANCE_IDS } from '@/lib/mascot-dances'
 import { BRAND_MASCOT_HEIGHT, BRAND_MASCOT_SRC, BRAND_MASCOT_WIDTH } from '@/lib/brand'
 
 export type MascotBubble = 'center' | 'start'
@@ -17,26 +18,12 @@ function MascotRig() {
   return (
     <span className="vp-rig">
       <VibePeepFigure />
-      <span className="vp-prop vp-pizza" aria-hidden="true"><Pizza /></span>
       <span className="vp-prop vp-mic" aria-hidden="true"><Mic /></span>
       <span className="vp-prop vp-kick" aria-hidden="true"><Ball /></span>
       <span className="vp-prop vp-brush" aria-hidden="true"><Brush /></span>
       <span className="vp-prop vp-dab" aria-hidden="true"><Dab /></span>
-      <span className="vp-prop vp-snake" aria-hidden="true"><Snake /></span>
       <span className="vp-prop vp-flower" aria-hidden="true"><Flower /></span>
     </span>
-  )
-}
-
-function Pizza() {
-  return (
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <path d="M6 20c16-10 36-10 52 0L34 56 6 20z" fill="#E39A3C" />
-      <path d="M12 22c12-6 28-6 40 0L34 50 12 22z" fill="#F6D56A" />
-      <circle cx="24" cy="28" r="4" fill="#D64532" />
-      <circle cx="36" cy="32" r="3.4" fill="#C53428" />
-      <circle cx="30" cy="24" r="2.6" fill="#A82C22" />
-    </svg>
   )
 }
 
@@ -77,19 +64,6 @@ function Dab() {
     <svg viewBox="0 0 48 48" aria-hidden="true">
       <path d="M8 30c8-16 20-16 28-2" fill="none" stroke="#FF8A1A" strokeWidth="5" strokeLinecap="round" />
       <path d="M14 36c6-8 12-8 18 0" fill="none" stroke="#FF4E6A" strokeWidth="4" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function Snake() {
-  return (
-    <svg viewBox="0 0 120 48" aria-hidden="true">
-      <path d="M8 30c14-18 24-8 32-8s14 14 24 10 18-16 28-8 12 14 20 6" fill="none" stroke="#2a2a2e" strokeWidth="12" strokeLinecap="round" />
-      <path d="M8 30c14-18 24-8 32-8s14 14 24 10 18-16 28-8 12 14 20 6" fill="none" stroke="#FF8A1A" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="104" cy="20" r="7" fill="#2a2a2e" />
-      <circle cx="106" cy="18" r="1.6" fill="#fff" />
-      <circle cx="100" cy="18" r="1.6" fill="#fff" />
-      <path d="M112 22c4 2 6 2 8 0" fill="none" stroke="#FF4E6A" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   )
 }
@@ -192,6 +166,78 @@ export function VibePeepMascot({
     }
   }, [])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const closeup = params.get('peepclose') === '1'
+    if (params.get('peepshow') !== '1' && !closeup) return
+    if (params.get('peepdrive') === '1') {
+      const root = slotRef.current?.closest<HTMLElement>('.vp-roam')
+      if (!root) return
+      root.dataset.showoff = '1'
+      if (closeup) {
+        root.dataset.closeup = '1'
+        document.documentElement.dataset.peepclose = '1'
+      }
+      const bubble = root.querySelector<HTMLElement>('.vp-bubble')
+      if (bubble) bubble.textContent = ''
+      return
+    }
+    const slot = slotRef.current
+    const button = slot?.querySelector<HTMLButtonElement>('.vp-hit')
+    const root = slot?.closest<HTMLElement>('.vp-roam')
+    if (!slot || !button || !root) return
+    root.dataset.showoff = '1'
+    if (closeup) {
+      root.dataset.closeup = '1'
+      document.documentElement.dataset.peepclose = '1'
+    }
+    const bubble = root.querySelector<HTMLElement>('.vp-bubble')
+    if (bubble) bubble.textContent = ''
+    button.removeAttribute('data-line')
+    const danceMs = closeup ? 2200 : 4800
+    const steps: Array<{ move?: string; react?: string; dance?: string; face?: 'left' | 'right'; ms: number }> = closeup
+      ? [
+          { move: 'idle', face: 'right', ms: 700 },
+          { move: 'hop', face: 'right', ms: 2400 },
+          { move: 'idle', face: 'right', ms: 700 },
+          { move: 'hop', face: 'left', ms: 2400 },
+          { move: 'idle', face: 'right', ms: 600 },
+          { react: 'spin', face: 'right', ms: 1600 },
+          ...DANCE_IDS.map((dance) => ({ dance, face: 'right' as const, ms: danceMs })),
+        ]
+      : [
+          { move: 'hop', face: 'right' as const, ms: 2800 },
+          { move: 'hop', face: 'left' as const, ms: 2800 },
+          { react: 'spin', ms: 2600 },
+          ...DANCE_IDS.map((dance) => ({ dance, ms: danceMs })),
+        ]
+    let index = 0
+    let timer = 0
+    const clear = () => {
+      button.removeAttribute('data-react')
+      button.removeAttribute('data-dance')
+      delete root.dataset.move
+    }
+    const run = () => {
+      const step = steps[index]
+      if (!step) return
+      clear()
+      if (bubble) bubble.textContent = ''
+      button.removeAttribute('data-line')
+      if (step.face) root.dataset.face = step.face
+      if (step.move) root.dataset.move = step.move
+      if (step.react) button.setAttribute('data-react', step.react)
+      if (step.dance) {
+        button.setAttribute('data-react', 'party')
+        button.setAttribute('data-dance', step.dance)
+      }
+      index += 1
+      if (index < steps.length) timer = window.setTimeout(run, step.ms)
+    }
+    timer = window.setTimeout(run, 700)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   return (
     <span ref={slotRef} className={`vp-slot inline-block align-middle ${className}`} data-bubble={bubble}>
       <button type="button" className="vp-hit" aria-label={mascotLabel(alt)}>
@@ -210,7 +256,6 @@ export function VibePeepMascot({
                   <span className="vp-pop vp-pop-l" aria-hidden="true"><i /></span>
                   <span className="vp-pop vp-pop-r" aria-hidden="true"><i /></span>
                   <span className="vp-zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></span>
-                  <span className="vp-five" aria-hidden="true">✋</span>
                   <span className="vp-paw" aria-hidden="true">🐾</span>
                   <span className="vp-note vp-note-a" aria-hidden="true">♪</span>
                   <span className="vp-note vp-note-b" aria-hidden="true">♫</span>
@@ -223,14 +268,14 @@ export function VibePeepMascot({
           </span>
           <span className="vp-fx" aria-hidden="true" />
           <span className="vp-show" aria-hidden="true">
-            <i className="vp-disco-ball vp-ball-a" />
-            <i className="vp-disco-ball vp-ball-b" />
-            <i className="vp-disco-ball vp-ball-c" />
-            <i className="vp-sweep" />
+            <i className="vp-beams" />
+            <i className="vp-disco-ball" />
             <i className="vp-glint vp-glint-a" />
             <i className="vp-glint vp-glint-b" />
             <i className="vp-glint vp-glint-c" />
+            <i className="vp-glint vp-glint-d" />
           </span>
+          <span className="vp-dance-label" aria-hidden="true" />
         </span>
         <span className="vp-bubble" aria-hidden="true" />
       </button>

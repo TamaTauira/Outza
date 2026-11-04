@@ -352,7 +352,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         </button>
       )}
       {loc === 'asking' && (
-        <div className={bleed ? 'absolute bottom-[calc(var(--vp-map-dock,0px)+0.75rem)] left-3 right-3 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'absolute bottom-20 left-4 right-4 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
+        <div className={bleed ? 'vp-map-ask absolute bottom-[calc(var(--vp-map-dock,0px)+0.75rem)] left-3 right-3 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'vp-map-ask absolute bottom-20 left-4 right-4 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
           <button onClick={declineLocation} className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Dismiss">
             <X className="h-4 w-4" />
           </button>
@@ -366,7 +366,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         </div>
       )}
       {(loc === 'denied' || loc === 'unavailable') && (
-        <div className={bleed ? 'absolute bottom-[calc(var(--vp-map-dock,0px)+0.75rem)] left-3 right-3 z-30 rounded-xl bg-card p-3 pr-9 text-sm shadow-xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'absolute bottom-20 left-4 right-4 z-30 rounded-xl bg-card p-3 pr-9 text-sm text-card-foreground shadow-xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
+        <div className={bleed ? 'vp-map-ask absolute bottom-[calc(var(--vp-map-dock,0px)+0.75rem)] left-3 right-3 z-30 rounded-xl bg-card p-3 pr-9 text-sm shadow-xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'vp-map-ask absolute bottom-20 left-4 right-4 z-30 rounded-xl bg-card p-3 pr-9 text-sm text-card-foreground shadow-xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
           <button onClick={() => setLoc('idle')} className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Dismiss">
             <X className="h-4 w-4" />
           </button>
