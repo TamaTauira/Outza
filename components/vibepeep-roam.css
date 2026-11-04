@@ -1,5 +1,9 @@
 /* Roaming buddy. Position is a transform on .vp-roam; the bitmap never changes. */
 
+.vp-roam:not([data-loaded]) {
+  visibility: hidden;
+}
+
 .vp-roam {
   position: fixed;
   z-index: 34;
@@ -210,6 +214,12 @@
 
 .vp-roam .vp-bubble {
   max-width: min(11rem, 46vw);
+}
+
+.vp-roam[data-bub='up'] .vp-bubble {
+  top: auto;
+  bottom: calc(100% + 8px);
+  translate: -50% 0;
 }
 
 @keyframes vp-walk-bob {

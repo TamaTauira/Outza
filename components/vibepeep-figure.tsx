@@ -85,7 +85,10 @@ export function VibePeepFigure() {
         <span className="vp-part vp-grip vp-grip-r" style={place('arm-r')} aria-hidden="true">
           <img src="/mascot/parts/arm-r.png" alt="" draggable={false} />
         </span>
-        <Part name="antenna" className="vp-ant" />
+        <span className="vp-part vp-ant" style={place('antenna')}>
+          <img className="vp-ant-stalk" src="/mascot/parts/antenna-stalk.png" alt="" draggable={false} />
+          <img className="vp-ant-tip" src="/mascot/parts/antenna-tip.png" alt="" draggable={false} />
+        </span>
         <span className="vp-zap vp-zap-a" aria-hidden="true" />
         <span className="vp-zap vp-zap-b" aria-hidden="true" />
         <span className="vp-zap vp-zap-c" aria-hidden="true" />
@@ -107,7 +110,8 @@ export function VibePeepFigure() {
           <img src="/mascot/parts/arm-r.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-ant" style={sideBox(0.48, 0.018, 0.15, 0.125, 0.5, 0.9)}>
-          <img src="/mascot/parts/antenna.png" alt="" draggable={false} />
+          <img className="vp-ant-stalk" src="/mascot/parts/antenna-stalk.png" alt="" draggable={false} />
+          <img className="vp-ant-tip" src="/mascot/parts/antenna-tip.png" alt="" draggable={false} />
         </span>
       </span>
       <img className="vp-sheet vp-sheet-hips" src="/mascot/poses/sheet-hips.png" alt="" draggable={false} />

@@ -184,6 +184,14 @@
   user-select: none;
 }
 
+.vp-ant .vp-ant-tip,
+.vp-s-ant .vp-ant-tip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 /* Idle life. Different periods so blink, glance, sway and fidget never lock into one pose. */
 .vp-ant {
   animation: vp-ant-idle 3.6s ease-in-out infinite;
@@ -219,32 +227,72 @@
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-bob,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-bob,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-bob {
-  animation: vp-step-bob var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-bob var(--vp-cycle, 0.84s) ease-in-out infinite;
   transform-origin: 50% 78%;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-leg-f,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-leg-f,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-s-leg-f {
+  animation: vp-side-leg-f var(--vp-cycle, 0.84s) linear infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-leg-b,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-leg-b,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-s-leg-b {
+  animation: vp-side-leg-b var(--vp-cycle, 0.84s) linear infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-arm-f,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-arm-f {
+  animation: vp-side-arm-f var(--vp-cycle, 0.84s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-arm-b,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-arm-b {
+  animation: vp-side-arm-b var(--vp-cycle, 0.84s) ease-in-out infinite;
+}
+
+.vp-hit[data-dance='moonwalk'] .vp-profile { visibility: visible; }
+.vp-hit[data-dance='moonwalk'] .vp-front { visibility: hidden; }
+.vp-hit[data-dance='moonwalk'] .vp-profile { transform: none; }
+.vp-hit[data-dance='moonwalk'] .vp-bob { animation: vp-moon-glide 1.68s linear infinite; }
+.vp-hit[data-dance='moonwalk'] .vp-s-leg-f,
+.vp-hit[data-dance='moonwalk'] .vp-s-leg-b { transform-origin: 78% 88%; animation: vp-moon-heel 0.42s ease-in-out infinite; }
+.vp-hit[data-dance='moonwalk'] .vp-s-leg-b { animation-delay: 0.21s; }
+
+@keyframes vp-moon-glide {
+  0% { transform: translateX(14%); }
+  100% { transform: translateX(-14%); }
+}
+
+@keyframes vp-moon-heel {
+  0%, 100% { transform: rotate(0deg); }
+  45% { transform: rotate(-16deg); }
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-leg-l,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-leg-l,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-leg-l {
-  animation: vp-step-leg-l var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-leg-l var(--vp-cycle, 0.84s) linear infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-leg-r,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-leg-r,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-leg-r {
-  animation: vp-step-leg-r var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-leg-r var(--vp-cycle, 0.84s) linear infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-arm-l,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-arm-l,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-arm-l {
-  animation: vp-step-arm-l var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-arm-l var(--vp-cycle, 0.84s) ease-in-out infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-arm-r,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-arm-r,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-arm-r {
-  animation: vp-step-arm-r var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-arm-r var(--vp-cycle, 0.84s) ease-in-out infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-ant,
@@ -275,7 +323,7 @@
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]):not([data-dance]) .vp-bob,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]):not([data-dance]) .vp-bob,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]):not([data-dance]) .vp-bob {
-  animation: vp-stomp-bob var(--vp-step, 0.42s) ease-in-out infinite;
+  animation: vp-stomp-bob var(--vp-cycle, 0.84s) ease-in-out infinite;
   transform-origin: 50% 78%;
 }
 
@@ -541,35 +589,39 @@
 }
 
 @keyframes vp-step-bob {
-  0%, 22% { transform: translateY(1.2%) rotate(-3deg) scale(1, 0.96); }
-  38% { transform: translateY(-5%) rotate(-4deg) scale(1, 1); }
-  50%, 72% { transform: translateY(1.2%) rotate(3deg) scale(1, 0.96); }
-  88% { transform: translateY(-5%) rotate(4deg) scale(1, 1); }
-  100% { transform: translateY(1.2%) rotate(-3deg) scale(1, 0.96); }
+  0%, 8% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
+  28% { transform: translateY(-3.2%) rotate(-1deg) scale(1, 1); }
+  50%, 58% { transform: translateY(1.6%) rotate(3deg) scale(1, 0.96); }
+  78% { transform: translateY(-3.2%) rotate(1deg) scale(1, 1); }
+  100% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
 }
 
 @keyframes vp-step-leg-l {
-  0%, 22% { transform: rotate(4deg); }
-  40% { transform: rotate(72deg); }
-  58%, 100% { transform: rotate(4deg); }
+  0%, 10% { transform: rotate(8deg); }
+  30% { transform: rotate(2deg); }
+  50%, 60% { transform: rotate(-6deg); }
+  78% { transform: rotate(36deg); }
+  100% { transform: rotate(8deg); }
 }
 
 @keyframes vp-step-leg-r {
-  0%, 50% { transform: rotate(-4deg); }
-  68% { transform: rotate(-72deg); }
-  86%, 100% { transform: rotate(-4deg); }
+  0%, 10% { transform: rotate(6deg); }
+  28% { transform: rotate(-36deg); }
+  50%, 60% { transform: rotate(-8deg); }
+  80% { transform: rotate(-2deg); }
+  100% { transform: rotate(6deg); }
 }
 
 @keyframes vp-step-arm-l {
-  0%, 18% { transform: rotate(32deg); }
-  40% { transform: rotate(-28deg); }
-  72%, 100% { transform: rotate(32deg); }
+  0%, 10% { transform: rotate(-18deg); }
+  50%, 60% { transform: rotate(18deg); }
+  100% { transform: rotate(-18deg); }
 }
 
 @keyframes vp-step-arm-r {
-  0%, 36% { transform: rotate(-32deg); }
-  68% { transform: rotate(26deg); }
-  100% { transform: rotate(-32deg); }
+  0%, 10% { transform: rotate(18deg); }
+  50%, 60% { transform: rotate(-18deg); }
+  100% { transform: rotate(18deg); }
 }
 
 @keyframes vp-step-ant {
@@ -578,35 +630,42 @@
 }
 
 @keyframes vp-stomp-bob {
-  0%, 16% { transform: translateY(1.4%) rotate(-4deg) scale(1, 0.96); }
-  32% { transform: translateY(-6%) rotate(-5deg) scale(1, 1); }
-  50%, 66% { transform: translateY(1.4%) rotate(4deg) scale(1, 0.96); }
-  82% { transform: translateY(-6%) rotate(5deg) scale(1, 1); }
-  100% { transform: translateY(1.4%) rotate(-4deg) scale(1, 0.96); }
+  0%, 8% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
+  28% { transform: translateY(-3.2%) rotate(-1deg) scale(1, 1); }
+  50%, 58% { transform: translateY(1.6%) rotate(3deg) scale(1, 0.96); }
+  78% { transform: translateY(-3.2%) rotate(1deg) scale(1, 1); }
+  100% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
 }
 
+/* One full cycle is two steps. Lift is the last 40%. The other leg is offset 50%. */
 @keyframes vp-side-leg-f {
-  0%, 22% { transform: rotate(2deg); }
-  32%, 46% { transform: rotate(-72deg); }
-  58%, 100% { transform: rotate(2deg); }
+  0%, 10% { transform: rotate(-12deg); }
+  28% { transform: rotate(4deg); }
+  50%, 60% { transform: rotate(16deg); }
+  78% { transform: rotate(-42deg); }
+  92% { transform: rotate(-24deg); }
+  100% { transform: rotate(-12deg); }
 }
 
 @keyframes vp-side-leg-b {
-  0%, 52% { transform: rotate(4deg); }
-  64%, 78% { transform: rotate(-64deg); }
-  90%, 100% { transform: rotate(4deg); }
+  0%, 10% { transform: rotate(16deg); }
+  28% { transform: rotate(-42deg); }
+  42% { transform: rotate(-24deg); }
+  50%, 60% { transform: rotate(-12deg); }
+  78% { transform: rotate(4deg); }
+  100% { transform: rotate(16deg); }
 }
 
 @keyframes vp-side-arm-f {
-  0%, 16% { transform: rotate(22deg); }
-  48% { transform: rotate(-18deg); }
-  100% { transform: rotate(22deg); }
+  0%, 10% { transform: rotate(18deg); }
+  50%, 60% { transform: rotate(-18deg); }
+  100% { transform: rotate(18deg); }
 }
 
 @keyframes vp-side-arm-b {
-  0%, 16% { transform: rotate(-16deg); }
-  48% { transform: rotate(20deg); }
-  100% { transform: rotate(-16deg); }
+  0%, 10% { transform: rotate(-18deg); }
+  50%, 60% { transform: rotate(18deg); }
+  100% { transform: rotate(-18deg); }
 }
 
 @keyframes vp-side-ant {
@@ -1187,40 +1246,24 @@ html[data-peepclose='1'] .vp-roam {
 }
 
 @keyframes vp-cross-r {
-  0% { translate: -180px 0; }
+  0% { translate: calc(var(--vp-cross, 185px) * -1) 0; }
   100% { translate: 0 0; }
 }
 
 @keyframes vp-cross-l {
-  0% { translate: 180px 0; }
+  0% { translate: var(--vp-cross, 185px) 0; }
   100% { translate: 0 0; }
 }
 
 .vp-roam[data-closeup='1'][data-move='hop'][data-face='right'] .vp-roam-body,
-.vp-roam[data-closeup='1'][data-move='hop']:not([data-face='left']) .vp-roam-body {
-  animation: vp-cross-r 2.4s linear both;
-}
-
-.vp-roam[data-closeup='1'][data-move='hop'][data-face='left'] .vp-roam-body {
-  animation: vp-cross-l 2.4s linear both;
-}
-
-@keyframes vp-cross-r-sm {
-  0% { translate: -56px 0; }
-  100% { translate: 0 0; }
-}
-
-@keyframes vp-cross-l-sm {
-  0% { translate: 56px 0; }
-  100% { translate: 0 0; }
-}
-
+.vp-roam[data-closeup='1'][data-move='hop']:not([data-face='left']) .vp-roam-body,
 .vp-roam[data-stride='1'][data-move='hop']:not([data-face='left']) .vp-roam-body {
-  animation: vp-cross-r-sm 2s linear both;
+  animation: vp-cross-r var(--vp-walk, 1.68s) linear both;
 }
 
+.vp-roam[data-closeup='1'][data-move='hop'][data-face='left'] .vp-roam-body,
 .vp-roam[data-stride='1'][data-move='hop'][data-face='left'] .vp-roam-body {
-  animation: vp-cross-l-sm 2s linear both;
+  animation: vp-cross-l var(--vp-walk, 1.68s) linear both;
 }
 
 .vp-roam[data-showoff='1'][data-move='spin'] .vp-dance-label::before {
@@ -1238,34 +1281,16 @@ html[data-peepclose='1'] .vp-roam {
   overflow: visible;
 }
 
-/* One antenna: the disco ball sits on the tip, so his own ball stays hidden. */
-.vp-roam[data-showoff='1'] .vp-ant,
-.vp-roam[data-showoff='1'] .vp-s-ant,
-.vp-hit[data-react='party'] .vp-ant,
-.vp-hit[data-react='party'] .vp-s-ant {
-  visibility: hidden;
-}
-
-.vp-roam[data-showoff='1'] .vp-disco-ball {
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  display: block;
-  opacity: 1 !important;
-  animation: vp-ball-spin 7s linear infinite !important;
-}
-
-.vp-roam[data-showoff='1'] .vp-beams {
-  opacity: 0.92 !important;
-  animation: vp-beams-spin 9s linear infinite !important;
-}
-
-.vp-roam[data-showoff='1'] .vp-glint {
+.vp-roam[data-showoff='1'] .vp-hit[data-react='spin'] .vp-dance-label {
   opacity: 1;
-  animation: vp-glint 0.9s ease-in-out infinite !important;
+}
+
+.vp-roam[data-showoff='1'] .vp-hit[data-react='spin'] .vp-dance-label::before {
+  content: 'Spin';
+}
+
+.vp-roam[data-turn='1'] .vp-rig {
+  transform: rotateY(42deg);
 }
 
 .vp-roam[data-showoff='1'] .vp-dance-label {

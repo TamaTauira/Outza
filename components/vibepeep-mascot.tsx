@@ -198,11 +198,11 @@ export function VibePeepMascot({
     const steps: Array<{ move?: string; react?: string; dance?: string; face?: 'left' | 'right'; ms: number }> = closeup
       ? [
           { move: 'idle', face: 'right', ms: 700 },
-          { move: 'hop', face: 'right', ms: 2400 },
+          { move: 'hop', face: 'right', ms: 1680 },
           { move: 'idle', face: 'right', ms: 700 },
-          { move: 'hop', face: 'left', ms: 2400 },
+          { move: 'hop', face: 'left', ms: 1680 },
           { move: 'idle', face: 'right', ms: 600 },
-          { react: 'spin', face: 'right', ms: 1600 },
+          { move: 'spin', react: 'spin', face: 'right', ms: 1600 },
           ...DANCE_IDS.map((dance) => ({ dance, face: 'right' as const, ms: danceMs })),
         ]
       : [
@@ -225,6 +225,14 @@ export function VibePeepMascot({
       if (bubble) bubble.textContent = ''
       button.removeAttribute('data-line')
       if (step.face) root.dataset.face = step.face
+      if (step.move === 'hop') {
+        const h = root.querySelector<HTMLElement>('.vp-rig')?.clientHeight || 84
+        const cross = 0.55 * h * 4
+        root.style.setProperty('--vp-cross', `${cross.toFixed(1)}px`)
+        root.style.setProperty('--vp-walk', '1680ms')
+        root.style.setProperty('--vp-cycle', '840ms')
+        root.style.setProperty('--vp-step', '420ms')
+      }
       if (step.move) root.dataset.move = step.move
       if (step.react) button.setAttribute('data-react', step.react)
       if (step.dance) {

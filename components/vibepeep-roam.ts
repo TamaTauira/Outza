@@ -310,16 +310,45 @@ export function attachRoam(root: HTMLElement): () => void {
     return true
   }
 
+  const figureHeight = () => {
+    const rig = root.querySelector<HTMLElement>('.vp-rig')
+    if (rig && rig.clientHeight > 8) return rig.clientHeight
+    return size() * (1092 / 763)
+  }
+  const stridePx = () => 0.55 * figureHeight()
+  const STEP_MS = 420
+
+  const walkTo = (target: Point) => {
+    const stride = stridePx()
+    const box = bounds()
+    const left = clampPoint({ x: target.x - stride * 4, y: target.y }, box)
+    const right = clampPoint({ x: target.x + stride * 4, y: target.y }, box)
+    const start = Math.abs(left.x - target.x) >= Math.abs(right.x - target.x) ? left : right
+    pos = start
+    face = target.x >= start.x ? 'right' : 'left'
+    root.dataset.ready = '1'
+    setMove('still')
+    apply()
+    goTo(target, null)
+  }
+
   const park = () => {
     if (desktopBoard()) {
-      if (!pinBoard()) {
-        let tries = 0
-        const retry = () => {
-          if (!running || pinBoard() || tries++ > 90) return
-          requestAnimationFrame(retry)
+      let tries = 0
+      const retry = () => {
+        if (!running || tries++ > 90) return
+        if (reduce) {
+          if (!pinBoard()) requestAnimationFrame(retry)
+          return
         }
-        requestAnimationFrame(retry)
+        const spot = boardSpot()
+        if (!spot) {
+          requestAnimationFrame(retry)
+          return
+        }
+        walkTo(spot)
       }
+      retry()
       return
     }
     const box = bounds()
@@ -382,6 +411,10 @@ export function attachRoam(root: HTMLElement): () => void {
         place(r.right + 12, r.bottom - h)
       }
     }
+    if (spot && mobileMq.matches && path === '/' && !reduce) {
+      walkTo(spot)
+      return
+    }
     pos = spot ?? firstClear({ ...box, maxX })
     face = 'right'
     root.dataset.ready = '1'
@@ -394,6 +427,17 @@ export function attachRoam(root: HTMLElement): () => void {
     bubble.textContent = line
     live.textContent = line
     button.setAttribute('data-line', '1')
+    window.requestAnimationFrame(() => {
+      const box = bubble.getBoundingClientRect()
+      if (box.width < 4) return
+      const blocked = [...document.querySelectorAll('button, a, input, select')].some((el) => {
+        if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) return false
+        const rect = el.getBoundingClientRect()
+        if (rect.width < 8 || rect.height < 8) return false
+        return box.right > rect.left && box.left < rect.right && box.bottom > rect.top && box.top < rect.bottom
+      })
+      if (blocked) root.dataset.bub = root.dataset.bub === 'up' ? 'down' : 'up'
+    })
     window.clearTimeout(speechTimer)
     speechTimer = window.setTimeout(() => {
       if (!button.isConnected || bubble.textContent !== line || button.hasAttribute('data-react')) return
@@ -442,9 +486,7 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const pauseNext = (ms?: number) => {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
-    if (desktopBoard()) {
-      pinBoard()
-    } else if (!spotClear(pos.x, pos.y)) {
+    if (!desktopBoard() && !spotClear(pos.x, pos.y)) {
       pos = firstClear(bounds())
       apply()
     }
@@ -454,24 +496,37 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const goTo = (to: Point, then: RoamAct | null) => {
     const from = { ...pos }
-    const dist = Math.hypot(to.x - from.x, to.y - from.y)
-    const dur = moveDuration(dist)
-    const steps = Math.max(2, Math.round(dist / Math.max(36, size() * 0.42)))
-    root.style.setProperty('--vp-step', `${Math.round(Math.max(320, Math.min(520, dur / steps)))}ms`)
-    face = faceForDelta(to.x - from.x, face)
+    const dx = to.x - from.x
+    const dy = to.y - from.y
+    const dist = Math.hypot(dx, dy)
+    if (Math.abs(dx) < 8) {
+      pos = to
+      apply()
+      setMove('idle')
+      phase = { type: 'pause', until: performance.now() + 500 }
+      return
+    }
+    const stride = Math.max(24, stridePx())
+    const speed = stride / (STEP_MS / 1000)
+    const strides = Math.max(3, Math.round(dist / stride))
+    const dur = Math.max(1500, strides * STEP_MS, (dist / speed) * 1000)
+    root.style.setProperty('--vp-step', `${STEP_MS}ms`)
+    root.style.setProperty('--vp-cycle', `${STEP_MS * 2}ms`)
+    root.style.setProperty('--vp-cross', `${(stride * 4).toFixed(1)}px`)
+    root.style.setProperty('--vp-walk', `${4 * STEP_MS}ms`)
+    face = dx < 0 ? 'left' : 'right'
+    root.dataset.turn = '1'
+    window.setTimeout(() => {
+      if (root.dataset.turn === '1') delete root.dataset.turn
+    }, 80)
     setMove('hop')
-    phase = { type: 'goto', from, to, start: performance.now(), dur, hops: hopCount(dur), then }
+    phase = { type: 'goto', from, to, start: performance.now(), dur, hops: strides, then }
   }
 
   const begin = (act: RoamAct): 'raf' | 'sleep' => {
     if (!running || reduce) return 'sleep'
     lastAct = act
     const box = bounds()
-    if (desktopBoard() && (act === 'hop' || act === 'perch' || act === 'peek' || act === 'bounce' || act === 'chase')) {
-      pinBoard()
-      pauseNext()
-      return 'sleep'
-    }
     if (act === 'hop' || act === 'perch') {
       const pathClear = (from: Point, to: Point) => {
         const steps = Math.max(4, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 16))
@@ -482,6 +537,11 @@ export function attachRoam(root: HTMLElement): () => void {
         return true
       }
       let to = act === 'perch' ? findPerch(box) ?? randomClear(box, pos) : randomClear(box, pos)
+      const minTravel = stridePx() * 3.5
+      if (Math.hypot(to.x - pos.x, to.y - pos.y) < minTravel) {
+        const dir = to.x >= pos.x ? 1 : -1
+        to = clampPoint({ x: pos.x + dir * minTravel, y: pos.y }, box)
+      }
       if (!pathClear(pos, to)) to = firstClear(box)
       if (!pathClear(pos, to)) {
         pauseNext(1400)
@@ -783,14 +843,23 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   readChrome()
+  const imgs = [...root.querySelectorAll('img')]
+  void Promise.all(imgs.map((img) => img.decode?.().catch(() => undefined))).finally(() => {
+    root.dataset.loaded = '1'
+  })
+  window.setTimeout(() => {
+    root.dataset.loaded = '1'
+  }, 1500)
   park()
   const settleA = window.setTimeout(settle, 400)
   const settleB = window.setTimeout(settle, 1400)
   root.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', onResize, { once: true })
   })
-  if (!reduce) {
+  if (!reduce && phase.type !== 'goto') {
     phase = { type: 'pause', until: performance.now() + 1600 }
+    kick()
+  } else if (!reduce) {
     kick()
   }
 

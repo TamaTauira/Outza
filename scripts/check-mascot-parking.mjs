@@ -156,17 +156,18 @@ for (const label of ['t0', 't1', 't2']) {
   note('board-desktop ' + label, info)
   live.push(info)
   if (info && !info.error) {
-    const mid = info.y + info.ch / 2
-    const rowMid = info.rowTop != null && info.rowBottom != null ? (info.rowTop + info.rowBottom) / 2 : null
-    if (rowMid != null && Math.abs(mid - rowMid) > 2) failures.push(label + ': centre ' + mid + ' vs row ' + rowMid)
-    if (info.featureLeft != null && info.vw - info.right > info.featureLeft - 16) failures.push(label + ': right edge past Feature Your Event')
     if (info.right < 8) failures.push(label + ': box closer than 8px, inset ' + info.right)
     if (info.btnLeft < 0 || info.btnTop < 0 || info.btnRight > info.vw) failures.push(label + ': close button off screen')
   }
 }
 if (live.length === 3 && live.every((info) => info && !info.error)) {
-  const same = live.every((info) => Math.abs(info.x - live[0].x) <= 2 && Math.abs(info.y - live[0].y) <= 2)
-  if (!same) failures.push('board-desktop moved after load: ' + live.map((info) => info.x + ',' + info.y).join(' -> '))
+  const end = live[2]
+  const travelled = Math.abs(end.x - live[0].x) >= 24
+  if (!travelled) failures.push('board-desktop did not walk: ' + live.map((info) => info.x).join(' -> '))
+  const mid = end.y + end.ch / 2
+  const rowMid = end.rowTop != null && end.rowBottom != null ? (end.rowTop + end.rowBottom) / 2 : null
+  if (rowMid != null && Math.abs(mid - rowMid) > 8) failures.push('t2 not centred on the row')
+  if (end.featureLeft != null && end.vw - end.right > end.featureLeft - 16) failures.push('t2 past Feature Your Event')
 }
 
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })

@@ -83,11 +83,30 @@
 .vp-glint-c { left: 46%; top: 8%; }
 .vp-glint-d { left: 18%; top: 40%; }
 
-.vp-hit[data-react='party'] .vp-disco-ball {
-  animation: vp-ball-drop 4.4s ease forwards;
+.vp-disco-ball,
+.vp-beams,
+.vp-glint { display: none; }
+
+.vp-hit[data-dance='disco-point'] .vp-disco-ball,
+.vp-hit[data-dance='disco-point'] .vp-beams,
+.vp-hit[data-dance='disco-point'] .vp-glint { display: block; }
+
+.vp-hit[data-dance='disco-point'] .vp-ant-tip,
+.vp-hit[data-dance='disco-point'] .vp-s-ant-tip { visibility: hidden; }
+
+.vp-hit[data-dance='disco-point'] .vp-show {
+  left: 50%;
+  top: 0.4%;
+  width: 11%;
+  transform: translate(-50%, 0);
 }
-.vp-hit[data-react='party'] .vp-beams { animation: vp-beams 4.4s ease forwards; }
-.vp-hit[data-react='party'] .vp-glint { animation: vp-glint 0.9s ease-in-out infinite; }
+
+.vp-hit[data-dance='disco-point'] .vp-disco-ball {
+  opacity: 1;
+  animation: vp-ball-spin 7s linear infinite;
+}
+.vp-hit[data-dance='disco-point'] .vp-beams { opacity: 0.92; animation: vp-beams-spin 9s linear infinite; }
+.vp-hit[data-dance='disco-point'] .vp-glint { opacity: 1; animation: vp-glint 0.9s ease-in-out infinite; }
 .vp-hit[data-react='party'] .vp-glint-b { animation-delay: 0.25s; }
 .vp-hit[data-react='party'] .vp-glint-c { animation-delay: 0.45s; }
 .vp-hit[data-react='party'] .vp-glint-d { animation-delay: 0.62s; }
@@ -574,7 +593,8 @@
   75% { transform: translateY(26%) rotate(2deg) translateX(0%); }
   100% { transform: translateY(20%) rotate(-20deg) translateX(-16%); }
 }
-@keyframes vp-worm-ant { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(14deg); } }
+/* The stalk is inside the bob, so the worm's body move carries it. Only a small wobble. */
+@keyframes vp-worm-ant { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
 @keyframes vp-worm-al { 0%, 100% { transform: rotate(18deg); } 50% { transform: rotate(-8deg); } }
 @keyframes vp-worm-ar { 0%, 100% { transform: rotate(-16deg); } 50% { transform: rotate(10deg); } }
 @keyframes vp-worm-ll { 0%, 100% { transform: rotate(6deg); } 50% { transform: rotate(14deg); } }
