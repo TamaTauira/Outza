@@ -82,6 +82,9 @@ export function VibePeepFigure() {
         <span className="vp-prop vp-snake vp-snake-front" aria-hidden="true">
           <img src="/mascot/parts/python-front.png" alt="" draggable={false} />
         </span>
+        <span className="vp-prop vp-snake vp-snake-lift" aria-hidden="true">
+          <img src="/mascot/parts/python-lift.png" alt="" draggable={false} />
+        </span>
         <span className="vp-part vp-grip vp-grip-under vp-grip-l" style={place('arm-l')} aria-hidden="true">
           <img src="/mascot/parts/arm-l.png" alt="" draggable={false} />
         </span>

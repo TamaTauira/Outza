@@ -207,26 +207,32 @@
 
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }
 .vp-s-arm-b, .vp-s-arm-f, .vp-s-leg-f, .vp-s-leg-b, .vp-s-ant { display: none; }
-/* The arc sits behind the egg. The two hangs are in front, clear of the face. */
-.vp-front > .vp-snake-back { left: -22%; top: 26%; width: 144%; height: auto; z-index: 3; }
-.vp-front > .vp-snake-front { left: -24%; top: 40%; width: 148%; height: auto; z-index: 5; }
+/* Same canvas for the drape and the overhead arch, aligned to the figure. */
+.vp-front > .vp-snake-back,
+.vp-front > .vp-snake-front,
+.vp-front > .vp-snake-lift { left: -12.86%; top: -22.95%; width: 125.71%; height: auto; }
+.vp-front > .vp-snake-back { z-index: 3; }
+.vp-front > .vp-snake-front,
+.vp-front > .vp-snake-lift { z-index: 5; }
 .vp-snake { opacity: 0; }
-.vp-hit[data-dance='snake'] .vp-snake { opacity: 1; }
+.vp-hit[data-dance='snake'] .vp-snake-back,
+.vp-hit[data-dance='snake'] .vp-snake-front { opacity: 1; }
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }
 /* The passed mittens, clipped to the ball and drawn over the python so the hands close around it. */
 .vp-grip { opacity: 0; z-index: 6; }
 .vp-grip-under { z-index: 4; }
 .vp-grip img { clip-path: inset(58% 0 0 0); }
 .vp-hit[data-dance='snake'] .vp-grip { opacity: 1; }
-.vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(102deg); }
-.vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-102deg); }
-.vp-hit[data-react='party'][data-dance='snake'] .vp-grip-l { animation: vp-snake-al 2.4s ease-in-out 2 both; }
-.vp-hit[data-react='party'][data-dance='snake'] .vp-grip-r { animation: vp-snake-ar 2.4s ease-in-out 2 both; }
+.vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(140deg); }
+.vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-140deg); }
+.vp-hit[data-react='party'][data-dance='snake'] .vp-grip-l { animation: vp-snake-al 2.2s ease-in-out 1 both; }
+.vp-hit[data-react='party'][data-dance='snake'] .vp-grip-r { animation: vp-snake-ar 2.2s ease-in-out 1 both; }
 .vp-snake img { width: 100%; height: auto; display: block; }
 .vp-flower { left: 68%; top: 6%; width: 18%; z-index: 5; }
 
-.vp-hit[data-dance='snake'] .vp-snake-back { animation: vp-snake-back 2.4s ease forwards; }
-.vp-hit[data-dance='snake'] .vp-snake-front { animation: vp-snake-front 2.4s ease forwards; }
+.vp-hit[data-dance='snake'] .vp-snake-back,
+.vp-hit[data-dance='snake'] .vp-snake-front { animation: vp-snake-drape 2.2s ease-in-out forwards; }
+.vp-hit[data-dance='snake'] .vp-snake-lift { animation: vp-snake-up 2.2s ease-in-out forwards; }
 .vp-hit[data-dance='island'] .vp-flower { animation: vp-prop-hold 4.4s ease forwards; }
 
 @keyframes vp-ball-spin {
@@ -258,15 +264,15 @@
   40% { opacity: 1; transform: scale(1.35); }
 }
 
-@keyframes vp-snake-back {
-  0%, 34% { opacity: 1; transform: none; }
-  52%, 76% { opacity: 1; transform: translateY(-58%) scale(0.64); }
-  100% { opacity: 1; transform: none; }
+@keyframes vp-snake-drape {
+  0%, 28% { opacity: 1; }
+  46%, 78% { opacity: 0; }
+  100% { opacity: 1; }
 }
-@keyframes vp-snake-front {
-  0%, 34% { opacity: 1; transform: none; }
-  52%, 76% { opacity: 1; transform: translateY(-34%) scale(0.64); }
-  100% { opacity: 1; transform: none; }
+@keyframes vp-snake-up {
+  0%, 28% { opacity: 0; }
+  46%, 78% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* Each routine owns a full animation shorthand on the first rule.
@@ -297,9 +303,9 @@
 .vp-hit[data-react='party'][data-dance='macarena'] .vp-leg-l { animation: vp-maca-ll 4.4s linear 1 both; }
 .vp-hit[data-react='party'][data-dance='macarena'] .vp-leg-r { animation: vp-maca-lr 4.4s linear 1 both; }
 
-.vp-hit[data-react='party'][data-dance='snake'] .vp-bob { animation: vp-snake-body 2.4s ease-in-out 2 both; }
-.vp-hit[data-react='party'][data-dance='snake'] .vp-arm-l { animation: vp-snake-al 2.4s ease-in-out 2 both; z-index: 6; }
-.vp-hit[data-react='party'][data-dance='snake'] .vp-arm-r { animation: vp-snake-ar 2.4s ease-in-out 2 both; z-index: 6; }
+.vp-hit[data-react='party'][data-dance='snake'] .vp-bob { animation: vp-snake-body 2.2s ease-in-out 1 both; }
+.vp-hit[data-react='party'][data-dance='snake'] .vp-arm-l { animation: vp-snake-al 2.2s ease-in-out 1 both; z-index: 6; }
+.vp-hit[data-react='party'][data-dance='snake'] .vp-arm-r { animation: vp-snake-ar 2.2s ease-in-out 1 both; z-index: 6; }
 .vp-hit[data-react='party'][data-dance='snake'] .vp-leg-l { animation: vp-snake-ll 2.4s ease-in-out 2 both; }
 .vp-hit[data-react='party'][data-dance='snake'] .vp-leg-r { animation: vp-snake-lr 2.4s ease-in-out 2 both; }
 
@@ -506,21 +512,19 @@
 @keyframes vp-maca-lr { 0%, 60% { transform: none; } 68%, 80% { transform: rotate(-10deg); } 100% { transform: none; } }
 
 @keyframes vp-snake-body {
-  0%, 40% { transform: rotate(0deg); }
-  55% { transform: rotate(-8deg); }
-  70% { transform: rotate(8deg); }
-  85% { transform: rotate(-8deg); }
-  100% { transform: rotate(0deg); }
+  0% { transform: rotate(-7deg); }
+  55% { transform: rotate(12deg); }
+  100% { transform: rotate(-8deg); }
 }
 @keyframes vp-snake-al {
-  0%, 34% { transform: rotate(102deg); }
-  52%, 76% { transform: rotate(155deg); }
-  100% { transform: rotate(102deg); }
+  0%, 28% { transform: rotate(140deg); }
+  46%, 78% { transform: rotate(170deg); }
+  100% { transform: rotate(140deg); }
 }
 @keyframes vp-snake-ar {
-  0%, 34% { transform: rotate(-102deg); }
-  52%, 76% { transform: rotate(-155deg); }
-  100% { transform: rotate(-102deg); }
+  0%, 28% { transform: rotate(-140deg); }
+  46%, 78% { transform: rotate(-170deg); }
+  100% { transform: rotate(-140deg); }
 }
 @keyframes vp-snake-ll {
   0%, 40% { transform: rotate(0deg); }
@@ -724,7 +728,7 @@
 
   .vp-hit[data-react='party'][data-dance='snake'] .vp-arm-l,
   .vp-hit[data-dance='snake'] .vp-grip-l {
-    transform: rotate(102deg) !important;
+    transform: rotate(140deg) !important;
   }
 
   .vp-hit[data-react='party'] .vp-arm-r {
@@ -734,7 +738,7 @@
 
   .vp-hit[data-react='party'][data-dance='snake'] .vp-arm-r,
   .vp-hit[data-dance='snake'] .vp-grip-r {
-    transform: rotate(-102deg) !important;
+    transform: rotate(-140deg) !important;
   }
 
   .vp-hit[data-dance='snake'] .vp-snake,
@@ -742,8 +746,9 @@
     opacity: 1;
   }
 
-  .vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(102deg) !important; }
-  .vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-102deg) !important; }
+  .vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(140deg) !important; }
+  .vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-140deg) !important; }
+  .vp-hit[data-dance='snake'] .vp-snake-lift { opacity: 0 !important; }
 
   .vp-hit[data-react='party'] .vp-leg-l,
   .vp-hit[data-react='party'] .vp-leg-r,
