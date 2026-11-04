@@ -36,7 +36,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 
   return (
     // Full-bleed band: breaks out of the 1280px page container to span the whole viewport
-    <section className="relative -mx-4 sm:-mx-6 mb-6 py-5 border-y border-border bg-card/40 max-w-[100vw]" aria-label="Hot right now">
+    <section className="relative -mx-4 sm:-mx-6 mb-6 mt-16 sm:mt-10 py-5 border-y border-border bg-card/40 max-w-[100vw]" aria-label="Hot right now">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 flex flex-wrap items-end justify-between gap-2 mb-3">
         <div>
           <div className="flex items-center gap-2">

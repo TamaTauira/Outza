@@ -146,7 +146,7 @@ export function LocalClient() {
               <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:thin]">{WHEN.map((w) => <button key={w.key} onClick={() => setWhen(w.key)} className={cn(pill(when === w.key), 'shrink-0')}>{w.label}</button>)}</div>
             </div>
 
-            <div className="mt-6 rounded-xl bg-card border border-border overflow-hidden">
+            <div className="vp-local-grid mt-6 rounded-xl bg-card border border-border overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-2.5 border-b border-border">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="w-1.5 h-1.5 rounded-full bg-free" />

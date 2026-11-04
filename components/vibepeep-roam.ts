@@ -164,18 +164,44 @@ export function attachRoam(root: HTMLElement): () => void {
     const insetX = Math.max(base.minX, 12)
     const insetMaxX = Math.max(insetX, fullW - box.width - 4 - gutter)
     const insetMinY = Math.max(base.minY, 16)
-    if (!map) return { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
-    const stage = document.querySelector<HTMLElement>('.vp-map-stage')
-    if (!stage) return { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
-    const rect = stage.getBoundingClientRect()
-    if (rect.width < 48 || rect.height < 48) return { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
-    const dock = Number.parseFloat(getComputedStyle(stage).getPropertyValue('--vp-map-dock')) || 0
-    const crowded = rect.height < box.height + dock + 160
-    const minX = Math.max(insetX, rect.left + (crowded ? 8 : 24))
-    const minY = Math.max(insetMinY, rect.top + (crowded ? 52 : 120))
-    const maxX = Math.max(minX, Math.min(insetMaxX, rect.right - box.width - (crowded ? 48 : 72)))
-    const maxY = Math.max(minY, rect.bottom - box.height - dock - (crowded ? 12 : 96))
-    return { minX, minY, maxX, maxY }
+    let lane: Bounds = { ...base, minX: insetX, maxX: Math.min(base.maxX, insetMaxX), minY: insetMinY }
+    if (map) {
+      const stage = document.querySelector<HTMLElement>('.vp-map-stage')
+      const rect = stage?.getBoundingClientRect()
+      if (rect && rect.width >= 48 && rect.height >= 48) {
+        const dock = Number.parseFloat(getComputedStyle(stage!).getPropertyValue('--vp-map-dock')) || 0
+        const crowded = rect.height < box.height + dock + 160
+        const minX = Math.max(insetX, rect.left + (crowded ? 8 : 24))
+        const minY = Math.max(insetMinY, rect.top + (crowded ? 36 : mobile ? 48 : 120))
+        const maxX = Math.max(minX, Math.min(insetMaxX, rect.right - box.width - (crowded ? 48 : 72)))
+        const maxY = Math.max(minY, rect.bottom - box.height - dock - (crowded ? 12 : 96))
+        lane = { minX, minY, maxX, maxY }
+      }
+    }
+    if (!mobile && !map && location.pathname.startsWith('/local')) {
+      const grid = document.querySelector<HTMLElement>('.vp-local-grid')
+      const listBtn = Array.from(document.querySelectorAll('button')).find((el) => /list your thing free/i.test(el.textContent || '') && !el.closest('.vp-local-grid'))
+      const edge = Math.max(grid?.getBoundingClientRect().right ?? 0, listBtn?.getBoundingClientRect().right ?? 0)
+      const gutterX = edge + 12
+      if (edge > 80 && gutterX <= lane.maxX) {
+        let maxY = lane.maxY
+        for (const el of document.querySelectorAll('button, a, h1, h2, h3')) {
+          if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
+          const rect = el.getBoundingClientRect()
+          if (rect.width < 8 || rect.height < 8 || rect.right < gutterX + 8) continue
+          const topLimit = rect.top - box.height - 8
+          if (topLimit > lane.minY + 8) maxY = Math.min(maxY, topLimit)
+        }
+        lane = { ...lane, minX: Math.max(lane.minX, gutterX), maxY: Math.max(lane.minY, maxY) }
+      } else if (grid) {
+        const next30 = Array.from(document.querySelectorAll('button')).find((el) => /next 30 days/i.test(el.textContent || ''))
+        const top = grid.getBoundingClientRect().top
+        const minX = Math.max(lane.minX, next30 ? next30.getBoundingClientRect().right + 12 : lane.minX)
+        const maxY = Math.min(lane.maxY, top - box.height - 8)
+        if (minX <= lane.maxX && maxY >= lane.minY) lane = { ...lane, minX, maxY: Math.max(lane.minY, maxY) }
+      }
+    }
+    return lane
   }
 
   const setMove = (move: string) => {
@@ -197,6 +223,15 @@ export function attachRoam(root: HTMLElement): () => void {
       { left: x + s - 16, top: y - 4, right: x + s + 4, bottom: y + 16 },
     ]
     const pad = 8
+    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
+    for (const el of hard) {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
+      const r = el.getBoundingClientRect()
+      if (r.width < 12 || r.height < 10) continue
+      for (const b of boxes) {
+        if (!(b.right < r.left - pad || b.left > r.right + pad || b.bottom < r.top - pad || b.top > r.bottom + pad)) return true
+      }
+    }
     const nodes = document.querySelectorAll(BLOCK)
     const textEl = 'p, h1, h2, h3, h4, li'
     for (const el of nodes) {
@@ -210,7 +245,7 @@ export function attachRoam(root: HTMLElement): () => void {
       if (!rects.length) {
         const r = el.getBoundingClientRect()
         if (r.width < 12 || r.height < 10) continue
-        if (r.width > window.innerWidth * 0.92 && r.height > 180) continue
+        if (r.width > window.innerWidth * 0.92 && r.height > 180 && !el.matches('.vp-map-ask, .vp-local-grid, .vp-hero-clock')) continue
         rects = [r]
       }
       for (const r of rects) {
@@ -243,30 +278,61 @@ export function attachRoam(root: HTMLElement): () => void {
     const box = bounds()
     const s = size()
     const gutter = edgeGap()
-    const maxX = Math.min(box.maxX, window.innerWidth - s - 4 - gutter)
+    const maxX = Math.max(box.minX, Math.min(box.maxX, window.innerWidth - s - 4 - gutter))
     let spot: Point | null = null
     const path = location.pathname
+    const rigH = () => {
+      const rig = root.querySelector<HTMLElement>('.vp-rig')
+      if (rig && rig.clientHeight > 8) return rig.clientHeight
+      return s * (1092 / 763)
+    }
+    const place = (x: number, y: number) => {
+      const px = Math.max(box.minX, Math.min(maxX, x))
+      const py = Math.max(box.minY, Math.min(box.maxY, y))
+      if (!coversCopy(px, py)) {
+        spot = { x: px, y: py }
+        return true
+      }
+      return false
+    }
     if (!mobileMq.matches && (path === '/' || path === '')) {
       const feature = Array.from(document.querySelectorAll('a')).find((el) => /feature your event/i.test(el.textContent || ''))
-      const hero = document.querySelector('main section.rounded-2xl')
-      if (feature && hero) {
+      const row = feature?.parentElement
+      const hero = document.querySelector('main > section.rounded-2xl')
+      if (feature && row) {
         const fr = feature.getBoundingClientRect()
-        const hr = hero.getBoundingClientRect()
-        const x = Math.max(box.minX, Math.min(maxX, fr.right + 16))
-        for (let y = Math.max(box.minY, hr.bottom + 8); y <= Math.min(box.maxY, hr.bottom + 180); y += 8) {
-          if (!coversCopy(x, y)) {
-            spot = { x, y }
-            break
+        const rr = row.getBoundingClientRect()
+        const h = rigH()
+        const x = fr.left - s - 16
+        let y = rr.bottom - h
+        if (hero) y = Math.max(y, hero.getBoundingClientRect().bottom + 14)
+        if (!place(x, y)) {
+          for (let yy = y; yy <= y + 36; yy += 2) {
+            if (place(x, yy)) break
           }
         }
       }
-    } else if (mobileMq.matches && (path === '/' || path.startsWith('/local'))) {
+    } else if (mobileMq.matches && path === '/') {
+      const hero = document.querySelector('main > section.rounded-2xl')
+      const hot = Array.from(document.querySelectorAll('h2')).find((el) => /hot right now/i.test(el.textContent || ''))
+      const x = window.innerWidth - s - 4 - 12
+      const h = rigH()
+      let y = hero ? hero.getBoundingClientRect().bottom + 14 : box.minY
+      if (hot) {
+        const cap = hot.getBoundingClientRect().top - h - 10
+        if (y > cap) y = cap
+        if (hero && y < hero.getBoundingClientRect().bottom + 14) y = hero.getBoundingClientRect().bottom + 14
+      }
+      if (!place(x, y)) {
+        for (let yy = y; yy <= y + 64; yy += 2) {
+          if (place(x, yy)) break
+        }
+      }
+    } else if (mobileMq.matches && path.startsWith('/local')) {
       const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - 4 - 16))
       let y = box.minY
-      if (path.startsWith('/local')) {
-        const heading = document.querySelector('main h1')
-        if (heading) y = Math.max(y, heading.getBoundingClientRect().bottom + 16)
-      }
+      const heading = document.querySelector('main h1')
+      if (heading) y = Math.max(y, heading.getBoundingClientRect().bottom + 16)
       for (let yy = y; yy <= box.maxY; yy += 12) {
         if (!coversCopy(x, yy)) {
           spot = { x, y: yy }
@@ -274,16 +340,16 @@ export function attachRoam(root: HTMLElement): () => void {
         }
       }
     } else if (!mobileMq.matches && path.startsWith('/local')) {
-      const tab = Array.from(document.querySelectorAll('main button')).find((el) => /nearby|list something/i.test(el.textContent || ''))
-      const bar = tab?.parentElement?.getBoundingClientRect()
-      if (bar && bar.bottom > 40) {
-        const x = Math.max(box.minX, maxX)
-        for (let y = Math.max(box.minY, bar.bottom + 16); y <= Math.min(box.maxY, bar.bottom + 320); y += 12) {
-          if (!coversCopy(x, y)) {
-            spot = { x, y }
-            break
-          }
-        }
+      const listBtn = Array.from(document.querySelectorAll('button')).find((el) => /list your thing free/i.test(el.textContent || '') && !el.closest('.vp-local-grid'))
+      const next30 = Array.from(document.querySelectorAll('button')).find((el) => /next 30 days/i.test(el.textContent || ''))
+      const h = rigH()
+      if (listBtn) {
+        const r = listBtn.getBoundingClientRect()
+        place(r.right + 12, r.top + (r.height - h) / 2)
+      }
+      if (!spot && next30) {
+        const r = next30.getBoundingClientRect()
+        place(r.right + 12, r.bottom - h)
       }
     }
     pos = spot ?? firstClear({ ...box, maxX })
@@ -370,7 +436,20 @@ export function attachRoam(root: HTMLElement): () => void {
     lastAct = act
     const box = bounds()
     if (act === 'hop' || act === 'perch') {
-      const to = act === 'perch' ? findPerch(box) ?? randomClear(box, pos) : randomClear(box, pos)
+      const pathClear = (from: Point, to: Point) => {
+        const steps = Math.max(4, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 16))
+        for (let i = 0; i <= steps; i++) {
+          const t = i / steps
+          if (!spotClear(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t)) return false
+        }
+        return true
+      }
+      let to = act === 'perch' ? findPerch(box) ?? randomClear(box, pos) : randomClear(box, pos)
+      if (!pathClear(pos, to)) to = firstClear(box)
+      if (!pathClear(pos, to)) {
+        pauseNext(1400)
+        return 'sleep'
+      }
       speak(act, act === 'perch' ? 0.75 : 0.4)
       goTo(to, act === 'perch' ? 'perch' : null)
       return 'raf'
@@ -476,7 +555,11 @@ export function attachRoam(root: HTMLElement): () => void {
       const goal = clampPoint({ x: pointer.x - size() * 0.15, y: pointer.y - size() * 1.15 }, box)
       const dx = goal.x - pos.x
       const dy = goal.y - pos.y
-      pos = { x: pos.x + dx * 0.09, y: pos.y + dy * 0.09 }
+      const nx = pos.x + dx * 0.09
+      const ny = pos.y + dy * 0.09
+      if (!coversCopy(nx, ny)) pos = { x: nx, y: ny }
+      else if (!coversCopy(nx, pos.y)) pos = { x: nx, y: pos.y }
+      else if (!coversCopy(pos.x, ny)) pos = { x: pos.x, y: ny }
       face = faceForDelta(dx, face)
       apply()
       if (now >= phase.until) pauseNext()
@@ -487,7 +570,9 @@ export function attachRoam(root: HTMLElement): () => void {
     const dt = Math.max(0.001, Math.min(0.05, (now - phase.last) / 1000))
     phase.last = now
     const next = bounceStep(pos, { x: phase.vx * dt, y: phase.vy * dt }, bounds())
-    pos = next.pos
+    if (!coversCopy(next.pos.x, next.pos.y)) pos = next.pos
+    else if (!coversCopy(next.pos.x, pos.y)) pos = { x: next.pos.x, y: pos.y }
+    else if (!coversCopy(pos.x, next.pos.y)) pos = { x: pos.x, y: next.pos.y }
     phase.vx = next.vel.x / dt
     phase.vy = next.vel.y / dt
     if (next.hit) {
@@ -649,8 +734,17 @@ export function attachRoam(root: HTMLElement): () => void {
     kick()
   })
 
+  const settle = () => {
+    if (!running || dragging) return
+    if (phase.type === 'goto' || phase.type === 'bounce' || phase.type === 'chase') return
+    if (!coversCopy(pos.x, pos.y)) return
+    park()
+  }
+
   readChrome()
   park()
+  const settleA = window.setTimeout(settle, 400)
+  const settleB = window.setTimeout(settle, 1400)
   root.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', onResize, { once: true })
   })
@@ -675,6 +769,8 @@ export function attachRoam(root: HTMLElement): () => void {
 
   return () => {
     running = false
+    window.clearTimeout(settleA)
+    window.clearTimeout(settleB)
     if (raf) cancelAnimationFrame(raf)
     window.clearTimeout(wake)
     window.clearTimeout(speechTimer)
