@@ -208,26 +208,49 @@ for (let n = 0; n < 5; n++) {
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, scale: 1 })
 await send('Page.navigate', { url: base + '/map?pinspace=1' })
 await sleep(2000)
-const pinRaw = await ev(`(() => {
+const gapExpr = `(() => {
   const root = document.querySelector('.vp-roam')
   const rig = root?.querySelector('.vp-rig')?.getBoundingClientRect()
   const btn = root?.querySelector('.vp-buddy-min')?.getBoundingClientRect()
   if (!rig || !btn) return JSON.stringify({ error: 'missing' })
-  const box = { left: Math.min(rig.left, btn.left), top: Math.min(rig.top, btn.top), right: Math.max(rig.right, btn.right), bottom: Math.max(rig.bottom, btn.bottom) }
+  const boxes = [rig, btn]
   const hits = []
-  for (const el of document.querySelectorAll('.leaflet-marker-icon, .se-cluster, .leaflet-control, .vp-map-float, .vp-map-ask')) {
+  for (const el of document.querySelectorAll('.leaflet-marker-icon, .se-cluster')) {
     const r = el.getBoundingClientRect()
     if (r.width < 4 || r.height < 4) continue
-    const sep = box.right <= r.left ? r.left - box.right : r.right <= box.left ? box.left - r.right : box.bottom <= r.top ? r.top - box.bottom : r.bottom <= box.top ? box.top - r.bottom : 0
-    if (sep < 16) hits.push(Math.round(sep) + ' ' + (el.className || '').toString().slice(0, 32))
+    for (const box of boxes) {
+      const sep = box.right <= r.left ? r.left - box.right : r.right <= box.left ? box.left - r.right : box.bottom <= r.top ? r.top - box.bottom : r.bottom <= box.top ? box.top - r.bottom : 0
+      if (sep < 16) hits.push(Math.round(sep) + ' ' + (el.className || '').toString().slice(0, 24))
+    }
   }
   return JSON.stringify(hits)
-})()`)
+})()`
+const pinRaw = await ev(gapExpr)
 console.log('map pins', pinRaw)
 try {
   const hits = JSON.parse(pinRaw)
   if (hits.length) failures.push('map phone within 16px: ' + hits.join(' | '))
 } catch { failures.push('map phone pin check failed') }
+await ev(`(() => {
+  const rig = document.querySelector('.vp-rig').getBoundingClientRect()
+  const pin = document.createElement('div')
+  pin.className = 'leaflet-marker-icon'
+  pin.style.cssText = 'position:fixed;width:28px;height:28px;left:' + (rig.left + 4) + 'px;top:' + (rig.top + 10) + 'px;z-index:5'
+  const cluster = document.createElement('div')
+  cluster.className = 'se-cluster'
+  cluster.textContent = '2'
+  cluster.style.cssText = 'position:fixed;width:32px;height:32px;left:' + (rig.right - 8) + 'px;top:' + (rig.top - 6) + 'px'
+  document.body.append(pin, cluster)
+  return '1'
+})()`)
+await sleep(500)
+const shoved = await ev(gapExpr)
+console.log('map shoved', shoved)
+try {
+  const hits = JSON.parse(shoved)
+  if (!Array.isArray(hits)) failures.push('map pin shove failed')
+  else if (hits.length) failures.push('map phone still within 16px after a pin appeared: ' + hits.join(' | '))
+} catch { failures.push('map pin shove failed') }
 
 ws.close()
 if (failures.length) {

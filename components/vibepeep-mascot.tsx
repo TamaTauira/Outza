@@ -169,8 +169,19 @@ export function VibePeepMascot({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const closeup = params.get('peepclose') === '1'
+    const drive = params.get('peepdrive') === '1'
+    if (drive && !closeup && params.get('peepshow') !== '1') {
+      const root = slotRef.current?.closest<HTMLElement>('.vp-roam')
+      if (!root) return
+      root.dataset.showoff = '1'
+      root.dataset.ready = '1'
+      root.dataset.placed = '1'
+      const bubble = root.querySelector<HTMLElement>('.vp-bubble')
+      if (bubble) bubble.textContent = ''
+      return
+    }
     if (params.get('peepshow') !== '1' && !closeup) return
-    if (params.get('peepdrive') === '1') {
+    if (drive) {
       const root = slotRef.current?.closest<HTMLElement>('.vp-roam')
       if (!root) return
       root.dataset.showoff = '1'
@@ -190,6 +201,9 @@ export function VibePeepMascot({
     if (closeup) {
       root.dataset.closeup = '1'
       document.documentElement.dataset.peepclose = '1'
+      root.style.setProperty('--vp-mx', '0px')
+      root.style.setProperty('--vp-walk', '0ms')
+      root.style.setProperty('--vp-x', '8px')
     }
     const bubble = root.querySelector<HTMLElement>('.vp-bubble')
     if (bubble) bubble.textContent = ''
@@ -217,6 +231,7 @@ export function VibePeepMascot({
       button.removeAttribute('data-react')
       button.removeAttribute('data-dance')
       delete root.dataset.move
+      delete root.dataset.turn
     }
     const run = () => {
       const step = steps[index]
@@ -226,16 +241,31 @@ export function VibePeepMascot({
       button.removeAttribute('data-line')
       if (step.face) root.dataset.face = step.face
       if (step.move === 'hop') {
-        const width = root.getBoundingClientRect().width || 320
-        const travel = Math.max(120, (window.innerWidth - width) / 2 - 16)
-        const ms = Math.round((travel / 110) * 1000)
-        root.style.setProperty('--vp-cross', `${travel.toFixed(1)}px`)
-        root.style.setProperty('--vp-walk', `${ms}ms`)
-        root.style.setProperty('--vp-cycle', '840ms')
-        root.style.setProperty('--vp-step', '420ms')
-        step.ms = ms + 200
+        const width = root.getBoundingClientRect().width || 307
+        const centre = Math.round((window.innerWidth - width) / 2)
+        const edge = Math.round(window.innerWidth - width - 8)
+        const start = step.face === 'left' ? edge : 8
+        const end = step.face === 'left' ? centre : edge
+        const travel = Math.abs(end - start)
+        const ms = Math.max(400, Math.round((travel / 110) * 1000))
+        root.style.setProperty('--vp-walk', '0ms')
+        root.style.setProperty('--vp-mx', '0px')
+        root.style.setProperty('--vp-x', `${start}px`)
+        root.dataset.turn = '1'
+        root.dataset.move = 'still'
+        window.setTimeout(() => {
+          delete root.dataset.turn
+          root.dataset.move = 'hop'
+          root.style.setProperty('--vp-walk', `${ms}ms`)
+          root.style.setProperty('--vp-x', `${end}px`)
+        }, 110)
+        window.setTimeout(() => {
+          root.dataset.turn = '1'
+          root.dataset.move = 'still'
+        }, 110 + ms)
+        step.ms = ms + 240
       }
-      if (step.move) root.dataset.move = step.move
+      if (step.move && step.move !== 'hop') root.dataset.move = step.move
       if (step.react) button.setAttribute('data-react', step.react)
       if (step.dance) {
         button.setAttribute('data-react', 'party')

@@ -1203,7 +1203,13 @@
 .vp-roam[data-closeup='1'] {
   width: 19.2rem !important;
   top: 150px !important;
-  margin-left: -9.6rem !important;
+  left: var(--vp-x, 50%) !important;
+  margin-left: var(--vp-mx, -9.6rem) !important;
+  transition: left var(--vp-walk, 0ms) linear;
+}
+.vp-roam[data-closeup='1'][data-move='hop'] .vp-roam-body,
+.vp-roam[data-closeup='1'][data-move='still'] .vp-roam-body {
+  animation: none !important;
 }
 
 html[data-peepclose='1'] body::before {
@@ -1300,9 +1306,9 @@ html[data-peepclose='1'] .vp-roam {
   pointer-events: none;
 }
 
-.vp-roam[data-turn='1'] .vp-threeq { visibility: visible; }
+.vp-roam[data-turn='1'] .vp-threeq { visibility: visible !important; z-index: 8; }
 .vp-roam[data-turn='1'] .vp-front,
-.vp-roam[data-turn='1'] .vp-profile { visibility: hidden; }
+.vp-roam[data-turn='1'] .vp-profile { visibility: hidden !important; }
 
 .vp-roam[data-showoff='1'] .vp-dance-label {
   position: absolute;

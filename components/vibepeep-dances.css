@@ -93,12 +93,16 @@
 
 .vp-hit[data-dance='disco-point'] .vp-ant-tip,
 .vp-hit[data-dance='disco-point'] .vp-s-ant-tip { visibility: hidden; }
+.vp-hit[data-dance='disco-point'] .vp-ant,
+.vp-hit[data-dance='disco-point'] .vp-s-ant {
+  clip-path: inset(70% 36% 0 36%);
+}
 
 .vp-hit[data-dance='disco-point'] .vp-show {
   left: 50%;
   top: 0;
-  width: 16%;
-  transform: translate(-50%, 0);
+  width: 36%;
+  transform: translate(-50%, -36%);
 }
 
 .vp-hit[data-dance='disco-point'] .vp-disco-ball {
@@ -170,7 +174,11 @@
 .vp-hit[data-dance='horse'] .vp-dance-label::before { content: '19 Horse'; }
 .vp-hit[data-dance='cha-cha'] .vp-dance-label::before { content: '20 Cha-cha'; }
 
-.vp-front > .vp-snake { left: -18%; top: 40%; width: 136%; height: auto; z-index: 3; }
+.vp-profile .vp-part img { object-fit: contain; height: 100%; }
+.vp-front > .vp-snake { left: -16%; top: 50%; width: 132%; height: auto; z-index: 4; }
+.vp-snake { opacity: 0; }
+.vp-hit[data-dance='snake'] .vp-snake { opacity: 1; }
+.vp-profile .vp-part img { object-fit: contain; height: 100%; }
 /* The passed mittens, clipped to the ball and drawn over the python so the hands close around it. */
 .vp-grip { opacity: 0; z-index: 6; }
 .vp-grip img { clip-path: inset(70% 0 0 0); }
@@ -215,14 +223,9 @@
 }
 
 @keyframes vp-snake-in {
-  0% { opacity: 0; transform: translateY(6%); }
-  8% { opacity: 1; transform: translateY(0); }
-  12%, 30% { opacity: 1; transform: translateY(-70%); }
-  42% { opacity: 1; transform: translateY(0) rotate(0deg); }
-  58% { opacity: 1; transform: rotate(-6deg); }
-  74% { opacity: 1; transform: rotate(6deg); }
-  90% { opacity: 1; transform: rotate(-6deg); }
-  100% { opacity: 1; transform: rotate(0deg); }
+  0%, 8% { opacity: 1; transform: translateY(0); }
+  18%, 36% { opacity: 1; transform: translateY(-108%); }
+  48%, 100% { opacity: 1; transform: translateY(0); }
 }
 
 /* Each routine owns a full animation shorthand on the first rule.
@@ -352,8 +355,7 @@
 .vp-hit[data-react='party'][data-dance='cha-cha'] .vp-leg-l { animation: vp-cha-ll 1.1s ease-in-out 4 both; }
 .vp-hit[data-react='party'][data-dance='cha-cha'] .vp-leg-r { animation: vp-cha-lr 1.1s ease-in-out 4 both; }
 
-.vp-hit[data-dance='snake'] .vp-arm-l,
-.vp-hit[data-dance='snake'] .vp-arm-r { z-index: 2; }
+.vp-hit[data-dance='snake'] .vp-ant { z-index: 7; }
 
 @keyframes vp-moon-glide {
   from { transform: translateX(0); }
@@ -468,14 +470,14 @@
   100% { transform: rotate(0deg); }
 }
 @keyframes vp-snake-al {
-  0% { transform: rotate(90deg); }
-  12%, 30% { transform: rotate(162deg); }
-  42%, 100% { transform: rotate(90deg); }
+  0%, 8% { transform: rotate(70deg); }
+  18%, 36% { transform: rotate(168deg); }
+  48%, 100% { transform: rotate(70deg); }
 }
 @keyframes vp-snake-ar {
-  0% { transform: rotate(-90deg); }
-  12%, 30% { transform: rotate(-162deg); }
-  42%, 100% { transform: rotate(-90deg); }
+  0%, 8% { transform: rotate(-70deg); }
+  18%, 36% { transform: rotate(-168deg); }
+  48%, 100% { transform: rotate(-70deg); }
 }
 @keyframes vp-snake-ll {
   0%, 40% { transform: rotate(0deg); }

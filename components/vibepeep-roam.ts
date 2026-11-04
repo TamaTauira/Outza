@@ -27,6 +27,7 @@ const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, 
 type Phase =
   | { type: 'pause'; until: number }
   | { type: 'goto'; from: Point; to: Point; start: number; dur: number; hops: number; then: RoamAct | null }
+  | { type: 'turn'; until: number; then: RoamAct | null; after: 'walk' | 'land'; to: Point | null }
   | { type: 'act'; act: RoamAct; until: number }
   | { type: 'chase'; until: number }
   | { type: 'bounce'; until: number; vx: number; vy: number; last: number }
@@ -108,6 +109,8 @@ export function attachRoam(root: HTMLElement): () => void {
   let lastActivity = performance.now()
   let cheered = false
   let phase: Phase = { type: 'pause', until: performance.now() + 600 }
+  /** Desktop Board stays hidden until the walk-in 3/4 pose is at the start point. */
+  let boardPhase: 'wait' | 'out' | 'done' = 'wait'
   const pointer = { x: 0, y: 0, t: 0 }
   let drag: { id: number; x: number; y: number; ox: number; oy: number; lastX: number; moved: boolean } | null = null
   let suppressClick = false
@@ -320,10 +323,15 @@ export function attachRoam(root: HTMLElement): () => void {
     const start = Math.abs(left.x - target.x) >= Math.abs(right.x - target.x) ? left : right
     pos = start
     face = target.x >= start.x ? 'right' : 'left'
+    root.dataset.face = face
+    root.dataset.turn = '1'
     root.dataset.ready = '1'
     setMove('still')
     apply()
-    goTo(target, null)
+    if (desktopBoard()) boardPhase = 'out'
+    show()
+    phase = { type: 'turn', until: performance.now() + 110, then: null, after: 'walk', to: target }
+    kick()
   }
 
   const park = () => {
@@ -336,10 +344,12 @@ export function attachRoam(root: HTMLElement): () => void {
       let tries = 0
       const retry = () => {
         if (!running || tries++ > 90) return
-        if (reduce) {
-          if (!pinBoard()) requestAnimationFrame(retry)
-          return
-        }
+    if (reduce) {
+      boardPhase = 'done'
+      if (!pinBoard()) requestAnimationFrame(retry)
+      else show()
+      return
+    }
         const spot = boardSpot()
         if (!spot) {
           requestAnimationFrame(retry)
@@ -495,6 +505,7 @@ export function attachRoam(root: HTMLElement): () => void {
   const pauseNext = (ms?: number) => {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
     if (desktopBoard()) {
+      if (boardPhase !== 'done') return
       pos = { x: 1048, y: 284 }
       apply()
       setMove('still')
@@ -506,7 +517,7 @@ export function attachRoam(root: HTMLElement): () => void {
     phase = { type: 'pause', until: performance.now() + wait }
   }
 
-  const goTo = (to: Point, then: RoamAct | null) => {
+  const goTo = (to: Point, then: RoamAct | null, skipTurn = false) => {
     const from = { ...pos }
     const dx = to.x - from.x
     const dy = to.y - from.y
@@ -527,6 +538,7 @@ export function attachRoam(root: HTMLElement): () => void {
     root.style.setProperty('--vp-cross', `${(stride * 4).toFixed(1)}px`)
     root.style.setProperty('--vp-walk', `${4 * STEP_MS}ms`)
     face = dx < 0 ? 'left' : 'right'
+    root.dataset.face = face
     const startMove = () => {
       if (!running) return
       delete root.dataset.turn
@@ -534,14 +546,19 @@ export function attachRoam(root: HTMLElement): () => void {
       phase = { type: 'goto', from, to, start: performance.now(), dur, hops: strides, then }
       kick()
     }
+    if (skipTurn) {
+      startMove()
+      return
+    }
     root.dataset.turn = '1'
     setMove('still')
-    window.setTimeout(startMove, 100)
+    phase = { type: 'turn', until: performance.now() + 110, then, after: 'walk', to }
   }
 
   const begin = (act: RoamAct): 'raf' | 'sleep' => {
     if (!running || reduce) return 'sleep'
     if (desktopBoard() && (act === 'hop' || act === 'perch' || act === 'peek' || act === 'bounce' || act === 'chase')) {
+      if (boardPhase !== 'done') return 'sleep'
       pos = { x: 1048, y: 284 }
       apply()
       setMove('still')
@@ -608,33 +625,41 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const finishGoto = (then: RoamAct | null) => {
-    const land = () => {
-      if (then === 'perch' || then === 'peek') {
-        if (then === 'peek') {
-          face = pos.x < window.innerWidth * 0.5 ? 'right' : 'left'
-          root.dataset.face = face
-        }
-        setMove(then)
-        phase = { type: 'act', act: then, until: performance.now() + ROAM_ACT_MS[then] }
-        return
-      }
-      if (desktopBoard()) {
-        pos = { x: 1048, y: 284 }
-        apply()
-      }
-      pauseNext()
-    }
     root.dataset.turn = '1'
     setMove('still')
-    window.setTimeout(() => {
-      if (root.dataset.turn === '1') delete root.dataset.turn
-      land()
-    }, 100)
+    phase = { type: 'turn', until: performance.now() + 110, then, after: 'land', to: null }
   }
 
   const step = (now: number): 'raf' | 'sleep' => {
     // Visual checks pin him in place. Nothing in the product sets this.
     if (root.dataset.shot === '1') return 'sleep'
+    if (new URLSearchParams(location.search).get('peepclose') === '1' || new URLSearchParams(location.search).get('peepshow') === '1' || new URLSearchParams(location.search).get('peepdrive') === '1') {
+      return 'sleep'
+    }
+    if (phase.type === 'turn') {
+      if (now < phase.until) return 'raf'
+      delete root.dataset.turn
+      if (phase.after === 'walk' && phase.to) {
+        goTo(phase.to, phase.then, true)
+        return 'raf'
+      }
+      if (phase.then === 'perch' || phase.then === 'peek') {
+        if (phase.then === 'peek') {
+          face = pos.x < window.innerWidth * 0.5 ? 'right' : 'left'
+          root.dataset.face = face
+        }
+        setMove(phase.then)
+        phase = { type: 'act', act: phase.then, until: performance.now() + ROAM_ACT_MS[phase.then] }
+        return 'sleep'
+      }
+      if (desktopBoard()) {
+        boardPhase = 'done'
+        pos = { x: 1048, y: 284 }
+        apply()
+      }
+      pauseNext()
+      return 'sleep'
+    }
     if (held()) {
       if (!dragging) setMove('hold')
       phase = { type: 'hold' }
@@ -784,7 +809,7 @@ export function attachRoam(root: HTMLElement): () => void {
     hiddenAt = 0
     delete root.dataset.paused
     if (phase.type === 'goto') phase.start += drift
-    if (phase.type === 'pause' || phase.type === 'act' || phase.type === 'chase' || phase.type === 'bounce') {
+    if (phase.type === 'pause' || phase.type === 'act' || phase.type === 'chase' || phase.type === 'bounce' || phase.type === 'turn') {
       phase.until += drift
     }
     if (phase.type === 'bounce') phase.last = performance.now()
@@ -868,8 +893,9 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const settle = () => {
     if (!running || dragging) return
-    if (phase.type === 'goto' || phase.type === 'bounce' || phase.type === 'chase') return
+    if (phase.type === 'goto' || phase.type === 'turn' || phase.type === 'bounce' || phase.type === 'chase') return
     if (desktopBoard()) {
+      if (boardPhase !== 'done') return
       pinBoard()
       return
     }
@@ -879,7 +905,9 @@ export function attachRoam(root: HTMLElement): () => void {
 
   let decoded = false
   const show = () => {
-    if (decoded && root.dataset.ready === '1') root.dataset.placed = '1'
+    if (!decoded || root.dataset.ready !== '1') return
+    if (desktopBoard() && !reduce && boardPhase === 'wait') return
+    root.dataset.placed = '1'
   }
   readChrome()
   const imgs = [...root.querySelectorAll('img')]
@@ -896,7 +924,8 @@ export function attachRoam(root: HTMLElement): () => void {
   root.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', onResize, { once: true })
   })
-  if (!reduce && phase.type !== 'goto') {
+  const phaseKind = phase.type
+  if (!reduce && phaseKind !== 'goto' && phaseKind !== 'turn') {
     phase = { type: 'pause', until: performance.now() + 1600 }
     kick()
   } else if (!reduce) {
@@ -917,6 +946,20 @@ export function attachRoam(root: HTMLElement): () => void {
   navMq.addEventListener('change', onResize)
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
 
+  let pinTimer = 0
+  const pinWatch = new MutationObserver(() => {
+    if (!location.pathname.startsWith('/map') || dragging || desktopBoard()) return
+    window.clearTimeout(pinTimer)
+    pinTimer = window.setTimeout(() => {
+      if (!running) return
+      if (!spotClear(pos.x, pos.y)) {
+        pos = firstClear(bounds())
+        apply()
+      }
+    }, 160)
+  })
+  if (location.pathname.startsWith('/map')) pinWatch.observe(document.body, { childList: true, subtree: true })
+
   return () => {
     running = false
     window.clearTimeout(settleA)
@@ -926,6 +969,8 @@ export function attachRoam(root: HTMLElement): () => void {
     window.clearTimeout(speechTimer)
     window.clearTimeout(boingTimer)
     mo.disconnect()
+    pinWatch.disconnect()
+    window.clearTimeout(pinTimer)
     button.removeEventListener('pointerdown', onDown)
     button.removeEventListener('pointermove', onDrag)
     button.removeEventListener('pointerup', onUp)
