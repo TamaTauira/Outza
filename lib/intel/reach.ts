@@ -506,7 +506,7 @@ function queerInsight(f: EventFacts): Insight | null {
   return cat(
     ['outza_catalogue'], 'hypothesis', 'medium',
     'Put it where the queer crowd is already looking',
-    'VibePeep is the best place to advertise this. Not as a slogan: the LGBTIQ+ filter is where people go when they already want a queer night. Start there, then take the same date to the mastheads, radio and festivals below. No audience size is shown, because we have not measured one.',
+    'Start with the LGBTIQ+ filter. That is where people go when they already want a queer night. Then take the same date to the mastheads, radio and festivals below. No audience size is shown, because we have not measured one.',
     { highlight: true, links: queerPromoLinks(f.city, f.category) },
   )
 }

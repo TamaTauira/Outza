@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { DANCE_IDS, DANCE_MS, pickDance, type DanceId } from './mascot-dances'
+import { DANCE_IDS, DANCE_LABELS, DANCE_MS, pickDance, type DanceId } from './mascot-dances'
 import { PARTY_MS } from './mascot-reactions'
 
 test('the dance party has twenty distinct routines', () => {
@@ -70,6 +70,18 @@ test('every dance paints its own full animation, so a party cannot zero the body
     assert.ok(anim, `${id} sets a full animation`)
     assert.ok(dances.includes(`@keyframes ${anim[1]}`), `${anim[1]} is defined`)
   }
+})
+
+test('each dance has its own short label, and none names a person', () => {
+  const banned = /jackson|travolta|madonna|village people|ymca|macarena|verified|outza/i
+  for (const id of DANCE_IDS) {
+    const label = DANCE_LABELS[id]
+    assert.equal(typeof label, 'string')
+    assert.ok(label.length > 8 && label.length < 48, label)
+    assert.equal(banned.test(label), false, label)
+    assert.equal(banned.test(id) && /ymca|macarena/i.test(label), false)
+  }
+  assert.equal(new Set(Object.values(DANCE_LABELS)).size, DANCE_IDS.length)
 })
 
 test('pickDance never repeats the routine that just played', () => {

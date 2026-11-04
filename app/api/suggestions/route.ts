@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}))
   const message = String(b.message ?? '').trim().slice(0, 4000)
-  if (message.length < 5) return NextResponse.json({ error: 'Please write a little more about your idea' }, { status: 400 })
+  if (message.length < 5) return NextResponse.json({ error: 'Write a little more about your idea' }, { status: 400 })
   const me = await getSessionUser().catch(() => null)
   const role = b.role === 'PROMOTER' ? 'PROMOTER' : 'CONSUMER'
   const name = String(b.name ?? me?.name ?? '').trim().slice(0, 100) || null

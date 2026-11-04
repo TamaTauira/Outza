@@ -28,24 +28,24 @@ export function parseLocal(b: Record<string, unknown>): { error: string } | { in
   const city = clean(b.city, 40)
   const recurrence = clean(b.recurrence, 20) || 'NONE'
   const postcode = clean(b.postcode, 4)
-  if (title.length < 5) return { error: 'Please give your listing a title (at least 5 characters).' }
-  if (description.length < 20) return { error: 'Please describe what’s on (at least 20 characters).' }
-  if (!LOCAL_CATEGORIES.some((c) => c.key === category)) return { error: 'Please choose a category.' }
-  if (!CITIES.some((c) => c.name === city)) return { error: 'Please choose a city.' }
-  if (!RECURRENCES.some((r) => r.key === recurrence)) return { error: 'Please choose how often it runs.' }
+  if (title.length < 5) return { error: 'Give it a title, at least 5 characters.' }
+  if (description.length < 20) return { error: 'Tell us what’s on, at least 20 characters.' }
+  if (!LOCAL_CATEGORIES.some((c) => c.key === category)) return { error: 'Choose a category.' }
+  if (!CITIES.some((c) => c.name === city)) return { error: 'Choose a city.' }
+  if (!RECURRENCES.some((r) => r.key === recurrence)) return { error: 'Choose how often it runs.' }
   const address = clean(b.address, 160)
   const suburb = clean(b.suburb, 60)
-  if (address.length < 5 || !/\d/.test(address)) return { error: 'Please enter the street address, including the street number.' }
-  if (suburb.length < 2) return { error: 'Please enter the suburb.' }
-  if (!/^\d{4}$/.test(postcode)) return { error: 'Please enter a 4-digit postcode.' }
+  if (address.length < 5 || !/\d/.test(address)) return { error: 'Add the street address, including the street number.' }
+  if (suburb.length < 2) return { error: 'Add the suburb.' }
+  if (!/^\d{4}$/.test(postcode)) return { error: 'Add a 4-digit postcode.' }
 
   const tz = cityDef(city).tz
   const today = todayIn(tz)
-  if (!isDateStr(b.startDate)) return { error: 'Please choose a date.' }
+  if (!isDateStr(b.startDate)) return { error: 'Choose a date.' }
   const startDate = b.startDate
   if (startDate < today) return { error: 'The date has already passed.' }
   if (diffDays(today, startDate) > MAX_AHEAD_DAYS) return { error: 'Listings can be added up to a year ahead.' }
-  if (!isTimeStr(b.startTime) || !isTimeStr(b.endTime)) return { error: 'Please enter a start and finish time.' }
+  if (!isTimeStr(b.startTime) || !isTimeStr(b.endTime)) return { error: 'Add a start and finish time.' }
   if (b.endTime <= b.startTime) return { error: 'The finish time must be after the start time.' }
 
   let endDate: string | null = null
@@ -62,15 +62,15 @@ export function parseLocal(b: Record<string, unknown>): { error: string } | { in
   }
 
   const contactEmail = clean(b.contactEmail, 200).toLowerCase()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: 'Please enter a valid contact email (it isn’t shown publicly).' }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: 'Add a real contact email. It isn’t shown publicly.' }
   const organiserName = clean(b.organiserName, 80)
-  if (organiserName.length < 2) return { error: 'Please tell us who is running it.' }
+  if (organiserName.length < 2) return { error: 'Tell us who is running it.' }
   let websiteUrl: string | null = clean(b.websiteUrl, 300) || null
   if (websiteUrl) {
     try { const u = new URL(/^https?:\/\//.test(websiteUrl) ? websiteUrl : `https://${websiteUrl}`); if (!/^https?:$/.test(u.protocol)) throw 0; websiteUrl = u.toString() }
     catch { return { error: 'That website link doesn’t look right.' } }
   }
-  if (b.isPublic !== true) return { error: 'Please confirm this is open to the public. Private or invitation-only events can’t be listed.' }
+  if (b.isPublic !== true) return { error: 'Confirm this is open to the public. Private or invitation-only events can’t be listed.' }
   return { input: { title, category, description, address, suburb, postcode, city, startDate, endDate, startTime: b.startTime, endTime: b.endTime, recurrence, recurUntil, priceNote: clean(b.priceNote, 80) || null, organiserName, contactEmail, websiteUrl } }
 }
 
@@ -107,7 +107,7 @@ export async function aiModeration(i: LocalInput): Promise<string | null> {
       maxOutputTokens: 120,
       timeoutMs: 12000,
       messages: [
-        { role: 'system', content: 'You moderate public community listings (garage sales, clearance sales, markets, community activities) for an Australian events site. Reply JSON {"ok": boolean, "reason": string}. ok=false if the listing is spam, a scam, hateful, sexual, illegal goods, a private/invitation-only event, a job ad, a rental/real-estate ad, or not a real-world public event or sale. Otherwise ok=true and reason "".' },
+        { role: 'system', content: 'You moderate public community listings (garage sales, clearance sales, markets, community activities) for VibePeep Local. Reply JSON {"ok": boolean, "reason": string}. ok=false if the listing is spam, a scam, hateful, sexual, illegal goods, a private/invitation-only event, a job ad, a rental/real-estate ad, or not a real-world public event or sale. Otherwise ok=true and reason "". When ok is false, reason is one short plain sentence a person can read. No jokes, no slang.' },
         { role: 'user', content: JSON.stringify({ title: i.title, category: i.category, description: i.description, organiser: i.organiserName }) },
       ],
     })

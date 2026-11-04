@@ -64,7 +64,7 @@ function SignupForm() {
       router.replace(params.get('next') || (role === 'PROMOTER' ? '/promoter' : '/account'))
     } catch (err) {
       console.error(err)
-      setError('Something went wrong. Please try again.')
+      setError('Something went wrong. Try again in a moment.')
     } finally {
       setLoading(false)
     }

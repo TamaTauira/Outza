@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     } catch (e: any) {
       console.error('Stripe Pro checkout error:', e?.message)
       await prisma.proPass.update({ where: { id: pass.id }, data: { status: 'CANCELLED' } })
-      return NextResponse.json({ error: 'Payment could not be started. Please try again.' }, { status: 502 })
+      return NextResponse.json({ error: 'Payment could not be started. Try again.' }, { status: 502 })
     }
   }
 
@@ -99,6 +99,6 @@ export async function POST(req: Request) {
   } catch (e: any) {
     console.error('Stripe checkout error:', e?.message)
     await prisma.promotion.updateMany({ where: { orderId }, data: { status: 'CANCELLED' } })
-    return NextResponse.json({ error: 'Payment could not be started. Please try again.' }, { status: 502 })
+    return NextResponse.json({ error: 'Payment could not be started. Try again.' }, { status: 502 })
   }
 }

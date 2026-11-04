@@ -7,7 +7,7 @@ import { DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 
 export const metadata: Metadata = {
   title: 'Pricing — VibePeep',
-  description: 'Boost, Spotlight, Headliner, Promoter Pro and local recommendations. AUD, GST inclusive.',
+  description: 'Boost, Spotlight, Headliner and Promoter Pro. Prices in AUD, GST included. Listing an event stays free.',
 }
 
 export default function PricingPage() {
@@ -20,7 +20,7 @@ export default function PricingPage() {
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {TIERS.map((t) => (
             <div key={t.key} className={`relative flex flex-col rounded-2xl border bg-card p-6 shadow-sm ${t.key === 'BRONZE' ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}>
-              {t.key === 'BRONZE' && <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">MOST POPULAR</span>}
+              {t.key === 'BRONZE' && <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">Start here</span>}
               <span className="h-1.5 w-12 rounded-full" style={{ backgroundColor: t.color }} />
               <p className="mt-4 font-display text-xl font-bold">{t.name}</p>
               <p className="text-sm text-muted-foreground">{t.tagline}</p>

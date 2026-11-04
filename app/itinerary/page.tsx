@@ -124,13 +124,13 @@ export default function ItineraryPage() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <div className="flex items-center justify-between gap-3 mb-2">
           <h1 className="font-display text-3xl font-bold flex items-center gap-3"><CalendarRange className="w-7 h-7 text-primary" />Itinerary</h1>
-          {items.length > 0 && <button onClick={() => { if (confirm('Clear your whole itinerary?')) clear() }} className="text-sm text-muted-foreground hover:text-foreground">Clear all</button>}
+          {items.length > 0 && <button onClick={() => { if (confirm('Clear this Itinerary?')) clear() }} className="text-sm text-muted-foreground hover:text-foreground">Clear all</button>}
         </div>
-        <p className="text-muted-foreground mb-8">Your game plan. Tap <span className="font-semibold text-foreground">+ Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. Your itinerary is kept on this device for the account you are signed in with, and clears from view when you sign out. It is separate from your saved favourites.</p>
+        <p className="text-muted-foreground mb-8">Your Itinerary. Tap <span className="font-semibold text-foreground">Add to Itinerary</span> on any event, and add your own stops like dinner or a meet-up. It stays on this device for the account you are signed in with, and clears from view when you sign out. It is separate from Saved.</p>
 
         {!sorted.length ? (
           <EmptyState
-            title="No plans yet."
+            title="Nothing on the Itinerary yet."
             lede="Line up the night: the gig, dinner, and the bit in between. It stays on this device for the account you’re signed in with."
             action={status === 'authenticated' ? { href: '/', label: 'Browse events' } : { href: '/login?next=/itinerary', label: 'Sign in' }}
             secondary={status === 'authenticated' ? undefined : { href: '/', label: 'Browse events' }}

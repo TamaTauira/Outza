@@ -73,7 +73,7 @@ If a date has no year, use the next upcoming occurrence after today. If the sour
 
 /** Sends page text, document text or a PDF to the LLM and returns validated fields + the list of required fields still missing. */
 export async function extractListing(input: { text?: string; pdfBase64?: string; filename?: string }, today: string): Promise<ExtractedListing> {
-  if (!llmConfigured()) throw new ExtractError('Import is not available right now. Please fill in the form manually.')
+  if (!llmConfigured()) throw new ExtractError('Import is off right now. Fill in the form instead.')
   const content = input.pdfBase64
     ? [
         { type: 'file' as const, data: `data:application/pdf;base64,${input.pdfBase64}`, mediaType: 'application/pdf', filename: input.filename || 'flyer.pdf' },
@@ -90,7 +90,7 @@ export async function extractListing(input: { text?: string; pdfBase64?: string;
     })
   } catch (e: any) {
     console.error('Local extract LLM request failed:', e?.message)
-    throw new ExtractError('Reading the details failed at the AI step. Please try again or fill in the form manually.')
+    throw new ExtractError('Couldn’t read the details. Try again, or fill in the form.')
   }
   return sanitise(raw)
 }

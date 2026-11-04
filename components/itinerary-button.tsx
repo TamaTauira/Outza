@@ -14,10 +14,10 @@ export function ItineraryButton({ event, compact = false, className }: { event: 
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (inIt) { remove(event.id); toast('Removed from your itinerary') }
-    else { add(eventToItem(event)); toast.success('Added to your itinerary', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
+    if (inIt) { remove(event.id); toast('Removed from your Itinerary') }
+    else { add(eventToItem(event)); toast.success('Added to your Itinerary', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
   }
-  const label = inIt ? 'In My Itinerary' : 'Add to My Itinerary'
+  const label = inIt ? 'In Itinerary' : 'Add to Itinerary'
 
   if (compact) {
     return (

@@ -28,6 +28,30 @@ export const DANCE_IDS = [
 
 export type DanceId = (typeof DANCE_IDS)[number]
 
+/** Bubble copy for each routine. Ids stay internal. Never name a real person or a trademarked routine. */
+export const DANCE_LABELS: Record<DanceId, string> = {
+  moonwalk: 'Smooth little glide.',
+  robot: 'Stiff little robot.',
+  ymca: 'Arms up, spelling it out.',
+  macarena: 'Hands, hips, spin.',
+  snake: 'Sssmooth move.',
+  island: 'Easy island sway.',
+  griddy: 'Quick feet, big grin.',
+  'goth-snap': 'Slow snap.',
+  'hand-jive': 'Hand jive.',
+  shuffle: 'Shuffle time.',
+  floss: 'Arms through.',
+  sprinkler: 'Sprinkler arms.',
+  'running-man': 'Running on the spot.',
+  twist: 'Give it a twist.',
+  worm: 'Down for the worm.',
+  chicken: 'Chicken wings.',
+  'disco-point': 'Disco point.',
+  'shopping-cart': 'Trolley roll.',
+  horse: 'Little gallop.',
+  'cha-cha': 'Cha-cha steps.',
+}
+
 export const DANCE_MS = 4400
 
 /** Next party routine. Never the one that just played. */

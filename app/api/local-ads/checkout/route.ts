@@ -43,6 +43,6 @@ export async function POST(req: Request) {
   } catch (e: any) {
     console.error('Stripe local-ad checkout error:', e?.message)
     await prisma.localAd.update({ where: { id: ad.id }, data: { status: 'CANCELLED' } })
-    return NextResponse.json({ error: 'Payment could not be started. Please try again.' }, { status: 502 })
+    return NextResponse.json({ error: 'Payment could not be started. Try again.' }, { status: 502 })
   }
 }

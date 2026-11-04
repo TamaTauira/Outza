@@ -4,7 +4,7 @@ import { WatchlistClient } from './watchlist-client'
 
 export const metadata: Metadata = {
   title: 'My VibePeep',
-  description: 'Saved events, venues and interests you follow, plus optional email reminders.',
+  description: 'My VibePeep: the events you saved, the venues and interests you follow, and optional email reminders.',
   robots: { index: false, follow: false },
 }
 

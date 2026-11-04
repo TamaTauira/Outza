@@ -79,7 +79,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
     return (
       <div className={cn(card, 'text-center py-12')}>
         <Brain className="w-8 h-8 text-primary mx-auto" />
-        <p className="font-semibold mt-3">No events, no intel (yet)</p>
+        <p className="font-semibold mt-3">No events yet, so no Intelligence</p>
         <p className="text-sm text-muted-foreground mt-1">Claim or list an event and we&apos;ll size up who lives near the venue, what else is on that night, and where the ad should go.</p>
       </div>
     )
@@ -121,7 +121,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           {data.message && <p className="text-sm rounded-lg bg-muted/60 px-4 py-3 flex gap-2"><Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />{data.message}</p>}
 
           {data.insights.length > 0 && (
-            <Section title="What to do with this event" Icon={Lightbulb} sub="Tied to this listing: suburb, category, night and price. Catalogue counts are VibePeep listings, not sales or foot traffic.">
+            <Section title="Ideas for this listing" Icon={Lightbulb} sub="Tied to this listing: suburb, category, night and price. Catalogue counts are VibePeep listings, not sales or foot traffic.">
               <ul className="grid md:grid-cols-2 gap-3">{data.insights.map((i) => <InsightCard key={i.title} i={i} />)}</ul>
             </Section>
           )}

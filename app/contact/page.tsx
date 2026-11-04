@@ -3,7 +3,7 @@ import { InfoPage } from '@/components/info-page'
 
 export const metadata: Metadata = {
   title: 'Contact — VibePeep',
-  description: 'How to reach VibePeep about a listing, a purchase or your account.',
+  description: 'Need a hand with a listing, a purchase or your account? Here’s how to reach VibePeep.',
 }
 
 export default function ContactPage() {

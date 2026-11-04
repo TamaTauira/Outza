@@ -20,7 +20,7 @@ export async function submitClaim(me: Me, eventId: string, b: Record<string, unk
   if (claimRateLimited(recentClaims)) return { status: 429, body: { error: 'That’s a lot of claims for one day. Try again tomorrow.' } }
 
   const orgName = clean(b.orgName, 120) ?? clean(me.name, 120)
-  if (!orgName) return { status: 400, body: { error: 'Please enter your organisation name' } }
+  if (!orgName) return { status: 400, body: { error: 'Enter your organisation name' } }
   let evidenceUrl = clean(b.evidenceUrl, 500)
   if (evidenceUrl && !/^https?:\/\//i.test(evidenceUrl)) evidenceUrl = `https://${evidenceUrl}`
   if (evidenceUrl) { try { new URL(evidenceUrl) } catch { return { status: 400, body: { error: 'That link doesn’t look right' } } } }

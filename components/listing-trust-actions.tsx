@@ -49,7 +49,7 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
 
   const sendReport = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!report.reason) { toast.error('Please choose what is wrong'); return }
+    if (!report.reason) { toast.error('Choose what is wrong'); return }
     const d = await post('report', report)
     if (d) { toast.success('Thanks. We’ll check this listing against the source.'); setOpen(''); setReport({ reason: '', details: '', email: '' }) }
   }

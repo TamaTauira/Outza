@@ -48,7 +48,7 @@ function DigestMailPanel() {
       const r = await fetch('/api/admin/digest', { method: 'POST' })
       const j = await r.json().catch(() => ({}))
       const part = (label: string, value: TestPart | undefined) => value ? `${label}: ${value.ok ? 'sent' : (value.error ?? 'failed')}` : `${label}: no result`
-      const text = [part('Watchlist', j.watchlist), part('Newsletter', j.newsletter)].join(' ')
+      const text = [part('My VibePeep', j.watchlist), part('Edition email', j.newsletter)].join(' ')
       if (!r.ok && !j.watchlist && !j.newsletter) {
         console.error('[digest-admin]', j)
         setMsg({ ok: false, text: j.error ?? `Request failed (${r.status})` })
@@ -71,7 +71,7 @@ function DigestMailPanel() {
           {busy ? 'Sending…' : 'Send test digest'}
         </button>
       </div>
-      <p className="text-sm text-muted-foreground">Sends a watchlist digest and a newsletter digest to you, using your own name, city, follows, saves, views and Together plans. Neither one moves the schedule.</p>
+      <p className="text-sm text-muted-foreground">Sends a My VibePeep note and an edition email to you, using your own name, city, follows, saves, views and VibePeep Together plans. Neither one moves the schedule.</p>
       <p className="text-sm"><a className="underline font-semibold" href="/admin/digest/preview" target="_blank" rel="noreferrer">Open HTML preview</a></p>
       {info?.testSender && <p className="text-sm text-amber-800 dark:text-amber-300" role="status">{info.blocker}</p>}
       {info && !info.sendingEnabled && <p className="text-sm text-red-600 dark:text-red-400" role="status">Email sending is off until SMTP or Resend is configured.</p>}

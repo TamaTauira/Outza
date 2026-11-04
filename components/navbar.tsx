@@ -83,7 +83,7 @@ export function Navbar({ savedCount }: NavbarProps) {
             )
           })}
           <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
-            <CalendarRange className="w-4 h-4" /><span className="sm:hidden">Plan</span><span className="hidden sm:inline">Itinerary</span>
+            <CalendarRange className="w-4 h-4" /><span>Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
         </nav>

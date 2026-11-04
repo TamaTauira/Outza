@@ -11,7 +11,7 @@ const CARDS = [
   { href: '/admin/venues', title: 'Venue claims', body: 'Venue claims, disputes, and identity changes. A person decides.' },
   { href: '/admin/local', title: 'Local', body: 'Community listings to approve.' },
   { href: '/admin/community', title: 'Community hub', body: 'Neighbourhood submissions, removals and counters. Removals keep the audit trail.' },
-  { href: '/admin/newsletter', title: 'Newsletter', body: 'Preview and send THE WEEKENDER.' },
+  { href: '/admin/newsletter', title: 'Edition emails', body: 'Preview and send The Weekender, The Daily Drop and The Big Month.' },
   { href: '/admin/seo', title: 'SEO', body: 'Guides, indexing, and referrals.' },
   { href: '/admin/images', title: 'Images', body: 'Artwork pipeline.' },
   { href: '/admin/intel', title: 'Intelligence', body: 'Official data sources.' },

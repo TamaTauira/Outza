@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   const u = new URL(req.url)
   if (u.searchParams.get('mine') === '1') {
     const me = await getSessionUser()
-    if (!me) return NextResponse.json({ error: 'Please sign in' }, { status: 401 })
+    if (!me) return NextResponse.json({ error: 'Sign in to do that.' }, { status: 401 })
     const mine = await prisma.localListing.findMany({ where: { userId: me.id, status: { not: 'REMOVED' } }, orderBy: { createdAt: 'desc' }, take: 50, select: { ...PUBLIC, status: true, expiresAt: true, flags: true, reviewNote: true } })
     const email = me.email.toLowerCase()
     const community = email ? await prisma.event.findMany({
@@ -126,8 +126,8 @@ export async function POST(req: Request) {
     // Optional image: must be one our upload route produced, and the lister must confirm they may use it.
     let imagePath: string | null = null
     if (typeof b.imagePath === 'string' && b.imagePath) {
-      if (!b.imagePath.startsWith(storagePath('local-images/')) || !/^[\w\-/]+\.webp$/.test(b.imagePath)) return NextResponse.json({ error: 'That image upload isn’t valid. Please upload it again.' }, { status: 400 })
-      if (b.imageRights !== true) return NextResponse.json({ error: 'Please confirm you own the image or have permission to use it.' }, { status: 400 })
+      if (!b.imagePath.startsWith(storagePath('local-images/')) || !/^[\w\-/]+\.webp$/.test(b.imagePath)) return NextResponse.json({ error: 'That image upload isn’t valid. Upload it again.' }, { status: 400 })
+      if (b.imageRights !== true) return NextResponse.json({ error: 'Confirm you own the image or have permission to use it.' }, { status: 400 })
       imagePath = b.imagePath
     }
     const blocked = hardBlock(i)
@@ -135,7 +135,7 @@ export async function POST(req: Request) {
 
     const me = await getSessionUser().catch(() => null)
     const hash = ipHash(req)
-    if ((await recentCount(hash, i.contactEmail)) >= 5) return NextResponse.json({ error: 'You’ve added a lot of listings today. Please try again tomorrow, or contact us if you run a market or venue.' }, { status: 429 })
+    if ((await recentCount(hash, i.contactEmail)) >= 5) return NextResponse.json({ error: 'You’ve added a lot of listings today. Try again tomorrow, or contact us if you run a market or venue.' }, { status: 429 })
 
     const filledMs = typeof b.startedAt === 'number' ? Date.now() - b.startedAt : null
     const [addr, dupe, mod] = await Promise.all([validateAddress(i), findDuplicate(i), aiModeration(i)])
@@ -167,6 +167,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: row.id, status, notes, duplicateOf: dupe?.title ?? null })
   } catch (err: any) {
     console.error('Local listing submit failed:', err?.message)
-    return NextResponse.json({ error: 'Could not save your listing. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save your listing. Try again.' }, { status: 500 })
   }
 }

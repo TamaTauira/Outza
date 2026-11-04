@@ -217,7 +217,7 @@ async function issueCode(purpose: string, subjectId: string, email: string, labe
     reason: 'Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.',
     rows: emailBodyCell(`<p style="margin:0 0 12px;">Confirm you can manage <strong>${escapeHtml(label)}</strong>.</p>
     <p style="font-size:32px;letter-spacing:0.2em;font-weight:700;margin:0 0 12px;">${escapeHtml(code)}</p>
-    <p style="margin:0 0 12px;"><a href="${escapeHtml(link)}">Or open this one-time link</a>. It expires in ${CODE_MINUTES} minutes and works once.</p>
+    <p style="margin:0 0 12px;"><a href="${escapeHtml(link)}">Or tap this one-time link</a>. It expires in ${CODE_MINUTES} minutes and works once.</p>
     <p style="font-size:13px;margin:0 0 12px;">Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.</p>
     <p style="font-size:12px;margin:0;"><strong>Acknowledgement of Country.</strong> ${escapeHtml(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>`),
   })

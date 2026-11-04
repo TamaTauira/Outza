@@ -15,7 +15,7 @@ export function LocalImageField({ image, onChange, rights, onRights }: { image: 
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) { toast.error('Please choose an image file'); return }
+    if (!file.type.startsWith('image/')) { toast.error('Choose an image file'); return }
     if (file.size > 8 * 1024 * 1024) { toast.error('That image is over 8 MB.'); return }
     setBusy(true)
     try {
