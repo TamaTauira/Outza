@@ -16,7 +16,7 @@ Mobile lab performance is the largest remaining product gap: Lighthouse performa
 
 **Weighted score: 66 / 100**
 
-The score counts the business-dashboard category as zero because it was not exercised with a real session. It assumes the security fixes in this change are deployed. Until this deploy is live, production still accepts unauthenticated `POST /api/refresh-events`.
+The score counts the business-dashboard category as zero because it was not exercised with a real session. After deploy `dpl_F1v25WpeYpRBshu9hXJcgjTjReyQ`, production `POST /api/refresh-events` without a secret returns 403.
 
 ## B. Feature inventory
 
@@ -80,7 +80,7 @@ Statuses mean what the brief says. A row is PASS only where a request, browser, 
 - Steps: POST that URL with an empty body
 - Cause: the route called `refreshSources` and never used `cronAuthorized`. Scheduled crons use a different path that was already protected
 - Fix: the route now returns 403 unless cron or an admin
-- Retest: `lib/refresh-events-auth.test.ts` passed. Live 403 is due after this deploy
+- Retest: `lib/refresh-events-auth.test.ts` passed. Production alias returned 403 `{"error":"Not allowed"}` on deploy `dpl_F1v25WpeYpRBshu9hXJcgjTjReyQ`
 
 ### QA-02 — Sign-in open redirect
 
@@ -246,7 +246,7 @@ Recommended next improvements are in section I.
 | --- | --- | --- | --- |
 | Core functionality and user journeys | 20 | 16 | Public journeys executed. Signed-in organiser journeys blocked |
 | Event data quality and freshness | 20 | 13 | All 10 cities have upcoming events. Gaps in QA-08, QA-09, QA-10 |
-| Security and permissions | 20 | 16 | Auth boundaries held. QA-01, QA-02 and QA-03 fixed in this change, live 403 still to be confirmed after deploy |
+| Security and permissions | 20 | 16 | Auth boundaries held. QA-01 confirmed 403 on production after deploy. QA-02 and QA-03 covered by unit tests |
 | Performance and scalability | 15 | 8 | QA-07. APIs mostly under half a second. One guide about 2.9s |
 | Mobile and PWA | 10 | 6 | Manifest and icons pass. No service worker. Mobile Lighthouse accessibility 91 before the button-name fix |
 | UX and accessibility | 5 | 4 | Desktop axe clean. Wrong-password message confirmed |
@@ -256,12 +256,12 @@ Recommended next improvements are in section I.
 
 **Verdict: READY WITH MINOR ISSUES**
 
-The public board, search, local listings and account gate are fit to stay in production. Do not treat the score as a claim that organiser dashboards were retested. Deploy this change, then confirm `POST /api/refresh-events` without a secret returns 403.
+The public board, search, local listings and account gate are fit to stay in production. Do not treat the score as a claim that organiser dashboards were retested. The refresh route now returns 403 on the production alias.
 
 ### Top 10 remaining improvements
 
 1. Bring mobile LCP on the home board down. Lab result was 7.2s and performance 70.
-2. Confirm the refresh route returns 403 in production after this deploy, and mark the GitHub Actions unit-test job as a required check.
+2. Mark the GitHub Actions unit-test job as a required check before merging to `main`. Vercel does not wait for it until that setting is on.
 3. Geocode the events that have no coordinates, as a reviewed job, so the map can show them.
 4. Limit unauthenticated ticket-click counting so analytics cannot be inflated, without blocking a guest who taps Get Tickets.
 5. Add a signup rate limit and raise the password minimum above 6 characters.
@@ -274,6 +274,6 @@ The public board, search, local listings and account gate are fit to stay in pro
 ### What the owner needs to do
 
 - No new environment variable is required for these code fixes. `CRON_SECRET` is already what the other cron routes use.
-- After deploy: `POST /api/refresh-events?source=qa-probe-not-a-source` with no Authorization header should be 403.
+- Confirmed after deploy: `POST /api/refresh-events?source=qa-probe-not-a-source` with no Authorization header returns 403.
 - In GitHub, require the “unit tests” check before merging to `main`. Vercel will still build without it until that setting is on.
 - Optional, when ready: `AI_GATEWAY_API_KEY` (or OIDC), a verified `RESEND_FROM_EMAIL`, and `BUSINESS_ABN`. Do not invent an ABN.
