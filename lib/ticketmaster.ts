@@ -197,6 +197,7 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
         latitude: hasPin ? lat : null,
         longitude: hasPin ? lng : null,
         source: 'ticketmaster',
+        externalId: ev?.id ? String(ev.id) : null,
         status,
         feesIncluded: pr ? /including fees/i.test(pr?.type ?? '') : null,
         city: filed.name,

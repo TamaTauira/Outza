@@ -72,12 +72,81 @@ export function canonicalizeListingUrl(raw?: string | null): string | null {
   try { parsed = new URL(url) } catch { return null }
   if (parsed.pathname === '/' || /\/search\b/i.test(parsed.pathname)) return null
   parsed.hash = ''
+  parsed.hostname = canonicalHost(parsed.hostname)
   const kept = [...parsed.searchParams.entries()].filter(([key]) => !TRACKING_PARAMS.has(key.toLowerCase()))
   kept.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]))
   parsed.search = ''
   for (const [key, value] of kept) parsed.searchParams.append(key, value)
   if (parsed.pathname.length > 1) parsed.pathname = parsed.pathname.replace(/\/+$/, '')
   return parsed.toString()
+}
+
+/** Frontier's public site and its CoreDNA host are one listing page. */
+const FRONTIER_HOSTS = new Set(['frontiertouringcom.coredna.site', 'frontiertouring.com', 'www.frontiertouring.com'])
+
+function canonicalHost(host: string): string {
+  const name = host.toLowerCase().replace(/\.$/, '')
+  if (FRONTIER_HOSTS.has(name)) return 'www.frontiertouring.com'
+  return name
+}
+
+/**
+ * Every stored spelling of a listing URL.
+ * New rows use the canonical host. Older Frontier rows keep the CoreDNA host.
+ */
+export function listingUrlAliases(raw?: string | null): string[] {
+  const canonical = canonicalizeListingUrl(raw)
+  if (!canonical) return []
+  const urls = new Set<string>([canonical])
+  try {
+    const parsed = new URL(canonical)
+    if (parsed.hostname === 'www.frontiertouring.com') {
+      for (const host of FRONTIER_HOSTS) {
+        const copy = new URL(canonical)
+        copy.hostname = host
+        urls.add(copy.toString())
+      }
+    }
+  } catch { /* a canonical URL from the parser is well formed */ }
+  return [...urls]
+}
+
+export function sessionDate(sessionKey?: string | null): string | null {
+  const date = sessionKey?.split('|')[0] ?? ''
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null
+}
+
+function sessionClock(sessionKey?: string | null): string | null {
+  const time = sessionKey?.split('|')[1] ?? ''
+  const match = time.match(/^(\d{1,2}):(\d{2})/)
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : null
+}
+
+function clockKey(value?: string | null): string | null {
+  const match = value?.match(/^(\d{1,2}):(\d{2})/)
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : null
+}
+
+/**
+ * The source row for this URL and start.
+ * A tour page is one URL for many dates, so a different date is never this row.
+ * One clock being blank is the same start. Two different clocks on that date are not.
+ */
+export function matchSourceSession(
+  rows: { eventId: string; sessionKey: string | null }[],
+  input: { date: string; time?: string | null },
+): string | null {
+  const want = clockKey(input.time)
+  const sameDay = rows.filter((row) => sessionDate(row.sessionKey) === input.date)
+  if (want) {
+    const timed = sameDay.filter((row) => sessionClock(row.sessionKey) === want)
+    if (timed.length === 1) return timed[0].eventId
+    if (timed.length > 1) return null
+    const open = sameDay.filter((row) => !sessionClock(row.sessionKey))
+    if (open.length === 1 && sameDay.length === 1) return open[0].eventId
+    return null
+  }
+  return sameDay.length === 1 ? sameDay[0].eventId : null
 }
 
 function minutes(value?: string | null): number | null {
@@ -148,6 +217,14 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
   }
   if (!a.date || !b.date || a.date !== b.date) return decision('separate', 10, 'date', ['Missing date'])
 
+  // One listing page and one start is one row, even when an earlier import
+  // copied another night's venue onto it. A later start on that page stays separate.
+  const ta = minutes(a.time)
+  const tb = minutes(b.time)
+  if (sameUrl && (ta == null || tb == null || Math.abs(ta - tb) <= SESSION_MINUTES)) {
+    return decision('link', 99, 'exact_url', ['Same listing URL and session'], a.status && b.status && a.status !== b.status ? ['status'] : [])
+  }
+
   const venueA = resolveVenueIdentity(a.venueName, a.city)
   const venueB = resolveVenueIdentity(b.venueName, b.city)
   if (venueA && venueB && venueA.id !== venueB.id) {
@@ -161,9 +238,8 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
   const addressB = normAddress(b.address)
   const venueSim = similarity(normalizeVenue(a.venueName), normalizeVenue(b.venueName))
   const sharedAddress = !!addressA && addressA === addressB
-  const ta = minutes(a.time)
-  const tb = minutes(b.time)
-  const titlesMatch = equivalentTitles(a.title, b.title) || titleIsTourOf(a.title, b.title)
+  const titlesEquivalent = equivalentTitles(a.title, b.title)
+  const titlesMatch = titlesEquivalent || titleIsTourOf(a.title, b.title)
   const timesEqual = ta != null && tb != null && ta === tb
   const timesOpen = timesEqual || ta == null || tb == null || Math.abs((ta ?? 0) - (tb ?? 0)) <= 10
   if (sharedAddress && !sameVenueIdentity(venueA, venueB) && venueSim < 0.5 && !(titlesMatch && timesEqual)) {
@@ -180,20 +256,16 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
     return decision('separate', 45, 'organiser', ['Organiser names disagree'])
   }
 
-  // One listing page, one session. Checked before the same-source venue rule, which
-  // otherwise keeps a suburb label and the real venue name as two products.
-  if (sameUrl && (ta == null || tb == null || Math.abs(ta - tb) <= SESSION_MINUTES)) {
-    return decision('link', 99, 'exact_url', ['Same listing URL and session'], a.status && b.status && a.status !== b.status ? ['status'] : [])
-  }
-
   const place = { venueName: a.venueName, address: a.address }
   const otherPlace = { venueName: b.venueName, address: b.address }
-  const samePlace = venuesMatch(a.venueName, b.venueName)
-    || sharesStreet(place, otherPlace)
+  const sameVenue = venuesMatch(a.venueName, b.venueName)
+  // A tour subtitle can share a street with a different room. The street link stays
+  // for an identical title, which is how a street-only listing meets the named venue.
+  const samePlace = sameVenue
+    || (titlesEquivalent && sharesStreet(place, otherPlace))
     || pinsNear({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng })
     || (timesEqual && suburbLabelMatch(place, otherPlace))
   if (titlesMatch && timesOpen && samePlace) {
-    const sameVenue = venuesMatch(a.venueName, b.venueName)
     return decision('link', 92, sameVenue ? 'venue' : 'address', [
       'Same title and start time',
       sameVenue ? 'Same venue' : 'Shared street',

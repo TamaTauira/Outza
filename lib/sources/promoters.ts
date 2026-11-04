@@ -5,6 +5,7 @@ import { CITIES } from '@/lib/cities'
 import { firstListingUrl, humanitixEventUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
 import { noteSourceSaved, remainingBudgetMs, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
+import { frontierShowsFromHtml } from '@/lib/frontier-shows'
 
 function offerList(raw: unknown): any[] {
   if (!raw) return []
@@ -58,43 +59,55 @@ export async function fetchFrontierEvents(): Promise<number> {
   const html = await fetchHtml('https://www.frontiertouring.com/')
   if (!html) return 0
   let saved = 0
-  const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
-  for (const b of blocks) {
-    let items: any[] = []
-    try {
-      const d = JSON.parse(b[1])
-      items = Array.isArray(d) ? d : d?.['@graph'] ?? [d]
-    } catch {
-      continue
-    }
-    for (const it of items) {
-      const loc: string = it?.location?.name ?? ''
-      const city = CITIES.find((c) => c.match.test(loc))
-      if (!/Event$/.test(it?.['@type'] ?? '') || !city) continue
-      const offer = frontierPrice(it)
-      const page = usableUrl(typeof it.url === 'string' ? it.url : null)
-      const organiser = firstListingUrl(it?.organizer, ['url', 'sameAs'])
-      const ok = await saveEvent({
-        title: String(it.name ?? '').replace(/\s+20\d\d$/, ''),
-        description: it.description || `${it?.performer?.name ?? it.name} live in ${city.name}, presented by Frontier Touring.`,
-        date: String(it.startDate ?? '').slice(0, 10),
-        city: city.name,
-        venueName: loc.replace(new RegExp(`,\\s*${city.name}$`, 'i'), ''),
-        venueAddress: loc,
-        genres: ['Music', 'Concert'],
-        imageUrl: it.image ?? null,
-        ticketUrl: page && isTicketLink(page, 'frontier', 'ticket') ? page : null,
-        sourceUrl: page,
-        organiserUrl: organiser,
-        price: offer.price,
-        isFree: offer.isFree,
-        source: 'frontier',
-      }).catch(() => false)
-      if (ok) saved++
-    }
+  const offers = frontierOffers(html)
+  for (const show of frontierShowsFromHtml(html)) {
+    const offer = offers.get(`${show.externalId}`) ?? frontierPrice(null)
+    const page = usableUrl(show.url)
+    const ok = await saveEvent({
+      title: show.title,
+      description: show.description || `${show.title} live in ${show.city}, presented by Frontier Touring.`,
+      date: show.date,
+      time: show.time,
+      city: show.city,
+      venueName: show.venueName,
+      venueAddress: show.venueAddress,
+      genres: ['Music', 'Concert'],
+      imageUrl: show.imageUrl,
+      ticketUrl: page && isTicketLink(page, 'frontier', 'ticket') ? page : null,
+      sourceUrl: page,
+      organiserUrl: usableUrl(show.organiserUrl),
+      price: offer.price,
+      isFree: offer.isFree,
+      source: 'frontier',
+      externalId: show.externalId,
+    }).catch(() => false)
+    if (ok) saved++
   }
   console.log(`[frontier] saved ${saved} events`)
   return saved
+}
+
+/** Price still comes off the raw MusicEvent. The show list is the date and the venue. */
+function frontierOffers(html: string): Map<string, ReturnType<typeof frontierPrice>> {
+  const offers = new Map<string, ReturnType<typeof frontierPrice>>()
+  for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    let items: any[] = []
+    try {
+      const parsed = JSON.parse(block[1])
+      items = Array.isArray(parsed) ? parsed : parsed?.['@graph'] ?? [parsed]
+    } catch {
+      continue
+    }
+    for (const item of items) {
+      const date = String(item?.startDate ?? '').slice(0, 10)
+      const url = typeof item?.url === 'string' ? item.url : ''
+      let path = ''
+      try { path = new URL(url).pathname.replace(/^\/+|\/+$/g, '') } catch { path = '' }
+      if (!path || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+      offers.set(`${path}|${date}`, frontierPrice(item))
+    }
+  }
+  return offers
 }
 
 function parse12h(s: string): string | null {

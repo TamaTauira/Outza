@@ -4,7 +4,7 @@ import { classifyCategory, checkLGBTI, reconcileSuburb } from '@/lib/categories'
 import { DEFAULT_CITY, tidyVenueName } from '@/lib/cities'
 import { normalizeTitle, normalizeVenue } from '@/lib/quality'
 import { fieldConflicts, scheduleFields } from '@/lib/listing-window'
-import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
+import { assertNoOwnershipTransfer, decideDuplicate, listingUrlAliases } from '@/lib/event-identity'
 import { guardAgainstWeakerSource, planLinkedFill } from '@/lib/linked-fill'
 import { findEventIdBySourceKey, recordContribution, rememberSource } from '@/lib/source-record'
 import { recordFieldConflict } from '@/lib/listing-audit'
@@ -174,14 +174,20 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     organiserEditedAt: true, communityKey: true, latitude: true, longitude: true, title: true, venueName: true,
     venueAddress: true, city: true, date: true, status: true, time: true, endTime: true, endDate: true,
     price: true, priceMin: true, priceMax: true, isFree: true, feesIncluded: true, description: true, lastVerifiedAt: true,
-    duplicateOfId: true,
+    duplicateOfId: true, sourceUrl: true, ticketUrl: true,
   } as const
   const externalId = ev.externalId?.trim() || null
   const identityUrl = storedLinks.sourceUrl || storedLinks.ticketUrl
-  const linkedId = await findEventIdBySourceKey({ source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+  const hit = await findEventIdBySourceKey({ source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+  let linkedId = hit?.eventId ?? null
   let existing = linkedId
     ? await prisma.event.findUnique({ where: { id: linkedId }, select: eventSelect })
     : null
+  // A shared tour URL used to return another night's row. Never copy this start onto that night.
+  if (existing && hit && !hit.reschedule && existing.date.toISOString().slice(0, 10) !== ev.date) {
+    linkedId = null
+    existing = null
+  }
   if (!existing) {
     existing = await prisma.event.findFirst({
       where: { dedupeHash: { in: [...new Set([dedupeHash, legacyHash])] } },
@@ -191,6 +197,32 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   if (existing?.duplicateOfId) {
     const canonical = await prisma.event.findUnique({ where: { id: existing.duplicateOfId }, select: eventSelect })
     if (canonical && !canonical.duplicateOfId) existing = canonical
+  }
+  if (!existing && identityUrl) {
+    const aliases = listingUrlAliases(identityUrl)
+    if (aliases.length) {
+      const urlHits = await prisma.event.findMany({
+        where: {
+          date,
+          duplicateOfId: null,
+          communityKey: null,
+          OR: [{ sourceUrl: { in: aliases } }, { ticketUrl: { in: aliases } }],
+        },
+        select: eventSelect,
+        take: 20,
+      })
+      const urlHit = urlHits.find((row) => decideDuplicate(
+        {
+          title: row.title, venueName: row.venueName, city: row.city, date: ev.date, time: row.time,
+          source: row.source, url: row.sourceUrl || row.ticketUrl,
+        },
+        { title, venueName, city, date: ev.date, time, source: ev.source, url: identityUrl },
+      ).action === 'link')
+      if (urlHit) {
+        existing = urlHit
+        linkedId = urlHit.id
+      }
+    }
   }
   const identityHit = !!existing && existing.id === linkedId
   let pin = finitePin(ev.latitude, ev.longitude)
@@ -239,7 +271,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     if (existing.source === ev.source) {
       const { imageUrl: _img, ...rest } = data
       const update: Record<string, unknown> = {
-        ...rest, sources, venueName, suburb,
+        ...rest, sources, venueName, suburb, city,
         seriesKey: makeSeriesKey(title, venueName, city),
         ...(venueAddress ? { venueAddress } : {}),
       }

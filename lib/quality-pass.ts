@@ -6,7 +6,7 @@ import { tidyVenueName } from '@/lib/cities'
 import { repairKnownListingUrl, usableUrl } from '@/lib/listing-link'
 import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
 import { fieldConflicts } from '@/lib/listing-window'
-import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
+import { assertNoOwnershipTransfer, canonicalizeListingUrl, decideDuplicate } from '@/lib/event-identity'
 import { duplicateSpikeAlert, recordQualityAlert } from '@/lib/source-health'
 import { STALE_AFTER_DAYS, staleAlertDetail, staleShareAlert } from '@/lib/listing-freshness'
 import { runVerificationPass } from '@/lib/verification-pass'
@@ -72,16 +72,22 @@ async function runQualityPassInner() {
   })
   const groups = new Map<string, typeof rows>()
   for (const r of rows) {
-    const k = `${r.city}|${r.date.toISOString().slice(0, 10)}`
-    groups.set(k, [...(groups.get(k) ?? []), r])
+    const day = r.date.toISOString().slice(0, 10)
+    const keys = new Set<string>([`city:${r.city}|${day}`])
+    for (const raw of [r.sourceUrl, r.ticketUrl, r.organiserUrl]) {
+      const url = canonicalizeListingUrl(raw)
+      if (url) keys.add(`url:${url}|${day}`)
+    }
+    for (const key of keys) groups.set(key, [...(groups.get(key) ?? []), r])
   }
   // Organiser-owned and promoted listings always win; then the most trusted source; then community activity
   const rank = (r: (typeof rows)[number]) =>
     (r.promoterId || r._count.promotions || r.organiserEditedAt || r.fieldOverrides.length ? 1000 : 0) + (SOURCES[r.source]?.trust ?? 20) + r._count.savedBy + r._count.attendees
   let merged = 0
   const audits: { eventId: string; action: string; detail: string }[] = []
+  const consumed = new Set<string>()
   for (const list of groups.values()) {
-    const used = new Set<string>()
+    const used = new Set<string>(consumed)
     const sorted = [...list].sort((a, b) => rank(b) - rank(a) || a.createdAt.getTime() - b.createdAt.getTime())
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
@@ -122,7 +128,7 @@ async function runQualityPassInner() {
       }
       const dups = sorted.filter((o) => !used.has(o.id) && !protectedRow(o) && linked(o))
       if (!dups.length) continue
-      dups.forEach((d) => used.add(d.id))
+      dups.forEach((d) => { used.add(d.id); consumed.add(d.id) })
       for (const dup of dups) {
         audits.push({
           eventId: dup.id,
