@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { boardClockLine } from '@/lib/listing-window'
 import { VENUE_PRODUCTS, VENUE_REPORT_REASONS, SPONSORED_LABEL } from '@/lib/ownership'
 
 const tabs = ['Overview', 'My Venue', 'Upcoming Events', 'Analytics', 'Promotions', 'Team & Access', 'Settings'] as const
@@ -14,6 +15,7 @@ type EventRow = {
   title: string
   date: string
   time: string | null
+  endTime?: string | null
   category: string
   status: string
   organiserName: string | null
@@ -109,10 +111,12 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
             <button type="button" onClick={() => setMineOnly(true)} className={`rounded-full px-3 py-1 ${mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>Events I Manage</button>
           </div>
           {!shown.length && <p className="text-sm text-muted-foreground">{mineOnly ? 'None of these listings are yours to edit. Venue access doesn’t include them.' : 'Nothing upcoming is tied to this venue yet.'}</p>}
-          {shown.map((event) => (
+          {shown.map((event) => {
+            const clock = boardClockLine({ ...event, city })
+            return (
             <article key={event.id} className="rounded-xl border border-border p-3">
               <h2 className="font-semibold">{event.title}</h2>
-              <p className="text-xs text-muted-foreground mt-1">{event.date.slice(0, 10)}{event.time ? ` · ${event.time}` : ''} · {event.category} · {event.status}</p>
+              <p className="text-xs text-muted-foreground mt-1">{event.date.slice(0, 10)}{clock ? ` · ${clock}` : ''} · {event.category} · {event.status}</p>
               <p className="text-sm mt-1">Managed by: {event.organiserName || 'the organiser on the listing'}</p>
               <div className="mt-2 flex flex-wrap gap-2 text-sm">
                 <Link href={event.publicPath} className="underline">View Event</Link>
@@ -127,7 +131,8 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
                 {event.canEdit && <Link href={`/events/${event.id}/manage`} className="underline">Edit Event</Link>}
               </div>
             </article>
-          ))}
+            )
+          })}
         </section>
       )}
 

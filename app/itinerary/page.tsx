@@ -10,6 +10,7 @@ import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
 import { EmptyState } from '@/components/empty-state'
 import { useItinerary, sortItinerary, clashMap, type ItineraryItem } from '@/lib/itinerary'
+import { boardClockLine } from '@/lib/listing-window'
 import { coordsFitCity, directionsUrl, fmtKm, fmtMin, planLeg } from '@/lib/travel'
 import { StopForm, emptyStop, type StopFormValues } from './stop-form'
 import { RoutePicks, pickStopId, slotBetween, type RoutePick } from './route-picks'
@@ -155,7 +156,7 @@ export default function ItineraryPage() {
                         ) : (<>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{i.time ? `${i.time}${i.endTime ? ` – ${i.endTime}` : ''}` : 'Time not set'}{i.kind === 'custom' && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold">MY STOP</span>}{i.adId && <span className="ml-1 text-[10px] uppercase tracking-wide">Sponsored</span>}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />{boardClockLine(i) ?? 'Time not set'}{i.kind === 'custom' && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold">MY STOP</span>}{i.adId && <span className="ml-1 text-[10px] uppercase tracking-wide">Sponsored</span>}</p>
                             {i.kind === 'event' ? <Link href={i.href ?? eventPath(i)} className="font-semibold hover:text-primary">{i.title}</Link> : <p className="font-semibold">{i.title}</p>}
                             {i.venueName && <p className="text-sm text-muted-foreground flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{i.venueName}{i.suburb ? ` · ${i.suburb}` : ''}</p>}
                             {i.adId && <a href={`/api/local-ads/${i.adId}/go`} target="_blank" rel="sponsored noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">Visit website<ExternalLink className="w-3 h-3" /></a>}

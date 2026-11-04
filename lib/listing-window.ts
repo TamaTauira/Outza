@@ -242,6 +242,12 @@ export function formatBoardRange(ev: SlotInput): BoardRange {
   return { hm: start.hm, ampm: start.ampm, endLine: `– ${clock}`, endNote: finish.endNote, label: `${startLabel} – ${finish.endLabel}` }
 }
 
+/** The board clock as one line, in the listing's own timezone. Null when no start was listed. */
+export function boardClockLine(ev: SlotInput): string | null {
+  const label = formatBoardRange(ev).label
+  return label === 'Time not listed' ? null : label
+}
+
 export type LiveTone = 'live' | 'soon' | 'later' | 'done' | 'upcoming' | 'tbc'
 
 /** Row status from the same window the board uses to filter. No score and no verification wording. */

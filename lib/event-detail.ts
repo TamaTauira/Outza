@@ -20,6 +20,7 @@ import { contributedFieldSources } from '@/lib/source-record'
 import { buildEventInsight, type InsightPrefs } from '@/lib/event-insight'
 import { eventInsightAiEnabled } from '@/lib/feature-flags'
 import { cityDef } from '@/lib/cities'
+import { boardClockLine } from '@/lib/listing-window'
 import { isUnder18 } from '@/lib/profile-shared'
 import { asVibe } from '@/lib/vibe-shared'
 
@@ -214,7 +215,16 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
     city: event.city,
     venueName: event.venueName,
     dateLabel: event.date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: city.tz }),
-    time: event.time,
+    time: boardClockLine({
+      date: event.date,
+      endDate: event.endDate,
+      time: event.time,
+      endTime: event.endTime,
+      city: event.city,
+      allDay: event.allDay,
+      startsAt: event.startsAt,
+      endsAt: event.endsAt,
+    }),
     isFree: event.isFree,
     price: event.price,
     description: event.description,

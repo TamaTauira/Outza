@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { notFound, permanentRedirect } from 'next/navigation'
 import { getPublicEvent, personalizeEvent } from '@/lib/event-detail'
+import { boardClockLine } from '@/lib/listing-window'
 import { eventPath, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
@@ -20,7 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const dateLabel = new Date(ev.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   const where = [ev.venueName, ev.suburb && ev.suburb !== ev.city ? ev.suburb : null, ev.city].filter(Boolean).join(', ')
   const status = ev.status === 'CANCELLED' ? 'Cancelled: ' : ev.status === 'POSTPONED' ? 'Postponed: ' : ''
-  const desc = `${status}${ev.title} on ${dateLabel}${ev.time ? ` at ${ev.time}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
+  const clock = boardClockLine(ev)
+  const desc = `${status}${ev.title} on ${dateLabel}${clock ? ` at ${clock}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
   const origin = siteUrl()
   const image = eventImageUrl(ev, origin)
   return {

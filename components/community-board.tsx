@@ -10,6 +10,7 @@ import {
   communityCityPath, communityPageIndexable, communityPlacePath, communitySectionPath, freshListingCount,
   isWhenKey, listingCta, redactCommunityPublic, sectionByKey,
 } from '@/lib/community-shared'
+import { boardClockLine } from '@/lib/listing-window'
 import { cityFromSlug, eventPath, slugify, WHEN_KEYS } from '@/lib/seo'
 
 const field = 'h-12 w-full rounded-lg border border-border bg-background px-3 text-base'
@@ -141,13 +142,20 @@ export async function CommunityBoard({
             const safe = redactCommunityPublic(row)
             const cta = listingCta(safe)
             const where = [safe.venueName, safe.suburb, safe.city].filter((part, i, all) => part && all.indexOf(part) === i).join(', ')
+            const clock = boardClockLine({
+              date: row.occursOn,
+              endDate: row.recurrence && row.recurrence !== 'NONE' ? null : row.endDate,
+              time: row.time,
+              endTime: row.endTime,
+              city: row.city,
+            })
             return (
               <li key={`${row.id}-${row.occursOn}`} className="overflow-hidden rounded-2xl bg-card shadow-sm">
                 <div className="relative h-36 bg-muted">
                   <EventImage src={safe.imageUrl} kind="card" alt="" sizes="100vw" category={safe.communityKey || safe.category} crop />
                 </div>
                 <div className="space-y-2 p-4">
-                  <p className="text-sm text-muted-foreground">{dayLabel(row.occursOn)}{row.time ? ` · ${row.time}` : ''}{row.status === 'CANCELLED' ? ' · Cancelled' : row.status === 'POSTPONED' ? ' · Postponed' : ''}</p>
+                  <p className="text-sm text-muted-foreground">{dayLabel(row.occursOn)}{clock ? ` · ${clock}` : ''}{row.status === 'CANCELLED' ? ' · Cancelled' : row.status === 'POSTPONED' ? ' · Postponed' : ''}</p>
                   <h2 className="font-display text-xl font-bold leading-snug"><Link href={eventPath(row)} className="hover:text-primary">{row.title}</Link></h2>
                   <p className="text-sm text-muted-foreground">{where}</p>
                   {safe.description && <p className="line-clamp-3 text-sm text-muted-foreground">{safe.description}</p>}

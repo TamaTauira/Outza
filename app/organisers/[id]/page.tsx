@@ -9,6 +9,7 @@ import { Footer } from '@/components/footer'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { ClaimedTick } from '@/components/ClaimedTick'
 import { organiserNameClaimed } from '@/lib/event-overrides'
+import { boardClockLine } from '@/lib/listing-window'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,7 +36,7 @@ export default async function OrganiserPage({ params }: Props) {
     where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },
     orderBy: { date: 'asc' },
     take: 24,
-    select: { id: true, title: true, date: true, time: true, venueName: true, city: true, category: true },
+    select: { id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, city: true, category: true },
   })
   return (
     <div className="min-h-screen bg-background">
@@ -57,12 +58,15 @@ export default async function OrganiserPage({ params }: Props) {
         <h2 className="mt-8 font-semibold">Upcoming events</h2>
         {!events.length ? <p className="mt-2 text-sm text-muted-foreground">Nothing upcoming on VibePeep right now.</p> : (
           <ul className="mt-3 divide-y divide-border">
-            {events.map((e) => (
+            {events.map((e) => {
+              const clock = boardClockLine(e)
+              return (
               <li key={e.id} className="py-3">
                 <Link href={eventPath(e)} className="font-medium hover:text-primary">{e.title}</Link>
-                <p className="text-xs text-muted-foreground">{e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}{e.time ? ` · ${e.time}` : ''} · {e.venueName} · {e.city}</p>
+                <p className="text-xs text-muted-foreground">{e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}{clock ? ` · ${clock}` : ''} · {e.venueName} · {e.city}</p>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </main>

@@ -71,7 +71,8 @@ test('a new organiser listing is not VibePeep Verified, and overnight times are 
   assert.equal(outzaVerified(sample, NOW.getTime()).ok, false)
   const cue = scheduleCue({ time: '22:00', endTime: '01:00' })
   assert.match(cue.label, /midnight/)
-  assert.match(cue.detail, /next day/)
+  assert.match(cue.detail, /10:00 pm – 1:00 am the next day/)
+  assert.doesNotMatch(cue.detail, /22:00|01:00/)
 })
 
 test('mail failures never include an address', () => {
