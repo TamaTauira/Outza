@@ -1,6 +1,6 @@
 /* Roaming buddy. Position is a transform on .vp-roam; the bitmap never changes. */
 
-.vp-roam:not([data-placed]) {
+.vp-roam:not(.vp-roam-parked):not([data-placed]) {
   visibility: hidden !important;
 }
 
