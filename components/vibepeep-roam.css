@@ -1,7 +1,12 @@
 /* Roaming buddy. Position is a transform on .vp-roam; the bitmap never changes. */
 
-.vp-roam:not([data-loaded]) {
-  visibility: hidden;
+.vp-roam:not([data-placed]) {
+  visibility: hidden !important;
+}
+
+.vp-roam[data-move='still'] .vp-bob {
+  animation: none !important;
+  transform: none;
 }
 
 .vp-roam {

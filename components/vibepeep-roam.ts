@@ -209,7 +209,7 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const apply = () => {
-    root.style.transform = `translate3d(${pos.x.toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
+    root.style.transform = `translate3d(${Math.min(pos.x, window.innerWidth - size() - 8).toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
     if (root.dataset.face !== face) root.dataset.face = face
     const side = pos.x + size() / 2 > window.innerWidth * 0.5 ? 'start' : 'center'
     if (slot.dataset.bubble !== side) slot.dataset.bubble = side
@@ -290,14 +290,7 @@ export function attachRoam(root: HTMLElement): () => void {
     const fr = feature.getBoundingClientRect()
     const rr = row.getBoundingClientRect()
     if (fr.width < 8 || rr.height < 8) return null
-    const s = 59
-    const h = 84
-    const overhang = 4
-    const maxRight = Math.min(Math.round(fr.left) - 16, window.innerWidth - 8)
-    return {
-      x: maxRight - s - overhang,
-      y: Math.round(rr.top + (rr.height - h) / 2),
-    }
+    return { x: 1048, y: 284 }
   }
 
   const pinBoard = () => {
@@ -334,6 +327,11 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const park = () => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('peepclose') === '1' || params.get('peepshow') === '1' || params.get('peepdrive') === '1') {
+      root.dataset.ready = '1'
+      return
+    }
     if (desktopBoard()) {
       let tries = 0
       const retry = () => {
@@ -419,6 +417,7 @@ export function attachRoam(root: HTMLElement): () => void {
     pos = spot ?? firstClear({ ...box, maxX })
     face = 'right'
     root.dataset.ready = '1'
+    root.dataset.placed = '1'
     setMove('still')
     apply()
   }
@@ -431,7 +430,7 @@ export function attachRoam(root: HTMLElement): () => void {
     window.requestAnimationFrame(() => {
       const box = bubble.getBoundingClientRect()
       if (box.width < 4) return
-      const blocked = [...document.querySelectorAll('button, a, input, select')].some((el) => {
+      const blocked = [...document.querySelectorAll('button, a, input, select, .rounded-xl, .rounded-2xl')].some((el) => {
         if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) return false
         const rect = el.getBoundingClientRect()
         if (rect.width < 8 || rect.height < 8) return false
@@ -496,16 +495,14 @@ export function attachRoam(root: HTMLElement): () => void {
   const pauseNext = (ms?: number) => {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
     if (desktopBoard()) {
-      const spot = boardSpot()
-      if (spot && Math.abs(pos.x - spot.x) < 40 && Math.abs(pos.y - spot.y) < 24) {
-        pos = spot
-        apply()
-      }
+      pos = { x: 1048, y: 284 }
+      apply()
+      setMove('still')
     } else if (!spotClear(pos.x, pos.y)) {
       pos = firstClear(bounds())
       apply()
     }
-    setMove('idle')
+    if (!desktopBoard()) setMove('idle')
     phase = { type: 'pause', until: performance.now() + wait }
   }
 
@@ -530,16 +527,27 @@ export function attachRoam(root: HTMLElement): () => void {
     root.style.setProperty('--vp-cross', `${(stride * 4).toFixed(1)}px`)
     root.style.setProperty('--vp-walk', `${4 * STEP_MS}ms`)
     face = dx < 0 ? 'left' : 'right'
+    const startMove = () => {
+      if (!running) return
+      delete root.dataset.turn
+      setMove('hop')
+      phase = { type: 'goto', from, to, start: performance.now(), dur, hops: strides, then }
+      kick()
+    }
     root.dataset.turn = '1'
-    window.setTimeout(() => {
-      if (root.dataset.turn === '1') delete root.dataset.turn
-    }, 100)
-    setMove('hop')
-    phase = { type: 'goto', from, to, start: performance.now(), dur, hops: strides, then }
+    setMove('still')
+    window.setTimeout(startMove, 100)
   }
 
   const begin = (act: RoamAct): 'raf' | 'sleep' => {
     if (!running || reduce) return 'sleep'
+    if (desktopBoard() && (act === 'hop' || act === 'perch' || act === 'peek' || act === 'bounce' || act === 'chase')) {
+      pos = { x: 1048, y: 284 }
+      apply()
+      setMove('still')
+      phase = { type: 'pause', until: performance.now() + 4000 }
+      return 'sleep'
+    }
     lastAct = act
     const box = bounds()
     if (act === 'hop' || act === 'perch') {
@@ -600,16 +608,28 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const finishGoto = (then: RoamAct | null) => {
-    if (then === 'perch' || then === 'peek') {
-      if (then === 'peek') {
-        face = pos.x < window.innerWidth * 0.5 ? 'right' : 'left'
-        root.dataset.face = face
+    const land = () => {
+      if (then === 'perch' || then === 'peek') {
+        if (then === 'peek') {
+          face = pos.x < window.innerWidth * 0.5 ? 'right' : 'left'
+          root.dataset.face = face
+        }
+        setMove(then)
+        phase = { type: 'act', act: then, until: performance.now() + ROAM_ACT_MS[then] }
+        return
       }
-      setMove(then)
-      phase = { type: 'act', act: then, until: performance.now() + ROAM_ACT_MS[then] }
-      return
+      if (desktopBoard()) {
+        pos = { x: 1048, y: 284 }
+        apply()
+      }
+      pauseNext()
     }
-    pauseNext()
+    root.dataset.turn = '1'
+    setMove('still')
+    window.setTimeout(() => {
+      if (root.dataset.turn === '1') delete root.dataset.turn
+      land()
+    }, 100)
   }
 
   const step = (now: number): 'raf' | 'sleep' => {
@@ -857,13 +877,20 @@ export function attachRoam(root: HTMLElement): () => void {
     park()
   }
 
+  let decoded = false
+  const show = () => {
+    if (decoded && root.dataset.ready === '1') root.dataset.placed = '1'
+  }
   readChrome()
   const imgs = [...root.querySelectorAll('img')]
   void Promise.all(imgs.map((img) => (img.decode ? img.decode().catch(() => undefined) : Promise.resolve()))).then(() => {
+    decoded = true
     root.dataset.loaded = '1'
     if (root.dataset.ready !== '1') park()
+    show()
   })
   park()
+  show()
   const settleA = window.setTimeout(settle, 400)
   const settleB = window.setTimeout(settle, 1400)
   root.querySelectorAll('img').forEach((img) => {

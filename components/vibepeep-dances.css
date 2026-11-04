@@ -97,8 +97,8 @@
 .vp-hit[data-dance='disco-point'] .vp-show {
   left: 50%;
   top: 0;
-  width: 28%;
-  transform: translate(-50%, -6%);
+  width: 16%;
+  transform: translate(-50%, 0);
 }
 
 .vp-hit[data-dance='disco-point'] .vp-disco-ball {
@@ -170,7 +170,7 @@
 .vp-hit[data-dance='horse'] .vp-dance-label::before { content: '19 Horse'; }
 .vp-hit[data-dance='cha-cha'] .vp-dance-label::before { content: '20 Cha-cha'; }
 
-.vp-front > .vp-snake { left: -8%; top: 8%; width: 120%; height: auto; z-index: 5 !important; }
+.vp-front > .vp-snake { left: -18%; top: 40%; width: 136%; height: auto; z-index: 3; }
 /* The passed mittens, clipped to the ball and drawn over the python so the hands close around it. */
 .vp-grip { opacity: 0; z-index: 6; }
 .vp-grip img { clip-path: inset(70% 0 0 0); }

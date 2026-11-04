@@ -226,10 +226,14 @@ export function VibePeepMascot({
       button.removeAttribute('data-line')
       if (step.face) root.dataset.face = step.face
       if (step.move === 'hop') {
-        root.style.setProperty('--vp-cross', '185px')
-        root.style.setProperty('--vp-walk', '1680ms')
+        const width = root.getBoundingClientRect().width || 320
+        const travel = Math.max(120, (window.innerWidth - width) / 2 - 16)
+        const ms = Math.round((travel / 110) * 1000)
+        root.style.setProperty('--vp-cross', `${travel.toFixed(1)}px`)
+        root.style.setProperty('--vp-walk', `${ms}ms`)
         root.style.setProperty('--vp-cycle', '840ms')
         root.style.setProperty('--vp-step', '420ms')
+        step.ms = ms + 200
       }
       if (step.move) root.dataset.move = step.move
       if (step.react) button.setAttribute('data-react', step.react)

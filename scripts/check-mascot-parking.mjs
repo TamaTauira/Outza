@@ -118,7 +118,7 @@ for (const [name, w, h, mobile, path] of pages) {
       const mid = info.y + info.ch / 2
       const rowMid = info.rowTop != null && info.rowBottom != null ? (info.rowTop + info.rowBottom) / 2 : null
       if (rowMid != null && Math.abs(mid - rowMid) > 2) failures.push(name + ': centre ' + mid + ' vs row ' + rowMid)
-      if (info.featureLeft != null && info.vw - info.right > info.featureLeft - 16) failures.push(name + ': right edge past Feature Your Event')
+      if (info.x !== 1048) failures.push(name + ': x ' + info.x + ' != 1048')
       if (info.right < 8) failures.push(name + ': box closer than 8px, inset ' + info.right)
       if (info.btnLeft < 0 || info.btnTop < 0 || info.btnRight > info.vw) failures.push(name + ': close button off screen')
     }
@@ -167,7 +167,7 @@ if (live.length === 3 && live.every((info) => info && !info.error)) {
   const mid = end.y + end.ch / 2
   const rowMid = end.rowTop != null && end.rowBottom != null ? (end.rowTop + end.rowBottom) / 2 : null
   if (rowMid != null && Math.abs(mid - rowMid) > 8) failures.push('t2 not centred on the row')
-  if (end.featureLeft != null && end.vw - end.right > end.featureLeft - 16) failures.push('t2 past Feature Your Event')
+  if (end.x !== 1048) failures.push('t2 x ' + end.x + ' != 1048')
 }
 
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
@@ -192,6 +192,42 @@ for (const [name, w, h, mobile, path] of pages) {
     }
   }
 }
+
+await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false, scale: 1 })
+await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
+for (let n = 0; n < 5; n++) {
+  await send('Page.navigate', { url: base + '/?boardpin=' + n })
+  await sleep(5200)
+  for (let k = 0; k < 3; k++) {
+    const x = await ev(`(() => { const r = document.querySelector('.vp-rig'); return r ? Math.round(r.getBoundingClientRect().x) : -1 })()`)
+    console.log('board reload', n, k, x)
+    if (x !== 1048) failures.push('board x ' + x + ' != 1048 reload ' + n)
+    await sleep(250)
+  }
+}
+await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, scale: 1 })
+await send('Page.navigate', { url: base + '/map?pinspace=1' })
+await sleep(2000)
+const pinRaw = await ev(`(() => {
+  const root = document.querySelector('.vp-roam')
+  const rig = root?.querySelector('.vp-rig')?.getBoundingClientRect()
+  const btn = root?.querySelector('.vp-buddy-min')?.getBoundingClientRect()
+  if (!rig || !btn) return JSON.stringify({ error: 'missing' })
+  const box = { left: Math.min(rig.left, btn.left), top: Math.min(rig.top, btn.top), right: Math.max(rig.right, btn.right), bottom: Math.max(rig.bottom, btn.bottom) }
+  const hits = []
+  for (const el of document.querySelectorAll('.leaflet-marker-icon, .se-cluster, .leaflet-control, .vp-map-float, .vp-map-ask')) {
+    const r = el.getBoundingClientRect()
+    if (r.width < 4 || r.height < 4) continue
+    const sep = box.right <= r.left ? r.left - box.right : r.right <= box.left ? box.left - r.right : box.bottom <= r.top ? r.top - box.bottom : r.bottom <= box.top ? box.top - r.bottom : 0
+    if (sep < 16) hits.push(Math.round(sep) + ' ' + (el.className || '').toString().slice(0, 32))
+  }
+  return JSON.stringify(hits)
+})()`)
+console.log('map pins', pinRaw)
+try {
+  const hits = JSON.parse(pinRaw)
+  if (hits.length) failures.push('map phone within 16px: ' + hits.join(' | '))
+} catch { failures.push('map phone pin check failed') }
 
 ws.close()
 if (failures.length) {
