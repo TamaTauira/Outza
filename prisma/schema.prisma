@@ -146,6 +146,7 @@ model Event {
   @@index([contactEmail])
   @@index([startsAt])
   @@index([venueId])
+  @@index([updatedAt])
 }
 
 /// One processed source image, keyed by sha1 of its (upgraded) source URL. Shared by every event using that URL.
@@ -1296,6 +1297,13 @@ model VerificationCheck {
 model AnalyticsCounter {
   key       String   @id
   count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+/// Last row a background job finished. The next run reads Event.updatedAt after this.
+model JobWatermark {
+  job       String   @id
+  cursorAt  DateTime
   updatedAt DateTime @updatedAt
 }
 

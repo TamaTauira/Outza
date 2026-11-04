@@ -8,12 +8,12 @@ import { featuredBoosts, recordImpressions } from '@/lib/sponsorship-store'
 import { TIER_KEYS, TIER_RANK, type Tier } from '@/lib/tiers'
 import { CITY_NAMES } from '@/lib/cities'
 import { imageAssetSelect } from '@/lib/images/spec'
-import { publicCacheHeaders } from '@/lib/http-cache'
+import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS, PUBLIC_S_MAXAGE_SECONDS, PUBLIC_SWR_SECONDS, publicCacheHeaders } from '@/lib/http-cache'
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 import { buildFeaturedRail, type CrowdCard } from '@/lib/featured-rail'
 import { heatForEvents } from '@/lib/engagement-store'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 600
 
 const evSelect = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, suburb: true, city: true,
@@ -219,7 +219,7 @@ async function queryFeatured(validCity: string, day: string) {
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v7'], { revalidate: 60 })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v8'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export async function GET(req: NextRequest) {
   try {
@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
     const body = await cachedFeatured(validCity, day)
     const campaignIds = body.items.map((item) => item.campaignId).filter((id): id is string => typeof id === 'string')
     if (campaignIds.length) await recordImpressions(campaignIds, 'FEATURED')
-    return NextResponse.json(body, { headers: publicCacheHeaders(60) })
+    return NextResponse.json(body, { headers: publicCacheHeaders(PUBLIC_S_MAXAGE_SECONDS, PUBLIC_SWR_SECONDS) })
   } catch (e: any) {
     console.error('featured error', e?.message)
     return NextResponse.json({ items: [] }, { status: 500 })

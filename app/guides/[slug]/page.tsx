@@ -11,7 +11,7 @@ import { cityGuideModel, eventJsonLd, jsonLdString, landingData, lastRefreshAt }
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
-export const revalidate = 300
+export const revalidate = 600
 
 type Props = { params: Promise<{ slug: string }> }
 

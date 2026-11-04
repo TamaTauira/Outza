@@ -204,7 +204,17 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
   })
   if (hard.length) await reportFullRunFaults(log.id, selected.length, sourceFailed, hard)
   if (runPost) void runImagePass({ trigger: 'refresh' })
+  await invalidatePublicListings()
   return { eventsAdded: total, errors, sourcesRun }
+}
+
+async function invalidatePublicListings() {
+  try {
+    const { invalidatePublicEvents } = await import('@/lib/public-cache')
+    await invalidatePublicEvents()
+  } catch (err) {
+    console.error('[refresh] cache invalidation failed', (err as { message?: string })?.message)
+  }
 }
 
 async function noteVolume(name: string, added: number, error: string | null, logId: string | null) {
@@ -292,6 +302,7 @@ async function finalizeCycle(): Promise<RefreshResult> {
   })
   console.log(`[refresh] cycle ${status}: ${cycle.eventsAdded} events, missing=${cycle.missing.length}, failed=${cycle.failed.length}, budget=${cycle.warned.length}`)
   if (cycle.ok) void runImagePass({ trigger: 'refresh' })
+  await invalidatePublicListings()
   return {
     eventsAdded: cycle.eventsAdded,
     errors,

@@ -76,6 +76,15 @@ export function formatTime(t: string | null): { hm: string; ampm: string } {
 export { formatPrice } from '@/lib/price'
 
 /** "5 min ago" style label for when a listing's price was last refreshed. */
+/** The newer of two ISO timestamps. Used so a re-check shows even when updatedAt did not move. */
+export function latestIso(a?: string | null, b?: string | null): string | null {
+  const at = a ? new Date(a).getTime() : NaN
+  const bt = b ? new Date(b).getTime() : NaN
+  if (!Number.isFinite(at)) return b ?? null
+  if (!Number.isFinite(bt)) return a ?? null
+  return at >= bt ? a! : b!
+}
+
 export function checkedAgo(iso?: string | null, now = Date.now()): string | null {
   if (!iso) return null
   const mins = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000))

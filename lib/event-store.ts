@@ -15,6 +15,7 @@ import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 import { normalizeListingUrls, usableUrl } from '@/lib/listing-link'
 import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
 import { applyProtectedRefresh } from '@/lib/event-overrides'
+import { updateIsVerificationOnly } from '@/lib/listing-touch'
 
 export const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -79,6 +80,11 @@ const STATUS_UPDATABLE = new Set(['CANCELLED', 'POSTPONED', 'RESCHEDULED', 'SOLD
 function pinOnly(pin: { lat: number; lng: number } | null, existing: { latitude: number | null; longitude: number | null }) {
   if (!pin || (existing.latitude != null && existing.longitude != null)) return {}
   return { latitude: pin.lat, longitude: pin.lng }
+}
+
+/** Restamp last-checked without moving updatedAt, so unchanged listings stay off the job watermark. */
+async function touchVerified(id: string, at: Date) {
+  await prisma.$executeRaw`UPDATE "Event" SET "lastVerifiedAt" = ${at} WHERE "id" = ${id}`
 }
 
 function finitePin(lat?: number | null, lng?: number | null): { lat: number; lng: number } | null {
@@ -172,9 +178,13 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const eventSelect = {
     id: true, dedupeHash: true, source: true, sources: true, imageUrl: true, imageAssetId: true, imageLocked: true,
     organiserEditedAt: true, communityKey: true, latitude: true, longitude: true, title: true, venueName: true,
-    venueAddress: true, city: true, date: true, status: true, time: true, endTime: true, endDate: true,
+    venueAddress: true, suburb: true, city: true, date: true, status: true, statusSource: true, time: true, endTime: true, endDate: true,
+    category: true, subTags: true, isLGBTI: true, seriesKey: true,
     price: true, priceMin: true, priceMax: true, isFree: true, feesIncluded: true, description: true, lastVerifiedAt: true,
-    duplicateOfId: true, sourceUrl: true, ticketUrl: true,
+    ticketUrl: true, sourceUrl: true, organiserUrl: true, organiserName: true,
+    galleryUrls: true, accessibilityInfo: true, ageRestriction: true,
+    timezone: true, allDay: true, startsAt: true, endsAt: true, confidenceScore: true,
+    duplicateOfId: true,
   } as const
   const externalId = ev.externalId?.trim() || null
   const identityUrl = storedLinks.sourceUrl || storedLinks.ticketUrl
@@ -203,20 +213,29 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     if (aliases.length) {
       const urlHits = await prisma.event.findMany({
         where: {
-          date,
           duplicateOfId: null,
           communityKey: null,
-          OR: [{ sourceUrl: { in: aliases } }, { ticketUrl: { in: aliases } }],
+          OR: [
+            { sourceUrl: { in: aliases } },
+            { ticketUrl: { in: aliases } },
+            { organiserUrl: { in: aliases } },
+          ],
         },
         select: eventSelect,
-        take: 20,
+        take: 200,
       })
+      const incomingPin = finitePin(ev.latitude, ev.longitude)
       const urlHit = urlHits.find((row) => decideDuplicate(
         {
-          title: row.title, venueName: row.venueName, city: row.city, date: ev.date, time: row.time,
-          source: row.source, url: row.sourceUrl || row.ticketUrl,
+          title: row.title, venueName: row.venueName, city: row.city,
+          date: row.date.toISOString().slice(0, 10), time: row.time,
+          source: row.source, url: row.sourceUrl || row.ticketUrl || row.organiserUrl,
+          address: row.venueAddress, lat: row.latitude, lng: row.longitude,
         },
-        { title, venueName, city, date: ev.date, time, source: ev.source, url: identityUrl },
+        {
+          title, venueName, city, date: ev.date, time, source: ev.source, url: identityUrl,
+          address: venueAddress || null, lat: incomingPin?.lat, lng: incomingPin?.lng,
+        },
       ).action === 'link')
       if (urlHit) {
         existing = urlHit
@@ -306,6 +325,11 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         return true
       }
       const guarded = guardAgainstWeakerSource(existing, update)
+      if (updateIsVerificationOnly(existing as unknown as Record<string, unknown>, guarded)) {
+        await touchVerified(existing.id, now)
+        await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        return true
+      }
       assertNoOwnershipTransfer(guarded)
       await prisma.event.update({ where: { id: existing.id }, data: guarded })
       await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
@@ -405,7 +429,10 @@ async function mergeInto(
       id: true, title: true, venueName: true, venueAddress: true, suburb: true, city: true, date: true,
       time: true, endTime: true, endDate: true, price: true, priceMin: true, priceMax: true, isFree: true,
       feesIncluded: true, latitude: true, longitude: true, ticketUrl: true, sourceUrl: true, organiserUrl: true,
-      imageUrl: true, imageLocked: true, description: true, source: true, sources: true, status: true,
+      imageUrl: true, imageLocked: true, description: true, source: true, sources: true, status: true, statusSource: true,
+      category: true, subTags: true, isLGBTI: true, seriesKey: true,
+      organiserName: true, galleryUrls: true, accessibilityInfo: true, ageRestriction: true,
+      timezone: true, allDay: true, startsAt: true, endsAt: true, confidenceScore: true,
       organiserEditedAt: true, communityKey: true, lastVerifiedAt: true,
     },
   })
@@ -445,6 +472,10 @@ async function mergeInto(
   }
   // Cancellations and postponements matter more than which source reported them first
   if (cur.status === 'SCHEDULED' && f.status !== 'SCHEDULED') Object.assign(fill, { status: f.status, statusSource: source })
+  if (updateIsVerificationOnly(cur as unknown as Record<string, unknown>, fill)) {
+    await touchVerified(id, new Date())
+    return
+  }
   assertNoOwnershipTransfer(fill)
   await prisma.event.update({ where: { id }, data: fill })
   const contributed = plan.filled.filter((row) => row.source === source).map((row) => row.field)

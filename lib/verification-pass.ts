@@ -35,12 +35,12 @@ async function inBatches<T>(items: T[], fn: (t: T) => Promise<unknown>) {
  * Missing coordinates are filled from the original listing before a notice is raised.
  * The scheduled refresh is what updates last-checked.
  */
-export async function runVerificationPass(now = new Date()) {
+export async function runVerificationPass(now = new Date(), changedAfter?: Date | null) {
   if (yieldIfBudget('verification')) return { normalized: 0, flagged: 0, checks: 0 }
   const today = sydneyToday()
   const horizon = new Date(today.getTime() + 21 * 86400000)
   const rows = await prisma.event.findMany({
-    where: { date: { gte: today, lte: horizon }, duplicateOfId: null },
+    where: { date: { gte: today, lte: horizon }, duplicateOfId: null, ...(changedAfter ? { updatedAt: { gt: changedAfter } } : {}) },
     orderBy: { date: 'asc' },
     take: 400,
     select: {

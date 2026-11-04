@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { ComboPage, comboMetadata } from '@/lib/combo-page'
 
-export const revalidate = 300
+export const revalidate = 600
 
 type Props = { params: Promise<{ city: string; topic: string; facet: string }> }
 

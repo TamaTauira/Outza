@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { AGE_BANDS, MIN_GROUP, PLAN_AHEAD, ageBandForYear, areaForPostcode, includeInAudience, planAheadBand } from '@/lib/profile-shared'
 
@@ -39,9 +41,40 @@ function shares(counts: Map<string, number>, order?: readonly string[]): { list:
  * No names, emails, years of birth or postcodes ever leave this function. Under-18s are left out of every
  * aggregate. Groups under MIN_GROUP people are hidden.
  */
-export async function getAudienceInsights(promoterId: string, opts: { sinceDays?: number } = {}): Promise<AudienceInsights> {
+/** Distinct people per category, aggregated in Postgres. Returns a handful of rows, not the engagement log. */
+export async function otherInterestCounts(userIds: string[], eventIds: string[]): Promise<Map<string, Set<string>>> {
+  const perCat = new Map<string, Set<string>>()
+  if (!userIds.length || !eventIds.length) return perCat
+  const users = Prisma.join(userIds)
+  const events = Prisma.join(eventIds)
+  const rows = await prisma.$queryRaw<{ category: string; uid: string }[]>`
+    SELECT category, uid FROM (
+      SELECT e.category AS category, s."userId" AS uid
+      FROM "SavedEvent" s
+      INNER JOIN "Event" e ON e.id = s."eventId"
+      WHERE s."userId" IN (${users}) AND s."eventId" NOT IN (${events})
+      UNION
+      SELECT e.category, a."userId"
+      FROM "Attendance" a
+      INNER JOIN "Event" e ON e.id = a."eventId"
+      WHERE a."userId" IN (${users}) AND a."eventId" NOT IN (${events})
+      UNION
+      SELECT e.category, g."userId"
+      FROM "EventSignal" g
+      INNER JOIN "Event" e ON e.id = g."eventId"
+      WHERE g."userId" IN (${users}) AND g."eventId" NOT IN (${events}) AND g.kind <> 'VIEW'
+    ) engaged
+  `
+  for (const row of rows) {
+    if (!perCat.has(row.category)) perCat.set(row.category, new Set())
+    perCat.get(row.category)!.add(row.uid)
+  }
+  return perCat
+}
+
+async function computeAudienceInsights(promoterId: string, sinceDays: number): Promise<AudienceInsights> {
   const events = await prisma.event.findMany({
-    where: { promoterId, ...(opts.sinceDays ? { date: { gte: new Date(Date.now() - opts.sinceDays * 86400000) } } : {}) },
+    where: { promoterId, ...(sinceDays > 0 ? { date: { gte: new Date(Date.now() - sinceDays * 86400000) } } : {}) },
     orderBy: { date: 'desc' },
     take: 300,
     select: { id: true, title: true, date: true, shares: true, itineraryAdds: true, _count: { select: { savedBy: true } } },
@@ -98,16 +131,9 @@ export async function getAudienceInsights(promoterId: string, opts: { sinceDays?
     if (a) areaCounts.set(a, (areaCounts.get(a) ?? 0) + 1)
   }
 
-  // Other interests: categories of other events these people engaged with, plus the interests they chose themselves.
-  const notThese = { userId: { in: adultPeople }, eventId: { notIn: ids } }
-  const [oSaves, oGoing, oSignals] = await Promise.all([
-    prisma.savedEvent.findMany({ where: notThese, select: { userId: true, event: { select: { category: true } } }, take: 20000 }),
-    prisma.attendance.findMany({ where: notThese, select: { userId: true, event: { select: { category: true } } }, take: 20000 }),
-    prisma.eventSignal.findMany({ where: { ...notThese, kind: { not: 'VIEW' } }, select: { userId: true, event: { select: { category: true } } }, take: 20000 }),
-  ])
-  const perCat = new Map<string, Set<string>>()
+  // Other interests: one grouped query instead of three 20k-row scans. Each person counts once per category.
+  const perCat = await otherInterestCounts(adultPeople, ids)
   const add = (cat: string, uid: string) => { if (!perCat.has(cat)) perCat.set(cat, new Set()); perCat.get(cat)!.add(uid) }
-  for (const r of [...oSaves, ...oGoing, ...oSignals]) if (adult.has(r.userId)) add(r.event.category, r.userId)
   for (const u of adultUsers) for (const c of u.preferredCategories) add(c, u.id)
   const interestCounts = new Map([...perCat].map(([c, s]) => [c, s.size]))
   const visibleInterests = [...interestCounts].filter(([, c]) => c >= MIN_GROUP)
@@ -136,4 +162,15 @@ export async function getAudienceInsights(promoterId: string, opts: { sinceDays?
     topSaved, topShared, topItinerary,
     hidden: age.hidden + area.hidden + plan.hidden + (interestCounts.size - visibleInterests.length),
   }
+}
+
+const cachedAudienceInsights = unstable_cache(
+  (promoterId: string, sinceDays: number) => computeAudienceInsights(promoterId, sinceDays),
+  ['audience-insights-v2'],
+  { revalidate: 900 },
+)
+
+export async function getAudienceInsights(promoterId: string, opts: { sinceDays?: number } = {}): Promise<AudienceInsights> {
+  const sinceDays = opts.sinceDays ?? 0
+  return cachedAudienceInsights(promoterId, sinceDays)
 }

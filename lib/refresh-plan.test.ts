@@ -3,9 +3,12 @@ import test from 'node:test'
 import vercel from '../vercel.json'
 import { SOURCE_NAMES } from './refresh'
 import {
+  HOURLY_SIDE_MINUTES,
   REFRESH_CHUNKS,
+  REFRESH_CYCLE_WINDOW_MS,
   SOURCE_BUDGET_MAX_MS,
   assessRefreshCycle,
+  burstIdleMinutes,
   type CycleLog,
 } from './refresh-plan'
 
@@ -32,21 +35,30 @@ test('chunks list every source once and finish with the cycle step', () => {
     assert.equal([0, 15, 30, 45].includes(chunk.minute), false)
   }
   for (let i = 1; i < REFRESH_CHUNKS.length; i++) {
-    assert.ok(REFRESH_CHUNKS[i].minute - REFRESH_CHUNKS[i - 1].minute >= 6)
+    assert.equal(REFRESH_CHUNKS[i].minute - REFRESH_CHUNKS[i - 1].minute, 2)
   }
 })
 
-test('vercel.json gives each chunk its own cron under the 300s function limit', () => {
+test('vercel.json runs each chunk hourly inside one burst with a long idle gap', () => {
   const crons = vercel.crons.filter((c) => c.path.startsWith('/api/cron/refresh'))
   assert.equal(crons.length, REFRESH_CHUNKS.length)
   for (const chunk of REFRESH_CHUNKS) {
     const cron = crons.find((c) => c.path === `/api/cron/refresh/${chunk.id}`)
     assert.ok(cron, `missing cron for ${chunk.id}`)
-    assert.equal(cron?.schedule, `${chunk.minute} */2 * * *`)
+    assert.equal(cron?.schedule, `${chunk.minute} * * * *`)
   }
   const taken = new Set(vercel.crons.filter((c) => !c.path.startsWith('/api/cron/refresh')).map((c) => c.schedule))
   for (const chunk of REFRESH_CHUNKS) {
-    assert.equal(taken.has(`${chunk.minute} */2 * * *`), false)
+    assert.equal(taken.has(`${chunk.minute} * * * *`), false)
+  }
+  const activity = [...REFRESH_CHUNKS.map((chunk) => chunk.minute), ...HOURLY_SIDE_MINUTES]
+  const idle = burstIdleMinutes(activity, REFRESH_CHUNKS[0].minute)
+  assert.ok(idle >= 30, `idle gap ${idle} min is too short to suspend`)
+  assert.ok(REFRESH_CYCLE_WINDOW_MS < 60 * 60 * 1000)
+  assert.ok(REFRESH_CYCLE_WINDOW_MS > (REFRESH_CHUNKS.at(-1)!.minute - REFRESH_CHUNKS[0].minute) * 60 * 1000)
+  for (const cron of vercel.crons) {
+    const minute = Number(cron.schedule.split(' ')[0].split(',')[0])
+    assert.ok(minute >= REFRESH_CHUNKS[0].minute && minute <= Math.max(...HOURLY_SIDE_MINUTES))
   }
 })
 
