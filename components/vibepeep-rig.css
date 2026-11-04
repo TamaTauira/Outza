@@ -256,7 +256,7 @@
 .vp-hit[data-dance='moonwalk'] .vp-profile { visibility: visible; }
 .vp-hit[data-dance='moonwalk'] .vp-front { visibility: hidden; }
 .vp-hit[data-dance='moonwalk'] .vp-profile { transform: none; }
-.vp-hit[data-dance='moonwalk'] .vp-bob { animation: vp-moon-glide 1.68s linear infinite; }
+.vp-hit[data-dance='moonwalk'] .vp-bob { animation: vp-moon-glide 1.8s linear 1 forwards; }
 .vp-hit[data-dance='moonwalk'] .vp-s-leg-f,
 .vp-hit[data-dance='moonwalk'] .vp-s-leg-b { transform-origin: 78% 88%; animation: vp-moon-heel 0.42s ease-in-out infinite; }
 .vp-hit[data-dance='moonwalk'] .vp-s-leg-b { animation-delay: 0.21s; }
@@ -1289,9 +1289,20 @@ html[data-peepclose='1'] .vp-roam {
   content: 'Spin';
 }
 
-.vp-roam[data-turn='1'] .vp-rig {
-  transform: rotateY(42deg);
+.vp-threeq {
+  position: absolute;
+  inset: 8% 10% 6%;
+  width: 80%;
+  height: 86%;
+  object-fit: contain;
+  visibility: hidden;
+  z-index: 6;
+  pointer-events: none;
 }
+
+.vp-roam[data-turn='1'] .vp-threeq { visibility: visible; }
+.vp-roam[data-turn='1'] .vp-front,
+.vp-roam[data-turn='1'] .vp-profile { visibility: hidden; }
 
 .vp-roam[data-showoff='1'] .vp-dance-label {
   position: absolute;

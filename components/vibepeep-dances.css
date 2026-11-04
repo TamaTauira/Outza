@@ -96,9 +96,9 @@
 
 .vp-hit[data-dance='disco-point'] .vp-show {
   left: 50%;
-  top: 0.4%;
-  width: 11%;
-  transform: translate(-50%, 0);
+  top: 0;
+  width: 28%;
+  transform: translate(-50%, -6%);
 }
 
 .vp-hit[data-dance='disco-point'] .vp-disco-ball {
@@ -170,7 +170,7 @@
 .vp-hit[data-dance='horse'] .vp-dance-label::before { content: '19 Horse'; }
 .vp-hit[data-dance='cha-cha'] .vp-dance-label::before { content: '20 Cha-cha'; }
 
-.vp-front > .vp-snake { left: -28%; top: 48%; width: 159%; height: auto; z-index: 5 !important; }
+.vp-front > .vp-snake { left: -8%; top: 8%; width: 120%; height: auto; z-index: 5 !important; }
 /* The passed mittens, clipped to the ball and drawn over the python so the hands close around it. */
 .vp-grip { opacity: 0; z-index: 6; }
 .vp-grip img { clip-path: inset(70% 0 0 0); }
@@ -217,7 +217,7 @@
 @keyframes vp-snake-in {
   0% { opacity: 0; transform: translateY(6%); }
   8% { opacity: 1; transform: translateY(0); }
-  12%, 30% { opacity: 1; transform: translateY(-130%); }
+  12%, 30% { opacity: 1; transform: translateY(-70%); }
   42% { opacity: 1; transform: translateY(0) rotate(0deg); }
   58% { opacity: 1; transform: rotate(-6deg); }
   74% { opacity: 1; transform: rotate(6deg); }
@@ -228,7 +228,7 @@
 /* Each routine owns a full animation shorthand on the first rule.
    40% and 70% are the two poses a mid-dance frame should catch. */
 
-.vp-hit[data-react='party'][data-dance='moonwalk'] .vp-bob { animation: vp-moon-body 1.1s ease-in-out 4 both; }
+.vp-hit[data-react='party'][data-dance='moonwalk'] .vp-bob { animation: vp-moon-glide 1.8s linear 1 forwards; }
 .vp-hit[data-react='party'][data-dance='moonwalk'] .vp-leg-l { animation: vp-moon-ll 1.1s linear 4 both; }
 .vp-hit[data-react='party'][data-dance='moonwalk'] .vp-leg-r { animation: vp-moon-lr 1.1s linear 4 both; }
 .vp-hit[data-react='party'][data-dance='moonwalk'] .vp-arm-l { animation: vp-moon-al 1.1s ease-in-out 4 both; }
@@ -355,9 +355,13 @@
 .vp-hit[data-dance='snake'] .vp-arm-l,
 .vp-hit[data-dance='snake'] .vp-arm-r { z-index: 2; }
 
+@keyframes vp-moon-glide {
+  from { transform: translateX(0); }
+  to { transform: translateX(-28%); }
+}
 @keyframes vp-moon-body {
-  0% { transform: rotate(-6deg) translateX(18%); }
-  100% { transform: rotate(-6deg) translateX(-20%); }
+  from { transform: translateX(0); }
+  to { transform: translateX(-28%); }
 }
 @keyframes vp-moon-ll {
   0% { transform: rotate(8deg) translateX(0); }

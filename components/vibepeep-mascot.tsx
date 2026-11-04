@@ -226,9 +226,7 @@ export function VibePeepMascot({
       button.removeAttribute('data-line')
       if (step.face) root.dataset.face = step.face
       if (step.move === 'hop') {
-        const h = root.querySelector<HTMLElement>('.vp-rig')?.clientHeight || 84
-        const cross = 0.55 * h * 4
-        root.style.setProperty('--vp-cross', `${cross.toFixed(1)}px`)
+        root.style.setProperty('--vp-cross', '185px')
         root.style.setProperty('--vp-walk', '1680ms')
         root.style.setProperty('--vp-cycle', '840ms')
         root.style.setProperty('--vp-step', '420ms')

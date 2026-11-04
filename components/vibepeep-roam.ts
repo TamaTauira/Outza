@@ -220,16 +220,19 @@ export function attachRoam(root: HTMLElement): () => void {
     const h = Math.max(s, figure().height)
     const boxes = [
       { left: x, top: y, right: x + s, bottom: y + h },
-      { left: x + s - 16, top: y - 4, right: x + s + 4, bottom: y + 16 },
+      { left: x + s - 24, top: y - 4, right: x + s + 4, bottom: y + 24 },
     ]
     const pad = 8
+    const gapFor = (el: Element) =>
+      el.matches('.leaflet-marker-icon, .leaflet-control, .se-cluster, .vp-map-float, .vp-map-ask, .vp-map-cards, .vp-map-toolbar') ? 16 : pad
     const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
       const r = el.getBoundingClientRect()
       if (r.width < 12 || r.height < 10) continue
       for (const b of boxes) {
-        if (!(b.right < r.left - pad || b.left > r.right + pad || b.bottom < r.top - pad || b.top > r.bottom + pad)) return true
+        const gap = gapFor(el)
+        if (!(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)) return true
       }
     }
     const nodes = document.querySelectorAll(BLOCK)
@@ -250,7 +253,8 @@ export function attachRoam(root: HTMLElement): () => void {
       }
       for (const r of rects) {
         for (const b of boxes) {
-          if (!(b.right < r.left - pad || b.left > r.right + pad || b.bottom < r.top - pad || b.top > r.bottom + pad)) return true
+          const gap = gapFor(el)
+          if (!(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)) return true
         }
       }
     }
@@ -286,15 +290,12 @@ export function attachRoam(root: HTMLElement): () => void {
     const fr = feature.getBoundingClientRect()
     const rr = row.getBoundingClientRect()
     if (fr.width < 8 || rr.height < 8) return null
-    const s = size()
-    const rig = root.querySelector<HTMLElement>('.vp-rig')
-    const h = rig && rig.clientHeight > 8 ? rig.clientHeight : s * (1092 / 763)
-    const rigBox = rig?.getBoundingClientRect()
-    const btnBox = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
-    const overhang = rigBox && btnBox ? Math.max(4, btnBox.right - rigBox.right) : 4
-    const maxRight = Math.min(fr.left - 16, window.innerWidth - 8)
+    const s = 59
+    const h = 84
+    const overhang = 4
+    const maxRight = Math.min(Math.round(fr.left) - 16, window.innerWidth - 8)
     return {
-      x: Math.round(maxRight - s - overhang),
+      x: maxRight - s - overhang,
       y: Math.round(rr.top + (rr.height - h) / 2),
     }
   }
@@ -436,7 +437,15 @@ export function attachRoam(root: HTMLElement): () => void {
         if (rect.width < 8 || rect.height < 8) return false
         return box.right > rect.left && box.left < rect.right && box.bottom > rect.top && box.top < rect.bottom
       })
+      const margin = 8
+      let shiftX = 0
+      let shiftY = 0
+      if (box.left < margin) shiftX = margin - box.left
+      if (box.right > window.innerWidth - margin) shiftX = window.innerWidth - margin - box.right
+      if (box.top < margin) shiftY = margin - box.top
+      if (box.bottom > window.innerHeight - margin) shiftY = window.innerHeight - margin - box.bottom
       if (blocked) root.dataset.bub = root.dataset.bub === 'up' ? 'down' : 'up'
+      bubble.style.translate = `calc(-50% + ${shiftX.toFixed(0)}px) ${shiftY.toFixed(0)}px`
     })
     window.clearTimeout(speechTimer)
     speechTimer = window.setTimeout(() => {
@@ -486,7 +495,13 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const pauseNext = (ms?: number) => {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
-    if (!desktopBoard() && !spotClear(pos.x, pos.y)) {
+    if (desktopBoard()) {
+      const spot = boardSpot()
+      if (spot && Math.abs(pos.x - spot.x) < 40 && Math.abs(pos.y - spot.y) < 24) {
+        pos = spot
+        apply()
+      }
+    } else if (!spotClear(pos.x, pos.y)) {
       pos = firstClear(bounds())
       apply()
     }
@@ -518,7 +533,7 @@ export function attachRoam(root: HTMLElement): () => void {
     root.dataset.turn = '1'
     window.setTimeout(() => {
       if (root.dataset.turn === '1') delete root.dataset.turn
-    }, 80)
+    }, 100)
     setMove('hop')
     phase = { type: 'goto', from, to, start: performance.now(), dur, hops: strides, then }
   }
@@ -844,12 +859,10 @@ export function attachRoam(root: HTMLElement): () => void {
 
   readChrome()
   const imgs = [...root.querySelectorAll('img')]
-  void Promise.all(imgs.map((img) => img.decode?.().catch(() => undefined))).finally(() => {
+  void Promise.all(imgs.map((img) => (img.decode ? img.decode().catch(() => undefined) : Promise.resolve()))).then(() => {
     root.dataset.loaded = '1'
+    if (root.dataset.ready !== '1') park()
   })
-  window.setTimeout(() => {
-    root.dataset.loaded = '1'
-  }, 1500)
   park()
   const settleA = window.setTimeout(settle, 400)
   const settleB = window.setTimeout(settle, 1400)

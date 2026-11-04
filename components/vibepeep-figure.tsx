@@ -98,7 +98,7 @@ export function VibePeepFigure() {
           <img src="/mascot/parts/boot-side.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-arm-b" style={sideBox(0.18, 0.5, 0.201, 0.275, 0.58, 0.06)}>
-          <img src="/mascot/parts/arm-r.png" alt="" draggable={false} />
+          <img src="/mascot/parts/arm-side.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-body" style={sideBox(0.218, 0.1145, 0.5636, 0.7546, 0.5, 0.46)}>
           <img src="/mascot/parts/body-side.png" alt="" draggable={false} />
@@ -107,13 +107,14 @@ export function VibePeepFigure() {
           <img src="/mascot/parts/boot-side.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-arm-f" style={sideBox(0.62, 0.50, 0.22, 0.30, 0.32, 0.08)}>
-          <img src="/mascot/parts/arm-r.png" alt="" draggable={false} />
+          <img src="/mascot/parts/arm-side.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-ant" style={sideBox(0.48, 0.018, 0.15, 0.125, 0.5, 0.9)}>
           <img className="vp-ant-stalk" src="/mascot/parts/antenna-stalk.png" alt="" draggable={false} />
           <img className="vp-ant-tip" src="/mascot/parts/antenna-tip.png" alt="" draggable={false} />
         </span>
       </span>
+      <img className="vp-threeq" src="/mascot/poses/three-quarter.png" alt="" draggable={false} />
       <img className="vp-sheet vp-sheet-hips" src="/mascot/poses/sheet-hips.png" alt="" draggable={false} />
       <img className="vp-sheet vp-sheet-out" src="/mascot/poses/sheet-out.png" alt="" draggable={false} />
       <img className="vp-sheet vp-sheet-point" src="/mascot/poses/sheet-point.png" alt="" draggable={false} />
