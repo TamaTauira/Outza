@@ -257,6 +257,35 @@ export function attachRoam(root: HTMLElement): () => void {
     const pad = 8
     const gapFor = (el: Element) =>
       el.matches('.leaflet-marker-icon, .leaflet-control, .se-cluster, .vp-map-float, .vp-map-ask, .vp-map-cards, .vp-map-toolbar') ? 32 : pad
+    // Phone Map only: the speech bubble has to stay 16px off pins and clusters.
+    // It is not part of the figure box, so a line was landing on a cluster.
+    let bubbleBox: { left: number; top: number; right: number; bottom: number } | null = null
+    if (onMap && mobileMq.matches) {
+      const live = root.querySelector<HTMLElement>('.vp-bubble')
+      const shown = !!live && !!live.textContent && getComputedStyle(live).opacity !== '0'
+      if (shown && live) {
+        const r = live.getBoundingClientRect()
+        if (r.width > 2 && r.height > 2) {
+          const dx = x - pos.x
+          const dy = y - pos.y
+          bubbleBox = { left: r.left + dx, top: r.top + dy, right: r.right + dx, bottom: r.bottom + dy }
+        }
+      } else {
+        const bw = Math.min(115, window.innerWidth * 0.46)
+        const bh = 64
+        const top = y + 34
+        const onLeft = x + s / 2 > window.innerWidth * 0.5
+        bubbleBox = onLeft
+          ? { left: x - 8 - bw, top, right: x - 8, bottom: top + bh }
+          : { left: x + s + 8, top, right: x + s + 8 + bw, bottom: top + bh }
+      }
+    }
+    const hitsBubble = (r: DOMRect) => {
+      if (!bubbleBox) return false
+      const gap = 16
+      const b = bubbleBox
+      return !(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)
+    }
     const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
@@ -288,6 +317,7 @@ export function attachRoam(root: HTMLElement): () => void {
         rects = [r]
       }
       for (const r of rects) {
+        if (el.matches('.leaflet-marker-icon, .se-cluster') && hitsBubble(r)) return true
         for (const b of boxes) {
           const gap = gapFor(el)
           if (!(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)) return true
@@ -521,7 +551,18 @@ export function attachRoam(root: HTMLElement): () => void {
       if (box.top < margin) shiftY = margin - box.top
       if (box.bottom > window.innerHeight - margin) shiftY = window.innerHeight - margin - box.bottom
       if (blocked) root.dataset.bub = root.dataset.bub === 'up' ? 'down' : 'up'
-      bubble.style.translate = `calc(-50% + ${shiftX.toFixed(0)}px) ${shiftY.toFixed(0)}px`
+      if (mobileMq.matches) {
+        const close = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
+        if (close && box.right > close.left && box.left < close.right && box.bottom > close.top && box.top < close.bottom) {
+          shiftY += close.bottom + 6 - box.top
+        }
+      }
+      const shiftAcross = mobileMq.matches ? `${shiftX.toFixed(0)}px` : `calc(-50% + ${shiftX.toFixed(0)}px)`
+      bubble.style.translate = `${shiftAcross} ${shiftY.toFixed(0)}px`
+      if (mobileMq.matches && location.pathname.startsWith('/map') && !spotClear(pos.x, pos.y)) {
+        pos = firstClear(bounds())
+        apply()
+      }
     })
     window.clearTimeout(speechTimer)
     speechTimer = window.setTimeout(() => {
@@ -759,6 +800,13 @@ export function attachRoam(root: HTMLElement): () => void {
       pos = {
         x: lerp(phase.from.x, phase.to.x, eased),
         y: lerp(phase.from.y, phase.to.y, eased),
+      }
+      if (location.pathname.startsWith('/map') && !spotClear(pos.x, pos.y)) {
+        pos = firstClear(bounds())
+        apply()
+        setMove('still')
+        phase = { type: 'pause', until: now + 700 }
+        return 'sleep'
       }
       apply()
       if (t < 1) return 'raf'
@@ -1025,6 +1073,12 @@ export function attachRoam(root: HTMLElement): () => void {
     if (!spotClear(pos.x, pos.y)) {
       pos = firstClear(bounds())
       apply()
+      // A hop that was already underway would interpolate back through the pin.
+      if (phase.type === 'goto' || phase.type === 'bounce' || phase.type === 'chase') {
+        delete root.dataset.turn
+        setMove('still')
+        phase = { type: 'pause', until: performance.now() + 700 }
+      }
     }
   }
   const pinWatch = new MutationObserver((records) => {

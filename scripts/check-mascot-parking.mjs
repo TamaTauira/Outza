@@ -211,8 +211,11 @@ const gapExpr = `(() => {
   const root = document.querySelector('.vp-roam')
   const rig = root?.querySelector('.vp-rig')?.getBoundingClientRect()
   const btn = root?.querySelector('.vp-buddy-min')?.getBoundingClientRect()
+  const bubbleEl = root?.querySelector('.vp-bubble')
+  const bubble = bubbleEl && bubbleEl.textContent ? bubbleEl.getBoundingClientRect() : null
   if (!rig || !btn) return JSON.stringify({ error: 'missing' })
   const boxes = [rig, btn]
+  if (bubble && bubble.width > 2 && bubble.height > 2) boxes.push(bubble)
   const hits = []
   let nearest = 999
   let pins = 0
@@ -226,11 +229,20 @@ const gapExpr = `(() => {
       if (sep < 16) hits.push(Math.round(sep) + ' ' + (el.className || '').toString().slice(0, 24))
     }
   }
-  return JSON.stringify({ hits, nearest: pins ? nearest : null, pins })
+  const xOnBubble = !!(bubble && btn && bubble.right > btn.left && bubble.left < btn.right && bubble.bottom > btn.top && bubble.top < btn.bottom)
+  return JSON.stringify({ hits, nearest: pins ? nearest : null, pins, xOnBubble })
 })()`
 for (let i = 0; i < 20 && !(await ev(`document.querySelectorAll('.leaflet-marker-icon, .se-cluster').length > 0`)); i++) {
   await sleep(300)
 }
+await ev(`(() => {
+  const bubble = document.querySelector('.vp-bubble')
+  const hit = document.querySelector('.vp-hit')
+  if (bubble) bubble.textContent = 'Mic check.'
+  if (hit) hit.setAttribute('data-line', '1')
+  return '1'
+})()`)
+await sleep(900)
 const samples = []
 for (let n = 0; n < 9; n++) {
   if (n) await sleep(450)
@@ -240,6 +252,7 @@ for (let n = 0; n < 9; n++) {
   samples.push(info)
   console.log('map sample', n, JSON.stringify(info))
   if (!info || info.error) failures.push('map phone sample ' + n + ' failed')
+  else if (info.xOnBubble) failures.push('map phone sample ' + n + ' close button overlaps the bubble')
   else if (info.hits && info.hits.length) failures.push('map phone sample ' + n + ' within 16px: ' + info.hits.join(' | '))
 }
 await ev(`(() => {
@@ -261,6 +274,7 @@ for (let n = 0; n < 9; n++) {
   try { info = JSON.parse(raw) } catch { info = { error: String(raw) } }
   console.log('map shoved', n, JSON.stringify(info))
   if (!info || info.error) failures.push('map pin shove sample ' + n + ' failed')
+  else if (info.xOnBubble) failures.push('map phone sample ' + n + ' close button overlaps the bubble after pins moved')
   else if (info.hits && info.hits.length) failures.push('map phone sample ' + n + ' still within 16px after pins moved: ' + info.hits.join(' | '))
 }
 

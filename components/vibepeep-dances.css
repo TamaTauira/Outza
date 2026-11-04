@@ -223,13 +223,14 @@
 .vp-grip-under { z-index: 4; }
 .vp-grip img { clip-path: inset(58% 0 0 0); }
 .vp-hit[data-dance='snake'] .vp-grip { opacity: 1; }
-.vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(96deg); }
-.vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-96deg); }
+.vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(14deg); }
+.vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-14deg); }
 .vp-hit[data-react='party'][data-dance='snake'] .vp-grip-l { animation: vp-snake-al 2.2s steps(1, end) 1 both; }
 .vp-hit[data-react='party'][data-dance='snake'] .vp-grip-r { animation: vp-snake-ar 2.2s steps(1, end) 1 both; }
 .vp-snake img { width: 100%; height: auto; display: block; }
 .vp-flower { left: 68%; top: 6%; width: 18%; z-index: 5; }
 
+.vp-hit[data-dance='snake'] .vp-snake-back,
 .vp-hit[data-dance='snake'] .vp-snake-front { animation: vp-snake-drape 2.2s steps(1, end) forwards; }
 .vp-hit[data-dance='snake'] .vp-snake-lift { animation: vp-snake-up 2.2s steps(1, end) forwards; }
 .vp-hit[data-dance='island'] .vp-flower { animation: vp-prop-hold 4.4s ease forwards; }
@@ -516,14 +517,14 @@
   100% { transform: rotate(-8deg); }
 }
 @keyframes vp-snake-al {
-  0%, 39% { transform: rotate(96deg); }
-  40%, 77% { transform: rotate(148deg); }
-  78%, 100% { transform: rotate(96deg); }
+  0%, 39% { transform: rotate(14deg); }
+  40%, 77% { transform: rotate(125deg); }
+  78%, 100% { transform: rotate(14deg); }
 }
 @keyframes vp-snake-ar {
-  0%, 39% { transform: rotate(-96deg); }
-  40%, 77% { transform: rotate(-148deg); }
-  78%, 100% { transform: rotate(-96deg); }
+  0%, 39% { transform: rotate(-14deg); }
+  40%, 77% { transform: rotate(-125deg); }
+  78%, 100% { transform: rotate(-14deg); }
 }
 @keyframes vp-snake-ll {
   0%, 40% { transform: rotate(0deg); }
@@ -727,7 +728,7 @@
 
   .vp-hit[data-react='party'][data-dance='snake'] .vp-arm-l,
   .vp-hit[data-dance='snake'] .vp-grip-l {
-    transform: rotate(96deg) !important;
+    transform: rotate(14deg) !important;
   }
 
   .vp-hit[data-react='party'] .vp-arm-r {
@@ -737,7 +738,7 @@
 
   .vp-hit[data-react='party'][data-dance='snake'] .vp-arm-r,
   .vp-hit[data-dance='snake'] .vp-grip-r {
-    transform: rotate(-96deg) !important;
+    transform: rotate(-14deg) !important;
   }
 
   .vp-hit[data-dance='snake'] .vp-snake,
@@ -745,8 +746,8 @@
     opacity: 1;
   }
 
-  .vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(96deg) !important; }
-  .vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-96deg) !important; }
+  .vp-hit[data-dance='snake'] .vp-grip-l { transform: rotate(14deg) !important; }
+  .vp-hit[data-dance='snake'] .vp-grip-r { transform: rotate(-14deg) !important; }
   .vp-hit[data-dance='snake'] .vp-snake-lift { opacity: 0 !important; }
 
   .vp-hit[data-react='party'] .vp-leg-l,

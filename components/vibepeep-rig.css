@@ -1407,7 +1407,7 @@ html[data-peepclose='1'] .vp-roam {
     left: auto;
     right: calc(100% + 6px);
     bottom: auto;
-    top: 10%;
+    top: 2.15rem;
     translate: 0 0;
     max-width: min(7.2rem, 46vw);
     text-align: left;
@@ -1417,7 +1417,7 @@ html[data-peepclose='1'] .vp-roam {
   .vp-roam .vp-slot[data-bubble='center'] .vp-bubble {
     left: calc(100% + 6px);
     right: auto;
-    top: 10%;
+    top: 2.15rem;
     translate: 0 0;
   }
 
