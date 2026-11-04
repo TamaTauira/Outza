@@ -20,6 +20,33 @@ export const BOTTOM_NAV_MAX_WIDTH = 1023
 /** Coarse portrait tablets wider than the phone breakpoint, up to iPad Pro 12.9. */
 export const BOTTOM_NAV_TABLET_PORTRAIT_MAX = 1400
 
+/**
+ * Whether the bar should leave the screen. `null` means keep the current state.
+ * Locked (focused field or an open sheet) always shows it, as do the top of the
+ * page and the last screenful.
+ */
+export function navShouldHide(input: {
+  scrollY: number
+  delta: number
+  viewportH: number
+  scrollH: number
+  locked: boolean
+}): boolean | null {
+  if (input.locked) return false
+  if (input.scrollH <= input.viewportH + 24) return false
+  if (input.scrollY <= 8) return false
+  if (input.scrollY + input.viewportH >= input.scrollH - 48) return false
+  if (input.delta > 6) return true
+  if (input.delta < -6) return false
+  return null
+}
+
+/** Pop the Saved count only after the bar is live and the count actually grows. */
+export function shouldPopSaved(prev: number | null, next: number, ready: boolean): boolean {
+  if (!ready || prev == null) return false
+  return next > prev
+}
+
 export function wantsBottomNav(input: BottomNavInput): boolean {
   if (input.horizontalSegments >= 2) return true
   if (input.width <= BOTTOM_NAV_MAX_WIDTH) return true

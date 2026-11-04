@@ -139,7 +139,7 @@ export function Navbar({ savedCount }: NavbarProps) {
         </div>
       </div>
     </header>
-    <BottomNav savedCount={mounted ? savedCount : 0} />
+    <BottomNav savedCount={mounted ? savedCount : 0} ready={mounted} />
   </>
   )
 }

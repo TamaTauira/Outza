@@ -21,7 +21,8 @@
   (spanning: single-fold-vertical) {
   :root {
     --vp-bottom-nav-bar: 3.5rem;
-    --vp-bottom-nav-offset: calc(var(--vp-bottom-nav-bar) + 1px + env(safe-area-inset-bottom, 0px));
+    --vp-ask-raise: 1.65rem;
+    --vp-bottom-nav-offset: calc(var(--vp-bottom-nav-bar) + var(--vp-ask-raise) + 1px + env(safe-area-inset-bottom, 0px));
   }
 
   .vp-bottom-nav {
@@ -38,6 +39,20 @@
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
     border-top: 1px solid hsl(var(--border));
+    transition: transform 220ms ease;
+    will-change: transform;
+  }
+
+  .vp-bottom-nav.is-away {
+    transform: translate3d(0, calc(100% + var(--vp-ask-raise)), 0);
+  }
+
+  html.vp-nav-away .vp-ticket-bar {
+    transform: translate3d(0, calc(var(--vp-bottom-nav-bar) + 1px + env(safe-area-inset-bottom, 0px)), 0);
+  }
+
+  .vp-ticket-bar {
+    transition: transform 220ms ease;
   }
 
   .vp-top-links {
@@ -184,6 +199,107 @@
   text-align: center;
 }
 
+.vp-bottom-count.is-pop {
+  animation: vp-count-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.vp-bottom-ico.is-tapped,
+.vp-ask-face.is-tapped {
+  animation: vp-tab-pop 280ms cubic-bezier(0.34, 1.45, 0.64, 1);
+}
+
+.vp-ask {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.1rem 0.28rem;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vp-ask-face {
+  position: absolute;
+  left: 50%;
+  bottom: 1.35rem;
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  border-radius: 999px;
+  background-image: linear-gradient(105deg, #ff8a1a 0%, #ff4e6a 100%);
+  color: #1a120e;
+  box-shadow: 0 8px 18px rgba(255, 78, 106, 0.38);
+  transform: translateX(-50%);
+}
+
+.vp-ask:focus-visible {
+  outline: none;
+}
+
+.vp-ask:focus-visible .vp-ask-face {
+  outline: 2px solid hsl(var(--foreground));
+  outline-offset: 3px;
+}
+
+.vp-ask-sheet {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: var(--vp-bottom-nav-offset) !important;
+  width: auto !important;
+  max-height: min(78dvh, 40rem);
+  overflow: auto;
+  border-top-left-radius: 1.25rem;
+  border-top-right-radius: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+@keyframes vp-tab-pop {
+  0% { transform: translateX(-50%) scale(1); }
+  40% { transform: translateX(-50%) scale(0.82); }
+  72% { transform: translateX(-50%) scale(1.14); }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+.vp-bottom-ico.is-tapped {
+  animation-name: vp-tab-ico-pop;
+}
+
+@keyframes vp-tab-ico-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.82); }
+  72% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+@keyframes vp-count-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.5); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vp-bottom-nav,
+  .vp-ticket-bar,
+  .vp-bottom-count.is-pop,
+  .vp-bottom-ico.is-tapped,
+  .vp-ask-face.is-tapped {
+    transition: none;
+    animation: none;
+  }
+}
+
 @container (max-width: 22rem) {
   .vp-bottom-tab {
     font-size: 0.625rem;
@@ -204,10 +320,11 @@
   }
 
   .vp-bottom-nav,
-  .vp-ticket-bar {
-    left: env(viewport-segment-left 0 0);
-    width: env(viewport-segment-width 0 0);
-    right: auto;
+  .vp-ticket-bar,
+  .vp-ask-sheet {
+    left: env(viewport-segment-left 0 0) !important;
+    width: env(viewport-segment-width 0 0) !important;
+    right: auto !important;
   }
 
   .vp-hinge {
@@ -234,10 +351,11 @@
   }
 
   .vp-bottom-nav,
-  .vp-ticket-bar {
-    left: 0;
-    width: env(fold-left);
-    right: auto;
+  .vp-ticket-bar,
+  .vp-ask-sheet {
+    left: 0 !important;
+    width: env(fold-left) !important;
+    right: auto !important;
   }
 
   .vp-hinge {
@@ -303,7 +421,8 @@
    viewport segments. Set data-vp-fold="side" on the document element. */
 html[data-vp-fold='side'] {
   --vp-bottom-nav-bar: 3.5rem;
-  --vp-bottom-nav-offset: calc(var(--vp-bottom-nav-bar) + 1px + env(safe-area-inset-bottom, 0px));
+  --vp-ask-raise: 1.65rem;
+  --vp-bottom-nav-offset: calc(var(--vp-bottom-nav-bar) + var(--vp-ask-raise) + 1px + env(safe-area-inset-bottom, 0px));
   background: hsl(var(--background));
 }
 
@@ -333,10 +452,11 @@ html[data-vp-fold='side'] .vp-bottom-nav {
   border-top: 1px solid hsl(var(--border));
 }
 
-html[data-vp-fold='side'] .vp-ticket-bar {
-  left: 0;
-  width: calc((100% - 24px) / 2);
-  right: auto;
+html[data-vp-fold='side'] .vp-ticket-bar,
+html[data-vp-fold='side'] .vp-ask-sheet {
+  left: 0 !important;
+  width: calc((100% - 24px) / 2) !important;
+  right: auto !important;
 }
 
 /* The viewport is still the full span, so Tailwind's sm/md/lg rules stay
@@ -410,7 +530,8 @@ html[data-vp-fold='side'] .vp-hinge {
 
 html[data-vp-fold='stack'] {
   --vp-bottom-nav-bar: 3.5rem;
-  --vp-bottom-nav-offset: calc(var(--vp-bottom-nav-bar) + 1px + env(safe-area-inset-bottom, 0px));
+  --vp-ask-raise: 1.65rem;
+  --vp-bottom-nav-offset: calc(var(--vp-bottom-nav-bar) + var(--vp-ask-raise) + 1px + env(safe-area-inset-bottom, 0px));
   height: calc((100dvh - 24px) / 2);
   max-height: calc((100dvh - 24px) / 2);
   overflow: auto;

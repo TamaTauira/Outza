@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { roamBottomChrome, wantsBottomNav } from './bottom-nav'
+import { navShouldHide, roamBottomChrome, shouldPopSaved, wantsBottomNav } from './bottom-nav'
 
 const phone = { pointerCoarse: true, horizontalSegments: 1 }
 const tablet = { pointerCoarse: true, horizontalSegments: 1 }
@@ -35,6 +35,26 @@ test('tablet landscape and desktop keep the header links', () => {
   assert.equal(wantsBottomNav({ ...desktop, width: 1440, height: 900 }), false)
   assert.equal(wantsBottomNav({ ...desktop, width: 1100, height: 1400 }), false)
   assert.equal(wantsBottomNav({ ...desktop, width: 900, height: 800 }), true)
+})
+
+test('the bar hides on the way down and returns on the way up, at the ends, and while locked', () => {
+  const page = { viewportH: 844, scrollH: 2400, locked: false }
+  assert.equal(navShouldHide({ ...page, scrollY: 400, delta: 20 }), true)
+  assert.equal(navShouldHide({ ...page, scrollY: 380, delta: -12 }), false)
+  assert.equal(navShouldHide({ ...page, scrollY: 400, delta: 2 }), null)
+  assert.equal(navShouldHide({ ...page, scrollY: 0, delta: 30 }), false)
+  assert.equal(navShouldHide({ ...page, scrollY: 2000, delta: 30 }), false)
+  assert.equal(navShouldHide({ ...page, scrollY: 400, delta: 30, locked: true }), false)
+  assert.equal(navShouldHide({ scrollY: 100, delta: 40, viewportH: 800, scrollH: 810, locked: false }), false)
+})
+
+test('the saved badge pops only when a live count grows', () => {
+  assert.equal(shouldPopSaved(null, 1, true), false)
+  assert.equal(shouldPopSaved(0, 3, false), false)
+  assert.equal(shouldPopSaved(0, 0, true), false)
+  assert.equal(shouldPopSaved(2, 1, true), false)
+  assert.equal(shouldPopSaved(0, 1, true), true)
+  assert.equal(shouldPopSaved(4, 5, true), true)
 })
 
 test('mascot chrome clears the bar and stays put on desktop', () => {
