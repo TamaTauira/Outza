@@ -76,7 +76,7 @@ Statuses mean what the brief says. A row is PASS only where a request, browser, 
 | Password reset | HTTP | NOT IMPLEMENTED | — | `/forgot-password`, `/reset-password` and `/account/reset` are 404 |
 | Account email verification | — | NOT IMPLEMENTED | — | Signup does not send a verification mail |
 | Duplicate signup and wrong password | API | PASS | — | 409 and 401 |
-| QA accounts opt into the newsletter | API | FAIL | P2 | `PATCH /api/me` set `emailOptIn` true. Reverted in the database. Code fix in this change |
+| QA accounts cannot opt into the newsletter | API | PASS | P2 | First check saved opt-in. After deploy, the same PATCH stays opted out |
 | Digest preview | Browser | PASS | — | Admin HTML preview, nothing sent. Consumer 403 |
 | Push and geofenced alerts | — | NOT IMPLEMENTED | — | No service worker, push, or geofence |
 | Free trial | — | NOT IMPLEMENTED | — | Plans say there is no trial. `paymentsEnabled` is false |
@@ -190,7 +190,7 @@ Statuses mean what the brief says. A row is PASS only where a request, browser, 
 - Actual: `PATCH /api/me` with `emailOptIn: true` saved. The flags were set back to false immediately
 - Cause: opt-in was stored for every account. The user table has no test column, so the address `outza-tester+qa-…@mail.grokbot.com` is the flag
 - Fix: those addresses are dropped from digest, reminder and report queries, cannot be emailed, and are left out of audience insights. Profile saves force mail off
-- Retest: unit tests passed. The live profile save still opts in until this change is deployed
+- Retest: unit tests passed. After deploy `dpl_37aiUsXAdPsJcxPsNKNwJbgPCn9s`, `PATCH /api/me` with both flags true still returned `emailOptIn: false` and `reminderOptIn: false`
 
 ### QA-12 — A promotion activates with no payment while Stripe is unset
 
@@ -276,7 +276,7 @@ The signed-in pass also excludes QA addresses from mail and audience insights (`
 
 Known defects still open: QA-07, QA-08, QA-09, QA-10, QA-12.
 
-QA-11 is fixed in this change and still needs a live profile-save check after deploy.
+QA-11 was retested on production after deploy: a QA account cannot opt into mail.
 
 Not implemented, and not defects: password reset, account email verification, a free trial, push, geofenced alerts, a service worker.
 
