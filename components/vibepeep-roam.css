@@ -102,7 +102,7 @@
 }
 
 .dark .vp-shadow {
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 70%);
 }
 
 .vp-roam .vp-actor {

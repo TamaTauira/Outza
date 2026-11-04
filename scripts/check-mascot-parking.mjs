@@ -170,6 +170,45 @@ if (live.length === 3 && live.every((info) => info && !info.error)) {
   if (end.x !== 1048) failures.push('t2 x ' + end.x + ' != 1048')
 }
 
+await send('Page.navigate', { url: base + '/?facewalk=1' })
+await sleep(400)
+let prevFace = null
+let firstVisible = null
+for (let i = 0; i < 24; i++) {
+  const raw = await ev(`(() => {
+    const root = document.querySelector('.vp-roam')
+    if (!root) return JSON.stringify({ missing: true })
+    const rig = root.querySelector('.vp-rig')
+    const profile = root.querySelector('.vp-profile')
+    if (!rig || !profile) return JSON.stringify({ missing: true })
+    const r = rig.getBoundingClientRect()
+    const m = new DOMMatrix(getComputedStyle(profile).transform)
+    return JSON.stringify({
+      x: Math.round(r.x),
+      move: root.dataset.move || '',
+      turn: root.dataset.turn || '',
+      placed: root.dataset.placed || '',
+      vis: getComputedStyle(root).visibility,
+      eyeRight: m.a < 0,
+    })
+  })()`)
+  let info
+  try { info = JSON.parse(raw) } catch { info = { missing: true } }
+  if (!info.missing && info.vis === 'visible' && info.placed === '1') {
+    if (!firstVisible) firstVisible = info
+    if (prevFace && info.move === 'hop') {
+      const dx = info.x - prevFace.x
+      if (dx > 8 && !info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the left')
+      if (dx < -8 && info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the right')
+    }
+    prevFace = info
+  }
+  console.log('face', i, raw)
+  await sleep(120)
+}
+if (firstVisible && firstVisible.x >= 1000) failures.push('first visible frame is at x ' + firstVisible.x + ', the parking spot')
+if (firstVisible && firstVisible.turn !== '1' && firstVisible.move !== 'hop') failures.push('first visible frame is not the turn or the walk')
+
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
 for (const [name, w, h, mobile, path] of pages) {
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile, scale: 1 })

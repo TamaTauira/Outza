@@ -93,16 +93,16 @@
 
 .vp-hit[data-dance='disco-point'] .vp-ant-tip,
 .vp-hit[data-dance='disco-point'] .vp-s-ant-tip { visibility: hidden; }
-.vp-hit[data-dance='disco-point'] .vp-ant,
-.vp-hit[data-dance='disco-point'] .vp-s-ant {
-  clip-path: inset(70% 36% 0 36%);
+.vp-hit[data-dance='disco-point'] .vp-ant-stalk,
+.vp-hit[data-dance='disco-point'] .vp-s-ant .vp-ant-stalk {
+  clip-path: inset(58% 0 0 0);
 }
 
 .vp-hit[data-dance='disco-point'] .vp-show {
   left: 50%;
-  top: 0;
-  width: 36%;
-  transform: translate(-50%, -36%);
+  top: 0.5%;
+  width: 34%;
+  transform: translate(-50%, 12%);
 }
 
 .vp-hit[data-dance='disco-point'] .vp-disco-ball {
@@ -175,7 +175,8 @@
 .vp-hit[data-dance='cha-cha'] .vp-dance-label::before { content: '20 Cha-cha'; }
 
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }
-.vp-front > .vp-snake { left: -16%; top: 50%; width: 132%; height: auto; z-index: 4; }
+.vp-s-arm-b { display: none; }
+.vp-front > .vp-snake { left: -10%; top: 54%; width: 118%; height: auto; z-index: 8; }
 .vp-snake { opacity: 0; }
 .vp-hit[data-dance='snake'] .vp-snake { opacity: 1; }
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }
@@ -223,9 +224,9 @@
 }
 
 @keyframes vp-snake-in {
-  0%, 8% { opacity: 1; transform: translateY(0); }
-  18%, 36% { opacity: 1; transform: translateY(-108%); }
-  48%, 100% { opacity: 1; transform: translateY(0); }
+  0%, 100% { opacity: 1; transform: translateY(0) rotate(0deg); }
+  45% { opacity: 1; transform: translateY(-3%) rotate(-4deg); }
+  75% { opacity: 1; transform: translateY(-1%) rotate(4deg); }
 }
 
 /* Each routine owns a full animation shorthand on the first rule.
@@ -470,14 +471,14 @@
   100% { transform: rotate(0deg); }
 }
 @keyframes vp-snake-al {
-  0%, 8% { transform: rotate(70deg); }
-  18%, 36% { transform: rotate(168deg); }
-  48%, 100% { transform: rotate(70deg); }
+  0%, 100% { transform: rotate(48deg); }
+  45% { transform: rotate(62deg); }
+  75% { transform: rotate(40deg); }
 }
 @keyframes vp-snake-ar {
-  0%, 8% { transform: rotate(-70deg); }
-  18%, 36% { transform: rotate(-168deg); }
-  48%, 100% { transform: rotate(-70deg); }
+  0%, 100% { transform: rotate(-48deg); }
+  45% { transform: rotate(-62deg); }
+  75% { transform: rotate(-40deg); }
 }
 @keyframes vp-snake-ll {
   0%, 40% { transform: rotate(0deg); }

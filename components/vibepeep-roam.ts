@@ -316,11 +316,36 @@ export function attachRoam(root: HTMLElement): () => void {
   const STEP_MS = 420
 
   const walkTo = (target: Point) => {
-    const stride = stridePx()
-    const box = bounds()
-    const left = clampPoint({ x: target.x - stride * 4, y: target.y }, box)
-    const right = clampPoint({ x: target.x + stride * 4, y: target.y }, box)
-    const start = Math.abs(left.x - target.x) >= Math.abs(right.x - target.x) ? left : right
+    if (desktopBoard() && boardPhase !== 'wait') return
+    if (!decoded) {
+      requestAnimationFrame(() => {
+        if (running) walkTo(target)
+      })
+      return
+    }
+    const rig = root.querySelector<HTMLElement>('.vp-rig')
+    if (!rig || rig.clientHeight < 40) {
+      requestAnimationFrame(() => {
+        if (running) walkTo(target)
+      })
+      return
+    }
+    const stride = Math.max(24, stridePx())
+    let start: Point
+    if (desktopBoard()) {
+      start = { x: Math.max(8, target.x - stride * 4), y: target.y }
+      if (Math.abs(start.x - target.x) < stride) {
+        requestAnimationFrame(() => {
+          if (running) walkTo(target)
+        })
+        return
+      }
+    } else {
+      const box = bounds()
+      const left = clampPoint({ x: target.x - stride * 4, y: target.y }, box)
+      const right = clampPoint({ x: target.x + stride * 4, y: target.y }, box)
+      start = Math.abs(left.x - target.x) >= Math.abs(right.x - target.x) ? left : right
+    }
     pos = start
     face = target.x >= start.x ? 'right' : 'left'
     root.dataset.face = face
@@ -788,7 +813,11 @@ export function attachRoam(root: HTMLElement): () => void {
   const onResize = () => {
     cachedSize = 0
     readChrome()
-    if (reduce || desktopBoard()) {
+    if (desktopBoard()) {
+      if (boardPhase === 'done') pinBoard()
+      return
+    }
+    if (reduce) {
       park()
       return
     }

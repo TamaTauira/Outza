@@ -104,6 +104,40 @@ for (const [move, dance, face] of poses) {
     if (info.top < -2 || info.left < -2 || info.right > info.vw + 2 || info.bottom > info.vh + 2) bad.push('outside viewport')
     if (info.bottom > info.bodyTop + info.bodyH * 0.25) bad.push('not above the head')
     if (Math.abs(info.bottom - info.bodyTop) > info.bodyH * 0.45) bad.push('detached')
+    if (dance === 'disco-point') {
+      const extra = JSON.parse(await ev(`(() => {
+        const ball = document.querySelector('.vp-disco-ball')
+        const stalk = document.querySelector('.vp-front .vp-ant-stalk')
+        const body = document.querySelector('.vp-torso')
+        if (!ball || !stalk || !body) return JSON.stringify({ error: 'missing disco parts' })
+        const bs = getComputedStyle(ball)
+        const ss = getComputedStyle(stalk)
+        const br = ball.getBoundingClientRect()
+        const sr = stalk.getBoundingClientRect()
+        const bodyR = body.getBoundingClientRect()
+        return JSON.stringify({
+          ballDisplay: bs.display,
+          ballOpacity: Number(bs.opacity),
+          stalkVis: ss.visibility,
+          stalkClip: ss.clipPath || ss.webkitClipPath || '',
+          ballW: Math.round(br.width),
+          headW: Math.round(bodyR.width),
+          ballBottom: Math.round(br.bottom),
+          stalkTop: Math.round(sr.top),
+          stalkBottom: Math.round(sr.bottom),
+          stalkH: Math.round(sr.height),
+        })
+      })()`))
+      if (extra.error) bad.push(extra.error)
+      else {
+        if (extra.stalkVis === 'hidden') bad.push('stalk hidden')
+        if (extra.ballDisplay === 'none' || extra.ballOpacity < 0.5) bad.push('ball hidden')
+        if (extra.ballW < extra.headW * 0.35) bad.push('ball smaller than half a head')
+        if (extra.stalkH < 8) bad.push('no stalk')
+        if (extra.ballBottom < extra.stalkTop - 6) bad.push('ball detached from stalk')
+        console.log('disco stalk', JSON.stringify(extra))
+      }
+    }
   }
   console.log(label, bad.join('; ') || 'ok', JSON.stringify(info))
   if (bad.length) failures.push(label + ': ' + bad.join('; '))

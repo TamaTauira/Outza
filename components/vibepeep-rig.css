@@ -308,9 +308,9 @@
   visibility: visible;
 }
 
-.vp-roam[data-face='left'][data-move='hop'] .vp-hit:not([data-react]) .vp-profile,
-.vp-roam[data-face='left'][data-move='chase'] .vp-hit:not([data-react]) .vp-profile,
-.vp-roam[data-face='left'][data-move='bounce'] .vp-hit:not([data-react]) .vp-profile {
+.vp-roam[data-face='right'][data-move='hop'] .vp-hit:not([data-react]) .vp-profile,
+.vp-roam[data-face='right'][data-move='chase'] .vp-hit:not([data-react]) .vp-profile,
+.vp-roam[data-face='right'][data-move='bounce'] .vp-hit:not([data-react]) .vp-profile {
   transform: scaleX(-1);
 }
 
