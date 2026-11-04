@@ -127,9 +127,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.125rem;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding: 0.3rem 0.1rem 0.35rem;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.2rem 0 0.28rem;
   border-radius: 0.85rem;
   color: hsl(var(--muted-foreground));
   font-family: var(--font-sans), system-ui, sans-serif;
@@ -215,9 +215,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding: 0 0.1rem 0.28rem;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0 0 0.28rem;
   border: 0;
   background: transparent;
   color: hsl(var(--foreground));
@@ -253,7 +253,31 @@
   outline-offset: 3px;
 }
 
-.vp-ask-sheet {
+.vp-tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(8px, 2.35cqi, 11px);
+  letter-spacing: -0.04em;
+}
+
+.vp-menu-initial {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  place-items: center;
+  border-radius: 999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vp-ask-sheet,
+.vp-menu-sheet {
   left: 0 !important;
   right: 0 !important;
   bottom: var(--vp-bottom-nav-offset) !important;
@@ -300,10 +324,24 @@
   }
 }
 
-@container (max-width: 22rem) {
-  .vp-bottom-tab {
-    font-size: 0.625rem;
-    letter-spacing: -0.02em;
+@container (max-width: 24rem) {
+  .vp-ask-face {
+    width: 2.4rem;
+    height: 2.4rem;
+    bottom: 1.7rem;
+  }
+}
+
+@container (max-width: 20rem) {
+  .vp-tab-label {
+    font-size: 8px;
+    letter-spacing: -0.06em;
+  }
+
+  .vp-ask-face {
+    width: 2.15rem;
+    height: 2.15rem;
+    bottom: 1.85rem;
   }
 }
 
@@ -321,7 +359,8 @@
 
   .vp-bottom-nav,
   .vp-ticket-bar,
-  .vp-ask-sheet {
+  .vp-ask-sheet,
+  .vp-menu-sheet {
     left: env(viewport-segment-left 0 0) !important;
     width: env(viewport-segment-width 0 0) !important;
     right: auto !important;
@@ -352,7 +391,8 @@
 
   .vp-bottom-nav,
   .vp-ticket-bar,
-  .vp-ask-sheet {
+  .vp-ask-sheet,
+  .vp-menu-sheet {
     left: 0 !important;
     width: env(fold-left) !important;
     right: auto !important;
@@ -453,7 +493,8 @@ html[data-vp-fold='side'] .vp-bottom-nav {
 }
 
 html[data-vp-fold='side'] .vp-ticket-bar,
-html[data-vp-fold='side'] .vp-ask-sheet {
+html[data-vp-fold='side'] .vp-ask-sheet,
+html[data-vp-fold='side'] .vp-menu-sheet {
   left: 0 !important;
   width: calc((100% - 24px) / 2) !important;
   right: auto !important;
