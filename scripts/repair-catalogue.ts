@@ -29,8 +29,14 @@ const MERGE_SELECT = {
 type Row = Awaited<ReturnType<typeof loadRows>>[number]
 
 async function loadRows() {
+  const from = process.env.REPAIR_FROM
+  const to = process.env.REPAIR_TO
   return prisma.event.findMany({
-    where: { duplicateOfId: null, deletedAt: null },
+    where: {
+      duplicateOfId: null,
+      deletedAt: null,
+      ...(from && to ? { date: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T00:00:00.000Z`) } } : {}),
+    },
     select: MERGE_SELECT,
   })
 }
@@ -51,6 +57,8 @@ function asIdentity(row: Row) {
     address: row.venueAddress,
     status: row.status,
     url: row.sourceUrl || row.ticketUrl,
+    lat: row.latitude,
+    lng: row.longitude,
   }
 }
 
@@ -89,7 +97,7 @@ async function mergeDuplicates(rows: Row[]) {
   }
   console.log(`[repair] ${pairs.length} duplicate listings to merge${dry ? ' (dry run)' : ''}`)
   for (const pair of pairs) {
-    console.log(`  ${pair.duplicate.id} → ${pair.primary.id} | ${pair.primary.title} | ${pair.duplicate.venueName} → ${pair.primary.venueName} | ${pair.duplicate.source} → ${pair.primary.source}`)
+    console.log(`  ${pair.primary.city} | ${pair.duplicate.id} → ${pair.primary.id} | ${pair.primary.title} | ${pair.duplicate.venueName} → ${pair.primary.venueName} | ${pair.duplicate.source} → ${pair.primary.source}`)
   }
   if (dry || !pairs.length) return pairs.length
 
@@ -202,8 +210,8 @@ async function retag() {
 async function main() {
   const rows = await loadRows()
   const merged = await mergeDuplicates(rows)
-  const tags = await retag()
-  console.log('[repair] done', { merged, ...tags, dry })
+  const tags = process.env.REPAIR_SKIP_RETAG === '1' ? null : await retag()
+  console.log('[repair] done', { merged, ...(tags ?? {}), dry })
 }
 
 main()

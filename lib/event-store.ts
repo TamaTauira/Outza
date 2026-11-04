@@ -303,18 +303,19 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     where: { date, city, duplicateOfId: null, communityKey: null },
     select: {
       id: true, title: true, venueName: true, venueAddress: true, time: true, sources: true, source: true, organiserName: true,
-      ticketUrl: true, sourceUrl: true,
+      ticketUrl: true, sourceUrl: true, latitude: true, longitude: true,
     },
     take: 400,
   })
   const incomingIdentity = {
     title, venueName, city, date: ev.date, time, source: ev.source, organiserName: ev.organiserName,
     externalId, url: identityUrl, address: venueAddress || null, status,
+    lat: pin?.lat ?? ev.latitude ?? null, lng: pin?.lng ?? ev.longitude ?? null,
   }
   const dup = candidates.find((c) => decideDuplicate(
     {
       title: c.title, venueName: c.venueName, city, date: ev.date, time: c.time, source: c.source, organiserName: c.organiserName,
-      address: c.venueAddress, url: c.sourceUrl || c.ticketUrl,
+      address: c.venueAddress, url: c.sourceUrl || c.ticketUrl, lat: c.latitude, lng: c.longitude,
     },
     incomingIdentity,
   ).action === 'link')

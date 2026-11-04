@@ -4,7 +4,7 @@
  * on its own. These thresholds are design rules, not measured probabilities.
  */
 import { usableUrl } from '@/lib/listing-link'
-import { equivalentTitles, sharesStreet, venuesMatch } from '@/lib/place-match'
+import { equivalentTitles, isWeakVenueName, pinsNear, sharesStreet, suburbLabelMatch, titleIsTourOf, venuesMatch } from '@/lib/place-match'
 import { isSameEvent, normalizeTitle, normalizeVenue, similarity } from '@/lib/quality'
 import { conflictingRooms, resolveVenueIdentity, sameVenueIdentity } from '@/lib/venue-identity'
 
@@ -15,6 +15,7 @@ const TRACKING_PARAMS = new Set([
   '_ga', '_gl', 'mkt_tok', 'fb_action_ids', 'fb_action_types', 'fb_source',
   'vero_id', '_hsenc', '_hsmi', 'hsa_cam', 'hsa_grp', 'hsa_mt', 'hsa_src',
   'hsa_ad', 'hsa_acc', 'hsa_net', 'hsa_kw', 'hsa_ver',
+  'aff', 'affiliate', 'ref', 'referral', 'cmp', 'irclickid', 'clickid', 'dicbo',
 ])
 
 export const DUPLICATE_THRESHOLDS = {
@@ -41,6 +42,8 @@ export type IdentityEvent = {
   address?: string | null
   status?: string | null
   price?: string | null
+  lat?: number | null
+  lng?: number | null
 }
 
 export type DuplicateAction = 'link' | 'review' | 'separate'
@@ -129,7 +132,11 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
   const sameUrl = !!urlA && urlA === urlB
 
   if (sameSource && a.externalId && b.externalId && a.externalId !== b.externalId) {
-    return decision('separate', 15, 'exact_id', ['Different ids from the same source'])
+    const sameDay = !!a.date && a.date === b.date
+    const startA = minutes(a.time)
+    const startB = minutes(b.time)
+    const differentSession = startA != null && startB != null && Math.abs(startA - startB) > 10
+    if (!sameDay || differentSession) return decision('separate', 15, 'exact_id', ['Different ids from the same source'])
   }
   if (sameExternal) {
     const moved = a.date !== b.date
@@ -156,8 +163,9 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
   const sharedAddress = !!addressA && addressA === addressB
   const ta = minutes(a.time)
   const tb = minutes(b.time)
-  const titlesMatch = equivalentTitles(a.title, b.title)
+  const titlesMatch = equivalentTitles(a.title, b.title) || titleIsTourOf(a.title, b.title)
   const timesEqual = ta != null && tb != null && ta === tb
+  const timesOpen = timesEqual || ta == null || tb == null || Math.abs((ta ?? 0) - (tb ?? 0)) <= 10
   if (sharedAddress && !sameVenueIdentity(venueA, venueB) && venueSim < 0.5 && !(titlesMatch && timesEqual)) {
     return decision('separate', 35, 'address', ['Shared street address with different venue names'])
   }
@@ -178,10 +186,13 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
     return decision('link', 99, 'exact_url', ['Same listing URL and session'], a.status && b.status && a.status !== b.status ? ['status'] : [])
   }
 
-  if (titlesMatch && timesEqual && (venuesMatch(a.venueName, b.venueName) || sharesStreet(
-    { venueName: a.venueName, address: a.address },
-    { venueName: b.venueName, address: b.address },
-  ))) {
+  const place = { venueName: a.venueName, address: a.address }
+  const otherPlace = { venueName: b.venueName, address: b.address }
+  const samePlace = venuesMatch(a.venueName, b.venueName)
+    || sharesStreet(place, otherPlace)
+    || pinsNear({ lat: a.lat, lng: a.lng }, { lat: b.lat, lng: b.lng })
+    || (timesEqual && suburbLabelMatch(place, otherPlace))
+  if (titlesMatch && timesOpen && samePlace) {
     const sameVenue = venuesMatch(a.venueName, b.venueName)
     return decision('link', 92, sameVenue ? 'venue' : 'address', [
       'Same title and start time',
