@@ -4,6 +4,7 @@
  * on its own. These thresholds are design rules, not measured probabilities.
  */
 import { usableUrl } from '@/lib/listing-link'
+import { equivalentTitles, sharesStreet, venuesMatch } from '@/lib/place-match'
 import { isSameEvent, normalizeTitle, normalizeVenue, similarity } from '@/lib/quality'
 import { conflictingRooms, resolveVenueIdentity, sameVenueIdentity } from '@/lib/venue-identity'
 
@@ -153,12 +154,14 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
   const addressB = normAddress(b.address)
   const venueSim = similarity(normalizeVenue(a.venueName), normalizeVenue(b.venueName))
   const sharedAddress = !!addressA && addressA === addressB
-  if (sharedAddress && !sameVenueIdentity(venueA, venueB) && venueSim < 0.5) {
+  const ta = minutes(a.time)
+  const tb = minutes(b.time)
+  const titlesMatch = equivalentTitles(a.title, b.title)
+  const timesEqual = ta != null && tb != null && ta === tb
+  if (sharedAddress && !sameVenueIdentity(venueA, venueB) && venueSim < 0.5 && !(titlesMatch && timesEqual)) {
     return decision('separate', 35, 'address', ['Shared street address with different venue names'])
   }
 
-  const ta = minutes(a.time)
-  const tb = minutes(b.time)
   if (ta != null && tb != null && Math.abs(ta - tb) > SESSION_MINUTES) {
     const earlyTitle = similarity(normalizeTitle(a.title), normalizeTitle(b.title))
     const sameShow = earlyTitle >= 0.85 && (sameVenueIdentity(venueA, venueB) || venueSim >= 0.5)
@@ -167,6 +170,17 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
   }
   if (!organiserAgrees(a.organiserName, b.organiserName)) {
     return decision('separate', 45, 'organiser', ['Organiser names disagree'])
+  }
+
+  if (titlesMatch && timesEqual && (venuesMatch(a.venueName, b.venueName) || sharesStreet(
+    { venueName: a.venueName, address: a.address },
+    { venueName: b.venueName, address: b.address },
+  ))) {
+    const sameVenue = venuesMatch(a.venueName, b.venueName)
+    return decision('link', 92, sameVenue ? 'venue' : 'address', [
+      'Same title and start time',
+      sameVenue ? 'Same venue' : 'Shared street',
+    ])
   }
 
   if (sameSource && !isSameEvent(

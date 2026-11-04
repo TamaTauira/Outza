@@ -102,6 +102,34 @@ test('catalogue comparison counts new sessions separately from uncertain pairs',
   assert.equal(audit.uniqueRate, 2 / 3)
 })
 
+test('the same title and start time link when the venue matches or the street is shared', () => {
+  const jazz = decideDuplicate(
+    row({ title: 'Jazz Wednesdays - A Midweek Taste of Paris', venueName: 'Cardea Barangaroo', time: '17:30', source: 'cityofsydney', address: '300 Barangaroo Avenue, Barangaroo NSW 2000' }),
+    row({ title: 'Jazz Wednesdays - A Midweek Taste of Paris (free entry)', venueName: 'Cardea Barangaroo', time: '17:30', source: 'moshtix', address: 'Shop 2, 300 Barangaroo Ave, Barangaroo NSW 2000' }),
+  )
+  assert.equal(jazz.action, 'link')
+  assert.equal(jazz.layer, 'venue')
+
+  const slice = decideDuplicate(
+    row({ title: 'Slice of the Point', venueName: 'Llankelly Pl', time: '17:00', source: 'cityofsydney', address: 'Llankelly Pl, Potts Point, NSW 2011' }),
+    row({ title: 'Slice of the Point', venueName: 'PIÑA, Room Ten and Dear Sainte Éloise', time: '17:00', source: 'cityofsydney', address: 'Llankelly Pl, Potts Point NSW 2011, Australia' }),
+  )
+  assert.equal(slice.action, 'link')
+  assert.equal(slice.layer, 'address')
+
+  const otherShow = decideDuplicate(
+    row({ title: 'Trivia night', venueName: 'The Roosevelt', time: '19:00', address: 'Llankelly Pl, Potts Point NSW 2011' }),
+    row({ title: 'Jazz upstairs', venueName: 'Dear Sainte Éloise', time: '19:00', address: 'Llankelly Pl, Potts Point NSW 2011' }),
+  )
+  assert.equal(otherShow.action, 'separate')
+
+  const later = decideDuplicate(
+    row({ title: 'Slice of the Point', venueName: 'Llankelly Pl', time: '12:00', address: 'Llankelly Pl, Potts Point NSW 2011' }),
+    row({ title: 'Slice of the Point', venueName: 'PIÑA', time: '17:00', address: 'Llankelly Pl, Potts Point NSW 2011' }),
+  )
+  assert.equal(later.action, 'separate')
+})
+
 test('a source link cannot move ownership, and the public event path stays id-based', () => {
   assert.throws(() => assertNoOwnershipTransfer({ promoterId: 'ada' }), /promoterId/)
   assert.doesNotThrow(() => assertNoOwnershipTransfer({ sources: ['brisbanecouncil'], ticketUrl: 'https://example.com/go' }))

@@ -7,6 +7,7 @@ import { decideDuplicate, type DuplicateDecision } from '@/lib/event-identity'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
 import { usableUrl } from '@/lib/listing-link'
 import { isStreetAddress, isOnlineSentinel } from '@/lib/listing-venue'
+import { isWeakVenueName } from '@/lib/place-match'
 import { dateKeyOf, scheduleFields } from '@/lib/listing-window'
 import { priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { SOURCES, isSameEvent, normalizeVenue, similarity } from '@/lib/quality'
@@ -287,6 +288,18 @@ export function planLinkedFill(canonical: FillEvent, donors: FillEvent[]): Linke
     }
   }
 
+  if (isWeakVenueName(canonical.venueName, canonical.venueAddress) && !locked(canonical, 'venueName')) {
+    const found = pick(usable, false, (donor) => {
+      const name = donor.venueName?.trim()
+      if (!name || isWeakVenueName(name, donor.venueAddress)) return null
+      return name
+    })
+    if (found) {
+      patch.venueName = found.value
+      note('venueName', found.donor.source)
+    }
+  }
+
   if (patch.time || patch.endTime || patch.endDate) {
     const sched = scheduleFields({
       date: canonical.date,
@@ -358,6 +371,7 @@ const PUBLIC_GROUPS: { label: string; fields: string[] }[] = [
   { label: 'the ticket link', fields: ['ticketUrl'] },
   { label: 'the image', fields: ['imageUrl'] },
   { label: 'the description', fields: ['description'] },
+  { label: 'the venue name', fields: ['venueName'] },
 ]
 
 export function fieldSourcesFromRecords(

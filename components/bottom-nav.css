@@ -65,6 +65,12 @@
     padding-right: env(safe-area-inset-right, 0px);
   }
 
+  /* Logo and theme switch only. Let the bar scroll away. Desktop stays sticky. */
+  .vp-site-header.sticky {
+    position: static;
+    top: auto;
+  }
+
   body:has(.vp-bottom-nav) {
     padding-bottom: var(--vp-bottom-nav-offset);
   }
@@ -485,6 +491,11 @@ html[data-vp-fold='side'] body {
 html[data-vp-fold='side'] .vp-top-links,
 html[data-vp-fold='side'] .vp-header-account {
   display: none !important;
+}
+
+html[data-vp-fold='side'] .vp-site-header.sticky {
+  position: static;
+  top: auto;
 }
 
 html[data-vp-fold='side'] .vp-bottom-nav {

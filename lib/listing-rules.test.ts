@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { classifyCategory, areasForCity, conflictsWithMusicIntent, isKidsDanceClass, presentListing, reconcileSuburb, refineStoredCategory } from './categories'
+import { classifyCategory, areasForCity, checkLGBTI, conflictsWithMusicIntent, isKidsDanceClass, presentListing, reconcileSuburb, refineStoredCategory, retagLgbti } from './categories'
 import { displaySuburb, tidyVenueName } from './cities'
 import { isTonightSlot } from './seo'
 import { interpretQuery } from './ai-search-parse'
@@ -27,6 +27,106 @@ test('live music intent stays on music and drops film, theatre and comedy mistag
   assert.equal(conflictsWithMusicIntent('Ivan Aristeguieta- READY TO MAMBO', 'Best Comedy Weekly Award. hilarious, award-winning show'), true)
   assert.equal(conflictsWithMusicIntent('The Teskey Brothers', 'Enmore Theatre, doors 7pm'), false)
   assert.equal(conflictsWithMusicIntent('Jazz gig at the State Theatre', ''), false)
+})
+
+test('sub-tags need a real genre, not a loose word or a broad segment', () => {
+  const hoopla = classifyCategory('Harbour Hoopla Boat Party 2026!', 'Get ready to rock the boat at SQI\'s Legendary Harbour Hoopla 2026!', ['Music'])
+  assert.equal(hoopla.category, 'Music')
+  assert.equal(hoopla.subTags.includes('Rock'), false)
+
+  const partyOnly = classifyCategory('Harbour Hoopla Boat Party 2026!', 'Get ready to rock the boat', [])
+  assert.equal(partyOnly.category, 'Nightlife')
+  assert.equal(partyOnly.subTags.includes('Party'), true)
+  assert.equal(partyOnly.subTags.includes('Rock'), false)
+
+  const rockShow = classifyCategory('Pub rock night', 'A rock band and classic rock set', [])
+  assert.equal(rockShow.subTags.includes('Rock'), true)
+
+  const fromSource = classifyCategory('Powderfinger', '', ['Rock'])
+  assert.equal(fromSource.category, 'Music')
+  assert.equal(fromSource.subTags.includes('Rock'), true)
+
+  const segment = classifyCategory('Aaron Chen - Technology', '', ['Arts & Theatre', 'Comedy'])
+  assert.equal(segment.category, 'Arts & Culture')
+  assert.equal(segment.subTags.includes('Comedy'), true)
+  assert.equal(segment.subTags.includes('Theatre'), false)
+
+  const graduation = classifyCategory('Class of 2026 Graduation Ceremony', 'Approximate Running Times: Doors 5:30PM', [])
+  assert.equal(graduation.subTags.includes('Running'), false)
+  assert.notEqual(graduation.category, 'Sports')
+
+  const run = classifyCategory('Sunrise run club', 'A 5km running session', [])
+  assert.equal(run.subTags.includes('Running'), true)
+
+  const cinema = classifyCategory('Cinema at Sydney Opera House', 'A film on the forecourt', [])
+  assert.equal(cinema.subTags.includes('Opera'), false)
+
+  const nation = classifyCategory('Book launch', 'Giving the country\'s indie scene a fresh voice', ['Country'])
+  assert.equal(nation.subTags.includes('Country'), true)
+  const countryside = classifyCategory('Book launch', 'Giving the country\'s indie scene a fresh voice', [])
+  assert.equal(countryside.subTags.includes('Country'), false)
+
+  const edm = classifyCategory('Warehouse night', '', ['Dance/Electronic'])
+  assert.equal(edm.category, 'Music')
+  assert.equal(edm.subTags.includes('Electronic/EDM'), true)
+  assert.equal(edm.subTags.includes('Dance'), false)
+})
+
+test('stored loose tags are removed and a real source tag is kept', () => {
+  const hoopla = refineStoredCategory({
+    title: 'Harbour Hoopla Boat Party 2026!',
+    description: 'Get ready to rock the boat at SQI\'s Legendary Harbour Hoopla 2026!',
+    category: 'Music',
+    subTags: ['Rock'],
+  })
+  assert.equal(hoopla?.category, 'Music')
+  assert.equal(hoopla?.subTags.includes('Rock'), false)
+
+  const powder = refineStoredCategory({
+    title: 'Powderfinger',
+    description: 'Live 2027',
+    category: 'Music',
+    subTags: ['Rock'],
+  })
+  assert.equal(powder, null)
+
+  const comic = refineStoredCategory({
+    title: 'Aaron Chen - Technology',
+    description: '',
+    category: 'Arts & Culture',
+    subTags: ['Theatre', 'Comedy'],
+  })
+  assert.equal(comic?.subTags.includes('Comedy'), true)
+  assert.equal(comic?.subTags.includes('Theatre'), false)
+
+  const ceremony = refineStoredCategory({
+    title: 'Class of 2026 Graduation Ceremony',
+    description: 'Approximate Running Times: Doors 5:30PM',
+    category: 'Sports',
+    subTags: ['Running'],
+  })
+  assert.equal(ceremony?.category, 'Community')
+  assert.equal(ceremony?.subTags.includes('Running'), false)
+
+  const mma = refineStoredCategory({
+    title: 'Eternal MMA #111',
+    description: 'Approximate Running Times: Doors 2:30pm',
+    category: 'Sports',
+    subTags: ['Running', 'Martial Arts'],
+  })
+  assert.equal(mma?.category, 'Sports')
+  assert.equal(mma?.subTags.includes('Martial Arts'), true)
+  assert.equal(mma?.subTags.includes('Running'), false)
+})
+
+test('LGBTIQ+ follows identity words and source labels, not a loose pride or trans', () => {
+  assert.equal(checkLGBTI('Harbour Hoopla Boat Party', 'Get ready to rock the boat', ['LGBT']), true)
+  assert.equal(checkLGBTI('Rainbow pride party', ''), true)
+  assert.equal(checkLGBTI('Drag Racing at Sydney Dragway', 'Run club members get a discount.'), false)
+  assert.equal(checkLGBTI('Zim QLD Annual Gala', 'Where elegance meets Zimbabwean Pride'), false)
+  assert.equal(checkLGBTI('Trans-Tasman series', 'A sailing race'), false)
+  assert.equal(retagLgbti(true, 'Harbour Hoopla Boat Party', 'Get ready to rock the boat'), true)
+  assert.equal(retagLgbti(true, 'Zim QLD Annual Gala', 'Where elegance meets Zimbabwean Pride'), false)
 })
 
 test('category rules keep networking and kids dance out of the wrong bucket', () => {

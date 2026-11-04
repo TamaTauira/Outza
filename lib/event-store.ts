@@ -105,7 +105,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   let suburb = reconcileSuburb(null, rawVenue, ev.venueAddress, city)
   let venueName = tidyVenueName(rawVenue, ev.venueAddress, city)
   const { category, subTags } = classifyCategory(title, description, ev.genres ?? [])
-  const isLGBTI = checkLGBTI(title, `${description} ${(ev.genres ?? []).join(' ')}`)
+  const isLGBTI = checkLGBTI(title, description, ev.genres ?? [])
   const parsedPrice = readPrice(ev.price, Boolean(ev.isFree))
   const isFree = parsedPrice.isFree
   const price = parsedPrice.price
@@ -392,6 +392,9 @@ async function mergeInto(
   const fill: Record<string, unknown> = { ...plan.patch, sources, lastVerifiedAt: new Date() }
   if (!usableUrl(cur.sourceUrl) && f.sourceUrl) fill.sourceUrl = f.sourceUrl
   if (!usableUrl(cur.organiserUrl) && f.organiserUrl) fill.organiserUrl = f.organiserUrl
+  if (typeof fill.venueName === 'string' && fill.venueName !== cur.venueName) {
+    fill.seriesKey = makeSeriesKey(cur.title, fill.venueName, cur.city)
+  }
   const conflicts = fieldConflicts(cur, f).filter((line) => line.startsWith('time ') || line.startsWith('end '))
   if (conflicts.length) {
     await recordFieldConflict(id, `Kept the original times. ${source} disagreed: ${conflicts.join('; ')}. Provenance stays on sources.`)
