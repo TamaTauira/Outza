@@ -1,6 +1,7 @@
 import { suburbFromAddress, tidyVenueName } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
 import { foldSearchText } from '@/lib/search-fold'
+import { dropBroadTheatre, listingText, lgbtiFromSources, proseEvidence, retagLgbti, sportSignal, tagsFromGenreLabels } from '@/lib/tag-evidence'
 
 export interface CategoryDef {
   name: string
@@ -51,31 +52,38 @@ export const SYDNEY_SUBURBS = [
 ]
 
 export function classifyCategory(title: string, description: string, genres: string[]): { category: string; subTags: string[] } {
-  const text = `${title} ${description} ${genres.join(' ')}`.toLowerCase().replace(/pop[- ]up/g, 'popup')
+  const proseText = listingText(title, description)
+  const text = `${proseText} ${genres.join(' ')}`.toLowerCase()
   const subTags: string[] = []
   let category = 'Community'
 
   for (const cat of CATEGORIES) {
     for (const tag of cat.subTags) {
-      const escaped = tag.toLowerCase().replace(/[.*+?^${}()|[\]\\/&]/g, '\\$&')
-      if (new RegExp(`(^|[^a-z])${escaped}([^a-z]|$)`).test(text)) {
-        category = cat.name
-        subTags.push(tag)
-      }
+      if (proseEvidence(tag, proseText) !== 'clear') continue
+      category = cat.name
+      subTags.push(tag)
     }
   }
+  const source = tagsFromGenreLabels(genres)
+  for (const tag of source.subTags) {
+    if (!subTags.includes(tag)) subTags.push(tag)
+  }
+  if (source.category) category = source.category
 
   // Genre words match on boundaries so "partnership" / "party" / "start" are not "art",
   // and "Martial Arts" is not filed as Arts & Culture.
   const genreText = genres.join('\n')
   const genreHas = (words: string[], source = genreText) =>
     words.some((w) => new RegExp(`(^|[^a-z])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i').test(source))
-  if (genreHas(['music', 'concert', 'live music'])) category = 'Music'
-  else if (genreHas(['sport', 'athletic'])) category = 'Sports'
-  else if (genreHas(['theatre', 'theater', 'comedy', 'dance', 'film', 'exhibition', 'arts', 'art'], genreText.replace(/martial arts/gi, ' '))) category = 'Arts & Culture'
-  else if (genreHas(['food', 'drink', 'wine', 'beer', 'dining'])) category = 'Food & Drink'
-  else if (genreHas(['family', 'kids', 'children'])) category = 'Family'
-  else if (genreHas(['business', 'conference', 'seminar', 'networking'])) category = 'Business'
+  // A mapped source label already chose the category. Don't let "dance" inside "Dance/Electronic" pull it back to Arts.
+  if (!source.category) {
+    if (genreHas(['music', 'concert', 'live music'])) category = 'Music'
+    else if (genreHas(['sport', 'athletic'])) category = 'Sports'
+    else if (genreHas(['theatre', 'theater', 'comedy', 'dance', 'film', 'exhibition', 'arts', 'art'], genreText.replace(/martial arts/gi, ' '))) category = 'Arts & Culture'
+    else if (genreHas(['food', 'drink', 'wine', 'beer', 'dining'])) category = 'Food & Drink'
+    else if (genreHas(['family', 'kids', 'children'])) category = 'Family'
+    else if (genreHas(['business', 'conference', 'seminar', 'networking'])) category = 'Business'
+  }
 
   // Text-based fallback
   if (category === 'Community') {
@@ -100,7 +108,8 @@ export function classifyCategory(title: string, description: string, genres: str
   if (category === 'Family' && isKidsDanceClass(blob) && !subTags.includes('Kids Activities')) subTags.push('Kids Activities')
   // Only keep tags that belong to the final category, so the Type column matches the filter.
   const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
-  return { category, subTags: [...new Set(subTags)].filter((t) => own.includes(t)) }
+  const filtered = [...new Set(subTags)].filter((t) => own.includes(t))
+  return { category, subTags: dropBroadTheatre(filtered, proseText) }
 }
 
 const CONCERT_TITLE = /\b(concerts?|gigs?|recitals?|symphon(?:y|ies)|orchestras?|live music|dj sets?)\b/i
@@ -151,7 +160,7 @@ export function conflictsWithMusicIntent(title: string, description = '', extra:
 const SPORT_WORDS = /\b(rugby|nrl|afl|cricket|a-league|football|soccer|basketball|tennis|melbourne cup)\b/i
 
 export function refineStoredCategory(ev: { title: string; description?: string | null; category: string; subTags?: string[] | null }): { category: string; subTags: string[] } | null {
-  const subTags = [...(ev.subTags ?? [])]
+  let subTags = [...(ev.subTags ?? [])]
   const text = `${ev.title} ${ev.description ?? ''} ${subTags.join(' ')}`
   let category = ev.category
   if (isBusinessNetworking(text) || /\b(investor roadshows?|shareholder)\b/i.test(text) || (/\broadshow\b/i.test(text) && /\binvestor\b/i.test(text))) category = 'Business'
@@ -172,16 +181,19 @@ export function refineStoredCategory(ev: { title: string; description?: string |
     if (filmAt >= 0) subTags.splice(filmAt, 1)
     if (category === 'Arts & Culture') category = 'Community'
   }
+  const cleaned = cleanupStoredTags({ title: ev.title, description: ev.description, category, subTags })
+  category = cleaned.category
+  subTags = cleaned.subTags
   const changedTags = subTags.join('|') !== [...(ev.subTags ?? [])].join('|')
   if (category === ev.category && !changedTags) return null
   const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
   const next = subTags.filter((t) => own.includes(t))
-  if (category === 'Business' && own.includes('Networking') && !next.includes('Networking')) next.push('Networking')
-  if (category === 'Family' && own.includes('Kids Activities') && !next.includes('Kids Activities')) next.push('Kids Activities')
+  if (category === 'Business' && isBusinessNetworking(`${ev.title} ${ev.description ?? ''}`) && own.includes('Networking') && !next.includes('Networking')) next.push('Networking')
+  if (category === 'Family' && isKidsDanceClass(`${ev.title} ${ev.description ?? ''}`) && own.includes('Kids Activities') && !next.includes('Kids Activities')) next.push('Kids Activities')
   if (category === 'Arts & Culture') {
     if (/\b(comedy|comedian|stand-?up|standup)\b/i.test(text) && own.includes('Comedy') && !next.includes('Comedy')) next.push('Comedy')
     if (!photoShoot && /\b(screenings?|documentar(?:y|ies)|cinema|films?)\b/i.test(prose) && own.includes('Film') && !next.includes('Film')) next.push('Film')
-    if (/\b(theatres?|theaters?)\b/i.test(text) && own.includes('Theatre') && !next.includes('Theatre')) next.push('Theatre')
+    if (/\b(plays?|musicals?|dramas?|theatre shows?|theater shows?|stage plays?)\b/i.test(text) && own.includes('Theatre') && !next.includes('Theatre')) next.push('Theatre')
   }
   return { category, subTags: next }
 }
@@ -206,9 +218,32 @@ export function presentListing<T extends ListingPlace>(ev: T): T {
   return { ...ev, ...(refined ?? {}), suburb, venueName }
 }
 
-export function checkLGBTI(title: string, description: string): boolean {
-  const text = foldSearchText(`${title} ${description}`)
-  return /\b(lgbti|lgbtq|lgbt|pride|queer|gay|lesbian|trans|gender.?diverse|rainbow|drag.?queen|drag.?show|mardi.?gras)\b/.test(text)
+export function checkLGBTI(title: string, description: string, genres: string[] = []): boolean {
+  const folded = foldSearchText(`${title} ${description}`)
+  return lgbtiFromSources(folded, '', genres.map((genre) => foldSearchText(genre)))
+}
+
+export { retagLgbti }
+
+function cleanupStoredTags(ev: { title: string; description?: string | null; category: string; subTags: string[] }): { category: string; subTags: string[] } {
+  const text = listingText(ev.title, ev.description)
+  let subTags = ev.subTags.filter((tag) => proseEvidence(tag, text) !== 'misleading')
+  subTags = dropBroadTheatre(subTags, text)
+  let category = ev.category
+  const droppedRunning = ev.subTags.includes('Running') && !subTags.includes('Running')
+  const sportTags = new Set(CATEGORIES.find((cat) => cat.name === 'Sports')?.subTags ?? [])
+  if (droppedRunning && category === 'Sports' && !sportSignal(text) && !subTags.some((tag) => sportTags.has(tag))) {
+    category = 'Community'
+    for (const cat of CATEGORIES) {
+      if (cat.subTags.some((tag) => subTags.includes(tag) && proseEvidence(tag, text) === 'clear')) category = cat.name
+    }
+  }
+  const own = new Set(CATEGORIES.find((cat) => cat.name === category)?.subTags ?? [])
+  for (const tag of own) {
+    if (proseEvidence(tag, text) === 'clear' && !subTags.includes(tag)) subTags.push(tag)
+  }
+  if (category !== ev.category) subTags = subTags.filter((tag) => own.has(tag))
+  return { category, subTags: [...new Set(subTags)] }
 }
 
 export function checkFree(priceStr: string | null | undefined): boolean {

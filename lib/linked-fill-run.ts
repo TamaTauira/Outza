@@ -3,6 +3,7 @@
  * Dry-run reports counts and writes nothing. A second apply is a no-op.
  */
 import { Prisma } from '@prisma/client'
+import { makeSeriesKey } from '@/lib/event-store'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { plansForRows, type FillEvent, type LinkedFillPlan } from '@/lib/linked-fill'
 import { prisma } from '@/lib/prisma'
@@ -146,9 +147,11 @@ async function lockedFields(ids: string[]): Promise<Map<string, string[]>> {
 }
 
 async function applyPlan(event: FillEvent, donors: FillEvent[], plan: LinkedFillPlan): Promise<void> {
+  const data: Record<string, unknown> = { ...plan.patch }
+  if (typeof data.venueName === 'string' && event.city) data.seriesKey = makeSeriesKey(event.title, data.venueName, event.city)
   await prisma.event.update({
     where: { id: event.id },
-    data: plan.patch as Prisma.EventUpdateInput,
+    data: data as Prisma.EventUpdateInput,
   })
   const bySource = new Map<string, string[]>()
   for (const row of plan.filled) {

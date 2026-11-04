@@ -76,9 +76,16 @@ function isClearlyFree(text: string): boolean {
   return /\b(free|gratis|complimentary|no charge|no cost)\b/i.test(text) || /^(?:aud\s*)?\$?\s*0(?:\.0+)?$/i.test(text.trim())
 }
 
-/** Parse a price string, number, or money/range object. `isFreeHint` forces Free (a source said the event is free). */
+/** Parse a price string, number, or money/range object. A free hint applies when the price itself is blank or zero. A positive price wins. */
 export function readPrice(raw: unknown, isFreeHint = false): PriceRead {
-  if (isFreeHint) return FREE
+  const parsed = readPriceValue(raw)
+  if (!isFreeHint) return parsed
+  if (parsed.min != null && parsed.min > 0) return parsed
+  if (parsed.max != null && parsed.max > 0) return parsed
+  return FREE
+}
+
+function readPriceValue(raw: unknown): PriceRead {
   if (raw == null || raw === '') return UNKNOWN
   if (typeof raw === 'number') return priceFromAmounts(raw, raw)
   if (typeof raw === 'object') {

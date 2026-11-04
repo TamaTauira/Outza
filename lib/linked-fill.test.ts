@@ -134,6 +134,31 @@ test('the Melbourne Palais listing is not used to fill the Brisbane-labelled Tiv
   assert.equal(planLinkedFill(melbourne, [palais]).filled.length, 0)
 })
 
+test('a street used as the venue name is filled from the named rooms, and a real name is kept', () => {
+  const street = frontier({
+    title: 'Slice of the Point',
+    venueName: 'Llankelly Pl',
+    venueAddress: 'Llankelly Pl, Potts Point NSW 2011',
+    price: null,
+  })
+  const rooms = ticketmaster({
+    title: 'Slice of the Point',
+    venueName: 'PIÑA, Room Ten and Dear Sainte Éloise',
+    venueAddress: 'Llankelly Pl, Potts Point NSW 2011',
+    price: '$50',
+    priceMin: 50,
+    priceMax: 50,
+    relation: 'linked',
+  })
+  const plan = planLinkedFill(street, [rooms])
+  assert.equal(plan.patch.venueName, 'PIÑA, Room Ten and Dear Sainte Éloise')
+  assert.equal(plan.patch.price, '$50')
+  assert.equal(plan.filled.find((row) => row.field === 'venueName')?.source, 'ticketmaster')
+
+  const named = planLinkedFill(frontier({ venueName: 'Cardea Barangaroo' }), [ticketmaster({ venueName: 'Somewhere Else', relation: 'linked' })])
+  assert.equal(named.patch.venueName, undefined)
+})
+
 test('a review pair is not a donor, even when the listing already names that source', () => {
   const canonical = frontier({ time: '19:00', price: null })
   const donor = ticketmaster({ time: '19:00', price: '$89.90', priceMin: 89.9, priceMax: 89.9 })
