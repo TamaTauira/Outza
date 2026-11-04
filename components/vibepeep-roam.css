@@ -1,11 +1,30 @@
 /* Roaming buddy. Position is a transform on .vp-roam; the bitmap never changes. */
 
+.vp-roam:not([data-placed]) {
+  visibility: hidden !important;
+}
+
+/* The front view is painted visible on its own, so it was showing through
+   this hide and the walk opened on a straight-on face. Nothing shows
+   until the walk has placed him, which is the three-quarter turn. */
+.vp-roam:not([data-placed]) .vp-front,
+.vp-roam:not([data-placed]) .vp-profile,
+.vp-roam:not([data-placed]) .vp-threeq,
+.vp-roam:not([data-placed]) .vp-show {
+  visibility: hidden !important;
+}
+
+.vp-roam[data-move='still'] .vp-bob {
+  animation: none !important;
+  transform: none;
+}
+
 .vp-roam {
   position: fixed;
   z-index: 34;
   left: 0;
   top: 0;
-  width: 7.5rem;
+  width: var(--vp-size-phone);
   pointer-events: none;
 }
 
@@ -17,9 +36,25 @@
   bottom: max(5.75rem, calc(env(safe-area-inset-bottom) + 5rem));
 }
 
+@media (max-width: 639px) {
+  .vp-roam .vp-buddy-min {
+    top: -4px;
+    right: -4px;
+    left: auto;
+    translate: none;
+  }
+}
+
 @media (min-width: 640px) {
   .vp-roam {
-    width: 11rem;
+    width: var(--vp-size-desktop);
+  }
+
+  .vp-roam .vp-buddy-min {
+    top: -4px;
+    right: -4px;
+    left: auto;
+    translate: none;
   }
 
   .vp-roam:not([data-ready]) {
@@ -29,7 +64,13 @@
 }
 
 .vp-roam-map {
-  width: 5.5rem;
+  width: var(--vp-size-phone);
+}
+
+@media (min-width: 640px) {
+  .vp-roam-map {
+    width: var(--vp-size-desktop);
+  }
 }
 
 .vp-roam-parked {
@@ -71,7 +112,11 @@
 }
 
 .dark .vp-shadow {
-  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 70%);
+}
+
+html[data-walkstill='1'] .vp-hero-clock {
+  visibility: hidden;
 }
 
 .vp-roam .vp-actor {
@@ -188,6 +233,12 @@
 
 .vp-roam .vp-bubble {
   max-width: min(11rem, 46vw);
+}
+
+.vp-roam[data-bub='up'] .vp-bubble {
+  top: auto;
+  bottom: calc(100% + 8px);
+  translate: -50% 0;
 }
 
 @keyframes vp-walk-bob {

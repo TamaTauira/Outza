@@ -1,70 +1,70 @@
 {
-  "width": 584,
-  "height": 760,
-  "srcWidth": 584,
-  "srcHeight": 760,
+  "width": 763,
+  "height": 1092,
+  "srcWidth": 763,
+  "srcHeight": 1092,
   "layout": {
     "body": {
-      "left": 0.0634,
-      "top": 0.1293,
-      "width": 0.8368,
-      "height": 0.7529,
+      "left": 0.0406,
+      "top": 0.1145,
+      "width": 0.9201,
+      "height": 0.7546,
       "originX": 0.5,
-      "originY": 0.45
+      "originY": 0.46
     },
     "leg-l": {
-      "left": 0.204,
-      "top": 0.8237,
-      "width": 0.2536,
-      "height": 0.1745,
-      "originX": 0.55,
+      "left": 0.038,
+      "top": 0.7985,
+      "width": 0.4312,
+      "height": 0.1978,
+      "originX": 0.5,
       "originY": 0.08
     },
     "leg-r": {
-      "left": 0.453,
-      "top": 0.8237,
-      "width": 0.2824,
-      "height": 0.1745,
-      "originX": 0.42,
+      "left": 0.4771,
+      "top": 0.7985,
+      "width": 0.4862,
+      "height": 0.1978,
+      "originX": 0.5,
       "originY": 0.08
     },
     "antenna": {
-      "left": 0.3769,
-      "top": 0.0018,
-      "width": 0.1475,
-      "height": 0.1329,
+      "left": 0.4155,
+      "top": 0.0037,
+      "width": 0.1717,
+      "height": 0.1429,
       "originX": 0.5,
-      "originY": 0.92
+      "originY": 0.9
     },
     "arm-l": {
-      "left": 0.03,
-      "top": 0.5368,
-      "width": 0.1418,
-      "height": 0.2896,
-      "originX": 0.6098,
-      "originY": 0.08
+      "left": 0.0052,
+      "top": 0.5504,
+      "width": 0.2071,
+      "height": 0.2866,
+      "originX": 0.6835,
+      "originY": 0.0575
     },
     "arm-r": {
-      "left": 0.80,
-      "top": 0.5368,
-      "width": 0.1418,
-      "height": 0.2896,
-      "originX": 0.3902,
-      "originY": 0.08
+      "left": 0.7851,
+      "top": 0.5504,
+      "width": 0.2097,
+      "height": 0.2866,
+      "originX": 0.3125,
+      "originY": 0.0575
     },
     "pupil-l": {
-      "left": 0.36,
-      "top": 0.28,
-      "width": 0.12,
-      "height": 0.12,
+      "left": 0.34,
+      "top": 0.26,
+      "width": 0.08,
+      "height": 0.07,
       "originX": 0.5,
       "originY": 0.5
     },
     "pupil-r": {
       "left": 0.52,
-      "top": 0.27,
-      "width": 0.12,
-      "height": 0.12,
+      "top": 0.26,
+      "width": 0.08,
+      "height": 0.07,
       "originX": 0.5,
       "originY": 0.5
     }

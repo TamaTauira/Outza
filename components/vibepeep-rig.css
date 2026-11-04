@@ -5,14 +5,29 @@
   position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 584 / 760;
+  aspect-ratio: 763 / 1092;
   overflow: visible;
 }
 
 .vp-front,
-.vp-side {
+.vp-side,
+.vp-profile {
   position: absolute;
   inset: 0;
+}
+
+.vp-front { z-index: 2; }
+
+.vp-profile {
+  z-index: 3;
+  visibility: hidden;
+  pointer-events: none;
+  transform-origin: 50% 70%;
+}
+
+.vp-front,
+.vp-profile {
+  transition: none;
 }
 
 .vp-part img,
@@ -32,49 +47,91 @@
   object-fit: contain;
 }
 
-.vp-roam[data-move='hop'] .vp-pose-walk,
-.vp-roam[data-move='chase'] .vp-pose-walk,
-.vp-roam[data-move='bounce'] .vp-pose-walk,
-.vp-roam[data-move='jog'] .vp-pose-walk,
-.vp-roam[data-move='wave'] .vp-pose-wave,
-.vp-hit[data-react='wave']:not([data-dance]) .vp-pose-wave,
-.vp-roam[data-move='perch'] .vp-pose-sit,
-.vp-roam[data-move='jump'] .vp-pose-jump,
+/* Pose photos stay hidden. The jointed rig plays walk, wave, sit and jump,
+   so a photo can never sit on top of a second pair of arms. An explicit
+   pose still hides the rig for the whole time it is showing. */
 .vp-roam[data-pose='back'] .vp-pose-back,
-.vp-roam[data-pose='hips'] .vp-pose-hips,
-.vp-roam[data-move='idle'] .vp-pose-hips,
-.vp-roam[data-move='still'] .vp-pose-hips {
+.vp-roam[data-pose='hips'] .vp-pose-hips {
   display: block;
 }
 
-.vp-pose-hips { opacity: 0; }
-
-.vp-roam[data-move='idle'] .vp-pose-hips,
-.vp-roam[data-move='still'] .vp-pose-hips {
-  animation: vp-hips-on 9.2s steps(1, end) infinite;
-}
-
-.vp-roam[data-pose='hips'] .vp-pose-hips {
-  opacity: 1;
-  animation: none;
-}
-
-@keyframes vp-hips-on {
-  0%, 32% { opacity: 0; }
-  33%, 56% { opacity: 1; }
-  57%, 100% { opacity: 0; }
-}
-
-.vp-roam[data-move='hop'] .vp-front,
-.vp-roam[data-move='chase'] .vp-front,
-.vp-roam[data-move='bounce'] .vp-front,
-.vp-roam[data-move='jog'] .vp-front,
-.vp-roam[data-move='wave'] .vp-front,
-.vp-hit[data-react='wave']:not([data-dance]) .vp-front,
-.vp-roam[data-move='perch'] .vp-front,
-.vp-roam[data-move='jump'] .vp-front,
 .vp-roam[data-pose='back'] .vp-front,
 .vp-roam[data-pose='hips'] .vp-front {
+  visibility: hidden;
+}
+
+/* The jointed cut-outs are the character. Full-body sheets stay in the tree for the pose test. */
+.vp-front {
+  visibility: visible;
+}
+
+.vp-sheet {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  translate: -50% 0;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.vp-sheet-hips {
+  opacity: 1;
+}
+
+.vp-hit[data-dance='robot'] .vp-sheet-hips,
+.vp-hit[data-dance='ymca'] .vp-sheet-hips,
+.vp-hit[data-dance='macarena'] .vp-sheet-hips,
+.vp-hit[data-dance='hand-jive'] .vp-sheet-hips,
+.vp-hit[data-dance='sprinkler'] .vp-sheet-hips,
+.vp-hit[data-dance='shopping-cart'] .vp-sheet-hips,
+.vp-hit[data-dance='disco-point'] .vp-sheet-hips,
+.vp-hit[data-dance='chicken'] .vp-sheet-hips,
+.vp-hit[data-dance='horse'] .vp-sheet-hips,
+.vp-hit[data-react='wave'] .vp-sheet-hips,
+.vp-hit[data-react='highfive'] .vp-sheet-hips,
+.vp-roam[data-move='jump'] .vp-sheet-hips,
+.vp-roam[data-move='wave'] .vp-sheet-hips {
+  opacity: 0;
+}
+
+.vp-hit[data-dance='robot'] .vp-sheet-out,
+.vp-hit[data-dance='ymca'] .vp-sheet-out,
+.vp-hit[data-dance='macarena'] .vp-sheet-out,
+.vp-hit[data-dance='hand-jive'] .vp-sheet-out,
+.vp-hit[data-dance='sprinkler'] .vp-sheet-out,
+.vp-hit[data-dance='shopping-cart'] .vp-sheet-out {
+  opacity: 1;
+}
+
+.vp-hit[data-dance='disco-point'] .vp-sheet-point {
+  opacity: 1;
+}
+
+.vp-hit[data-dance='chicken'] .vp-sheet-wave,
+.vp-hit[data-dance='horse'] .vp-sheet-wave,
+.vp-hit[data-react='wave'] .vp-sheet-wave,
+.vp-hit[data-react='highfive'] .vp-sheet-wave,
+.vp-roam[data-move='jump'] .vp-sheet-wave,
+.vp-roam[data-move='wave'] .vp-sheet-wave {
+  opacity: 1;
+}
+
+.vp-bubble:empty {
+  opacity: 0 !important;
+  visibility: hidden;
+}
+
+.vp-bubble:empty::after {
+  content: none;
+}
+
+.vp-roam[data-showoff='1'] .vp-bubble {
+  opacity: 0 !important;
   visibility: hidden;
 }
 
@@ -95,13 +152,16 @@
 }
 
 .vp-leg { z-index: 1; }
-.vp-torso { z-index: 2; }
-.vp-arm { z-index: 3; }
+.vp-arm { z-index: 2; }
+.vp-torso { z-index: 4; }
 .vp-spark { z-index: 4; }
-.vp-ant { z-index: 5; }
+.vp-ant { z-index: 7; }
+
+/* Arms stay behind the egg, so a raised hand cannot paint over the eyes. */
 
 .vp-s-leg-b { z-index: 1; }
 .vp-s-arm-b { z-index: 2; }
+.vp-s-body { z-index: 3; }
 .vp-s-leg-f { z-index: 4; }
 .vp-s-arm-f { z-index: 5; }
 .vp-s-ant { z-index: 6; }
@@ -122,6 +182,14 @@
   object-fit: fill;
   pointer-events: none;
   user-select: none;
+}
+
+.vp-ant .vp-ant-tip,
+.vp-s-ant .vp-ant-tip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* Idle life. Different periods so blink, glance, sway and fidget never lock into one pose. */
@@ -159,32 +227,72 @@
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-bob,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-bob,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-bob {
-  animation: vp-step-bob var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-bob var(--vp-cycle, 0.84s) ease-in-out infinite;
   transform-origin: 50% 78%;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-leg-f,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-leg-f,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-s-leg-f {
+  animation: vp-side-leg-f var(--vp-cycle, 0.84s) linear infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-leg-b,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-leg-b,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-s-leg-b {
+  animation: vp-side-leg-b var(--vp-cycle, 0.84s) linear infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-arm-f,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-arm-f {
+  animation: vp-side-arm-f var(--vp-cycle, 0.84s) ease-in-out infinite;
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-s-arm-b,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-s-arm-b {
+  animation: vp-side-arm-b var(--vp-cycle, 0.84s) ease-in-out infinite;
+}
+
+.vp-hit[data-dance='moonwalk'] .vp-profile { visibility: visible; }
+.vp-hit[data-dance='moonwalk'] .vp-front { visibility: hidden; }
+.vp-hit[data-dance='moonwalk'] .vp-profile { transform: none; }
+.vp-hit[data-dance='moonwalk'] .vp-bob { animation: vp-moon-glide 1.8s linear 1 forwards; }
+.vp-hit[data-dance='moonwalk'] .vp-s-leg-f,
+.vp-hit[data-dance='moonwalk'] .vp-s-leg-b { transform-origin: 78% 88%; animation: vp-moon-heel 0.42s ease-in-out infinite; }
+.vp-hit[data-dance='moonwalk'] .vp-s-leg-b { animation-delay: 0.21s; }
+
+@keyframes vp-moon-glide {
+  0% { transform: translateX(14%); }
+  100% { transform: translateX(-14%); }
+}
+
+@keyframes vp-moon-heel {
+  0%, 100% { transform: rotate(0deg); }
+  45% { transform: rotate(-16deg); }
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-leg-l,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-leg-l,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-leg-l {
-  animation: vp-step-leg-l var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-leg-l var(--vp-cycle, 0.84s) linear infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-leg-r,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-leg-r,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-leg-r {
-  animation: vp-step-leg-r var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-leg-r var(--vp-cycle, 0.84s) linear infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-arm-l,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-arm-l,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-arm-l {
-  animation: vp-step-arm-l var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-arm-l var(--vp-cycle, 0.84s) ease-in-out infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-arm-r,
 .vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-arm-r,
 .vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-arm-r {
-  animation: vp-step-arm-r var(--vp-step, 0.48s) ease-in-out infinite;
+  animation: vp-step-arm-r var(--vp-cycle, 0.84s) ease-in-out infinite;
 }
 
 .vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-ant,
@@ -193,19 +301,30 @@
   animation: vp-step-ant var(--vp-step, 0.48s) ease-in-out infinite;
 }
 
-/* Travel uses the three-quarter figure, arms swinging against the legs. */
-.vp-roam[data-move='hop'] .vp-front,
-.vp-roam[data-move='chase'] .vp-front,
-.vp-roam[data-move='bounce'] .vp-front,
-.vp-roam[data-move='jog'] .vp-front {
+/* Walking swaps to the profile in one frame. No fade, so he never looks see-through. */
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-profile,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-profile,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-profile {
+  visibility: visible;
+}
+
+.vp-roam[data-face='right'][data-move='hop'] .vp-hit:not([data-react]) .vp-profile,
+.vp-roam[data-face='right'][data-move='chase'] .vp-hit:not([data-react]) .vp-profile,
+.vp-roam[data-face='right'][data-move='bounce'] .vp-hit:not([data-react]) .vp-profile {
+  transform: scaleX(-1);
+}
+
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]) .vp-front,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]) .vp-front,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]) .vp-front {
   visibility: hidden;
 }
 
-.vp-roam[data-move='hop'] .vp-side,
-.vp-roam[data-move='chase'] .vp-side,
-.vp-roam[data-move='bounce'] .vp-side,
-.vp-roam[data-move='jog'] .vp-side {
-  display: block;
+.vp-roam[data-move='hop'] .vp-hit:not([data-react]):not([data-dance]) .vp-bob,
+.vp-roam[data-move='chase'] .vp-hit:not([data-react]):not([data-dance]) .vp-bob,
+.vp-roam[data-move='bounce'] .vp-hit:not([data-react]):not([data-dance]) .vp-bob {
+  animation: vp-stomp-bob var(--vp-cycle, 0.84s) ease-in-out infinite;
+  transform-origin: 50% 78%;
 }
 
 .vp-roam[data-move='hop'] .vp-s-leg-f,
@@ -262,6 +381,18 @@
 .vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-r,
 .vp-roam:not([data-move]) .vp-hit:not([data-react]) .vp-arm-r {
   animation: vp-rest-arm-r 9.2s ease-in-out infinite;
+}
+
+.vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-hip,
+.vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm-hip,
+.vp-roam:not([data-move]) .vp-hit:not([data-react]) .vp-arm-hip {
+  animation: vp-hip-show 9.2s ease-in-out infinite;
+}
+
+.vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm > img:first-child,
+.vp-roam[data-move='still'] .vp-hit:not([data-react]):not([data-dance]) .vp-arm > img:first-child,
+.vp-roam:not([data-move]) .vp-hit:not([data-react]) .vp-arm > img:first-child {
+  animation: vp-hip-hide 9.2s ease-in-out infinite;
 }
 
 .vp-roam[data-move='idle'] .vp-hit:not([data-react]):not([data-dance]) .vp-leg-l,
@@ -458,32 +589,39 @@
 }
 
 @keyframes vp-step-bob {
-  0%, 100% { transform: translateY(0) rotate(-1.4deg); }
-  50% { transform: translateY(-2.2%) rotate(1.4deg); }
+  0%, 8% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
+  28% { transform: translateY(-3.2%) rotate(-1deg) scale(1, 1); }
+  50%, 58% { transform: translateY(1.6%) rotate(3deg) scale(1, 0.96); }
+  78% { transform: translateY(-3.2%) rotate(1deg) scale(1, 1); }
+  100% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
 }
 
 @keyframes vp-step-leg-l {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(16deg); }
-  75% { transform: rotate(-14deg); }
+  0%, 10% { transform: rotate(8deg); }
+  30% { transform: rotate(2deg); }
+  50%, 60% { transform: rotate(-6deg); }
+  78% { transform: rotate(36deg); }
+  100% { transform: rotate(8deg); }
 }
 
 @keyframes vp-step-leg-r {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-14deg); }
-  75% { transform: rotate(16deg); }
+  0%, 10% { transform: rotate(6deg); }
+  28% { transform: rotate(-36deg); }
+  50%, 60% { transform: rotate(-8deg); }
+  80% { transform: rotate(-2deg); }
+  100% { transform: rotate(6deg); }
 }
 
 @keyframes vp-step-arm-l {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-10deg); }
-  75% { transform: rotate(8deg); }
+  0%, 10% { transform: rotate(-18deg); }
+  50%, 60% { transform: rotate(18deg); }
+  100% { transform: rotate(-18deg); }
 }
 
 @keyframes vp-step-arm-r {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(8deg); }
-  75% { transform: rotate(-10deg); }
+  0%, 10% { transform: rotate(18deg); }
+  50%, 60% { transform: rotate(-18deg); }
+  100% { transform: rotate(18deg); }
 }
 
 @keyframes vp-step-ant {
@@ -491,24 +629,43 @@
   50% { transform: rotate(-8deg); }
 }
 
+@keyframes vp-stomp-bob {
+  0%, 8% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
+  28% { transform: translateY(-3.2%) rotate(-1deg) scale(1, 1); }
+  50%, 58% { transform: translateY(1.6%) rotate(3deg) scale(1, 0.96); }
+  78% { transform: translateY(-3.2%) rotate(1deg) scale(1, 1); }
+  100% { transform: translateY(1.6%) rotate(-3deg) scale(1, 0.96); }
+}
+
+/* One full cycle is two steps. Lift is the last 40%. The other leg is offset 50%. */
 @keyframes vp-side-leg-f {
-  0%, 100% { transform: rotate(-36deg); }
-  50% { transform: rotate(28deg); }
+  0%, 10% { transform: rotate(-12deg); }
+  28% { transform: rotate(4deg); }
+  50%, 60% { transform: rotate(16deg); }
+  78% { transform: rotate(-42deg); }
+  92% { transform: rotate(-24deg); }
+  100% { transform: rotate(-12deg); }
 }
 
 @keyframes vp-side-leg-b {
-  0%, 100% { transform: rotate(30deg); }
-  50% { transform: rotate(-32deg); }
+  0%, 10% { transform: rotate(16deg); }
+  28% { transform: rotate(-42deg); }
+  42% { transform: rotate(-24deg); }
+  50%, 60% { transform: rotate(-12deg); }
+  78% { transform: rotate(4deg); }
+  100% { transform: rotate(16deg); }
 }
 
 @keyframes vp-side-arm-f {
-  0%, 100% { transform: rotate(-12deg); }
-  50% { transform: rotate(14deg); }
+  0%, 10% { transform: rotate(18deg); }
+  50%, 60% { transform: rotate(-18deg); }
+  100% { transform: rotate(18deg); }
 }
 
 @keyframes vp-side-arm-b {
-  0%, 100% { transform: rotate(12deg); }
-  50% { transform: rotate(-14deg); }
+  0%, 10% { transform: rotate(-18deg); }
+  50%, 60% { transform: rotate(18deg); }
+  100% { transform: rotate(-18deg); }
 }
 
 @keyframes vp-side-ant {
@@ -517,15 +674,25 @@
 }
 
 @keyframes vp-rest-arm-l {
-  0%, 24% { transform: rotate(2deg); }
-  36%, 54% { transform: rotate(68deg); }
-  66%, 100% { transform: rotate(0deg); }
+  0%, 24% { transform: rotate(4deg); }
+  36%, 54% { transform: rotate(0deg); }
+  66%, 100% { transform: rotate(4deg); }
 }
 
 @keyframes vp-rest-arm-r {
-  0%, 24% { transform: rotate(-2deg); }
-  36%, 54% { transform: rotate(-64deg); }
-  66%, 100% { transform: rotate(0deg); }
+  0%, 24% { transform: rotate(-4deg); }
+  36%, 54% { transform: rotate(0deg); }
+  66%, 100% { transform: rotate(-4deg); }
+}
+
+@keyframes vp-hip-show {
+  0%, 28%, 64%, 100% { opacity: 0; }
+  36%, 54% { opacity: 1; }
+}
+
+@keyframes vp-hip-hide {
+  0%, 28%, 64%, 100% { opacity: 1; }
+  36%, 54% { opacity: 0; }
 }
 
 @keyframes vp-rest-leg-l {
@@ -541,33 +708,33 @@
 }
 
 @keyframes vp-jump-leg-l {
-  0% { transform: rotate(0deg); }
-  16% { transform: rotate(28deg); }
-  48% { transform: rotate(-18deg); }
-  66% { transform: rotate(16deg); }
-  100% { transform: rotate(0deg); }
+  0% { transform: rotate(4deg); }
+  16% { transform: rotate(34deg); }
+  48% { transform: rotate(-28deg); }
+  66% { transform: rotate(22deg); }
+  100% { transform: rotate(4deg); }
 }
 
 @keyframes vp-jump-leg-r {
-  0% { transform: rotate(0deg); }
-  16% { transform: rotate(-26deg); }
-  48% { transform: rotate(16deg); }
-  66% { transform: rotate(-14deg); }
-  100% { transform: rotate(0deg); }
+  0% { transform: rotate(-4deg); }
+  16% { transform: rotate(-32deg); }
+  48% { transform: rotate(26deg); }
+  66% { transform: rotate(-20deg); }
+  100% { transform: rotate(-4deg); }
 }
 
 @keyframes vp-jump-arm-l {
-  0% { transform: rotate(0deg); }
-  16% { transform: rotate(8deg); }
-  48% { transform: rotate(-52deg); }
-  100% { transform: rotate(0deg); }
+  0% { transform: rotate(10deg); }
+  16% { transform: rotate(18deg); }
+  48% { transform: rotate(150deg); }
+  100% { transform: rotate(10deg); }
 }
 
 @keyframes vp-jump-arm-r {
-  0% { transform: rotate(0deg); }
-  16% { transform: rotate(-6deg); }
-  48% { transform: rotate(48deg); }
-  100% { transform: rotate(0deg); }
+  0% { transform: rotate(-10deg); }
+  16% { transform: rotate(-16deg); }
+  48% { transform: rotate(-150deg); }
+  100% { transform: rotate(-10deg); }
 }
 
 @keyframes vp-jump-ant {
@@ -628,11 +795,11 @@
 }
 
 @keyframes vp-wave-arm {
-  0%, 100% { transform: rotate(6deg); }
-  22% { transform: rotate(148deg); }
-  40% { transform: rotate(124deg); }
-  58% { transform: rotate(152deg); }
-  76% { transform: rotate(128deg); }
+  0%, 100% { transform: rotate(-10deg); }
+  22% { transform: rotate(-158deg); }
+  40% { transform: rotate(-132deg); }
+  58% { transform: rotate(-164deg); }
+  76% { transform: rotate(-136deg); }
 }
 
 @keyframes vp-cheer-arm-l {
@@ -669,11 +836,11 @@
 }
 
 @keyframes vp-sit-leg-l {
-  to { transform: rotate(-58deg); }
+  to { transform: rotate(54deg); }
 }
 
 @keyframes vp-sit-leg-r {
-  to { transform: rotate(62deg); }
+  to { transform: rotate(-54deg); }
 }
 
 @keyframes vp-sit-body {
@@ -793,7 +960,40 @@
 
 .vp-prop svg { width: 100%; height: auto; display: block; overflow: visible; }
 
-.vp-pizza { left: 34%; top: 46%; width: 34%; }
+.vp-eye {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  background: #fffdf8;
+  pointer-events: none;
+}
+
+.vp-eye-l { left: 20%; top: 33.5%; width: 16%; height: 14%; }
+.vp-eye-r { left: 52%; top: 32.2%; width: 15.5%; height: 13.5%; }
+
+/* Pizza lives in the left mitten and rides the arm up to his mouth. */
+.vp-arm-l .vp-pizza {
+  left: 4%;
+  top: 68%;
+  width: 48%;
+  z-index: 4;
+  transform: rotate(200deg);
+  transform-origin: 40% 30%;
+}
+
+.vp-arm-hip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0 !important;
+  animation: none !important;
+  pointer-events: none;
+}
+
+.vp-arm > img:first-child {
+  animation: none !important;
+}
 .vp-mic { left: 62%; top: 40%; width: 16%; }
 .vp-kick { left: 68%; top: 58%; width: 22%; }
 .vp-brush { left: 8%; top: 42%; width: 22%; }
@@ -835,10 +1035,9 @@
 .vp-roam[data-move='cheer'] .vp-hit:not([data-react]) .vp-arm-r { animation: vp-cheer-arm-r 2.2s ease; }
 
 @keyframes vp-prop-bite {
-  0%, 100% { opacity: 0; transform: translateY(12%) scale(0.7); }
-  12%, 78% { opacity: 1; transform: translateY(0) scale(1); }
-  28%, 48% { transform: translateY(-8%) scale(1.04); }
-  36%, 56% { transform: translate(0, 2%) rotate(-6deg); }
+  0%, 10% { opacity: 0; }
+  16%, 78% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 @keyframes vp-prop-hold {
@@ -847,13 +1046,18 @@
 }
 
 @keyframes vp-eat-arm-l {
-  0%, 100% { transform: rotate(0deg); }
-  14%, 76% { transform: rotate(-18deg); }
+  0%, 100% { transform: rotate(12deg); }
+  16% { transform: rotate(-118deg); }
+  28% { transform: rotate(-104deg); }
+  40% { transform: rotate(-122deg); }
+  52% { transform: rotate(-106deg); }
+  64% { transform: rotate(-118deg); }
+  78% { transform: rotate(-112deg); }
 }
 
 @keyframes vp-eat-arm-r {
-  0%, 100% { transform: rotate(0deg); }
-  14%, 76% { transform: rotate(16deg); }
+  0%, 100% { transform: rotate(-10deg); }
+  16%, 76% { transform: rotate(8deg); }
 }
 
 @keyframes vp-chew {
@@ -883,28 +1087,32 @@
 }
 
 @keyframes vp-jog-leg-l {
-  0%, 100% { transform: rotate(18deg); }
-  50% { transform: rotate(-16deg); }
+  0%, 100% { transform: rotate(8deg); }
+  40% { transform: rotate(46deg); }
+  70% { transform: rotate(-16deg); }
 }
 
 @keyframes vp-jog-leg-r {
-  0%, 100% { transform: rotate(-16deg); }
-  50% { transform: rotate(18deg); }
+  0%, 100% { transform: rotate(-8deg); }
+  40% { transform: rotate(14deg); }
+  70% { transform: rotate(-44deg); }
 }
 
 @keyframes vp-jog-arm-l {
-  0%, 100% { transform: rotate(-16deg); }
-  50% { transform: rotate(12deg); }
+  0%, 100% { transform: rotate(18deg); }
+  50% { transform: rotate(-12deg); }
 }
 
 @keyframes vp-jog-arm-r {
-  0%, 100% { transform: rotate(12deg); }
-  50% { transform: rotate(-18deg); }
+  0%, 100% { transform: rotate(-14deg); }
+  50% { transform: rotate(20deg); }
 }
 
 @keyframes vp-jog-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3%); }
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  35% { transform: translateY(-5%) rotate(-4deg); }
+  50% { transform: translateY(1%) scale(1.03, 0.96); }
+  70% { transform: translateY(-4%) rotate(4deg); }
 }
 
 @keyframes vp-music-arm-r {
@@ -966,11 +1174,295 @@
   60% { transform: rotate(3deg); }
 }
 
+/* Spin, wave and dances paint outside the resting box. Nothing in the rig may clip them. */
+.vp-slot,
+.vp-hit,
+.vp-stage,
+.vp-bob,
+.vp-look,
+.vp-face,
+.vp-act,
+.vp-rig,
+.vp-roam,
+.vp-roam-body,
+.vp-actor {
+  overflow: visible;
+}
+
+.vp-roam[data-showoff='1'] {
+  transform: none !important;
+  left: 50% !important;
+  top: 24vh !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: min(50vh, 640px) !important;
+  margin-left: calc(min(50vh, 640px) / -2);
+}
+
+/* Native 4× render: the component is painted at ~440px, not a scaled screenshot. */
+.vp-roam[data-closeup='1'] {
+  width: 19.2rem !important;
+  top: 150px !important;
+  left: var(--vp-x, 50%) !important;
+  margin-left: var(--vp-mx, -9.6rem) !important;
+  transition: left var(--vp-walk, 0ms) linear;
+}
+.vp-roam[data-closeup='1'][data-move='hop'] .vp-roam-body,
+.vp-roam[data-closeup='1'][data-move='still'] .vp-roam-body {
+  animation: none !important;
+}
+
+html[data-peepclose='1'] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: #0c0f0e;
+  z-index: 80;
+}
+
+html[data-peepclose='1'] .vp-roam {
+  z-index: 90 !important;
+}
+
+.vp-roam[data-showoff='1'][data-move='hop'] .vp-dance-label,
+.vp-roam[data-showoff='1'][data-move='spin'] .vp-dance-label {
+  opacity: 1;
+}
+
+.vp-roam[data-showoff='1'][data-move='idle'] .vp-dance-label {
+  opacity: 1;
+}
+
+.vp-roam[data-showoff='1'][data-move='hop'] .vp-dance-label::before {
+  content: 'Walk right';
+}
+
+.vp-roam[data-showoff='1'][data-move='hop'][data-face='left'] .vp-dance-label::before {
+  content: 'Walk left';
+}
+
+.vp-roam[data-showoff='1'][data-move='idle'] .vp-dance-label::before {
+  content: 'Front';
+}
+
+.vp-roam[data-closeup='1'][data-move='hop'] .vp-dance-label,
+.vp-roam[data-closeup='1'][data-move='idle'] .vp-dance-label {
+  top: calc(100% + 6px);
+  bottom: auto;
+}
+
+@keyframes vp-cross-r {
+  0% { translate: calc(var(--vp-cross, 185px) * -1) 0; }
+  100% { translate: 0 0; }
+}
+
+@keyframes vp-cross-l {
+  0% { translate: var(--vp-cross, 185px) 0; }
+  100% { translate: 0 0; }
+}
+
+.vp-roam[data-closeup='1'][data-move='hop'][data-face='right'] .vp-roam-body,
+.vp-roam[data-closeup='1'][data-move='hop']:not([data-face='left']) .vp-roam-body,
+.vp-roam[data-stride='1'][data-move='hop']:not([data-face='left']) .vp-roam-body {
+  animation: vp-cross-r var(--vp-walk, 1.68s) linear both;
+}
+
+.vp-roam[data-closeup='1'][data-move='hop'][data-face='left'] .vp-roam-body,
+.vp-roam[data-stride='1'][data-move='hop'][data-face='left'] .vp-roam-body {
+  animation: vp-cross-l var(--vp-walk, 1.68s) linear both;
+}
+
+.vp-roam[data-showoff='1'][data-move='spin'] .vp-dance-label::before {
+  content: 'Spin';
+}
+
+.vp-roam[data-showoff='1'] .vp-show {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 18%;
+  height: auto;
+  aspect-ratio: 1;
+  transform: translate(-50%, -8%);
+  overflow: visible;
+}
+
+.vp-roam[data-showoff='1'] .vp-hit[data-react='spin'] .vp-dance-label {
+  opacity: 1;
+}
+
+.vp-roam[data-showoff='1'] .vp-hit[data-react='spin'] .vp-dance-label::before {
+  content: 'Spin';
+}
+
+.vp-threeq {
+  position: absolute;
+  inset: 8% 10% 6%;
+  width: 80%;
+  height: 86%;
+  object-fit: contain;
+  visibility: hidden;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.vp-roam[data-turn='1'] .vp-threeq { visibility: visible !important; z-index: 8; }
+.vp-roam[data-turn='1'] .vp-front,
+.vp-roam[data-turn='1'] .vp-profile { visibility: hidden !important; }
+
+.vp-roam[data-showoff='1'] .vp-dance-label {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  top: calc(100% + 6px);
+  bottom: auto;
+  translate: -50% 0;
+  font-size: 22px;
+  z-index: 40;
+}
+
+@media (max-width: 639px) {
+  .vp-roam[data-showoff='1'] .vp-dance-label {
+    position: absolute;
+    left: 50%;
+    right: auto;
+    top: calc(100% + 6px);
+    bottom: auto;
+    translate: -50% 0;
+    font-size: 11px;
+    z-index: 7;
+  }
+}
+
+.vp-roam .vp-bubble,
+.vp-slot[data-bubble='start'] .vp-roam .vp-bubble,
+.vp-roam .vp-slot[data-bubble='start'] .vp-bubble {
+  left: 50%;
+  right: auto;
+  translate: -50% 0;
+  max-width: min(8.5rem, 70vw);
+  text-align: center;
+}
+
+.vp-hit[data-react='spin'] .vp-stage {
+  animation: none !important;
+}
+
+.vp-part img {
+  opacity: 1;
+}
+
+.vp-arm-r .vp-finger {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  /* 380 / 313: the index lobe continues past the mitten. */
+  height: 121.406%;
+  opacity: 0;
+  z-index: 2;
+  object-fit: fill;
+}
+
+.vp-hit[data-dance='disco-point'] .vp-finger {
+  opacity: 1 !important;
+}
+
+.vp-zap {
+  position: absolute;
+  width: 9%;
+  height: 2.4%;
+  border-radius: 999px;
+  background: #ff7a2a;
+  box-shadow: 0 0 0 2px rgba(255, 122, 42, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.vp-zap-a { left: 6%; top: 16%; rotate: -28deg; }
+.vp-zap-b { left: 12%; top: 10%; rotate: -8deg; width: 5%; }
+.vp-zap-c { right: 8%; top: 14%; left: auto; rotate: 24deg; }
+
+.vp-roam[data-move='jump'] .vp-zap,
+.vp-hit[data-react='wave'] .vp-zap,
+.vp-hit[data-react='sparkle'] .vp-zap,
+.vp-hit[data-react='delighted'] .vp-zap,
+.vp-hit[data-react='hearts'] .vp-zap,
+.vp-hit[data-dance='horse'] .vp-zap,
+.vp-hit[data-dance='chicken'] .vp-zap {
+  opacity: 1;
+}
+
+@media (max-width: 639px) {
+  .vp-roam[data-showoff='1'] {
+    width: min(86vw, 420px) !important;
+    margin-left: calc(min(86vw, 420px) / -2);
+    top: 4vh !important;
+  }
+
+  .vp-roam .vp-bubble,
+  .vp-slot[data-bubble='start'] .vp-roam .vp-bubble,
+  .vp-roam .vp-slot[data-bubble='start'] .vp-bubble {
+    left: auto;
+    right: calc(100% + 6px);
+    bottom: auto;
+    top: 2.15rem;
+    translate: 0 0;
+    max-width: min(7.2rem, 46vw);
+    text-align: left;
+  }
+
+  .vp-slot[data-bubble='center'] .vp-bubble,
+  .vp-roam .vp-slot[data-bubble='center'] .vp-bubble {
+    left: calc(100% + 6px);
+    right: auto;
+    top: 2.15rem;
+    translate: 0 0;
+  }
+
+  .vp-roam:not([data-ready]) {
+    right: 0.7rem;
+    bottom: max(11.5rem, calc(env(safe-area-inset-bottom) + 10rem));
+  }
+
+  .vp-roam .vp-bubble {
+    max-width: min(7.25rem, 42vw);
+    pointer-events: none;
+  }
+
+  .vp-roam .vp-hit::after {
+    left: 26%;
+    right: 22%;
+    top: 18%;
+    bottom: 16%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .vp-part {
+  .vp-part,
+  .vp-pose,
+  .vp-front {
     animation: none !important;
     transition: none !important;
+  }
+
+  .vp-part {
     transform: none !important;
+  }
+
+  .vp-pose {
+    display: none !important;
+  }
+
+  .vp-roam[data-pose='back'] .vp-pose-back,
+  .vp-roam[data-pose='hips'] .vp-pose-hips {
+    display: block !important;
+  }
+
+  .vp-roam[data-pose='back'] .vp-front,
+  .vp-roam[data-pose='hips'] .vp-front {
+    visibility: hidden !important;
   }
 
   .vp-hit[data-react='heart-eyes'] .vp-pupil,
