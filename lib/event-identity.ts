@@ -172,6 +172,12 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
     return decision('separate', 45, 'organiser', ['Organiser names disagree'])
   }
 
+  // One listing page, one session. Checked before the same-source venue rule, which
+  // otherwise keeps a suburb label and the real venue name as two products.
+  if (sameUrl && (ta == null || tb == null || Math.abs(ta - tb) <= SESSION_MINUTES)) {
+    return decision('link', 99, 'exact_url', ['Same listing URL and session'], a.status && b.status && a.status !== b.status ? ['status'] : [])
+  }
+
   if (titlesMatch && timesEqual && (venuesMatch(a.venueName, b.venueName) || sharesStreet(
     { venueName: a.venueName, address: a.address },
     { venueName: b.venueName, address: b.address },
@@ -188,10 +194,6 @@ export function decideDuplicate(a: IdentityEvent, b: IdentityEvent): DuplicateDe
     { title: b.title, venueName: b.venueName, time: b.time, source: b.source ?? undefined },
   )) {
     return decision('separate', 40, 'title', ['Same source treats this as a different listing'])
-  }
-
-  if (sameUrl && (ta == null || tb == null || ta === tb)) {
-    return decision('link', 99, 'exact_url', ['Same listing URL and session'], a.status && b.status && a.status !== b.status ? ['status'] : [])
   }
 
   const titleSim = similarity(normalizeTitle(a.title), normalizeTitle(b.title))

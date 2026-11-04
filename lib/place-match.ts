@@ -88,12 +88,14 @@ export function isStreetLabel(name?: string | null): boolean {
   return rest.length === 0
 }
 
-/** A street, or a venue named only as the suburb in its address. A named room is not weak. */
+/** A street, a TBA, or a venue named only as the suburb in its address. A named room is not weak. */
 export function isWeakVenueName(name?: string | null, address?: string | null): boolean {
-  if (isStreetLabel(name)) return true
+  const raw = (name ?? '').trim()
+  if (!raw || /^(tba|tbc|venue tba|venue tbc)$/i.test(raw)) return true
+  if (isStreetLabel(raw)) return true
   const suburb = suburbFromAddress(address)
   if (!suburb) return false
-  return foldPlace(name) === foldPlace(suburb)
+  return foldPlace(raw) === foldPlace(suburb)
 }
 
 /** Same title once a "(free entry)" suffix is ignored. Extra words still count as a different title. */

@@ -96,6 +96,7 @@ async function runQualityPassInner() {
         address: row.venueAddress,
         status: row.status,
         price: row.price,
+        url: row.sourceUrl || row.ticketUrl,
       })
       const linked = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'link'
       const review = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'review'
