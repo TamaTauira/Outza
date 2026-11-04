@@ -5,6 +5,7 @@ import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/sessi
 import { LOCAL_AD } from '@/lib/tiers'
 import { activateLocalAd, kindLabel, validateLocalAd } from '@/lib/local-ads'
 import { unverifiedGate } from '@/lib/account-flow'
+import { unpaidTestCheckoutAllowed } from '@/lib/checkout-gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,10 @@ export async function POST(req: Request) {
   const v = await validateLocalAd(body, me.id)
   if ('error' in v) return NextResponse.json({ error: v.error }, { status: v.status ?? 400 })
 
-  const secretKey = process.env.STRIPE_SECRET_KEY
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim() || ''
+  if (!secretKey && !unpaidTestCheckoutAllowed()) {
+    return NextResponse.json({ error: 'Payments are not switched on yet.' }, { status: 503 })
+  }
   const origin = req.headers.get('origin') || new URL(req.url).origin
   const ad = await prisma.localAd.create({
     data: { ...v.data, eventId: v.event.id, promoterId: me.id, amountCents: LOCAL_AD.priceCents, paymentMode: secretKey ? 'stripe' : 'test' },
