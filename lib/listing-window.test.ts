@@ -264,4 +264,8 @@ test('health rates and repeated source failures stay numeric and skip budget sto
     { status: 'source:Oztix', errors: 'Oztix: time budget reached', startedAt: '2026-10-29T00:00:00.000Z' },
   ])
   assert.deepEqual(name, ['Moshtix'])
+  assert.deepEqual(repeatedSourceFailures([
+    { status: 'source:Moshtix', errors: 'Moshtix: This operation was aborted', startedAt: '2026-10-30T00:00:00.000Z' },
+    { status: 'source:Moshtix', errors: 'Moshtix: This operation was aborted', startedAt: '2026-10-29T00:00:00.000Z' },
+  ]), ['Moshtix'])
 })

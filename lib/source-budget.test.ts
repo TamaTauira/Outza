@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { remainingBudgetMs, runWithSourceBudget, sourceFetchSignal, yieldIfBudget } from './source-budget'
+import { noteSourceSaved, remainingBudgetMs, runWithSourceBudget, settleBudgetError, sourceFetchSignal, yieldIfBudget } from './source-budget'
 
 test('fetch signal aborts when the source budget ends', async () => {
   const result = await runWithSourceBudget('City of Sydney', 40, async () => {
@@ -37,6 +37,66 @@ test('a stuck source is abandoned after the grace period', async () => {
   assert.equal(result.timedOut, true)
   assert.equal(result.value, null)
   assert.ok(Date.now() - started < 400)
+})
+
+function abortError(message = 'This operation was aborted') {
+  const error = new Error(message)
+  error.name = 'AbortError'
+  return error
+}
+
+test('an abort well before the deadline is still a hard error', async () => {
+  const result = await runWithSourceBudget('Moshtix', 10_000, async () => {
+    noteSourceSaved(10)
+    throw abortError()
+  }, 40)
+  assert.equal(result.timedOut, false)
+  assert.equal(result.error?.message, 'This operation was aborted')
+  assert.equal(result.saved, 10)
+})
+
+test('an abort as the budget ends keeps the events already saved', async () => {
+  const result = await runWithSourceBudget('Moshtix', 40, async () => {
+    noteSourceSaved(634)
+    const signal = sourceFetchSignal(10_000)
+    await new Promise<never>((_resolve, reject) => {
+      if (signal.aborted) reject(abortError())
+      else signal.addEventListener('abort', () => reject(abortError()), { once: true })
+    })
+  }, 300)
+  assert.equal(result.error, null)
+  assert.equal(result.timedOut, true)
+  assert.equal(result.saved, 634)
+  assert.equal(result.value, null)
+})
+
+test('a deadline abort that saved events is not a hard error, and one that saved nothing is', () => {
+  const saved = settleBudgetError({
+    error: abortError(),
+    signalAborted: false,
+    pastDeadline: true,
+    saved: 634,
+  })
+  assert.equal(saved.timedOut, true)
+  assert.equal(saved.error, null)
+
+  const empty = settleBudgetError({
+    error: abortError(),
+    signalAborted: false,
+    pastDeadline: true,
+    saved: 0,
+  })
+  assert.equal(empty.timedOut, false)
+  assert.equal(empty.error?.message, 'This operation was aborted')
+
+  const http = settleBudgetError({
+    error: new Error('Moshtix API 500'),
+    signalAborted: false,
+    pastDeadline: true,
+    saved: 634,
+  })
+  assert.equal(http.timedOut, false)
+  assert.equal(http.error?.message, 'Moshtix API 500')
 })
 
 test('outside a budget, the fetch signal is a normal timeout and the cap is the request', async () => {

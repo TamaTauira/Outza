@@ -9,6 +9,7 @@ import {
   SOURCE_BUDGET_MAX_MS,
   assessRefreshCycle,
   burstIdleMinutes,
+  isBudgetSkip,
   type CycleLog,
 } from './refresh-plan'
 
@@ -23,6 +24,12 @@ function row(partial: Partial<CycleLog> & Pick<CycleLog, 'status'>): CycleLog {
     ...partial,
   }
 }
+
+test('an abort is a real failure and a budget stop is not', () => {
+  assert.equal(isBudgetSkip('Moshtix: This operation was aborted'), false)
+  assert.equal(isBudgetSkip('Moshtix: time budget reached after saving 634 events'), true)
+  assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.id === 'moshtix')?.budgetMs, SOURCE_BUDGET_MAX_MS)
+})
 
 test('chunks list every source once and finish with the cycle step', () => {
   const listed = REFRESH_CHUNKS.flatMap((c) => c.sources ?? [])

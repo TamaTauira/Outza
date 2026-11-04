@@ -28,7 +28,7 @@ export const REFRESH_CHUNKS: RefreshChunk[] = [
   { id: 'frontier', minute: 4, budgetMs: 70_000, sources: ['Frontier Touring'] },
   { id: 'city-of-sydney', minute: 6, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['City of Sydney'] },
   { id: 'humanitix', minute: 8, budgetMs: 90_000, sources: ['Humanitix'] },
-  { id: 'moshtix', minute: 10, budgetMs: 180_000, sources: ['Moshtix'] },
+  { id: 'moshtix', minute: 10, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Moshtix'] },
   { id: 'oztix', minute: 12, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Oztix'] },
   { id: 'ticketek', minute: 14, budgetMs: 160_000, sources: ['Ticketek'] },
   { id: 'eventbrite', minute: 16, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Eventbrite'] },

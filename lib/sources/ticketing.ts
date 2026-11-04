@@ -1,5 +1,7 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
-import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
+import { readJobMark, writeJobCursor } from '@/lib/job-watermark'
+import { moshtixNoteEvent, moshtixNotePage, moshtixResume, type MoshtixCursor } from '@/lib/moshtix-refresh'
+import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
@@ -55,6 +57,9 @@ function moshtixPrice(tickets: { ticketPrice?: unknown; hidden?: boolean; compli
 const MOSHTIX_PAGE_SIZE = 200
 /** Runaway guard only. Pages stop when totalCount is exhausted or a page comes back short. */
 const MOSHTIX_MAX_PAGES = 100
+/** Don't start a page that would still be in flight when the budget ends. */
+const MOSHTIX_PAGE_HEADROOM_MS = 15_000
+const MOSHTIX_EVENT_HEADROOM_MS = 4_000
 
 const MOSHTIX_QUERY = `query($page: Int, $from: Date) { viewer { getEvents(pageIndex: $page, pageSize: ${MOSHTIX_PAGE_SIZE}, publicOnly: true, searchableOnly: true, excludeClosed: true, sortBy: STARTDATE, sortByDirection: ASC, eventStartDateFrom: $from) {
   totalCount items { id name startDate endDate eventUrl teaser description ageRestriction status
@@ -63,74 +68,144 @@ const MOSHTIX_QUERY = `query($page: Int, $from: Date) { viewer { getEvents(pageI
     images { items { url type } }
     ticketTypes(pageSize: 50) { items { ticketPrice hidden complimentary donation addOn } } } } } }`
 
+function stopMoshtix(kind: 'page' | 'event'): boolean {
+  if (yieldIfBudget(kind === 'page' ? 'pages' : 'events')) return true
+  if (!hasSourceBudget()) return false
+  const need = kind === 'page' ? MOSHTIX_PAGE_HEADROOM_MS : MOSHTIX_EVENT_HEADROOM_MS
+  return remainingBudgetMs(need + 1_000) < need
+}
+
+function moshtixStartMs(value: unknown): number | null {
+  if (typeof value !== 'string' || !value) return null
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : null
+}
+
+async function saveMoshtixCursor(cursor: MoshtixCursor | null) {
+  if (!cursor) return
+  await writeJobCursor('moshtix', new Date(cursor.fromMs), cursor.page).catch((err) => {
+    console.error('[moshtix] cursor write failed', err instanceof Error ? err.message : err)
+  })
+}
+
 export async function fetchMoshtixEvents(): Promise<number> {
-  const from = new Date(Date.now() - 6 * 3600000).toISOString()
+  const mark = await readJobMark('moshtix').catch((err) => {
+    console.error('[moshtix] cursor read failed', err instanceof Error ? err.message : err)
+    return null
+  })
+  let cursor = moshtixResume(Date.now(), mark?.at.getTime() ?? null, mark?.page ?? 0)
   let saved = 0
   let total = Infinity
-  let page = 0
-  for (; page < MOSHTIX_MAX_PAGES && page * MOSHTIX_PAGE_SIZE < total; page++) {
-    if (yieldIfBudget('pages')) break
-    const res = await fetch('https://api.moshtix.com/v1/graphql', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'User-Agent': UA() },
-      body: JSON.stringify({ query: MOSHTIX_QUERY, variables: { page, from } }),
-      signal: sourceFetchSignal(30000),
-    })
-    if (!res.ok) throw new Error(`Moshtix API ${res.status}`)
-    const json: any = await res.json()
-    const conn = json?.data?.viewer?.getEvents
-    if (!conn) throw new Error(json?.errors?.[0]?.message ?? 'Moshtix API returned no data')
-    total = conn.totalCount ?? 0
-    const items: any[] = conn.items ?? []
-    if (items.length === 0) break
-    for (const e of items) {
-      try {
-        if (e?.status && e.status !== 'LIVE') continue
-        const v = e?.venue ?? {}
-        const a = v.address ?? {}
-        const city = cityFor(v.location?.latitude, v.location?.longitude, a.postCode)
-        const sd = e?.startDate ? new Date(e.startDate) : null
-        if (!city || !sd || isNaN(sd.getTime())) continue
-        const ed = e?.endDate ? new Date(e.endDate) : null
-        const s = toSydneyParts(sd, city.tz)
-        const en = ed && !isNaN(ed.getTime()) && ed > sd ? toSydneyParts(ed, city.tz) : null
-        const priced = moshtixPrice(e?.ticketTypes?.items ?? [])
-        const main = (e?.images?.items ?? []).find((i: any) => i?.type === 'MAIN' && /x\d+x\d+$/.test(i.url ?? ''))
-        const venueName = String(v.name ?? 'TBA').replace(new RegExp(`,\\s*${city.name}$`, 'i'), '')
-        const locality = a.locality ? title(String(a.locality)) : null
-        const ok = await saveEvent({
-          title: title(String(e.name ?? '')),
-          description: e.teaser || e.description || null,
-          date: s.date,
-          time: s.time,
-          endDate: en?.date,
-          endTime: en?.time,
-          venueName: title(venueName),
-          venueAddress: [a.line1, locality, [a.region, a.postCode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
-          genres: [e?.category?.name, e?.genre?.name].filter(Boolean),
-          price: priced.price,
-          isFree: priced.isFree,
-          imageUrl: main ? main.url.replace(/x\d+x\d+$/, 'x600x600') : null,
-          ticketUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
-          sourceUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
-          latitude: v.location?.latitude ?? null,
-          longitude: v.location?.longitude ?? null,
-          ageRestriction: e.ageRestriction === 'OVER18' ? '18+' : e.ageRestriction === 'UNDER18' ? 'Under 18s' : e.ageRestriction === 'ALL' ? 'All ages' : null,
-          source: 'moshtix',
-          city: city.name,
-        })
-        if (ok) saved++
-      } catch (err: any) {
-        console.error(`[moshtix] event error: ${err?.message}`)
+  let done = false
+  let pages = 0
+  console.log(`[moshtix] from ${new Date(cursor.fromMs).toISOString()} page ${cursor.page}`)
+  try {
+    while (pages < MOSHTIX_MAX_PAGES) {
+      if (stopMoshtix('page')) break
+      if (cursor.page > 0 && cursor.page * MOSHTIX_PAGE_SIZE >= total) {
+        done = true
+        break
       }
+      pages++
+      const pageCursor = cursor
+      let json: any
+      try {
+        const res = await fetch('https://api.moshtix.com/v1/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'User-Agent': UA() },
+          body: JSON.stringify({
+            query: MOSHTIX_QUERY,
+            variables: { page: cursor.page, from: new Date(cursor.fromMs).toISOString() },
+          }),
+          signal: sourceFetchSignal(30000),
+        })
+        if (!res.ok) throw new Error(`Moshtix API ${res.status}`)
+        json = await res.json()
+      } catch (err) {
+        noteSourceSaved(saved)
+        const nearBudget = sourceOverBudget() || remainingBudgetMs(30_000) < 5_000
+        const apiError = err instanceof Error && err.message.startsWith('Moshtix API ')
+        if (!apiError && saved > 0 && isAbortLike(err) && nearBudget) {
+          console.warn(`[moshtix] stopped after ${saved} events: ${err instanceof Error ? err.message : err}`)
+          break
+        }
+        throw err
+      }
+      const conn = json?.data?.viewer?.getEvents
+      if (!conn) throw new Error(json?.errors?.[0]?.message ?? 'Moshtix API returned no data')
+      total = conn.totalCount ?? 0
+      const items: any[] = conn.items ?? []
+      if (items.length === 0) {
+        done = true
+        break
+      }
+      let finishedPage = true
+      const pageStartMs = moshtixStartMs(items[0]?.startDate)
+      const pageEndMs = moshtixStartMs(items[items.length - 1]?.startDate)
+      for (const e of items) {
+        if (stopMoshtix('event')) {
+          finishedPage = false
+          break
+        }
+        try {
+          if (e?.status && e.status !== 'LIVE') continue
+          const v = e?.venue ?? {}
+          const a = v.address ?? {}
+          const city = cityFor(v.location?.latitude, v.location?.longitude, a.postCode)
+          const sd = e?.startDate ? new Date(e.startDate) : null
+          if (!city || !sd || isNaN(sd.getTime())) continue
+          const ed = e?.endDate ? new Date(e.endDate) : null
+          const s = toSydneyParts(sd, city.tz)
+          const en = ed && !isNaN(ed.getTime()) && ed > sd ? toSydneyParts(ed, city.tz) : null
+          const priced = moshtixPrice(e?.ticketTypes?.items ?? [])
+          const main = (e?.images?.items ?? []).find((i: any) => i?.type === 'MAIN' && /x\d+x\d+$/.test(i.url ?? ''))
+          const venueName = String(v.name ?? 'TBA').replace(new RegExp(`,\\s*${city.name}$`, 'i'), '')
+          const locality = a.locality ? title(String(a.locality)) : null
+          const ok = await saveEvent({
+            title: title(String(e.name ?? '')),
+            description: e.teaser || e.description || null,
+            date: s.date,
+            time: s.time,
+            endDate: en?.date,
+            endTime: en?.time,
+            venueName: title(venueName),
+            venueAddress: [a.line1, locality, [a.region, a.postCode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
+            genres: [e?.category?.name, e?.genre?.name].filter(Boolean),
+            price: priced.price,
+            isFree: priced.isFree,
+            imageUrl: main ? main.url.replace(/x\d+x\d+$/, 'x600x600') : null,
+            ticketUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
+            sourceUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
+            latitude: v.location?.latitude ?? null,
+            longitude: v.location?.longitude ?? null,
+            ageRestriction: e.ageRestriction === 'OVER18' ? '18+' : e.ageRestriction === 'UNDER18' ? 'Under 18s' : e.ageRestriction === 'ALL' ? 'All ages' : null,
+            source: 'moshtix',
+            externalId: e?.id != null ? String(e.id) : null,
+            city: city.name,
+          })
+          if (ok) saved++
+        } catch (err: any) {
+          console.error(`[moshtix] event error: ${err?.message}`)
+        } finally {
+          // Count the event once it has been handled so a later budget stop does not skip it.
+          cursor = moshtixNoteEvent(cursor, moshtixStartMs(e?.startDate))
+          noteSourceSaved(saved)
+        }
+      }
+      if (finishedPage) {
+        cursor = moshtixNotePage(pageCursor, cursor, pageStartMs, pageEndMs)
+        if (items.length < MOSHTIX_PAGE_SIZE) done = true
+      }
+      if (!finishedPage || done) break
+      await sleep(1000)
     }
-    noteSourceSaved(saved)
-    await sleep(1000)
+  } finally {
+    if (pages >= MOSHTIX_MAX_PAGES && !done) {
+      console.warn(`[moshtix] stopped at ${MOSHTIX_MAX_PAGES} pages; totalCount=${total}`)
+    }
+    await saveMoshtixCursor(done ? { fromMs: 0, page: 0 } : cursor)
   }
-  if (total > MOSHTIX_MAX_PAGES * MOSHTIX_PAGE_SIZE) {
-    console.warn(`[moshtix] stopped at ${MOSHTIX_MAX_PAGES} pages; totalCount=${total}`)
-  }
-  console.log(`[moshtix] saved ${saved} events`)
+  console.log(`[moshtix] saved ${saved} events${done ? '' : ' (more next run)'}`)
   return saved
 }
 

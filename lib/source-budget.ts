@@ -19,6 +19,10 @@ type Store = {
   controller: AbortController
   warned: boolean
   saved: number
+  /** A timed-out geocode gives up for the rest of this source run. */
+  geocodePaused: boolean
+  /** A timed-out listing-page fetch gives up for the rest of this source run. */
+  pageFetchPaused: boolean
 }
 
 const als = new AsyncLocalStorage<Store>()
@@ -32,6 +36,65 @@ export function remainingBudgetMs(requested: number): number {
 export function sourceOverBudget(): boolean {
   const store = als.getStore()
   return !!store && (store.controller.signal.aborted || Date.now() >= store.deadline)
+}
+
+export function hasSourceBudget(): boolean {
+  return !!als.getStore()
+}
+
+/** Geocoding should not start: the budget is over, too little time is left, or a lookup already timed out. */
+export function sourceGeocodeBlocked(): boolean {
+  const store = als.getStore()
+  if (!store) return false
+  return store.geocodePaused || sourceOverBudget() || remainingBudgetMs(2_500) < 800
+}
+
+export function pauseSourceGeocode() {
+  const store = als.getStore()
+  if (store) store.geocodePaused = true
+}
+
+export function sourcePageFetchBlocked(): boolean {
+  const store = als.getStore()
+  if (!store) return false
+  return store.pageFetchPaused || sourceOverBudget() || remainingBudgetMs(4_000) < 1_500
+}
+
+export function pauseSourcePageFetch() {
+  const store = als.getStore()
+  if (store) store.pageFetchPaused = true
+}
+
+/** AbortError from a budget signal, or TimeoutError from AbortSignal.timeout. */
+export function isAbortLike(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const name = 'name' in err ? String((err as { name?: unknown }).name) : ''
+  if (name === 'AbortError' || name === 'TimeoutError') return true
+  return err instanceof Error && /operation was aborted/i.test(err.message)
+}
+
+function asError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err))
+}
+
+/**
+ * A budget abort that already saved events is a partial run, not a hard failure.
+ * Genuine errors stay hard failures. An abort that saved nothing stays one too,
+ * unless the budget signal itself fired (the source was abandoned on schedule).
+ */
+export function settleBudgetError(opts: {
+  error: unknown
+  signalAborted: boolean
+  pastDeadline: boolean
+  saved: number
+}): { timedOut: boolean; error: Error | null } {
+  if (opts.error instanceof SourceBudgetExceeded || opts.signalAborted) {
+    return { timedOut: true, error: null }
+  }
+  if (opts.pastDeadline && isAbortLike(opts.error) && opts.saved > 0) {
+    return { timedOut: true, error: null }
+  }
+  return { timedOut: false, error: asError(opts.error) }
 }
 
 /** True once when this source should stop. Logs a single warning. */
@@ -82,7 +145,8 @@ export async function runWithSourceBudget<T>(
   graceMs = 2_000,
 ): Promise<BudgetRun<T>> {
   const controller = new AbortController()
-  const store: Store = { source, deadline: Date.now() + budgetMs, controller, warned: false, saved: 0 }
+  const deadline = Date.now() + budgetMs
+  const store: Store = { source, deadline, controller, warned: false, saved: 0, geocodePaused: false, pageFetchPaused: false }
   const budgetTimer = setTimeout(() => controller.abort(), budgetMs)
   let graceTimer: ReturnType<typeof setTimeout> | undefined
   const grace = new Promise<never>((_, reject) => {
@@ -93,10 +157,13 @@ export async function runWithSourceBudget<T>(
     const timedOut = controller.signal.aborted || Date.now() >= store.deadline
     return { value, timedOut, saved: typeof value === 'number' ? value : store.saved, error: null }
   } catch (e) {
-    if (e instanceof SourceBudgetExceeded || controller.signal.aborted) {
-      return { value: null, timedOut: true, saved: store.saved, error: null }
-    }
-    return { value: null, timedOut: false, saved: store.saved, error: e instanceof Error ? e : new Error(String(e)) }
+    const settled = settleBudgetError({
+      error: e,
+      signalAborted: controller.signal.aborted,
+      pastDeadline: Date.now() >= store.deadline - 1_000,
+      saved: store.saved,
+    })
+    return { value: null, timedOut: settled.timedOut, saved: store.saved, error: settled.error }
   } finally {
     clearTimeout(budgetTimer)
     clearTimeout(graceTimer)
