@@ -6,7 +6,8 @@ import { tidyVenueName } from '@/lib/cities'
 import { repairKnownListingUrl, usableUrl } from '@/lib/listing-link'
 import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
 import { fieldConflicts } from '@/lib/listing-window'
-import { assertNoOwnershipTransfer, canonicalizeListingUrl, decideDuplicate, listingUrlAliases } from '@/lib/event-identity'
+import { assertNoOwnershipTransfer, decideDuplicate } from '@/lib/event-identity'
+import { duplicateGroupKeys, duplicatePeerClauses } from '@/lib/duplicate-peers'
 import { duplicateSpikeAlert, recordQualityAlert } from '@/lib/source-health'
 import { STALE_AFTER_DAYS, staleAlertDetail, staleShareAlert } from '@/lib/listing-freshness'
 import { runVerificationPass } from '@/lib/verification-pass'
@@ -46,32 +47,7 @@ const DUP_SELECT = {
   _count: { select: { savedBy: true, attendees: true, promotions: true } },
 } as const
 
-type UrlRow = { sourceUrl?: string | null; ticketUrl?: string | null; organiserUrl?: string | null }
-
-/** City+day groups stay local. A shared source URL is its own group, with no city and no day. */
-export function duplicateGroupKeys(row: { city: string; date: Date } & UrlRow): string[] {
-  const day = row.date.toISOString().slice(0, 10)
-  const keys = new Set<string>([`city:${row.city}|${day}`])
-  for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
-    const url = canonicalizeListingUrl(raw)
-    if (url) keys.add(`url:${url}`)
-  }
-  return [...keys]
-}
-
-/** Stored URL spellings for rows that share a listing link, including Frontier host aliases. */
-export function sourceUrlSpellings(rows: UrlRow[]): string[] {
-  const urls = new Set<string>()
-  for (const row of rows) {
-    for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
-      if (raw) urls.add(raw)
-      for (const alias of listingUrlAliases(raw)) urls.add(alias)
-    }
-  }
-  return [...urls]
-}
-
-/** Changed listings, their same-day city peers, and every row that shares their source URL. */
+/** Changed listings, the other rows on that city and day, and the same listing URL on that day in any city. */
 async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: number) => void) {
   const open = { date: { gte: today }, duplicateOfId: null }
   if (!cursor) {
@@ -91,35 +67,10 @@ async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: n
     note(rows.length)
     return rows
   }
-  const seen = new Set<string>()
-  const cityDay: { city: string; date: Date }[] = []
-  for (const row of touched) {
-    const key = `${row.city}|${row.date.toISOString()}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    cityDay.push({ city: row.city, date: row.date })
-  }
-  const urls = sourceUrlSpellings(touched)
-  const [cityRows, urlRows] = await Promise.all([
-    prisma.event.findMany({ where: { ...open, OR: cityDay }, select: DUP_SELECT }),
-    urls.length
-      ? prisma.event.findMany({
-        where: {
-          duplicateOfId: null,
-          OR: [
-            { sourceUrl: { in: urls } },
-            { ticketUrl: { in: urls } },
-            { organiserUrl: { in: urls } },
-          ],
-        },
-        select: DUP_SELECT,
-        take: 2000,
-      })
-      : Promise.resolve([]),
-  ])
-  const byId = new Map<string, (typeof cityRows)[number]>()
-  for (const row of [...cityRows, ...urlRows]) byId.set(row.id, row)
-  const rows = [...byId.values()]
+  const rows = await prisma.event.findMany({
+    where: { ...open, OR: duplicatePeerClauses(touched) },
+    select: DUP_SELECT,
+  })
   note(rows.length)
   return rows
 }
@@ -163,12 +114,17 @@ async function runQualityPassInner() {
     return { backfilled: missing.length, merged: 0, recurringSeries: 0, places: 0, categories: 0, audited: 0, expiredHidden: 0, rowsRead }
   }
 
-  // 2) Merge duplicates. Same city and day stay together. A shared source URL is
-  // compared across cities and dates, which is how a Frontier tour copy in another city is caught.
+  // 2) Merge duplicates. Same city and day stay together. The same listing URL and
+  // start are one group in any city. Another night on that page stays separate.
   const rows = await duplicateCandidates(today, cursor, note)
   const groups = new Map<string, typeof rows>()
   for (const r of rows) {
-    for (const key of duplicateGroupKeys(r)) groups.set(key, [...(groups.get(key) ?? []), r])
+    const keys = duplicateGroupKeys({
+      city: r.city,
+      date: r.date.toISOString().slice(0, 10),
+      urls: [r.sourceUrl, r.ticketUrl, r.organiserUrl],
+    })
+    for (const key of keys) groups.set(key, [...(groups.get(key) ?? []), r])
   }
   // Organiser-owned and promoted listings always win; then the most trusted source; then community activity
   const rank = (r: (typeof rows)[number]) =>
