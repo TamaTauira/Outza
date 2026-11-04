@@ -6,12 +6,13 @@ import { tidyVenueName } from '@/lib/cities'
 import { repairKnownListingUrl, usableUrl } from '@/lib/listing-link'
 import { SOURCES, inferRecurrence, parsePriceRange } from '@/lib/quality'
 import { fieldConflicts } from '@/lib/listing-window'
-import { assertNoOwnershipTransfer, canonicalizeListingUrl, decideDuplicate } from '@/lib/event-identity'
+import { assertNoOwnershipTransfer, canonicalizeListingUrl, decideDuplicate, listingUrlAliases } from '@/lib/event-identity'
 import { duplicateSpikeAlert, recordQualityAlert } from '@/lib/source-health'
 import { STALE_AFTER_DAYS, staleAlertDetail, staleShareAlert } from '@/lib/listing-freshness'
 import { runVerificationPass } from '@/lib/verification-pass'
 import { runLinkedFill } from '@/lib/linked-fill-run'
 import { yieldIfBudget } from '@/lib/source-budget'
+import { changedSince, readJobCursor, writeJobCursor } from '@/lib/job-watermark'
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
   for (let i = 0; i < items.length; i += size) {
@@ -30,20 +31,124 @@ export function runQualityPass() {
   return runWithJobPrisma(() => runQualityPassInner())
 }
 
+function earlierCursor(current: Date, candidate?: Date): Date {
+  if (!candidate || candidate >= current) return current
+  return candidate
+}
+
+const DUP_SELECT = {
+  id: true, title: true, venueName: true, venueAddress: true, time: true, endTime: true, price: true, city: true, date: true,
+  latitude: true, longitude: true,
+  source: true, sources: true, promoterId: true, createdAt: true, status: true, statusSource: true,
+  organiserName: true, organiserEditedAt: true,
+  ticketUrl: true, sourceUrl: true, organiserUrl: true,
+  fieldOverrides: { where: { active: true }, select: { id: true }, take: 1 },
+  _count: { select: { savedBy: true, attendees: true, promotions: true } },
+} as const
+
+type UrlRow = { sourceUrl?: string | null; ticketUrl?: string | null; organiserUrl?: string | null }
+
+/** City+day groups stay local. A shared source URL is its own group, with no city and no day. */
+export function duplicateGroupKeys(row: { city: string; date: Date } & UrlRow): string[] {
+  const day = row.date.toISOString().slice(0, 10)
+  const keys = new Set<string>([`city:${row.city}|${day}`])
+  for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
+    const url = canonicalizeListingUrl(raw)
+    if (url) keys.add(`url:${url}`)
+  }
+  return [...keys]
+}
+
+/** Stored URL spellings for rows that share a listing link, including Frontier host aliases. */
+export function sourceUrlSpellings(rows: UrlRow[]): string[] {
+  const urls = new Set<string>()
+  for (const row of rows) {
+    for (const raw of [row.sourceUrl, row.ticketUrl, row.organiserUrl]) {
+      if (raw) urls.add(raw)
+      for (const alias of listingUrlAliases(raw)) urls.add(alias)
+    }
+  }
+  return [...urls]
+}
+
+/** Changed listings, their same-day city peers, and every row that shares their source URL. */
+async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: number) => void) {
+  const open = { date: { gte: today }, duplicateOfId: null }
+  if (!cursor) {
+    const rows = await prisma.event.findMany({ where: open, select: DUP_SELECT })
+    note(rows.length)
+    return rows
+  }
+  const touched = await prisma.event.findMany({
+    where: { ...open, updatedAt: { gt: cursor } },
+    select: { city: true, date: true, sourceUrl: true, ticketUrl: true, organiserUrl: true },
+    take: 1501,
+  })
+  note(touched.length)
+  if (!touched.length) return [] as Awaited<ReturnType<typeof prisma.event.findMany<{ select: typeof DUP_SELECT }>>>
+  if (touched.length > 1500) {
+    const rows = await prisma.event.findMany({ where: open, select: DUP_SELECT })
+    note(rows.length)
+    return rows
+  }
+  const seen = new Set<string>()
+  const cityDay: { city: string; date: Date }[] = []
+  for (const row of touched) {
+    const key = `${row.city}|${row.date.toISOString()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    cityDay.push({ city: row.city, date: row.date })
+  }
+  const urls = sourceUrlSpellings(touched)
+  const [cityRows, urlRows] = await Promise.all([
+    prisma.event.findMany({ where: { ...open, OR: cityDay }, select: DUP_SELECT }),
+    urls.length
+      ? prisma.event.findMany({
+        where: {
+          duplicateOfId: null,
+          OR: [
+            { sourceUrl: { in: urls } },
+            { ticketUrl: { in: urls } },
+            { organiserUrl: { in: urls } },
+          ],
+        },
+        select: DUP_SELECT,
+        take: 2000,
+      })
+      : Promise.resolve([]),
+  ])
+  const byId = new Map<string, (typeof cityRows)[number]>()
+  for (const row of [...cityRows, ...urlRows]) byId.set(row.id, row)
+  const rows = [...byId.values()]
+  note(rows.length)
+  return rows
+}
+
 async function runQualityPassInner() {
   const today = sydneyToday()
-  const upcoming = { date: { gte: today } }
+  const started = new Date()
+  const cursor = await readJobCursor('quality').catch((err) => {
+    console.error('[quality] watermark read failed', (err as { message?: string })?.message)
+    return null
+  })
+  const changed = changedSince(cursor)
+  const upcoming = { date: { gte: today }, ...changed }
+  let rowsRead = 0
+  let complete = true
+  const note = (n: number) => { rowsRead += n }
 
   // 0) Keep a usable source link. Repaired and copied only; a good URL is never cleared.
-  const links = await backfillListingLinks(today)
+  const links = await backfillListingLinks(today, cursor, note)
 
   // 1) Backfill fields for listings created before the quality fields existed
   await prisma.$executeRaw`UPDATE "Event" SET "sources" = ARRAY["source"] WHERE cardinality("sources") = 0 AND "date" >= ${today}`
   await prisma.$executeRaw`UPDATE "Event" SET "lastVerifiedAt" = "updatedAt" WHERE "lastVerifiedAt" IS NULL AND "date" >= ${today}`
   const missing = await prisma.event.findMany({
     where: { ...upcoming, OR: [{ seriesKey: null }, { priceMin: null, price: { not: null } }, { priceMin: null, isFree: true }] },
-    select: { id: true, title: true, venueName: true, city: true, isFree: true, price: true, seriesKey: true },
+    select: { id: true, title: true, venueName: true, city: true, isFree: true, price: true, seriesKey: true, updatedAt: true },
+    ...(cursor ? { take: 2000, orderBy: { updatedAt: 'asc' as const } } : {}),
   })
+  note(missing.length)
   await inBatches(missing, JOB_CONNECTION_LIMIT, (e) => {
     const r = parsePriceRange(e.isFree, e.price)
     return prisma.event.update({
@@ -53,32 +158,17 @@ async function runQualityPassInner() {
   })
 
   if (yieldIfBudget('quality pass')) {
-    console.log('[quality] stopped at time budget')
-    return { backfilled: missing.length, merged: 0, recurringSeries: 0, places: 0, categories: 0, audited: 0, expiredHidden: 0 }
+    complete = false
+    console.log('[quality] stopped at time budget', { rowsRead })
+    return { backfilled: missing.length, merged: 0, recurringSeries: 0, places: 0, categories: 0, audited: 0, expiredHidden: 0, rowsRead }
   }
 
-  // 2) Merge duplicates (same city + date, fuzzy title/venue/time match)
-  const rows = await prisma.event.findMany({
-    where: { ...upcoming, duplicateOfId: null },
-    select: {
-      id: true, title: true, venueName: true, venueAddress: true, time: true, endTime: true, price: true, city: true, date: true,
-      latitude: true, longitude: true,
-      source: true, sources: true, promoterId: true, createdAt: true, status: true, statusSource: true,
-      organiserName: true, organiserEditedAt: true,
-      ticketUrl: true, sourceUrl: true, organiserUrl: true,
-      fieldOverrides: { where: { active: true }, select: { id: true }, take: 1 },
-      _count: { select: { savedBy: true, attendees: true, promotions: true } },
-    },
-  })
+  // 2) Merge duplicates. Same city and day stay together. A shared source URL is
+  // compared across cities and dates, which is how a Frontier tour copy in another city is caught.
+  const rows = await duplicateCandidates(today, cursor, note)
   const groups = new Map<string, typeof rows>()
   for (const r of rows) {
-    const day = r.date.toISOString().slice(0, 10)
-    const keys = new Set<string>([`city:${r.city}|${day}`])
-    for (const raw of [r.sourceUrl, r.ticketUrl, r.organiserUrl]) {
-      const url = canonicalizeListingUrl(raw)
-      if (url) keys.add(`url:${url}|${day}`)
-    }
-    for (const key of keys) groups.set(key, [...(groups.get(key) ?? []), r])
+    for (const key of duplicateGroupKeys(r)) groups.set(key, [...(groups.get(key) ?? []), r])
   }
   // Organiser-owned and promoted listings always win; then the most trusted source; then community activity
   const rank = (r: (typeof rows)[number]) =>
@@ -164,7 +254,7 @@ async function runQualityPassInner() {
   let linkedFill: { wouldUpdate: number; updated: number; gainPrice: number; gainTime: number } | null = null
   if (!yieldIfBudget('linked fill')) {
     try {
-      linkedFill = await runLinkedFill({ dryRun: false })
+      linkedFill = await runLinkedFill({ dryRun: false, since: cursor })
     } catch (err) {
       console.error('[quality] linked fill failed', (err as { message?: string })?.message)
     }
@@ -178,11 +268,27 @@ async function runQualityPassInner() {
     })
   }
 
-  // 3) Recurring series: same normalised title + venue + city on 3+ upcoming dates
-  const series = await prisma.event.findMany({
-    where: { ...upcoming, duplicateOfId: null, seriesKey: { not: null } },
-    select: { seriesKey: true, date: true, recurrence: true },
-  })
+  // 3) Recurring series: same normalised title + venue + city on 3+ upcoming dates.
+  // Only series touched since the cursor, but every upcoming date in those series.
+  const seriesWhere = { date: { gte: today }, duplicateOfId: null, seriesKey: { not: null } }
+  let seriesKeys: string[] | null = null
+  if (cursor) {
+    const touchedKeys = await prisma.event.findMany({
+      where: { ...seriesWhere, updatedAt: { gt: cursor } },
+      select: { seriesKey: true },
+      distinct: ['seriesKey'],
+      take: 500,
+    })
+    note(touchedKeys.length)
+    seriesKeys = touchedKeys.map((row) => row.seriesKey!).filter(Boolean)
+  }
+  const series = seriesKeys && !seriesKeys.length
+    ? []
+    : await prisma.event.findMany({
+      where: { ...seriesWhere, ...(seriesKeys ? { seriesKey: { in: seriesKeys } } : {}) },
+      select: { seriesKey: true, date: true, recurrence: true },
+    })
+  note(series.length)
   const byKey = new Map<string, { dates: string[]; current: Set<string | null> }>()
   for (const s of series) {
     const g = byKey.get(s.seriesKey!) ?? { dates: [], current: new Set() }
@@ -197,19 +303,22 @@ async function runQualityPassInner() {
     if (rec) recurring++
     if (g.current.size !== 1 || !g.current.has(rec)) updates.push([key, rec])
   }
-  await inBatches(updates, JOB_CONNECTION_LIMIT, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, ...upcoming }, data: { recurrence: rec } }))
+  await inBatches(updates, JOB_CONNECTION_LIMIT, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, date: { gte: today } }, data: { recurrence: rec } }))
 
   if (yieldIfBudget('quality pass')) {
-    console.log('[quality] stopped at time budget')
-    return { backfilled: missing.length, merged, recurringSeries: recurring, places: 0, categories: 0, audited: 0, expiredHidden: 0 }
+    complete = false
+    console.log('[quality] stopped at time budget', { rowsRead })
+    return { backfilled: missing.length, merged, recurringSeries: recurring, places: 0, categories: 0, audited: 0, expiredHidden: 0, rowsRead }
   }
 
   // 4) Correct dump-bucket suburbs, city-as-venue names, and known category mistags.
   // Organiser edits are left alone. The same rules run at ingest; this catches rows already stored.
   const review = await prisma.event.findMany({
     where: { ...upcoming, duplicateOfId: null, organiserEditedAt: null },
-    select: { id: true, title: true, description: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true },
+    select: { id: true, title: true, description: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true, updatedAt: true },
+    ...(cursor ? { take: 2000, orderBy: { updatedAt: 'asc' as const } } : {}),
   })
+  note(review.length)
   let places = 0
   let categories = 0
   const placeUpdates: { id: string; data: Record<string, unknown> }[] = []
@@ -280,20 +389,28 @@ async function runQualityPassInner() {
     })
   }
 
-  const verification = yieldIfBudget('quality pass')
-    ? { normalized: 0, flagged: 0, checks: 0 }
-    : await runVerificationPass()
-  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired, verification, linkedFill }
+  let verification = { normalized: 0, flagged: 0, checks: 0 }
+  if (yieldIfBudget('quality pass')) complete = false
+  else verification = await runVerificationPass(new Date(), cursor)
+  let cursorOut = started
+  if (cursor && missing.length >= 2000) cursorOut = earlierCursor(cursorOut, missing[missing.length - 1]?.updatedAt)
+  if (cursor && review.length >= 2000) cursorOut = earlierCursor(cursorOut, review[review.length - 1]?.updatedAt)
+  if (complete) {
+    await writeJobCursor('quality', cursorOut).catch((err) => console.error('[quality] watermark write failed', (err as { message?: string })?.message))
+  }
+  const result = { backfilled: missing.length, links, merged, recurringSeries: recurring, places, categories, audited: fresh.length, expiredHidden: expired, verification, linkedFill, rowsRead }
   console.log('[quality] pass complete', result)
   return result
 }
 
 /** Fill sourceUrl from a ticket or organiser link already on the row, and repair glued Humanitix hosts. */
-async function backfillListingLinks(today: Date): Promise<number> {
+async function backfillListingLinks(today: Date, cursor: Date | null, note: (n: number) => void): Promise<number> {
   const rows = await prisma.event.findMany({
-    where: { date: { gte: today }, source: 'humanitix' },
+    where: { date: { gte: today }, source: 'humanitix', ...(cursor ? { updatedAt: { gt: cursor } } : {}) },
     select: { id: true, ticketUrl: true, sourceUrl: true },
+    ...(cursor ? { take: 2000 } : {}),
   })
+  note(rows.length)
   let repaired = 0
   await inBatches(rows, JOB_CONNECTION_LIMIT, async (row) => {
     const ticketUrl = repairKnownListingUrl(row.ticketUrl, 'humanitix')

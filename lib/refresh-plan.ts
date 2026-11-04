@@ -1,11 +1,14 @@
 /**
  * Listings refresh is split so no invocation approaches the 300s function limit.
- * Pro cron jobs are per-minute (this app already schedules every 2 hours, which Hobby rejects)
- * and a project may have 100 crons. Each chunk is its own cron with maxDuration 300.
- * Budgets stay at or under 220s so the log write still fits, and chunk minutes stay
- * off :00, :15, :30 and :45 where the other jobs run.
+ * Chunks run every hour, two minutes apart, then the short housekeeping jobs.
+ * The burst ends by minute 24. The rest of the hour is idle so Neon compute can
+ * suspend (the default idle timeout is 5 minutes) before the next hour.
+ * Events are still refreshed at least once an hour.
+ * Budgets stay at or under 220s so the log write still fits.
  */
-export const REFRESH_CYCLE_WINDOW_MS = 90 * 60 * 1000
+export const REFRESH_CYCLE_WINDOW_MS = 40 * 60 * 1000
+/** Housekeeping that shares the refresh burst instead of waking the database on its own. */
+export const HOURLY_SIDE_MINUTES = [22, 24] as const
 /** Stop starting another source once an HTTP invocation has been running this long. */
 export const REFRESH_INVOCATION_BUDGET_MS = 240_000
 /** Headroom under the 300s limit for the status write. */
@@ -13,7 +16,7 @@ export const SOURCE_BUDGET_MAX_MS = 220_000
 
 export type RefreshChunk = {
   id: string
-  /** Minute past the hour. Cron runs this chunk every 2 hours at that minute. */
+  /** Minute past the hour. Cron runs this chunk every hour at that minute. */
   minute: number
   budgetMs: number
   sources?: string[]
@@ -22,16 +25,22 @@ export type RefreshChunk = {
 
 export const REFRESH_CHUNKS: RefreshChunk[] = [
   { id: 'ticketmaster', minute: 2, budgetMs: 200_000, sources: ['Ticketmaster'] },
-  { id: 'frontier', minute: 8, budgetMs: 70_000, sources: ['Frontier Touring'] },
-  { id: 'city-of-sydney', minute: 14, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['City of Sydney'] },
-  { id: 'humanitix', minute: 20, budgetMs: 90_000, sources: ['Humanitix'] },
-  { id: 'moshtix', minute: 26, budgetMs: 180_000, sources: ['Moshtix'] },
-  { id: 'oztix', minute: 32, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Oztix'] },
-  { id: 'ticketek', minute: 38, budgetMs: 160_000, sources: ['Ticketek'] },
-  { id: 'eventbrite', minute: 44, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Eventbrite'] },
-  { id: 'curated', minute: 50, budgetMs: 100_000, sources: ['Popular regulars', 'Brisbane City Council'] },
-  { id: 'finalize', minute: 56, budgetMs: 200_000, finalize: true },
+  { id: 'frontier', minute: 4, budgetMs: 70_000, sources: ['Frontier Touring'] },
+  { id: 'city-of-sydney', minute: 6, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['City of Sydney'] },
+  { id: 'humanitix', minute: 8, budgetMs: 90_000, sources: ['Humanitix'] },
+  { id: 'moshtix', minute: 10, budgetMs: 180_000, sources: ['Moshtix'] },
+  { id: 'oztix', minute: 12, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Oztix'] },
+  { id: 'ticketek', minute: 14, budgetMs: 160_000, sources: ['Ticketek'] },
+  { id: 'eventbrite', minute: 16, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Eventbrite'] },
+  { id: 'curated', minute: 18, budgetMs: 100_000, sources: ['Popular regulars', 'Brisbane City Council'] },
+  { id: 'finalize', minute: 20, budgetMs: 200_000, finalize: true },
 ]
+
+/** Minutes from the end of the burst until the next hour's first chunk. */
+export function burstIdleMinutes(activityMinutes: number[], nextStart: number): number {
+  const last = Math.max(...activityMinutes)
+  return nextStart + 60 - (last + 1)
+}
 
 export function chunkById(id: string): RefreshChunk | null {
   return REFRESH_CHUNKS.find((c) => c.id === id) ?? null

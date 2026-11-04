@@ -1,12 +1,10 @@
-export const dynamic = 'force-dynamic'
-
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { boardArgsFromSearch, getBoardFeed } from '@/lib/board-feed'
 import { liveBoostEventIds } from '@/lib/sponsorship-store'
-import { hasSessionCookie, PRIVATE_NO_STORE, publicCacheHeaders } from '@/lib/http-cache'
+import { hasSessionCookie, PRIVATE_NO_STORE, PUBLIC_S_MAXAGE_SECONDS, PUBLIC_SWR_SECONDS, publicCacheHeaders } from '@/lib/http-cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,7 +25,7 @@ export async function GET(request: NextRequest) {
       page: args.page,
       totalPages: Math.max(1, Math.ceil(board.total / args.limit)),
     }
-    return NextResponse.json(body, { headers: me ? PRIVATE_NO_STORE : publicCacheHeaders(60) })
+    return NextResponse.json(body, { headers: me ? PRIVATE_NO_STORE : publicCacheHeaders(PUBLIC_S_MAXAGE_SECONDS, PUBLIC_SWR_SECONDS) })
   } catch (err: any) {
     console.error('Error fetching events:', err?.message)
     return NextResponse.json({ events: [], total: 0, page: 1, totalPages: 0 }, { status: 500 })

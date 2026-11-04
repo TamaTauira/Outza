@@ -5,6 +5,7 @@ import { sydneyToday } from '@/lib/event-store'
 import { assetIdFor, bestSourceUrl } from './source-url'
 import { loadSharp, processAsset, type Outcome } from './pipeline'
 import { discoverMissingImages } from './discover'
+import { readJobCursor, writeJobCursor } from '@/lib/job-watermark'
 
 const RECHECK_DAYS = 14
 const MAX_ATTEMPTS = 3
@@ -26,14 +27,25 @@ export async function linkEventImage(eventId: string): Promise<string | null> {
 }
 
 /** Links upcoming events that have an image URL but no asset yet (grouped by URL, cheap). */
-async function linkPending(max = 1500): Promise<number> {
+async function linkPending(max = 1500, since?: Date | null): Promise<number> {
+  const open = { date: { gte: sydneyToday() }, duplicateOfId: null, imageUrl: { not: null }, imageAssetId: null }
   const rows = await prisma.event.findMany({
-    where: { date: { gte: sydneyToday() }, duplicateOfId: null, imageUrl: { not: null }, imageAssetId: null },
+    where: { ...open, ...(since ? { updatedAt: { gt: since } } : {}) },
     select: { id: true, imageUrl: true },
-    take: max,
+    orderBy: { updatedAt: 'asc' },
+    take: since ? Math.min(max, 500) : max,
   })
+  const backlog = since
+    ? await prisma.event.findMany({
+      where: { ...open, updatedAt: { lte: since } },
+      select: { id: true, imageUrl: true },
+      orderBy: { updatedAt: 'asc' },
+      take: 100,
+    })
+    : []
+  const pendingRows = [...rows, ...backlog]
   const byUrl = new Map<string, string[]>()
-  for (const r of rows) {
+  for (const r of pendingRows) {
     const src = bestSourceUrl(r.imageUrl)
     if (!src) continue
     byUrl.set(src, [...(byUrl.get(src) ?? []), r.id])
@@ -52,7 +64,7 @@ async function linkPending(max = 1500): Promise<number> {
     select: { id: true }, take: 300,
   })
   for (const l of local) await linkLocalImage(l.id)
-  return rows.length + local.length
+  return pendingRows.length + local.length
 }
 
 /** Points an VibePeep Local listing at the ImageAsset for its uploaded photo, creating the asset if needed. */
@@ -80,13 +92,15 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
   const limit = opts.limit ?? 300
   const deadline = Date.now() + (opts.budgetMs ?? 8 * 60 * 1000)
   running = runWithJobPrisma(async () => {
+    const started = new Date()
+    const cursor = await readJobCursor('images').catch(() => null)
     const sharp = await loadSharp()
     const run = await prisma.imageRun.create({ data: { trigger: opts.trigger ?? 'refresh' } })
     const counts: Record<Outcome, number> = { ok: 0, enhanced: 0, rejected: 0, review: 0, failed: 0, cached: 0, unchanged: 0 }
     const errors: string[] = []
     try {
-      await discoverMissingImages({ budgetMs: Math.min(3 * 60 * 1000, Math.max(0, deadline - Date.now()) / 3) }).catch((e) => errors.push(`page lookup: ${e?.message}`))
-      await linkPending()
+      await discoverMissingImages({ since: cursor, budgetMs: Math.min(3 * 60 * 1000, Math.max(0, deadline - Date.now()) / 3) }).catch((e) => errors.push(`page lookup: ${e?.message}`))
+      await linkPending(1500, cursor)
       if (!sharp) throw new Error('image processor unavailable on this server - source images are served as-is')
       const retryBefore = new Date(Date.now() - 6 * 3600 * 1000)
       const recheckBefore = new Date(Date.now() - RECHECK_DAYS * 86400 * 1000)
@@ -100,7 +114,7 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
               { localListings: { some: { expiresAt: { gte: new Date() } } } },
             ] },
             { OR: [
-              { status: 'PENDING' },
+              { status: 'PENDING', ...(cursor ? { updatedAt: { gt: cursor } } : {}) },
               { status: 'FAILED', attempts: { lt: MAX_ATTEMPTS }, updatedAt: { lt: retryBefore } },
             ] },
           ],
@@ -109,13 +123,29 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
         orderBy: { createdAt: 'asc' },
         take: limit,
       })
-      const recheck = queue.length < limit
+      const pendingBacklog = cursor && queue.length < limit
         ? await prisma.imageAsset.findMany({
-          where: { processedAt: { not: null }, checkedAt: { lt: recheckBefore }, events: { some: { date: { gte: today } } } },
-          select: { id: true }, orderBy: { checkedAt: 'asc' }, take: Math.min(30, limit - queue.length),
+          where: {
+            status: 'PENDING',
+            updatedAt: { lte: cursor },
+            OR: [
+              { events: { some: { date: { gte: today }, duplicateOfId: null } } },
+              { localListings: { some: { expiresAt: { gte: new Date() } } } },
+            ],
+          },
+          select: { id: true },
+          orderBy: { createdAt: 'asc' },
+          take: Math.min(40, limit - queue.length),
         })
         : []
-      const ids = [...queue, ...recheck].map((a) => a.id)
+      const queued = [...queue, ...pendingBacklog]
+      const recheck = queued.length < limit
+        ? await prisma.imageAsset.findMany({
+          where: { processedAt: { not: null }, checkedAt: { lt: recheckBefore }, events: { some: { date: { gte: today } } } },
+          select: { id: true }, orderBy: { checkedAt: 'asc' }, take: Math.min(30, limit - queued.length),
+        })
+        : []
+      const ids = [...queued, ...recheck].map((a) => a.id)
       let next = 0
       const worker = async () => {
         while (next < ids.length && Date.now() < deadline) {
@@ -131,6 +161,7 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
       errors.push(e?.message ?? 'image pass failed')
       console.error('[images] pass failed:', e?.message)
     }
+    await writeJobCursor('images', started).catch((err) => console.error('[images] watermark write failed', (err as { message?: string })?.message))
     const processed = Object.values(counts).reduce((a, b) => a + b, 0)
     await prisma.imageRun.update({
       where: { id: run.id },

@@ -83,20 +83,35 @@ export async function findImageForPage(pageUrl: string): Promise<string | null> 
  * For upcoming events with no artwork, looks up the image published on the event's own page
  * (the ticket/source link). Events sharing a page are filled together. Misses are retried after a few days.
  */
-export async function discoverMissingImages(opts: { maxPages?: number; budgetMs?: number } = {}): Promise<{ pages: number; found: number; events: number }> {
+export async function discoverMissingImages(opts: { maxPages?: number; budgetMs?: number; since?: Date | null } = {}): Promise<{ pages: number; found: number; events: number; rowsRead: number }> {
   const deadline = Date.now() + (opts.budgetMs ?? 3 * 60 * 1000)
   const retryBefore = new Date(Date.now() - RETRY_DAYS * 86400 * 1000)
+  const since = opts.since ?? null
+  const needsLookup = { OR: [{ imageLookupAt: null }, { imageLookupAt: { lt: retryBefore } }] }
   const rows = await prisma.event.findMany({
     where: {
       date: { gte: sydneyToday() }, duplicateOfId: null, imageUrl: null, imageLocked: false, ticketUrl: { not: null },
-      OR: [{ imageLookupAt: null }, { imageLookupAt: { lt: retryBefore } }],
+      AND: [needsLookup, ...(since ? [{ updatedAt: { gt: since } }] : [])],
     },
     select: { id: true, ticketUrl: true },
-    orderBy: { date: 'asc' },
-    take: 3000,
+    orderBy: since ? { updatedAt: 'asc' as const } : { date: 'asc' as const },
+    take: since ? 400 : 800,
   })
+  const backlog = since
+    ? await prisma.event.findMany({
+      where: {
+        date: { gte: sydneyToday() }, duplicateOfId: null, imageUrl: null, imageLocked: false, ticketUrl: { not: null },
+        imageLookupAt: { lt: retryBefore },
+        updatedAt: { lte: since },
+      },
+      select: { id: true, ticketUrl: true },
+      orderBy: { imageLookupAt: 'asc' },
+      take: 50,
+    })
+    : []
+  const pending = [...rows, ...backlog]
   const byUrl = new Map<string, string[]>()
-  for (const r of rows) byUrl.set(r.ticketUrl!, [...(byUrl.get(r.ticketUrl!) ?? []), r.id])
+  for (const r of pending) byUrl.set(r.ticketUrl!, [...(byUrl.get(r.ticketUrl!) ?? []), r.id])
   const pages = [...byUrl.entries()].slice(0, opts.maxPages ?? 60)
   let found = 0, events = 0, next = 0, done = 0
   const worker = async () => {
@@ -112,6 +127,6 @@ export async function discoverMissingImages(opts: { maxPages?: number; budgetMs?
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, JOB_CONNECTION_LIMIT) }, worker))
-  if (pages.length) console.log(`[images] page lookup: ${found}/${done} pages had artwork (${events} events)`)
-  return { pages: done, found, events }
+  if (pages.length) console.log(`[images] page lookup: ${found}/${done} pages had artwork (${events} events), rows ${pending.length}`)
+  return { pages: done, found, events, rowsRead: pending.length }
 }

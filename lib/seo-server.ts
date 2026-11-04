@@ -1,4 +1,6 @@
+import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
+import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS } from '@/lib/http-cache'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef, type CityDef } from '@/lib/cities'
@@ -15,7 +17,7 @@ import { listingBucket, minutesNow, orderedWindow } from '@/lib/listing-window'
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
 const landingSelect = {
-  id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
+  id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
   category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, status: true,
   latitude: true, longitude: true, organiserName: true, organiserUrl: true, city: true,
   source: true, sources: true, lastVerifiedAt: true, statusSource: true, duplicateOfId: true,
@@ -222,7 +224,7 @@ const iso = (dateKey: string, time: string | null | undefined, tz: string) =>
   time && /^\d{2}:\d{2}/.test(time) ? `${dateKey}T${time.slice(0, 5)}:00${tzOffset(tz, dateKey)}` : dateKey
 
 type JsonLdEvent = {
-  id: string; title: string; description: string | null; date: Date; endDate: Date | null; time: string | null; endTime: string | null
+  id: string; title: string; description?: string | null; date: Date; endDate: Date | null; time: string | null; endTime: string | null
   venueName: string; venueAddress: string | null; suburb: string | null; city: string; latitude: number | null; longitude: number | null
   isFree: boolean; priceMin: number | null; priceMax: number | null; ticketUrl: string | null; status: string
   organiserName: string | null; organiserUrl: string | null; imageUrl: string | null; imageAsset?: { variants?: unknown } | null
@@ -286,14 +288,14 @@ function localTopics(l: { category: string; title: string; description: string }
   return []
 }
 
-async function loadGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
+async function queryGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
   const until = addDaysKey(today, 120)
   const localUntil = addDaysKey(today, 60)
   const [events, locals] = await Promise.all([
     prisma.event.findMany({
       where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) }, AND: [...PUBLIC_EVENT_AND] },
       select: {
-        id: true, title: true, description: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
+        id: true, title: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
         category: true, subTags: true, isFree: true, isLGBTI: true,
       },
     }),
@@ -340,6 +342,20 @@ async function loadGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
     })
   }
   return [...eventRows, ...localRows]
+}
+
+const cachedGuideRows = unstable_cache(
+  async (cityName: string, today: string) => {
+    const city = CITIES.find((c) => c.name === cityName)
+    if (!city) return [] as InvRow[]
+    return queryGuideRows(city, today)
+  },
+  ['guide-rows-v2'],
+  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] },
+)
+
+async function loadGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
+  return cachedGuideRows(city.name, today)
 }
 
 export interface CityGuideModel {

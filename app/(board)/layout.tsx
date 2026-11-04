@@ -5,7 +5,7 @@ import { sydneyNow } from '@/lib/board'
 import { DEFAULT_CITY } from '@/lib/cities'
 import { getBoardFeed } from '@/lib/board-feed'
 
-export const revalidate = 60
+export const revalidate = 600
 
 // Board (/), Map (/map) and Saved (/saved) share this layout so the board state survives switching views.
 export default async function BoardLayout({ children }: { children: React.ReactNode }) {

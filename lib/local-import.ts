@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 import { yieldIfBudget } from '@/lib/source-budget'
 import { prisma } from '@/lib/db'
+import { readJobCursor, writeJobCursor } from '@/lib/job-watermark'
 import { CITIES, cityDef } from '@/lib/cities'
 import { addDaysStr, diffDays, isTimeStr, lastDate, localDupKey, occurrences, todayIn, MAX_SPAN_DAYS, type RecurringShape } from '@/lib/local-shared'
 
@@ -53,26 +54,49 @@ interface Row {
   id: string; title: string; description: string | null; date: Date; endDate: Date | null; time: string | null; endTime: string | null
   venueName: string; venueAddress: string | null; suburb: string | null; city: string; isFree: boolean; price: string | null
   ticketUrl: string | null; organiserName: string | null; organiserUrl: string | null; source: string; latitude: number | null; longitude: number | null
+  updatedAt: Date
 }
 
 type Draft = Omit<RecurringShape, 'endDate' | 'recurUntil'> & { endDate: string | null; recurUntil: string | null; row: Row; sourceKey: string }
 
-export async function importLocalFromBoard(): Promise<{ upserted: number; skipped: number }> {
+export async function importLocalFromBoard(): Promise<{ upserted: number; skipped: number; rowsRead: number }> {
+  const started = new Date()
+  const cursor = await readJobCursor('localImport').catch(() => null)
   const since = new Date(Date.now() - 86400000)
-  const rows: Row[] = await prisma.event.findMany({
-    where: { source: { in: Object.keys(LOCAL_IMPORT_SOURCES) }, date: { gte: since }, duplicateOfId: null, status: 'SCHEDULED', city: { in: CITIES.map((c) => c.name) } },
-    select: { id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true, city: true, isFree: true, price: true, ticketUrl: true, organiserName: true, organiserUrl: true, source: true, latitude: true, longitude: true },
-    orderBy: { date: 'asc' }, take: 20000,
+  const narrow = { id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true, city: true, isFree: true, price: true, ticketUrl: true, organiserName: true, organiserUrl: true, source: true, latitude: true, longitude: true, updatedAt: true } as const
+  const loaded = await prisma.event.findMany({
+    where: {
+      source: { in: Object.keys(LOCAL_IMPORT_SOURCES) },
+      date: { gte: since },
+      duplicateOfId: null,
+      status: 'SCHEDULED',
+      city: { in: CITIES.map((c) => c.name) },
+      ...(cursor ? { updatedAt: { gt: cursor } } : {}),
+    },
+    select: narrow,
+    orderBy: cursor ? { updatedAt: 'asc' } : { date: 'asc' },
+    take: cursor ? 2000 : 20000,
   })
+  const rows: Row[] = loaded.map((row) => ({ ...row, description: null }))
 
   let skipped = 0
   const groups = new Map<string, Row[]>()
+  const kept: Row[] = []
   for (const r of rows) {
     const text = `${r.title} ${r.venueName}`
     const ok = (r.source === 'curated' || LOCAL_RX.test(r.title)) && !SKIP_RX.test(text) && isTimeStr(r.time) && isTimeStr(r.endTime) && r.endTime! > r.time!
     if (!ok) { skipped++; continue }
+    kept.push(r)
     const g = `${r.source}|${r.city}|${r.title.toLowerCase()}|${r.venueName.toLowerCase()}`
     groups.set(g, [...(groups.get(g) ?? []), r])
+  }
+  if (kept.length) {
+    const descriptions = await prisma.event.findMany({
+      where: { id: { in: kept.map((row) => row.id) } },
+      select: { id: true, description: true },
+    })
+    const byId = new Map(descriptions.map((row) => [row.id, row.description]))
+    for (const row of kept) row.description = byId.get(row.id) ?? null
   }
 
   // Weekly runs (same weekday, 7 days apart) become one recurring listing; everything else stays one-off.
@@ -102,8 +126,9 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
   for (const d of drafts) if (!unique.has(d.sourceKey)) unique.set(d.sourceKey, d)
 
   let upserted = 0
+  let stoppedEarly = false
   for (const d of unique.values()) {
-    if (yieldIfBudget('local import')) break
+    if (yieldIfBudget('local import')) { stoppedEarly = true; break }
     const r = d.row
     if (lastDate(d) < todayIn(cityDef(r.city).tz)) { skipped++; continue }
     const place = splitAddress(r.venueName, r.venueAddress, r.suburb ?? r.city)
@@ -136,7 +161,17 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
     }
   }
   await dedupeLocalListings().catch((e) => console.error('[local-import] dedupe failed', e?.message))
-  return { upserted, skipped }
+  if (!stoppedEarly) {
+    const cap = cursor ? 2000 : 20000
+    const mark = loaded.length >= cap
+      ? loaded.reduce((max, row) => (row.updatedAt > max ? row.updatedAt : max), loaded[0].updatedAt)
+      : started
+    if (loaded.length || !cursor) {
+      await writeJobCursor('localImport', loaded.length ? mark : started).catch((err) => console.error('[local-import] watermark write failed', (err as { message?: string })?.message))
+    }
+  }
+  console.log('[local-import] rows read', loaded.length, 'described', kept.length, 'cursor', cursor?.toISOString() ?? 'full')
+  return { upserted, skipped, rowsRead: loaded.length + kept.length }
 }
 
 const windowFor = (city: string) => { const t = todayIn(cityDef(city).tz); return [t, addDaysStr(t, 180)] as const }

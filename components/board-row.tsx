@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { useItinerary, eventToItem } from '@/lib/itinerary'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
-import { categoryIcon, checkedAgo, formatPrice } from '@/lib/board'
+import { categoryIcon, checkedAgo, formatPrice, latestIso } from '@/lib/board'
 import { formatBoardRange, liveStatus, type BoardRange } from '@/lib/listing-window'
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
@@ -65,7 +65,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
   const Icon = categoryIcon(ev.category)
   const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
-  const checked = checkedAgo(ev.updatedAt)
+  const checked = checkedAgo(latestIso(ev.lastVerifiedAt, ev.updatedAt))
   const done = status.tone === 'done'
   const type = ev.subTags?.[0] ?? ev.category
   const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)

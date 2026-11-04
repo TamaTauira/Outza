@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS } from '@/lib/http-cache'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { sydneyToday } from '@/lib/event-store'
@@ -11,7 +12,7 @@ import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
-const BOARD_SELECT = {
+export const BOARD_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
   allDay: true, startsAt: true, endsAt: true,
   venueName: true, venueAddress: true, suburb: true, city: true,
@@ -149,7 +150,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v6'], { revalidate: 60 })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v7'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 

@@ -112,18 +112,35 @@ function emptyReport(dryRun: boolean): LinkedFillReport {
   }
 }
 
-async function candidateIds(today: Date): Promise<string[]> {
-  const rows = await prisma.$queryRaw<{ id: string }[]>`
-    SELECT id FROM "Event"
-    WHERE "duplicateOfId" IS NULL
-      AND "deletedAt" IS NULL
-      AND "date" >= ${today}
-      AND (
-        cardinality("sources") > 1
-        OR id IN (SELECT "duplicateOfId" FROM "Event" WHERE "duplicateOfId" IS NOT NULL)
-      )
-    ORDER BY "date" ASC, id ASC
-  `
+async function candidateIds(today: Date, since?: Date | null): Promise<string[]> {
+  const rows = since
+    ? await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Event"
+        WHERE "duplicateOfId" IS NULL
+          AND "deletedAt" IS NULL
+          AND "date" >= ${today}
+          AND (
+            "updatedAt" > ${since}
+            OR id IN (SELECT "duplicateOfId" FROM "Event" WHERE "duplicateOfId" IS NOT NULL AND "updatedAt" > ${since})
+          )
+          AND (
+            cardinality("sources") > 1
+            OR id IN (SELECT "duplicateOfId" FROM "Event" WHERE "duplicateOfId" IS NOT NULL)
+          )
+        ORDER BY "updatedAt" ASC, id ASC
+        LIMIT 2000
+      `
+    : await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Event"
+        WHERE "duplicateOfId" IS NULL
+          AND "deletedAt" IS NULL
+          AND "date" >= ${today}
+          AND (
+            cardinality("sources") > 1
+            OR id IN (SELECT "duplicateOfId" FROM "Event" WHERE "duplicateOfId" IS NOT NULL)
+          )
+        ORDER BY "date" ASC, id ASC
+      `
   return rows.map((row) => row.id)
 }
 
@@ -172,10 +189,10 @@ async function applyPlan(event: FillEvent, donors: FillEvent[], plan: LinkedFill
   }
 }
 
-export async function runLinkedFill(opts: { dryRun: boolean }): Promise<LinkedFillReport> {
+export async function runLinkedFill(opts: { dryRun: boolean; since?: Date | null }): Promise<LinkedFillReport> {
   const report = emptyReport(opts.dryRun)
   const today = new Date(`${toSydneyParts(new Date()).date}T00:00:00.000Z`)
-  const ids = await candidateIds(today)
+  const ids = await candidateIds(today, opts.since)
   const examples: LinkedFillExample[] = []
 
   for (let i = 0; i < ids.length; i += BATCH) {

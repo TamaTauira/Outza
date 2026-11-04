@@ -15,7 +15,7 @@ import { boardClockLine } from '@/lib/listing-window'
 interface EventData {
   id: string
   title: string
-  description: string | null
+  description?: string | null
   date: string
   time: string | null
   venueName: string
