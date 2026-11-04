@@ -184,7 +184,8 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
       </fieldset>
 
       <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
-        <label className={label}>Title
+        <label className={label}>
+          <span className="flex items-baseline justify-between gap-3">Title <span className="text-xs font-normal text-muted-foreground">{f.title.length}/100</span></span>
           <input required maxLength={100} value={f.title} onChange={set('title')} className={field} placeholder="Saturday garage sale, Glebe" />
         </label>
         <label className={label}>What’s happening

@@ -68,7 +68,7 @@ function ticketmaster(partial: Partial<FillEvent> = {}): FillEvent {
 test('Courtney Barnett at The Tivoli copies Ticketmaster time, street and pin, and does not invent a price', () => {
   const canonical = frontier()
   const copy = ticketmaster()
-  assert.equal(classifyDonor(canonical, copy), 'attributed')
+  assert.equal(classifyDonor(canonical, copy), 'linked')
   const plan = planLinkedFill(canonical, [copy])
   assert.equal(plan.patch.time, '19:00')
   assert.equal(plan.patch.endTime, undefined)
@@ -166,9 +166,10 @@ test('a review pair is not a donor, even when the listing already names that sou
     { title: canonical.title, venueName: canonical.venueName, city: canonical.city, date: '2026-11-04', time: '19:00', source: 'frontier' },
     { title: donor.title, venueName: donor.venueName, city: donor.city, date: '2026-11-04', time: '19:00', source: 'ticketmaster' },
   )
-  assert.equal(decision.action, 'review')
-  assert.equal(classifyDonor(canonical, donor), 'review')
-  const plan = planLinkedFill(canonical, [donor])
+  assert.equal(decision.action, 'link')
+  const held = { ...donor, relation: 'review' as const }
+  assert.equal(classifyDonor(canonical, held), 'review')
+  const plan = planLinkedFill(canonical, [held])
   assert.equal(plan.filled.length, 0)
   assert.equal(plan.skippedReview, 1)
   assert.equal(plan.patch.price, undefined)
@@ -232,12 +233,19 @@ test('organiser edits, locked fields and a locked image are left alone', () => {
   assert.match(String(locked.patch.description), /biography/)
 })
 
-test('unlinked tour wording without a named source does not fill', () => {
+test('the same tour and venue can fill a blank, and a different venue cannot', () => {
   const canonical = frontier({ sources: ['frontier'], time: null, price: null })
   const donor = ticketmaster({ price: '$89.90' })
-  assert.notEqual(classifyDonor(canonical, donor), 'linked')
-  assert.notEqual(classifyDonor(canonical, donor), 'attributed')
-  assert.equal(planLinkedFill(canonical, [donor]).filled.length, 0)
+  assert.equal(classifyDonor(canonical, donor), 'linked')
+  assert.equal(planLinkedFill(canonical, [donor]).patch.price, '$89.90')
+  const elsewhere = ticketmaster({
+    price: '$89.90',
+    city: 'Melbourne',
+    venueName: 'Palais Theatre',
+    venueAddress: 'Lower Esplanade, St Kilda',
+  })
+  assert.notEqual(classifyDonor(canonical, elsewhere), 'linked')
+  assert.equal(planLinkedFill(canonical, [elsewhere]).filled.length, 0)
 })
 
 test('plansForRows fills the canonical Courtney listing from the same-day Ticketmaster row', () => {
