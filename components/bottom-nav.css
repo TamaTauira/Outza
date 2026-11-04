@@ -534,7 +534,8 @@ html[data-vp-fold='side'] .vp-menu-sheet {
     display: inline-flex !important;
   }
 
-  main [class~="sm:flex-row"] {
+  main [class~="sm:flex-row"],
+  main .vp-hero-row {
     flex-direction: column !important;
   }
 
@@ -558,7 +559,8 @@ html[data-vp-fold='side'] .vp-site-header [class~="md:hidden"] {
   display: inline-flex !important;
 }
 
-html[data-vp-fold='side'] main [class~="sm:flex-row"] {
+html[data-vp-fold='side'] main [class~="sm:flex-row"],
+html[data-vp-fold='side'] main .vp-hero-row {
   flex-direction: column !important;
 }
 

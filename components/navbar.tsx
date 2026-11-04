@@ -13,11 +13,14 @@ import { useMounted } from '@/components/client-only'
 import { cn } from '@/lib/utils'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { BottomNav } from '@/components/bottom-nav'
+import { BRAND_TAGLINE } from '@/lib/brand'
 
 export type AppView = 'board' | 'map' | 'saved'
 
 interface NavbarProps {
   savedCount: number
+  /** Homepage board: tagline and headline sit in the header, beside the logo. */
+  homeBrand?: boolean
 }
 
 // Board, Map and Saved each have their own address, so Back, bookmarks and sharing all work.
@@ -34,7 +37,7 @@ export function viewForPath(pathname: string | null): AppView | null {
   return 'board'
 }
 
-export function Navbar({ savedCount }: NavbarProps) {
+export function Navbar({ savedCount, homeBrand = false }: NavbarProps) {
   const { resolvedTheme, setTheme } = useTheme()
   const mounted = useMounted()
   const pathname = usePathname()
@@ -46,12 +49,33 @@ export function Navbar({ savedCount }: NavbarProps) {
   return (
     <>
     <header className="vp-site-header sticky top-0 z-50 bg-background/90 backdrop-blur-md">
-      <div className="max-w-[1280px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1 min-w-0 border-b border-border">
-        <a href="/" className="flex items-center gap-2.5 shrink-0" aria-label="VibePeep home">
-          <VibePeepLogo size="md" labelClassName="hidden sm:flex" />
-        </a>
+      <div className={cn(
+        'max-w-[1280px] mx-auto min-w-0 border-b border-border',
+        homeBrand ? 'vp-home-bar px-3 sm:px-6' : 'px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1',
+      )}>
+        {homeBrand ? (
+          <div className="vp-home-brandblock">
+            <a href="/" className="vp-home-brand flex items-center shrink-0" aria-label="VibePeep home">
+              <VibePeepLogo size="md" showTagline={false} labelClassName="flex" />
+            </a>
+            <div className="vp-home-copy">
+              <p className="vp-home-tagline">
+                <span className="vp-live-dot" aria-hidden="true" />
+                <span className="text-brand-gradient">{BRAND_TAGLINE}</span>
+              </p>
+              <h1 className="vp-home-headline font-display font-bold text-foreground">
+                <span>Your city’s calling.</span>
+                <span>Answer it.</span>
+              </h1>
+            </div>
+          </div>
+        ) : (
+          <a href="/" className="flex items-center gap-2.5 shrink-0" aria-label="VibePeep home">
+            <VibePeepLogo size="md" labelClassName="hidden sm:flex" />
+          </a>
+        )}
 
-        <nav className="vp-top-links flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Primary">
+        <nav className={cn('vp-top-links flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', homeBrand && 'vp-home-nav')} aria-label="Primary">
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
@@ -88,7 +112,7 @@ export function Navbar({ savedCount }: NavbarProps) {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+        <div className={cn('vp-home-tools flex items-center gap-1 sm:gap-2 shrink-0', !homeBrand && 'ml-auto')}>
           <button
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"

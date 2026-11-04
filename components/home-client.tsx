@@ -268,7 +268,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
   return (
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
-      <Navbar savedCount={saved.length} />
+      <Navbar savedCount={saved.length} homeBrand={view === 'board'} />
 
       <main className={view === 'map' ? 'vp-map-main relative h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
         {view === 'saved' ? (
@@ -277,28 +277,19 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">Everything you saved, in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My VibePeep</Link> also keeps follows, reminders and a calendar file.</p>
           </div>
         ) : view === 'board' ? (
-          <section className="mb-4 rounded-2xl bg-[#0c0f0e] text-white px-4 py-4 sm:px-6 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-            <div className="flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="flex items-center gap-2 text-xs font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-brand-gradient" aria-hidden />
-                    <span className="text-brand-gradient">Take a peep at what&apos;s happening.</span>
-                  </p>
-                  <LocalClock city={city} className="text-right" />
-                </div>
-                <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold tracking-tight leading-tight">Your city’s calling. Answer it.</h1>
+          <section className="mb-4 rounded-2xl bg-[#0c0f0e] text-white px-4 py-3 sm:px-6 sm:py-4 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
+            <div className="vp-hero-row flex flex-col gap-2.5 xl:flex-row xl:items-center xl:gap-3">
+              <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+                <label className="inline-flex h-12 w-[11.25rem] shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3 sm:w-[200px]">
+                  <MapPin className="w-4 h-4 text-primary shrink-0" />
+                  <span className="sr-only">Choose a city</span>
+                  <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent pr-1 font-medium text-white focus:outline-none" aria-label="Choose a city">
+                    <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
+                    {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
+                  </select>
+                </label>
+                <LocalClock city={city} className="vp-hero-clock ml-auto shrink-0 text-right xl:ml-0" />
               </div>
-            </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-              <label className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3 sm:w-[200px]">
-                <MapPin className="w-4 h-4 text-primary shrink-0" />
-                <span className="sr-only">Choose a city</span>
-                <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent pr-1 font-medium text-white focus:outline-none" aria-label="Choose a city">
-                  <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
-                  {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
-                </select>
-              </label>
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} />
             </div>
           </section>
@@ -350,7 +341,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </>
         )}
 
-        {view !== 'map' && <div ref={boardRef} className="scroll-mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+        {view !== 'map' && <div ref={boardRef} className="scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
           {view === 'board' &&
           <>
               {/* Big search */}
