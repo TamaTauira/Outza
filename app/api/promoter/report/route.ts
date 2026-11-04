@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
+import { isQaAccountEmail } from '@/lib/qa-account'
 import { publicEmailError } from '@/lib/email'
 import { sendPromoterReport } from '@/lib/promoter-report'
 
@@ -38,7 +39,7 @@ export async function PATCH(req: Request) {
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
   const b = await req.json().catch(() => ({}))
-  const weeklyReport = !!b.weeklyReport
+  const weeklyReport = isQaAccountEmail(me.email) ? false : !!b.weeklyReport
   await prisma.user.update({ where: { id: me.id }, data: { weeklyReport } })
   return NextResponse.json({ ok: true, weeklyReport })
 }

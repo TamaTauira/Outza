@@ -10,13 +10,13 @@ One confirmed security hole was open on production during the audit: `POST /api/
 
 Sign-in also accepted an unchecked `next` query and would navigate there after a successful login. That now stays on a same-site path. Local page import refuses loopback and link-local addresses, and a redirect is checked again before the page text is used. On a mobile Lighthouse run the Filters control had no accessible name because its label is hidden below the `sm` breakpoint, and the mascot minimise control was under 24px. Both are adjusted in this change.
 
-Mobile lab performance is the largest remaining product gap: Lighthouse performance 70, LCP about 7.2s. Organiser, venue and admin dashboards were not signed into, so that part of the score is unassessed.
+Mobile lab performance is still the largest product gap: Lighthouse performance 70, LCP about 7.2s. A second pass on 4 Nov signed in with synthetic accounts and exercised promoter, venue and admin dashboards, claiming, cross-organisation permissions, community validation, the digest preview, and test-mode checkout.
 
 **Verdict: READY WITH MINOR ISSUES**
 
-**Weighted score: 66 / 100**
+**Weighted score: 73 / 100**
 
-The score counts the business-dashboard category as zero because it was not exercised with a real session. After deploy `dpl_F1v25WpeYpRBshu9hXJcgjTjReyQ`, production `POST /api/refresh-events` without a secret returns 403.
+The dashboard category is no longer unassessed. `POST /api/refresh-events` without a secret returns 403 on production.
 
 ## B. Feature inventory
 
@@ -30,7 +30,7 @@ The score counts the business-dashboard category as zero because it was not exer
 | Accounts (email, Google, birth year) | Fully implemented | Year of birth, not a full date. EU/EEA/UK under-16 block is in the signup API. Wrong password shows an error. |
 | VibePeep Local | Fully implemented | `/local?tab=submit` is the community form. No required import URL. |
 | Promotions, Pro, local ads, sponsorships | Fully implemented | Checkout requires a session (401 when signed out). Stripe webhook rejects a bad signature when configured. No live charge was made. |
-| Promoter, venue and admin dashboards | Implemented, not session-tested | Signed-out pages render the login form. APIs return 401. |
+| Promoter, venue and admin dashboards | Fully implemented | Signed-in checks on 4 Nov. Cross-organisation calls return 403. |
 | Ingestion crons | Fully implemented | Chunks in `vercel.json`. Protected. |
 | Newsletter | Implemented, not sent | Unsubscribe and preview routes exist. No send was triggered. |
 | PWA | Partial | Manifest, 192 and 512 icons, and the Apple touch icon return 200. No service worker. |
@@ -63,10 +63,24 @@ Statuses mean what the brief says. A row is PASS only where a request, browser, 
 | Import refuses 127.0.0.1 and 169.254.169.254 | Unit | PASS | P2 | `lib/local-extract-ssrf.test.ts` |
 | Full unit suite | Unit | PASS | — | 401 passed (`yarn test`) |
 | Typecheck and production build | Build | PASS | — | `tsc --noEmit` and `yarn build`. Build logs “Board seed failed” only because this environment has no `DATABASE_URL` |
-| Promoter, venue and admin journeys | — | BLOCKED | — | No owner session was used |
-| Stripe payment | — | NOT TESTED | — | Test mode only would be allowed. No charge was attempted |
-| Email delivery | — | NOT TESTED | — | No messages sent |
-| Push, geofence, service worker | — | NOT IMPLEMENTED | — | — |
+| Promoter, venue and admin journeys | API and browser | PASS | — | Seven QA accounts. Playwright: promoter, admin, venue, account. APIs below |
+| Promoter dashboard, export, empty audience | API | PASS | — | Own events 200. Export CSV. Insights `enough: false`. No attendance claim |
+| Venue dashboard and other-venue BOLA | API and browser | PASS | — | Own venue allowed. Other venue edit and analytics 403 |
+| Admin trust, local and community queues | API and browser | PASS | — | Admin 200. Promoter and consumer 403 |
+| Organiser intelligence for own event | API | PASS | — | Report includes SEIFA. The other organiser gets 403 |
+| Sourced-event edit warning, ack, audit | API | PASS | — | 409 before ack. History row after save. Title on the public API |
+| Ingest does not overwrite an active override | Unit | PASS | — | `planSourceRefresh` in `lib/ownership.test.ts`. Not a live ingest |
+| Venue manager cannot edit an external event | API and unit | PASS | — | 403 on both a promoter listing and a sourced listing at their hall |
+| Consumer self-grant of admin | API | PASS | — | `PATCH /api/me` with `role: ADMIN` leaves the role CONSUMER |
+| Password change and account deletion | API | PASS | — | Consumer 2 changed password. A throwaway account was closed and is gone |
+| Password reset | HTTP | NOT IMPLEMENTED | — | `/forgot-password`, `/reset-password` and `/account/reset` are 404 |
+| Account email verification | — | NOT IMPLEMENTED | — | Signup does not send a verification mail |
+| Duplicate signup and wrong password | API | PASS | — | 409 and 401 |
+| QA accounts opt into the newsletter | API | FAIL | P2 | `PATCH /api/me` set `emailOptIn` true. Reverted in the database. Code fix in this change |
+| Digest preview | Browser | PASS | — | Admin HTML preview, nothing sent. Consumer 403 |
+| Push and geofenced alerts | — | NOT IMPLEMENTED | — | No service worker, push, or geofence |
+| Free trial | — | NOT IMPLEMENTED | — | Plans say there is no trial. `paymentsEnabled` is false |
+| Spotlight checkout | API | PASS | P1 config | No charge. Stripe is unset, so the API activated a test-mode placement. Those rows were cancelled |
 | Itinerary save vs Saved count | — | NOT TESTED | — | Still on the handover list |
 
 ## D. Defect register
@@ -168,6 +182,26 @@ Statuses mean what the brief says. A row is PASS only where a request, browser, 
 - Actual: 4,107 active rows are still dated more than a day ago and are not marked removed. Two samples 404 on the public API, and the Sydney list did not include them
 - Fix: not applied. Rows were not deleted
 
+### QA-11 — QA accounts could opt into mail
+
+- Feature: newsletters and audience
+- Severity: P2
+- Expected: the synthetic QA logins stay out of newsletters, reminders, promoter reports and audience insights
+- Actual: `PATCH /api/me` with `emailOptIn: true` saved. The flags were set back to false immediately
+- Cause: opt-in was stored for every account. The user table has no test column, so the address `outza-tester+qa-…@mail.grokbot.com` is the flag
+- Fix: those addresses are dropped from digest, reminder and report queries, cannot be emailed, and are left out of audience insights. Profile saves force mail off
+- Retest: unit tests passed. The live profile save still opts in until this change is deployed
+
+### QA-12 — A promotion activates with no payment while Stripe is unset
+
+- Feature: Spotlight and Pro checkout
+- Severity: P1 configuration
+- Expected: a paid placement is not marked active unless a Stripe test-mode payment succeeds
+- Actual: `POST /api/promotions/checkout` for Spotlight returned `testMode: true` and created ACTIVE rows with `paymentMode: test`. `paymentsEnabled` on the subscription API is false. No card was charged
+- Cause: with `STRIPE_SECRET_KEY` unset, checkout activates the order in test mode. That is the current code path
+- Fix: not merged. Turning it off would stop the only way a promoter can exercise a placement today. The test rows were cancelled and the listing was deleted
+- Retest: the activation was observed once, then removed
+
 ## E. Performance comparison
 
 Device: this audit environment, headless Chrome, Lighthouse mobile emulation (412×823, slow-4G style default). Network is the VM’s path to Vercel in Sydney (`syd1`).
@@ -198,11 +232,20 @@ What was checked and held:
 - HSTS (two years, includeSubDomains, preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, a Content-Security-Policy and `Referrer-Policy: strict-origin-when-cross-origin` are present on `/`
 - Signup stores a birth year. The under-16 country block is server-side. This audit did not spoof `x-vercel-ip-country` against production, because Vercel overwrites that header
 
+Signed-in checks on 4 Nov, with the QA accounts listed at the end of this report:
+
+- A consumer cannot open promoter or admin APIs (403) and cannot set their own role to admin
+- A promoter cannot open admin APIs, another organiser’s performance, or another organiser’s intelligence report
+- A venue manager can edit their own venue and cannot edit the other venue, its analytics, or an organiser’s event at their hall
+- A sourced listing returns the direct-edit warning, refuses the save until it is acknowledged, and writes an audit row
+- Admin trust, Local and community queues return 200 for the admin session and 403 for a promoter
+
 What was fixed:
 
 - QA-01 refresh route
 - QA-02 sign-in redirect
 - QA-03 import redirect check
+- QA-11 QA accounts are excluded from mail and audience insights in this change
 
 What remains:
 
@@ -210,6 +253,7 @@ What remains:
 - `POST /api/events/[id]/click` increments a counter with no session. Not called, so it is not a confirmed production write from this audit. It is a recommended limit
 - Signup was not load-tested. There is no application rate limit on account creation
 - Password minimum remains 6 characters
+- QA-12: while Stripe is unset, checkout activates a test-mode placement without a payment. Do not treat that as a paid order
 
 ## G. Automated improvements
 
@@ -226,17 +270,17 @@ What remains:
 - GitHub Actions: `.github/workflows/ci.yml` runs unit tests, then the browser smoke against production, on pull requests and on pushes to `main`
 - Handover section 9 merged with this audit instead of a second backlog
 
-`yarn tsc --noEmit`, `yarn test` (401 pass) and `yarn build` passed in this environment.
+The signed-in pass also excludes QA addresses from mail and audience insights (`lib/qa-account.ts`) and adds `e2e/signed-in.spec.ts`, which runs only when `QA_ACCOUNTS_FILE` is set. `yarn tsc --noEmit` and `yarn test` (414 pass) passed. Playwright signed-in: 4 passed.
 
 ## H. Remaining risks
 
-Known defects still open: QA-07, QA-08, QA-09, QA-10.
+Known defects still open: QA-07, QA-08, QA-09, QA-10, QA-12.
 
-Blocked: promoter, venue and admin dashboards; a real Stripe test-mode checkout; email delivery.
+QA-11 is fixed in this change and still needs a live profile-save check after deploy.
 
-Not implemented, and not defects: push notifications, geofenced alerts, a service worker. The manifest and icons are in place, so installability is partial.
+Not implemented, and not defects: password reset, account email verification, a free trial, push, geofenced alerts, a service worker.
 
-Not tested: itinerary versus Saved count; contrast of every screen; a second Lighthouse run after the accessibility patch.
+Not tested: itinerary versus Saved count; a live ingest over a QA override; contrast of every screen; a second Lighthouse run. Email was previewed and not sent. No card was charged.
 
 Recommended next improvements are in section I.
 
@@ -244,36 +288,54 @@ Recommended next improvements are in section I.
 
 | Category | Weight | Score | Evidence |
 | --- | --- | --- | --- |
-| Core functionality and user journeys | 20 | 16 | Public journeys executed. Signed-in organiser journeys blocked |
+| Core functionality and user journeys | 20 | 18 | Public and signed-in journeys executed. Password reset is not built |
 | Event data quality and freshness | 20 | 13 | All 10 cities have upcoming events. Gaps in QA-08, QA-09, QA-10 |
-| Security and permissions | 20 | 16 | Auth boundaries held. QA-01 confirmed 403 on production after deploy. QA-02 and QA-03 covered by unit tests |
+| Security and permissions | 20 | 17 | Cross-organisation calls returned 403. QA-11 is fixed in this change |
 | Performance and scalability | 15 | 8 | QA-07. APIs mostly under half a second. One guide about 2.9s |
 | Mobile and PWA | 10 | 6 | Manifest and icons pass. No service worker. Mobile Lighthouse accessibility 91 before the button-name fix |
-| UX and accessibility | 5 | 4 | Desktop axe clean. Wrong-password message confirmed |
-| Business dashboards and analytics | 5 | 0 | Unassessed. No session |
+| UX and accessibility | 5 | 4 | Desktop axe clean. Wrong-password message confirmed. Account page opens |
+| Business dashboards and analytics | 5 | 4 | Promoter, venue and admin sessions. Metrics traced to the event row (0 views, 0 ticket clicks). Payments flag is false |
 | Operational reliability | 5 | 3 | Cron auth confirmed. No error-budget or paging check |
-| **Total** | **100** | **66** | |
+| **Total** | **100** | **73** | |
 
 **Verdict: READY WITH MINOR ISSUES**
 
-The public board, search, local listings and account gate are fit to stay in production. Do not treat the score as a claim that organiser dashboards were retested. The refresh route now returns 403 on the production alias.
+Promoter, venue and admin dashboards were used with synthetic accounts. Do not take real payment until Stripe is configured: checkout currently activates a test-mode placement for free (QA-12).
 
 ### Top 10 remaining improvements
 
-1. Bring mobile LCP on the home board down. Lab result was 7.2s and performance 70.
-2. Mark the GitHub Actions unit-test job as a required check before merging to `main`. Vercel does not wait for it until that setting is on.
-3. Geocode the events that have no coordinates, as a reviewed job, so the map can show them.
-4. Limit unauthenticated ticket-click counting so analytics cannot be inflated, without blocking a guest who taps Get Tickets.
-5. Add a signup rate limit and raise the password minimum above 6 characters.
-6. Re-run mobile Lighthouse after the Filters name and 28px minimise control ship, and finish the contrast and type-size pass.
-7. Decide, with the owner, whether past `SCHEDULED` rows should be retired from promoter and admin views. Do not delete them.
-8. Review the 33 imported “sold out” / “selling fast” phrases before any copy edit.
-9. Set `AI_GATEWAY_API_KEY` or OIDC so Ask can use a model. Rules search already works without it.
-10. Put a verified from-address on Resend, and set `BUSINESS_ABN` only when the real ABN is known. Give login and signup a way back to the board besides the logo.
+1. Set a Stripe test key, or stop unpaid test-mode activation, before any promoter is asked to pay (QA-12).
+2. Bring mobile LCP on the home board down. Lab result was 7.2s and performance 70.
+3. Mark the GitHub Actions unit-test job as a required check before merging to `main`.
+4. Geocode the events that have no coordinates, as a reviewed job.
+5. Limit unauthenticated ticket-click counting without blocking a guest tap.
+6. Add a signup rate limit and raise the password minimum above 6 characters.
+7. Re-run mobile Lighthouse and finish the contrast and type-size pass.
+8. Decide whether past scheduled rows should leave promoter and admin views. Do not delete them.
+9. Review the 33 imported “sold out” / “selling fast” phrases before any copy edit.
+10. Set `AI_GATEWAY_API_KEY` or OIDC, a verified `RESEND_FROM_EMAIL`, and `BUSINESS_ABN` only with the real ABN.
+
+### QA accounts kept for later tests
+
+Passwords are not in this report. They are in `/cursor/stores/self/qa-accounts.json` on the agent store.
+
+| Email | Role now | What it is for |
+| --- | --- | --- |
+| outza-tester+qa-consumer-1@mail.grokbot.com | Consumer | Event-goer |
+| outza-tester+qa-consumer-2@mail.grokbot.com | Consumer | Event-goer. Password was changed during the test |
+| outza-tester+qa-promoter-1@mail.grokbot.com | Promoter | QA fixture Organiser North |
+| outza-tester+qa-promoter-2@mail.grokbot.com | Promoter | QA fixture Organiser South |
+| outza-tester+qa-venue-1@mail.grokbot.com | Promoter | Venue manager, QA fixture Hall North |
+| outza-tester+qa-venue-2@mail.grokbot.com | Promoter | Venue manager, QA fixture Hall South |
+| outza-tester+qa-admin-1@mail.grokbot.com | Consumer | Admin was granted for the test and then revoked. Set `role` to `ADMIN` in the database for the next admin test |
+
+Mail opt-in, reminders and weekly reports are off. The two halls and four organisations stay, labelled QA fixture. The test listings, claims and test-mode promotions were deleted. A throwaway account used only to test deletion is gone.
 
 ### What the owner needs to do
 
-- No new environment variable is required for these code fixes. `CRON_SECRET` is already what the other cron routes use.
-- Confirmed after deploy: `POST /api/refresh-events?source=qa-probe-not-a-source` with no Authorization header returns 403.
-- In GitHub, require the “unit tests” check before merging to `main`. Vercel will still build without it until that setting is on.
+- No new environment variable is required for the QA-account exclusion.
+- After this deploy, confirm a QA account cannot turn `emailOptIn` on.
+- To test admin again, set `outza-tester+qa-admin-1@mail.grokbot.com` to `ADMIN`, then set it back to `CONSUMER`.
+- Set `STRIPE_SECRET_KEY` to a test key (`sk_test_…`) before anyone pays. Until then, checkout activates placements without a charge.
+- In GitHub, require the “unit tests” check before merging to `main`.
 - Optional, when ready: `AI_GATEWAY_API_KEY` (or OIDC), a verified `RESEND_FROM_EMAIL`, and `BUSINESS_ABN`. Do not invent an ABN.

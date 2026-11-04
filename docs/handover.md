@@ -263,7 +263,8 @@ The 27 Oct list is kept here so older notes are not lost. Items retested on 4 No
 11. VibePeep Intelligence remaining work (§4.12).
 12. “Tai Chi for Eveyone”: check the source spelling before changing a listing.
 13. Not yet browser-tested: adding to the itinerary while saving (should never change the Saved count).
-14. Owner configuration still required: `AI_GATEWAY_API_KEY` or OIDC for model search, a verified Resend from-address, and `BUSINESS_ABN` when there is a real ABN. Do not invent an ABN.
+14. Owner configuration still required: `AI_GATEWAY_API_KEY` or OIDC for model search, a verified Resend from-address, `BUSINESS_ABN` when there is a real ABN, and a Stripe test key before anyone is asked to pay. Do not invent an ABN.
+15. QA logins use `outza-tester+qa-…@mail.grokbot.com`. Keep them. They are excluded from newsletters, reminders and audience insights. Do not email them, and do not delete them as part of a cleanup.
 
 ---
 

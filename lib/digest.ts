@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { emailSendingEnabled, redactEmails } from '@/lib/email'
 import { recordMailDelivery } from '@/lib/mail-log'
 import { sendNewsletter } from '@/lib/newsletter'
+import { liveSubscriberWhere } from '@/lib/qa-account'
 
 const INTERVAL_MS: Record<string, number> = { daily: 22 * 3600e3, weekly: 6.5 * 86400e3, monthly: 29 * 86400e3 }
 
@@ -26,7 +27,7 @@ export async function runDueDigests() {
   }
   const now = Date.now()
   const users = await prisma.user.findMany({
-    where: { emailOptIn: true },
+    where: liveSubscriberWhere(),
     select: { id: true, emailFrequency: true, lastDigestAt: true },
   })
   let sent = 0, skipped = 0, blocked = 0, failed = 0

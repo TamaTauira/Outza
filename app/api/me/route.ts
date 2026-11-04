@@ -4,6 +4,7 @@ import { getSessionUser, unauthorized } from '@/lib/session'
 import { CATEGORIES } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
 import { isPostcode, parseBirthYear, under16GeoBlock } from '@/lib/profile-shared'
+import { isQaAccountEmail } from '@/lib/qa-account'
 import { cleanVibe } from '@/lib/vibe-shared'
 import { Prisma } from '@prisma/client'
 
@@ -50,6 +51,10 @@ export async function PATCH(req: Request) {
   if (Array.isArray(b.preferredCities)) data.preferredCities = b.preferredCities.filter((c: unknown) => typeof c === 'string' && CITY_NAMES.includes(c))
   if (typeof b.emailOptIn === 'boolean') data.emailOptIn = b.emailOptIn
   if (typeof b.reminderOptIn === 'boolean') data.reminderOptIn = b.reminderOptIn
+  if (isQaAccountEmail(me.email)) {
+    data.emailOptIn = false
+    data.reminderOptIn = false
+  }
   if (['daily', 'weekly', 'monthly'].includes(b.emailFrequency)) data.emailFrequency = b.emailFrequency
   if (b.role === 'PROMOTER' && me.role === 'CONSUMER') data.role = 'PROMOTER'
   if ('birthYear' in b) {
