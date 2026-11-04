@@ -48,7 +48,7 @@ function SignupForm() {
       })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) { setError(data.error || 'Could not create account'); return }
-      setNotice('Account created. Signing you in…')
+      setNotice(data.verificationSent ? 'Account created. Signing you in… Check your email to verify the address.' : 'Account created. Signing you in… We couldn’t send the verification email just now. You can resend it from the banner.')
       const ok = await Promise.race([
         establishSession(email.trim().toLowerCase(), password),
         new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 12000)),

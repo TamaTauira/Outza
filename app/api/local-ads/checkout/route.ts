@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
 import { LOCAL_AD } from '@/lib/tiers'
 import { activateLocalAd, kindLabel, validateLocalAd } from '@/lib/local-ads'
+import { unverifiedGate } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,8 @@ export async function POST(req: Request) {
   const me = await getSessionUser()
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
+  const gate = await unverifiedGate(me.id)
+  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const body = await req.json().catch(() => ({}))
   const v = await validateLocalAd(body, me.id)
   if ('error' in v) return NextResponse.json({ error: v.error }, { status: v.status ?? 400 })

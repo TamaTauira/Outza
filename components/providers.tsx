@@ -5,6 +5,7 @@ import { SessionProvider, useSession } from 'next-auth/react'
 import { syncSavedWithAccount, setSavedAccountLinked } from '@/lib/saved'
 import { bindItineraryUser } from '@/lib/itinerary'
 import { ProfileGate } from '@/components/profile-gate'
+import { VerifyEmailBanner } from '@/components/verify-email-banner'
 import { installScrollMemory } from '@/lib/scroll-memory'
 
 function SavedSync() {
@@ -29,6 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <SavedSync />
+      <VerifyEmailBanner />
       {children}
       <ProfileGate />
     </SessionProvider>

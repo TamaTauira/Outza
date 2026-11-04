@@ -5,6 +5,7 @@ import { startVenuePlacement } from '@/lib/venue-access'
 import { prisma } from '@/lib/db'
 import { createVenueSession, payments } from '@/lib/sponsorship-billing'
 import { saveLead } from '@/lib/sponsorship-store'
+import { unverifiedGate } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!ownershipUiEnabled()) return NextResponse.json({ error: 'These tools are turned off.' }, { status: 404 })
   const me = await getSessionUser()
   if (!me) return unauthorized()
+  const gate = await unverifiedGate(me.id)
+  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
   const body = await req.json().catch(() => ({}))
   const productId = String(body?.product || '')

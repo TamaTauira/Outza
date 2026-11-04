@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { planDef, priceEnvForBoost, type BoostId, type PlanId, ORGANISER_PLANS, PLAN_RANK } from '@/lib/sponsorship'
 import { ensureCatalog, missingTable } from '@/lib/sponsorship-store'
 import { activateVenueOrder } from '@/lib/venue-access'
+import { trialEligible, trialPeriodDays } from '@/lib/account-trust'
 
 export function paymentsEnabled() {
   return !!process.env.STRIPE_SECRET_KEY?.trim()
@@ -111,6 +112,23 @@ export async function createVenueSession(input: {
   return { url: session.url }
 }
 
+/** One free month per login, and per organisation that login belongs to. */
+export async function trialAlreadyUsed(userId: string): Promise<boolean> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { trialUsedAt: true, memberships: { where: { status: 'ACTIVE' }, select: { organisationId: true } } },
+  })
+  if (!user) return true
+  if (!trialEligible(user.trialUsedAt)) return true
+  const orgIds = user.memberships.map((row) => row.organisationId)
+  if (!orgIds.length) return false
+  const other = await prisma.organisationMembership.findFirst({
+    where: { organisationId: { in: orgIds }, status: 'ACTIVE', user: { trialUsedAt: { not: null } } },
+    select: { id: true },
+  })
+  return !!other
+}
+
 export async function createPlanSession(input: {
   subscriptionId: string
   userId: string
@@ -121,6 +139,8 @@ export async function createPlanSession(input: {
   const stripe = stripeClient()
   const price = planPriceId(input.planId)
   if (!stripe || !price) return { unavailable: true as const }
+  const days = trialPeriodDays()
+  const trial = !(await trialAlreadyUsed(input.userId)) && days > 0
   const previous = await prisma.organiserSubscription.findFirst({
     where: { userId: input.userId, stripeCustomerId: { not: null } },
     orderBy: { createdAt: 'desc' },
@@ -132,7 +152,8 @@ export async function createPlanSession(input: {
     line_items: [{ price, quantity: 1 }],
     metadata: { kind: 'plan', subscriptionId: input.subscriptionId, userId: input.userId, planId: input.planId },
     subscription_data: {
-      metadata: { subscriptionId: input.subscriptionId, userId: input.userId, planId: input.planId },
+      metadata: { subscriptionId: input.subscriptionId, userId: input.userId, planId: input.planId, ...(trial ? { trial: '1' } : {}) },
+      ...(trial ? { trial_period_days: days } : {}),
     },
     success_url: `${input.origin}/promoter?tab=billing&plan=1&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${input.origin}/promoter?tab=billing&cancelled=1`,
@@ -196,11 +217,14 @@ async function rememberInvoice(invoice: Stripe.Invoice) {
 }
 
 export async function applyPaidCheckout(session: Stripe.Checkout.Session) {
+  const meta = session.metadata ?? {}
+  if (meta.subscriptionId && session.mode === 'subscription') {
+    return applySubscriptionCheckout(session, meta.subscriptionId, meta.userId)
+  }
   if (session.payment_status !== 'paid' || session.amount_total === 0) {
     if (session.amount_total === 0) await cancelZeroCheckout(session)
     return { applied: false }
   }
-  const meta = session.metadata ?? {}
   if (meta.campaignId) {
     const updated = await prisma.campaign.updateMany({
       where: { id: meta.campaignId, status: 'PENDING' },
@@ -213,39 +237,49 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session) {
     })
     return { applied: updated.count > 0 }
   }
-  if (meta.subscriptionId) {
-    const stripe = stripeClient()
-    const stripeSubId = idOf(session.subscription)
-    let periodStart: Date | undefined
-    let periodEnd: Date | undefined
-    if (stripe && stripeSubId) {
-      const sub = await stripe.subscriptions.retrieve(stripeSubId)
-      if (sub.status === 'trialing') {
-        await stripe.subscriptions.cancel(stripeSubId)
-        await prisma.organiserSubscription.updateMany({ where: { id: meta.subscriptionId, status: 'PENDING' }, data: { status: 'CANCELLED' } })
-        return { applied: false }
-      }
-      const item = sub.items.data[0]
-      if (item) {
-        periodStart = new Date(item.current_period_start * 1000)
-        periodEnd = new Date(item.current_period_end * 1000)
-      }
-    }
+  return { applied: false }
+}
+
+/** A Stripe subscription checkout. A trial is recorded only after Stripe says the subscription is trialing. */
+async function applySubscriptionCheckout(session: Stripe.Checkout.Session, subscriptionId: string, userId?: string) {
+  const stripe = stripeClient()
+  if (!stripe) return { applied: false }
+  const stripeSubId = idOf(session.subscription)
+  if (!stripeSubId) return { applied: false }
+  const sub = await stripe.subscriptions.retrieve(stripeSubId)
+  const item = sub.items.data[0]
+  const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000) : item ? new Date(item.current_period_end * 1000) : undefined
+  const periodStart = item ? new Date(item.current_period_start * 1000) : new Date()
+  const periodEnd = sub.status === 'trialing' ? trialEnd : item ? new Date(item.current_period_end * 1000) : undefined
+  if (sub.status === 'trialing') {
     await prisma.organiserSubscription.updateMany({
-      where: { id: meta.subscriptionId, status: { in: ['PENDING', 'PAST_DUE'] } },
+      where: { id: subscriptionId, status: { in: ['PENDING', 'TRIALING'] } },
       data: {
-        status: 'ACTIVE',
+        status: 'TRIALING',
         paymentMode: 'stripe',
         stripeSubscriptionId: stripeSubId,
         stripeCustomerId: idOf(session.customer),
         currentPeriodStart: periodStart,
         currentPeriodEnd: periodEnd,
-        ...(typeof session.amount_total === 'number' ? { amountCents: session.amount_total } : {}),
       },
     })
+    if (userId) await prisma.user.updateMany({ where: { id: userId, trialUsedAt: null }, data: { trialUsedAt: new Date() } })
     return { applied: true }
   }
-  return { applied: false }
+  if (sub.status !== 'active') return { applied: false }
+  await prisma.organiserSubscription.updateMany({
+    where: { id: subscriptionId, status: { in: ['PENDING', 'TRIALING', 'PAST_DUE'] } },
+    data: {
+      status: 'ACTIVE',
+      paymentMode: 'stripe',
+      stripeSubscriptionId: stripeSubId,
+      stripeCustomerId: idOf(session.customer),
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+      ...(typeof session.amount_total === 'number' && session.amount_total > 0 ? { amountCents: session.amount_total } : {}),
+    },
+  })
+  return { applied: true }
 }
 
 async function cancelZeroCheckout(session: Stripe.Checkout.Session) {
@@ -259,24 +293,31 @@ export async function confirmCheckoutSession(sessionId: string, userId: string) 
   if (!stripe) return { ok: false as const, error: 'Payments are not switched on.' }
   const session = await stripe.checkout.sessions.retrieve(sessionId)
   if (session.metadata?.userId !== userId) return { ok: false as const, error: 'That checkout belongs to another account.' }
-  if (session.payment_status !== 'paid') return { ok: false as const, pending: true as const }
+  const trialing = session.mode === 'subscription' && (session.status === 'complete' || session.payment_status === 'no_payment_required')
+  if (session.payment_status !== 'paid' && !trialing) return { ok: false as const, pending: true as const }
   await applyPaidCheckout(session)
   return { ok: true as const }
 }
 
 async function syncSubscription(sub: Stripe.Subscription) {
-  const stripe = stripeClient()
-  if (sub.status === 'trialing' && stripe) {
-    await stripe.subscriptions.cancel(sub.id)
-    await prisma.organiserSubscription.updateMany({ where: { stripeSubscriptionId: sub.id }, data: { status: 'CANCELLED', cancelAtPeriodEnd: false } })
-    return
-  }
   const item = sub.items.data[0]
   const priceId = item?.price?.id
   const mapped = ORGANISER_PLANS.find((plan) => planPriceId(plan.id) === priceId)
   const metaPlan = planDef(sub.metadata?.planId ?? '')
   const plan = mapped ?? metaPlan
-  const status = sub.status === 'active' ? 'ACTIVE' : sub.status === 'past_due' ? 'PAST_DUE' : sub.status === 'canceled' || sub.status === 'unpaid' || sub.status === 'incomplete_expired' ? 'CANCELLED' : 'PENDING'
+  const status = sub.status === 'trialing'
+    ? 'TRIALING'
+    : sub.status === 'active'
+      ? 'ACTIVE'
+      : sub.status === 'past_due'
+        ? 'PAST_DUE'
+        : sub.status === 'canceled' || sub.status === 'unpaid' || sub.status === 'incomplete_expired'
+          ? 'CANCELLED'
+          : 'PENDING'
+  if (sub.status === 'trialing' && sub.metadata?.userId) {
+    await prisma.user.updateMany({ where: { id: sub.metadata.userId, trialUsedAt: null }, data: { trialUsedAt: new Date() } })
+  }
+  const trialEnd = sub.status === 'trialing' && sub.trial_end ? new Date(sub.trial_end * 1000) : null
   const where = sub.metadata?.subscriptionId
     ? { id: sub.metadata.subscriptionId }
     : null
@@ -286,7 +327,7 @@ async function syncSubscription(sub: Stripe.Subscription) {
     stripeSubscriptionId: sub.id,
     stripeCustomerId: idOf(sub.customer),
     currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
-    currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
+    currentPeriodEnd: trialEnd ?? (item ? new Date(item.current_period_end * 1000) : undefined),
     ...(plan ? { planId: plan.id, amountCents: plan.monthlyCents } : {}),
   }
   if (where) {
@@ -351,7 +392,7 @@ export async function changePlan(userId: string, planId: PlanId, consent: boolea
     return { ok: true as const, unchanged: true as const }
   }
   const upgrade = PLAN_RANK[planId] > PLAN_RANK[current.planId as PlanId]
-  if (upgrade && !consent) return { error: 'Tick the box. An upgrade charges the difference now, and there is no free trial.' }
+  if (upgrade && !consent) return { error: 'Tick the box. An upgrade charges the difference now. A plan you already pay for does not start another free month.' }
   if (!upgrade) {
     await prisma.organiserSubscription.update({
       where: { id: current.id },

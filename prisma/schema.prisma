@@ -251,11 +251,16 @@ model User {
   birthYear           Int? // event-goers: year only. Age checks use the youngest age that year could be. Full dates are not stored.
   homePostcode        String?   // optional 4-digit AU postcode; only ever shown to promoters as grouped home areas
   vibeProfile         Json?     // optional vibe answers (lib/vibe-shared.ts); own recommendations + grouped stats only
+  /// Bumped when the password changes so older sign-in tokens stop working.
+  sessionVersion      Int       @default(0)
+  /// Set when this login, or another login in the same organisation, starts a Stripe trial.
+  trialUsedAt         DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
   accounts        Account[]
   sessions        Session[]
+  authTokens      AuthToken[]
   saved           SavedEvent[]
   attending       Attendance[]
   promotedEvents  Event[]          @relation("PromoterEvents")
@@ -286,6 +291,20 @@ model User {
 
   @@index([emailOptIn])
   @@index([role])
+}
+
+/// Single-use secret for a password reset or an email verification link. Only the hash is stored.
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  purpose   String // PASSWORD_RESET | EMAIL_VERIFY
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt])
 }
 
 model Account {
@@ -1043,12 +1062,12 @@ model SubscriptionPlan {
   subscriptions OrganiserSubscription[]
 }
 
-/// One organiser's monthly plan. No trial. Charges only after checkout consent and a paid Stripe invoice.
+/// One organiser's monthly plan. A first subscription can be a Stripe trial. One-off boosts are not.
 model OrganiserSubscription {
   id                   String    @id @default(cuid())
   userId               String
   planId               String
-  status               String    @default("PENDING") // PENDING | ACTIVE | PAST_DUE | CANCELLED
+  status               String    @default("PENDING") // PENDING | TRIALING | ACTIVE | PAST_DUE | CANCELLED
   cancelAtPeriodEnd    Boolean   @default(false)
   pendingPlanId        String?
   pendingPlanAt        DateTime?
@@ -1061,6 +1080,8 @@ model OrganiserSubscription {
   currentPeriodStart   DateTime?
   currentPeriodEnd     DateTime?
   consentAt            DateTime?
+  /// Set after the one reminder that the free month is about to end.
+  trialRemindedAt      DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)

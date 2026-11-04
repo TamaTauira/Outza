@@ -6,6 +6,7 @@ import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/sessi
 import { PRO_PLAN, isAddon, isDuration, isTier, quote, type Addon } from '@/lib/tiers'
 import { activateOrder, activateProPass, isProActive } from '@/lib/promotions'
 import { notifyPromotionPurchased, notifyProPurchased } from '@/lib/promotion-email'
+import { unverifiedGate } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
   const me = await getSessionUser()
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
+  const gate = await unverifiedGate(me.id)
+  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const body = await req.json().catch(() => ({}))
   const secretKey = process.env.STRIPE_SECRET_KEY
   const origin = req.headers.get('origin') || new URL(req.url).origin

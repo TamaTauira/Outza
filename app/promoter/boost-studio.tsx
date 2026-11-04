@@ -254,7 +254,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
               <>
                 <label className="mt-4 flex items-start gap-2 text-sm">
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
-                  <span>Charge my card {formatAud(price)} AUD once. This is not a subscription and there is no trial.</span>
+                  <span>Charge my card {formatAud(price)} AUD once. Spotlight, Boost and Headliner are one-off. They are not the free month on a monthly plan.</span>
                 </label>
                 <button type="button" onClick={pay} disabled={busy} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}{preview ? `Pay ${formatAud(price)}` : 'Preview the card'}

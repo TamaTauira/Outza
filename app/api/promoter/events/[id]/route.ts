@@ -6,6 +6,7 @@ import { promoterCanEditEvent, sourceLabel } from '@/lib/quality'
 import { queueEventImage } from '@/lib/images/runner'
 import { parsePromoterListing } from '@/lib/promoter-listing'
 import { resolveListingPlace } from '@/lib/venue-place'
+import { unverifiedGate } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +15,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const me = await getSessionUser()
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
+  const gate = await unverifiedGate(me.id)
+  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
   const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, city: true, imageUrl: true, source: true } })
   if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })

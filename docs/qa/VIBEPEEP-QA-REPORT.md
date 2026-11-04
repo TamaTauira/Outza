@@ -73,13 +73,13 @@ Statuses mean what the brief says. A row is PASS only where a request, browser, 
 | Venue manager cannot edit an external event | API and unit | PASS | — | 403 on both a promoter listing and a sourced listing at their hall |
 | Consumer self-grant of admin | API | PASS | — | `PATCH /api/me` with `role: ADMIN` leaves the role CONSUMER |
 | Password change and account deletion | API | PASS | — | Consumer 2 changed password. A throwaway account was closed and is gone |
-| Password reset | HTTP | NOT IMPLEMENTED | — | `/forgot-password`, `/reset-password` and `/account/reset` are 404 |
-| Account email verification | — | NOT IMPLEMENTED | — | Signup does not send a verification mail |
+| Password reset | Unit | PASS | — | Built in the account-trust change. Hashed one-hour token, generic reply, session version bump. Not on production until that PR is merged and the SQL is applied |
+| Account email verification | Unit | PASS | — | Built in the same change. 24-hour link, banner, publishing and payment gated. Existing accounts, including QA logins, are marked verified by the SQL |
 | Duplicate signup and wrong password | API | PASS | — | 409 and 401 |
 | QA accounts cannot opt into the newsletter | API | PASS | P2 | First check saved opt-in. After deploy, the same PATCH stays opted out |
 | Digest preview | Browser | PASS | — | Admin HTML preview, nothing sent. Consumer 403 |
 | Push and geofenced alerts | — | NOT IMPLEMENTED | — | No service worker, push, or geofence |
-| Free trial | — | NOT IMPLEMENTED | — | Plans say there is no trial. `paymentsEnabled` is false |
+| Free trial | Unit | PASS | — | One 30-day Stripe trial on monthly plans (`TRIAL_PERIOD_DAYS`). No local activation when Stripe is unset. Spotlight and the Pro pass stay one-off. Not live until the PR is merged |
 | Spotlight checkout | API | PASS | P1 config | No charge. Stripe is unset, so the API activated a test-mode placement. Those rows were cancelled |
 | Itinerary save vs Saved count | — | NOT TESTED | — | Still on the handover list |
 
@@ -331,11 +331,20 @@ Passwords are not in this report. They are in `/cursor/stores/self/qa-accounts.j
 
 Mail opt-in, reminders and weekly reports are off. The two halls and four organisations stay, labelled QA fixture. The test listings, claims and test-mode promotions were deleted. A throwaway account used only to test deletion is gone.
 
+### Account trust (review, not deployed)
+
+Password reset, email verification and a 30-day subscription trial are in the account-trust pull request. They are not on production until that request is merged and `prisma/sql/20261104_account_trust.sql` is applied.
+
+Verification is stored on `User.emailVerified` (the Auth.js column). `Event.emailVerifiedAt` is still only the community-listing code. Accounts that already exist, including the QA logins, are marked verified by that SQL so organiser tools keep working. Signups after the SQL stay unverified until they open the link. Google sign-in is treated as verified when Google says the address is.
+
+The free month uses Stripe `trial_period_days` on Local Pro, Growth and Venue Plus. The default is 30 days (`TRIAL_PERIOD_DAYS`). One trial per account and per organisation. Cancel or a failed renewal sets the plan to cancelled, which removes the entitlement. Spotlight, Boost, Headliner and the one-off Promoter Pro pass are not subscriptions, so they do not get `trial_period_days` and they are not switched on when `STRIPE_SECRET_KEY` is missing.
+
 ### What the owner needs to do
 
-- No new environment variable is required for the QA-account exclusion.
-- After this deploy, confirm a QA account cannot turn `emailOptIn` on.
+- Apply `prisma/sql/20261104_account_trust.sql` with the account-trust deploy. It marks existing accounts, including the QA logins, as verified.
+- Set `STRIPE_SECRET_KEY` to a test key (`sk_test_…`) and the monthly Stripe price ids before a free month can start. Optional `TRIAL_PERIOD_DAYS` (default 30, allowed 1–90).
+- Set `RESEND_FROM_EMAIL` on a verified domain so reset, verification and trial-reminder mail can leave the shared Resend sender. If it is unset, those sends are logged and the page still responds.
+- One-off checkout can still activate a placement with no charge while Stripe is unset (QA-12). The new trial path does not.
 - To test admin again, set `outza-tester+qa-admin-1@mail.grokbot.com` to `ADMIN`, then set it back to `CONSUMER`.
-- Set `STRIPE_SECRET_KEY` to a test key (`sk_test_…`) before anyone pays. Until then, checkout activates placements without a charge.
 - In GitHub, require the “unit tests” check before merging to `main`.
-- Optional, when ready: `AI_GATEWAY_API_KEY` (or OIDC), a verified `RESEND_FROM_EMAIL`, and `BUSINESS_ABN`. Do not invent an ABN.
+- Optional, when ready: `AI_GATEWAY_API_KEY` (or OIDC) and `BUSINESS_ABN`. Do not invent an ABN.
