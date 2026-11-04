@@ -170,44 +170,68 @@ if (live.length === 3 && live.every((info) => info && !info.error)) {
   if (end.x !== 1048) failures.push('t2 x ' + end.x + ' != 1048')
 }
 
-await send('Page.navigate', { url: base + '/?facewalk=1' })
-await sleep(400)
-let prevFace = null
-let firstVisible = null
-for (let i = 0; i < 24; i++) {
-  const raw = await ev(`(() => {
-    const root = document.querySelector('.vp-roam')
-    if (!root) return JSON.stringify({ missing: true })
-    const rig = root.querySelector('.vp-rig')
-    const profile = root.querySelector('.vp-profile')
-    if (!rig || !profile) return JSON.stringify({ missing: true })
-    const r = rig.getBoundingClientRect()
-    const m = new DOMMatrix(getComputedStyle(profile).transform)
-    return JSON.stringify({
-      x: Math.round(r.x),
-      move: root.dataset.move || '',
-      turn: root.dataset.turn || '',
-      placed: root.dataset.placed || '',
-      vis: getComputedStyle(root).visibility,
-      eyeRight: m.a < 0,
-    })
-  })()`)
-  let info
-  try { info = JSON.parse(raw) } catch { info = { missing: true } }
-  if (!info.missing && info.vis === 'visible' && info.placed === '1') {
-    if (!firstVisible) firstVisible = info
-    if (prevFace && info.move === 'hop') {
-      const dx = info.x - prevFace.x
-      if (dx > 8 && !info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the left')
-      if (dx < -8 && info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the right')
+await send('Page.enable')
+const faceScript = await send('Page.addScriptToEvaluateOnNewDocument', {
+  source: `(() => {
+    window.__faceFrames = []
+    const start = performance.now()
+    let firstSeen = 0
+    const tick = () => {
+      const root = document.querySelector('.vp-roam')
+      const rig = root?.querySelector('.vp-rig')
+      const profile = root?.querySelector('.vp-profile')
+      const three = root?.querySelector('.vp-threeq')
+      const front = root?.querySelector('.vp-front')
+      if (root && rig && profile) {
+        const r = rig.getBoundingClientRect()
+        const vis = getComputedStyle(root).visibility
+        if (vis === 'visible' && root.dataset.placed === '1' && r.width > 20) {
+          if (!firstSeen) firstSeen = performance.now()
+          let eyeRight = false
+          const raw = getComputedStyle(profile).transform
+          if (raw && raw !== 'none') {
+            const m = new DOMMatrix(raw)
+            eyeRight = m.a < 0
+          }
+          window.__faceFrames.push({
+            x: Math.round(r.x),
+            move: root.dataset.move || '',
+            turn: root.dataset.turn || '',
+            eyeRight,
+            front: front ? getComputedStyle(front).visibility : '',
+            three: three ? getComputedStyle(three).visibility : '',
+          })
+        }
+      }
+      const since = firstSeen ? performance.now() - firstSeen : 0
+      if (performance.now() - start < 7000 && since < 4500) requestAnimationFrame(tick)
     }
-    prevFace = info
-  }
-  console.log('face', i, raw)
-  await sleep(120)
+    requestAnimationFrame(tick)
+  })()`,
+})
+await send('Page.navigate', { url: base + '/?facewalk=1' })
+await sleep(5200)
+const faceRaw = await ev('JSON.stringify(window.__faceFrames || [])')
+if (faceScript.result?.identifier) {
+  await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: faceScript.result.identifier })
 }
+let faceFrames = []
+try { faceFrames = JSON.parse(faceRaw) } catch { faceFrames = [] }
+console.log('face frames', faceFrames.length, faceFrames[0] && JSON.stringify(faceFrames[0]), '->', faceFrames.at(-1) && JSON.stringify(faceFrames.at(-1)))
+const firstVisible = faceFrames[0]
+if (!firstVisible) failures.push('no visible walk frames')
 if (firstVisible && firstVisible.x >= 1000) failures.push('first visible frame is at x ' + firstVisible.x + ', the parking spot')
-if (firstVisible && firstVisible.turn !== '1' && firstVisible.move !== 'hop') failures.push('first visible frame is not the turn or the walk')
+if (firstVisible && firstVisible.turn !== '1') failures.push('first visible frame is not the three-quarter turn')
+if (firstVisible && firstVisible.front === 'visible') failures.push('first visible frame shows the front pose')
+let prevFace = null
+faceFrames.forEach((info, i) => {
+  if (prevFace && info.move === 'hop') {
+    const dx = info.x - prevFace.x
+    if (dx > 8 && !info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the left')
+    if (dx < -8 && info.eyeRight) failures.push('walk frame ' + i + ': dx ' + dx + ' but the eye is on the right')
+  }
+  prevFace = info
+})
 
 await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: '' }] })
 for (const [name, w, h, mobile, path] of pages) {

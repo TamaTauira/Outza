@@ -97,7 +97,7 @@ export function VibePeepFigure() {
         <span className="vp-part vp-s-leg-b" style={sideBox(0.3, 0.64, 0.32, 0.38, 0.5, 0.08)}>
           <img src="/mascot/parts/leg-side.png" alt="" draggable={false} />
         </span>
-        <span className="vp-part vp-s-body" style={sideBox(0.16, 0.1, 0.66, 0.7, 0.5, 0.42)}>
+        <span className="vp-part vp-s-body" style={sideBox(0.14, 0.12, 0.72, 0.64, 0.5, 0.42)}>
           <img src="/mascot/parts/body-side.png" alt="" draggable={false} />
         </span>
         <span className="vp-part vp-s-leg-f" style={sideBox(0.42, 0.62, 0.34, 0.4, 0.46, 0.08)}>

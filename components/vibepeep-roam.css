@@ -4,6 +4,16 @@
   visibility: hidden !important;
 }
 
+/* The front view is painted visible on its own, so it was showing through
+   this hide and the walk opened on a straight-on face. Nothing shows
+   until the walk has placed him, which is the three-quarter turn. */
+.vp-roam:not([data-placed]) .vp-front,
+.vp-roam:not([data-placed]) .vp-profile,
+.vp-roam:not([data-placed]) .vp-threeq,
+.vp-roam:not([data-placed]) .vp-show {
+  visibility: hidden !important;
+}
+
 .vp-roam[data-move='still'] .vp-bob {
   animation: none !important;
   transform: none;
