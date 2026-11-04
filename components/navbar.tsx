@@ -99,7 +99,7 @@ export function Navbar({ savedCount }: NavbarProps) {
           {mounted && status !== 'loading' && (user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-10 h-10 rounded-full bg-primary text-primary-foreground font-display font-bold text-sm flex items-center justify-center hover:opacity-90" aria-label="Account menu">
+                <button className="vp-header-account w-10 h-10 rounded-full bg-primary text-primary-foreground font-display font-bold text-sm flex items-center justify-center hover:opacity-90" aria-label="Account menu">
                   {(user.name || user.email || '?').charAt(0).toUpperCase()}
                 </button>
               </DropdownMenuTrigger>
@@ -127,14 +127,14 @@ export function Navbar({ savedCount }: NavbarProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
+            <div className="vp-header-account contents">
               <Link href="/promoters" className="hidden lg:inline-flex h-10 items-center gap-1.5 px-3 text-sm text-muted-foreground hover:text-foreground"><Megaphone className="w-4 h-4" />For promoters</Link>
               <Link href="/login" className="inline-flex md:hidden h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:text-foreground" aria-label="Sign in"><User className="w-4 h-4" /></Link>
               <Link href="/login" className="hidden md:inline-flex h-10 items-center px-3 text-sm text-muted-foreground hover:text-foreground">Sign In</Link>
               <Link href="/signup" aria-label="Sign up" className="inline-flex h-10 w-10 sm:w-auto shrink-0 items-center justify-center gap-1.5 sm:px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
                 <User className="w-4 h-4" /><span className="hidden sm:inline">Sign Up</span>
               </Link>
-            </>
+            </div>
           ))}
         </div>
       </div>
