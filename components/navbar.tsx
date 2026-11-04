@@ -12,6 +12,7 @@ import {
 import { useMounted } from '@/components/client-only'
 import { cn } from '@/lib/utils'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { BottomNav } from '@/components/bottom-nav'
 
 export type AppView = 'board' | 'map' | 'saved'
 
@@ -43,17 +44,18 @@ export function Navbar({ savedCount }: NavbarProps) {
   const isPromoter = user?.role === 'PROMOTER' || user?.role === 'ADMIN'
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md">
+    <>
+    <header className="vp-site-header sticky top-0 z-50 bg-background/90 backdrop-blur-md">
       <div className="max-w-[1280px] mx-auto px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1 min-w-0 border-b border-border">
         <a href="/" className="flex items-center gap-2.5 shrink-0" aria-label="VibePeep home">
           <VibePeepLogo size="md" labelClassName="hidden sm:flex" />
         </a>
 
-        <nav className="flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="vp-top-links flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Primary">
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
-                <Link key="local" href="/local" className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
+                <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
                   <House className="w-4 h-4" /><span>Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
@@ -80,7 +82,7 @@ export function Navbar({ savedCount }: NavbarProps) {
               </Link>
             )
           })}
-          <Link href="/itinerary" className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
+          <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
             <CalendarRange className="w-4 h-4" /><span className="sm:hidden">Plan</span><span className="hidden sm:inline">Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
@@ -137,5 +139,7 @@ export function Navbar({ savedCount }: NavbarProps) {
         </div>
       </div>
     </header>
+    <BottomNav savedCount={mounted ? savedCount : 0} />
+  </>
   )
 }

@@ -20,6 +20,7 @@ import {
   type Point,
   type RoamAct,
 } from '@/lib/mascot-roam'
+import { roamBottomChrome } from '@/lib/bottom-nav'
 
 const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, [role="button"], [role="link"], [role="tab"], [data-sonner-toaster]'
 
@@ -44,6 +45,45 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)')
   const mobileMq = window.matchMedia('(max-width: 639px)')
+  const navMq = window.matchMedia('(max-width: 1023px), (pointer: coarse) and (orientation: portrait) and (max-width: 1400px), (horizontal-viewport-segments: 2), (spanning: single-fold-vertical)')
+  let navOffset = 0
+  let segment = { w: 0, h: 0 }
+
+  const probe = (style: string) => {
+    const el = document.createElement('div')
+    el.setAttribute('aria-hidden', 'true')
+    el.style.cssText = `position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;${style}`
+    document.body.appendChild(el)
+    const rect = el.getBoundingClientRect()
+    el.remove()
+    return rect
+  }
+
+  const readChrome = () => {
+    const offset = probe('width:0;height:var(--vp-bottom-nav-offset, 0px)').height
+    navOffset = Number.isFinite(offset) ? offset : 0
+    const fold = document.documentElement.dataset.vpFold
+    if (fold === 'side') {
+      segment = { w: Math.max(0, (window.innerWidth - 24) / 2), h: 0 }
+      return
+    }
+    if (fold === 'stack') {
+      segment = { w: 0, h: Math.max(0, (window.innerHeight - 24) / 2) }
+      return
+    }
+    const width = Math.max(
+      probe('width:env(viewport-segment-width 0 0);height:0').width,
+      probe('width:env(fold-left);height:0').width,
+    )
+    const height = Math.max(
+      probe('width:0;height:env(viewport-segment-height 0 0)').height,
+      probe('width:0;height:env(fold-top)').height,
+    )
+    segment = {
+      w: Number.isFinite(width) ? width : 0,
+      h: Number.isFinite(height) ? height : 0,
+    }
+  }
   let reduce = reduceMq.matches
   let face: 'left' | 'right' = 'right'
   let pos: Point = { x: 0, y: 0 }
@@ -79,11 +119,43 @@ export function attachRoam(root: HTMLElement): () => void {
     return width > 8 ? width : mobileMq.matches ? 56 : 72
   }
 
-  const bounds = (): Bounds =>
-    roamBounds(window.innerWidth, window.innerHeight, size(), {
-      mobile: mobileMq.matches,
-      map: root.dataset.map === '1',
+  const figure = () => {
+    const rect = root.getBoundingClientRect()
+    const width = rect.width > 8 ? rect.width : size()
+    let top = rect.top
+    let bottom = rect.bottom
+    const bubble = root.querySelector<HTMLElement>('.vp-bubble')
+    if (bubble && getComputedStyle(bubble).opacity !== '0') {
+      const box = bubble.getBoundingClientRect()
+      if (box.height > 2 && box.width > 2) {
+        top = Math.min(top, box.top)
+        bottom = Math.max(bottom, box.bottom)
+      }
+    }
+    const height = bottom > top ? bottom - top : width
+    return { width, height }
+  }
+
+  const bounds = (): Bounds => {
+    const fullW = window.innerWidth
+    const fullH = window.innerHeight
+    const limitedW = segment.w > 8 && segment.w < fullW - 8
+    const limitedH = segment.h > 8 && segment.h < fullH - 8
+    const mobile = mobileMq.matches
+    const map = root.dataset.map === '1'
+    const box = figure()
+    return roamBounds(limitedW ? segment.w : fullW, limitedH ? segment.h : fullH, box.width, {
+      mobile,
+      map,
+      height: box.height,
+      bottomInset: roamBottomChrome({
+        mobile,
+        map,
+        navOffset: limitedH ? 0 : navOffset,
+        segmentLimited: limitedH,
+      }),
     })
+  }
 
   const setMove = (move: string) => {
     if (root.dataset.move !== move) root.dataset.move = move
@@ -382,6 +454,7 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const onResize = () => {
     cachedSize = 0
+    readChrome()
     if (reduce) {
       park()
       return
@@ -485,7 +558,11 @@ export function attachRoam(root: HTMLElement): () => void {
     kick()
   })
 
+  readChrome()
   park()
+  root.querySelectorAll('img').forEach((img) => {
+    if (!img.complete) img.addEventListener('load', onResize, { once: true })
+  })
   if (!reduce) {
     phase = { type: 'pause', until: performance.now() + 1600 }
     kick()
@@ -502,6 +579,7 @@ export function attachRoam(root: HTMLElement): () => void {
   window.addEventListener('resize', onResize)
   document.addEventListener('visibilitychange', onVis)
   reduceMq.addEventListener('change', onReduce)
+  navMq.addEventListener('change', onResize)
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
 
   return () => {
@@ -522,6 +600,7 @@ export function attachRoam(root: HTMLElement): () => void {
     window.removeEventListener('resize', onResize)
     document.removeEventListener('visibilitychange', onVis)
     reduceMq.removeEventListener('change', onReduce)
+    navMq.removeEventListener('change', onResize)
     document.body.style.userSelect = ''
     root.style.transform = ''
     delete root.dataset.ready
