@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { emailSendingEnabled, redactEmails, sendEmail, siteUrl } from '@/lib/email'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { recordMailDelivery } from '@/lib/mail-log'
+import { isQaAccountEmail, liveSubscriberWhere } from '@/lib/qa-account'
 import { unsubscribeUrl } from '@/lib/newsletter/links'
 import { eventPath } from '@/lib/seo'
 import {
@@ -119,6 +120,7 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
     },
   })
   if (!user) return { ok: false as const, error: 'Account not found' }
+  if (isQaAccountEmail(user.email)) return { ok: false as const, skipped: true as const, reason: 'qa-account' }
   const now = new Date()
   const saved = await savedUpcoming(user.id, now)
   const cities = followedCities(user.preferredCities, user.homeCity)
@@ -219,7 +221,7 @@ export async function runWatchMail() {
   // Opted-in accounts only. Category follows stay on the newsletter; this mail needs a save or a venue follow.
   // Frequency is elapsed time from lastWatchDigestAt. Reminder windows use the event city's timezone separately.
   const users = await prisma.user.findMany({
-    where: { emailOptIn: true },
+    where: liveSubscriberWhere(),
     select: { id: true, emailFrequency: true, lastWatchDigestAt: true, venueFollows: { select: { userId: true }, take: 1 }, saved: { select: { userId: true }, take: 1 } },
     take: 300,
   })

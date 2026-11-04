@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { AGE_BANDS, MIN_GROUP, PLAN_AHEAD, ageBandForYear, areaForPostcode, includeInAudience, planAheadBand } from '@/lib/profile-shared'
+import { isQaAccountEmail } from '@/lib/qa-account'
 
 export type Share = { label: string; pct: number }
 export type TopEvent = { id: string; title: string; date: string; count: number }
@@ -99,9 +100,9 @@ async function computeAudienceInsights(promoterId: string, sinceDays: number): P
   }
   const people = [...new Set([...first.keys()].map((k) => k.split('|')[0]))]
 
-  const users = await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, birthYear: true, homePostcode: true, preferredCategories: true } })
+  const users = await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, email: true, birthYear: true, homePostcode: true, preferredCategories: true } })
   const now = new Date()
-  const adult = new Set(users.filter((u) => includeInAudience(u.birthYear, now)).map((u) => u.id))
+  const adult = new Set(users.filter((u) => !isQaAccountEmail(u.email) && includeInAudience(u.birthYear, now)).map((u) => u.id))
   const tally = (rows: { userId: string; eventId: string }[]) => {
     const counts = new Map<string, number>()
     for (const row of rows) {

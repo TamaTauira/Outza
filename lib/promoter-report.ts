@@ -5,6 +5,7 @@ import { eventPath } from '@/lib/seo'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
 import { AUDIENCE_DISCLAIMER, MIN_GROUP } from '@/lib/profile-shared'
 import { emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { isQaAccountEmail } from '@/lib/qa-account'
 
 const n = (v: number) => v.toLocaleString('en-AU')
 
@@ -12,6 +13,7 @@ const n = (v: number) => v.toLocaleString('en-AU')
 export async function sendPromoterReport(userId: string): Promise<{ ok: boolean; error?: string; events?: number }> {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true, orgName: true, proUntil: true } })
   if (!user?.email) return { ok: false, error: 'No email address on this account' }
+  if (isQaAccountEmail(user.email)) return { ok: false, error: 'QA accounts are not emailed' }
   // Resend's shared onboarding sender can only mail the account that owns the API key.
   // Yahoo SMTP is a real mailbox, so that restriction does not apply while SMTP is the transport.
   if (activeMailTransport() !== 'smtp') {
@@ -92,7 +94,12 @@ export async function runWeeklyPromoterReports() {
   if (!emailSendingEnabled()) return { candidates: 0, sent: 0, skipped: 0 }
   const cutoff = new Date(Date.now() - 7 * 86400000 + 3600000)
   const users = await prisma.user.findMany({
-    where: { weeklyReport: true, role: { in: ['PROMOTER', 'ADMIN'] }, OR: [{ lastReportAt: null }, { lastReportAt: { lt: cutoff } }] },
+    where: {
+      weeklyReport: true,
+      role: { in: ['PROMOTER', 'ADMIN'] },
+      OR: [{ lastReportAt: null }, { lastReportAt: { lt: cutoff } }],
+      NOT: { AND: [{ email: { startsWith: 'outza-tester+qa-' } }, { email: { endsWith: '@mail.grokbot.com' } }] },
+    },
     select: { id: true }, take: 200,
   })
   let sent = 0, skipped = 0

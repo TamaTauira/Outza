@@ -6,6 +6,7 @@ import { issueCopy, SUBJECT_STYLES, type SubjectLine, type SubjectStyle } from '
 import { emailImageSrc, type EmailKind } from './images'
 import { renderHtml, renderText, type CtaVariant, type Slot } from './render'
 import { runQa, type QaReport } from './qa'
+import { isQaAccountEmail } from '@/lib/qa-account'
 
 export type Mode = 'send' | 'test' | 'preview'
 
@@ -122,6 +123,8 @@ export async function buildNewsletter(userId: string, opts: { mode: Mode; city?:
 
 /** Builds, QA-checks and sends one issue. `test` sends to `to` (or the subscriber) without affecting schedules or repeat-avoidance. */
 export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'test'; to?: string; city?: string; edition?: string }) {
+  const account = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
+  if (isQaAccountEmail(account?.email)) return { ok: false, skipped: true, error: 'QA accounts are not emailed' }
   const built = await buildNewsletter(userId, { mode: opts.mode, city: opts.city, edition: opts.edition })
   if ('skip' in built) {
     if (opts.mode === 'send') {
