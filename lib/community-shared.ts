@@ -219,15 +219,15 @@ export function parseCommunity(body: Record<string, unknown>, now = new Date()):
   const description = String(body.description ?? '').trim().slice(0, 1500)
   const city = clean(body.city, 40)
   const suburb = clean(body.suburb, 60)
-  if (title.length < 5) return { error: 'Give it a title of at least 5 characters.' }
-  if (description.length < 20) return { error: 'Tell people what’s on, in at least a sentence.' }
+  if (title.length < 5) return { error: 'Please give it a title of at least 5 characters.' }
+  if (description.length < 20) return { error: 'Please tell people what’s on, in at least a sentence.' }
   if (!CITIES.some((c) => c.name === city)) return { error: 'Pick a city we cover.' }
   if (suburb.length < 2) return { error: 'Add the suburb so neighbours can find it.' }
   if (looksLikeStreetAddress(suburb)) return { error: 'Pop the suburb in that box, not the street address.' }
 
   const tz = CITIES.find((c) => c.name === city)!.tz
   const today = todayIn(tz, now)
-  if (!isDateStr(body.startDate)) return { error: 'Pick a date.' }
+  if (!isDateStr(body.startDate)) return { error: 'When are we going out? Please add a date.' }
   const startDate = body.startDate
   if (startDate < today) return { error: 'That date has already packed up. Pick today or a day ahead.' }
   if (diffDays(today, startDate) > COMMUNITY_MAX_AHEAD_DAYS) return { error: 'Listings can go up to a year ahead.' }

@@ -39,7 +39,7 @@ export function WatchlistClient() {
 
   const patchMe = async (body: object) => {
     const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
-    if (!res.ok) { toast.error('Could not save that'); return false }
+    if (!res.ok) { toast.error('Oops, that one didn’t land. Give it another go.'); return false }
     return true
   }
 
@@ -47,7 +47,7 @@ export function WatchlistClient() {
     let body = ''
     if (session?.user) {
       const res = await fetch('/api/me/calendar')
-      if (!res.ok) { toast.error('Could not build the calendar'); return }
+      if (!res.ok) { toast.error('Oops, the calendar didn’t land. Give it another go.'); return }
       body = await res.text()
     } else {
       body = eventsToIcs(saved.map((ev) => ({
@@ -77,30 +77,30 @@ export function WatchlistClient() {
   const preview = async () => {
     const res = await fetch('/api/me/watchlist-preview', { method: 'POST' })
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) toast.error(data?.error ?? 'Could not send the preview')
-    else toast.success('Preview sent to your inbox')
+    if (!res.ok) toast.error(data?.error ?? 'Oops, that one didn’t land. Give it another go.')
+    else toast.success('Preview’s in your inbox. Have a peep.')
   }
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">My VibePeep</p>
       <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Your keepers, plus what you follow.</h1>
-      <p className="mt-3 text-muted-foreground">Saves belong to your account, so sign in to keep them. Follow a venue or an interest and we can email new matches. Reminders are a separate opt-in.</p>
+      <p className="mt-3 text-muted-foreground">Saves live on your account, so sign in and we’ll keep them. Follow a venue or an interest and I’ll email new matches. Reminders are a separate yes.</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         <button type="button" onClick={download} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2">
-          <Calendar className="w-4 h-4" />Download Calendar
+          <Calendar className="w-4 h-4" />Add to my calendar
         </button>
-        <Link href="/saved" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Open The Keepers</Link>
-        <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">VibePeep Together</Link>
+        <Link href="/saved" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">See the keepers</Link>
+        <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Plan with your crew</Link>
       </div>
 
       <section className="mt-8">
         <h2 className="font-display text-xl font-bold mb-3">Saved events</h2>
         {!saved.length && status !== 'loading' && (
           <EmptyState
-            title={status === 'authenticated' ? 'Nothing saved yet' : 'Sign in to see your saved events'}
-            lede={status === 'authenticated' ? 'Tap Save on the board or an event page.' : 'Saves, follows and reminders belong to your account.'}
+            title={status === 'authenticated' ? 'No keepers yet' : 'Sign in to see your keepers'}
+            lede={status === 'authenticated' ? 'Go find a keeper. We’ll guard it with our life.' : 'Saves, follows and reminders live on your account.'}
             action={status === 'authenticated' ? { href: '/', label: 'Browse events' } : { href: '/login?next=/watchlist', label: 'Sign in' }}
             secondary={status === 'authenticated' ? undefined : { href: '/', label: 'Browse events' }}
             examples={['Friday · Outdoor yoga · Rose Bay', 'Saturday · Live music · The Rocks', 'Sunday · Market · Bondi']}
@@ -126,7 +126,7 @@ export function WatchlistClient() {
         <h2 className="font-display text-xl font-bold">Following</h2>
         {status !== 'authenticated' && (
           <p className="mt-2 text-sm text-muted-foreground">
-            <Link href="/login?next=/watchlist" className="text-primary underline">Sign in</Link> to follow venues and interests, and to turn on email.
+            <Link href="/login?next=/watchlist" className="text-primary underline">Sign in</Link> and you can follow venues and interests, and turn email on.
           </p>
         )}
         {loading && status === 'authenticated' && <Loader2 className="mt-3 w-5 h-5 animate-spin text-primary" />}
@@ -137,7 +137,7 @@ export function WatchlistClient() {
               {tags.map((tag) => (
                 <button key={tag} type="button" onClick={() => unfollowTag(tag)} className="px-3 h-9 rounded-full bg-primary text-primary-foreground text-sm">{tag} · Unfollow</button>
               ))}
-              {!tags.length && <p className="text-sm text-muted-foreground">Follow an interest from any event page, or pick them in My account.</p>}
+              {!tags.length && <p className="text-sm text-muted-foreground">No interests yet. Follow one from an event page, or pick them in My account.</p>}
             </div>
             <h3 className="mt-4 text-sm font-semibold">Venues</h3>
             <ul className="mt-2 space-y-2">
@@ -147,7 +147,7 @@ export function WatchlistClient() {
                   <button type="button" onClick={() => unfollowVenue(venue)} className="text-muted-foreground hover:text-foreground">Unfollow</button>
                 </li>
               ))}
-              {!venues.length && <li className="text-sm text-muted-foreground">Follow a venue from its event page.</li>}
+              {!venues.length && <li className="text-sm text-muted-foreground">No venues yet. Follow one from its event page.</li>}
             </ul>
           </>
         )}
@@ -155,7 +155,7 @@ export function WatchlistClient() {
 
       <section className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5 space-y-3">
         <h2 className="font-display text-xl font-bold">Email</h2>
-        <p className="text-sm text-muted-foreground">No app notifications. Mail goes out only when you opt in and email is configured.</p>
+        <p className="text-sm text-muted-foreground">No app pings. Mail only goes out when you say yes, and email is switched on.</p>
         {status === 'authenticated' ? (
           <>
             <label className="flex items-start gap-3 text-sm">
@@ -163,19 +163,19 @@ export function WatchlistClient() {
                 const next = e.target.checked
                 if (await patchMe({ emailOptIn: next })) setEmailOptIn(next)
               }} />
-              <span>Send a My VibePeep note ({emailFrequency}). It lists upcoming saves and new events at venues you follow. Interest picks also feed your VibePeep email.</span>
+              <span>Please send me a note ({emailFrequency}). I’ll round up upcoming keepers and new events at venues you follow. Your interests shape the VibePeep email too.</span>
             </label>
             <label className="flex items-start gap-3 text-sm">
               <input type="checkbox" className="mt-1 accent-[hsl(var(--primary))]" checked={reminderOptIn} onChange={async (e) => {
                 const next = e.target.checked
                 if (await patchMe({ reminderOptIn: next })) setReminderOptIn(next)
               }} />
-              <span>Remind me by email when a saved event is coming up (about a day ahead). This is separate from the digest.</span>
+              <span>Please nudge me when a saved event is about a day away. This sits apart from the regular note.</span>
             </label>
-            <button type="button" onClick={preview} className="h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Send Me a Preview</button>
+            <button type="button" onClick={preview} className="h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Send me a preview</button>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Sign in to opt in. Reminders and the digest are tied to your account.</p>
+          <p className="text-sm text-muted-foreground">Sign in to say yes. Reminders and the note live on your account.</p>
         )}
       </section>
     </main>

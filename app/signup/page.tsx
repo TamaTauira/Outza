@@ -47,7 +47,7 @@ function SignupForm() {
         body: JSON.stringify({ name, email, password, role, orgName, homeCity, ...(role === 'CONSUMER' ? { birthYear, homePostcode } : {}) }),
       })
       const data = await r.json().catch(() => ({}))
-      if (!r.ok) { setError(data.error || 'Could not create account'); return }
+      if (!r.ok) { setError(data.error || 'Couldn’t create that account. Please give it another go.'); return }
       setNotice(data.verificationSent ? 'Account created. Signing you in… Check your email to verify the address.' : 'Account created. Signing you in… We couldn’t send the verification email just now. You can resend it from the banner.')
       const ok = await Promise.race([
         establishSession(email.trim().toLowerCase(), password),
@@ -65,7 +65,7 @@ function SignupForm() {
       router.replace(safeNextPath(params.get('next'), role === 'PROMOTER' ? '/promoter' : '/account'))
     } catch (err) {
       console.error(err)
-      setError('Something went wrong. Try again in a moment.')
+      setError('Oops, that one didn’t land. Give it another go.')
     } finally {
       setLoading(false)
     }

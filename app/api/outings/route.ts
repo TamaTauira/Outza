@@ -46,6 +46,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ plan: body })
   } catch (err) {
     console.error('outings plan failed', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'The planner is having a moment. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'The planner’s having a moment. Give it another go.' }, { status: 500 })
   }
 }

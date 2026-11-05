@@ -24,7 +24,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
     return (
       <EmptyState
         title={signedIn ? 'No keepers yet' : 'Sign in to see your saved events'}
-        lede={signedIn ? 'Go find something worth keeping. We’ll hold it for you.' : 'Saved events belong to your account. Nothing is kept while you’re signed out.'}
+        lede={signedIn ? 'Go find a keeper. We’ll guard it with our life.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}
         action={signedIn ? { label: 'Browse events', onClick: onBrowse } : { href: '/login?next=/saved', label: 'Sign in' }}
         secondary={signedIn ? undefined : { href: '/', label: 'Browse events' }}
         examples={['Friday · Outdoor yoga · Rose Bay', 'Saturday · Live music · The Rocks', 'Sunday · Market · Bondi']}

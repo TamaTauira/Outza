@@ -141,7 +141,7 @@ export async function verifyEmail(rawToken: string) {
 
 export async function resendVerification(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, emailVerified: true } })
-  if (!user) return { ok: false as const, status: 401, error: 'Sign in to do that.' }
+  if (!user) return { ok: false as const, status: 401, error: 'Please sign in to do that.' }
   if (accountIsVerified(user.emailVerified)) return { ok: true as const, already: true as const }
   const sent = await sendVerification(userId, user.email)
   return { ok: true as const, sent: sent.sent, limited: sent.limited }

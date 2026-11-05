@@ -107,7 +107,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
         <div className="mt-4 flex flex-col gap-3 text-[11px] text-muted-foreground sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <span>VibePeep is an independent listings guide — information only, no warranties.</span>
           <span className="flex max-w-full flex-wrap gap-x-3 gap-y-2">
-            <Link href="/outings" className="hover:text-foreground underline underline-offset-2">Day and night plans</Link>
+            <Link href="/outings" className="hover:text-foreground underline underline-offset-2">Plan a day or night</Link>
             <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>
             <Link href="/watchlist" className="hover:text-foreground underline underline-offset-2">My VibePeep</Link>
             <Link href="/about" className="hover:text-foreground underline underline-offset-2">About</Link>

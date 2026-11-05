@@ -27,7 +27,7 @@ import { useBackState } from '@/lib/scroll-memory';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
 const MapView = dynamic(() => import('@/components/map-view').then((m) => m.MapView), {
   ssr: false,
-  loading: () => <div className="flex h-full min-h-[50vh] items-center justify-center text-sm text-muted-foreground">Loading the map…</div>,
+  loading: () => <div className="flex h-full min-h-[50vh] items-center justify-center text-sm text-muted-foreground">Unfolding the map…</div>,
 });
 
 const EMPTY_FILTERS: FilterState = {
@@ -390,7 +390,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                     }}>
                       <PopoverTrigger asChild>
                         <button className="shrink-0 h-11 flex items-center gap-2 px-4 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">
-                          <CalendarDays className="w-4 h-4" /> Pick a date
+                          <CalendarDays className="w-4 h-4" /> When are we going out?
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">

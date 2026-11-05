@@ -41,14 +41,14 @@ export function ProfileGate() {
     setError('')
     const p = parseBirthYear(birthYear)
     if (p.error) { setError(p.error); return }
-    if (homePostcode && !isPostcode(homePostcode)) { setError('Postcodes are 4 digits'); return }
+    if (homePostcode && !isPostcode(homePostcode)) { setError('Please use a 4-digit postcode.'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ birthYear, homePostcode }) })
       const d = await res.json().catch(() => ({}))
-      if (!res.ok) { setError(d?.error ?? 'Could not save'); return }
+      if (!res.ok) { setError(d?.error ?? 'Couldn’t save that. Please give it another go.'); return }
       setNeeded(false); toast.success('Sorted. Now go take a peep.')
-    } catch (err) { console.error('Profile save failed:', err); setError('Could not save. Try again.') } finally { setSaving(false) }
+    } catch (err) { console.error('Profile save failed:', err); setError('Couldn’t save that. Please give it another go.') } finally { setSaving(false) }
   }
 
   return (

@@ -28,25 +28,25 @@ export function parseLocal(b: Record<string, unknown>): { error: string } | { in
   const city = clean(b.city, 40)
   const recurrence = clean(b.recurrence, 20) || 'NONE'
   const postcode = clean(b.postcode, 4)
-  if (title.length < 5) return { error: 'Give it a title, at least 5 characters.' }
-  if (description.length < 20) return { error: 'Tell us what’s on, at least 20 characters.' }
-  if (!LOCAL_CATEGORIES.some((c) => c.key === category)) return { error: 'Choose a category.' }
-  if (!CITIES.some((c) => c.name === city)) return { error: 'Choose a city.' }
-  if (!RECURRENCES.some((r) => r.key === recurrence)) return { error: 'Choose how often it runs.' }
+  if (title.length < 5) return { error: 'Please give it a title, at least 5 characters.' }
+  if (description.length < 20) return { error: 'Please tell us what’s on, at least 20 characters.' }
+  if (!LOCAL_CATEGORIES.some((c) => c.key === category)) return { error: 'Please choose a category.' }
+  if (!CITIES.some((c) => c.name === city)) return { error: 'Please choose a city.' }
+  if (!RECURRENCES.some((r) => r.key === recurrence)) return { error: 'Please choose how often it runs.' }
   const address = clean(b.address, 160)
   const suburb = clean(b.suburb, 60)
-  if (address.length < 5 || !/\d/.test(address)) return { error: 'Add the street address, including the street number.' }
-  if (suburb.length < 2) return { error: 'Add the suburb.' }
-  if (!/^\d{4}$/.test(postcode)) return { error: 'Add a 4-digit postcode.' }
+  if (address.length < 5 || !/\d/.test(address)) return { error: 'Please add the street address, including the street number.' }
+  if (suburb.length < 2) return { error: 'Please add the suburb.' }
+  if (!/^\d{4}$/.test(postcode)) return { error: 'Please add a 4-digit postcode.' }
 
   const tz = cityDef(city).tz
   const today = todayIn(tz)
-  if (!isDateStr(b.startDate)) return { error: 'Choose a date.' }
+  if (!isDateStr(b.startDate)) return { error: 'When are we going out? Please choose a date.' }
   const startDate = b.startDate
-  if (startDate < today) return { error: 'The date has already passed.' }
+  if (startDate < today) return { error: 'That date’s already been. Please pick today or later.' }
   if (diffDays(today, startDate) > MAX_AHEAD_DAYS) return { error: 'Listings can be added up to a year ahead.' }
-  if (!isTimeStr(b.startTime) || !isTimeStr(b.endTime)) return { error: 'Add a start and finish time.' }
-  if (b.endTime <= b.startTime) return { error: 'The finish time must be after the start time.' }
+  if (!isTimeStr(b.startTime) || !isTimeStr(b.endTime)) return { error: 'Please add a start and finish time.' }
+  if (b.endTime <= b.startTime) return { error: 'The finish needs to land after the start.' }
 
   let endDate: string | null = null
   let recurUntil: string | null = null
@@ -62,15 +62,15 @@ export function parseLocal(b: Record<string, unknown>): { error: string } | { in
   }
 
   const contactEmail = clean(b.contactEmail, 200).toLowerCase()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: 'Add a real contact email. It isn’t shown publicly.' }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: 'Please add a real contact email. It isn’t shown publicly.' }
   const organiserName = clean(b.organiserName, 80)
-  if (organiserName.length < 2) return { error: 'Tell us who is running it.' }
+  if (organiserName.length < 2) return { error: 'Please tell us who is running it.' }
   let websiteUrl: string | null = clean(b.websiteUrl, 300) || null
   if (websiteUrl) {
     try { const u = new URL(/^https?:\/\//.test(websiteUrl) ? websiteUrl : `https://${websiteUrl}`); if (!/^https?:$/.test(u.protocol)) throw 0; websiteUrl = u.toString() }
     catch { return { error: 'That website link doesn’t look right.' } }
   }
-  if (b.isPublic !== true) return { error: 'Confirm this is open to the public. Private or invitation-only events can’t be listed.' }
+  if (b.isPublic !== true) return { error: 'Please confirm this is open to the public. Private or invitation-only events can’t be listed.' }
   return { input: { title, category, description, address, suburb, postcode, city, startDate, endDate, startTime: b.startTime, endTime: b.endTime, recurrence, recurUntil, priceNote: clean(b.priceNote, 80) || null, organiserName, contactEmail, websiteUrl } }
 }
 

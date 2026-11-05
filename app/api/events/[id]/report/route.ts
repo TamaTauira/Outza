@@ -15,14 +15,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { id } = await params
     const b = await req.json().catch(() => ({}))
     const reason = REPORT_REASONS.some((r) => r.key === b.reason) ? String(b.reason) : null
-    if (!reason) return NextResponse.json({ error: 'Choose what is wrong' }, { status: 400 })
+    if (!reason) return NextResponse.json({ error: 'Please choose what is wrong.' }, { status: 400 })
     const details = String(b.details ?? '').trim().slice(0, 2000) || null
-    if (reason === 'OTHER' && !details) return NextResponse.json({ error: 'Tell us what is wrong' }, { status: 400 })
+    if (reason === 'OTHER' && !details) return NextResponse.json({ error: 'Please tell us what is wrong.' }, { status: 400 })
     const email = String(b.email ?? '').trim().slice(0, 200)
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'That email address doesn’t look right' }, { status: 400 })
 
     const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, title: true, city: true } })
-    if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
+    if (!ev) return NextResponse.json({ error: 'We couldn’t find that event.' }, { status: 404 })
     const me = await getSessionUser().catch(() => null)
 
     // Light abuse guard: one open report per reason per event from the same signed-in user or email.

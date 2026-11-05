@@ -8,8 +8,8 @@ import { outingCity, outingsForCity } from '@/lib/outings-data'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Day and night plans',
-  description: 'Day and night plans built from real listings, with a meal idea and how to get there. VibePeep does not book the table or the ticket.',
+  title: 'Plan a day or night',
+  description: 'I’ll stitch together a date night, a family Sunday or a lazy free arvo from real listings, with a meal idea and how to get there. VibePeep does not book the table or the ticket.',
   robots: { index: false, follow: true },
 }
 
@@ -20,7 +20,7 @@ export default async function OutingsPage({ searchParams }: { searchParams: Prom
   return (
     <PageShell>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Day and night</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Plan a day or night</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">A whole outing, not just one gig.</h1>
         <p className="mt-3 text-muted-foreground text-base sm:text-lg">These are real listings from the board, lined up with a meal idea and a transport link. VibePeep does not book restaurants or tickets.</p>
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
@@ -33,7 +33,7 @@ export default async function OutingsPage({ searchParams }: { searchParams: Prom
         {!plans.length && (
           <EmptyState
             title="Nothing lined up here yet."
-            lede="Day and night plans are built from real listings. Try another city, or browse the board."
+            lede="I’ll stitch together a date night, a family Sunday or a lazy free arvo from real listings. Try another city, or browse the board."
             action={{ href: '/', label: 'Browse events' }}
             examples={['Saturday date night', 'Family Sunday under $50', 'A free afternoon']}
           />

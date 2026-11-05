@@ -66,7 +66,7 @@ test('Save Details follows the age rule, not a dirty check or a string/number mi
   assert.match(visibleAboutErrors('2013', '2033', { now: OCT }).yearError ?? '', /13 or older/)
   assert.equal(aboutYouStatus('2012', '', { now: OCT }).canSave, true)
 
-  assert.match(aboutYouStatus('1900', '', { now: OCT }).yearError ?? '', /Check the year/)
+  assert.match(aboutYouStatus('1900', '', { now: OCT }).yearError ?? '', /Please check the year/)
   assert.equal(visibleAboutErrors('198', '', { now: OCT }).yearError, undefined)
   assert.match(visibleAboutErrors('', '', { now: OCT, yearTouched: true }).yearError ?? '', /year you were born/)
 

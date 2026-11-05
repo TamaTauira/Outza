@@ -18,12 +18,12 @@ export function LocalImportCard({ city, onImported, result }: { city: string; on
       body.append('city', city)
       const res = await fetch('/api/local/extract', { method: 'POST', body })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok) { toast.error(j.error ?? 'Couldn’t read that. Fill in the form instead.'); return }
+      if (!res.ok) { toast.error(j.error ?? 'Oops, couldn’t read that. Please fill in the form instead.'); return }
       onImported({ fields: j.fields ?? {}, found: j.found ?? [], missing: j.missing ?? [], source })
-      toast.success(j.missing?.length ? 'Imported. Finish the highlighted fields.' : 'Imported. Give the details a once-over.')
+      toast.success(j.missing?.length ? 'Imported. Please finish the highlighted fields.' : 'Imported. Please give the details a once-over.')
     } catch (err) {
       console.error(err)
-      toast.error('Couldn’t read that. Fill in the form instead.')
+      toast.error('Oops, couldn’t read that. Please fill in the form instead.')
     } finally { setBusy('') }
   }
 
@@ -70,7 +70,7 @@ export function LocalImportCard({ city, onImported, result }: { city: string; on
         <div className="rounded-xl bg-muted/60 p-4 text-sm space-y-2" aria-live="polite">
           <p className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" /><span>Imported <b>{result.found.length}</b> detail{result.found.length === 1 ? '' : 's'} from <span className="break-all">{result.source}</span>. Check everything below before publishing, since you're responsible for its accuracy.</span></p>
           {result.missing.length > 0 && (
-            <p className="flex gap-2 text-[#b8432f] dark:text-[#f08a78]"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span><b>Still needed:</b> {result.missing.join(', ')}. These are highlighted in orange.</span></p>
+            <p className="flex gap-2 text-[#b8432f] dark:text-[#f08a78]"><AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span><b>Still needed, please:</b> {result.missing.join(', ')}. These are highlighted in orange.</span></p>
           )}
           <p className="text-xs text-muted-foreground">Your contact email and the public-event confirmation always need to be filled in by you.</p>
         </div>

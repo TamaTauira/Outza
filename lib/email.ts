@@ -384,7 +384,7 @@ export function publicEmailError(raw?: string | null): string {
   if (/testing emails|verify a domain|domain is not verified|not verified|onboarding@resend|can only send/i.test(msg)) {
     return 'We couldn’t send that email. Sending is still on Resend’s shared test sender, which can only deliver to the Resend account owner. Verify a domain in Resend, then set RESEND_FROM_EMAIL to an address on that domain.'
   }
-  return 'We couldn’t send that email just now. Try again in a few minutes.'
+  return 'We couldn’t send that email just now. Please give it another go in a few minutes.'
 }
 
 export const OWNER_EMAIL = 'tama.tauira@gmail.com'
