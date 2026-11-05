@@ -50,12 +50,16 @@
       "schedule": "16 * * * *"
     },
     {
-      "path": "/api/cron/refresh/curated",
+      "path": "/api/cron/refresh/popular-regulars",
       "schedule": "18 * * * *"
     },
     {
-      "path": "/api/cron/refresh/finalize",
+      "path": "/api/cron/refresh/brisbane",
       "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/refresh/finalize",
+      "schedule": "23 * * * *"
     },
     {
       "path": "/api/cron/digest",
