@@ -1,6 +1,9 @@
 /**
  * Listings refresh is split so no invocation approaches the 300s function limit.
- * Chunks run every hour, two minutes apart, then the short housekeeping jobs.
+ * Source chunks run every hour, two minutes apart. Finalize is minute 23 so
+ * Popular regulars (minute 18) and Brisbane City Council (minute 20) each finish
+ * their own invocation before the cycle is assessed. A slow regulars run must
+ * not delay the council feed past that assessment.
  * The burst ends by minute 24. The rest of the hour is idle so Neon compute can
  * suspend (the default idle timeout is 5 minutes) before the next hour.
  * Events are still refreshed at least once an hour.
@@ -34,8 +37,9 @@ export const REFRESH_CHUNKS: RefreshChunk[] = [
   { id: 'oztix', minute: 12, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Oztix'] },
   { id: 'ticketek', minute: 14, budgetMs: 160_000, sources: ['Ticketek'] },
   { id: 'eventbrite', minute: 16, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Eventbrite'] },
-  { id: 'curated', minute: 18, budgetMs: 100_000, sources: ['Popular regulars', 'Brisbane City Council'] },
-  { id: 'finalize', minute: 20, budgetMs: 200_000, finalize: true },
+  { id: 'popular-regulars', minute: 18, budgetMs: 100_000, sources: ['Popular regulars'] },
+  { id: 'brisbane', minute: 20, budgetMs: 100_000, sources: ['Brisbane City Council'] },
+  { id: 'finalize', minute: 23, budgetMs: 200_000, finalize: true },
 ]
 
 /** Minutes from the end of the burst until the next hour's first chunk. */

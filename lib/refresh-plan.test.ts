@@ -41,13 +41,29 @@ test('chunks list every source once and finish with the cycle step', () => {
   assert.deepEqual(listed, [...SOURCE_NAMES])
   assert.equal(REFRESH_CHUNKS.filter((c) => c.finalize).length, 1)
   assert.equal(REFRESH_CHUNKS.at(-1)?.id, 'finalize')
+  const popular = REFRESH_CHUNKS.find((chunk) => chunk.id === 'popular-regulars')
+  const brisbane = REFRESH_CHUNKS.find((chunk) => chunk.id === 'brisbane')
+  const finalize = REFRESH_CHUNKS.find((chunk) => chunk.finalize)
+  assert.deepEqual(popular?.sources, ['Popular regulars'])
+  assert.deepEqual(brisbane?.sources, ['Brisbane City Council'])
+  assert.equal(popular?.minute, 18)
+  assert.equal(brisbane?.minute, 20)
+  assert.equal(finalize?.minute, 23)
+  // Each source has its own invocation, so a slow one cannot push the next past finalize.
+  for (const chunk of REFRESH_CHUNKS) {
+    if (chunk.finalize) continue
+    assert.equal(chunk.sources?.length, 1)
+    assert.ok(chunk.minute * 60_000 + chunk.budgetMs < finalize!.minute * 60_000, chunk.id)
+  }
   for (const chunk of REFRESH_CHUNKS) {
     assert.ok(chunk.budgetMs <= SOURCE_BUDGET_MAX_MS)
     assert.ok(chunk.budgetMs <= 220_000)
     assert.equal([0, 15, 30, 45].includes(chunk.minute), false)
   }
   for (let i = 1; i < REFRESH_CHUNKS.length; i++) {
-    assert.equal(REFRESH_CHUNKS[i].minute - REFRESH_CHUNKS[i - 1].minute, 2)
+    const gap = REFRESH_CHUNKS[i].minute - REFRESH_CHUNKS[i - 1].minute
+    // Finalize waits one extra minute so Brisbane's own budget ends before assessment.
+    assert.equal(gap, REFRESH_CHUNKS[i].finalize ? 3 : 2)
   }
 })
 
@@ -68,6 +84,8 @@ test('vercel.json runs each chunk hourly inside one burst with a long idle gap',
   assert.ok(idle >= 30, `idle gap ${idle} min is too short to suspend`)
   assert.ok(REFRESH_CYCLE_WINDOW_MS < 60 * 60 * 1000)
   assert.ok(REFRESH_CYCLE_WINDOW_MS > (REFRESH_CHUNKS.at(-1)!.minute - REFRESH_CHUNKS[0].minute) * 60 * 1000)
+  const ownerMinute = Number(vercel.crons.find((c) => c.path === '/api/cron/owner-alerts')?.schedule.split(' ')[0])
+  assert.ok(ownerMinute > REFRESH_CHUNKS.find((c) => c.finalize)!.minute)
   for (const cron of vercel.crons) {
     const minute = Number(cron.schedule.split(' ')[0].split(',')[0])
     assert.ok(minute >= REFRESH_CHUNKS[0].minute && minute <= Math.max(...HOURLY_SIDE_MINUTES))
