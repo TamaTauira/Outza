@@ -63,7 +63,7 @@ export function GuideLanding(props: {
     <PageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />
       <LandingViewBeacon path={path} />
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8">
+      <main className="vp-wrap px-4 py-8 sm:px-6">
         <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground mb-5">
           {crumbs.map((c, i) => (
             <span key={c.url} className="inline-flex items-center gap-1">
@@ -227,9 +227,9 @@ export function GuideLanding(props: {
         )}
 
         {facts.length > 0 && (
-          <section className="mt-12 max-w-3xl" aria-labelledby="guide-facts">
+          <section className="mt-12" aria-labelledby="guide-facts">
             <h2 id="guide-facts" className="font-display text-xl font-bold mb-3">Good to know</h2>
-            <dl className="space-y-3">
+            <dl className="grid gap-3 lg:grid-cols-2">
               {facts.map((f) => (
                 <div key={f.question}>
                   <dt className="font-semibold">{f.question}</dt>

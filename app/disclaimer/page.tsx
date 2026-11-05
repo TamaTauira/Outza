@@ -82,7 +82,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 export default function DisclaimerPage() {
   return (
     <PageShell>
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+      <main className="vp-wrap px-4 py-12 sm:px-6">
         <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
@@ -91,7 +91,7 @@ export default function DisclaimerPage() {
         <p className="mt-4 text-muted-foreground leading-relaxed">
           Please read this disclaimer carefully. By accessing or using VibePeep you acknowledge that you have read, understood and agree to it. If you do not agree, please do not use this website.
         </p>
-        <div className="mt-10 space-y-6">
+        <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
           {SECTIONS.map((s) => (
             <section key={s.title} className="rounded-xl bg-card p-6 shadow-sm">
               <h2 className="font-display text-lg font-semibold">{s.title}</h2>

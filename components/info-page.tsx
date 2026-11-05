@@ -18,7 +18,7 @@ export function InfoPage({
 }) {
   return (
     <PageShell>
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:grid lg:grid-cols-[minmax(0,42rem)_14rem] lg:gap-12">
+      <main className="vp-wrap px-4 py-10 sm:px-6 lg:grid lg:grid-cols-[minmax(0,42rem)_minmax(16rem,1fr)] lg:items-start lg:gap-10 xl:gap-16">
         <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
           <p className="mt-3 text-muted-foreground">{lede}</p>
@@ -35,7 +35,7 @@ export function InfoPage({
               </section>
             ))}
           </div>
-          <p className="mt-10 text-sm">
+          <p className="mt-10 text-sm lg:hidden">
             <Link href="/contact" className="text-primary underline">Contact</Link>
             <span className="text-muted-foreground"> · </span>
             <Link href="/faq" className="text-primary underline">FAQ</Link>
@@ -46,12 +46,19 @@ export function InfoPage({
           </p>
         </div>
         <aside className="mt-10 hidden lg:block">
-          <nav aria-label="On this page" className="sticky top-24 text-sm">
+          <nav aria-label="On this page" className="sticky top-24 rounded-xl border border-border bg-card p-5 text-sm shadow-sm">
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">On this page</p>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-3 space-y-2 xl:columns-2 xl:gap-x-8">
               {sections.map((s) => (
-                <li key={s.title}><a href={`#${slug(s.title)}`} className="text-muted-foreground hover:text-foreground">{s.title}</a></li>
+                <li key={s.title} className="break-inside-avoid"><a href={`#${slug(s.title)}`} className="text-muted-foreground hover:text-foreground">{s.title}</a></li>
               ))}
+            </ul>
+            <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Also</p>
+            <ul className="mt-3 space-y-2">
+              <li><Link href="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link></li>
+              <li><Link href="/faq" className="text-muted-foreground hover:text-foreground">FAQ</Link></li>
+              <li><Link href="/pricing" className="text-muted-foreground hover:text-foreground">Pricing</Link></li>
+              <li><Link href="/refunds" className="text-muted-foreground hover:text-foreground">Refunds</Link></li>
             </ul>
           </nav>
         </aside>

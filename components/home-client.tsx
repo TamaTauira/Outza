@@ -270,7 +270,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
       <Navbar savedCount={saved.length} />
 
-      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
+      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'vp-wrap px-4 sm:px-6 pt-5'}>
         {view === 'saved' ? (
           <div className="mb-4">
             <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>

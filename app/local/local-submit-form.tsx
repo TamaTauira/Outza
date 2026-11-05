@@ -64,7 +64,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
   }
 
   return (
-    <form onSubmit={submit} className="mt-8 max-w-3xl space-y-6">
+    <form onSubmit={submit} className="mt-8 space-y-6">
       <div className="rounded-2xl bg-muted/60 p-4 text-sm text-muted-foreground">
         Free for everyone. {signedIn ? 'Listings from signed-in accounts that pass our automatic checks go live straight away.' : <>Listings without an account are checked by a person first. <Link href="/login?next=/local?tab=submit" className="text-primary underline">Sign in</Link> to go live faster and manage your listings.</>}
       </div>

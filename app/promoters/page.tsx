@@ -31,7 +31,7 @@ export default async function PromotersPage() {
       <main>
         <section className="relative overflow-hidden border-b border-border">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,122,26,0.22),transparent_60%)]" />
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pb-10 pt-1 sm:pb-14 sm:pt-2 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+          <div className="relative vp-wrap px-4 sm:px-6 pb-10 pt-1 sm:pb-14 sm:pt-2 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
             <div>
               <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
               <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For promoters, venues & organisers</p>
@@ -56,7 +56,7 @@ export default async function PromotersPage() {
           </div>
         </section>
 
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <section className="vp-wrap px-4 sm:px-6 py-10">
           <h2 className="font-display text-2xl sm:text-3xl font-bold">How it works</h2>
           <ol className="mt-5 grid gap-3 md:grid-cols-3">
             {[
@@ -73,7 +73,7 @@ export default async function PromotersPage() {
         </section>
 
         <section className="bg-card/50 border-y border-border">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+          <div className="vp-wrap px-4 sm:px-6 py-14">
             <h2 className="font-display text-2xl sm:text-3xl font-bold">Promotion packages</h2>
             <p className="mt-2 text-sm text-muted-foreground">Three clear packages, from {formatAud(TIERS[0].prices[7])}. Per event, one-off payment, AUD incl. GST. Other campaign lengths are available too.</p>
             <div className="mt-8 grid md:grid-cols-3 gap-5">
@@ -114,7 +114,7 @@ export default async function PromotersPage() {
           </div>
         </section>
 
-        <section id="plans" className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 scroll-mt-20">
+        <section id="plans" className="vp-wrap px-4 sm:px-6 pt-14 scroll-mt-20">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For bars, restaurants, venues, galleries, studios, activity providers, markets & regular organisers</p>
           <h2 className="mt-2 font-display text-2xl sm:text-3xl font-bold">Business subscriptions</h2>
           <p className="mt-2 text-sm text-muted-foreground max-w-2xl">Monthly plans for rooms that put events on all the time. Subscribe from the promoter dashboard. If card billing is not switched on, the dashboard takes a quote instead and does not charge a card. Listing an event stays free.</p>
@@ -138,13 +138,13 @@ export default async function PromotersPage() {
           </div>
         </section>
 
-        <section id="dashboard" className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 scroll-mt-20">
+        <section id="dashboard" className="vp-wrap px-4 sm:px-6 pt-14 scroll-mt-20">
           <h2 className="font-display text-2xl sm:text-3xl font-bold">Your business dashboard</h2>
           <p className="mt-2 text-sm text-muted-foreground max-w-2xl mb-6">Manage events, buy promotion packages and see measurable results — all in one place.</p>
           <DashboardPreview />
         </section>
 
-        <section id="local" className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 scroll-mt-20">
+        <section id="local" className="vp-wrap px-4 sm:px-6 pt-14 scroll-mt-20">
           <div className="rounded-2xl bg-card border border-border p-8 sm:p-10 shadow-sm grid md:grid-cols-[1fr_auto] gap-8 items-center">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For restaurants, bars, parking & experiences</p>
@@ -159,7 +159,7 @@ export default async function PromotersPage() {
           </div>
         </section>
 
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
+        <section className="vp-wrap px-4 sm:px-6 py-14">
           <div className="rounded-2xl p-8 sm:p-10 bg-gradient-to-br from-primary/25 via-card to-card border border-primary/40 grid md:grid-cols-[1fr_auto] gap-8 items-center">
             <div>
               <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /><p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For regular promoters</p></div>
@@ -171,7 +171,7 @@ export default async function PromotersPage() {
           </div>
         </section>
 
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+        <section className="vp-wrap px-4 sm:px-6 pb-16">
           <h2 className="font-display text-2xl font-bold">Good to know</h2>
           <div className="mt-5 grid md:grid-cols-2 gap-4">
             {[

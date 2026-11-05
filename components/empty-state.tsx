@@ -28,7 +28,7 @@ export function EmptyState({
         )}
         {secondary && <Link href={secondary.href} className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold hover:bg-muted">{secondary.label}</Link>}
       </div>
-      <ul className="mx-auto mt-8 max-w-md space-y-2 text-left" aria-hidden>
+      <ul className="mx-auto mt-8 max-w-md space-y-2 text-left lg:grid lg:max-w-none lg:grid-cols-3 lg:gap-3 lg:space-y-0" aria-hidden>
         {examples.map((example) => (
           <li key={example} className="rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground/80">{example}</li>
         ))}

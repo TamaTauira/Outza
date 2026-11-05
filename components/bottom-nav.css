@@ -126,11 +126,6 @@
   }
 }
 
-@media (max-width: 639px) {
-  .vp-has-ticket-bar {
-    padding-bottom: 5rem;
-  }
-}
 
 .vp-bottom-nav-inner {
   display: flex;

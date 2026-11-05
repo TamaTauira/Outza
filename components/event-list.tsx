@@ -11,7 +11,8 @@ import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
 import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useBackState } from '@/lib/scroll-memory'
+import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
+import { listDepthToLoad } from '@/lib/scroll-restore'
 export type BoardSeed = {
   city: string
   from: string
@@ -82,13 +83,16 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       if (filters.isLGBTI) params.set('isLGBTI', 'true')
       const res = await fetch(`/api/events?${params.toString()}`)
       const data = await res.json()
-      if (seq !== fetchSeq.current) return
+      if (seq !== fetchSeq.current) return null
       const list: BoardEvent[] = (data?.events ?? []).filter((ev: BoardEvent) => !filters.isFree || !isPaidListing(ev))
       setEvents((prev) => (append ? [...prev, ...list] : list))
+      const totalPages = data?.totalPages ?? 1
       setTotal(data?.total ?? 0)
-      setTotalPages(data?.totalPages ?? 1)
+      setTotalPages(totalPages)
+      return { totalPages }
     } catch (err) {
       console.error('Failed to fetch events:', err)
+      return null
     } finally {
       if (seq === fetchSeq.current) {
         setLoading(false)
@@ -99,18 +103,48 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 
   useEffect(() => {
     if (!span || authStatus === 'loading') return
-    // Anonymous visitors use the server-rendered day. Signed-in visitors refetch for their own flags.
-    if (initialBoard && seedMatches && authStatus !== 'authenticated') {
-      setEvents(initialBoard.events)
-      setTotal(initialBoard.total)
-      setTotalPages(initialBoard.totalPages)
-      setPage(1)
-      setLoading(false)
-      return
+    let cancelled = false
+    const release = holdScrollRestore('board-list')
+    // Read before the depth writer below replaces a saved page count with 1.
+    const depthWanted = isHistoryNav() ? readListDepth() : 1
+    ;(async () => {
+      try {
+        // Anonymous visitors use the server-rendered day. Signed-in visitors refetch for their own flags.
+        if (initialBoard && seedMatches && authStatus !== 'authenticated') {
+          setEvents(initialBoard.events)
+          setTotal(initialBoard.total)
+          setTotalPages(initialBoard.totalPages)
+          setPage(1)
+          setLoading(false)
+          const pages = listDepthToLoad(depthWanted, initialBoard.totalPages)
+          for (let n = 2; n <= pages && !cancelled; n++) {
+            const more = await fetchSpan(span.from, span.to, n, true)
+            if (!more || cancelled) return
+            setPage(n)
+          }
+          return
+        }
+        setPage(1)
+        const first = await fetchSpan(span.from, span.to, 1, false)
+        if (!first || cancelled) return
+        const pages = listDepthToLoad(depthWanted, first.totalPages)
+        for (let n = 2; n <= pages && !cancelled; n++) {
+          const more = await fetchSpan(span.from, span.to, n, true)
+          if (!more || cancelled) return
+          setPage(n)
+        }
+      } finally {
+        release()
+      }
+    })()
+    return () => {
+      cancelled = true
+      fetchSeq.current += 1
+      release()
     }
-    setPage(1)
-    fetchSpan(span.from, span.to, 1, false)
   }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard])
+
+  useEffect(() => { writeListDepth(page) }, [page])
 
   const isToday = !!day && day === today
   const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'

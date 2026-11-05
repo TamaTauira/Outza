@@ -47,11 +47,11 @@ const SECTIONS: { title: string; body: string[] }[] = [
 export default function HowListingsWorkPage() {
   return (
     <PageShell>
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+    <main className="vp-wrap px-4 py-12 sm:px-6">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">How VibePeep listings work</h1>
       <p className="mt-3 text-muted-foreground">Plain-English answers about where our event information comes from and how we keep it honest.</p>
-      <div className="mt-10 space-y-8">
+      <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
         {SECTIONS.map((s) => (
           <section key={s.title} className="rounded-2xl bg-card shadow-sm p-6">
             <h2 className="font-display text-xl font-bold">{s.title}</h2>

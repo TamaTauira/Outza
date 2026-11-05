@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { BackLink } from '@/components/back-to-events-link'
 import { ArrowLeft, Bookmark, Building2, Bus, Calendar, Clock, ExternalLink, Flag, Map as MapIcon, MapPin, Repeat, Share2, ShieldCheck, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/navbar'
@@ -63,10 +64,10 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 py-8">
-        <Link href="/local" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+      <main className="vp-wrap px-4 py-8 sm:px-6">
+        <BackLink href="/local" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to VibePeep Local
-        </Link>
+        </BackLink>
 
         <div className="bg-card rounded-xl overflow-hidden border border-border">
           {l.imageUrl && (

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { MANAGE_VENUE_BLURB, MANAGE_VENUE_LABEL, VENUE_MANAGED_LABEL, ownershipUiEnabled } from '@/lib/ownership'
 import { bumpVenueMetric, canManageVenue, publicVenue } from '@/lib/venue-access'
 import { ClaimedTick } from '@/components/ClaimedTick'
+import { PageShell } from '@/components/page-shell'
 import { VenueLinks } from './venue-links'
 
 export const dynamic = 'force-dynamic'
@@ -31,9 +32,12 @@ export default async function VenueProfilePage({ params }: { params: Promise<{ i
   after(() => { bumpVenueMetric(id, 'PROFILE_VIEWS').catch(() => {}) })
 
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 pb-16">
+    <PageShell>
+    <main className="vp-wrap px-4 py-6 pb-16 sm:px-6">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
+      <div>
       <p className="text-xs text-muted-foreground">{venue.city}</p>
-      <h1 className="font-display text-3xl font-bold tracking-tight mt-1 flex items-center gap-2 flex-wrap">
+      <h1 className="mt-1 flex flex-wrap items-center gap-2 font-display text-3xl font-bold tracking-tight lg:text-4xl">
         {venue.name}
         {venue.managed && <ClaimedTick kind="venue" className="h-5 w-5" />}
       </h1>
@@ -47,9 +51,11 @@ export default async function VenueProfilePage({ params }: { params: Promise<{ i
         {venue.accessibilityInfo && <li>{venue.accessibilityInfo}</li>}
       </ul>
       {venue.announcement && <p className="mt-4 rounded-lg bg-muted px-3 py-2 text-sm">{venue.announcement}</p>}
+      </div>
+      <div className="mt-6 lg:mt-0">
       <VenueLinks id={id} website={venue.website} destination={venue.address || `${venue.name}, ${venue.city}`} />
       {tools && (
-        <section className="mt-8 rounded-xl border border-border bg-card p-4">
+        <section className="mt-4 rounded-xl border border-border bg-card p-4">
           {access.allowed ? (
             <Link href={`/venue/${id}`} className="font-semibold text-sm">{access.role === 'ADMINISTRATOR' ? 'Manage Venue' : 'Manage Venue'}</Link>
           ) : claim?.status === 'PENDING' || claim?.status === 'DISPUTE' ? (
@@ -67,6 +73,9 @@ export default async function VenueProfilePage({ params }: { params: Promise<{ i
           )}
         </section>
       )}
+      </div>
+      </div>
     </main>
+    </PageShell>
   )
 }

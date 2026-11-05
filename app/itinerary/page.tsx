@@ -121,13 +121,14 @@ export default function ItineraryPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <main className="vp-wrap px-4 py-8 sm:px-6 lg:py-10">
         <div className="flex items-center justify-between gap-3 mb-2">
-          <h1 className="font-display text-3xl font-bold flex items-center gap-3"><CalendarRange className="w-7 h-7 text-primary" />Itinerary</h1>
+          <h1 className="flex items-center gap-3 font-display text-3xl font-bold lg:text-4xl"><CalendarRange className="w-7 h-7 text-primary" />Itinerary</h1>
           {items.length > 0 && <button onClick={() => { if (confirm('Clear the whole game plan?')) clear() }} className="text-sm text-muted-foreground hover:text-foreground">Clear all</button>}
         </div>
         <p className="text-muted-foreground mb-4">Your game plan for the night. Tap <span className="font-semibold text-foreground">Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. It stays on this device for the account you are signed in with, and clears from view when you sign out. It is separate from Saved.</p>
 
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8">
         {!sorted.length ? (
           <EmptyState
             title="Your night’s wide open. Let’s fill it."
@@ -190,18 +191,19 @@ export default function ItineraryPage() {
         )}
 
         {sorted.length === 0 ? (
-          <details className="mt-10 rounded-xl bg-card shadow-[var(--shadow-md)] p-5">
+          <details className="mt-10 rounded-xl bg-card p-5 shadow-[var(--shadow-md)] lg:mt-2">
             <summary className="cursor-pointer font-semibold flex items-center gap-2"><Plus className="w-4 h-4" />Add your own stop</summary>
             <div className="mt-3">
               <StopForm initial={emptyStop} submitLabel="Add Stop" onSubmit={addCustom} keepDate />
             </div>
           </details>
         ) : (
-          <section className="mt-10 rounded-xl bg-card shadow-[var(--shadow-md)] p-5">
+          <section className="mt-10 rounded-xl bg-card p-5 shadow-[var(--shadow-md)] lg:sticky lg:top-24 lg:mt-0">
             <h2 className="font-semibold mb-3 flex items-center gap-2"><Plus className="w-4 h-4" />Add your own stop</h2>
             <StopForm initial={emptyStop} submitLabel="Add Stop" onSubmit={addCustom} keepDate />
           </section>
         )}
+        </div>
       </main>
       <Footer lastRefresh={null} />
     </div>

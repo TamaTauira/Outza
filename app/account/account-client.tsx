@@ -113,14 +113,15 @@ export function AccountClient() {
   const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
 
   return (
-    <main className="max-w-3xl mx-auto space-y-5 px-4 pb-6 pt-3 sm:pb-8 lg:pt-5">
+    <main className="vp-wrap px-4 pb-6 pt-3 sm:px-6 sm:pb-8 lg:pt-5">
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
-      <div>
-        <h1 className="font-display text-2xl sm:text-3xl font-bold">My account &amp; emails {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
+      <div className="mt-4">
+        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">My account &amp; emails {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
 
-      <section className={card}>
+      <section className={`${card} lg:col-span-2`}>
         <h2 className="font-semibold mb-1">About you</h2>
         <p className="text-xs text-muted-foreground mb-3">{yearRequired ? 'Year of birth is required for event-goer accounts. We don’t store the day. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
         <form noValidate onSubmit={(e) => { e.preventDefault(); void saveAbout() }}>
@@ -132,11 +133,11 @@ export function AccountClient() {
         </form>
       </section>
 
-      <VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} />
+      <div className="lg:col-span-2"><VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} /></div>
 
-      {(me.role === 'PROMOTER' || me.role === 'ADMIN') && <PromoterProfile me={me} onSaved={(patch) => setMe((m) => (m ? { ...m, ...patch } : m))} />}
+      {(me.role === 'PROMOTER' || me.role === 'ADMIN') && <div className="lg:col-span-2"><PromoterProfile me={me} onSaved={(patch) => setMe((m) => (m ? { ...m, ...patch } : m))} /></div>}
 
-      <section className={card}>
+      <section className={`${card} lg:col-span-2`}>
         <label htmlFor="acct-city" className="font-semibold block mb-3">Home city</label>
         <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-11 w-full sm:w-auto rounded-md border border-border bg-background px-3 text-sm">
           {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
@@ -190,7 +191,8 @@ export function AccountClient() {
         {!friends.friends.length && <p className="mt-3 text-xs text-muted-foreground">Add friends to see which events they&apos;re going to.</p>}
       </section>
 
-      <SecurityCard email={me.email} />
+      <div className="lg:col-span-2"><SecurityCard email={me.email} /></div>
+      </div>
     </main>
   )
 }

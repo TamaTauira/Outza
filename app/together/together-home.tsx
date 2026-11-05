@@ -41,12 +41,13 @@ export function TogetherHome() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-wrap px-4 py-8 sm:px-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">VibePeep Together</p>
       <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Plan it with your people.</h1>
       <p className="mt-3 text-muted-foreground text-base sm:text-lg">Shortlist a few events, send one link, and vote. Guests can join without making an account.</p>
 
-      <form onSubmit={create} className="mt-6 rounded-xl bg-card border border-border p-4 sm:p-5 space-y-3">
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
+      <form onSubmit={create} className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
         <label className="block text-sm font-semibold" htmlFor="plan-name">Plan name</label>
         <input id="plan-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} placeholder="Saturday in Newtown" className="w-full h-11 rounded-md border border-border bg-background px-3 text-sm" />
         <div className="grid sm:grid-cols-2 gap-3">
@@ -66,7 +67,7 @@ export function TogetherHome() {
         </button>
       </form>
 
-      <section className="mt-8">
+      <section>
         <h2 className="font-display text-xl font-bold mb-3">Your plans</h2>
         {plans === null && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
         {plans?.length === 0 && (
@@ -90,6 +91,7 @@ export function TogetherHome() {
           ))}
         </ul>
       </section>
+      </div>
     </main>
   )
 }

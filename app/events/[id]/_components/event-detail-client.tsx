@@ -119,7 +119,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   )
 
   const card = (
-    <aside className="rounded-xl border border-border bg-card p-4 shadow-sm lg:sticky lg:top-20 space-y-3">
+    <aside className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
       <ul className="grid gap-2 text-sm text-foreground">
         <Fact icon={Calendar}>
           <span>{formattedDate}</span>
@@ -161,9 +161,9 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         </Fact>
       </ul>
 
-      <div className="hidden sm:block">{sourceLink}</div>
+      {sourceLink}
       <EventReactions eventId={event.id} signedIn={signedIn} />
-      <div className="hidden sm:grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <button
           type="button"
           onClick={() => toggle(event)}
@@ -188,10 +188,10 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   )
 
   return (
-    <div className="vp-has-ticket-bar min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {nav}
 
-      <main className="max-w-[1120px] mx-auto px-4 sm:px-6 py-4 pb-6 sm:py-5 sm:pb-5">
+      <main className="vp-wrap px-4 py-4 pb-6 sm:px-6 sm:py-5 sm:pb-5">
         <BackToEventsLink className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to events
         </BackToEventsLink>
@@ -287,7 +287,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         {(related?.length ?? 0) > 0 && (
           <div className="mt-8">
             <h2 className="font-display text-xl font-bold mb-4">If you like this, you’ll love…</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {(related ?? []).slice(0, 6).map((ev: any, i: number) => (
                 <EventCard key={ev?.id ?? i} event={ev} index={i} />
               ))}
@@ -295,35 +295,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           </div>
         )}
       </main>
-
-      <div className="vp-ticket-bar fixed inset-x-0 bottom-0 z-40 flex items-center gap-2 border-t border-border bg-background/95 px-3 py-3 backdrop-blur sm:hidden sm:px-4">
-        <div className="min-w-0">
-          <p className="text-[11px] text-muted-foreground">Price</p>
-          <p className="truncate font-bold">{price}</p>
-        </div>
-        <a
-          href={outbound.href}
-          onClick={() => { if (outbound.kind === 'ticket') navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
-          target="_blank"
-          rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
-          className="ml-auto flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-base font-semibold text-primary-foreground"
-        >
-          {outbound.label} <ExternalLink className="h-4 w-4" />
-        </a>
-        <details className="relative">
-          <summary className="flex h-11 cursor-pointer list-none items-center rounded-lg border border-border px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">More</summary>
-          <div className="absolute bottom-14 right-0 z-50 w-64 space-y-2 rounded-xl border border-border bg-card p-3 shadow-xl">
-            <button type="button" onClick={() => toggle(event)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-3 text-sm font-semibold">
-              <Bookmark className={cn('h-4 w-4', savedNow && 'fill-current')} />{savedNow ? 'Saved' : 'Save'}
-            </button>
-            <ItineraryButton event={event} />
-            <AddToPlanButton eventId={event.id} city={event.city} />
-            <button type="button" onClick={() => shareEvent(event)} className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-3 text-sm font-semibold">
-              <Share2 className="h-4 w-4" />Share
-            </button>
-          </div>
-        </details>
-      </div>
 
       <Footer lastRefresh={null} />
     </div>
