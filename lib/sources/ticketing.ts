@@ -16,41 +16,9 @@ import { CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
+import { cityFromPlace } from '@/lib/venue-city'
 
 const UA = () => `VibePeepEventsBot/1.0 (+${siteUrl()})`
-
-/** Metro postcode ranges, used when a feed gives a postcode but no coordinates. */
-const POSTCODES: Record<string, [number, number][]> = {
-  Sydney: [[2000, 2249], [2555, 2574], [2740, 2786]],
-  Newcastle: [[2280, 2310], [2318, 2324]],
-  Canberra: [[2600, 2620], [2900, 2914]],
-  Melbourne: [[3000, 3210], [3335, 3341], [3427, 3438], [3750, 3810], [3910, 3944], [3975, 3978]],
-  Brisbane: [[4000, 4207], [4300, 4306], [4500, 4521]],
-  'Gold Coast': [[4208, 4230]],
-  Adelaide: [[5000, 5199]],
-  Perth: [[6000, 6199]],
-  Hobart: [[7000, 7055]],
-  Darwin: [[800, 832]],
-}
-
-function km(aLat: number, aLng: number, bLat: number, bLng: number) {
-  const r = Math.PI / 180
-  const x = (bLng - aLng) * r * Math.cos(((aLat + bLat) / 2) * r)
-  const y = (bLat - aLat) * r
-  return Math.sqrt(x * x + y * y) * 6371
-}
-
-/** Which VibePeep city a venue belongs to (coordinates first, then postcode). */
-function cityFor(lat: number | null | undefined, lng: number | null | undefined, postcode?: string | null): CityDef | null {
-  if (lat != null && lng != null && (lat || lng)) {
-    const hit = CITIES.find((c) => km(lat, lng, c.lat, c.lng) <= c.radiusKm)
-    if (hit) return hit
-  }
-  const pc = parseInt(postcode ?? '', 10)
-  if (!Number.isFinite(pc)) return null
-  const name = Object.keys(POSTCODES).find((n) => POSTCODES[n].some(([a, b]) => pc >= a && pc <= b))
-  return name ? CITIES.find((c) => c.name === name) ?? null : null
-}
 
 const title = (s: string) => (s === s.toUpperCase() && /[A-Z]{3}/.test(s) ? s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : s)
 
@@ -198,7 +166,15 @@ export async function fetchMoshtixEvents(): Promise<number> {
           if (e?.status && e.status !== 'LIVE') continue
           const v = e?.venue ?? {}
           const a = v.address ?? {}
-          const city = cityFor(v.location?.latitude, v.location?.longitude, a.postCode)
+          const city = cityFromPlace({
+            name: v.name,
+            address: a.line1,
+            locality: a.locality,
+            region: a.region,
+            postcode: a.postCode,
+            lat: v.location?.latitude,
+            lng: v.location?.longitude,
+          })
           const sd = e?.startDate ? new Date(e.startDate) : null
           if (!city || !sd || isNaN(sd.getTime())) continue
           const ed = e?.endDate ? new Date(e.endDate) : null
@@ -487,9 +463,16 @@ export async function fetchTicketekEvents(): Promise<number> {
     try {
       const lat = Number(field(r, 'latitude', 'lat', 'venuelatitude')), lng = Number(field(r, 'longitude', 'lng', 'lon', 'venuelongitude'))
       const hasGeo = Number.isFinite(lat) && Number.isFinite(lng) && !!(lat || lng)
-      const cityName = field(r, 'city', 'venuecity', 'locality')
-      const city = cityFor(hasGeo ? lat : null, hasGeo ? lng : null, field(r, 'postcode', 'postalcode', 'venuepostcode', 'zip'))
-        ?? CITIES.find((c) => !!cityName && c.name.toLowerCase() === cityName.toLowerCase()) ?? null
+      const venueName = field(r, 'venuename', 'venue', 'location')
+      const city = cityFromPlace({
+        name: venueName,
+        address: field(r, 'venueaddress', 'address', 'streetaddress'),
+        locality: field(r, 'city', 'venuecity', 'locality'),
+        region: field(r, 'state', 'venuestate', 'region'),
+        postcode: field(r, 'postcode', 'postalcode', 'venuepostcode', 'zip'),
+        lat: hasGeo ? lat : null,
+        lng: hasGeo ? lng : null,
+      })
       const name = field(r, 'name', 'title', 'eventname', 'showname')
       if (!city || !name) continue
       const s = localParts(field(r, 'startdate', 'eventdate', 'startdatetime', 'datetime', 'performancedate', 'launchdate', 'date'), city.tz)
@@ -504,7 +487,7 @@ export async function fetchTicketekEvents(): Promise<number> {
         time: s.time,
         endDate: en && en.date !== s.date ? en.date : null,
         endTime: en?.time ?? null,
-        venueName: title(field(r, 'venuename', 'venue', 'location') ?? 'TBA'),
+        venueName: title(venueName ?? 'TBA'),
         venueAddress: field(r, 'venueaddress', 'address', 'streetaddress'),
         genres: [field(r, 'category', 'genre', 'subcategory')].filter((g): g is string => !!g),
         price: ticketPrice.price,
