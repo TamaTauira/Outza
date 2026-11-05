@@ -154,7 +154,7 @@ export function LocalClient() {
                 </div>
                 <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"><MousePointerClick className="w-3 h-3" /> Tap a row for the goods</span>
               </div>
-              {!data && !loadError && <p className="px-5 py-16 text-center text-sm text-muted-foreground">Loading local listings…</p>}
+              {!data && !loadError && <p className="px-5 py-8 text-center text-sm text-muted-foreground">Loading local listings…</p>}
               {loadError && (
                 <div className="p-8 text-center">
                   <p className="font-display text-lg font-bold">Couldn’t load listings</p>

@@ -374,7 +374,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 
 function PeepEmpty({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
   return (
-    <div className="px-4 py-16 text-center">
+    <div className="px-4 py-8 text-center">
       <p className="mb-1 font-semibold">{title}</p>
       <p className="mx-auto max-w-sm text-sm text-muted-foreground">{body}</p>
       {action}

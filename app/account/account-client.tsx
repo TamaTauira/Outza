@@ -113,7 +113,7 @@ export function AccountClient() {
   const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+    <main className="max-w-3xl mx-auto space-y-5 px-4 pb-6 pt-3 sm:pb-8 lg:pt-5">
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <div>
         <h1 className="font-display text-2xl sm:text-3xl font-bold">My account &amp; emails {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>

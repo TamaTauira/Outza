@@ -74,7 +74,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
     return (
       <div className="min-h-screen bg-background">
         {nav}
-        <div className="text-center py-20">
+        <div className="text-center py-8">
           <p className="text-4xl mb-4">😔</p>
           <h2 className="font-display text-2xl font-bold mb-2">This one’s done a runner</h2>
           <BackToEventsLink className="text-primary underline">Back to events</BackToEventsLink>

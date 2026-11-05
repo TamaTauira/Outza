@@ -268,7 +268,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
   return (
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
-      <Navbar savedCount={saved.length} homeBrand={view === 'board'} />
+      <Navbar savedCount={saved.length} />
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'max-w-[1280px] mx-auto px-4 sm:px-6 pt-5'}>
         {view === 'saved' ? (
@@ -278,16 +278,19 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </div>
         ) : view === 'board' ? (
           <section className="mb-4 rounded-2xl bg-[#0c0f0e] text-white px-4 py-3 sm:px-6 sm:py-4 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-            <div className="vp-hero-row flex flex-col gap-2.5 xl:flex-row xl:items-center xl:gap-3">
-              <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-                <label className="inline-flex h-12 w-[11.25rem] shrink-0 items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3 sm:w-[200px]">
-                  <MapPin className="w-4 h-4 text-primary shrink-0" />
-                  <span className="sr-only">Choose a city</span>
-                  <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent pr-1 font-medium text-white focus:outline-none" aria-label="Choose a city">
-                    <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
-                    {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
-                  </select>
-                </label>
+            <div className="vp-hero-row flex flex-col gap-2.5 xl:flex-row xl:items-start xl:gap-3">
+              <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+                <div className="vp-city-stack shrink-0">
+                  <label className="inline-flex h-12 w-full items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3">
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <span className="sr-only">Choose a city</span>
+                    <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent pr-1 font-medium text-white focus:outline-none" aria-label="Choose a city">
+                      <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
+                      {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
+                    </select>
+                  </label>
+                  <h1 className="vp-city-call font-display font-bold"><span>Your city’s calling.</span><span>Answer it.</span></h1>
+                </div>
                 <LocalClock city={city} className="vp-hero-clock ml-auto shrink-0 text-right xl:ml-0" />
               </div>
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} />

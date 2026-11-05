@@ -130,7 +130,7 @@ export function PlanClient({ token }: { token: string }) {
 
   if (missing) {
     return (
-      <main className="max-w-3xl mx-auto px-4 py-16 text-center">
+      <main className="max-w-3xl mx-auto px-4 pb-12 pt-6 text-center">
         <h1 className="font-display text-2xl font-bold">That plan has wandered off</h1>
         <Link href="/together" className="mt-4 inline-block text-primary underline">Start another</Link>
       </main>

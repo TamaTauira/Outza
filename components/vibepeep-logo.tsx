@@ -57,7 +57,7 @@ export function VibePeepLogo({
       <span className={`${labelClassName} min-w-0 flex-col leading-none text-left`} aria-hidden>
         <VibePeepWordmark className={s.word} decorative tone={tone} />
         {showTagline && (
-          <span className={`mt-1 max-w-[15rem] font-medium leading-tight text-muted-foreground ${s.tag}`}>{BRAND_TAGLINE}</span>
+          <span className={`vp-lockup-tag mt-1 max-w-[15rem] font-medium leading-tight text-muted-foreground ${s.tag}`}>{BRAND_TAGLINE}</span>
         )}
       </span>
     </span>

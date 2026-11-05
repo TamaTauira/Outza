@@ -16,8 +16,8 @@ export function EmptyState({
   examples: string[]
 }) {
   return (
-    <div className="px-4 py-10 text-center">
-      <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep the robot, waving" />
+    <div className="px-4 pb-8 pt-2 text-center sm:pb-10 sm:pt-4">
+      <VibePeepMascot className="mx-auto w-24 sm:w-28" alt="VibePeep the robot, waving" />
       <h2 className="mt-4 font-display text-2xl font-bold tracking-tight">{title}</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">{lede}</p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
