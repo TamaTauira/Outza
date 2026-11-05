@@ -6,6 +6,8 @@
  * Events are still refreshed at least once an hour.
  * Budgets stay at or under 220s so the log write still fits.
  */
+import { isMoshtixPause } from '@/lib/moshtix-refresh'
+
 export const REFRESH_CYCLE_WINDOW_MS = 40 * 60 * 1000
 /** Housekeeping that shares the refresh burst instead of waking the database on its own. */
 export const HOURLY_SIDE_MINUTES = [22, 24] as const
@@ -55,6 +57,14 @@ export function isBudgetSkip(error: string | null | undefined) {
   return !!error && /time budget/i.test(error)
 }
 
+/**
+ * A partial refresh. The time budget ran out, or Moshtix paused after a transient
+ * upstream error once it had already saved events. Not a fault by itself.
+ */
+export function isPartialRefresh(error: string | null | undefined) {
+  return isBudgetSkip(error) || isMoshtixPause(error)
+}
+
 export type CycleLog = {
   status: string
   endedAt: Date | null
@@ -74,7 +84,7 @@ export type CycleAssessment = {
 
 /**
  * Overall success means every source chunk finished this cycle.
- * One hard failure, or a source that stopped at its time budget, still counts:
+ * One hard failure, or a source that stopped early after saving events, still counts:
  * the run completed. A chunk that never reported does not.
  */
 export function assessRefreshCycle(logs: CycleLog[], sourceNames: string[]): CycleAssessment {
@@ -92,7 +102,7 @@ export function assessRefreshCycle(logs: CycleLog[], sourceNames: string[]): Cyc
     }
     eventsAdded += row.eventsAdded ?? 0
     if (!row.errors) continue
-    if (isBudgetSkip(row.errors)) warned.push(name)
+    if (isPartialRefresh(row.errors)) warned.push(name)
     else failed.push(name)
   }
   const allHardFailed = sourceNames.length > 0 && failed.length === sourceNames.length

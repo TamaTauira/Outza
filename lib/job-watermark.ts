@@ -27,6 +27,9 @@ function ensureTable(): Promise<void> {
       await prisma.$executeRaw`
         ALTER TABLE "JobWatermark" ADD COLUMN IF NOT EXISTS "cursorPage" INTEGER NOT NULL DEFAULT 0
       `
+      await prisma.$executeRaw`
+        ALTER TABLE "JobWatermark" ADD COLUMN IF NOT EXISTS "cursorPageSize" INTEGER NOT NULL DEFAULT 0
+      `
     })().catch((err) => {
       ready = null
       throw err
@@ -35,17 +38,22 @@ function ensureTable(): Promise<void> {
   return ready
 }
 
-export type JobMark = { at: Date; page: number }
+export type JobMark = { at: Date; page: number; pageSize: number }
 
 async function readMark(job: JobName): Promise<JobMark | null> {
   await ensureTable()
-  const rows = await prisma.$queryRaw<{ cursorAt: Date; cursorPage: number | null }[]>`
-    SELECT "cursorAt", "cursorPage" FROM "JobWatermark" WHERE "job" = ${jobs[job]} LIMIT 1
+  const rows = await prisma.$queryRaw<{ cursorAt: Date; cursorPage: number | null; cursorPageSize: number | null }[]>`
+    SELECT "cursorAt", "cursorPage", "cursorPageSize" FROM "JobWatermark" WHERE "job" = ${jobs[job]} LIMIT 1
   `
   const at = rows[0]?.cursorAt
   if (!at) return null
   const page = rows[0]?.cursorPage
-  return { at: new Date(at), page: page != null && page > 0 ? page : 0 }
+  const pageSize = rows[0]?.cursorPageSize
+  return {
+    at: new Date(at),
+    page: page != null && page > 0 ? page : 0,
+    pageSize: pageSize != null && pageSize > 0 ? pageSize : 0,
+  }
 }
 
 /** When the job last finished a pass. Null means it has not completed one yet. */
@@ -59,13 +67,14 @@ export async function readJobMark(job: JobName): Promise<JobMark | null> {
 }
 
 /** Remember a cursor. Pass the time the pass started so rows written during it are read next time. */
-export async function writeJobCursor(job: JobName, cursorAt: Date, page = 0): Promise<void> {
+export async function writeJobCursor(job: JobName, cursorAt: Date, page = 0, pageSize = 0): Promise<void> {
   await ensureTable()
   const storedPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0
+  const storedSize = Number.isFinite(pageSize) ? Math.max(0, Math.floor(pageSize)) : 0
   await prisma.$executeRaw`
-    INSERT INTO "JobWatermark" ("job", "cursorAt", "cursorPage", "updatedAt")
-    VALUES (${jobs[job]}, ${cursorAt}, ${storedPage}, NOW())
-    ON CONFLICT ("job") DO UPDATE SET "cursorAt" = ${cursorAt}, "cursorPage" = ${storedPage}, "updatedAt" = NOW()
+    INSERT INTO "JobWatermark" ("job", "cursorAt", "cursorPage", "cursorPageSize", "updatedAt")
+    VALUES (${jobs[job]}, ${cursorAt}, ${storedPage}, ${storedSize}, NOW())
+    ON CONFLICT ("job") DO UPDATE SET "cursorAt" = ${cursorAt}, "cursorPage" = ${storedPage}, "cursorPageSize" = ${storedSize}, "updatedAt" = NOW()
   `
 }
 

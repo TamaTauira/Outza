@@ -17,7 +17,7 @@ import {
   SOURCE_BUDGET_MAX_MS,
   assessRefreshCycle,
   chunkById,
-  isBudgetSkip,
+  isPartialRefresh,
   sourceLogStatus,
 } from '@/lib/refresh-plan'
 
@@ -109,14 +109,14 @@ export function refreshAllSources() {
 }
 
 async function faultIfSourceRepeated(name: string, error: string, logId: string) {
-  if (isBudgetSkip(error)) return
+  if (isPartialRefresh(error)) return
   const { reportFault } = await import('@/lib/owner-alerts')
   const prev = await prisma.refreshLog.findFirst({
     where: { id: { not: logId }, status: sourceLogStatus(name), endedAt: { not: null } },
     orderBy: { startedAt: 'desc' },
     select: { errors: true },
   })
-  if (prev?.errors && !isBudgetSkip(prev.errors) && prev.errors.includes(`${name}:`)) {
+  if (prev?.errors && !isPartialRefresh(prev.errors) && prev.errors.includes(`${name}:`)) {
     await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: error })
   }
 }
@@ -190,7 +190,7 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
 
   if (!log) return { eventsAdded: total, errors, sourcesRun }
 
-  const hard = errors.filter((e) => !isBudgetSkip(e) && !e.startsWith('Unknown source:'))
+  const hard = errors.filter((e) => !isPartialRefresh(e) && !e.startsWith('Unknown source:'))
   const sourceFailed = selected.filter(([name]) => hard.some((e) => e.startsWith(`${name}:`))).length
   const status = selected.length > 0 && sourceFailed === selected.length ? 'failed' : 'completed'
   await prisma.refreshLog.update({
@@ -228,8 +228,8 @@ async function noteVolume(name: string, added: number, error: string | null, log
     select: { eventsAdded: true },
   })
   const signal = volumeAlert(prev?.eventsAdded ?? null, added, {
-    timedOut: isBudgetSkip(error),
-    failed: !!error && !isBudgetSkip(error),
+    timedOut: isPartialRefresh(error),
+    failed: !!error && !isPartialRefresh(error),
   })
   if (!signal) return
   const previous = prev?.eventsAdded ?? 0
@@ -266,7 +266,7 @@ async function reportFullRunFaults(logId: string, selected: number, sourceFailed
   })
   for (const err of hard) {
     const name = err.split(':')[0]
-    const repeated = (prev?.errors ?? '').split('; ').some((part) => part.startsWith(`${name}:`) && !isBudgetSkip(part))
+    const repeated = (prev?.errors ?? '').split('; ').some((part) => part.startsWith(`${name}:`) && !isPartialRefresh(part))
     if (repeated) {
       await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: err })
     }

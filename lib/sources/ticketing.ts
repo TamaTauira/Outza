@@ -1,6 +1,16 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
 import { readJobMark, writeJobCursor } from '@/lib/job-watermark'
-import { moshtixNoteEvent, moshtixNotePage, moshtixResume, type MoshtixCursor } from '@/lib/moshtix-refresh'
+import {
+  moshtixFailureReason,
+  moshtixNoteEvent,
+  moshtixNotePage,
+  moshtixPauseMessage,
+  moshtixResume,
+  moshtixResumePageSize,
+  moshtixRetryDecision,
+  moshtixTransientFailure,
+  type MoshtixCursor,
+} from '@/lib/moshtix-refresh'
 import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
@@ -54,19 +64,20 @@ function moshtixPrice(tickets: { ticketPrice?: unknown; hidden?: boolean; compli
 
 // ---------------- Moshtix (official open GraphQL API, public events only) ----------------
 
-const MOSHTIX_PAGE_SIZE = 200
 /** Runaway guard only. Pages stop when totalCount is exhausted or a page comes back short. */
 const MOSHTIX_MAX_PAGES = 100
 /** Don't start a page that would still be in flight when the budget ends. */
 const MOSHTIX_PAGE_HEADROOM_MS = 15_000
 const MOSHTIX_EVENT_HEADROOM_MS = 4_000
 
-const MOSHTIX_QUERY = `query($page: Int, $from: Date) { viewer { getEvents(pageIndex: $page, pageSize: ${MOSHTIX_PAGE_SIZE}, publicOnly: true, searchableOnly: true, excludeClosed: true, sortBy: STARTDATE, sortByDirection: ASC, eventStartDateFrom: $from) {
+function moshtixQuery(pageSize: number) {
+  return `query($page: Int, $from: Date) { viewer { getEvents(pageIndex: $page, pageSize: ${pageSize}, publicOnly: true, searchableOnly: true, excludeClosed: true, sortBy: STARTDATE, sortByDirection: ASC, eventStartDateFrom: $from) {
   totalCount items { id name startDate endDate eventUrl teaser description ageRestriction status
     category { name } genre { name }
     venue { name address { line1 locality region postCode } location { latitude longitude } }
     images { items { url type } }
     ticketTypes(pageSize: 50) { items { ticketPrice hidden complimentary donation addOn } } } } } }`
+}
 
 function stopMoshtix(kind: 'page' | 'event'): boolean {
   if (yieldIfBudget(kind === 'page' ? 'pages' : 'events')) return true
@@ -81,9 +92,13 @@ function moshtixStartMs(value: unknown): number | null {
   return Number.isFinite(ms) ? ms : null
 }
 
-async function saveMoshtixCursor(cursor: MoshtixCursor | null) {
+function moshtixNearBudget() {
+  return sourceOverBudget() || remainingBudgetMs(30_000) < 5_000
+}
+
+async function saveMoshtixCursor(cursor: MoshtixCursor | null, pageSize: number) {
   if (!cursor) return
-  await writeJobCursor('moshtix', new Date(cursor.fromMs), cursor.page).catch((err) => {
+  await writeJobCursor('moshtix', new Date(cursor.fromMs), cursor.page, pageSize).catch((err) => {
     console.error('[moshtix] cursor write failed', err instanceof Error ? err.message : err)
   })
 }
@@ -93,44 +108,76 @@ export async function fetchMoshtixEvents(): Promise<number> {
     console.error('[moshtix] cursor read failed', err instanceof Error ? err.message : err)
     return null
   })
-  let cursor = moshtixResume(Date.now(), mark?.at.getTime() ?? null, mark?.page ?? 0)
+  const storedPageSize = mark?.pageSize ?? 0
+  let pageSize = moshtixResumePageSize(storedPageSize)
+  let cursor = moshtixResume(Date.now(), mark?.at.getTime() ?? null, mark?.page ?? 0, storedPageSize)
   let saved = 0
+  let progressed = false
   let total = Infinity
   let done = false
   let pages = 0
-  console.log(`[moshtix] from ${new Date(cursor.fromMs).toISOString()} page ${cursor.page}`)
+  console.log(`[moshtix] from ${new Date(cursor.fromMs).toISOString()} page ${cursor.page} size ${pageSize}`)
   try {
     while (pages < MOSHTIX_MAX_PAGES) {
       if (stopMoshtix('page')) break
-      if (cursor.page > 0 && cursor.page * MOSHTIX_PAGE_SIZE >= total) {
+      if (cursor.page > 0 && cursor.page * pageSize >= total) {
         done = true
         break
       }
       pages++
-      const pageCursor = cursor
       let json: any
-      try {
-        const res = await fetch('https://api.moshtix.com/v1/graphql', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'User-Agent': UA() },
-          body: JSON.stringify({
-            query: MOSHTIX_QUERY,
-            variables: { page: cursor.page, from: new Date(cursor.fromMs).toISOString() },
-          }),
-          signal: sourceFetchSignal(30000),
-        })
-        if (!res.ok) throw new Error(`Moshtix API ${res.status}`)
-        json = await res.json()
-      } catch (err) {
-        noteSourceSaved(saved)
-        const nearBudget = sourceOverBudget() || remainingBudgetMs(30_000) < 5_000
-        const apiError = err instanceof Error && err.message.startsWith('Moshtix API ')
-        if (!apiError && saved > 0 && isAbortLike(err) && nearBudget) {
-          console.warn(`[moshtix] stopped after ${saved} events: ${err instanceof Error ? err.message : err}`)
+      let failures = 0
+      while (true) {
+        if (stopMoshtix('page')) break
+        try {
+          const res = await fetch('https://api.moshtix.com/v1/graphql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'User-Agent': UA() },
+            body: JSON.stringify({
+              query: moshtixQuery(pageSize),
+              variables: { page: cursor.page, from: new Date(cursor.fromMs).toISOString() },
+            }),
+            signal: sourceFetchSignal(30000),
+          })
+          if (!res.ok) throw new Error(`Moshtix API ${res.status}`)
+          json = await res.json()
           break
+        } catch (err) {
+          failures++
+          noteSourceSaved(saved)
+          const nearBudget = moshtixNearBudget()
+          const apiError = err instanceof Error && err.message.startsWith('Moshtix API ')
+          if (!apiError && saved > 0 && isAbortLike(err) && nearBudget) {
+            console.warn(`[moshtix] stopped after ${saved} events: ${err instanceof Error ? err.message : err}`)
+            break
+          }
+          const decision = moshtixRetryDecision({
+            failures,
+            pageSize,
+            page: cursor.page,
+            saved,
+            progressed,
+            transient: moshtixTransientFailure(err) && !(isAbortLike(err) && nearBudget),
+            nearBudget,
+            remainingMs: remainingBudgetMs(120_000),
+          })
+          if (decision.action === 'retry') {
+            console.warn(`[moshtix] ${moshtixFailureReason(err)} on page ${cursor.page}; retry ${failures} in ${decision.delayMs}ms at page size ${decision.pageSize}`)
+            pageSize = decision.pageSize
+            cursor = { fromMs: cursor.fromMs, page: decision.page }
+            await sleep(decision.delayMs)
+            continue
+          }
+          if (decision.action === 'pause') {
+            const reason = moshtixFailureReason(err)
+            console.warn(`[moshtix] stopped after ${saved} events: upstream ${reason}; continuing next run`)
+            throw new Error(moshtixPauseMessage(saved, reason))
+          }
+          throw err
         }
-        throw err
       }
+      if (!json) break
+      const pageCursor = cursor
       const conn = json?.data?.viewer?.getEvents
       if (!conn) throw new Error(json?.errors?.[0]?.message ?? 'Moshtix API returned no data')
       total = conn.totalCount ?? 0
@@ -190,11 +237,13 @@ export async function fetchMoshtixEvents(): Promise<number> {
           // Count the event once it has been handled so a later budget stop does not skip it.
           cursor = moshtixNoteEvent(cursor, moshtixStartMs(e?.startDate))
           noteSourceSaved(saved)
+          progressed = true
         }
       }
       if (finishedPage) {
         cursor = moshtixNotePage(pageCursor, cursor, pageStartMs, pageEndMs)
-        if (items.length < MOSHTIX_PAGE_SIZE) done = true
+        progressed = true
+        if (items.length < pageSize) done = true
       }
       if (!finishedPage || done) break
       await sleep(1000)
@@ -203,7 +252,7 @@ export async function fetchMoshtixEvents(): Promise<number> {
     if (pages >= MOSHTIX_MAX_PAGES && !done) {
       console.warn(`[moshtix] stopped at ${MOSHTIX_MAX_PAGES} pages; totalCount=${total}`)
     }
-    await saveMoshtixCursor(done ? { fromMs: 0, page: 0 } : cursor)
+    await saveMoshtixCursor(done ? { fromMs: 0, page: 0 } : cursor, pageSize)
   }
   console.log(`[moshtix] saved ${saved} events${done ? '' : ' (more next run)'}`)
   return saved
