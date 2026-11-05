@@ -126,7 +126,7 @@ export default function ItineraryPage() {
           <h1 className="font-display text-3xl font-bold flex items-center gap-3"><CalendarRange className="w-7 h-7 text-primary" />Itinerary</h1>
           {items.length > 0 && <button onClick={() => { if (confirm('Clear the whole game plan?')) clear() }} className="text-sm text-muted-foreground hover:text-foreground">Clear all</button>}
         </div>
-        <p className="text-muted-foreground mb-8">Your game plan for the night. Tap <span className="font-semibold text-foreground">Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. It stays on this device for the account you are signed in with, and clears from view when you sign out. It is separate from Saved.</p>
+        <p className="text-muted-foreground mb-4">Your game plan for the night. Tap <span className="font-semibold text-foreground">Add to My Itinerary</span> on any event, and add your own stops like dinner or a meet-up. It stays on this device for the account you are signed in with, and clears from view when you sign out. It is separate from Saved.</p>
 
         {!sorted.length ? (
           <EmptyState

@@ -3,19 +3,17 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { Bookmark, Calendar, Loader2 } from 'lucide-react'
+import { Calendar, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSaved } from '@/lib/saved'
 import { eventsToIcs } from '@/lib/ics'
-import { boardClockLine } from '@/lib/listing-window'
 import { eventPath } from '@/lib/seo'
-import { EmptyState } from '@/components/empty-state'
 
 type Venue = { venueKey: string; venueName: string; city: string | null }
 
 export function WatchlistClient() {
   const { data: session, status } = useSession() || {}
-  const { saved, toggle, isSaved } = useSaved()
+  const { saved } = useSaved()
   const [tags, setTags] = useState<string[]>([])
   const [venues, setVenues] = useState<Venue[]>([])
   const [reminderOptIn, setReminderOptIn] = useState(false)
@@ -94,33 +92,6 @@ export function WatchlistClient() {
         <Link href="/saved" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">See the keepers</Link>
         <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Plan with your crew</Link>
       </div>
-
-      <section className="mt-8">
-        <h2 className="font-display text-xl font-bold mb-3">Saved events</h2>
-        {!saved.length && status !== 'loading' && (
-          <EmptyState
-            title={status === 'authenticated' ? 'No keepers yet' : 'Sign in to see your keepers'}
-            lede={status === 'authenticated' ? 'Go find a keeper. We’ll guard it with our life.' : 'Saves, follows and reminders live on your account.'}
-            action={status === 'authenticated' ? { href: '/', label: 'Browse events' } : { href: '/login?next=/watchlist', label: 'Sign in' }}
-            secondary={status === 'authenticated' ? undefined : { href: '/', label: 'Browse events' }}
-            examples={['Friday · Outdoor yoga · Rose Bay', 'Saturday · Live music · The Rocks', 'Sunday · Market · Bondi']}
-          />
-        )}
-        <ul className="space-y-2">
-          {saved.map((ev) => {
-            const clock = boardClockLine(ev)
-            return (
-            <li key={ev.id} className="rounded-xl border border-border bg-card px-4 py-3 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <Link href={ev.href ?? eventPath(ev)} className="font-semibold hover:text-primary">{ev.title}</Link>
-                <p className="text-sm text-muted-foreground mt-0.5">{ev.date.slice(0, 10)}{clock ? ` · ${clock}` : ''} · {ev.venueName}</p>
-              </div>
-              <button type="button" aria-label="Unsave" onClick={() => isSaved(ev.id) && toggle(ev)} className="text-primary p-1"><Bookmark className="w-4 h-4 fill-current" /></button>
-            </li>
-            )
-          })}
-        </ul>
-      </section>
 
       <section className="mt-8 rounded-xl border border-border bg-card p-4 sm:p-5">
         <h2 className="font-display text-xl font-bold">Following</h2>

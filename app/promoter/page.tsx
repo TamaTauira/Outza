@@ -11,7 +11,7 @@ export default async function PromoterPage() {
   const role = (session.user as { role?: string }).role
   if (role !== 'PROMOTER' && role !== 'ADMIN') {
     return (
-      <main className="max-w-xl mx-auto px-4 py-20 text-center">
+      <main className="max-w-xl mx-auto px-4 pb-16 pt-8 text-center lg:pt-12">
         <h1 className="font-display text-2xl font-bold mb-2">Promoter accounts only</h1>
         <p className="text-muted-foreground mb-6">Switch your account to a promoter account to list and promote your events. You&apos;ll keep your saved events and follows.</p>
         <BecomePromoter />

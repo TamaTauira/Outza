@@ -31,10 +31,10 @@ export default async function PromotersPage() {
       <main>
         <section className="relative overflow-hidden border-b border-border">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,122,26,0.22),transparent_60%)]" />
-          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
+          <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pb-10 pt-1 sm:pb-14 sm:pt-2 grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
             <div>
               <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
-              <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For promoters, venues & organisers</p>
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-primary">For promoters, venues & organisers</p>
               <h1 className="mt-3 font-display text-4xl sm:text-5xl font-bold tracking-tight leading-[1.05]">Get on the radar of people planning their next night out.</h1>
               <p className="mt-4 text-muted-foreground max-w-xl">List for free. Boost when you’re ready. Zero lock-in.</p>
               <div className="mt-6 flex flex-wrap gap-3">

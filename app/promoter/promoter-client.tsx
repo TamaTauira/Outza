@@ -109,7 +109,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
   }
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <main className="max-w-6xl mx-auto px-4 pb-8 pt-3 sm:px-6 lg:pt-5">
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
