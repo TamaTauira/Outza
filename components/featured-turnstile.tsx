@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { holdScrollRestore } from '@/lib/scroll-memory'
 import Link from 'next/link'
 import { Flame, Megaphone, Star } from 'lucide-react'
 import { eventPath } from '@/lib/seo'
@@ -21,6 +22,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 
   useEffect(() => {
     let live = true
+    const release = holdScrollRestore('featured')
     fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`)
       .then((r) => r.json())
       .then((d) => {
@@ -29,7 +31,8 @@ export function FeaturedTurnstile({ city }: { city: string }) {
         setItems(city ? rows.filter((it) => !it.city || it.city === city) : rows)
       })
       .catch((err) => console.error('Failed to load featured events:', err))
-    return () => { live = false }
+      .finally(release)
+    return () => { live = false; release() }
   }, [city])
 
   const cards = [...items.map((it) => <FeaturedCard key={it.id} it={it} />), <PromoteCard key="cta" />]
@@ -37,7 +40,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
   return (
     // Full-bleed band: breaks out of the 1280px page container to span the whole viewport
     <section className="relative -mx-4 sm:-mx-6 mb-6 mt-16 sm:mt-10 py-5 border-y border-border bg-card/40 max-w-[100vw]" aria-label="Hot right now">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 flex flex-wrap items-end justify-between gap-2 mb-7">
+      <div className="px-4 sm:px-6 flex flex-wrap items-end justify-between gap-2 mb-4">
         <div>
           <div className="flex items-center gap-2">
             <Star className="w-4 h-4 text-[#F5B700] fill-current" />

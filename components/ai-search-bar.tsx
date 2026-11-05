@@ -498,7 +498,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
           {data.relaxed && <p className="mt-2 text-xs sm:text-sm text-white/70">Couldn’t nail every word, but these tick most of your boxes.</p>}
 
           {data.results.length ? (
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {data.results.map((e) => {
                 const Icon = categoryIcon(e.category)
                 const t = formatTime(e.time)

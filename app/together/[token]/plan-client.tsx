@@ -130,7 +130,7 @@ export function PlanClient({ token }: { token: string }) {
 
   if (missing) {
     return (
-      <main className="max-w-3xl mx-auto px-4 pb-12 pt-6 text-center">
+      <main className="vp-wrap px-4 pb-12 pt-6 text-center">
         <h1 className="font-display text-2xl font-bold">That plan has wandered off</h1>
         <Link href="/together" className="mt-4 inline-block text-primary underline">Start another</Link>
       </main>
@@ -142,7 +142,7 @@ export function PlanClient({ token }: { token: string }) {
   const blankStop = { ...emptyStop, date: plan.planDate ?? '' }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-wrap px-4 py-8 sm:px-6">
       <Link href="/together" className="text-sm text-muted-foreground hover:text-foreground">All plans</Link>
       <h1 className="font-display text-3xl font-bold mt-2">{plan.name}</h1>
       <p className="mt-2 text-muted-foreground">{[plan.city, plan.planDate].filter(Boolean).join(' · ') || 'City and date are optional.'} One vote each. Private stops stay on this plan. They are not listed on the board.</p>
@@ -154,7 +154,8 @@ export function PlanClient({ token }: { token: string }) {
       <input id="voter-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="What should we call you?" className="mt-1 w-full sm:max-w-xs h-11 rounded-md border border-border bg-background px-3 text-sm" />
       {plan.members.length > 0 && <p className="mt-2 text-sm text-muted-foreground">In the room: {plan.members.join(', ')}</p>}
 
-      <ol className="mt-6 space-y-3">
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <ol className="space-y-3">
         {plan.items.map((item, index) => {
           const next = plan.items[index + 1]
           const leg = next ? togetherLeg(
@@ -215,7 +216,8 @@ export function PlanClient({ token }: { token: string }) {
         {!plan.items.length && <li className="text-sm text-muted-foreground">No stops yet. Search the board, or add a private stop like drinks at a friend’s place.</li>}
       </ol>
 
-      <section className="mt-8 rounded-xl border border-border bg-card p-4">
+      <div className="space-y-6 lg:sticky lg:top-24">
+      <section className="rounded-xl border border-border bg-card p-4">
         <h2 className="font-semibold">Add your own stop</h2>
         <p className="mt-1 mb-3 text-sm text-muted-foreground">A name, start, finish, and address. It stays on this plan and is never published as a listing.</p>
         {adding ? (
@@ -225,7 +227,7 @@ export function PlanClient({ token }: { token: string }) {
         )}
       </section>
 
-      <section className="mt-8">
+      <section>
         <label htmlFor="plan-search" className="font-semibold text-sm">Add an event from the board</label>
         <input id="plan-search" value={query} onChange={(e) => { setQuery(e.target.value); if (e.target.value.trim().length < 2) setHits([]) }} placeholder="Search the board" className="mt-1 w-full h-11 rounded-md border border-border bg-background px-3 text-sm" />
         <ul className="mt-2 space-y-1">
@@ -239,6 +241,8 @@ export function PlanClient({ token }: { token: string }) {
           ))}
         </ul>
       </section>
+      </div>
+      </div>
     </main>
   )
 }

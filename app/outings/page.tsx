@@ -19,7 +19,7 @@ export default async function OutingsPage({ searchParams }: { searchParams: Prom
   const plans = await outingsForCity(city)
   return (
     <PageShell>
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <main className="vp-wrap px-4 py-8 sm:px-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-primary">Plan a day or night</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">A whole outing, not just one gig.</h1>
         <p className="mt-3 text-muted-foreground text-base sm:text-lg">These are real listings from the board, lined up with a meal idea and a transport link. VibePeep does not book restaurants or tickets.</p>
@@ -38,7 +38,7 @@ export default async function OutingsPage({ searchParams }: { searchParams: Prom
             examples={['Saturday date night', 'Family Sunday under $50', 'A free afternoon']}
           />
         )}
-        <ul className="mt-6 space-y-3">
+        <ul className="mt-6 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => (
             <li key={plan.slug}>
               <Link href={`/outings/${plan.slug}?city=${encodeURIComponent(city)}`} className="block rounded-xl border border-border bg-card p-4 hover:bg-muted">

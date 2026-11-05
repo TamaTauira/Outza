@@ -80,9 +80,9 @@ export function WatchlistClient() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-wrap px-4 py-8 sm:px-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">My VibePeep</p>
-      <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Your keepers, plus what you follow.</h1>
+      <h1 className="mt-2 font-display text-3xl font-bold sm:text-4xl">Your keepers, plus what you follow.</h1>
       <p className="mt-3 text-muted-foreground">Saves live on your account, so sign in and we’ll keep them. Follow a venue or an interest and I’ll email new matches. Reminders are a separate yes.</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -93,7 +93,8 @@ export function WatchlistClient() {
         <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Plan with your crew</Link>
       </div>
 
-      <section className="mt-8 rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
         <h2 className="font-display text-xl font-bold">Following</h2>
         {status !== 'authenticated' && (
           <p className="mt-2 text-sm text-muted-foreground">
@@ -124,7 +125,7 @@ export function WatchlistClient() {
         )}
       </section>
 
-      <section className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5 space-y-3">
+      <section className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
         <h2 className="font-display text-xl font-bold">Email</h2>
         <p className="text-sm text-muted-foreground">No app pings. Mail only goes out when you say yes, and email is switched on.</p>
         {status === 'authenticated' ? (
@@ -149,6 +150,7 @@ export function WatchlistClient() {
           <p className="text-sm text-muted-foreground">Sign in to say yes. Reminders and the note live on your account.</p>
         )}
       </section>
+      </div>
     </main>
   )
 }

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { eventPath } from '@/lib/seo'
 import { Footer } from '@/components/footer'
+import { SiteHeader } from '@/components/site-header'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { ClaimedTick } from '@/components/ClaimedTick'
 import { organiserNameClaimed } from '@/lib/event-overrides'
@@ -40,7 +41,8 @@ export default async function OrganiserPage({ params }: Props) {
   })
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+      <SiteHeader />
+      <main className="vp-wrap px-4 py-8 sm:px-6 lg:py-10">
         <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
         <div className="mt-6 flex items-start gap-4">
           {user.image && <img src={user.image} alt="" className="w-16 h-16 rounded-full object-cover bg-muted" />}
@@ -57,11 +59,11 @@ export default async function OrganiserPage({ params }: Props) {
         {user.website && <a href={user.website} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">Website <ExternalLink className="w-3.5 h-3.5" /></a>}
         <h2 className="mt-8 font-semibold">Upcoming events</h2>
         {!events.length ? <p className="mt-2 text-sm text-muted-foreground">Nothing upcoming on VibePeep right now.</p> : (
-          <ul className="mt-3 divide-y divide-border">
+          <ul className="mt-3 grid gap-3 lg:grid-cols-2">
             {events.map((e) => {
               const clock = boardClockLine(e)
               return (
-              <li key={e.id} className="py-3">
+              <li key={e.id} className="rounded-xl border border-border bg-card px-4 py-3">
                 <Link href={eventPath(e)} className="font-medium hover:text-primary">{e.title}</Link>
                 <p className="text-xs text-muted-foreground">{e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}{clock ? ` · ${clock}` : ''} · {e.venueName} · {e.city}</p>
               </li>

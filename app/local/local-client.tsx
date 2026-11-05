@@ -19,6 +19,7 @@ import { Bookmark } from 'lucide-react'
 import { CommunitySubmitForm } from './community-submit-form'
 import { cn } from '@/lib/utils'
 import { citySlug } from '@/lib/seo'
+import { holdScrollRestore } from '@/lib/scroll-memory'
 
 type Item = { id: string; title: string; section: string; suburb: string; city: string; date: string; time: string | null; isFree: boolean; price: string | null; href: string; kind?: string; status?: string | null }
 type Mine = { id: string; title: string; suburb: string; status: string; expiresAt: string; reviewNote: string | null; startDate: string; startTime: string; endTime: string; schedule: string }
@@ -70,6 +71,7 @@ export function LocalClient() {
     const timer = setTimeout(() => { timedOut = true; ac.abort() }, 8000)
     setData(null)
     setLoadError(null)
+    const release = holdScrollRestore('local-list')
     fetch(`/api/local?${new URLSearchParams({ city, category, when, suburb })}`, { signal: ac.signal })
       .then((r) => r.json())
       .then((d) => { setData(d?.items ? d : { items: [], counts: {} }); setLoadError(null) })
@@ -79,8 +81,8 @@ export function LocalClient() {
         setData(null)
         setLoadError(timedOut || e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.')
       })
-      .finally(() => clearTimeout(timer))
-    return () => { clearTimeout(timer); ac.abort() }
+      .finally(() => { clearTimeout(timer); release() })
+    return () => { clearTimeout(timer); ac.abort(); release() }
   }, [tab, city, category, when, suburb])
 
   const loadMine = useCallback(() => {
@@ -103,7 +105,7 @@ export function LocalClient() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10">
+      <main className="vp-wrap px-4 py-8 sm:px-6 lg:py-10">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div className="max-w-3xl">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">VibePeep Local</p>
@@ -178,7 +180,7 @@ export function LocalClient() {
                   <section key={day}>
                     <GroupBar label={dayLabel(day, now?.date ?? null)} count={rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [day]: open }))} />
                     {open && (
-                      <div className="grid gap-3 p-3 sm:grid-cols-2">
+                      <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
                         {rows.map((ev) => (
                             <div key={`${ev.kind ?? 'row'}-${ev.id}-${ev.date}`} className="rounded-xl border border-border bg-background p-4">
                               <div className="flex items-start justify-between gap-2">
@@ -209,13 +211,13 @@ export function LocalClient() {
         )}
 
         {tab === 'mine' && (
-          <section className="mt-8 max-w-3xl">
+          <section className="mt-8">
             {!session?.user ? (
               <p className="text-sm text-muted-foreground"><Link href="/login?next=/local?tab=mine" className="text-primary underline">Sign in</Link> to see and manage the listings you’ve added.</p>
             ) : !mine ? <p className="text-sm text-muted-foreground">Loading…</p> : !mine.length && !mineCommunity.length ? (
               <p className="text-sm text-muted-foreground">Nothing here yet. Be the trailblazer. <button onClick={() => setTab('submit')} className="text-primary underline">List something</button></p>
             ) : (
-              <div className="space-y-3">
+              <div className="grid gap-3 lg:grid-cols-2">
                 {mineCommunity.map((l) => (
                   <div key={l.id} className="rounded-2xl bg-card shadow-sm p-5">
                     <Link href={l.href} className="font-display font-bold hover:text-primary">{l.title}</Link>

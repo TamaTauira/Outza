@@ -197,6 +197,18 @@
   background-image: linear-gradient(105deg, #FF8A1A 0%, #FF4E6A 100%);
 }
 
+/* One content width for the header, footer and page bodies.
+   Below 1600px the page is full width (phones are unchanged; 1280 and 1440
+   fill the screen with the same gutters). Wider monitors cap together so a
+   column does not float in the middle of the viewport. */
+.vp-wrap {
+  width: 100%;
+  margin-inline: auto;
+}
+@media (min-width: 1600px) {
+  .vp-wrap { max-width: 96rem; }
+}
+
 /* Shared header lockup: icon, wordmark, grey tagline underneath.
    Wide bars keep the map-page sizes (40px mark, 28px wordmark, 11px tagline).
    Narrow bars scale the type so the tagline stays one line under the wordmark. */

@@ -28,7 +28,7 @@ export default async function OutingPage({ params, searchParams }: { params: Pro
   if (!plan) notFound()
   return (
     <PageShell>
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <main className="vp-wrap px-4 py-8 sm:px-6">
         <Link href={`/outings?city=${encodeURIComponent(city)}`} className="text-sm text-muted-foreground hover:text-foreground">All day and night plans</Link>
         <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">{plan.title}</h1>
         <p className="mt-2 text-muted-foreground">{plan.city}{plan.date ? ` · ${plan.date}` : ''}</p>

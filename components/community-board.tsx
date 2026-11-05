@@ -90,7 +90,7 @@ export async function CommunityBoard({
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={0} />
-      <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+      <main className="vp-wrap px-4 py-6 sm:px-6">
         <p className="text-sm"><Link href="/local" className="text-muted-foreground hover:text-foreground">Local</Link></p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{section.label}{city ? ` in ${city.name}` : ''}</h1>
         <p className="mt-2 text-base text-muted-foreground">{section.blurb}</p>
@@ -137,7 +137,7 @@ export async function CommunityBoard({
           <p className="mt-4 text-sm text-muted-foreground">This page stays out of search until there are enough real listings here. What’s on the page is what’s actually published.</p>
         )}
 
-        <ul className="mt-6 space-y-4">
+        <ul className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {rows.map((row) => {
             const safe = redactCommunityPublic(row)
             const cta = listingCta(safe)

@@ -49,7 +49,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
 
   return (
     <footer className="mt-10">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-10 grid gap-8 md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div className="vp-wrap px-4 sm:px-6 py-10 grid gap-8 md:grid-cols-[auto_1fr_auto] md:items-center">
         <div className="flex flex-col gap-2">
           <VibePeepLogo size="sm" />
           <span className="text-[11px] text-muted-foreground">Events · Experiences · Local discoveries.</span>
@@ -66,7 +66,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
           </nav>
         )}
       </div>
-      <nav aria-label="Events by city" className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-2">
+      <nav aria-label="Events by city" className="vp-wrap px-4 sm:px-6 pb-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Cities</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]">
           {CITIES.map((c) => (
@@ -75,7 +75,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
         </div>
       </nav>
       {/* Closed by default so the footer stays quiet. The links stay in the HTML for crawlers and for anyone who opens Guides. */}
-      <details className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-6">
+      <details className="vp-wrap px-4 sm:px-6 pb-6">
         <summary className="cursor-pointer select-none text-sm text-muted-foreground hover:text-foreground w-fit">
           City guides
           <span className="text-muted-foreground/80"> — tonight, free, markets and the rest</span>
@@ -95,7 +95,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
           ))}
         </nav>
       </details>
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 pb-10">
+      <div className="vp-wrap px-4 sm:px-6 pb-10">
         <div className="rounded-xl bg-card/60 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
           <svg className="shrink-0 w-12 h-8 rounded-sm" viewBox="0 0 30 20" role="img" aria-label="Australian Aboriginal flag">
             <rect width="30" height="10" fill="#000" /><rect y="10" width="30" height="10" fill="#cc0000" /><circle cx="15" cy="10" r="5" fill="#ffcd00" />

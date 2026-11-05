@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { holdScrollRestore } from '@/lib/scroll-memory'
 import Link from 'next/link'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
@@ -52,11 +53,13 @@ export function HomeRails({
     const params = new URLSearchParams({ limit: '80', dateFrom: today, dateTo: weekend.to })
     if (city) params.set('city', city)
     let live = true
+    const release = holdScrollRestore('home-rails')
     fetch(`/api/events?${params}`)
       .then((r) => r.json())
       .then((d) => { if (live) setRows(d?.events ?? []) })
       .catch(() => { if (live) setRows([]) })
-    return () => { live = false }
+      .finally(release)
+    return () => { live = false; release() }
   }, [city, today])
 
   if (!today) return null
@@ -86,7 +89,7 @@ export function HomeRails({
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{rail.label}</h2>
             <button type="button" onClick={() => onSeeAll(rail.key)} className="text-xs font-semibold text-primary hover:underline">See all</button>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin]">
+          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-4 lg:overflow-visible xl:grid-cols-5 2xl:grid-cols-6">
             {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
           </div>
         </section>
@@ -100,7 +103,7 @@ function RailCard({ ev }: { ev: RailEvent }) {
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const time = formatTime(ev.time)
   return (
-    <Link href={eventPath(ev)} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm hover:-translate-y-0.5 hover:shadow-md transition">
+    <Link href={eventPath(ev)} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
       <div className="relative aspect-[4/3]" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
         <EventImage image={ev.imageAsset} src={ev.imageUrl} kind="card" alt="" sizes="200px" compact crop accent={color} category={ev.category} />
         <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-[11px] text-white">{price.value}</span>

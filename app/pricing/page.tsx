@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <PageShell>
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <main className="vp-wrap px-4 py-10 sm:px-6">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Pricing</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">All prices are AUD and include GST. Listing an event is free. Campaigns are a one-off payment for that event. The same packages are on the promoter page.</p>
 
