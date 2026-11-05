@@ -75,6 +75,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en-AU" suppressHydrationWarning>
+      <head>
+        <meta
+          name="impact-site-verification"
+          // Impact's crawler reads `value`, which is not a standard meta attribute.
+          // @ts-expect-error React's meta types only allow `content`.
+          value="57fb6312-b0d5-4672-96a3-d75e8cef96f9"
+        />
+      </head>
       <body className={`${dmSans.variable} ${jakartaSans.variable} ${jetbrainsMono.variable} font-sans`}>
         <style>{`:root{--vp-size-phone:${MASCOT_PHONE_WIDTH};--vp-size-desktop:${MASCOT_DESKTOP_WIDTH}}`}</style>
         <ThemeProvider
