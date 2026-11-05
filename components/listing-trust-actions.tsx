@@ -40,16 +40,16 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
     try {
       const res = await fetch(`/api/events/${event.id}/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       const d = await res.json().catch(() => ({}))
-      if (!res.ok) { toast.error(d?.error ?? 'Something went wrong'); return null }
+      if (!res.ok) { toast.error(d?.error ?? 'Oops, that one didn’t land. Give it another go.'); return null }
       return d
     } catch (err) {
-      console.error(err); toast.error('Something went wrong'); return null
+      console.error(err); toast.error('Oops, that one didn’t land. Give it another go.'); return null
     } finally { setBusy(false) }
   }
 
   const sendReport = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!report.reason) { toast.error('Choose what is wrong'); return }
+    if (!report.reason) { toast.error('Please choose what is wrong.'); return }
     const d = await post('report', report)
     if (d) { toast.success('Thanks. We’ll check this listing against the source.'); setOpen(''); setReport({ reason: '', details: '', email: '' }) }
   }

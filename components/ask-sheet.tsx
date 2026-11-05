@@ -50,7 +50,7 @@ export function AskSheet({
         <SheetHeader className="space-y-1 pr-8 text-left">
           <SheetTitle className="font-display">Ask VibePeep</SheetTitle>
           <SheetDescription>
-            Ask for a vibe, or switch to Day and night plans.{' '}
+            Ask for a vibe, or flip to Plan and I’ll build the whole night.{' '}
             <Link href="/itinerary" className="font-semibold text-primary underline underline-offset-2" onClick={() => onOpenChange(false)}>
               Itinerary
             </Link>

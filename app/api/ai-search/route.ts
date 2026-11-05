@@ -170,6 +170,6 @@ export async function POST(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('ai-search error', e?.message)
-    return NextResponse.json({ error: 'Ask is having a moment. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Ask’s having a moment. Give it another go.' }, { status: 500 })
   }
 }

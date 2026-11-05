@@ -7,17 +7,17 @@ import { cn } from '@/lib/utils'
 
 type Ev = Parameters<typeof eventToItem>[0]
 
-/** "+ Add to my itinerary" toggle. `compact` renders a round + icon button for cards. */
+/** Add to My Itinerary toggle. `compact` renders a round + icon button for cards. */
 export function ItineraryButton({ event, compact = false, className }: { event: Ev; compact?: boolean; className?: string }) {
   const { has, add, remove } = useItinerary()
   const inIt = has(event.id)
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (inIt) { remove(event.id); toast('Removed from your Itinerary') }
-    else { add(eventToItem(event)); toast.success('Added to your Itinerary', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
+    if (inIt) { remove(event.id); toast('Gone. Itinerary’s lighter.') }
+    else { add(eventToItem(event)); toast.success('Locked in. It’s on your Itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
   }
-  const label = inIt ? 'In Itinerary' : 'Add to Itinerary'
+  const label = inIt ? 'In My Itinerary' : 'Add to My Itinerary'
 
   if (compact) {
     return (

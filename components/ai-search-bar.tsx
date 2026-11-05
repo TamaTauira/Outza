@@ -123,7 +123,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
       }
       setData(d)
     } catch (err) {
-      console.error(err); setError('Ask is having a moment. Try again.'); setData(null)
+      console.error(err); setError('Ask’s having a moment. Give it another go.'); setData(null)
     } finally { if (id === reqId.current) setBusy(false) }
   }
 
@@ -141,7 +141,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
       if (id !== planReq.current) return
       if (!res.ok || !body?.plan) {
         setPlan(null)
-        setPlanError(typeof body?.error === 'string' ? body.error : 'The planner is having a moment. Try again.')
+        setPlanError(typeof body?.error === 'string' ? body.error : 'The planner’s having a moment. Give it another go.')
         return
       }
       setPlan(body.plan as PlanView)
@@ -149,7 +149,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
       console.error(err)
       if (id !== planReq.current) return
       setPlan(null)
-      setPlanError('The planner is having a moment. Try again.')
+      setPlanError('The planner’s having a moment. Give it another go.')
     } finally {
       if (id === planReq.current) setPlanBusy(false)
     }
@@ -161,8 +161,8 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
       setPlan(null)
       loadedSlug.current = null
       setPlanError(q.trim()
-        ? 'I can line up three kinds of day: date night, family Sunday, or a free afternoon.'
-        : 'Tap a chip, or name the day: date night, family Sunday, free afternoon.')
+        ? 'I’ll stitch together a date night, a family Sunday or a lazy free arvo.'
+        : 'Tap a chip, or name the day. I’ll stitch together a date night, a family Sunday or a lazy free arvo.')
       return
     }
     setQ(pick.fill)
@@ -290,7 +290,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
   return (
     <div className="flex-1 min-w-0">
       <div ref={rootRef} className="rounded-xl bg-white text-neutral-900 ring-2 ring-primary/50 focus-within:ring-primary shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] overflow-hidden">
-        <div role="radiogroup" aria-label="Ask VibePeep or Day and night plans" className="grid grid-cols-2 gap-1 p-1.5 pb-0">
+        <div role="radiogroup" aria-label="Ask VibePeep or Plan a day or night" className="grid grid-cols-2 gap-1 p-1.5 pb-0">
           <button
             type="button"
             role="radio"
@@ -312,14 +312,14 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
           >
             <span className={cn('inline-flex items-center justify-center gap-1.5', planning && 'underline decoration-2 underline-offset-4 decoration-[#FF4E6A]')}>
               <CalendarRange className="w-3.5 h-3.5 shrink-0 text-primary" aria-hidden />
-              <span className="sm:hidden">Day & night</span>
-              <span className="hidden sm:inline">Day and night plans</span>
+              <span className="sm:hidden">Plan</span>
+              <span className="hidden sm:inline">Plan a day or night</span>
             </span>
           </button>
         </div>
         <form role="search" onSubmit={(e) => { e.preventDefault(); if (planning) submitPlan(); else void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
           {planning ? <CalendarRange className="w-5 h-5 text-primary shrink-0" aria-hidden /> : <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />}
-          <label htmlFor="ai-search" className="sr-only">{planning ? 'Day and night plans' : 'Ask VibePeep'}</label>
+          <label htmlFor="ai-search" className="sr-only">{planning ? 'Plan a day or night' : 'Tell us your vibe'}</label>
           <input
             id="ai-search" ref={inputRef} type="text" value={q} maxLength={200} autoComplete="off" enterKeyHint="search"
             aria-describedby="ai-search-help"
@@ -334,7 +334,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
             onChange={(e) => setQ(e.target.value)}
             placeholder={planning ? 'Name the day, e.g. Saturday date night' : 'Tell us your vibe, e.g. ‘cheap jazz Friday night’'}
             className="flex-1 min-w-0 bg-transparent text-base sm:text-lg text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
-          <p id="ai-search-help" className="sr-only">{planning ? 'Choose a Day and night plans chip, or type date night, family Sunday, or free afternoon. This lines up real stops.' : 'Tell Ask VibePeep a vibe, or open ideas and filters for times, budget, suburb and suggestions.'}</p>
+          <p id="ai-search-help" className="sr-only">{planning ? 'I’ll stitch together a date night, a family Sunday or a lazy free arvo.' : 'Tell us your vibe, or open ideas and filters for times, budget, suburb and suggestions.'}</p>
           {(q || (planning && plan)) && !working && (
             <button type="button" aria-label="Clear search" onClick={clearBar} className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"><X className="w-4 h-4" /></button>
           )}
@@ -352,13 +352,13 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
           )}
           <button type="submit" disabled={working} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 sm:px-5 h-11 text-sm sm:text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30">
             {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-            {planning ? <><span className="hidden sm:inline">Show plans</span><span className="sm:hidden">Plans</span></> : <><span className="hidden sm:inline">Ask VibePeep</span><span className="sm:hidden">Ask</span></>}
+            {planning ? <><span className="hidden sm:inline">Plan it</span><span className="sm:hidden">Go</span></> : <><span className="hidden sm:inline">Ask VibePeep</span><span className="sm:hidden">Ask</span></>}
           </button>
         </form>
 
         {planning && (
           <div className="border-t border-neutral-200 px-3 py-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 sm:sr-only">Day and night plans</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 sm:sr-only">Plan a day or night</p>
             <div id="plan-picks" className="mt-2 flex min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] sm:mt-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Ready-made plans">
               {PLAN_PICKS.map((pick) => (
                 <button

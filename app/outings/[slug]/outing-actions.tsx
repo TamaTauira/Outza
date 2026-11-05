@@ -21,11 +21,11 @@ export function OutingActions({ plan }: { plan: { title: string; city: string; d
   if (!plan.events.length) return null
   const saveAll = () => {
     if (!signedIn) {
-      toast('Sign in to save these stops', { action: { label: 'Sign in', onClick: () => router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`) } })
+      toast('Sign in and we’ll keep these stops.', { action: { label: 'Sign in', onClick: () => router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`) } })
       return
     }
     for (const ev of plan.events) if (!isSaved(ev.id)) toggle(asSaved(ev))
-    toast.success('Saved', { action: { label: 'View', onClick: () => router.push('/saved') } })
+    toast.success('Saved. We’ll guard them.', { action: { label: 'View', onClick: () => router.push('/saved') } })
   }
   const toPlan = async () => {
     setBusy(true)
@@ -35,17 +35,17 @@ export function OutingActions({ plan }: { plan: { title: string; city: string; d
         body: JSON.stringify({ name: plan.title, city: plan.city, planDate: plan.date, eventIds: plan.events.map((ev) => ev.id) }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error ?? 'Could not start the plan')
+      if (!res.ok) throw new Error(data?.error ?? 'Oops, that one didn’t land. Give it another go.')
       router.push(`/together/${data.token}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not start the plan')
+      toast.error(err instanceof Error ? err.message : 'Oops, that one didn’t land. Give it another go.')
       setBusy(false)
     }
   }
   return (
     <div className="mt-6 flex flex-col sm:flex-row gap-2">
       <button type="button" onClick={saveAll} className="h-11 px-4 rounded-md bg-primary text-primary-foreground font-semibold">Save to My VibePeep</button>
-      <button type="button" disabled={busy} onClick={toPlan} className="h-11 px-4 rounded-md border border-border font-semibold disabled:opacity-60">Add Stops to a Plan</button>
+      <button type="button" disabled={busy} onClick={toPlan} className="h-11 px-4 rounded-md border border-border font-semibold disabled:opacity-60">Add these for the crew</button>
     </div>
   )
 }

@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   const u = new URL(req.url)
   if (u.searchParams.get('mine') === '1') {
     const me = await getSessionUser()
-    if (!me) return NextResponse.json({ error: 'Sign in to do that.' }, { status: 401 })
+    if (!me) return NextResponse.json({ error: 'Please sign in to do that.' }, { status: 401 })
     const mine = await prisma.localListing.findMany({ where: { userId: me.id, status: { not: 'REMOVED' } }, orderBy: { createdAt: 'desc' }, take: 50, select: { ...PUBLIC, status: true, expiresAt: true, flags: true, reviewNote: true } })
     const email = me.email.toLowerCase()
     const community = email ? await prisma.event.findMany({

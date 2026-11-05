@@ -37,8 +37,8 @@ export function MenuSheet({
     ? [
         { href: '/itinerary', label: 'Itinerary', Icon: CalendarRange },
         { href: '/watchlist', label: 'My VibePeep', Icon: Bookmark },
-        { href: '/together', label: 'VibePeep Together', Icon: Users },
-        { href: '/outings', label: 'Day and night plans', Icon: Sparkles },
+        { href: '/together', label: 'Plan with your crew', Icon: Users },
+        { href: '/outings', label: 'Plan a day or night', Icon: Sparkles },
         { href: '/account', label: 'My account & emails', Icon: Settings },
         isPromoter
           ? { href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }

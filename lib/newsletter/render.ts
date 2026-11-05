@@ -168,7 +168,7 @@ function compactCard(r: RenderInput, s: Slot, placement: Placement, ctaLabel: st
   const alt = `${s.ev.title} at ${s.ev.venueName}`
   const thumb = art(s.img, alt, THUMB, THUMB, href, s.ev.category, 'thumb')
   const nudge = placement === 'saved'
-    ? `<div style="font-family:${FONT};font-size:13px;line-height:1.4;color:${C.accent};padding-top:8px;">${x(r.reminderOptIn ? 'Reminder: you asked for a nudge, and this one is coming up.' : 'Reminder: still on your list.')}</div>`
+    ? `<div style="font-family:${FONT};font-size:13px;line-height:1.4;color:${C.accent};padding-top:8px;">${x(r.reminderOptIn ? 'You asked for a nudge. This one’s coming up.' : 'Don’t forget this one.')}</div>`
     : ''
   return `<tr><td class="px" style="padding:0 24px 12px;">
 <table ${T} width="100%" class="card" bgcolor="${bg}" style="background:${bg};border:1px solid ${C.line};border-radius:16px;"><tr>
@@ -206,7 +206,7 @@ ${whyBlock(s.ev)}
 
 function sponsoredBlock(r: RenderInput) {
   if (!r.sponsored.length) return ''
-  return `${sectionHead('Hot and promoted')}
+  return `${sectionHead('From a promoter')}
 <tr><td class="px" style="padding:0 24px 12px;"><span style="display:inline-block;font-family:${FONT};font-size:11px;letter-spacing:1.4px;font-weight:800;color:${C.ink};background:#f0e4d4;border-radius:999px;padding:4px 10px;">SPONSORED</span>
 <span class="mu" style="font-family:${FONT};font-size:13px;color:${C.muted};padding-left:8px;">Paid placement from the organiser</span></td></tr>
 ${r.sponsored.map((s) => compactCard(r, s, 'sponsored', CTA_VARIANTS[r.cta].card, C.spons)).join('')}`
@@ -282,9 +282,9 @@ ${r.hero ? `<tr><td class="px" style="padding:26px 24px 12px;"><div style="font-
 ${section(r, r.weekend, 'weekend', r.nearTitle)}
 ${section(r, r.because, 'because', because)}
 ${r.sponsoredPos === 'mid' ? sponsoredBlock(r) : ''}
-${section(r, r.saved, 'saved', 'The keepers, coming up', 'Still saved')}
+${section(r, r.saved, 'saved', 'Don’t forget these', 'Still yours.')}
 ${section(r, r.free, 'free', 'Free or cheap')}
-${section(r, r.popular, 'popular', `Also on in ${r.city}`, 'A starting point while we learn your taste')}
+${section(r, r.popular, 'popular', `Hot picks in ${r.city}`, 'A starting point while we learn your taste')}
 ${r.sponsoredPos === 'end' ? sponsoredBlock(r) : ''}
 
 <tr><td class="px" style="padding:20px 24px 8px;"><table ${T} width="100%" bgcolor="${C.head}" style="background:${C.head};border-radius:18px;"><tr><td align="center" style="padding:28px 22px;">
@@ -309,7 +309,7 @@ export function renderText(r: RenderInput): string {
   const ed = EDITION_NAME[r.editionKey] ?? 'The Weekender'
   const block = (s: Slot, p: Placement) => {
     const trust = trustLine(s.ev.source, s.ev.lastVerifiedAt ?? s.ev.updatedAt)
-    const reminder = p === 'saved' ? (r.reminderOptIn ? 'Reminder: you asked for a nudge, and this one is coming up.' : 'Reminder: still in The keepers.') : ''
+    const reminder = p === 'saved' ? (r.reminderOptIn ? 'You asked for a nudge. This one\'s coming up.' : 'Don\'t forget this one.') : ''
     const why = s.ev.whyLine ? `Why you're seeing this: ${s.ev.whyLine}` : ''
     return [s.ev.title, why, s.ev.travel, reminder, `${s.ev.category} | ${whenLine(s.ev)}`, whereLine(s.ev), priceLine(s.ev), trust, statusNote(s.ev), s.blurb, trackUrl(r.ctx, p, 'detail', s.ev.id)].filter(Boolean).join('\n')
   }
@@ -321,11 +321,11 @@ export function renderText(r: RenderInput): string {
     r.hero && `YOUR TOP PICK\n\n${block(r.hero, 'hero')}`,
     chunk(r.nearTitle.toUpperCase(), r.weekend, 'weekend'),
     chunk((r.becauseTitle ?? 'BECAUSE YOU LIKED IT').toUpperCase(), r.because, 'because'),
-    r.sponsoredPos === 'mid' && r.sponsored.length && `HOT AND PROMOTED - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
-    chunk('THE KEEPERS, COMING UP', r.saved, 'saved'),
+    r.sponsoredPos === 'mid' && r.sponsored.length && `FROM A PROMOTER - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
+    chunk('DON\'T FORGET THESE', r.saved, 'saved'),
     chunk('FREE OR CHEAP', r.free, 'free'),
-    chunk(`ALSO ON IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
-    r.sponsoredPos === 'end' && r.sponsored.length && `HOT AND PROMOTED - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
+    chunk(`HOT PICKS IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
+    r.sponsoredPos === 'end' && r.sponsored.length && `FROM A PROMOTER - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
     `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${trackUrl(r.ctx, 'explore', 'explore')}`,
     `---\nVibePeep. Take a peep at what's happening.\nSee you out there.\nManage preferences / change frequency: ${trackUrl(r.ctx, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
   ]

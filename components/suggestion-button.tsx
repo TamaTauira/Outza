@@ -16,7 +16,7 @@ export function SuggestionButton() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim().length < 5) { toast.error('Write a little more.'); return }
+    if (message.trim().length < 5) { toast.error('Please write a little more.'); return }
     setBusy(true)
     try {
       const res = await fetch('/api/suggestions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, role, name, email }) })
@@ -25,7 +25,7 @@ export function SuggestionButton() {
       setMessage(''); setOpen(false)
     } catch (err) {
       console.error('Suggestion failed:', err)
-      toast.error('Could not send your idea. Try again.')
+      toast.error('Oops, that one didn’t land. Give it another go.')
     } finally { setBusy(false) }
   }
 

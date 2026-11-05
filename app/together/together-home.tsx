@@ -32,10 +32,10 @@ export function TogetherHome() {
         body: JSON.stringify({ name, city, planDate: planDate || undefined }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error ?? 'Could not create the plan')
+      if (!res.ok) throw new Error(data?.error ?? 'Oops, that plan didn’t land. Give it another go.')
       router.push(`/together/${data.token}`)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not create the plan')
+      toast.error(err instanceof Error ? err.message : 'Oops, that plan didn’t land. Give it another go.')
       setBusy(false)
     }
   }
@@ -62,7 +62,7 @@ export function TogetherHome() {
           </label>
         </div>
         <button disabled={busy} className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 disabled:opacity-60">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}Start Together
+          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}Rally the crew
         </button>
       </form>
 
@@ -71,7 +71,7 @@ export function TogetherHome() {
         {plans === null && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
         {plans?.length === 0 && (
           <EmptyState
-            title="No Together plans yet."
+            title="No crew plans yet. Who’s in?"
             lede="Shortlist a few events, send one link, and vote. Guests can join without an account."
             action={{ href: '/', label: 'Browse events' }}
             examples={['Saturday in Newtown · 3 options', 'Sunday with the kids · 2 options', 'Friday drinks · 4 options']}

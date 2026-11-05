@@ -65,7 +65,7 @@ export function parseBirthYear(v: unknown, now = new Date()): { year?: number; e
   const year = Number(raw)
   const age = conservativeAge(year, now)
   if (age < MIN_AGE) return { error: `You need to be ${MIN_AGE} or older to use VibePeep` }
-  if (age > MAX_AGE) return { error: 'Check the year of birth' }
+  if (age > MAX_AGE) return { error: 'Please check the year of birth' }
   return { year }
 }
 
