@@ -10,6 +10,7 @@ import {
   assessRefreshCycle,
   burstIdleMinutes,
   isBudgetSkip,
+  isPartialRefresh,
   type CycleLog,
 } from './refresh-plan'
 
@@ -28,6 +29,10 @@ function row(partial: Partial<CycleLog> & Pick<CycleLog, 'status'>): CycleLog {
 test('an abort is a real failure and a budget stop is not', () => {
   assert.equal(isBudgetSkip('Moshtix: This operation was aborted'), false)
   assert.equal(isBudgetSkip('Moshtix: time budget reached after saving 634 events'), true)
+  assert.equal(isPartialRefresh('Moshtix: time budget reached after saving 634 events'), true)
+  assert.equal(isPartialRefresh('Moshtix: upstream 504 after saving 796 events; continuing next run'), true)
+  assert.equal(isPartialRefresh('Moshtix: Moshtix API 504'), false)
+  assert.equal(isPartialRefresh('Moshtix: Moshtix API 400'), false)
   assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.id === 'moshtix')?.budgetMs, SOURCE_BUDGET_MAX_MS)
 })
 
@@ -91,6 +96,17 @@ test('a finished cycle is successful when one source failed or hit its budget', 
   )
   assert.equal(oneDown.ok, true)
   assert.deepEqual(oneDown.failed, ['Ticketmaster'])
+
+  const paused = assessRefreshCycle(
+    [
+      row({ status: 'source:Ticketmaster', errors: null, eventsAdded: 10 }),
+      row({ status: 'source:Frontier Touring', errors: 'Frontier Touring: upstream 504 after saving 4 events; continuing next run', eventsAdded: 4 }),
+    ],
+    NAMES,
+  )
+  assert.equal(paused.ok, true)
+  assert.deepEqual(paused.warned, ['Frontier Touring'])
+  assert.deepEqual(paused.failed, [])
 })
 
 test('a cycle is not successful when a chunk never finished or every source hard-failed', () => {

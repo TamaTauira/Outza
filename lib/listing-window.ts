@@ -7,6 +7,7 @@ import { cityDef } from '@/lib/cities'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { zonedWallTime } from '@/lib/zoned-time'
 import { confidence, isSameEvent, normalizeVenue, similarity, sourceLabel } from '@/lib/quality'
+import { isPartialRefresh } from '@/lib/refresh-plan'
 
 export type AvailabilityKind = 'confirmed' | 'soon' | 'possibly' | 'exclude'
 
@@ -515,7 +516,7 @@ export function refreshSuccessRate(completed: number, failed: number): number | 
   return Math.round((ok / total) * 1000) / 10
 }
 
-/** A source whose two latest chunk logs both have a hard error. Budget stops are not failures. */
+/** A source whose two latest chunk logs both have a hard error. Budget stops and Moshtix upstream pauses are not failures. */
 export function repeatedSourceFailures(logs: { status: string; errors: string | null; startedAt: string | Date }[]): string[] {
   const sorted = [...logs].sort((a, b) => +new Date(b.startedAt) - +new Date(a.startedAt))
   const by = new Map<string, { errors: string | null }[]>()
@@ -529,7 +530,7 @@ export function repeatedSourceFailures(logs: { status: string; errors: string | 
   const out: string[] = []
   for (const [name, list] of by) {
     if (list.length < 2) continue
-    const hard = list.every((row) => !!row.errors && !/time budget/i.test(row.errors))
+    const hard = list.every((row) => !!row.errors && !isPartialRefresh(row.errors))
     if (hard) out.push(name)
   }
   return out
