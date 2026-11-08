@@ -69,6 +69,74 @@ export function isPartialRefresh(error: string | null | undefined) {
   return isBudgetSkip(error) || isMoshtixPause(error)
 }
 
+export type SweepProgress = { continuation: boolean; more: boolean }
+
+const SWEEP_MARK = /\[sweep:(continued\+more|continued|more)\]/
+
+/** Remember that a run resumed a sweep, or stopped with more of it left. Not a failure. */
+export function sweepToken(flags: { continuation?: boolean; more?: boolean }): string | null {
+  if (flags.continuation && flags.more) return '[sweep:continued+more]'
+  if (flags.continuation) return '[sweep:continued]'
+  if (flags.more) return '[sweep:more]'
+  return null
+}
+
+/** Attach a sweep mark to a log error. A chunk with no real error is stored as the mark alone. */
+export function withSweepMark(error: string | null, flags: { continuation?: boolean; more?: boolean }): string | null {
+  const mark = sweepToken(flags)
+  if (!mark) return error
+  if (!error) return mark
+  if (SWEEP_MARK.test(error)) return error
+  return `${error} ${mark}`
+}
+
+export function readSweepMark(error: string | null | undefined): SweepProgress & { marked: boolean } {
+  const match = error?.match(SWEEP_MARK)
+  if (!match) return { continuation: false, more: false, marked: false }
+  if (match[1] === 'continued+more') return { continuation: true, more: true, marked: true }
+  if (match[1] === 'continued') return { continuation: true, more: false, marked: true }
+  return { continuation: false, more: true, marked: true }
+}
+
+/** Failure text with the sweep mark removed. Null when the log is only sweep progress. */
+export function refreshFailure(errors: string | null | undefined): string | null {
+  if (!errors) return null
+  const stripped = errors.replace(SWEEP_MARK, '').replace(/\s+/g, ' ').trim()
+  return stripped || null
+}
+
+/**
+ * Flags stored on a finished source log.
+ * A Moshtix pause already says the next run continues, so it counts as an open chunk
+ * even when it was written before sweep marks existed.
+ * A log with no mark and no pause is unmarked: an ordinary one-shot run, or a legacy chunk.
+ */
+export function sweepFlagsFromLog(errors: string | null | undefined): SweepProgress & { unmarked: boolean } {
+  const mark = readSweepMark(errors)
+  const pause = isMoshtixPause(errors)
+  if (mark.marked || pause) {
+    return { continuation: mark.continuation, more: mark.more || pause, unmarked: false }
+  }
+  return { continuation: false, more: false, unmarked: true }
+}
+
+/** Keep sweep progress on a thrown error so the refresh log can record the chunk. */
+export function attachSweepProgress(err: unknown, progress: SweepProgress): Error {
+  const error = err instanceof Error ? err : new Error(String(err))
+  ;(error as Error & { sweepProgress?: SweepProgress }).sweepProgress = {
+    continuation: progress.continuation === true,
+    more: progress.more === true,
+  }
+  return error
+}
+
+export function readSweepProgress(err: unknown): SweepProgress | null {
+  if (!err || typeof err !== 'object' || !('sweepProgress' in err)) return null
+  const progress = (err as { sweepProgress?: Partial<SweepProgress> }).sweepProgress
+  if (!progress) return null
+  return { continuation: progress.continuation === true, more: progress.more === true }
+}
+
 export type CycleLog = {
   status: string
   endedAt: Date | null
@@ -105,8 +173,9 @@ export function assessRefreshCycle(logs: CycleLog[], sourceNames: string[]): Cyc
       continue
     }
     eventsAdded += row.eventsAdded ?? 0
-    if (!row.errors) continue
-    if (isPartialRefresh(row.errors)) warned.push(name)
+    const failure = refreshFailure(row.errors)
+    if (!failure) continue
+    if (isPartialRefresh(failure)) warned.push(name)
     else failed.push(name)
   }
   const allHardFailed = sourceNames.length > 0 && failed.length === sourceNames.length

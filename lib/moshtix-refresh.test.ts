@@ -135,4 +135,6 @@ test('a pause is not a hard Moshtix failure', () => {
   assert.match(src, /moshtixPauseMessage/)
   assert.match(src, /pageSize: \$\{pageSize\}/)
   assert.doesNotMatch(src, /pageSize: 200/)
+  assert.match(src, /more: !done/)
+  assert.match(src, /attachSweepProgress/)
 })

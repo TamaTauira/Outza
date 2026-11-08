@@ -1,6 +1,7 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
 import { readJobMark, writeJobCursor } from '@/lib/job-watermark'
 import {
+  MOSHTIX_LOOKBACK_MS,
   moshtixFailureReason,
   moshtixNoteEvent,
   moshtixNotePage,
@@ -11,6 +12,7 @@ import {
   moshtixTransientFailure,
   type MoshtixCursor,
 } from '@/lib/moshtix-refresh'
+import { attachSweepProgress } from '@/lib/refresh-plan'
 import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
@@ -71,14 +73,17 @@ async function saveMoshtixCursor(cursor: MoshtixCursor | null, pageSize: number)
   })
 }
 
-export async function fetchMoshtixEvents(): Promise<number> {
+export async function fetchMoshtixEvents(): Promise<{ saved: number; continuation: boolean; more: boolean }> {
   const mark = await readJobMark('moshtix').catch((err) => {
     console.error('[moshtix] cursor read failed', err instanceof Error ? err.message : err)
     return null
   })
+  const now = Date.now()
   const storedPageSize = mark?.pageSize ?? 0
   let pageSize = moshtixResumePageSize(storedPageSize)
-  let cursor = moshtixResume(Date.now(), mark?.at.getTime() ?? null, mark?.page ?? 0, storedPageSize)
+  let cursor = moshtixResume(now, mark?.at.getTime() ?? null, mark?.page ?? 0, storedPageSize)
+  // A cursor inside the lookback window is the rest of a sweep, not a new one.
+  const continuation = cursor.fromMs > now - MOSHTIX_LOOKBACK_MS
   let saved = 0
   let progressed = false
   let total = Infinity
@@ -224,6 +229,9 @@ export async function fetchMoshtixEvents(): Promise<number> {
       if (!finishedPage || done) break
       await sleep(1000)
     }
+  } catch (err) {
+    // The cursor saved below is where the next run resumes, including after a hard error.
+    throw attachSweepProgress(err, { continuation, more: !done })
   } finally {
     if (pages >= MOSHTIX_MAX_PAGES && !done) {
       console.warn(`[moshtix] stopped at ${MOSHTIX_MAX_PAGES} pages; totalCount=${total}`)
@@ -231,7 +239,7 @@ export async function fetchMoshtixEvents(): Promise<number> {
     await saveMoshtixCursor(done ? { fromMs: 0, page: 0 } : cursor, pageSize)
   }
   console.log(`[moshtix] saved ${saved} events${done ? '' : ' (more next run)'}`)
-  return saved
+  return { saved, continuation, more: !done }
 }
 
 // ---------------- Oztix (public event guide search used by oztix.com.au) ----------------

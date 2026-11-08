@@ -8,9 +8,14 @@ import {
   REFRESH_CYCLE_WINDOW_MS,
   SOURCE_BUDGET_MAX_MS,
   assessRefreshCycle,
+  attachSweepProgress,
   burstIdleMinutes,
   isBudgetSkip,
   isPartialRefresh,
+  readSweepProgress,
+  refreshFailure,
+  sweepFlagsFromLog,
+  withSweepMark,
   type CycleLog,
 } from './refresh-plan'
 
@@ -151,6 +156,47 @@ test('a cycle is not successful when a chunk never finished or every source hard
   )
   assert.equal(allDown.ok, false)
   assert.equal(allDown.missing.length, 0)
+})
+
+test('a sweep progress mark is not a source failure', () => {
+  assert.equal(withSweepMark(null, {}), null)
+  assert.equal(withSweepMark(null, { more: true }), '[sweep:more]')
+  assert.equal(withSweepMark(null, { continuation: true }), '[sweep:continued]')
+  assert.equal(withSweepMark(null, { continuation: true, more: true }), '[sweep:continued+more]')
+  const budget = 'Moshtix: time budget reached after saving 634 events'
+  assert.equal(withSweepMark(budget, { more: true }), `${budget} [sweep:more]`)
+  assert.equal(withSweepMark(`${budget} [sweep:more]`, { more: true }), `${budget} [sweep:more]`)
+  assert.equal(refreshFailure('[sweep:continued]'), null)
+  assert.equal(refreshFailure(`${budget} [sweep:more]`), budget)
+  assert.equal(isPartialRefresh(refreshFailure(`${budget} [sweep:more]`)), true)
+  assert.deepEqual(sweepFlagsFromLog('[sweep:continued+more]'), { continuation: true, more: true, unmarked: false })
+  assert.deepEqual(sweepFlagsFromLog('Moshtix: upstream 504 after saving 796 events; continuing next run'), { continuation: false, more: true, unmarked: false })
+  assert.deepEqual(sweepFlagsFromLog(null), { continuation: false, more: false, unmarked: true })
+  const tagged = attachSweepProgress(new Error('Moshtix API 500'), { continuation: true, more: true })
+  assert.equal(tagged.message, 'Moshtix API 500')
+  assert.deepEqual(readSweepProgress(tagged), { continuation: true, more: true })
+
+  const open = assessRefreshCycle(
+    [
+      row({ status: 'source:Ticketmaster', errors: '[sweep:more]', eventsAdded: 1014 }),
+      row({ status: 'source:Frontier Touring', errors: null, eventsAdded: 2 }),
+    ],
+    NAMES,
+  )
+  assert.equal(open.ok, true)
+  assert.deepEqual(open.warned, [])
+  assert.deepEqual(open.failed, [])
+  assert.equal(open.eventsAdded, 1016)
+
+  const budgeted = assessRefreshCycle(
+    [
+      row({ status: 'source:Ticketmaster', errors: `${budget} [sweep:more]`, eventsAdded: 634 }),
+      row({ status: 'source:Frontier Touring', errors: null }),
+    ],
+    NAMES,
+  )
+  assert.deepEqual(budgeted.warned, ['Ticketmaster'])
+  assert.deepEqual(budgeted.failed, [])
 })
 
 test('the latest finished log for a source wins', () => {

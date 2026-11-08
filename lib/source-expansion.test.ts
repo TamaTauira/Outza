@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { duplicateSpikeAlert, emptyFeedAlert, parseFailureAlert, retireOnEmpty, venueGapAlert, volumeAlert } from './source-health'
+import { duplicateSpikeAlert, emptyFeedAlert, parseFailureAlert, retireOnEmpty, sourceVolumeSignal, sweepRunFromLog, venueGapAlert, volumeAlert, volumeDropDetail, type SweepRun } from './source-health'
 import { SOURCE_REGISTER, registerByStatus } from './sources/register'
 import { parseBccRecord, parseBccRecords, brisbaneWall, bccExternalId, type BccRecord } from './sources/brisbane-council'
 
@@ -17,6 +17,105 @@ test('an empty or shrinking source alerts and never retires listings', () => {
   assert.equal(duplicateSpikeAlert(400, 120), true)
   assert.equal(duplicateSpikeAlert(40, 30), false)
   assert.equal(venueGapAlert(10, 40), true)
+})
+
+function chunk(partial: Partial<SweepRun> & Pick<SweepRun, 'events'>): SweepRun {
+  return { continuation: false, more: false, unmarked: false, ...partial }
+}
+
+test('a resumable sweep is compared once, not chunk against chunk', () => {
+  const open = sourceVolumeSignal(
+    [sweepRunFromLog(1014, null)],
+    chunk({ events: 1014, more: true }),
+  )
+  assert.equal(open.signal, null)
+
+  // 1014 then 422 are one Moshtix sweep. The older log has no sweep mark yet.
+  const tail = sourceVolumeSignal(
+    [sweepRunFromLog(1014, null)],
+    chunk({ events: 422, continuation: true }),
+  )
+  assert.equal(tail.signal, null)
+  assert.equal(tail.comparison.comparable, true)
+  assert.equal(tail.comparison.currentTotal, 1436)
+  assert.equal(tail.comparison.previousTotal, null)
+
+  const healthy = sourceVolumeSignal(
+    [sweepRunFromLog(422, '[sweep:continued]'), sweepRunFromLog(1014, null)],
+    chunk({ events: 1400, unmarked: true }),
+  )
+  assert.equal(healthy.signal, null)
+  assert.equal(healthy.comparison.previousTotal, 1436)
+
+  const shrunk = sourceVolumeSignal(
+    [sweepRunFromLog(422, '[sweep:continued]'), sweepRunFromLog(1014, '[sweep:more]')],
+    chunk({ events: 400, unmarked: true }),
+  )
+  assert.equal(shrunk.signal, 'drop')
+  assert.equal(shrunk.comparison.currentTotal, 400)
+  assert.equal(shrunk.comparison.previousTotal, 1436)
+  assert.equal(
+    volumeDropDetail('Moshtix', 'drop', shrunk.comparison),
+    'Moshtix saved 400 events in a full sweep after a previous full sweep saved 1436. Listings already stored were not deleted.',
+  )
+
+  const empty = sourceVolumeSignal(
+    [sweepRunFromLog(422, '[sweep:continued]'), sweepRunFromLog(1014, '[sweep:more]')],
+    chunk({ events: 0, unmarked: true }),
+  )
+  assert.equal(empty.signal, 'zero')
+
+  const resumedDrop = sourceVolumeSignal(
+    [
+      chunk({ events: 80, more: true }),
+      sweepRunFromLog(422, '[sweep:continued]'),
+      sweepRunFromLog(1014, '[sweep:more]'),
+    ],
+    chunk({ events: 40, continuation: true }),
+  )
+  assert.equal(resumedDrop.signal, 'drop')
+  assert.equal(resumedDrop.comparison.currentTotal, 120)
+  assert.equal(resumedDrop.comparison.previousTotal, 1436)
+
+  const three = sourceVolumeSignal(
+    [
+      chunk({ events: 300, continuation: true, more: true }),
+      sweepRunFromLog(200, 'Moshtix: upstream 504 after saving 200 events; continuing next run [sweep:continued+more]'),
+      chunk({ events: 500, more: true }),
+    ],
+    chunk({ events: 100, continuation: true }),
+  )
+  assert.equal(three.signal, null)
+  assert.equal(three.comparison.currentTotal, 1100)
+  assert.equal(three.comparison.chunks, 4)
+})
+
+test('one-shot sources still alert on a real drop and ignore a cut-short run', () => {
+  const drop = sourceVolumeSignal([sweepRunFromLog(120, null)], chunk({ events: 40, unmarked: true }))
+  assert.equal(drop.signal, 'drop')
+  assert.equal(
+    volumeDropDetail('Ticketmaster', 'drop', drop.comparison),
+    'Ticketmaster saved 40 events after a previous run saved 120. Listings already stored were not deleted.',
+  )
+  const zero = sourceVolumeSignal([sweepRunFromLog(120, null)], chunk({ events: 0, unmarked: true }))
+  assert.equal(zero.signal, 'zero')
+  assert.equal(sourceVolumeSignal([sweepRunFromLog(120, null)], chunk({ events: 0, unmarked: true, timedOut: true })).signal, null)
+  assert.equal(sourceVolumeSignal([sweepRunFromLog(120, null)], chunk({ events: 0, unmarked: true, failed: true })).signal, null)
+  assert.equal(sourceVolumeSignal([sweepRunFromLog(10, null)], chunk({ events: 0, unmarked: true })).signal, null)
+
+  const afterTimeout = sourceVolumeSignal(
+    [sweepRunFromLog(900, 'Oztix: time budget reached after saving 900 events'), sweepRunFromLog(1000, null)],
+    chunk({ events: 100, unmarked: true }),
+  )
+  assert.equal(afterTimeout.signal, 'drop')
+  assert.equal(afterTimeout.comparison.previousTotal, 1000)
+
+  const orphan = sourceVolumeSignal(
+    [sweepRunFromLog(1014, '[sweep:more]'), sweepRunFromLog(1400, null)],
+    chunk({ events: 400, unmarked: true }),
+  )
+  assert.equal(orphan.signal, 'drop')
+  assert.equal(orphan.comparison.previousTotal, 1400)
 })
 
 test('the register keeps current connectors and does not invent unmeasured counts', () => {

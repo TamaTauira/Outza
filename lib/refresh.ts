@@ -5,7 +5,7 @@ import { fetchFrontierEvents, fetchCityOfSydneyEvents, fetchHumanitixEvents } fr
 import { runQualityPass } from '@/lib/quality-pass'
 import { fetchCuratedEvents } from '@/lib/sources/curated'
 import { fetchBrisbaneCouncilEvents } from '@/lib/sources/brisbane-council'
-import { recordQualityAlert, volumeAlert } from '@/lib/source-health'
+import { recordQualityAlert, sourceVolumeSignal, sweepRunFromLog, volumeDropDetail } from '@/lib/source-health'
 import { runImagePass } from '@/lib/images/runner'
 import { importLocalFromBoard } from '@/lib/local-import'
 import { fetchMoshtixEvents, fetchOztixEvents, fetchTicketekEvents } from '@/lib/sources/ticketing'
@@ -18,10 +18,16 @@ import {
   assessRefreshCycle,
   chunkById,
   isPartialRefresh,
+  readSweepProgress,
+  refreshFailure,
   sourceLogStatus,
+  withSweepMark,
 } from '@/lib/refresh-plan'
 
-const SOURCES: [string, () => Promise<number>][] = [
+/** A listings fetch. A resumable source returns sweep flags; every other source returns a count. */
+export type SourceFetchResult = { saved: number; continuation?: boolean; more?: boolean }
+
+const SOURCES: [string, () => Promise<number | SourceFetchResult>][] = [
   ['Ticketmaster', fetchTicketmasterEvents],
   ['Frontier Touring', fetchFrontierEvents],
   ['City of Sydney', fetchCityOfSydneyEvents],
@@ -116,15 +122,33 @@ async function faultIfSourceRepeated(name: string, error: string, logId: string)
     orderBy: { startedAt: 'desc' },
     select: { errors: true },
   })
-  if (prev?.errors && !isPartialRefresh(prev.errors) && prev.errors.includes(`${name}:`)) {
+  const prevFailure = refreshFailure(prev?.errors)
+  if (prevFailure && !isPartialRefresh(prevFailure) && prevFailure.includes(`${name}:`)) {
     await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: error })
   }
 }
 
-async function runNamed(name: string, fn: () => Promise<number>, budgetMs: number) {
+function readSourceRun(value: number | SourceFetchResult | null, fallbackSaved: number, error: Error | null) {
+  if (value && typeof value === 'object') {
+    return {
+      saved: value.saved,
+      continuation: value.continuation === true,
+      more: value.more === true,
+    }
+  }
+  const progress = readSweepProgress(error)
+  return {
+    saved: typeof value === 'number' ? value : fallbackSaved,
+    continuation: progress?.continuation === true,
+    more: progress?.more === true,
+  }
+}
+
+async function runNamed(name: string, fn: () => Promise<number | SourceFetchResult>, budgetMs: number) {
   console.log(`[refresh] starting ${name} (budget ${Math.round(budgetMs / 1000)}s)`)
   const run = await runWithSourceBudget(name, budgetMs, fn)
-  const added = run.value ?? run.saved
+  const outcome = readSourceRun(run.value, run.saved, run.error)
+  const added = outcome.saved
   const error = run.error
     ? `${name}: ${run.error.message}`
     : run.timedOut
@@ -132,7 +156,7 @@ async function runNamed(name: string, fn: () => Promise<number>, budgetMs: numbe
       : null
   if (error) console.error(`[refresh] ${name} finished with ${added} events: ${error}`)
   else console.log(`[refresh] ${name} finished: ${added} events`)
-  return { added, error }
+  return { added, error, continuation: outcome.continuation, more: outcome.more }
 }
 
 async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
@@ -164,10 +188,11 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
       continue
     }
     const sourceLog = opts.chunk ? await prisma.refreshLog.create({ data: { status: 'running' } }) : null
-    const { added, error } = await runNamed(name, fn, budgetFor(name))
+    const { added, error, continuation, more } = await runNamed(name, fn, budgetFor(name))
     total += added
     sourcesRun.push(name)
     if (error) errors.push(error)
+    const storedError = withSweepMark(error, { continuation, more })
     if (sourceLog) {
       await prisma.refreshLog.update({
         where: { id: sourceLog.id },
@@ -175,12 +200,12 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
           status: sourceLogStatus(name),
           endedAt: new Date(),
           eventsAdded: added,
-          errors: error,
+          errors: storedError,
         },
       })
       if (error) await faultIfSourceRepeated(name, error, sourceLog.id)
     }
-    await noteVolume(name, added, error, sourceLog?.id ?? null)
+    await noteVolume(name, { saved: added, continuation, more }, error, sourceLog?.id ?? null)
   }
 
   if (runPost && !opts.chunk) {
@@ -190,7 +215,10 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
 
   if (!log) return { eventsAdded: total, errors, sourcesRun }
 
-  const hard = errors.filter((e) => !isPartialRefresh(e) && !e.startsWith('Unknown source:'))
+  const hard = errors.filter((e) => {
+    const failure = refreshFailure(e)
+    return !!failure && !isPartialRefresh(failure) && !failure.startsWith('Unknown source:')
+  })
   const sourceFailed = selected.filter(([name]) => hard.some((e) => e.startsWith(`${name}:`))).length
   const status = selected.length > 0 && sourceFailed === selected.length ? 'failed' : 'completed'
   await prisma.refreshLog.update({
@@ -217,28 +245,36 @@ async function invalidatePublicListings() {
   }
 }
 
-async function noteVolume(name: string, added: number, error: string | null, logId: string | null) {
-  const prev = await prisma.refreshLog.findFirst({
+async function noteVolume(
+  name: string,
+  outcome: { saved: number; continuation: boolean; more: boolean },
+  error: string | null,
+  logId: string | null,
+) {
+  const logs = await prisma.refreshLog.findMany({
     where: {
       status: sourceLogStatus(name),
       endedAt: { not: null },
       ...(logId ? { id: { not: logId } } : {}),
     },
     orderBy: { startedAt: 'desc' },
-    select: { eventsAdded: true },
+    take: 40,
+    select: { eventsAdded: true, errors: true },
   })
-  const signal = volumeAlert(prev?.eventsAdded ?? null, added, {
-    timedOut: isPartialRefresh(error),
+  const history = logs.map((log) => sweepRunFromLog(log.eventsAdded, log.errors))
+  const { signal, comparison } = sourceVolumeSignal(history, {
+    events: outcome.saved,
+    continuation: outcome.continuation,
+    more: outcome.more,
+    unmarked: false,
     failed: !!error && !isPartialRefresh(error),
+    timedOut: isPartialRefresh(error),
   })
   if (!signal) return
-  const previous = prev?.eventsAdded ?? 0
   await recordQualityAlert({
     kind: signal === 'zero' ? 'ZERO_EVENTS' : 'VOLUME_DROP',
     source: name,
-    detail: signal === 'zero'
-      ? `${name} saved 0 events after a previous run saved ${previous}. Listings already stored were not deleted.`
-      : `${name} saved ${added} events after a previous run saved ${previous}. Listings already stored were not deleted.`,
+    detail: volumeDropDetail(name, signal, comparison),
   })
 }
 
@@ -266,7 +302,10 @@ async function reportFullRunFaults(logId: string, selected: number, sourceFailed
   })
   for (const err of hard) {
     const name = err.split(':')[0]
-    const repeated = (prev?.errors ?? '').split('; ').some((part) => part.startsWith(`${name}:`) && !isPartialRefresh(part))
+    const repeated = (prev?.errors ?? '').split('; ').some((part) => {
+      const failure = refreshFailure(part)
+      return !!failure && failure.startsWith(`${name}:`) && !isPartialRefresh(failure)
+    })
     if (repeated) {
       await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: err })
     }

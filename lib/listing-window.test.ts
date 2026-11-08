@@ -280,4 +280,12 @@ test('health rates and repeated source failures stay numeric and skip budget sto
     { status: 'source:Moshtix', errors: 'Moshtix: Moshtix API 400', startedAt: '2026-11-05T00:12:26.000Z' },
     { status: 'source:Moshtix', errors: 'Moshtix: upstream 504 after saving 796 events; continuing next run', startedAt: '2026-11-04T23:13:44.000Z' },
   ]), [])
+  assert.deepEqual(repeatedSourceFailures([
+    { status: 'source:Moshtix', errors: '[sweep:more]', startedAt: '2026-11-08T00:10:50.000Z' },
+    { status: 'source:Moshtix', errors: '[sweep:continued]', startedAt: '2026-11-08T01:10:50.000Z' },
+  ]), [])
+  assert.deepEqual(repeatedSourceFailures([
+    { status: 'source:Moshtix', errors: 'Moshtix: HTTP 500 [sweep:more]', startedAt: '2026-11-08T00:10:50.000Z' },
+    { status: 'source:Moshtix', errors: 'Moshtix: HTTP 500 [sweep:continued+more]', startedAt: '2026-11-08T01:10:50.000Z' },
+  ]), ['Moshtix'])
 })
