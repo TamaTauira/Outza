@@ -244,6 +244,7 @@ export function trendDelta(values: (number | null)[]): string | null {
   const last = nums[nums.length - 1]
   if (prev === 0) return null
   const pct = Math.round(((last - prev) / Math.abs(prev)) * 1000) / 10
+  if (pct === 0) return 'Level with the reading before'
   const sign = pct > 0 ? '+' : ''
   return `${sign}${pct}% on the reading before`
 }
