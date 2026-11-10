@@ -26,7 +26,13 @@ export async function GET(req: NextRequest) {
 
   if (send) {
     await prisma.newsletterClick.create({ data: { sendId: send.id, eventId: ev?.id ?? null, placement: p, target: t, category: ev?.category ?? null } }).catch(() => {})
-    if (ev && t === 'ticket') await prisma.event.update({ where: { id: ev.id }, data: { ticketClicks: { increment: 1 } } }).catch(() => {})
+    if (ev && t === 'ticket') {
+      await prisma.event.update({ where: { id: ev.id }, data: { ticketClicks: { increment: 1 } } }).catch(() => {})
+      const { bumpEngagement } = await import('@/lib/engagement-store')
+      await bumpEngagement(ev.id, 'TICKET')
+      const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+      await recordProductMetrics([{ name: METRIC.ticket, subjectId: ev.id, subjectKind: 'event' }])
+    }
   }
   return NextResponse.redirect(dest, 302)
 }

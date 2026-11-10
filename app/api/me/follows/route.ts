@@ -45,6 +45,10 @@ export async function POST(req: Request) {
     if (follow) current.add(tag)
     else current.delete(tag)
     await prisma.user.update({ where: { id: me.id }, data: { preferredCategories: [...current] } })
+    if (follow) {
+      const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+      await recordProductMetrics([{ name: METRIC.followCategory, subjectId: '', subjectKind: 'catalog', dim: tag }])
+    }
     return NextResponse.json({ ok: true, tags: [...current] })
   }
   if (body.kind === 'venue') {
@@ -58,6 +62,8 @@ export async function POST(req: Request) {
         create: { userId: me.id, venueKey: key, venueName, city },
         update: { venueName, city },
       })
+      const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+      await recordProductMetrics([{ name: METRIC.followVenue, subjectId: '', subjectKind: 'catalog', dim: key.slice(0, 80) }])
     } else {
       await prisma.venueFollow.deleteMany({ where: { userId: me.id, venueKey: key } })
     }

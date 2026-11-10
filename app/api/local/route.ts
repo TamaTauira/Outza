@@ -109,6 +109,11 @@ export async function GET(req: Request) {
     status: ev.status,
   }))
   const items = filterFeed(dedupeFeed([...communityItems, ...localItems]), { section, suburb }).slice(0, 300)
+  const communityIds = items.filter((item) => item.kind === 'community').map((item) => item.id).slice(0, 12)
+  if (communityIds.length) {
+    const { recordSeen } = await import('@/lib/product-metrics')
+    await recordSeen(communityIds, 'local')
+  }
   return NextResponse.json({ from, to, items, counts: sectionCounts(filterFeed(dedupeFeed([...communityItems, ...localItems]), { suburb })) })
   } catch (err) {
     console.error('Local listings failed:', err)

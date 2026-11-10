@@ -63,7 +63,13 @@ export default async function EventPage({ params, searchParams }: Props) {
   const referral = isHuman
     ? classifyReferral(h.get('referer'), h.get('x-forwarded-host') ?? h.get('host'), { source: one(sp.utm_source), medium: one(sp.utm_medium) })
     : null
-  const data = await personalizeEvent(core, { countView: isHuman, prefetch, referral })
+  const data = await personalizeEvent(core, {
+    countView: isHuman,
+    prefetch,
+    referral,
+    viewerCity: h.get('x-vercel-ip-city'),
+    viewerCountry: h.get('x-vercel-ip-country'),
+  })
 
   const origin = siteUrl()
   const ev = data.event

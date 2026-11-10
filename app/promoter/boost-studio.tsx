@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Loader2, Megaphone } from 'lucide-react'
 import { BOOSTS, type BoostId, ATTRIBUTION_NOTE } from '@/lib/sponsorship'
-import { formatAud } from '@/lib/tiers'
+import { formatAud, formatAudCents } from '@/lib/tiers'
+import { clickRate, costPerClick, returnEstimate } from '@/lib/organiser-reach'
 
 type Ev = { id: string; title: string; date: string; city?: string; category?: string; venueName: string }
 type CatalogBoost = (typeof BOOSTS)[BoostId]
@@ -58,6 +59,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
   const [email, setEmail] = useState('')
   const [note, setNote] = useState('')
   const [preview, setPreview] = useState(false)
+  const [ticketPrice, setTicketPrice] = useState('')
 
   const load = async () => {
     const [catalog, mine] = await Promise.all([
@@ -289,6 +291,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
                   <div><dt className="text-xs text-muted-foreground">Get tickets</dt><dd className="font-semibold tabular-nums">{row.ticketClicks.toLocaleString('en-AU')}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Repeat interest</dt><dd className="font-semibold tabular-nums">{row.repeatInterest.toLocaleString('en-AU')}</dd></div>
                 </dl>
+                <BoostMath row={row} price={ticketPrice} />
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => renew(row)} className="h-9 rounded-md border border-border px-3 text-xs font-semibold">Run it again</button>
                   {row.status !== 'PENDING' && row.status !== 'CANCELLED' && (
@@ -303,10 +306,31 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
             ))}
           </ul>
         )}
+        {!!rows.length && (
+          <label className="mt-4 block text-sm">Ticket price, to sketch what the clicks might have earned
+            <input inputMode="decimal" value={ticketPrice} onChange={(event) => setTicketPrice(event.target.value.replace(/[^0-9.]/g, '').slice(0, 8))} placeholder="25" aria-label="Ticket price in dollars" className={`${field} mt-1 max-w-xs`} />
+          </label>
+        )}
         {canPause && <button type="button" onClick={async () => { const res = await fetch('/api/promoter/campaigns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'pause', all: true }) }); const data = await res.json().catch(() => ({})); if (!res.ok) toast.error(data?.error ?? 'Could not pause'); else { toast.success('Live boosts paused'); load().catch(() => {}) } }} className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground underline">
           <Megaphone className="h-3.5 w-3.5" />Pause every live boost
         </button>}
       </section>
     </div>
+  )
+}
+
+function BoostMath({ row, price }: { row: CampaignRow; price: string }) {
+  const clicks = row.detailViews + row.ticketClicks
+  const ctr = clickRate(clicks, row.impressions)
+  const cpc = costPerClick(row.amountCents, clicks)
+  const dollars = Number(price)
+  const earned = price.trim() && Number.isFinite(dollars) ? returnEstimate(row.ticketClicks, dollars) : null
+  return (
+    <p className="mt-2 text-xs text-muted-foreground">
+      CTR {ctr == null ? '—' : `${ctr}%`}
+      {' · '}
+      Cost per click {cpc == null ? '—' : formatAudCents(cpc)}
+      {earned != null ? ` · If every Get tickets click bought one ticket, that’s ${formatAudCents(earned)}. A ceiling, not a receipt.` : ''}
+    </p>
   )
 }

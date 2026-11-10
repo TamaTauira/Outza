@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { boardClockLine } from '@/lib/listing-window'
 import { VENUE_PRODUCTS, VENUE_REPORT_REASONS, SPONSORED_LABEL } from '@/lib/ownership'
+import { VenueReachPanel } from './reach-panel'
 
 const tabs = ['Overview', 'My Venue', 'Upcoming Events', 'Analytics', 'Promotions', 'Team & Access', 'Settings'] as const
 type Tab = (typeof tabs)[number]
@@ -162,6 +163,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
           )}
           {trendNote && <p className="text-sm">{trendNote} This uses public saves, reactions and ticket clicks, not another organiser’s campaign.</p>}
           <p className="text-xs text-muted-foreground">{typeof analytics?.caveat === 'string' ? analytics.caveat : 'Digital views and clicks do not prove physical attendance.'} This view never includes another organiser’s spend.</p>
+          <VenueReachPanel venueId={venueId} />
         </section>
       )}
 

@@ -117,4 +117,13 @@ export const ANALYTICS_DATA = [
   { metric: 'Audience insights', detail: 'Grouped percentages only: age bands, broad home areas, other interests and how far ahead people plan, plus the organiser’s most saved, shared and itinerary-added events. Built from signed-in adults on VibePeep. Under-18s are excluded. This is interest, not ticket purchases, as VibePeep doesn’t sell tickets. Any group under 10 people is hidden; years of birth, postcodes, names and emails are never shown.' },
   { metric: 'Promotion impressions and clicks', detail: 'Totals per sponsored placement, used to report campaign results.' },
   { metric: 'Newsletter clicks', detail: 'Totals per event and section. Individual subscribers are never shared with organisers.' },
+  { metric: 'More info clicks', detail: 'A counter per event when someone taps “More info” instead of “Get tickets”. Counted separately from this launch. Earlier Get tickets totals include those taps.' },
+  { metric: 'Appearances', detail: 'How often a listing was shown on the board, the map, search results, Hot right now, Local, or a Spotlight placement. Counted once per browser session per surface, from this launch.' },
+  { metric: 'Search terms', detail: 'The words someone typed before the listing appeared. Terms used by fewer than 5 people are hidden.' },
+  { metric: 'Viewer area', detail: 'A city, or a broad home area for a signed-in adult. Groups under 10 are hidden. No exact address, postcode or IP is stored for organisers.' },
+  { metric: 'Hour and day', detail: 'When people opened the listing, in Sydney time, so an organiser can see a busy hour. Shown once at least 10 opens are in the bucket.' },
+  { metric: 'Plan and calendar', detail: 'Adds to a Together plan, and exports of a saved event into a calendar file. Totals only.' },
+  { metric: 'Tracked share links', detail: 'A VibePeep link the organiser posts elsewhere. We count visits to that link. We do not see the social account that posted it.' },
+  { metric: 'Follows', detail: 'When a signed-in person follows a category or a venue. Organisers only see this as a grouped share of their audience, never as a list of people.' },
+  { metric: 'Spotlight results', detail: 'Serves, clicks, click-through and cost per click against the amount paid for that organiser’s own campaign. Venue managers do not see another organiser’s spend. A ticket-price box can sketch a ceiling. It is not a sale.' },
 ]

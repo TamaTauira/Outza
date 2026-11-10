@@ -25,6 +25,8 @@ export async function GET() {
     url: `${siteUrl()}${eventPath(ev)}`,
   }))
   const body = eventsToIcs(events, { calendarName: 'My VibePeep' })
+  const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+  await recordProductMetrics(events.map((event) => ({ name: METRIC.calendar, subjectId: event.id, subjectKind: 'event' })))
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',

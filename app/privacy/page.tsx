@@ -23,7 +23,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
     'To keep the service secure and working properly.',
   ] },
   { title: 'Organiser analytics', body: [
-    'Organisers see totals for their events: page views, ticket-link clicks, saves, “going” counts, shares, itinerary adds and clicks on their sponsored placements. They never receive your name, email or individual activity. We don’t sell personal information. The full list is on How listings work.',
+    'Organisers see totals for their events: page views, Get tickets and More info clicks, saves, reactions, “going” counts, shares, itinerary and plan adds, calendar exports, and clicks on their own sponsored placements. They can see which broad areas and search words led people to a listing, once a group is large enough to hide any one person. They never receive your name, email, exact address or individual activity. Venue managers do not see another organiser’s spend. We don’t sell personal information, and we don’t use third-party trackers. The full list is on How listings work.',
   ] },
   { id: 'audience', title: 'Audience insights for organisers', body: [
     'We ask event-goers for a year of birth so we can confirm you’re old enough to use VibePeep (13+). We store only that year. Age checks use the youngest age that year could be, so we never treat you as older than you might be. Your home postcode is optional.',
@@ -51,7 +51,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
   { title: 'Your choices', body: [
     'You can update your year of birth and home postcode (or remove your postcode) in your account settings.',
     'You can change your city, interests and email frequency, or turn the newsletter off, at any time in your account settings.',
-    'Every newsletter includes a one-click unsubscribe link.',
+    'Every newsletter includes a one-click unsubscribe link. The optional weekly promoter recap has its own unsubscribe link, which does not turn the newsletter off.',
     'You can remove saved events, going status and follows at any time.',
   ] },
   { title: 'Your rights under Australian privacy law', body: [

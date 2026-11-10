@@ -224,8 +224,15 @@ export async function addEvents(token: string, who: Actor, eventIds: string[]) {
   const ids = [...new Set(eventIds)].slice(0, room)
   const events = ids.length ? await prisma.event.findMany({ where: { id: { in: ids } }, select: { id: true } }) : []
   if (events.length) {
+    const already = await prisma.togetherItem.findMany({ where: { planId: plan.id, eventId: { in: events.map((event) => event.id) } }, select: { eventId: true } })
+    const have = new Set(already.map((row) => row.eventId))
     await prisma.togetherItem.createMany({ data: events.map((e) => ({ planId: plan.id, eventId: e.id })), skipDuplicates: true })
     await prisma.togetherPlan.update({ where: { id: plan.id }, data: { updatedAt: new Date() } })
+    const fresh = events.filter((event) => !have.has(event.id))
+    if (fresh.length) {
+      const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+      await recordProductMetrics(fresh.map((event) => ({ name: METRIC.plan, subjectId: event.id, subjectKind: 'event' })))
+    }
   }
   await touchMember(plan.id, who)
   return { ok: true as const, added: events.length }

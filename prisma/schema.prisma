@@ -127,6 +127,7 @@ model Event {
   reactions        EventReaction[]
   engagementDays   EngagementDay[]
   insight          EventInsight?
+  shareLinks       ShareLink[]
 
   @@index([date])
   @@index([category])
@@ -288,6 +289,7 @@ model User {
   campaigns       Campaign[]
   organiserSubscriptions OrganiserSubscription[]
   sponsorshipLeads SponsorshipLead[]
+  shareLinks      ShareLink[]
 
   @@index([emailOptIn])
   @@index([role])
@@ -1622,4 +1624,37 @@ model EventInsight {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+/// First-party daily counter shared by organiser analytics and the admin metrics dashboard.
+/// No user id, IP, email, or exact address. `dim` is a short label (surface, reaction, hour, place, term, link code).
+model ProductMetric {
+  id          String @id @default(cuid())
+  day         String
+  name        String
+  subjectId   String @default("")
+  subjectKind String @default("event")
+  dim         String @default("")
+  count       Int    @default(0)
+
+  @@unique([day, name, subjectId, subjectKind, dim])
+  @@index([subjectKind, subjectId, day])
+  @@index([name, day])
+}
+
+/// A link a promoter can post on Instagram, TikTok and the like. Visits are a counter, not a person.
+model ShareLink {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  eventId    String
+  promoterId String
+  label      String
+  channel    String   @default("link")
+  createdAt  DateTime @default(now())
+  visits     Int      @default(0)
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  promoter   User     @relation(fields: [promoterId], references: [id], onDelete: Cascade)
+
+  @@index([promoterId, createdAt])
+  @@index([eventId])
 }

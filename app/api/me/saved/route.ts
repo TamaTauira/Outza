@@ -60,6 +60,8 @@ export async function POST(req: Request) {
         await recordLandingFromCookieJar((name) => jar.get(name)?.value, 'save')
         const { bumpEngagement } = await import('@/lib/engagement-store')
         await bumpEngagement(ev.id, 'SAVE')
+        const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+        await recordProductMetrics([{ name: METRIC.save, subjectId: ev.id, subjectKind: 'event' }])
       }
     } else {
       await prisma.savedEvent.deleteMany({ where: { userId: me.id, eventId: b.eventId } })

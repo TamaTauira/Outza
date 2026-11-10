@@ -74,6 +74,12 @@ export async function canManageVenue(userId: string, venueId: string) {
   return evaluateVenueAccess({ userId, venueId, memberships, grants })
 }
 
+export async function guardVenueAnalytics(userId: string, venueId: string) {
+  const gate = await requireAction(userId, venueId, 'viewAnalytics')
+  if (gate.error) return { ok: false as const, status: 403 as const, error: gate.error }
+  return { ok: true as const }
+}
+
 async function requireAction(userId: string, venueId: string, action: VenueAction) {
   const access = await canManageVenue(userId, venueId)
   if (!access.allowed || !venueRoleAllows(access.role, action)) return { access, error: 'You don’t manage this venue.' as const }
