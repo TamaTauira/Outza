@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { srcSet, variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import { cn } from '@/lib/utils'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
-import { placeholderPath, type PlaceholderShape } from '@/lib/placeholders'
+import { placeholderPath, type PlaceholderSlot } from '@/lib/placeholders'
 
 interface Props {
   image?: ClientImage | null
@@ -22,17 +22,19 @@ interface Props {
   accent?: string
   /** Genre used to pick the placeholder artwork when the event has no picture. */
   category?: string | null
-  /** Square crop uses the square file. Wide is the default. */
-  shape?: PlaceholderShape
+  /** Which holding-image file to use when the listing has no picture. */
+  slot?: PlaceholderSlot
+  /** Second holding image, used from 640px up. The event hero switches 16:9 → 3:1 here. */
+  wideSlot?: PlaceholderSlot
   className?: string
 }
 
 /**
  * Fills its (fixed-aspect, relative) parent. Uses the optimised AVIF/WebP variants when processed,
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
- * otherwise the genre placeholder (wide, or square when that crop is needed).
+ * otherwise the genre holding image for this slot, shown whole.
  */
-export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, crop, accent, category, shape, className }: Props) {
+export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, crop, accent, category, slot, wideSlot, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
   const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
   const m = image?.variants ?? null
@@ -41,8 +43,9 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
   const loading = priority ? 'eager' : 'lazy'
 
   const frame = cn('absolute inset-0 w-full h-full', crop ? 'object-cover' : 'object-contain', className)
-  const fallbackShape: PlaceholderShape = shape ?? (kind === 'square' ? 'square' : 'wide')
-  const fallbackSrc = placeholderPath(category, fallbackShape)
+  const fallbackSlot: PlaceholderSlot = slot ?? (kind === 'square' ? 'square' : kind === 'featured' ? 'featured' : kind === 'hero' ? 'hero' : 'card')
+  const fallbackSrc = placeholderPath(category, fallbackSlot)
+  const wideSrc = wideSlot ? placeholderPath(category, wideSlot) : null
 
   if (stage === 'variant' && m && hasVariants) {
     const widths = m.sizes[kind]!
@@ -85,13 +88,16 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
   }
 
   return (
-    <img
-      src={fallbackSrc}
-      alt={alt}
-      loading={loading}
-      decoding="async"
-      className={cn('absolute inset-0 h-full w-full object-cover', className)}
-      style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #1a120c 72%)` : 'linear-gradient(145deg, #2a211c, #141414)' }}
-    />
+    <picture className="absolute inset-0 block h-full w-full">
+      {wideSrc && <source media="(min-width: 640px)" srcSet={wideSrc} />}
+      <img
+        src={fallbackSrc}
+        alt={alt}
+        loading={loading}
+        decoding="async"
+        className={cn('h-full w-full object-contain', className)}
+        style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #110e16 72%)` : '#110e16' }}
+      />
+    </picture>
   )
 }

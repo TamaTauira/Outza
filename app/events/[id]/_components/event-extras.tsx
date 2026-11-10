@@ -33,8 +33,11 @@ const AGE_RE = /\b(18\+|R18|all ages|under 1[68]s?|minors?|age restrict|family[-
 const ACC_RE = /\b(wheelchair|accessib|step[- ]free|auslan|hearing loop|companion card|mobility)\w*/i
 const TRANSPORT_RE = /\b(train|station|bus|ferry|light rail|tram|parking|car park|public transport)\b/i
 
-/** Shared hero frame: short enough to avoid a giant letterboxed banner. */
+/** Shared hero frame for a real photo: short enough to avoid a giant letterboxed banner. */
 export const HERO_FRAME = 'relative h-52 sm:h-60 overflow-hidden bg-muted'
+
+/** Holding-image frame. 16:9 on a phone, 3:1 from 640px, matching the hero files. */
+export const HERO_HOLD = 'relative aspect-[16/9] overflow-hidden bg-[#110e16] sm:aspect-[3/1]'
 
 /** Hero image plus thumbnails for any extra artwork the source supplied. */
 export function EventGallery({ event, children }: { event: any; children: React.ReactNode }) {

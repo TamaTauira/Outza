@@ -151,8 +151,8 @@ export async function CommunityBoard({
             })
             return (
               <li key={`${row.id}-${row.occursOn}`} className="overflow-hidden rounded-2xl bg-card shadow-sm">
-                <div className="relative h-36 bg-muted">
-                  <EventImage src={safe.imageUrl} kind="card" alt="" sizes="100vw" category={safe.communityKey || safe.category} crop />
+                <div className={safe.imageUrl ? 'relative h-36 bg-muted' : 'relative aspect-[5/2] bg-[#110e16]'}>
+                  <EventImage src={safe.imageUrl} kind="card" alt="" sizes="(min-width: 1280px) 30vw, 100vw" category={safe.communityKey || safe.category} crop slot="band" />
                 </div>
                 <div className="space-y-2 p-4">
                   <p className="text-sm text-muted-foreground">{dayLabel(row.occursOn)}{clock ? ` · ${clock}` : ''}{row.status === 'CANCELLED' ? ' · Cancelled' : row.status === 'POSTPONED' ? ' · Postponed' : ''}</p>

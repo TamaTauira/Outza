@@ -66,6 +66,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               crop
               accent={catDef?.color}
               category={event.communityKey || event.category}
+              slot="card"
             />
 
             {/* Date badge */}
@@ -156,7 +157,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
   return (
     <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} shape="square" />
+        <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} slot="square" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>

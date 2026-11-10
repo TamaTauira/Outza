@@ -112,6 +112,7 @@
 .se-popup .leaflet-popup-content { margin: 14px 16px; }
 .se-pop { min-width: 200px; }
 .se-pop-img { display: block; width: 100%; height: 96px; object-fit: cover; border-radius: 10px; margin: 0 0 8px; background: #1a120c; }
+.se-pop-hold { display: block; width: 100%; height: auto; aspect-ratio: 5 / 2; object-fit: contain; border-radius: 10px; margin: 0 0 8px; background: #110e16; }
 .se-pop-title { font-weight: 600; font-size: 14px; line-height: 1.3; }
 .se-pop-meta { font-size: 12px; opacity: .7; margin-top: 4px; }
 .se-pop-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
