@@ -1,9 +1,6 @@
-'use client'
-
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { Headphones } from 'lucide-react'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { ChevronDown, Headphones } from 'lucide-react'
 import { BOOSTS } from '@/lib/sponsorship'
 import { LOCAL_AD, PRO_PLAN, formatAud } from '@/lib/tiers'
 import { ctaClass, sectionPad } from './styles'
@@ -71,16 +68,19 @@ export function FaqSection() {
       <div className={`${sectionPad} grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]`}>
         <div className="min-w-0">
           <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Questions? We’ve got you.</h2>
-          <Accordion type="single" collapsible className="mt-6 grid items-start gap-3 md:grid-cols-2">
-            {items.map((item, i) => (
-              <AccordionItem key={item.q} value={`q-${i}`} className="min-w-0 rounded-2xl border border-border bg-card px-4 shadow-sm">
-                <AccordionTrigger className="py-4 text-left text-sm font-semibold hover:no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9F1239]">
-                  {item.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-sm leading-relaxed text-muted-foreground">{item.a}</AccordionContent>
-              </AccordionItem>
+          <div className="mt-6 grid items-start gap-3 md:grid-cols-2">
+            {items.map((item) => (
+              <details key={item.q} className="group min-w-0 rounded-2xl border border-border bg-card px-4 shadow-sm">
+                <summary className="cursor-pointer list-none text-left text-sm font-semibold [&::-webkit-details-marker]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9F1239]">
+                  <span className="flex min-h-12 items-center justify-between gap-3 py-4">
+                    {item.q}
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
+                  </span>
+                </summary>
+                <div className="pb-4 text-sm leading-relaxed text-muted-foreground">{item.a}</div>
+              </details>
             ))}
-          </Accordion>
+          </div>
         </div>
         <aside className="rounded-3xl bg-[#0c0c0e] p-6 text-white lg:sticky lg:top-24">
           <Headphones className="h-8 w-8 text-[#FF8A1A]" aria-hidden />
