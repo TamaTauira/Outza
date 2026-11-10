@@ -66,10 +66,10 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
     )
   }
   return (
-    <span className={cn('grid place-items-center bg-white', className)}>
-      <picture className="contents">
+    <span className={cn('relative block overflow-hidden bg-white', className)}>
+      <picture>
         <source srcSet={tile.srcSmall} media="(max-width: 640px)" />
-        <img src={tile.src} alt={tile.alt} className="h-full max-h-full w-full object-contain object-center" />
+        <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center" />
       </picture>
     </span>
   )
