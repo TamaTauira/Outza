@@ -150,9 +150,17 @@ async function saveVertical(e: any, city: CityDef, path: string): Promise<boolea
   const max = moneyNumber(e?.pricing?.maximumPrice ?? e?.pricing?.maxPrice)
   const priced = priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 })
   const page = humanitixEventUrl(e.hostname ?? e.url, e.slug ?? e.url)
+  const card = typeof e?.description === 'string' && e.description.trim()
+    ? e.description
+    : typeof e?.summary === 'string' && e.summary.trim() ? e.summary : null
+  // Featured cards omit the write-up. The event page has it.
+  if (!card && page) {
+    const outcome = await ingestEventUrl(page)
+    return outcome === 'saved'
+  }
   return saveEvent({
     title: e.name,
-    description: e.description ?? e.summary ?? null,
+    description: card,
     date: s.date,
     time: s.time,
     endDate: en?.date,

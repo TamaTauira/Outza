@@ -3,6 +3,7 @@
  * A present, reliable value is left alone. Ticketing sources win for price and times.
  * Review pairs and hard mismatches are not donors. Clocks stay in the event's city zone.
  */
+import { keepStoredDescription, sanitizeDescription } from '@/lib/description-text'
 import { decideDuplicate, type DuplicateDecision } from '@/lib/event-identity'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
 import { usableUrl } from '@/lib/listing-link'
@@ -89,11 +90,12 @@ export function reliablePrice(row: {
 }
 
 function usableDescription(value?: string | null): string | null {
-  const text = value?.replace(/\s+/g, ' ').trim() ?? ''
-  if (text.length < 40) return null
-  if (/^(tba|tbc|to be announced|to be confirmed|n\/a|see website)\b/i.test(text)) return null
-  if (/start\s*[-–:]\s*tbc/i.test(text) && /finish\s*[-–:]\s*tbc/i.test(text) && text.length < 160) return null
-  return text.slice(0, 600)
+  const text = sanitizeDescription(value)
+  const flat = text.replace(/\s+/g, ' ').trim()
+  if (flat.length < 40) return null
+  if (/^(tba|tbc|to be announced|to be confirmed|n\/a|see website)\b/i.test(flat)) return null
+  if (/start\s*[-–:]\s*tbc/i.test(flat) && /finish\s*[-–:]\s*tbc/i.test(flat) && flat.length < 160) return null
+  return text
 }
 
 function usablePin(lat?: number | null, lng?: number | null, city?: string | null, suburb?: string | null): { lat: number; lng: number } | null {
@@ -497,7 +499,7 @@ export function guardAgainstWeakerSource(existing: GuardRow, update: Record<stri
   if (isStreetAddress(existing.venueAddress) && 'venueAddress' in next && !isStreetAddress(typeof next.venueAddress === 'string' ? next.venueAddress : null)) {
     delete next.venueAddress
   }
-  if (existing.description?.trim() && typeof next.description === 'string' && !next.description.trim()) delete next.description
+  if (typeof next.description === 'string' && keepStoredDescription(existing.description, next.description)) delete next.description
   if (existing.endDate && (next.endDate == null || next.endDate === '')) delete next.endDate
   if (existing.latitude != null && existing.longitude != null && ('latitude' in next || 'longitude' in next)) {
     const lat = typeof next.latitude === 'number' ? next.latitude : null

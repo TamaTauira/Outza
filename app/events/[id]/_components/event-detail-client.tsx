@@ -13,7 +13,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { StatusBanner } from '@/components/data-confidence'
 import { LocalRecommendations } from '@/components/local-recommendations'
 import { ItineraryButton } from '@/components/itinerary-button'
-import { EventExtras, EventGallery, HERO_FRAME, HERO_HOLD, SourceLine, shareEvent } from './event-extras'
+import { EventExtras, EventGallery, HERO_FRAME, HERO_HOLD, shareEvent } from './event-extras'
 import { hasListingPhoto } from '@/lib/placeholders'
 import { ListingTrustActions } from '@/components/listing-trust-actions'
 import { ticketHref } from '@/lib/affiliate'
@@ -24,7 +24,8 @@ import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { boardClockLine } from '@/lib/listing-window'
-import { placeLine } from '@/lib/place'
+import { mapsDirectionsUrl, placeLine } from '@/lib/place'
+import { descriptionParagraphs } from '@/lib/description-text'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 import { ClaimedTick } from '@/components/ClaimedTick'
 import { EventReactions } from '@/components/event-reactions'
@@ -32,6 +33,35 @@ import { ListingSources } from '@/components/listing-sources'
 import { EventInsightPanel } from '@/components/event-insight-panel'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
+
+function AddressLink({ href, children }: { href: string | null; children: string }) {
+  if (!href) return <span className="mt-0.5 block">{children}</span>
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-1 block min-h-11 py-2 underline decoration-primary/50 underline-offset-2 hover:text-primary sm:min-h-0 sm:py-0.5"
+    >
+      {children}
+    </a>
+  )
+}
+
+function Lowdown({ text }: { text: string }) {
+  const paragraphs = descriptionParagraphs(text)
+  if (!paragraphs.length) return null
+  return (
+    <section>
+      <h2 className="font-display font-semibold text-base mb-1.5">The lowdown</h2>
+      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        {paragraphs.map((paragraph, index) => (
+          <p key={`${index}-${paragraph.slice(0, 24)}`} className="whitespace-pre-line">{paragraph}</p>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 function Fact({ icon: Icon, children }: { icon: typeof Calendar; children: React.ReactNode }) {
   return (
@@ -87,6 +117,18 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const city = cityDef(event.city)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
   const where = placeLine({ ...event, suburb })
+  const addressText = typeof event.venueAddress === 'string' ? event.venueAddress.trim() : ''
+  const venueLabel = typeof event.venueName === 'string' ? event.venueName.trim() : ''
+  const showAddress = !!addressText && addressText !== venueLabel
+  const nameLabel = venueLabel || (showAddress ? '' : where)
+  const mapsHref = mapsDirectionsUrl({
+    latitude: event.latitude,
+    longitude: event.longitude,
+    venueAddress: addressText,
+    venueName: event.venueName,
+    suburb,
+    city: event.city,
+  })
   const dateObj = new Date(event.date)
   const formattedDate = dateObj.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: city.tz })
   const clock = boardClockLine({
@@ -143,14 +185,17 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
         {(where || event?.venueName) && (
           <Fact icon={MapPin}>
-            <span className="inline-flex items-center gap-1 flex-wrap">
-              {event?.venueId ? (
-                <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{where || event.venueName}</Link>
-              ) : (
-                <span className="font-medium">{where || event.venueName}</span>
-              )}
-              {event?.venueManagedLabel && <ClaimedTick kind="venue" />}
-            </span>
+            {nameLabel ? (
+              <span className="inline-flex items-center gap-1 flex-wrap">
+                {event?.venueId ? (
+                  <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{nameLabel}</Link>
+                ) : (
+                  <span className="font-medium">{nameLabel}</span>
+                )}
+                {event?.venueManagedLabel && <ClaimedTick kind="venue" />}
+              </span>
+            ) : null}
+            {showAddress ? <AddressLink href={mapsHref}>{addressText}</AddressLink> : null}
             {event?.venueManagedLabel && <span className="block text-[11px] text-muted-foreground">{event.venueManagedLabel}</span>}
           </Fact>
         )}
@@ -248,7 +293,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
 
             <StatusBanner status={event.quality?.status ?? null} />
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{event?.title}</h1>
-            <SourceLine event={event} />
             {event?.provenance && <ListingSources provenance={event.provenance} />}
             {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}
             {event?.listingCaution && <p className="text-xs text-muted-foreground">{event.listingCaution}</p>}
@@ -277,12 +321,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2">{card}</div>
 
           <div className="min-w-0 space-y-4 lg:col-start-1">
-            {event?.description && (
-              <section>
-                <h2 className="font-display font-semibold text-base mb-1.5">The lowdown</h2>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{event.description}</p>
-              </section>
-            )}
+            {event?.description ? <Lowdown text={event.description} /> : null}
             <EventInsightPanel insight={event.insight} />
             <EventExtras event={event} />
             <ListingTrustActions event={event} />

@@ -1,6 +1,7 @@
 import { saveEvent, sleep } from '@/lib/event-store'
 import { usableUrl } from '@/lib/listing-link'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
+import { preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts } from '@/lib/price'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { addressInOtherState } from '@/lib/seo'
@@ -181,7 +182,7 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
       const organiserPage = usableUrl(ev?._embedded?.attractions?.[0]?.externalLinks?.homepage?.[0]?.url)
       const ok = await saveEvent({
         title: ev?.name ?? 'Untitled Event',
-        description: ev?.info ?? ev?.pleaseNote ?? '',
+        description: preferDescription(ev?.info, ev?.pleaseNote) ?? '',
         date: ev?.dates?.start?.localDate ?? '',
         time: ev?.dates?.start?.timeTBA || ev?.dates?.start?.noSpecificTime ? null : ev?.dates?.start?.localTime,
         endDate: ev?.dates?.end?.localDate ?? null,

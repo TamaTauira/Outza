@@ -2,6 +2,7 @@ import { fetchHtml, saveEvent, sleep, toSydneyParts } from '@/lib/event-store'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { firstListingUrl, joinOriginPath, usableUrl } from '@/lib/listing-link'
+import { preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
 import { distanceKm } from '@/lib/travel'
 import { addressInTasmania, coordsInTasmania } from '@/lib/tas-retag'
@@ -134,7 +135,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
       const organiser = firstListingUrl(e?.primary_organizer ?? e?.organizer, ['website_url', 'url', 'website'])
       const ok = await saveEvent({
         title: e?.name,
-        description: e?.summary,
+        description: preferDescription(e?.full_description, e?.summary),
         date: e?.start_date,
         time: e?.start_time,
         endDate: e?.end_date,

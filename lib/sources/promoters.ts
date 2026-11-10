@@ -1,9 +1,11 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { cityOfSydneyPlace } from '@/lib/cos-place'
+import { cosDescriptionFromRecord, cosHitsFromHtml, cosPriceText, cosWhen } from '@/lib/cos-event'
+import { cosDescriptionFromHtml, preferDescription } from '@/lib/description-text'
 import { extractListingVenue } from '@/lib/listing-venue'
 import { firstListingUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
-import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
-import { noteSourceSaved, remainingBudgetMs, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
+import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
+import { noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { frontierShowsFromHtml } from '@/lib/frontier-shows'
 
 function offerList(raw: unknown): any[] {
@@ -26,29 +28,74 @@ function frontierPrice(it: any) {
   return priceFromAmounts(Math.min(...nums), Math.max(...nums))
 }
 
-function priceFromCosData(raw: unknown): string | null {
-  if (raw == null || raw === '') return null
-  if (typeof raw === 'string') {
-    const text = raw.trim()
-    if (text.startsWith('[') || text.startsWith('{')) {
-      try { return priceFromCosData(JSON.parse(text)) } catch { return readPrice(text).price }
-    }
-    return readPrice(text).price
-  }
-  if (Array.isArray(raw)) return readPriceRows(raw).price
-  return readPrice(raw).price
+type CosDetail = {
+  price: string | null
+  description: string | null
+  html: string | null
+  isFree: boolean | null
+  venueName: string | null
+  address: string | null
+  suburbName: string | null
+  lat: number | null
+  lng: number | null
+  ticketingLink: string | null
+  website: string | null
 }
 
-const cosPageCache = new Map<string, { price: string | null; html: string | null }>()
+const cosPageCache = new Map<string, CosDetail>()
 
-/** One fetch of the event page covers price and the street address the search hit leaves off. */
-async function loadCosEventPage(slug: string): Promise<{ price: string | null; html: string | null }> {
+const EMPTY_COS: CosDetail = {
+  price: null, description: null, html: null, isFree: null, venueName: null, address: null,
+  suburbName: null, lat: null, lng: null, ticketingLink: null, website: null,
+}
+
+function cosNumber(value: unknown): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
+  return Number.isFinite(n) ? n : null
+}
+
+function detailFromRecord(record: Record<string, unknown>, html: string | null): CosDetail {
+  const location = record.location && typeof record.location === 'object' ? record.location as Record<string, unknown> : null
+  return {
+    price: cosPriceText(record.prices ?? record.priceData ?? record.cost ?? record.price),
+    description: cosDescriptionFromRecord(record),
+    html,
+    isFree: record.isFree === true || record.isFree === 'true' || record.freeEvent === true || record.freeEvent === 'true',
+    venueName: typeof location?.venueName === 'string' ? location.venueName : null,
+    address: typeof location?.address === 'string' ? location.address : null,
+    suburbName: typeof location?.suburbName === 'string' ? location.suburbName : null,
+    lat: cosNumber(location?.latitude ?? record.lat),
+    lng: cosNumber(location?.longitude ?? record.lng),
+    ticketingLink: typeof record.ticketingLink === 'string' ? record.ticketingLink : null,
+    website: typeof record.website === 'string' ? record.website : null,
+  }
+}
+
+/** The event record has the full description. Search hits only have the strapline. */
+async function loadCosEventPage(slug: string): Promise<CosDetail> {
   const cached = cosPageCache.get(slug)
   if (cached) return cached
-  if (sourceOverBudget() || remainingBudgetMs(20_000) < 8_000) return { price: null, html: null }
+  if (sourceOverBudget() || remainingBudgetMs(20_000) < 8_000) return EMPTY_COS
+  try {
+    const res = await fetch(`${COS_ORIGIN}/api/v1/events/eventsearch/${encodeURIComponent(slug)}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36', Accept: 'application/json' },
+      signal: sourceFetchSignal(15000),
+    })
+    if (res.ok) {
+      const record = await res.json() as Record<string, unknown>
+      const page = detailFromRecord(record, null)
+      cosPageCache.set(slug, page)
+      return page
+    }
+  } catch (err) {
+    console.warn(`[cityofsydney] detail ${slug} failed: ${err instanceof Error ? err.message : err}`)
+  }
   const html = await fetchHtml(`${COS_ORIGIN}/events/${slug}`)
-  const raw = (html ? extractNextData(html) : null)?.props?.pageProps?.eventData?.priceData
-  const page = { price: priceFromCosData(raw), html }
+  const next = (html ? extractNextData(html) : null)?.props?.pageProps?.eventData
+  const fromHtml = html ? cosDescriptionFromHtml(html) : null
+  const page = next && typeof next === 'object'
+    ? { ...detailFromRecord(next as Record<string, unknown>, html), description: fromHtml ?? cosDescriptionFromRecord(next as Record<string, unknown>) }
+    : { ...EMPTY_COS, html, description: fromHtml }
   cosPageCache.set(slug, page)
   return page
 }
@@ -109,19 +156,11 @@ function frontierOffers(html: string): Map<string, ReturnType<typeof frontierPri
   return offers
 }
 
-function parse12h(s: string): string | null {
-  const m = s.trim().toLowerCase().match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)$/)
-  if (!m) return null
-  let h = parseInt(m[1]) % 12
-  if (m[3] === 'pm') h += 12
-  return `${String(h).padStart(2, '0')}:${m[2] ?? '00'}`
-}
-
 const COS_ORIGIN = 'https://whatson.cityofsydney.nsw.gov.au'
 const COS_DELAY_MS = 1500
 /**
- * The public search embeds at most 300 hits and ignores a page number.
- * A mid-2028 window came back empty; ~21 months covers the dates the index still lists (into late 2027).
+ * The public search API pages. A mid-2028 window came back empty;
+ * ~21 months covers the dates the index still lists (into late 2027).
  */
 const COS_HORIZON_DAYS = 640
 const COS_WINDOW_DAYS = 7
@@ -136,40 +175,65 @@ function cosSpan(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000)
 }
 
+function cosHitId(h: any): string {
+  const id = h?.objectID ?? h?.objectId ?? h?.eventId
+  return id != null && String(id).trim() ? String(id) : ''
+}
+
+function cosGenreNames(h: any): string[] {
+  const raw = [...(h.categories ?? []), ...(h.tags ?? []), ...(h.vibes ?? [])]
+  return raw.map((item: unknown) => {
+    if (typeof item === 'string') return item.replace(/-/g, ' ')
+    if (item && typeof item === 'object' && typeof (item as { name?: unknown }).name === 'string') return (item as { name: string }).name
+    return ''
+  }).filter(Boolean)
+}
+
 async function saveCosHit(h: any): Promise<boolean> {
   if (yieldIfBudget('event pages')) return false
-  const [start, end] = String(h.eventUpcomingTime ?? '').split(/\s+to\s+/)
-  const free = h.freeEvent === 'true' || h.freeEvent === true
+  const when = cosWhen(h)
+  if (!when.date) return false
   const slug = String(h.slug ?? '').trim().replace(/^\/+|\/+$/g, '')
   const page = slug && !/^(undefined|null)$/i.test(slug) ? usableUrl(`${COS_ORIGIN}/events/${slug}`) : null
-  const loaded = slug ? await loadCosEventPage(slug) : { price: null, html: null }
+  const loaded = slug ? await loadCosEventPage(slug) : EMPTY_COS
   const listed = loaded.html && page ? extractListingVenue(loaded.html, page) : null
+  const hitLocation = h.location && typeof h.location === 'object' ? h.location : null
   const place = cityOfSydneyPlace({
-    listedAddress: listed?.address,
-    listedLat: listed?.lat,
-    listedLng: listed?.lng,
-    suburbName: typeof h.suburbName === 'string' ? h.suburbName : null,
+    listedAddress: listed?.address || loaded.address || hitLocation?.address || null,
+    listedLat: listed?.lat ?? loaded.lat ?? (typeof hitLocation?.latitude === 'number' ? hitLocation.latitude : null),
+    listedLng: listed?.lng ?? loaded.lng ?? (typeof hitLocation?.longitude === 'number' ? hitLocation.longitude : null),
+    suburbName: loaded.suburbName || (typeof hitLocation?.suburbName === 'string' ? hitLocation.suburbName : null) || (typeof h.suburbName === 'string' ? h.suburbName : null),
   })
-  const price = free ? null : (priceFromCosData(h.priceData ?? h.cost ?? h.price) ?? loaded.price)
-  const external = firstListingUrl(h, ['bookingUrl', 'bookingLink', 'ticketUrl', 'ticketLink', 'buyUrl', 'externalUrl', 'website', 'websiteUrl'])
+  const priced = loaded.price || cosPriceText(h.priceData ?? h.cost ?? h.price)
+  const flaggedFree = h.freeEvent === 'true' || h.freeEvent === true || h.isFree === true || h.isFree === 'true' || loaded.isFree === true
+  const free = flaggedFree && !priced
+  const external = firstListingUrl(
+    { ...h, website: h.website || loaded.website, ticketingLink: h.ticketingLink || loaded.ticketingLink },
+    ['bookingUrl', 'bookingLink', 'ticketUrl', 'ticketLink', 'buyUrl', 'ticketingLink', 'externalUrl', 'website', 'websiteUrl'],
+  )
   const ticket = external && isTicketLink(external, 'cityofsydney', 'ticket') ? external : null
+  const image = h.tileImageCloudinary?.[0]?.secure_url
+    ?? (typeof h.tileImage?.url === 'string' ? h.tileImage.url : null)
+    ?? (typeof h.mainImage?.url === 'string' ? h.mainImage.url : null)
   return saveEvent({
     title: h.name,
-    description: h.strapline,
-    date: h.upcomingDate ?? h.dates?.[0],
-    time: start ? parse12h(start) : null,
-    endTime: end ? parse12h(end) : null,
-    venueName: listed?.venueName || h.venueName || h.suburbName || 'TBA',
+    description: preferDescription(loaded.description, h.description, h.strapline),
+    date: when.date,
+    time: when.time,
+    endDate: when.endDate,
+    endTime: when.endTime,
+    venueName: listed?.venueName || loaded.venueName || h.venueName || hitLocation?.venueName || h.suburbName || 'TBA',
     venueAddress: place.venueAddress,
     ...(place.lat != null && place.lng != null ? { latitude: place.lat, longitude: place.lng } : {}),
-    genres: [...(h.categories ?? []), ...(h.tags ?? [])].map((t: string) => t.replace(/-/g, ' ')),
+    genres: cosGenreNames(h),
     isFree: free,
-    price,
-    imageUrl: h.tileImageCloudinary?.[0]?.secure_url ?? null,
+    price: free ? null : priced,
+    imageUrl: image,
     ticketUrl: ticket,
     sourceUrl: page ?? (external && external !== ticket ? external : null),
     organiserUrl: external && external !== page && external !== ticket ? external : null,
     source: 'cityofsydney',
+    externalId: cosHitId(h) || null,
   }).catch(() => false)
 }
 
@@ -181,7 +245,7 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
   const consider = async (hits: Iterable<any>) => {
     for (const h of hits) {
       if (yieldIfBudget('search hits')) break
-      const id = h?.objectID ? String(h.objectID) : ''
+      const id = cosHitId(h)
       if (id && seen.has(id)) continue
       if (id) seen.add(id)
       if (await saveCosHit(h)) saved++
@@ -190,29 +254,41 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
   }
 
   const home = await fetchHtml(`${COS_ORIGIN}/`)
-  const homeData = home ? extractNextData(home) : null
-  if (homeData) {
-    const hits = new Map<string, any>()
-    const walk = (o: any) => {
-      if (Array.isArray(o)) o.forEach(walk)
-      else if (o && typeof o === 'object') {
-        if (o.type === 'Event' && o.objectID && Array.isArray(o.dates)) hits.set(o.objectID, o)
-        Object.values(o).forEach(walk)
-      }
-    }
-    walk(homeData?.props?.pageProps?.sectionAdditionalData)
-    await consider(hits.values())
-  }
+  if (home) await consider(cosHitsFromHtml(home))
 
   const search = async (start: string, end: string): Promise<{ hits: any[]; truncated: boolean } | null> => {
-    const html = await fetchHtml(`${COS_ORIGIN}/?dates=${start},${end}`)
-    const sr = (html ? extractNextData(html) : null)?.props?.pageProps?.searchResults
-    await sleep(COS_DELAY_MS)
-    if (!sr) return null
-    const hits: any[] = sr.hits ?? []
-    const nbHits = Number(sr.nbHits ?? hits.length)
-    const nbPages = Number(sr.nbPages ?? (hits.length ? 1 : 0))
-    return { hits, truncated: nbPages > 1 || nbHits > hits.length }
+    const hits: any[] = []
+    let total = 0
+    const size = 100
+    for (let pageNo = 1; pageNo <= 20; pageNo++) {
+      if (yieldIfBudget('search pages')) break
+      let json: { events?: any[]; totalResults?: number } | null = null
+      try {
+        const res = await fetch(
+          `${COS_ORIGIN}/api/v1/events/eventsearch?pageNo=${pageNo}&resultsPerPage=${size}&isListingSearch=true&dates=${start},${end}`,
+          {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36', Accept: 'application/json' },
+            signal: sourceFetchSignal(20000),
+          },
+        )
+        if (res.ok) json = await res.json()
+      } catch (err) {
+        console.warn(`[cityofsydney] search ${start} failed: ${err instanceof Error ? err.message : err}`)
+      }
+      await sleep(COS_DELAY_MS)
+      if (!json) {
+        if (pageNo > 1) break
+        const html = await fetchHtml(`${COS_ORIGIN}/?dates=${start},${end}`)
+        const embedded = html ? cosHitsFromHtml(html) : []
+        return embedded.length ? { hits: embedded, truncated: embedded.length >= 300 } : null
+      }
+      const batch: any[] = json.events ?? []
+      total = Number(json.totalResults ?? hits.length + batch.length)
+      hits.push(...batch)
+      if (!batch.length || hits.length >= total || batch.length < size) break
+    }
+    if (!hits.length && !total) return null
+    return { hits, truncated: total > hits.length }
   }
 
   const ingest = async (start: string, end: string) => {

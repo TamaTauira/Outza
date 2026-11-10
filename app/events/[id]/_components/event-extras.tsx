@@ -4,8 +4,6 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { Accessibility, Baby, Bus, Building2, ExternalLink, Map as MapIcon } from 'lucide-react'
 import { toast } from 'sonner'
-import { sourceLabel } from '@/lib/quality'
-import { formatUpdated } from '@/lib/listing-window'
 import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
 import { VenueMap } from '@/components/venue-map'
@@ -71,22 +69,6 @@ export async function shareEvent(event: { id: string; title: string }) {
     if (navigator.share) await navigator.share({ title: event.title, url })
     else { await navigator.clipboard.writeText(url); toast.success('Link copied. Go on, send it.') }
   } catch (err: any) { if (err?.name !== 'AbortError') console.error('Share failed:', err) }
-}
-
-/** One short line: where the listing came from, and when it was updated. */
-export function SourceLine({ event }: { event: any }) {
-  const label = sourceLabel(event?.source).replace(/\bverified\b/ig, '').replace(/\s{2,}/g, ' ').trim() || 'a listing site'
-  const href = event?.sourceUrl || event?.organiserUrl || event?.ticketUrl
-  const linked = typeof href === 'string' && /^https?:\/\//i.test(href) ? href : null
-  const updated = formatUpdated(event?.quality?.checkedAt)
-  return (
-    <p className="text-xs text-muted-foreground">
-      Source: {linked
-        ? <a href={linked} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{label}</a>
-        : label}
-      {updated ? ` · Updated ${updated}` : ''}
-    </p>
-  )
 }
 
 function Info({ icon: Icon, title, children }: { icon: typeof Bus; title: string; children: React.ReactNode }) {

@@ -203,7 +203,7 @@ function decodeXml(value: string): string {
     .replace(/&apos;/g, "'")
 }
 
-/** Rich-text description as plain text. saveEvent still applies its own length cap. */
+/** Rich-text description as plain text. saveEvent keeps the paragraphs, up to 8000 characters. */
 export function humanitixPlainText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
