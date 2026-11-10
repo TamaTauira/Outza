@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, BadgeCheck, BarChart3, Brain, CalendarPlus, Download, Eye, FileText, LineChart, Loader2, Lock, LogOut, Mail, Megaphone, MousePointerClick, Pencil, Receipt, Rocket, Search, Share2, Sparkles, Store, Trash2, Users, Wallet } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { REFERRAL_LABELS, REFERRAL_SOURCES } from '@/lib/referral-labels'
-import { PRO_PLAN, TIER_KEYS, formatAud, productName, tierDef } from '@/lib/tiers'
+import { PRO_PLAN, TIER_KEYS, formatAud, isDuration, productName, tierDef, type Duration } from '@/lib/tiers'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
 import { cn } from '@/lib/utils'
@@ -60,6 +60,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
   const [loading, setLoading] = useState(true)
   const [promoteId, setPromoteId] = useState('')
   const [promoteTier, setPromoteTier] = useState('')
+  const [promoteDays, setPromoteDays] = useState<Duration | null>(null)
   const [proBusy, setProBusy] = useState(false)
 
   const load = useCallback(async () => {
@@ -81,6 +82,8 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     if (ev) { setPromoteId(ev); if (!t) setTab('promote') }
     const tier = p.get('tier')
     if (tier === 'SILVER' || tier === 'BRONZE' || tier === 'GOLD') { setPromoteTier(tier); if (!t && !ev) setTab('promote') }
+    const days = Number(p.get('days'))
+    if (isDuration(days)) setPromoteDays(days)
   }, [load])
 
   const stats = useMemo(() => {
@@ -153,7 +156,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
               <section className={card}>
                 <h2 className="font-display text-xl font-bold mb-1">Build a campaign</h2>
                 <p className="text-sm text-muted-foreground mb-6">Four quick steps. Your campaign starts the moment payment is confirmed.</p>
-                <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} onEventChange={setPromoteId} onDone={() => { load(); setTab('events') }} />
+                <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} initialDays={promoteDays ?? undefined} onEventChange={setPromoteId} onDone={() => { load(); setTab('events') }} />
               </section>
             )}
             {tab === 'events' && <EventsTab events={events} claims={claims} pro={account.pro} homeCity={account.homeCity || 'Sydney'} onPromote={startPromote} reload={load} />}

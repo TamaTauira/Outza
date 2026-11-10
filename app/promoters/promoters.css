@@ -1,0 +1,20 @@
+/* This page is a light marketing canvas even when the rest of the site is in dark mode,
+   so the black bands, white sections and dark package cards match the design. */
+.vp-promoters {
+  --background: 50 20% 95%;
+  --foreground: 105 17% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 105 17% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 105 17% 9%;
+  --muted: 50 14% 92%;
+  --muted-foreground: 140 5% 34%;
+  --border: 50 10% 85%;
+  --input: 50 10% 85%;
+  --primary: 16 84% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 50 12% 91%;
+  --secondary-foreground: 105 17% 9%;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
