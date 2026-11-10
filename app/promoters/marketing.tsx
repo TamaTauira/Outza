@@ -36,7 +36,7 @@ const PATHS = [
 const STEPS = [
   { n: '01', title: 'Claim', Icon: CalendarPlus, body: 'Claim a listing already on the board, or create one free. A matching email domain is accepted straight away; otherwise we check the claim by hand.' },
   { n: '02', title: 'Boost', Icon: Megaphone, body: 'Pick Boost, Spotlight or Headliner, preview the sponsored card, and pay once. It starts as soon as payment is confirmed.' },
-  { n: '03', title: 'Report', Icon: BarChart3, body: 'Views, ticket clicks, saves and traffic sources sit in your dashboard, with the reads marked available now further down. Email a report when you want one, or weekly.' },
+  { n: '03', title: 'Report', Icon: BarChart3, body: 'Results shows the day-by-day read, the funnel, reactions, Spotlight and where people saw the listing. Views and clicks unlock when the event is promoted, or with Promoter Pro. Email a recap weekly, or when you ask.' },
 ] as const
 
 const PLAN_POINTS: Record<string, string[]> = {
@@ -253,7 +253,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
           <p className="font-display text-5xl font-bold tabular-nums" data-testid="pro-price">{formatAud(PRO_PLAN.priceCents)}</p>
           <p className="mt-1 text-white/75">for {PRO_PLAN.days} days · extend any time</p>
           <p className="mt-4 text-sm text-white/80">Pays for itself once you spend about {proPayback} on promotions in a month.</p>
-          <p className="mt-3 text-sm text-white/75">Views and ticket-link analytics are on for every event you run while Pro is active, not only the ones you promote. Other reads are marked available now or coming soon in the dashboard section.</p>
+          <p className="mt-3 text-sm text-white/75">While Promoter Pro is on, views, Get tickets, More info, where a listing was seen, search terms and Spotlight spend unlock for every event you run. A promotion unlocks the same reads for that event. Reactions, saves and going stay visible either way.</p>
           <Link href={href} className={`${ctaClass} mt-6 w-full`}>{label}</Link>
         </div>
       </div>

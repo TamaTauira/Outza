@@ -1,4 +1,4 @@
-import { Check, Clock } from 'lucide-react'
+import { Check } from 'lucide-react'
 
 // Fictional demonstration data — only used to show the dashboard layout. Never real metrics.
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -7,9 +7,8 @@ const TOTAL = VIEWS.reduce((s, v) => s + v, 0)
 const CLICKS = 842
 
 /**
- * Statuses match the promoter dashboard on this branch.
- * "Available now" is something the code already records or sends.
- * "Coming soon" is described so the page stays honest until that read ships.
+ * Statuses match Results on the promoter dashboard.
+ * Locked reads still exist: they open when the event is promoted, or with Promoter Pro.
  */
 const CAPABILITIES: { label: string; live: boolean; note?: string }[] = [
   { label: 'Event creation', live: true },
@@ -20,23 +19,23 @@ const CAPABILITIES: { label: string; live: boolean; note?: string }[] = [
   { label: 'Listing edits', live: true },
   { label: 'Referral traffic', live: true },
   { label: 'Invoice downloads', live: true },
-  { label: 'Emailed performance reports', live: true, note: 'Weekly, or when you ask' },
+  { label: 'Weekly email recap', live: true, note: 'That week’s figures, or a report when you ask. Unsubscribe turns the recap off only.' },
   { label: 'Views, saves, going and reaction totals', live: true },
-  { label: 'CSV export of your events', live: true },
+  { label: 'CSV export of your events, and of Results', live: true },
   { label: 'Short-boost impressions, detail views, ticket clicks and repeat interest', live: true },
-  { label: 'Shares and itinerary adds in the weekly email', live: true },
-  { label: 'Audience snapshot in the weekly email', live: true, note: 'Age bands, home areas, interests, how far ahead people plan' },
-  { label: 'Reactions by type (Hot, Love it, Interested)', live: false },
-  { label: 'Info clicks, separate from ticket clicks', live: false },
-  { label: 'Where the event was seen, and the searches that led to it', live: false },
-  { label: 'Spotlight impressions, clicks, CTR and cost per click', live: false },
-  { label: 'Day-by-day charts', live: false },
-  { label: 'Funnel', live: false },
-  { label: 'Competition radar', live: false },
-  { label: 'Benchmarks', live: false, note: 'We don’t invent a comparison figure' },
-  { label: 'Spotlight return estimate', live: false },
-  { label: 'Tracked share links', live: false },
-  { label: 'Tips', live: false },
+  { label: 'Shares, itinerary adds and plan adds', live: true },
+  { label: 'Audience snapshot', live: true, note: 'Categories and music styles in Results. Age bands, home areas and how far ahead people plan stay in the weekly email.' },
+  { label: 'Reactions by type (Hot, Love it, Interested, Excited)', live: true, note: 'Visible without a promotion' },
+  { label: 'More info clicks, separate from Get tickets', live: true, note: 'Unlocks when the event is promoted, or with Promoter Pro' },
+  { label: 'Where the event was seen, and the searches that led to it', live: true, note: 'Board, Hot right now, search, map, Local and Spotlight. Unlocks with a promotion or Promoter Pro.' },
+  { label: 'Spotlight impressions, clicks, CTR and cost per click', live: true, note: 'Spend unlocks with a promotion or Promoter Pro' },
+  { label: 'Day-by-day charts', live: true, note: 'In Results, for the range you pick' },
+  { label: 'Funnel', live: true, note: 'Seen, opened, saved, then Get tickets' },
+  { label: 'Competition radar', live: true, note: 'Other public titles on the same night. Their numbers stay private.' },
+  { label: 'Benchmarks', live: true, note: 'A ratio against at least 8 similar listings. No invented comparison.' },
+  { label: 'Spotlight return estimate', live: true, note: 'You type a ticket price. Ticket sales stay on your own site.' },
+  { label: 'Tracked share links', live: true, note: 'Visit counts unlock with a promotion or Promoter Pro' },
+  { label: 'Tips', live: true, note: 'Written from the numbers on the listing' },
 ]
 
 function Chart() {
@@ -96,7 +95,7 @@ export function DashboardPreview() {
       </div>
 
       <div className="min-w-0">
-        <p className="text-sm text-muted-foreground">Views and ticket clicks show for a promoted event, and for every event while Promoter Pro is active. Saves, going and reaction totals are on the dashboard either way. The chart above is not a live report.</p>
+        <p className="text-sm text-muted-foreground">Results is on the promoter dashboard. Reactions, saves and going show either way. Views, Get tickets, More info, where a listing was seen, search terms and Spotlight spend unlock when that event is promoted, or while Promoter Pro is on. The chart on the left is not a live report.</p>
         <h3 className="mt-5 text-sm font-semibold">Available now</h3>
         <ul className="mt-2 space-y-2">
           {CAPABILITIES.filter((item) => item.live).map((item) => (
@@ -106,15 +105,6 @@ export function DashboardPreview() {
                 <span>{item.label}{item.note ? <span className="mt-0.5 block text-xs text-muted-foreground">{item.note}</span> : null}</span>
               </span>
               <span className="shrink-0 text-xs font-semibold text-[#9A3412]">Available now</span>
-            </li>
-          ))}
-        </ul>
-        <h3 className="mt-6 text-sm font-semibold">Described here, not in the dashboard yet</h3>
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {CAPABILITIES.filter((item) => !item.live).map((item) => (
-            <li key={item.label} className="inline-flex max-w-full items-start gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
-              <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>{item.label}{item.note ? ` — ${item.note}` : ''} · Coming soon</span>
             </li>
           ))}
         </ul>
