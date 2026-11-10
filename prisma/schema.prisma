@@ -581,6 +581,8 @@ model NewsletterSend {
   error     String?
   sentAt    DateTime  @default(now())
   openedAt  DateTime?
+  /// Resend email id, so an open or click webhook can find this edition.
+  resendId  String?   @unique
   clicks    NewsletterClick[]
 
   @@index([userId, sentAt])
@@ -1657,4 +1659,47 @@ model ShareLink {
 
   @@index([promoterId, createdAt])
   @@index([eventId])
+}
+
+/// One anonymous visitor per Sydney calendar day. No name, email, or IP address.
+model AudienceDay {
+  visitorId String
+  day       String
+  createdAt DateTime @default(now())
+
+  @@id([visitorId, day])
+  @@index([day])
+}
+
+/// One search, with no query text stored. `clicked` means an event was opened from it.
+model DiscoverySearch {
+  visitorId String
+  day       String
+  queryKey  String
+  clicked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@id([visitorId, day, queryKey])
+  @@index([day])
+  @@index([visitorId, day, createdAt])
+}
+
+/// The day first-party audience or discovery tracking first wrote a row.
+model MetricEpoch {
+  key       String   @id
+  startedAt DateTime
+}
+
+/// Monthly marketing spend typed in by an admin. The only manual commercial input.
+model MarketingSpend {
+  month       String   @id
+  amountCents Int
+  note        String?
+  updatedAt   DateTime @updatedAt
+}
+
+/// Resend webhook id, so a retry does not record the same open or click twice.
+model EmailWebhookEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
 }

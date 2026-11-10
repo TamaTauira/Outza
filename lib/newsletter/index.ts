@@ -144,7 +144,13 @@ export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'tes
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
   const to = opts.to || user!.email
-  const res = await sendEmail({ to, subject: built.subject, html: built.html, text: built.text })
+  const res = await sendEmail({
+    to,
+    subject: built.subject,
+    html: built.html,
+    text: built.text,
+    ...(opts.mode === 'send' ? { tags: [{ name: 'send_id', value: built.sendId }] } : {}),
+  })
   if (res.disabled) {
     await prisma.newsletterSend.update({
       where: { id: built.sendId },
@@ -159,6 +165,12 @@ export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'tes
     where: { id: built.sendId },
     data: { ...base, status, error: safeError, sentAt: new Date() },
   })
+  if (res.providerId) {
+    await prisma.newsletterSend.update({ where: { id: built.sendId }, data: { resendId: res.providerId } }).catch((err) => {
+      const code = (err as { code?: string })?.code
+      if (code !== 'P2021' && code !== 'P2022') console.error('[digest] resend id', (err as Error).message)
+    })
+  }
   if (!res.ok) {
     console.error(`[digest] newsletter user=${userId} ${res.restricted ? 'restricted' : 'failed'}: ${safeError}`)
     await recordMailDelivery({ kind: 'newsletter', userId, status: res.restricted ? 'restricted' : 'failed', error: safeError })

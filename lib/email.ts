@@ -37,7 +37,11 @@ export type SendEmailResult = {
   /** True when Resend refused because the From address cannot mail this recipient. */
   restricted?: boolean
   error?: string
+  /** Resend email id, when that transport accepted the message. */
+  providerId?: string
 }
+
+export type MailTag = { name: string; value: string }
 
 type OutboundMessage = {
   from: string
@@ -311,9 +315,15 @@ function isRestricted(status: number, message: string): boolean {
   return status === 403 || /testing emails|verify a domain|domain is not verified|can only send/i.test(message)
 }
 
-async function deliverResend(opts: { to: string; subject: string; html: string; text?: string }): Promise<SendEmailResult> {
+function cleanTags(tags?: MailTag[]): MailTag[] | undefined {
+  const out = (tags ?? []).filter((tag) => /^[A-Za-z0-9_]{1,50}$/.test(tag.name) && /^[A-Za-z0-9_-]{1,100}$/.test(tag.value))
+  return out.length ? out : undefined
+}
+
+async function deliverResend(opts: { to: string; subject: string; html: string; text?: string; tags?: MailTag[] }): Promise<SendEmailResult> {
   const apiKey = envTrim('RESEND_API_KEY')
   const from = resendFromAddress()
+  const tags = cleanTags(opts.tags)
   try {
     const res = await fetch(RESEND_EMAILS_URL, {
       method: 'POST',
@@ -327,6 +337,7 @@ async function deliverResend(opts: { to: string; subject: string; html: string; 
         subject: opts.subject,
         html: opts.html,
         ...(opts.text ? { text: opts.text } : {}),
+        ...(tags ? { tags } : {}),
       }),
       signal: AbortSignal.timeout(20_000),
     })
@@ -341,7 +352,10 @@ async function deliverResend(opts: { to: string; subject: string; html: string; 
       }
       return { ok: false, error: safe, ...(restricted ? { restricted: true } : {}) }
     }
-    return { ok: true }
+    const providerId = result && typeof result === 'object' && typeof (result as { id?: unknown }).id === 'string'
+      ? (result as { id: string }).id
+      : ''
+    return providerId ? { ok: true, providerId } : { ok: true }
   } catch (e: unknown) {
     const safe = redactEmails(e instanceof Error && e.message ? e.message : 'send failed')
     console.error(`[email] send failed ${safe}`)
@@ -355,6 +369,7 @@ export async function sendEmail(opts: {
   html: string
   text?: string
   senderAlias?: string
+  tags?: MailTag[]
 }): Promise<SendEmailResult> {
   const to = opts.to?.trim()
   if (!to) return { ok: false, error: 'Missing recipient' }
@@ -365,7 +380,7 @@ export async function sendEmail(opts: {
   }
   const message = { to, subject: opts.subject, html: opts.html, text: opts.text }
   if (transportName === 'smtp') return enqueueSmtp(() => deliverSmtp(message))
-  return deliverResend(message)
+  return deliverResend({ ...message, tags: opts.tags })
 }
 
 /**

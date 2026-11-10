@@ -25,7 +25,7 @@ test('publishing a local listing is not blocked by a required import URL', async
 })
 
 test('signed-out admin, account and promoter pages ask for sign-in', async ({ page }) => {
-  for (const path of ['/admin', '/account', '/promoter']) {
+  for (const path of ['/admin', '/admin/metrics', '/account', '/promoter']) {
     await page.goto(path)
     await expect(page.getByRole('heading', { name: /back for more/i })).toBeVisible()
   }

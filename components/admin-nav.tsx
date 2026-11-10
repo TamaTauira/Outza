@@ -8,6 +8,7 @@ import { VibePeepLogo } from '@/components/vibepeep-logo'
 
 const LINKS = [
   { href: '/admin', label: 'Dashboard', exact: true },
+  { href: '/admin/metrics', label: 'Metrics' },
   { href: '/admin/trust', label: 'Trust & listings' },
   { href: '/admin/venues', label: 'Venue claims' },
   { href: '/admin/local', label: 'Local' },

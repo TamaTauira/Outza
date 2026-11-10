@@ -17,6 +17,7 @@ const CARDS = [
   { href: '/admin/intel', title: 'Intelligence', body: 'Official data sources.' },
   { href: '/admin/sources', title: 'Event sources', body: 'Source register, duplicate reviews, and ingestion alerts.' },
   { href: '/admin/sponsorship', title: 'Sponsorship', body: 'Paying organisers, repeat purchase, MRR and margin.' },
+  { href: '/admin/metrics', title: 'Metrics', body: 'Who’s coming back, whether listings hold up, and what each paying business is worth.' },
 ]
 
 export default async function AdminHome() {

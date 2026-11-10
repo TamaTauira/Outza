@@ -7,6 +7,7 @@ import '@/components/vibepeep-dances.css'
 import '@/components/bottom-nav.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+import { AudienceTracker } from '@/components/audience-tracker'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { DeploymentFetchPin } from '@/components/deployment-fetch-pin'
 import { Providers } from '@/components/providers'
@@ -96,6 +97,7 @@ export default function RootLayout({
           <VibePeepBuddySlot />
           <Toaster />
           <ChunkLoadErrorHandler />
+          <AudienceTracker />
           <DeploymentFetchPin />
         </ThemeProvider>
       </body>
