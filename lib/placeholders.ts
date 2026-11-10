@@ -1,4 +1,9 @@
-/** Genre artwork in public/placeholders/. Files are served as stored. */
+/**
+ * Genre holding art in public/placeholders/<slug>/<slot>.webp.
+ * Each slot is drawn at that slot's aspect ratio, so the page shows the file
+ * whole (object-contain) instead of cropping one poster into every frame.
+ * Files are the 2× size of the largest box that slot is shown in.
+ */
 
 export const PLACEHOLDER_SLUGS = [
   'arts-culture',
@@ -14,7 +19,30 @@ export const PLACEHOLDER_SLUGS = [
 ] as const
 
 export type PlaceholderSlug = (typeof PLACEHOLDER_SLUGS)[number]
-export type PlaceholderShape = 'wide' | 'square'
+
+/** Pixel size of the file for each slot. Aspect ratio is width / height. */
+export const PLACEHOLDER_SLOTS = {
+  /** Event hero below 640px, and the email hero. 16:9. */
+  hero: { w: 1600, h: 900 },
+  /** Event hero from 640px up. 3:1. */
+  'hero-wide': { w: 2400, h: 800 },
+  /** Board cards, home rails, promoter preview. 4:3. */
+  card: { w: 1600, h: 1200 },
+  /** Hot right now. 16:9. */
+  featured: { w: 1920, h: 1080 },
+  /** Guide rows and email thumbs. 1:1. */
+  square: { w: 1000, h: 1000 },
+  /** Round map pins. 1:1, composed inside the circle. */
+  marker: { w: 512, h: 512 },
+  /** Map popup. 5:2. */
+  popup: { w: 1200, h: 480 },
+  /** Community hub cards. 5:2. */
+  band: { w: 1600, h: 640 },
+  /** Open Graph / share image. 1200×630 at 2×. */
+  og: { w: 2400, h: 1256 },
+} as const
+
+export type PlaceholderSlot = keyof typeof PLACEHOLDER_SLOTS
 
 const SLUGS = new Set<string>(PLACEHOLDER_SLUGS)
 
@@ -64,19 +92,29 @@ export function placeholderSlug(category?: string | null): PlaceholderSlug {
   return DEFAULT_SLUG
 }
 
-/** Site-relative path. Square crops use the -square file; everything else uses the wide file. */
-export function placeholderPath(category?: string | null, shape: PlaceholderShape = 'wide'): string {
-  const slug = placeholderSlug(category)
-  return shape === 'square' ? `/placeholders/${slug}-square.webp` : `/placeholders/${slug}.webp`
+/** Site-relative path for one slot of a genre. */
+export function placeholderPath(category?: string | null, slot: PlaceholderSlot = 'hero'): string {
+  return `/placeholders/${placeholderSlug(category)}/${slot}.webp`
 }
 
-export function placeholderAbsolute(category: string | null | undefined, shape: PlaceholderShape, origin: string): string {
+export function placeholderAbsolute(category: string | null | undefined, slot: PlaceholderSlot, origin: string): string {
   const base = origin.replace(/\/+$/, '')
-  return `${base}${placeholderPath(category, shape)}`
+  return `${base}${placeholderPath(category, slot)}`
 }
 
-/** A real http(s) picture, otherwise the genre placeholder for the crop. */
-export function eventPictureSrc(imageUrl: string | null | undefined, category: string | null | undefined, shape: PlaceholderShape = 'wide'): string {
+/** A real http(s) picture, otherwise the genre holding image for the slot. */
+export function eventPictureSrc(imageUrl: string | null | undefined, category: string | null | undefined, slot: PlaceholderSlot = 'hero'): string {
   if (imageUrl && /^https?:\/\//i.test(imageUrl)) return imageUrl
-  return placeholderPath(category, shape)
+  return placeholderPath(category, slot)
+}
+
+/** True when the listing has its own picture, so the frame can stay a photo crop. */
+export function hasListingPhoto(
+  imageUrl?: string | null,
+  variants?: { sizes?: Partial<Record<string, number[] | undefined>> } | null,
+): boolean {
+  if (imageUrl && /^https?:\/\//i.test(imageUrl)) return true
+  const sizes = variants?.sizes
+  if (!sizes) return false
+  return Object.values(sizes).some((widths) => !!widths?.length)
 }

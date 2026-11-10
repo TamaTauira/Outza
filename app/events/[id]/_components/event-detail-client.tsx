@@ -13,7 +13,8 @@ import { CATEGORIES } from '@/lib/categories'
 import { StatusBanner } from '@/components/data-confidence'
 import { LocalRecommendations } from '@/components/local-recommendations'
 import { ItineraryButton } from '@/components/itinerary-button'
-import { EventExtras, EventGallery, HERO_FRAME, SourceLine, shareEvent } from './event-extras'
+import { EventExtras, EventGallery, HERO_FRAME, HERO_HOLD, SourceLine, shareEvent } from './event-extras'
+import { hasListingPhoto } from '@/lib/placeholders'
 import { ListingTrustActions } from '@/components/listing-trust-actions'
 import { ticketHref } from '@/lib/affiliate'
 import { eventOutbound } from '@/lib/listing-link'
@@ -199,18 +200,20 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_19.5rem] lg:gap-x-6 lg:gap-y-4 lg:items-start">
           <header className="min-w-0 space-y-3 lg:col-start-1">
             <EventGallery event={event}>
-              <div className={cn(HERO_FRAME, 'rounded-xl border border-border')}>
+              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border')}>
                 <EventImage
                   key={event.id}
                   image={event.imageAsset}
                   src={event.imageUrl}
                   kind="hero"
                   alt={event?.title ?? 'Event'}
-                  sizes="(max-width: 1024px) 100vw, 720px"
+                  sizes="(max-width: 1024px) 100vw, 1200px"
                   priority
                   crop
                   accent={catDef?.color}
                   category={event.communityKey || event.category}
+                  slot="hero"
+                  wideSlot="hero-wide"
                 />
                 {event?.isLGBTI && (
                   <div className="absolute top-3 right-3 z-10 rainbow-bg text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-lg">

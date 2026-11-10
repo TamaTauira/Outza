@@ -21,7 +21,7 @@ export function PlacementPreview({ event, tier, addons }: { event?: Ev; tier: Ti
       <div className="grid sm:grid-cols-[220px_1fr] gap-5 items-start">
         <div className="rounded-xl overflow-hidden bg-card shadow-md border border-border">
           <div className="relative aspect-[4/3] bg-muted">
-            <img src={event.imageUrl && imgOk ? event.imageUrl : eventPictureSrc(null, event.category, 'wide')} alt={`Artwork for ${event.title}`} className="absolute inset-0 w-full h-full object-cover" onError={() => setImgOk(false)} />
+            <img src={event.imageUrl && imgOk ? event.imageUrl : eventPictureSrc(null, event.category, 'card')} alt={`Artwork for ${event.title}`} className={`absolute inset-0 h-full w-full ${event.imageUrl && imgOk ? 'object-cover' : 'object-contain'}`} style={event.imageUrl && imgOk ? undefined : { background: '#110e16' }} onError={() => setImgOk(false)} />
             <span className="absolute z-10 top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ backgroundColor: t.color }}>{t.name.toUpperCase()}</span>
             <span className="absolute z-10 top-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">Sponsored</span>
           </div>

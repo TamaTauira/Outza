@@ -211,7 +211,7 @@ export function eventImageUrl(ev: { imageUrl?: string | null; category?: string 
     return url.startsWith('http') ? url : `${origin}${url}`
   }
   if (ev.imageUrl && /^https?:\/\//.test(ev.imageUrl)) return ev.imageUrl
-  return placeholderAbsolute(ev.category, 'wide', origin)
+  return placeholderAbsolute(ev.category, 'og', origin)
 }
 
 const STATUS_SCHEMA: Record<string, string> = {

@@ -14,7 +14,7 @@ import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
-import { eventPictureSrc } from '@/lib/placeholders'
+import { eventPictureSrc, type PlaceholderSlot } from '@/lib/placeholders'
 import { variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
@@ -32,21 +32,29 @@ interface MapViewProps {
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 
-function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, shape: 'wide' | 'square') {
-  const kind: VariantKind = shape === 'square' ? 'square' : 'card'
+function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, slot: PlaceholderSlot) {
+  const kind: VariantKind = slot === 'marker' || slot === 'square' ? 'square' : 'card'
   const m = e.imageAsset?.variants
   const widths = m?.sizes?.[kind]
   if (m && widths?.length) return variantUrl(m, kind, widths[widths.length - 1], 'webp')
-  return eventPictureSrc(e.imageUrl, e.category, shape)
+  return eventPictureSrc(e.imageUrl, e.category, slot)
+}
+
+function holdingPicture(e: { imageUrl?: string | null; imageAsset?: ClientImage | null }, slot: PlaceholderSlot) {
+  const kind: VariantKind = slot === 'marker' || slot === 'square' ? 'square' : 'card'
+  const widths = e.imageAsset?.variants?.sizes?.[kind]
+  if (widths?.length) return false
+  return !(e.imageUrl && /^https?:\/\//i.test(e.imageUrl))
 }
 
 function popupHtml(e: any, tier?: string) {
   const date = new Date(e?.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
   const clock = boardClockLine(e)
   const p = formatPrice(e?.isFree, e?.price, e?.priceMin, e?.priceMax)
-  const img = pictureSrc(e, 'wide')
+  const img = pictureSrc(e, 'popup')
+  const imgClass = holdingPicture(e, 'popup') ? 'se-pop-hold' : 'se-pop-img'
   return `<div class="se-pop">${tier ? `<span class="se-pop-tier se-${tier.toLowerCase()}">${esc(tier)}</span>` : ''}
-    <img class="se-pop-img" src="${esc(img)}" alt="" />
+    <img class="${imgClass}" src="${esc(img)}" alt="" />
     <div class="se-pop-title">${esc(e?.title)}</div>
     <div class="se-pop-meta">${esc(date)}${clock ? ` · ${esc(clock)}` : ''}<br/>${esc(e?.venueName)}</div>
     <div class="se-pop-row"><span class="se-pop-price ${p.kind === 'free' ? 'free' : ''}">${esc(p.prefix ? `${p.prefix} ` : '')}${esc(p.value)}</span>
@@ -56,7 +64,7 @@ function popupHtml(e: any, tier?: string) {
 function markerIcon(L: any, e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, color: string, tier?: string) {
   const size = tier === 'GOLD' ? 44 : tier === 'BRONZE' ? 36 : 26
   const ring = tier === 'GOLD' ? '#F5B700' : '#fff'
-  const src = pictureSrc(e, 'square')
+  const src = pictureSrc(e, 'marker')
   return L.divIcon({
     className: 'se-marker-wrap',
     html: `<div class="se-marker ${tier ? `se-marker-${tier.toLowerCase()}` : ''}" style="width:${size}px;height:${size}px;background-color:${color};border-color:${ring};background-image:url('${esc(src)}')"></div>`,

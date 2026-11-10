@@ -4,7 +4,7 @@ import { categoryColor, categoryInk } from '@/lib/categories'
 import { loadSharp } from '@/lib/images/pipeline'
 import { bestSourceUrl } from '@/lib/images/source-url'
 import { BROWSER_UA } from '@/lib/event-store'
-import { placeholderAbsolute, type PlaceholderShape } from '@/lib/placeholders'
+import { placeholderAbsolute, type PlaceholderSlot } from '@/lib/placeholders'
 
 /**
  * Email images are absolute https URLs on the canonical host.
@@ -26,8 +26,8 @@ export function emailImageSrc(ev: ImgSource, kind: EmailKind): string {
     const q = new URLSearchParams({ e: ev.id, k: kind })
     return `${CANONICAL_SITE_URL}/api/nl/img?${q}`
   }
-  const shape: PlaceholderShape = kind === 'thumb' ? 'square' : 'wide'
-  return placeholderAbsolute(ev.category, shape, CANONICAL_SITE_URL)
+  const slot: PlaceholderSlot = kind === 'thumb' ? 'square' : 'hero'
+  return placeholderAbsolute(ev.category, slot, CANONICAL_SITE_URL)
 }
 
 export function sourceForEmail(ev: ImgSource): string | null {
