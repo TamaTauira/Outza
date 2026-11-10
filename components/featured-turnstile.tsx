@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { holdScrollRestore } from '@/lib/scroll-memory'
 import Link from 'next/link'
 import { Flame, Megaphone, Star } from 'lucide-react'
@@ -50,13 +50,26 @@ export function FeaturedTurnstile({ city }: { city: string }) {
         </div>
         <Link href="/promoters" className="text-xs font-semibold text-primary hover:underline">Feature Your Event →</Link>
       </div>
-      <div className="relative">
-        <div className="flex gap-3 overflow-x-auto px-4 pb-1 sm:px-6 scroll-pl-4 sm:scroll-pl-6 snap-x [scrollbar-width:thin]">
-          {cards}
-        </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card/80 to-transparent" aria-hidden />
-      </div>
+      <HorizontalSnapRow>{cards}</HorizontalSnapRow>
     </section>
+  )
+}
+
+/** One swipeable row. Hot right now, This weekend and Free all use this. */
+export function HorizontalSnapRow({
+  children,
+  fadeFrom = 'from-card/80',
+}: {
+  children: ReactNode
+  fadeFrom?: string
+}) {
+  return (
+    <div className="relative">
+      <div className="flex gap-3 overflow-x-auto px-4 pb-1 sm:px-6 scroll-pl-4 sm:scroll-pl-6 snap-x [scrollbar-width:thin]">
+        {children}
+      </div>
+      <div className={`pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l ${fadeFrom} to-transparent`} aria-hidden />
+    </div>
   )
 }
 

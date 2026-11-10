@@ -8,6 +8,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { addDays, formatPrice, formatTime } from '@/lib/board'
 import { minutesNow, orderedWindow } from '@/lib/listing-window'
 import { EventImage } from '@/components/event-image'
+import { HorizontalSnapRow } from '@/components/featured-turnstile'
 import type { ClientImage } from '@/lib/images/spec'
 
 type RailEvent = {
@@ -89,21 +90,29 @@ export function HomeRails({
             <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{rail.label}</h2>
             <button type="button" onClick={() => onSeeAll(rail.key)} className="text-xs font-semibold text-primary hover:underline">See all</button>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-4 lg:overflow-visible xl:grid-cols-5 2xl:grid-cols-6">
-            {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
-          </div>
+          {rail.key === 'tonight' ? (
+            <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-4 lg:overflow-visible xl:grid-cols-5 2xl:grid-cols-6">
+              {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
+            </div>
+          ) : (
+            <div className="-mx-4 sm:-mx-6">
+              <HorizontalSnapRow fadeFrom="from-background">
+                {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} snap />)}
+              </HorizontalSnapRow>
+            </div>
+          )}
         </section>
       ))}
     </div>
   )
 }
 
-function RailCard({ ev }: { ev: RailEvent }) {
+function RailCard({ ev, snap = false }: { ev: RailEvent; snap?: boolean }) {
   const color = CATEGORIES.find((c) => c.name === ev.category)?.color ?? '#FF7A1A'
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const time = formatTime(ev.time)
   return (
-    <Link href={eventPath(ev)} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
+    <Link href={eventPath(ev)} className={`w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${snap ? 'snap-start' : 'lg:w-auto'}`}>
       <div className="relative aspect-[4/3]" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
         <EventImage image={ev.imageAsset} src={ev.imageUrl} kind="card" alt="" sizes="200px" compact crop accent={color} category={ev.category} />
         <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-[11px] text-white">{price.value}</span>
