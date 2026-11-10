@@ -72,6 +72,41 @@ test('every dance paints its own full animation, so a party cannot zero the body
   }
 })
 
+test('dance name labels are unnumbered, and the snake one reads It\'s Britney B*', () => {
+  const dances = readFileSync(new URL('../components/vibepeep-dances.css', import.meta.url), 'utf8')
+  const labels: Record<string, string> = {
+    moonwalk: 'Moonwalk',
+    robot: 'Robot',
+    ymca: 'YMCA',
+    macarena: 'Macarena',
+    snake: "It's Britney B*",
+    island: 'The swim',
+    griddy: 'Griddy',
+    'goth-snap': 'Goth snap',
+    'hand-jive': 'Hand jive',
+    shuffle: 'Shuffle',
+    floss: 'Floss',
+    sprinkler: 'Sprinkler',
+    'running-man': 'Running man',
+    twist: 'Twist',
+    worm: 'The worm',
+    chicken: 'Chicken',
+    'disco-point': 'Disco point',
+    'shopping-cart': 'Shopping cart',
+    horse: 'Horse',
+    'cha-cha': 'Cha-cha',
+  }
+  for (const id of DANCE_IDS) {
+    const rule = dances.match(new RegExp(`\\.vp-hit\\[data-dance='${id}'\\] \\.vp-dance-label::before \\{ content: '((?:\\\\'|[^'])*)'; \\}`))
+    assert.ok(rule, `${id} has a name label`)
+    const text = rule[1].replace(/\\'/g, "'")
+    assert.equal(text, labels[id])
+    assert.equal(/^\d/.test(text), false, text)
+  }
+  assert.equal(dances.includes("content: 'It\\'s Britney B*'"), true)
+  assert.equal(/\bcontent:\s*'(\d+\s)/.test(dances), false)
+})
+
 test('each dance has its own short label, and none names a person', () => {
   const banned = /jackson|travolta|madonna|village people|ymca|macarena|verified|outza/i
   for (const id of DANCE_IDS) {
