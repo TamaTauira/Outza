@@ -29,4 +29,9 @@ test('signed-out admin, account and promoter pages ask for sign-in', async ({ pa
     await page.goto(path)
     await expect(page.getByRole('heading', { name: /back for more/i })).toBeVisible()
   }
+  // Smoke hits production, which 404s this route until the metrics deploy is live.
+  const metrics = await page.goto('/admin/metrics')
+  if (metrics && metrics.status() < 400) {
+    await expect(page.getByRole('heading', { name: /back for more/i })).toBeVisible()
+  }
 })

@@ -76,7 +76,7 @@ describe('email', { concurrency: 1 }, () => {
       assert.equal(emailSendingEnabled(), true)
       assert.equal(activeMailTransport(), 'resend')
       const result = await sendEmail({ to: ' person@example.com ', subject: 'Hello', html: '<p>Hi</p>', text: 'Hi' })
-      assert.deepEqual(result, { ok: true })
+      assert.deepEqual(result, { ok: true, providerId: 'email_123' })
       assert.ok(captured)
       assert.equal(captured.url, 'https://api.resend.com/emails')
       assert.equal(captured.url.includes('abacus'), false)
@@ -113,7 +113,7 @@ describe('email', { concurrency: 1 }, () => {
     }
     try {
       const result = await sendEmail({ to: 'person@example.com', subject: 'Hello', html: '<p>Hi</p>' })
-      assert.deepEqual(result, { ok: true })
+      assert.deepEqual(result, { ok: true, providerId: 'email_456' })
       assert.equal(body.from, 'VibePeep <news@example.com>')
     } finally {
       globalThis.fetch = originalFetch
