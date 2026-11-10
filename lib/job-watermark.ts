@@ -6,6 +6,7 @@ const jobs = {
   localImport: 'local-import',
   discover: 'image-discover',
   moshtix: 'moshtix-refresh',
+  humanitix: 'humanitix-refresh',
 } as const
 
 export type JobName = keyof typeof jobs

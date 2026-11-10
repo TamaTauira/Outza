@@ -1,8 +1,7 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { cityOfSydneyPlace } from '@/lib/cos-place'
 import { extractListingVenue } from '@/lib/listing-venue'
-import { CITIES } from '@/lib/cities'
-import { firstListingUrl, humanitixEventUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
+import { firstListingUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts, readPrice, readPriceRows } from '@/lib/price'
 import { noteSourceSaved, remainingBudgetMs, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { frontierShowsFromHtml } from '@/lib/frontier-shows'
@@ -250,51 +249,4 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
   return saved
 }
 
-/** Humanitix – featured events per city. The public city page only embeds that featured set; it has no page parameter to follow. */
-export async function fetchHumanitixEvents(): Promise<number> {
-  let saved = 0
-  for (const city of CITIES) for (const path of ['', '/music']) {
-    if (yieldIfBudget('city pages')) {
-      noteSourceSaved(saved)
-      console.log(`[humanitix] saved ${saved} events`)
-      return saved
-    }
-    const html = await fetchHtml(`https://humanitix.com/au/events/${city.humanitix}${path}`)
-    const data = html ? extractNextData(html) : null
-    const f = data?.props?.pageProps?.featuredCarouselEntries ?? {}
-    const list: any[] = [...(f.carouselEntries ?? []), ...(f.verticalEvents ?? [])]
-    for (const e of list) {
-      const sd = e?.date?.startDate ? new Date(e.date.startDate) : null
-      if (!sd || isNaN(sd.getTime())) continue
-      const ed = e?.date?.endDate ? new Date(e.date.endDate) : null
-      const s = toSydneyParts(sd, city.tz)
-      const en = ed && !isNaN(ed.getTime()) ? toSydneyParts(ed, city.tz) : null
-      const min = moneyNumber(e?.pricing?.minimumPrice ?? e?.pricing?.minPrice)
-      const max = moneyNumber(e?.pricing?.maximumPrice ?? e?.pricing?.maxPrice)
-      const priced = priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 })
-      const ok = await saveEvent({
-        title: e.name,
-        description: e.description ?? e.summary ?? null,
-        date: s.date,
-        time: s.time,
-        endDate: en?.date,
-        endTime: en?.time,
-        venueName: e?.eventLocation?.venueName ?? 'TBA',
-        venueAddress: e?.eventLocation?.address ?? null,
-        genres: [e?.category, e?.subcategory, path === '/music' ? 'Music' : ''].filter(Boolean),
-        price: priced.price,
-        isFree: priced.isFree,
-        feesIncluded: e?.pricing?.plusBuyerFee === true ? false : e?.pricing?.plusBuyerFee === false ? true : null,
-        imageUrl: e?.bannerImage?.handle ? `https://images.humanitix.com/i/${e.bannerImage.handle}@original` : null,
-        ticketUrl: humanitixEventUrl(e.hostname ?? e.url, e.slug ?? e.url),
-        sourceUrl: humanitixEventUrl(e.hostname ?? e.url, e.slug ?? e.url),
-        source: 'humanitix',
-        city: city.name,
-      }).catch(() => false)
-      if (ok) saved++
-      noteSourceSaved(saved)
-    }
-  }
-  console.log(`[humanitix] saved ${saved} events`)
-  return saved
-}
+export { fetchHumanitixEvents } from '@/lib/sources/humanitix'
