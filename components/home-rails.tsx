@@ -52,12 +52,29 @@ export function HomeRails({
     if (!today) return
     const weekend = weekendFrom(today)
     const params = new URLSearchParams({ limit: '80', dateFrom: today, dateTo: weekend.to })
-    if (city) params.set('city', city)
+    // Today's page is often fuller than 80, so Saturday never arrives in that one list.
+    const weekendParams = new URLSearchParams({ limit: '8', dateFrom: weekend.from, dateTo: weekend.to })
+    if (city) {
+      params.set('city', city)
+      weekendParams.set('city', city)
+    }
     let live = true
     const release = holdScrollRestore('home-rails')
-    fetch(`/api/events?${params}`)
-      .then((r) => r.json())
-      .then((d) => { if (live) setRows(d?.events ?? []) })
+    Promise.all([
+      fetch(`/api/events?${params}`).then((r) => r.json()).catch(() => ({ events: [] })),
+      fetch(`/api/events?${weekendParams}`).then((r) => r.json()).catch(() => ({ events: [] })),
+    ])
+      .then(([d, w]) => {
+        if (!live) return
+        const seen = new Set<string>()
+        const merged: RailEvent[] = []
+        for (const ev of [...(d?.events ?? []), ...(w?.events ?? [])]) {
+          if (seen.has(ev.id)) continue
+          seen.add(ev.id)
+          merged.push(ev)
+        }
+        setRows(merged)
+      })
       .catch(() => { if (live) setRows([]) })
       .finally(release)
     return () => { live = false; release() }
