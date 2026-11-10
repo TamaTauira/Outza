@@ -1,33 +1,31 @@
 import type { ListingProvenance } from '@/lib/listing-provenance'
+import { formatUpdated } from '@/lib/listing-window'
 
-function when(iso: string | null): string | null {
-  if (!iso) return null
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-}
-
-/** Extra source detail for the event page. Event cards do not use this. */
+/**
+ * One source line for the event page. The venue and the organiser are already
+ * on the card, so they are not repeated here.
+ */
 export function ListingSources({ provenance }: { provenance: ListingProvenance }) {
-  const checked = when(provenance.lastChecked)
+  const checked = formatUpdated(provenance.lastChecked)
+  const extras = [
+    provenance.otherSources.length > 0
+      ? `Also spotted on ${provenance.otherSources.join(', ')}. Those copies sit on this one listing.`
+      : null,
+    provenance.filledNote,
+    provenance.organiserNote,
+    provenance.statusNote,
+  ].filter((line): line is string => !!line)
+
   return (
-    <details className="text-xs text-muted-foreground">
-      <summary className="cursor-pointer font-medium text-foreground">Where this listing comes from</summary>
-      <div className="mt-2 space-y-1.5 leading-relaxed">
-        <p>
-          Original source: {provenance.sourceUrl
-            ? <a href={provenance.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{provenance.sourceLabel}</a>
-            : provenance.sourceLabel}
-          {checked ? ` · Last checked ${checked}` : ' · No check time stored yet'}
-        </p>
-        {provenance.organiserName && <p>Organiser on the listing: {provenance.organiserName}</p>}
-        {provenance.venueName && <p>Venue: {provenance.venueName}</p>}
-        {provenance.otherSources.length > 0 && <p>Also seen on {provenance.otherSources.join(', ')}. Those copies are kept on this one listing.</p>}
-        {provenance.filledNote && <p>{provenance.filledNote}</p>}
-        {provenance.organiserNote && <p>{provenance.organiserNote}</p>}
-        {provenance.statusNote && <p>{provenance.statusNote}</p>}
-        <p>{provenance.checkNote}</p>
-      </div>
-    </details>
+    <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+      <p>
+        From {provenance.sourceUrl
+          ? <a href={provenance.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">{provenance.sourceLabel}</a>
+          : provenance.sourceLabel}
+        {checked ? ` · Last checked ${checked}` : ''}
+        . That&apos;s our last look, not a live ticket check.
+      </p>
+      {extras.map((line) => <p key={line}>{line}</p>)}
+    </div>
   )
 }

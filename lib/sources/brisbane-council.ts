@@ -5,6 +5,7 @@
  * An empty response does not delete listings.
  */
 import { saveEvent, sleep } from '@/lib/event-store'
+import { paragraphsFromHtml } from '@/lib/description-text'
 import { readPrice } from '@/lib/price'
 import { usableUrl } from '@/lib/listing-link'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
@@ -126,7 +127,7 @@ export function parseBccRecord(row: BccRecord): ParsedBcc | null {
   const pin = typeof lat === 'number' && typeof lon === 'number' && Number.isFinite(lat) && Number.isFinite(lon)
   return {
     title,
-    description: stripTags(row.description) || null,
+    description: paragraphsFromHtml(row.description) || null,
     date: start.date,
     time: start.time,
     endDate: end && end.date !== start.date ? end.date : null,

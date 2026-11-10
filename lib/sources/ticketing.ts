@@ -16,6 +16,7 @@ import { attachSweepProgress } from '@/lib/refresh-plan'
 import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
+import { moshtixListingDescription, preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
 import { cityFromPlace } from '@/lib/venue-city'
@@ -191,7 +192,7 @@ export async function fetchMoshtixEvents(): Promise<{ saved: number; continuatio
           const locality = a.locality ? title(String(a.locality)) : null
           const ok = await saveEvent({
             title: title(String(e.name ?? '')),
-            description: e.teaser || e.description || null,
+            description: moshtixListingDescription(e.teaser, e.description),
             date: s.date,
             time: s.time,
             endDate: en?.date,
@@ -490,7 +491,7 @@ export async function fetchTicketekEvents(): Promise<number> {
       const ticketPrice = ticketekPrice(r)
       const ok = await saveEvent({
         title: title(name),
-        description: field(r, 'description', 'summary', 'teaser'),
+        description: preferDescription(field(r, 'description'), field(r, 'summary'), field(r, 'teaser')),
         date: s.date,
         time: s.time,
         endDate: en && en.date !== s.date ? en.date : null,

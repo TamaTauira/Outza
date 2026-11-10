@@ -12,6 +12,7 @@ import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
+import { sanitizeDescription } from '@/lib/description-text'
 import { normalizeListingUrls, usableUrl } from '@/lib/listing-link'
 import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
 import { applyProtectedRefresh } from '@/lib/event-overrides'
@@ -103,7 +104,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   if (!ev.title || !/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) return false
   const title = cleanText(ev.title, 250)
   if (!title) return false
-  const description = cleanText(ev.description)
+  const description = sanitizeDescription(ev.description)
   const date = new Date(`${ev.date}T00:00:00.000Z`)
   if (date < sydneyToday()) return false
   const city = ev.city ?? DEFAULT_CITY
