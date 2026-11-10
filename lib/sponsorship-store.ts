@@ -112,6 +112,8 @@ export async function recordImpressions(campaignIds: string[], surface: string, 
       create: { campaignId, surface, bucket, count: 1 },
       update: { count: { increment: 1 } },
     })))
+    const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+    await recordProductMetrics(unique.map((campaignId) => ({ name: METRIC.spotlightImpression, subjectId: campaignId, subjectKind: 'campaign', dim: surface })))
     const totals = await impressionTotals(unique)
     const hit = unique.filter((id) => {
       const cap = totals.get(id)
@@ -147,6 +149,8 @@ export async function recordCampaignConversion(eventId: string, kind: 'DETAIL' |
     const hash = userId ? actorHash(userId) : null
     for (const campaign of visible) {
       await prisma.conversionEvent.create({ data: { campaignId: campaign.id, kind, actorHash: hash } })
+      const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+      await recordProductMetrics([{ name: METRIC.spotlightClick, subjectId: campaign.id, subjectKind: 'campaign', dim: kind === 'TICKET' ? 'ticket' : 'detail' }])
       if (kind === 'TICKET' && hash) {
         const prior = await prisma.conversionEvent.findFirst({
           where: {

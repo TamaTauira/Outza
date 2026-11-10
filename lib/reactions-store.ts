@@ -62,6 +62,13 @@ export async function setReaction(userId: string, eventId: string, kind: Reactio
       if (action === 'add') {
         await prisma.eventReaction.create({ data: { userId, eventId, kind } })
         await bumpEngagement(eventId, kind === 'GOING' ? 'GOING' : 'REACTION')
+        const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+        await recordProductMetrics([{
+          name: kind === 'GOING' ? METRIC.going : METRIC.reaction,
+          subjectId: eventId,
+          subjectKind: 'event',
+          dim: kind === 'GOING' ? '' : kind,
+        }])
       } else {
         await prisma.eventReaction.deleteMany({ where: { userId, eventId, kind } })
       }

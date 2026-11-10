@@ -2,12 +2,19 @@ import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl, DEFAULT_FROM_EMAIL, activeMailTransport } from '@/lib/email'
 import { REFERRAL_LABELS, REFERRAL_SOURCES, type ReferralSource } from '@/lib/referrals'
 import { eventPath } from '@/lib/seo'
+import { sign } from '@/lib/newsletter/links'
+import { metricDay, peakWeekday, reachTips, recapFragment, shiftDay } from '@/lib/organiser-reach'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
 import { AUDIENCE_DISCLAIMER, MIN_GROUP } from '@/lib/profile-shared'
 import { emailBodyCell, emailDocument } from '@/lib/email-brand'
 import { isQaAccountEmail } from '@/lib/qa-account'
 
 const n = (v: number) => v.toLocaleString('en-AU')
+
+export function reportUnsubscribeUrl(userId: string) {
+  const q = new URLSearchParams({ u: userId, k: sign(userId, 'report-unsub') })
+  return `${siteUrl()}/unsubscribe/report?${q}`
+}
 
 /** Builds and emails a performance report for one promoter. Figures are all-time counters from our own tracking. */
 export async function sendPromoterReport(userId: string): Promise<{ ok: boolean; error?: string; events?: number }> {
@@ -59,6 +66,48 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
   const topRows = (title: string, list: TopEvent[], unit: string) => list.length
     ? `<p style="font-size:13px;font-weight:700;margin:12px 0 4px">${title}</p><table style="width:100%;border-collapse:collapse;font-size:13px">${list.map((e) => `<tr><td style="padding:3px 6px"><a href="${base}${eventPath(e)}" style="color:#111;text-decoration:none">${escapeHtml(e.title)}</a></td><td style="padding:3px 6px;text-align:right;width:90px">${n(e.count)} ${unit}</td></tr>`).join('')}</table>`
     : ''
+  const fromDay = shiftDay(metricDay(), -6)
+  const unlockedIds = new Set(events.filter((event) => pro || event.promotions.length > 0).map((event) => event.id))
+  const weekRows = await prisma.engagementDay.findMany({
+    where: { eventId: { in: events.map((event) => event.id) }, day: { gte: fromDay }, kind: { in: ['VIEW', 'TICKET', 'SAVE', 'REACTION'] } },
+    select: { eventId: true, day: true, kind: true, count: true },
+  }).catch(() => [])
+  let weekOpened = 0
+  let weekTicket = 0
+  let weekSaves = 0
+  let weekReactions = 0
+  for (const row of weekRows) {
+    if ((row.kind === 'VIEW' || row.kind === 'TICKET') && !unlockedIds.has(row.eventId)) continue
+    if (row.kind === 'VIEW') weekOpened += row.count
+    else if (row.kind === 'TICKET') weekTicket += row.count
+    else if (row.kind === 'SAVE') weekSaves += row.count
+    else if (row.kind === 'REACTION') weekReactions += row.count
+  }
+  const privateWeek = unlockedIds.size > 0
+  const tip = reachTips({
+    showPrivate: privateWeek,
+    hasImage: true,
+    opened: weekOpened,
+    seen: 0,
+    saves: weekSaves,
+    ticket: weekTicket,
+    reactions: weekReactions,
+    peakHour: null,
+    peakDay: peakWeekday(weekRows.filter((row) => row.kind === 'VIEW' && unlockedIds.has(row.eventId)).map((row) => ({ day: row.day, count: row.count }))),
+    clashes: 0,
+    shareLinks: 1,
+    venue: false,
+  })[0] ?? null
+  const recap = recapFragment({
+    opened: privateWeek ? weekOpened : null,
+    ticket: privateWeek ? weekTicket : null,
+    saves: weekSaves,
+    reactions: weekReactions,
+    tip,
+    benchmark: null,
+    unsubUrl: reportUnsubscribeUrl(userId),
+  })
+
   const audience = !ins ? '' : `<h2 style="font-size:15px;margin:24px 0 6px">Who's into your events</h2>
   ${ins.enough
     ? `<p style="font-size:13px;color:#444;margin:0">About ${n(ins.audienceApprox)}+ interested people.</p>${shareRows('Age bands', ins.ageBands)}${shareRows('Home areas', ins.areas)}${shareRows('Also into', ins.interests)}${shareRows('How far ahead they plan', ins.planAhead)}`
@@ -71,19 +120,20 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     preheader: 'How your listings are tracking on VibePeep.',
     manageHref: `${base}/account`,
     homeHref: base,
-    reason: 'You asked for this, or you turned on weekly reports in the Promoter dashboard. Switch them off there any time.',
+    reason: 'You turned on weekly recaps in the Promoter dashboard. The unsubscribe link in this email turns them off straight away and leaves your newsletter choice alone.',
     rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 6px">Your event performance report</h1>
   <p style="font-size:14px;color:#444;margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's the read on your listings. Figures are totals since each one went live.</p>
   <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#777;font-size:12px;text-align:left"><th style="padding:6px">Event</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">CTR</th><th style="padding:6px;text-align:right">Saves / going</th></tr></thead><tbody>${rows}</tbody></table>
   <h2 style="font-size:15px;margin:24px 0 6px">Where visitors came from</h2>
   <table style="width:100%;border-collapse:collapse;font-size:13px">${refRows}</table>
+  ${recap.html}
   ${audience}
   ${pro ? '' : '<p style="font-size:12px;color:#777;margin-top:12px">"Locked" figures unlock when an event is promoted, or for every event with Promoter Pro.</p>'}
   <p style="margin:24px 0"><a href="${base}/promoter" style="background:#E24B2A;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px">Open Promoter Dashboard</a></p>
   `),
   })
 
-  const res = await sendEmail({ to: user.email, subject: 'Your VibePeep event performance report', html })
+  const res = await sendEmail({ to: user.email, subject: 'Your VibePeep week, in one note', html, text: recap.text })
   if (!res.ok) return { ok: false, error: res.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastReportAt: new Date() } })
   return { ok: true, events: events.length }

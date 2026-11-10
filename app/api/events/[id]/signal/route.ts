@@ -23,6 +23,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const { bumpEngagement } = await import('@/lib/engagement-store')
       await bumpEngagement(id, 'SHARE')
     }
+    const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+    await recordProductMetrics([{ name: kind === 'SHARE' ? METRIC.share : METRIC.itinerary, subjectId: id, subjectKind: 'event' }])
   }
   return NextResponse.json({ ok: true })
 }

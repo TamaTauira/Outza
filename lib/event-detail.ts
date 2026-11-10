@@ -21,7 +21,8 @@ import { buildEventInsight, type InsightPrefs } from '@/lib/event-insight'
 import { eventInsightAiEnabled } from '@/lib/feature-flags'
 import { cityDef } from '@/lib/cities'
 import { boardClockLine } from '@/lib/listing-window'
-import { isUnder18 } from '@/lib/profile-shared'
+import { areaForPostcode, includeInAudience, isUnder18 } from '@/lib/profile-shared'
+import { isQaAccountEmail } from '@/lib/qa-account'
 import { asVibe } from '@/lib/vibe-shared'
 
 const RELATED_SELECT = {
@@ -34,7 +35,23 @@ const RELATED_SELECT = {
   imageAsset: { select: imageAssetSelect },
 } as const
 
-type DetailOpts = { countView?: boolean; prefetch?: boolean; referral?: ReferralSource | null }
+type DetailOpts = { countView?: boolean; prefetch?: boolean; referral?: ReferralSource | null; viewerCity?: string | null; viewerCountry?: string | null }
+
+async function viewerPlace(userId: string | undefined, cityHeader: string | null, country: string | null): Promise<string | null> {
+  if (userId) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, birthYear: true, homeCity: true, homePostcode: true } }).catch(() => null)
+    if (!user || isQaAccountEmail(user.email) || !includeInAudience(user.birthYear)) return null
+    const area = areaForPostcode(user.homePostcode)
+    if (area) return `area:${area}`.slice(0, 80)
+    if (user.homeCity) return `city:${user.homeCity}`.slice(0, 80)
+  }
+  if ((country ?? '').toUpperCase() !== 'AU') return null
+  let city = ''
+  try { city = decodeURIComponent(cityHeader ?? '') } catch { city = cityHeader ?? '' }
+  city = city.replace(/\+/g, ' ').trim()
+  if (!/^[\p{L} .'-]{2,40}$/u.test(city)) return null
+  return `city:${city}`
+}
 
 async function resolveEventId(param: string): Promise<string | null> {
   const raw = decodeURIComponent(param)
@@ -187,10 +204,21 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
         queueNearStartRecheck(recheck).catch((e) => console.error('near-start check failed', e?.message)),
       ]
       if (countView) {
+        const viewerCity = opts.viewerCity ?? null
+        const viewerCountry = opts.viewerCountry ?? null
         jobs.push((async () => {
           await prisma.event.update({ where: { id: eventId }, data: { views: { increment: 1 } }, select: { id: true } }).catch((e) => console.error('view count failed', e?.message))
           const { bumpEngagement } = await import('@/lib/engagement-store')
           await bumpEngagement(eventId, 'VIEW')
+          const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+          const { metricHour } = await import('@/lib/organiser-reach')
+          const hits: { name: string; subjectId: string; subjectKind: string; dim?: string }[] = [
+            { name: METRIC.open, subjectId: eventId, subjectKind: 'event' },
+            { name: METRIC.hour, subjectId: eventId, subjectKind: 'event', dim: String(metricHour()) },
+          ]
+          const place = await viewerPlace(userId, viewerCity, viewerCountry)
+          if (place) hits.push({ name: METRIC.place, subjectId: eventId, subjectKind: 'event', dim: place })
+          await recordProductMetrics(hits)
         })())
       }
       if (referral) recordReferral(eventId, referral)

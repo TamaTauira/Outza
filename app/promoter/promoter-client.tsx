@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
-import { ArrowLeft, BadgeCheck, BarChart3, Brain, CalendarPlus, Download, Eye, FileText, Loader2, Lock, LogOut, Mail, Megaphone, MousePointerClick, Pencil, Receipt, Rocket, Search, Share2, Sparkles, Store, Trash2, Users, Wallet } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, BarChart3, Brain, CalendarPlus, Download, Eye, FileText, LineChart, Loader2, Lock, LogOut, Mail, Megaphone, MousePointerClick, Pencil, Receipt, Rocket, Search, Share2, Sparkles, Store, Trash2, Users, Wallet } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { REFERRAL_LABELS, REFERRAL_SOURCES } from '@/lib/referral-labels'
 import { PRO_PLAN, TIER_KEYS, formatAud, productName, tierDef } from '@/lib/tiers'
@@ -19,6 +19,7 @@ import { AudienceCard } from './audience-card'
 import { IntelTab } from './intel-tab'
 import { BoostStudio } from './boost-studio'
 import { OrganiserPlans } from './organiser-plans'
+import { InsightsPanel } from './insights-panel'
 
 type Promo = { id: string; tier: string; days?: number | null; orderId?: string | null; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
 type MyEvent = {
@@ -31,7 +32,7 @@ type Pass = { id: string; status: string; amountCents: number; paymentMode: stri
 type AdSpend = { id: string; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string; businessName: string; event?: { title: string } | null }
 type ClaimRow = { id: string; status: string; createdAt: string; reviewNote?: string | null; event: { id: string; title: string; date: string; city: string; venueName: string } }
 type Account = { pro: boolean; proUntil: string | null; displayName: string; homeCity?: string; weeklyReport?: boolean; lastReportAt?: string | null }
-type Tab = 'overview' | 'intel' | 'promote' | 'boosts' | 'events' | 'local' | 'billing'
+type Tab = 'overview' | 'insights' | 'intel' | 'promote' | 'boosts' | 'events' | 'local' | 'billing'
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
 const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm w-full'
@@ -40,6 +41,7 @@ const isLive = (p: Promo) => p.status === 'ACTIVE' && !!p.endsAt && new Date(p.e
 
 const TABS: { key: Tab; label: string; Icon: typeof Rocket }[] = [
   { key: 'overview', label: 'Overview', Icon: BarChart3 },
+  { key: 'insights', label: 'Results', Icon: LineChart },
   { key: 'intel', label: 'Intelligence', Icon: Brain },
   { key: 'promote', label: 'Promote an event', Icon: Rocket },
   { key: 'boosts', label: 'Short boosts', Icon: Megaphone },
@@ -140,7 +142,8 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
       <div className="mt-6">
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
-            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => setTab('events')} onAccount={(a) => setAccount({ ...account, ...a })} />}
+            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => setTab('events')} goInsights={() => setTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
+            {tab === 'insights' && <InsightsPanel />}
             {tab === 'boosts' && (
               <section className={card}>
                 <BoostStudio events={events} pro={account.pro} />
@@ -299,16 +302,16 @@ function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onP
   )
 }
 
-function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents, onAccount }: {
+function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents, goInsights, onAccount }: {
   stats: { live: number; views: number; clicks: number; fans: number; spend: number }; account: Account; events: MyEvent[]
-  onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; goEvents: () => void; onAccount: (a: Partial<Account>) => void
+  onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; goEvents: () => void; goInsights: () => void; onAccount: (a: Partial<Account>) => void
 }) {
   const referrals = events.filter((e) => unlockedFor(e, account.pro)).flatMap((e) => e.referrals ?? [])
   const anyUnlocked = events.some((e) => unlockedFor(e, account.pro))
   const steps = [
     { Icon: CalendarPlus, title: 'Add your event', body: 'Claim a listing we already have, or create a new one in seconds.', action: goEvents, cta: 'Add an event' },
     { Icon: Megaphone, title: 'Choose a package', body: 'Boost, Spotlight or Headliner for 7, 14 or 30 days, plus optional add-ons.', action: () => onPromote(), cta: 'Build a campaign' },
-    { Icon: BarChart3, title: 'Track the results', body: 'Watch views, ticket clicks, saves and RSVPs grow right here.', action: goEvents, cta: 'See my events' },
+    { Icon: BarChart3, title: 'Track the results', body: 'Opens, saves, reactions, Spotlight and the drop-off in between.', action: goInsights, cta: 'Open results' },
   ]
   return (
     <div className="space-y-6">

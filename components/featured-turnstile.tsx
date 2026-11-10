@@ -9,12 +9,14 @@ import { CATEGORIES } from '@/lib/categories'
 import { formatPrice, formatTime } from '@/lib/board'
 import { tierDef } from '@/lib/tiers'
 import { EventImage } from '@/components/event-image'
+import { ReachBeacon } from '@/components/reach-beacon'
 import type { ClientImage } from '@/lib/images/spec'
 
 interface FeaturedItem {
   id: string; title: string; date: string; time: string | null; venueName: string; city?: string
   category: string; isFree: boolean; price: string | null; priceMin?: number | null; priceMax?: number | null; imageUrl?: string | null; imageAsset?: ClientImage | null; tier: string
   creative?: string | null
+  sponsored?: boolean
 }
 
 export function FeaturedTurnstile({ city }: { city: string }) {
@@ -37,9 +39,11 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 
   const cards = [...items.map((it) => <FeaturedCard key={it.id} it={it} />), <PromoteCard key="cta" />]
 
+  const spotlightIds = items.filter((item) => item.sponsored || (item.tier && item.tier !== 'HOT')).map((item) => item.id)
   return (
     // Full-bleed band: breaks out of the 1280px page container to span the whole viewport
     <section className="relative -mx-4 sm:-mx-6 mb-6 mt-16 sm:mt-10 py-5 border-y border-border bg-card/40 max-w-[100vw]" aria-label="Hot right now">
+      <ReachBeacon surface="hot" ids={items.map((item) => item.id)} spotlightIds={spotlightIds} />
       <div className="px-4 sm:px-6 flex flex-wrap items-end justify-between gap-2 mb-4">
         <div>
           <div className="flex items-center gap-2">

@@ -110,7 +110,11 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const sourceLink = (
     <a
       href={outbound.href}
-      onClick={() => { if (outbound.kind === 'ticket') navigator.sendBeacon?.(`/api/events/${event.id}/click`) }}
+      onClick={() => {
+        const kind = outbound.kind === 'ticket' ? 'ticket' : 'info'
+        const body = new Blob([JSON.stringify({ kind })], { type: 'application/json' })
+        navigator.sendBeacon?.(`/api/events/${event.id}/click`, body)
+      }}
       target="_blank"
       rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
       className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"

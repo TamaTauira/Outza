@@ -13,6 +13,7 @@ import { createBasemap } from '@/lib/map-basemap'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
+import { ReachBeacon } from '@/components/reach-beacon'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { eventPictureSrc, type PlaceholderSlot } from '@/lib/placeholders'
 import { variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
@@ -301,6 +302,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const stageStyle = { '--vp-map-dock': `${dock}px` } as CSSProperties
   return (
     <div className={bleed ? 'relative flex h-full min-h-0 w-full' : 'relative h-[70vh] min-h-[420px] w-full sm:h-[calc(100vh-200px)] sm:min-h-[500px]'}>
+      <ReachBeacon surface={searchQuery ? 'search' : 'map'} ids={events.map((event) => event.id)} term={searchQuery} />
       <div className={bleed ? 'flex min-h-0 min-w-0 flex-1' : 'h-full min-h-0'}>
       {bleed && (
         <aside className="vp-map-rail hidden h-full w-80 shrink-0 flex-col overflow-hidden border-r border-border bg-background lg:flex">

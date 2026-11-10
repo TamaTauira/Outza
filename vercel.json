@@ -66,6 +66,10 @@
       "schedule": "22 21 * * *"
     },
     {
+      "path": "/api/cron/promoter-reports",
+      "schedule": "22 21 * * 0"
+    },
+    {
       "path": "/api/cron/owner-alerts",
       "schedule": "24 * * * *"
     },

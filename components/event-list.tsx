@@ -13,6 +13,7 @@ import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
 import { listDepthToLoad } from '@/lib/scroll-restore'
+import { ReachBeacon } from '@/components/reach-beacon'
 export type BoardSeed = {
   city: string
   from: string
@@ -261,6 +262,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 
   return (
     <div>
+      <ReachBeacon surface={searchQuery ? 'search' : 'board'} ids={events.map((event) => event.id)} term={searchQuery} />
       {/* Summary row */}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
