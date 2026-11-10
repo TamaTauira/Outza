@@ -20,6 +20,17 @@ export interface FeedItem {
   /** Public pin. School listings never receive a street coordinate. */
   lat?: number | null
   lng?: number | null
+  /** Short fact from the listing text. Never invented. */
+  blurb?: string | null
+}
+
+/** A card line from the listing's own words. Too-short blurbs stay off the card. */
+export function feedBlurb(text: string | null | undefined): string | null {
+  const clean = (text ?? '').replace(/\s+/g, ' ').trim()
+  if (clean.length < 12) return null
+  if (clean.length <= 160) return clean
+  const cut = clean.slice(0, 157).replace(/\s+\S*$/, '').trim()
+  return `${cut || clean.slice(0, 157).trim()}…`
 }
 
 const norm = (value: string) => value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '')

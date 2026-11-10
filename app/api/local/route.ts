@@ -8,7 +8,7 @@ import { storagePath } from '@/lib/s3'
 import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
 import { eventPath } from '@/lib/seo'
-import { chooseFeedPin, dedupeFeed, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
 import { placeFromText } from '@/lib/venue-place'
 import { aiModeration, expiryFor, findDuplicate, hardBlock, ipHash, parseLocal, recentCount, spamSignals, validateAddress } from '@/lib/local'
 import { unverifiedGate } from '@/lib/account-flow'
@@ -84,6 +84,7 @@ export async function GET(req: Request) {
         kind: 'local' as const,
         lat: pin?.lat ?? null,
         lng: pin?.lng ?? null,
+        blurb: feedBlurb(l.description),
       }
     })
   const events = await prisma.event.findMany({
@@ -123,6 +124,7 @@ export async function GET(req: Request) {
       status: ev.status,
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
+      blurb: feedBlurb(typeof ev.description === 'string' ? ev.description : null),
     }
   })
   const items = filterFeed(dedupeFeed([...communityItems, ...localItems]), { section, suburb }).slice(0, 300)
