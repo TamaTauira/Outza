@@ -24,12 +24,12 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   )
 }
 
-export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTier, onEventChange, onDone }: {
-  events: Ev[]; pro: boolean; stripeEnabled: boolean; eventId: string; initialTier?: string; onEventChange: (id: string) => void; onDone: () => void
+export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTier, initialDays, onEventChange, onDone }: {
+  events: Ev[]; pro: boolean; stripeEnabled: boolean; eventId: string; initialTier?: string; initialDays?: Duration; onEventChange: (id: string) => void; onDone: () => void
 }) {
   const startTier: Tier = initialTier === 'SILVER' || initialTier === 'GOLD' || initialTier === 'BRONZE' ? initialTier : 'BRONZE'
   const [tier, setTier] = useState<Tier>(startTier)
-  const [days, setDays] = useState<Duration>(tierDef(startTier)?.headlineDays ?? 14)
+  const [days, setDays] = useState<Duration>(initialDays ?? tierDef(startTier)?.headlineDays ?? 14)
   const [addons, setAddons] = useState<Addon[]>([])
   const [busy, setBusy] = useState(false)
   const [review, setReview] = useState(false)
