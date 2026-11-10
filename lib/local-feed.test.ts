@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { dedupeFeed, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from './local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from './local-feed'
 
 const row = (extra: Partial<FeedItem>): FeedItem => ({
   id: '1', title: 'Saturday garage sale', section: 'garage-sales', suburb: 'Newtown', city: 'Sydney',
@@ -36,6 +36,25 @@ test('local categories land in one neighbourhood section', () => {
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Dog walk picnic' }), 'dog-friendly')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Gallery open studio' }), 'local-art')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Charity appeal night' }), 'charity-events')
+})
+
+test('card blurbs use the listing text and stay short', () => {
+  assert.equal(feedBlurb(''), null)
+  assert.equal(feedBlurb('Too short'), null)
+  assert.equal(feedBlurb('Saturday market on the corner.'), 'Saturday market on the corner.')
+  const long = 'Fresh produce from local growers, plus coffee and flowers, every week beside the station while the weather holds and the growers still have boxes left to unpack.'
+  const blurbed = feedBlurb(long)
+  assert.ok(blurbed && blurbed.length <= 161)
+  assert.match(blurbed!, /…$/)
+})
+
+test('school listings stay on the suburb pin', () => {
+  const street = { lat: -33.87, lng: 151.21 }
+  const suburb = { lat: -33.89, lng: 151.18 }
+  assert.deepEqual(chooseFeedPin('school-fundraisers', street, suburb), suburb)
+  assert.deepEqual(chooseFeedPin('garage-sales', street, suburb), street)
+  assert.deepEqual(chooseFeedPin('garage-sales', { lat: 0, lng: 0 }, suburb), suburb)
+  assert.equal(chooseFeedPin('dog-friendly', null, { lat: null, lng: null }), null)
 })
 
 test('filters and counts use the merged list', () => {

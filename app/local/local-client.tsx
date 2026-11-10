@@ -1,37 +1,37 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { House, Plus, ShieldCheck, Trash2, MousePointerClick } from 'lucide-react'
+import { ShieldCheck, Trash2 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
+import { type LocalMapPin } from '@/components/local-neighbourhood-map'
+import { LocalBrowse, type LocalItem } from './local-browse'
 import { useSaved } from '@/lib/saved'
 import { CITY_NAMES, DEFAULT_CITY, cityDef } from '@/lib/cities'
 import { readCity, writeCity } from '@/lib/city-pref'
 import { LOCAL_SOURCES, fmtDay, fmtTime, localPath } from '@/lib/local-shared'
-import { COMMUNITY_SECTIONS, sectionByKey } from '@/lib/community-shared'
-import { GroupBar } from '@/components/board-row'
-import { dayLabel } from '@/lib/board'
-import { Bookmark } from 'lucide-react'
+import { sectionByKey } from '@/lib/community-shared'
 import { CommunitySubmitForm } from './community-submit-form'
 import { cn } from '@/lib/utils'
-import { citySlug } from '@/lib/seo'
 import { holdScrollRestore } from '@/lib/scroll-memory'
 
-type Item = { id: string; title: string; section: string; suburb: string; city: string; date: string; time: string | null; isFree: boolean; price: string | null; href: string; kind?: string; status?: string | null }
+type Item = LocalItem
 type Mine = { id: string; title: string; suburb: string; status: string; expiresAt: string; reviewNote: string | null; startDate: string; startTime: string; endTime: string; schedule: string }
 type MineCommunity = { id: string; title: string; suburb: string | null; city: string; communityKey: string | null; approvalState: string | null; status: string; href: string }
+
 const TABS = [{ key: 'browse', label: 'What’s on nearby', short: 'Nearby' }, { key: 'submit', label: 'List something', short: 'List' }, { key: 'mine', label: 'My listings', short: 'Mine' }, { key: 'how', label: 'How VibePeep Local works', short: 'How' }] as const
-const WHEN = [{ key: 'today', label: 'Today' }, { key: 'weekend', label: 'This weekend' }, { key: '7', label: 'Next 7 days' }, { key: '30', label: 'Next 30 days' }]
+
 function nowIn(tz: string) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
   const g = (t: string) => p.find((x) => x.type === t)?.value ?? '00'
   return { date: `${g('year')}-${g('month')}-${g('day')}`, minutes: Number(g('hour')) * 60 + Number(g('minute')) }
 }
-const pill = (on: boolean) => cn('h-9 px-4 rounded-full text-sm whitespace-nowrap transition-colors', on ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground')
+
+const rowKey = (ev: Item) => `${ev.kind ?? 'row'}:${ev.id}:${ev.date}`
 
 export function LocalClient() {
   const router = useRouter()
@@ -43,15 +43,21 @@ export function LocalClient() {
 
   const [city, setCityState] = useState(DEFAULT_CITY)
   const setCity = (c: string) => { setCityState(c); writeCity(c) }
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<{ key: string; message: string } | null>(null)
   const [category, setCategory] = useState(params.get('category') ?? '')
   const [suburb, setSuburb] = useState(params.get('suburb') ?? '')
+  const [suburbQuery, setSuburbQuery] = useState(params.get('suburb') ?? '')
   const [when, setWhen] = useState(params.get('when') ?? 'weekend')
-  const [data, setData] = useState<{ items: Item[]; counts: Record<string, number> } | null>(null)
+  const [data, setData] = useState<{ key: string; items: Item[]; counts: Record<string, number> } | null>(null)
   const [mine, setMine] = useState<Mine[] | null>(null)
   const [mineCommunity, setMineCommunity] = useState<MineCommunity[]>([])
   const [now, setNow] = useState<{ date: string; minutes: number } | null>(null)
   const [closed, setClosed] = useState<Record<string, boolean>>({})
+  const [more, setMore] = useState<Record<string, boolean>>({})
+  const [hotKey, setHotKey] = useState<string | null>(null)
+  const [focusKey, setFocusKey] = useState<string | null>(null)
+  const [weekend, setWeekend] = useState<Item[] | null>(null)
+
   useEffect(() => {
     const tick = () => setNow(nowIn(cityDef(city).tz))
     tick()
@@ -60,41 +66,96 @@ export function LocalClient() {
   }, [city])
 
   useEffect(() => {
-    const saved = readCity()
-    if (saved && CITY_NAMES.includes(saved)) setCityState(saved)
+    const id = setTimeout(() => {
+      const savedCity = readCity()
+      if (savedCity && CITY_NAMES.includes(savedCity)) setCityState(savedCity)
+    }, 0)
+    return () => clearTimeout(id)
   }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setSuburbQuery(suburb), 250)
+    return () => clearTimeout(t)
+  }, [suburb])
+
+  const requestKey = `${city}|${category}|${when}|${suburbQuery}`
+  const requestRef = useRef(0)
+  useEffect(() => {
+    if (tab !== 'browse') return
+    const key = requestKey
+    const ticket = ++requestRef.current
+    const ac = new AbortController()
+    let timedOut = false
+    const timer = setTimeout(() => { timedOut = true; ac.abort() }, 8000)
+    const release = holdScrollRestore('local-list')
+    fetch(`/api/local?${new URLSearchParams({ city, category, when, suburb: suburbQuery })}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((d) => {
+        if (requestRef.current !== ticket) return
+        if (d?.notice && !d?.items?.length) {
+          setData(null)
+          setLoadError({ key, message: 'We couldn’t load local listings just now. Give it another go in a moment.' })
+          return
+        }
+        setData({ key, items: d?.items ?? [], counts: d?.counts ?? {} })
+        setLoadError(null)
+      })
+      .catch((e) => {
+        console.error(e)
+        if (requestRef.current !== ticket || (e?.name === 'AbortError' && !timedOut)) return
+        setData(null)
+        setLoadError({ key, message: timedOut || e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.' })
+      })
+      .finally(() => { clearTimeout(timer); release() })
+    return () => { clearTimeout(timer); ac.abort(); release() }
+  }, [tab, city, category, when, suburbQuery, requestKey])
 
   useEffect(() => {
     if (tab !== 'browse') return
     const ac = new AbortController()
-    let timedOut = false
-    const timer = setTimeout(() => { timedOut = true; ac.abort() }, 8000)
-    setData(null)
-    setLoadError(null)
-    const release = holdScrollRestore('local-list')
-    fetch(`/api/local?${new URLSearchParams({ city, category, when, suburb })}`, { signal: ac.signal })
+    fetch(`/api/local?${new URLSearchParams({ city, category, when: 'weekend', suburb: suburbQuery })}`, { signal: ac.signal })
       .then((r) => r.json())
-      .then((d) => { setData(d?.items ? d : { items: [], counts: {} }); setLoadError(null) })
-      .catch((e) => {
-        console.error(e)
-        if (e?.name === 'AbortError' && !timedOut) return
-        setData(null)
-        setLoadError(timedOut || e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.')
-      })
-      .finally(() => { clearTimeout(timer); release() })
-    return () => { clearTimeout(timer); ac.abort(); release() }
-  }, [tab, city, category, when, suburb])
+      .then((d) => setWeekend(d?.notice && !d?.items?.length ? [] : d?.items ?? []))
+      .catch((e) => { if (e?.name !== 'AbortError') setWeekend([]) })
+    return () => ac.abort()
+  }, [tab, city, category, suburbQuery])
 
   const loadMine = useCallback(() => {
     fetch('/api/local?mine=1').then((r) => (r.ok ? r.json() : { listings: [] })).then((j) => { setMine(j.listings ?? []); setMineCommunity(j.community ?? []) }).catch((e) => { console.error(e); setMine([]); setMineCommunity([]) })
   }, [])
   useEffect(() => { if (tab === 'mine' && session?.user) loadMine() }, [tab, session?.user, loadMine])
 
+  const view = data?.key === requestKey ? data : null
+  const error = loadError?.key === requestKey ? loadError.message : null
+
   const days = useMemo(() => {
     const m = new Map<string, Item[]>()
-    data?.items.forEach((i) => m.set(i.date, [...(m.get(i.date) ?? []), i]))
+    view?.items.forEach((i) => m.set(i.date, [...(m.get(i.date) ?? []), i]))
     return [...m.entries()]
-  }, [data])
+  }, [view])
+
+  const pins = useMemo<LocalMapPin[]>(() => (view?.items ?? []).flatMap((ev) => {
+    if (typeof ev.lat !== 'number' || typeof ev.lng !== 'number' || !Number.isFinite(ev.lat) || !Number.isFinite(ev.lng)) return []
+    return [{ key: rowKey(ev), title: ev.title, suburb: ev.suburb, lat: ev.lat, lng: ev.lng }]
+  }), [view])
+
+  const focusPin = (key: string) => {
+    const item = view?.items.find((ev) => rowKey(ev) === key)
+    if (item) {
+      setClosed((c) => (c[item.date] ? { ...c, [item.date]: false } : c))
+      setMore((m) => (m[item.date] ? m : { ...m, [item.date]: true }))
+    }
+    setHotKey(key)
+    setFocusKey(key)
+  }
+
+  useEffect(() => {
+    if (!focusKey) return
+    const id = requestAnimationFrame(() => {
+      document.querySelector(`[data-row="${CSS.escape(focusKey)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [focusKey, view])
 
   const remove = async (id: string) => {
     if (!confirm('Take this listing down? This removes every upcoming date.')) return
@@ -102,23 +163,36 @@ export function LocalClient() {
     if (res.ok) { toast.success('Listing removed'); loadMine() } else toast.error('Could not remove it')
   }
 
+  const save = (ev: Item) => toggle({
+    id: ev.id,
+    title: ev.title,
+    description: ev.blurb ?? null,
+    date: ev.date,
+    endDate: null,
+    time: ev.time,
+    endTime: null,
+    venueName: ev.suburb || ev.title,
+    suburb: ev.suburb,
+    category: sectionByKey(ev.section)?.boardCategory ?? 'Community',
+    subTags: [],
+    isLGBTI: false,
+    isFree: ev.isFree,
+    price: ev.price,
+    ticketUrl: null,
+    city: ev.city,
+    href: ev.href || '/local',
+    latitude: ev.lat ?? null,
+    longitude: ev.lng ?? null,
+  })
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap px-4 py-8 sm:px-6 lg:py-10">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div className="max-w-3xl">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">VibePeep Local</p>
-            <h1 className="mt-2 font-display text-3xl sm:text-5xl font-bold tracking-tight">Your neighbourhood, unlocked.</h1>
-            <p className="mt-3 text-muted-foreground sm:text-lg">Garage sales, clearances, markets, fetes, park sport, charity dos, dog walks and local art. One list, and it’s free to add yours.</p>
-          </div>
-          <button type="button" onClick={() => setTab('submit')} className="inline-flex h-12 items-center gap-1.5 rounded-full bg-primary px-5 text-base font-semibold text-primary-foreground"><Plus className="h-4 w-4" />List your thing free</button>
-        </header>
-
-        <div className="relative mt-8 min-w-0">
-          <div className="flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:thin]">
+      <main className="vp-wrap min-w-0 px-4 py-6 sm:px-6 lg:py-8">
+        <div className="relative min-w-0">
+          <div className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
             {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative shrink-0 px-3 py-3 text-sm whitespace-nowrap sm:px-4', tab === t.key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
+              <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative h-12 shrink-0 px-3 text-sm whitespace-nowrap sm:px-4', tab === t.key ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 <span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span>
                 {tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
               </button>
@@ -127,83 +201,34 @@ export function LocalClient() {
         </div>
 
         {tab === 'browse' && (
-          <section className="mt-8">
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
-              {COMMUNITY_SECTIONS.map((c) => {
-                const on = category === c.key
-                return (
-                  <button key={c.key} onClick={() => setCategory(on ? '' : c.key)} className={cn('inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 text-sm', on ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card hover:bg-muted')}>
-                    <span>{c.short}</span>
-                    <span className="font-mono text-[11px] opacity-80">{data ? data.counts[c.key] ?? 0 : '…'}</span>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
-              <select value={city} onChange={(e) => setCity(e.target.value)} aria-label="City" className="h-11 shrink-0 rounded-full border border-border bg-background px-3 text-base">
-                {CITY_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input value={suburb} onChange={(e) => setSuburb(e.target.value)} placeholder="Suburb" aria-label="Suburb" className="h-11 w-36 rounded-full border border-border bg-background px-3 text-base" />
-              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:thin]">{WHEN.map((w) => <button key={w.key} onClick={() => setWhen(w.key)} className={cn(pill(when === w.key), 'shrink-0')}>{w.label}</button>)}</div>
-            </div>
-
-            <div className="vp-local-grid mt-6 rounded-xl bg-card border border-border overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-2.5 border-b border-border">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-1.5 h-1.5 rounded-full bg-free" />
-                  <span className="font-semibold text-foreground">{data ? data.items.length : '…'}</span> listings · {WHEN.find((w) => w.key === when)?.label.toLowerCase()}
-                </div>
-                <span className="hidden md:inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground"><MousePointerClick className="w-3 h-3" /> Tap a row for the goods</span>
-              </div>
-              {!data && !loadError && <p className="px-5 py-8 text-center text-sm text-muted-foreground">Loading local listings…</p>}
-              {loadError && (
-                <div className="p-8 text-center">
-                  <p className="font-display text-lg font-bold">Couldn’t load listings</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
-                </div>
-              )}
-              {data && !loadError && !days.length && (
-                <div className="p-8 text-center">
-                  <House className="w-8 h-8 mx-auto text-muted-foreground" />
-                  <p className="mt-3 font-display text-lg font-bold">Nothing listed for {city} {WHEN.find((w) => w.key === when)?.label.toLowerCase()} yet.</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Garage sale, fete, market or a dog walk? Be the neighbour who lists it.</p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <button onClick={() => setTab('submit')} className="h-11 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-1.5"><Plus className="w-4 h-4" />List your thing free</button>
-                    <Link href={`/${citySlug(city)}/markets`} className="h-10 px-5 rounded-full bg-muted text-sm inline-flex items-center">Markets on the Board</Link>
-                  </div>
-                </div>
-              )}
-              {days.map(([day, rows]) => {
-                const open = !closed[day]
-                return (
-                  <section key={day}>
-                    <GroupBar label={dayLabel(day, now?.date ?? null)} count={rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [day]: open }))} />
-                    {open && (
-                      <div className="grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {rows.map((ev) => (
-                            <div key={`${ev.kind ?? 'row'}-${ev.id}-${ev.date}`} className="rounded-xl border border-border bg-background p-4">
-                              <div className="flex items-start justify-between gap-2">
-                                <Link href={ev.href || '/local'} className="font-semibold leading-snug hover:text-primary">{ev.title}</Link>
-                                <button type="button" onClick={() => toggle({ id: ev.id, title: ev.title, description: null, date: ev.date, endDate: null, time: ev.time, endTime: null, venueName: ev.suburb || ev.title, suburb: ev.suburb, category: sectionByKey(ev.section)?.boardCategory ?? 'Community', subTags: [], isLGBTI: false, isFree: ev.isFree, price: ev.price, ticketUrl: null, city: ev.city })} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('shrink-0', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
-                                  <Bookmark className={cn('h-4 w-4', isSaved(ev.id) && 'fill-current')} />
-                                </button>
-                              </div>
-                              <p className="mt-1 text-sm text-muted-foreground">{[ev.suburb, ev.time, ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''].filter(Boolean).join(' · ')}</p>
-                              <div className="mt-2 flex items-center gap-2 text-xs">
-                                {ev.isFree && <span className="rounded-full bg-emerald-700 px-2 py-0.5 font-bold text-white">Free</span>}
-                                {!ev.isFree && ev.price && <span className="font-mono">{ev.price}</span>}
-                                <span className="text-muted-foreground">{sectionByKey(ev.section)?.short ?? 'Local'}</span>
-                              </div>
-                            </div>
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                )
-              })}
-            </div>
-          </section>
+          <LocalBrowse
+            city={city}
+            setCity={setCity}
+            suburb={suburb}
+            setSuburb={setSuburb}
+            applySuburb={(value) => { setSuburb(value); setSuburbQuery(value) }}
+            category={category}
+            setCategory={setCategory}
+            when={when}
+            setWhen={setWhen}
+            items={view ? view.items : null}
+            error={error}
+            days={days}
+            pins={pins}
+            weekend={weekend}
+            today={now?.date ?? null}
+            hotKey={hotKey}
+            setHotKey={setHotKey}
+            focusKey={focusKey}
+            focusPin={focusPin}
+            closed={closed}
+            setClosed={setClosed}
+            more={more}
+            setMore={setMore}
+            isSaved={isSaved}
+            save={save}
+            onList={() => setTab('submit')}
+          />
         )}
 
         {tab === 'submit' && (
@@ -219,7 +244,7 @@ export function LocalClient() {
             ) : (
               <div className="grid gap-3 lg:grid-cols-2">
                 {mineCommunity.map((l) => (
-                  <div key={l.id} className="rounded-2xl bg-card shadow-sm p-5">
+                  <div key={l.id} className="rounded-2xl bg-card p-5 shadow-sm">
                     <Link href={l.href} className="font-display font-bold hover:text-primary">{l.title}</Link>
                     <p className="text-sm text-muted-foreground">{[sectionByKey(l.communityKey)?.short, l.suburb, l.city].filter(Boolean).join(' · ')}</p>
                     <span className={cn('mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', l.approvalState === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900')}>
@@ -229,8 +254,8 @@ export function LocalClient() {
                   </div>
                 ))}
                 {mine.map((l) => (
-                  <div key={l.id} className="rounded-2xl bg-card shadow-sm p-5 flex items-start gap-4">
-                    <div className="flex-1 min-w-0">
+                  <div key={l.id} className="flex items-start gap-4 rounded-2xl bg-card p-5 shadow-sm">
+                    <div className="min-w-0 flex-1">
                       {l.status === 'APPROVED' ? <Link href={localPath(l)} className="font-display font-bold hover:text-primary">{l.title}</Link> : <p className="font-display font-bold">{l.title}</p>}
                       <p className="text-sm text-muted-foreground">{l.schedule} · from {fmtDay(l.startDate)} · {fmtTime(l.startTime)}–{fmtTime(l.endTime)} · {l.suburb}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Shows until {new Date(l.expiresAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' })}</p>
@@ -238,7 +263,7 @@ export function LocalClient() {
                         {l.status === 'APPROVED' ? 'Live' : l.status === 'PENDING' ? 'Being checked' : 'Not approved'}
                       </span>
                     </div>
-                    <button onClick={() => remove(l.id)} className="text-muted-foreground hover:text-foreground" aria-label="Remove listing"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => remove(l.id)} className="text-muted-foreground hover:text-foreground" aria-label="Remove listing"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
               </div>
@@ -247,10 +272,10 @@ export function LocalClient() {
         )}
 
         {tab === 'how' && (
-          <section className="mt-8 grid lg:grid-cols-[1fr_1.2fr] gap-6">
-            <div className="rounded-2xl bg-card shadow-sm p-6">
-              <h2 className="font-display text-xl font-bold flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-primary" />Listing rules</h2>
-              <ul className="mt-3 space-y-2 text-sm text-muted-foreground list-disc pl-5 leading-relaxed">
+          <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+            <div className="rounded-2xl bg-card p-6 shadow-sm">
+              <h2 className="flex items-center gap-2 font-display text-xl font-bold"><ShieldCheck className="h-5 w-5 text-primary" />Listing rules</h2>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
                 <li>Public events and sales only. Birthday parties, private home gatherings and invitation-only functions are never listed.</li>
                 <li>Weekly, fortnightly and monthly events are created once and repeat automatically for up to six months. Renew any time.</li>
                 <li>Every listing expires automatically after its last date.</li>
@@ -262,7 +287,7 @@ export function LocalClient() {
                 <li>No weapons, vapes, prescription medicines, adult services, scams or job and rental ads.</li>
               </ul>
             </div>
-            <div className="rounded-2xl bg-card shadow-sm p-6 overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl bg-card p-6 shadow-sm">
               <h2 className="font-display text-xl font-bold">Where listings come from</h2>
               <p className="mt-1 text-sm text-muted-foreground">We don’t scrape private social media events or republish anyone’s images without permission. Public listings show the facts only and always link back to the original page.</p>
               <table className="mt-4 w-full text-sm">

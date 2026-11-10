@@ -8,13 +8,19 @@ import { storagePath } from '@/lib/s3'
 import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
 import { eventPath } from '@/lib/seo'
-import { dedupeFeed, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { placeFromText } from '@/lib/venue-place'
 import { aiModeration, expiryFor, findDuplicate, hardBlock, ipHash, parseLocal, recentCount, spamSignals, validateAddress } from '@/lib/local'
 import { unverifiedGate } from '@/lib/account-flow'
 
 export const dynamic = 'force-dynamic'
 
 const PUBLIC = { id: true, title: true, category: true, description: true, address: true, suburb: true, postcode: true, city: true, lat: true, lng: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true, websiteUrl: true, userId: true, sourceName: true } as const
+
+function feedPin(section: string, city: string, suburb: string, lat?: number | null, lng?: number | null) {
+  const place = placeFromText({ city, suburb })
+  return chooseFeedPin(section, { lat, lng }, { lat: place.lat, lng: place.lng })
+}
 
 function range(tz: string, when: string) {
   const from = todayIn(tz)
@@ -61,25 +67,32 @@ export async function GET(req: Request) {
   const seen = new Set<string>()
   const localItems: FeedItem[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
     .filter(({ l, date }) => { const k = `${localDupKey(l)}|${date}|${l.startTime}`; if (seen.has(k)) return false; seen.add(k); return true })
-    .map(({ l, date }) => ({
-      id: l.id,
-      title: l.title,
-      section: sectionForLocal(l),
-      suburb: l.suburb,
-      city: l.city,
-      date,
-      time: l.startTime,
-      isFree: !l.priceNote || /^free\b/i.test(l.priceNote.trim()),
-      price: l.priceNote,
-      href: localPath(l, date),
-      kind: 'local' as const,
-    }))
+    .map(({ l, date }) => {
+      const section = sectionForLocal(l)
+      const pin = feedPin(section, l.city, l.suburb, l.lat, l.lng)
+      return {
+        id: l.id,
+        title: l.title,
+        section,
+        suburb: l.suburb,
+        city: l.city,
+        date,
+        time: l.startTime,
+        isFree: !l.priceNote || /^free\b/i.test(l.priceNote.trim()),
+        price: l.priceNote,
+        href: localPath(l, date),
+        kind: 'local' as const,
+        lat: pin?.lat ?? null,
+        lng: pin?.lng ?? null,
+        blurb: feedBlurb(l.description),
+      }
+    })
   const events = await prisma.event.findMany({
     where: { communityKey: { not: null }, approvalState: 'APPROVED', deletedAt: null, duplicateOfId: null, ...(validCity ? { city } : {}) },
     select: {
       id: true, title: true, description: true, date: true, endDate: true, time: true, suburb: true, city: true,
       venueName: true, venueAddress: true, isFree: true, price: true, status: true, recurrence: true, communityKey: true,
-      locationVisibility: true, childrenInImage: true, imageKidSafe: true,
+      locationVisibility: true, childrenInImage: true, imageKidSafe: true, latitude: true, longitude: true,
     },
     take: 400,
   }).catch(() => [])
@@ -94,20 +107,26 @@ export async function GET(req: Request) {
     isFree: ev.isFree,
     status: ev.status,
   }))
-  const communityItems: FeedItem[] = filterCommunityListings(shaped, { city: validCity ? city : null, from, to }, zone).map((ev) => ({
-    id: ev.id,
-    title: ev.title,
-    section: ev.communityKey,
-    suburb: ev.suburb || '',
-    city: ev.city,
-    date: ev.occursOn,
-    time: ev.time,
-    isFree: ev.isFree,
-    price: ev.price,
-    href: eventPath(ev),
-    kind: 'community' as const,
-    status: ev.status,
-  }))
+  const communityItems: FeedItem[] = filterCommunityListings(shaped, { city: validCity ? city : null, from, to }, zone).map((ev) => {
+    const pin = feedPin(ev.communityKey, ev.city, ev.suburb || '', ev.latitude, ev.longitude)
+    return {
+      id: ev.id,
+      title: ev.title,
+      section: ev.communityKey,
+      suburb: ev.suburb || '',
+      city: ev.city,
+      date: ev.occursOn,
+      time: ev.time,
+      isFree: ev.isFree,
+      price: ev.price,
+      href: eventPath(ev),
+      kind: 'community' as const,
+      status: ev.status,
+      lat: pin?.lat ?? null,
+      lng: pin?.lng ?? null,
+      blurb: feedBlurb(typeof ev.description === 'string' ? ev.description : null),
+    }
+  })
   const items = filterFeed(dedupeFeed([...communityItems, ...localItems]), { section, suburb }).slice(0, 300)
   const communityIds = items.filter((item) => item.kind === 'community').map((item) => item.id).slice(0, 12)
   if (communityIds.length) {

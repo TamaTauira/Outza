@@ -17,6 +17,20 @@ export interface FeedItem {
   href: string
   kind: 'local' | 'community'
   status?: string | null
+  /** Public pin. School listings never receive a street coordinate. */
+  lat?: number | null
+  lng?: number | null
+  /** Short fact from the listing text. Never invented. */
+  blurb?: string | null
+}
+
+/** A card line from the listing's own words. Too-short blurbs stay off the card. */
+export function feedBlurb(text: string | null | undefined): string | null {
+  const clean = (text ?? '').replace(/\s+/g, ' ').trim()
+  if (clean.length < 12) return null
+  if (clean.length <= 160) return clean
+  const cut = clean.slice(0, 157).replace(/\s+\S*$/, '').trim()
+  return `${cut || clean.slice(0, 157).trim()}…`
 }
 
 const norm = (value: string) => value.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '')
@@ -58,6 +72,29 @@ export function filterFeed(items: FeedItem[], opts: { section?: string; suburb?:
     if (opts.suburb && !suburbMatches(item.suburb, opts.suburb)) return false
     return true
   })
+}
+
+const inAustralia = (lat: number, lng: number) => lat > -45 && lat < -9 && lng > 112 && lng < 155
+
+function usablePin(pin: { lat?: number | null; lng?: number | null } | null): { lat: number; lng: number } | null {
+  if (!pin || pin.lat == null || pin.lng == null) return null
+  const lat = Number(pin.lat)
+  const lng = Number(pin.lng)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !inAustralia(lat, lng)) return null
+  return { lat, lng }
+}
+
+/**
+ * Pin shown on the Local map. A school fundraiser stays on the suburb centroid
+ * even when a street geocode exists. Anything else prefers the stored pin.
+ */
+export function chooseFeedPin(
+  section: string,
+  stored: { lat?: number | null; lng?: number | null } | null,
+  suburb: { lat?: number | null; lng?: number | null } | null,
+): { lat: number; lng: number } | null {
+  if (section === 'school-fundraisers') return usablePin(suburb)
+  return usablePin(stored) ?? usablePin(suburb)
 }
 
 export function sectionCounts(items: FeedItem[]): Record<string, number> {
