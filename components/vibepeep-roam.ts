@@ -245,15 +245,12 @@ export function attachRoam(root: HTMLElement): () => void {
     const s = size()
     const h = Math.max(s, figure().height)
     const onMap = location.pathname.startsWith('/map')
-    const boxes = onMap
-      ? [
-          { left: x, top: y, right: x + s, bottom: y + h },
-          { left: x + s - 28, top: y - 12, right: x + s + 12, bottom: y + 30 },
-        ]
-      : [
-          { left: x, top: y, right: x + s, bottom: y + h },
-          { left: x + s - 24, top: y - 4, right: x + s + 4, bottom: y + 24 },
-        ]
+    // The dismiss control sits above the rig: 44px target, 10px gap, plus 24% for the highest reach.
+    const lift = 44 + 10 + h * 0.24
+    const boxes = [
+      { left: x, top: y, right: x + s, bottom: y + h },
+      { left: x + s - 46, top: y - lift - 2, right: x + s + 4, bottom: y - lift + 48 },
+    ]
     const pad = 8
     const gapFor = (el: Element) =>
       el.matches('.leaflet-marker-icon, .leaflet-control, .se-cluster, .vp-map-float, .vp-map-ask, .vp-map-cards, .vp-map-toolbar') ? 32 : pad
@@ -480,7 +477,7 @@ export function attachRoam(root: HTMLElement): () => void {
         if (hero && y < hero.getBoundingClientRect().bottom + 14) y = hero.getBoundingClientRect().bottom + 14
       }
       if (!place(x, y)) {
-        for (let yy = y; yy <= y + 64; yy += 2) {
+        for (let yy = y; yy <= y + 120; yy += 2) {
           if (place(x, yy)) break
         }
       }

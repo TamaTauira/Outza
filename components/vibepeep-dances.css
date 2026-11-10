@@ -184,26 +184,26 @@
   }
 }
 
-.vp-hit[data-dance='moonwalk'] .vp-dance-label::before { content: '1 Moonwalk'; }
-.vp-hit[data-dance='robot'] .vp-dance-label::before { content: '2 Robot'; }
-.vp-hit[data-dance='ymca'] .vp-dance-label::before { content: '3 YMCA'; }
-.vp-hit[data-dance='macarena'] .vp-dance-label::before { content: '4 Macarena'; }
-.vp-hit[data-dance='snake'] .vp-dance-label::before { content: '5 Britney snake'; }
-.vp-hit[data-dance='island'] .vp-dance-label::before { content: '6 The swim'; }
-.vp-hit[data-dance='griddy'] .vp-dance-label::before { content: '7 Griddy'; }
-.vp-hit[data-dance='goth-snap'] .vp-dance-label::before { content: '8 Goth snap'; }
-.vp-hit[data-dance='hand-jive'] .vp-dance-label::before { content: '9 Hand jive'; }
-.vp-hit[data-dance='shuffle'] .vp-dance-label::before { content: '10 Shuffle'; }
-.vp-hit[data-dance='floss'] .vp-dance-label::before { content: '11 Floss'; }
-.vp-hit[data-dance='sprinkler'] .vp-dance-label::before { content: '12 Sprinkler'; }
-.vp-hit[data-dance='running-man'] .vp-dance-label::before { content: '13 Running man'; }
-.vp-hit[data-dance='twist'] .vp-dance-label::before { content: '14 Twist'; }
-.vp-hit[data-dance='worm'] .vp-dance-label::before { content: '15 The worm'; }
-.vp-hit[data-dance='chicken'] .vp-dance-label::before { content: '16 Chicken'; }
-.vp-hit[data-dance='disco-point'] .vp-dance-label::before { content: '17 Disco point'; }
-.vp-hit[data-dance='shopping-cart'] .vp-dance-label::before { content: '18 Shopping cart'; }
-.vp-hit[data-dance='horse'] .vp-dance-label::before { content: '19 Horse'; }
-.vp-hit[data-dance='cha-cha'] .vp-dance-label::before { content: '20 Cha-cha'; }
+.vp-hit[data-dance='moonwalk'] .vp-dance-label::before { content: 'Moonwalk'; }
+.vp-hit[data-dance='robot'] .vp-dance-label::before { content: 'Robot'; }
+.vp-hit[data-dance='ymca'] .vp-dance-label::before { content: 'YMCA'; }
+.vp-hit[data-dance='macarena'] .vp-dance-label::before { content: 'Macarena'; }
+.vp-hit[data-dance='snake'] .vp-dance-label::before { content: 'It\'s Britney B*'; }
+.vp-hit[data-dance='island'] .vp-dance-label::before { content: 'The swim'; }
+.vp-hit[data-dance='griddy'] .vp-dance-label::before { content: 'Griddy'; }
+.vp-hit[data-dance='goth-snap'] .vp-dance-label::before { content: 'Goth snap'; }
+.vp-hit[data-dance='hand-jive'] .vp-dance-label::before { content: 'Hand jive'; }
+.vp-hit[data-dance='shuffle'] .vp-dance-label::before { content: 'Shuffle'; }
+.vp-hit[data-dance='floss'] .vp-dance-label::before { content: 'Floss'; }
+.vp-hit[data-dance='sprinkler'] .vp-dance-label::before { content: 'Sprinkler'; }
+.vp-hit[data-dance='running-man'] .vp-dance-label::before { content: 'Running man'; }
+.vp-hit[data-dance='twist'] .vp-dance-label::before { content: 'Twist'; }
+.vp-hit[data-dance='worm'] .vp-dance-label::before { content: 'The worm'; }
+.vp-hit[data-dance='chicken'] .vp-dance-label::before { content: 'Chicken'; }
+.vp-hit[data-dance='disco-point'] .vp-dance-label::before { content: 'Disco point'; }
+.vp-hit[data-dance='shopping-cart'] .vp-dance-label::before { content: 'Shopping cart'; }
+.vp-hit[data-dance='horse'] .vp-dance-label::before { content: 'Horse'; }
+.vp-hit[data-dance='cha-cha'] .vp-dance-label::before { content: 'Cha-cha'; }
 
 .vp-profile .vp-part img { object-fit: contain; height: 100%; }
 .vp-s-arm-b, .vp-s-arm-f, .vp-s-leg-f, .vp-s-leg-b, .vp-s-ant { display: none; }

@@ -38,8 +38,8 @@
 
 @media (max-width: 639px) {
   .vp-roam .vp-buddy-min {
-    top: -4px;
-    right: -4px;
+    top: calc(-44px - 10px - 24%);
+    right: 0;
     left: auto;
     translate: none;
   }
@@ -51,8 +51,8 @@
   }
 
   .vp-roam .vp-buddy-min {
-    top: -4px;
-    right: -4px;
+    top: calc(-44px - 10px - 24%);
+    right: 0;
     left: auto;
     translate: none;
   }
@@ -154,8 +154,13 @@ html[data-walkstill='1'] .vp-hero-clock {
 }
 
 .vp-roam .vp-buddy-min {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  top: calc(-44px - 10px - 24%);
+  right: 0;
+  left: auto;
   background: #fff;
   color: #1a120e;
   border-color: #ff8a1a;
@@ -341,6 +346,36 @@ html[data-walkstill='1'] .vp-hero-clock {
   .vp-roam .vp-face {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Show-off and close-up fill the top of a desktop window, so a control
+   above his antenna lands in the header. Sit it beside his head instead,
+   outside the widest arm. */
+@media (min-width: 640px) {
+  .vp-roam[data-showoff='1'] .vp-buddy-min,
+  .vp-roam[data-closeup='1'] .vp-buddy-min {
+    top: 8%;
+    left: calc(100% + 52%);
+    right: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Phone show-off starts under the header, so a control above him leaves
+     the screen. Park it below the feet, under the name and the lowest dip. */
+  .vp-roam[data-showoff='1'] .vp-buddy-min,
+  .vp-roam[data-closeup='1'] .vp-buddy-min {
+    top: calc(100% + 26% + 12px);
+    right: 0;
+    left: auto;
+  }
+
+  /* The worm drops past that spot. His head has left the top, so the control moves up there. */
+  .vp-roam[data-showoff='1']:has(.vp-hit[data-dance='worm']) .vp-buddy-min,
+  .vp-roam[data-closeup='1']:has(.vp-hit[data-dance='worm']) .vp-buddy-min {
+    top: 6px;
+    right: 0;
   }
 }
 
