@@ -694,7 +694,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             today={today}
             onMood={applyMood}
             onSuburb={(suburb) => { setFilters((f) => ({ ...f, suburb })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
-            onWorkshops={() => applyMood({ kind: 'filters', categories: ['Education'], subTag: 'Workshop' })}
           />
         )}
       </main>

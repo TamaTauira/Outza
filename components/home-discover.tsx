@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { communityCityPath, communitySectionPath } from '@/lib/community-shared'
+import { localCategoryPath } from '@/lib/local-tiles'
 import { displaySuburb } from '@/lib/cities'
 import { addDays, formatPrice } from '@/lib/board'
 import { LOCAL_TILES } from '@/lib/local-tiles'
@@ -142,13 +142,11 @@ export function HomeDiscover({
   today,
   onMood,
   onSuburb,
-  onWorkshops,
 }: {
   city: string
   today: string | null
   onMood: (action: MoodAction) => void
   onSuburb: (suburb: string) => void
-  onWorkshops: () => void
 }) {
   const [events, setEvents] = useState<NearbyEvent[]>([])
   const [localPhoto, setLocalPhoto] = useState<string | null>(null)
@@ -273,15 +271,15 @@ export function HomeDiscover({
           <ul className="mt-4 grid grid-cols-2 gap-2">
             {community.map((tile) => (
               <li key={tile.key}>
-                <Link href={city ? communityCityPath(tile.key, city) : communitySectionPath(tile.key)} className="flex h-12 items-center rounded-xl border border-border bg-card px-3 text-sm font-semibold hover:border-primary">
+                <Link href={localCategoryPath(tile.key)} className="flex h-12 items-center rounded-xl border border-border bg-card px-3 text-sm font-semibold hover:border-primary">
                   {tile.label}
                 </Link>
               </li>
             ))}
             <li>
-              <button type="button" onClick={onWorkshops} className="flex h-12 w-full items-center rounded-xl border border-border bg-card px-3 text-left text-sm font-semibold hover:border-primary">
+              <Link href={localCategoryPath('workshops')} className="flex h-12 items-center rounded-xl border border-border bg-card px-3 text-sm font-semibold hover:border-primary">
                 Workshops
-              </button>
+              </Link>
             </li>
           </ul>
         </div>
