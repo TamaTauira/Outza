@@ -1,8 +1,9 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import Link from 'next/link'
-import { Bookmark, Building2, CalendarRange, LogOut, Megaphone, Settings, ShieldCheck, Sparkles, User, Users } from 'lucide-react'
+import { Bookmark, Building2, LogOut, Megaphone, Settings, ShieldCheck, Sparkles, User, Users } from 'lucide-react'
+import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { signOut } from 'next-auth/react'
 import { TrustCount } from '@/components/admin-nav'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -10,7 +11,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 type Item = {
   href?: string
   label: string
-  Icon: typeof User
+  Icon: ComponentType<{ className?: string }>
   onClick?: () => void
   extra?: ReactNode
 }
@@ -35,7 +36,7 @@ export function MenuSheet({
   const venue = process.env.NEXT_PUBLIC_OWNERSHIP_UI !== '0'
   const items: Item[] = signedIn
     ? [
-        { href: '/itinerary', label: 'Itinerary', Icon: CalendarRange },
+        { href: '/itinerary', label: 'Itinerary', Icon: CalendarPlusIcon },
         { href: '/watchlist', label: 'My VibePeep', Icon: Bookmark },
         { href: '/together', label: 'Plan with your crew', Icon: Users },
         { href: '/outings', label: 'Plan a day or night', Icon: Sparkles },

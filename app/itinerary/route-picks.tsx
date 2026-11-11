@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Car, Check, ChevronDown, Compass, ExternalLink, MapPin, Plus, Store, Utensils, Wine } from 'lucide-react'
+import { Car, ChevronDown, Compass, ExternalLink, MapPin, Store, Utensils, Wine } from 'lucide-react'
+import { CalendarCheckIcon, CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { kindLabel } from '@/lib/local-ads-shared'
 import type { ItineraryItem } from '@/lib/itinerary'
 
@@ -48,9 +49,9 @@ export function RoutePicks({ picks, isAdded, onAdd, onOpen }: { picks: RoutePick
                 {(p.address || p.venue) && <p className="mt-1 text-xs text-muted-foreground flex items-start gap-1"><MapPin className="w-3 h-3 shrink-0 mt-px" />{p.address ?? `Near ${p.venue}`}</p>}
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
                   {added ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground"><Check className="w-3.5 h-3.5 text-primary" />In your itinerary</span>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-foreground"><CalendarCheckIcon className="w-3.5 h-3.5 text-primary" aria-hidden />In your itinerary</span>
                   ) : (
-                    <button type="button" onClick={() => onAdd(p)} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><Plus className="w-3.5 h-3.5" />Add to Itinerary</button>
+                    <button type="button" onClick={() => onAdd(p)} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><CalendarPlusIcon className="w-3.5 h-3.5" aria-hidden />Add to Itinerary</button>
                   )}
                   <a href={`/api/local-ads/${p.id}/go`} target="_blank" rel="sponsored noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">Visit {p.host || 'website'}<ExternalLink className="w-3 h-3" /></a>
                 </div>

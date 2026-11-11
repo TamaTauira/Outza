@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { CalendarRange, Trash2, AlertTriangle, Plus, MapPin, Clock, Footprints, Car, Navigation, Loader2, Pencil, ExternalLink, ChevronUp, ChevronDown, Share2, CalendarPlus, Search } from 'lucide-react'
+import { Trash2, AlertTriangle, Plus, MapPin, Clock, Footprints, Car, Navigation, Loader2, Pencil, ExternalLink, ChevronUp, ChevronDown, Share2, CalendarPlus, Search } from 'lucide-react'
+import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
 import { Navbar } from '@/components/navbar'
@@ -319,7 +320,7 @@ export default function ItineraryPage() {
         {!arranged.length ? (
           <div className="mt-8">
             <div className="rounded-3xl border border-[#FF4E6A]/20 bg-[#fff5f6] px-4 py-8 text-center dark:bg-[#2a1218] sm:px-8">
-              <CalendarRange className="mx-auto h-8 w-8 text-primary" />
+              <CalendarPlusIcon className="mx-auto h-8 w-8 text-primary" aria-hidden />
               <h2 className="mt-3 font-display text-3xl font-bold">Nothing lined up yet.</h2>
               <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Spot something worth leaving the house for, add it here, and stack the rest around it.</p>
               <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved.</p>
