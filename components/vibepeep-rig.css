@@ -1519,3 +1519,19 @@ html[data-peepclose='1'] .vp-roam {
   bottom: -5px;
   transform: translateX(-50%) rotate(45deg);
 }
+
+.vp-roam .vp-bubble[data-tail='right']::after {
+  left: auto;
+  right: -5px;
+  top: var(--vp-bub-y, 18px);
+  bottom: auto;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.vp-roam .vp-bubble[data-tail='left']::after {
+  left: -5px;
+  right: auto;
+  top: var(--vp-bub-y, 18px);
+  bottom: auto;
+  transform: translateY(-50%) rotate(45deg);
+}

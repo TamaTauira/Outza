@@ -123,10 +123,15 @@ html[data-walkstill='1'] .vp-hero-clock {
   position: relative;
   z-index: 1;
   pointer-events: auto;
+}
+
+/* The shadow sits on the figure, not the actor. A filter on the actor
+   made WebKit drop the speech bubble that hangs outside that box. */
+.vp-roam .vp-stage {
   filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.28));
 }
 
-.dark .vp-roam .vp-actor {
+.dark .vp-roam .vp-stage {
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55));
 }
 

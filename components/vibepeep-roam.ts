@@ -689,6 +689,8 @@ export function attachRoam(root: HTMLElement): () => void {
       bubble.style.marginLeft = ''
       bubble.style.marginTop = ''
       bubble.style.removeProperty('--vp-bub-x')
+      bubble.style.removeProperty('--vp-bub-y')
+      delete bubble.dataset.tail
       return
     }
     bubble.style.marginLeft = '0px'
@@ -704,14 +706,21 @@ export function attachRoam(root: HTMLElement): () => void {
     if (box.width < 4 || box.height < 4) return
     const mascot = root.getBoundingClientRect()
     const close = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
+    const place = (dx: number, dy: number) => {
+      bubble.style.marginLeft = `${dx.toFixed(1)}px`
+      bubble.style.marginTop = `${dy.toFixed(1)}px`
+      box = bubble.getBoundingClientRect()
+    }
     if (offscreen(box) || overlaps(box, close)) {
       const roomLeft = mascot.left - margin
       const roomRight = window.innerWidth - mascot.right - margin
-      const shiftX = roomLeft >= roomRight ? mascot.left - 8 - box.right : mascot.right + 8 - box.left
-      const shiftY = mascot.top + Math.min(18, mascot.height * 0.2) - box.top
-      bubble.style.marginLeft = `${shiftX.toFixed(1)}px`
-      bubble.style.marginTop = `${shiftY.toFixed(1)}px`
-      box = bubble.getBoundingClientRect()
+      const besideLeft = roomLeft >= roomRight
+      const shiftX = besideLeft ? mascot.left - 8 - box.right : mascot.right + 8 - box.left
+      const shiftY = mascot.top + Math.min(12, mascot.height * 0.15) - box.top
+      place(shiftX, shiftY)
+      bubble.dataset.tail = besideLeft ? 'right' : 'left'
+    } else {
+      delete bubble.dataset.tail
     }
     let nudgeX = 0
     let nudgeY = 0
@@ -720,14 +729,16 @@ export function attachRoam(root: HTMLElement): () => void {
     if (box.top < topLimit) nudgeY = topLimit - box.top
     if (box.bottom + nudgeY > window.innerHeight - margin) nudgeY = window.innerHeight - margin - box.bottom
     if (close && overlaps(new DOMRect(box.x + nudgeX, box.y + nudgeY, box.width, box.height), close)) {
-      nudgeY += close.bottom + 6 - (box.top + nudgeY)
+      const clearLeft = box.left + nudgeX - (close.left - 8 - box.width)
+      const clearRight = close.right + 8 - (box.left + nudgeX)
+      nudgeX += Math.abs(clearLeft) <= Math.abs(clearRight) ? -clearLeft : clearRight
     }
-    if (nudgeX || nudgeY) {
-      const left = (parseFloat(bubble.style.marginLeft) || 0) + nudgeX
-      const top = (parseFloat(bubble.style.marginTop) || 0) + nudgeY
-      bubble.style.marginLeft = `${left.toFixed(1)}px`
-      bubble.style.marginTop = `${top.toFixed(1)}px`
-      box = bubble.getBoundingClientRect()
+    if (nudgeX || nudgeY) place((parseFloat(bubble.style.marginLeft) || 0) + nudgeX, (parseFloat(bubble.style.marginTop) || 0) + nudgeY)
+    if (bubble.dataset.tail === 'left' || bubble.dataset.tail === 'right') {
+      const head = mascot.top + mascot.height * 0.28
+      const y = Math.max(14, Math.min(box.height - 14, head - box.top))
+      bubble.style.setProperty('--vp-bub-y', `${y.toFixed(1)}px`)
+      return
     }
     const aim = mascot.left + mascot.width / 2 - (box.left + box.width / 2)
     const half = Math.max(0, box.width / 2 - 16)
@@ -1076,10 +1087,12 @@ export function attachRoam(root: HTMLElement): () => void {
     const delta = Math.abs(y - lastScrollY)
     lastScrollY = y
     if (delta >= 2 && performance.now() >= peekReadyAt && !skipPeek() && narrowPeekMq.matches && portraitPeekMq.matches) {
-      peekRevealed = false
-      lastScrollAt = performance.now()
-      syncScrollPeek()
-      armPeekSettle()
+      if (performance.now() >= peekHoldUntil) {
+        peekRevealed = false
+        lastScrollAt = performance.now()
+        syncScrollPeek()
+        armPeekSettle()
+      }
     }
     const atBottom = nearPageBottom(window.scrollY, window.innerHeight, document.documentElement.scrollHeight)
     if (!atBottom) {
@@ -1151,17 +1164,23 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   let swallowPeekClick = false
+  let peekHoldUntil = 0
 
-  const onPeekUp = (event: PointerEvent) => {
-    if (event.button !== 0 || !scrollPeeking) return
+  const revealPeek = () => {
     swallowPeekClick = true
     peekRevealed = true
-    event.preventDefault()
-    event.stopPropagation()
+    peekHoldUntil = performance.now() + 700
     syncScrollPeek()
     window.setTimeout(() => {
       swallowPeekClick = false
     }, 400)
+  }
+
+  const onPeekUp = (event: PointerEvent) => {
+    if (event.button > 0 || root.dataset.scrollPeek !== '1') return
+    event.preventDefault()
+    event.stopPropagation()
+    revealPeek()
   }
 
   const onDown = (event: PointerEvent) => {
@@ -1208,10 +1227,11 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const onClickCapture = (event: MouseEvent) => {
-    if (swallowPeekClick) {
+    if (swallowPeekClick || root.dataset.scrollPeek === '1') {
       swallowPeekClick = false
       event.preventDefault()
       event.stopImmediatePropagation()
+      if (root.dataset.scrollPeek === '1') revealPeek()
       return
     }
     if (!suppressClick) return
