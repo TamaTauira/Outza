@@ -189,11 +189,11 @@ test.beforeAll(async () => {
   const page = await browser.newPage()
   const deadline = Date.now() + 240_000
   let ready = false
-  while (Date.now() < deadline) {
+  while (Date.now() < deadline && !ready) {
     await page.goto(ORIGIN + '/', { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => null)
-    ready = (await page.locator('.vp-roam[data-chrome="joint"]').count().catch(() => 0)) > 0
-    if (ready) break
-    await page.waitForTimeout(5_000)
+    // The flag is set after hydration. Wait on this load. Reloading first
+    // wipes the page before the mascot can appear.
+    ready = await page.locator('.vp-roam[data-chrome="joint"]').waitFor({ state: 'attached', timeout: 15_000 }).then(() => true).catch(() => false)
   }
   const where = `${page.url()} ${await page.locator('body').innerText().catch(() => '')}`
   await browser.close()
