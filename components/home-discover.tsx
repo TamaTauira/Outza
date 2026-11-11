@@ -24,6 +24,7 @@ type NearbyEvent = {
   priceMin?: number | null
   priceMax?: number | null
   imageUrl?: string | null
+  communityKey?: string | null
 }
 
 export type MoodAction =
@@ -51,11 +52,13 @@ const ASKS = [
 ]
 
 function TilePhoto({ src, tint }: { src: string | null; tint: string }) {
-  const [failed, setFailed] = useState(!src)
-  return failed || !src ? (
-    <span className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint} 0%, #14120f 78%)` }} />
-  ) : (
-    <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" onError={() => setFailed(true)} />
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const failed = !src || failedSrc === src
+  if (failed) {
+    return <span className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint} 0%, #14120f 78%)` }} />
+  }
+  return (
+    <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" onError={() => setFailedSrc(src)} />
   )
 }
 
@@ -75,6 +78,7 @@ export function HomeDiscover({
   onWorkshops: () => void
 }) {
   const [events, setEvents] = useState<NearbyEvent[]>([])
+  const [localPhoto, setLocalPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     if (!today) return
@@ -85,6 +89,15 @@ export function HomeDiscover({
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data) => { if (live) setEvents((data?.events ?? []) as NearbyEvent[]) })
       .catch(() => { if (live) setEvents([]) })
+    const localParams = new URLSearchParams()
+    if (city) localParams.set('city', city)
+    fetch(`/api/local?${localParams}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data) => {
+        const photo = ((data?.items ?? []) as { imageUrl?: string | null }[]).find((item) => usablePhoto(item.imageUrl))?.imageUrl ?? null
+        if (live) setLocalPhoto(photo)
+      })
+      .catch(() => { if (live) setLocalPhoto(null) })
     return () => { live = false }
   }, [city, today])
 
@@ -112,8 +125,9 @@ export function HomeDiscover({
       .map(([suburb, row]) => ({ suburb, ...row }))
   })()
 
-  const communityPhoto = events.find((ev) => (ev.category === 'Community' || ev.category === 'Food & Drink') && usablePhoto(ev.imageUrl))?.imageUrl
-    ?? events.find((ev) => usablePhoto(ev.imageUrl))?.imageUrl
+  const communityPhoto = localPhoto
+    ?? events.find((ev) => ev.communityKey && usablePhoto(ev.imageUrl))?.imageUrl
+    ?? events.find((ev) => ev.category === 'Community' && usablePhoto(ev.imageUrl))?.imageUrl
     ?? null
   const community = COMMUNITY_KEYS.map((key) => LOCAL_TILES.find((tile) => tile.key === key)).filter((tile): tile is NonNullable<typeof tile> => !!tile)
 
