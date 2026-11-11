@@ -67,9 +67,9 @@ export function EventReactions({ eventId, signedIn }: { eventId: string; signedI
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs font-medium text-muted-foreground mb-1.5">What’s the vibe?</p>
-      <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Event reactions">
+      <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Event reactions">
         {REACTION_KINDS.map((kind) => {
           const active = mine.includes(kind)
           const meta = REACTION_LABEL[kind]
