@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
 import { recordSignal } from '@/lib/event-signals'
+import { metricSurface } from '@/lib/organiser-reach'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       await bumpEngagement(id, 'SHARE')
     }
     const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
-    await recordProductMetrics([{ name: kind === 'SHARE' ? METRIC.share : METRIC.itinerary, subjectId: id, subjectKind: 'event' }])
+    await recordProductMetrics([{ name: kind === 'SHARE' ? METRIC.share : METRIC.itinerary, subjectId: id, subjectKind: 'event', dim: metricSurface(b?.surface) }])
   }
   return NextResponse.json({ ok: true })
 }

@@ -183,7 +183,7 @@ export function LocalClient() {
     href: ev.href || '/local',
     latitude: ev.lat ?? null,
     longitude: ev.lng ?? null,
-  })
+  }, 'local')
 
   return (
     <div className="min-h-screen bg-background">

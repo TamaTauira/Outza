@@ -7,17 +7,38 @@ import { cn } from '@/lib/utils'
 
 type Ev = Parameters<typeof eventToItem>[0]
 
-/** Add to My Itinerary toggle. `compact` renders a round + icon button for cards. */
-export function ItineraryButton({ event, compact = false, className }: { event: Ev; compact?: boolean; className?: string }) {
+/** Add to My Itinerary toggle. `compact` is the icon on an event page. `lineup` matches the board-row plus. */
+export function ItineraryButton({ event, compact = false, lineup = false, surface, className }: { event: Ev; compact?: boolean; lineup?: boolean; surface?: string; className?: string }) {
   const { has, add, remove } = useItinerary()
   const inIt = has(event.id)
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (inIt) { remove(event.id); toast('Gone. Itinerary’s lighter.') }
-    else { add(eventToItem(event)); toast.success('Locked in. It’s on your Itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
+    if (inIt) {
+      remove(event.id)
+      toast(lineup ? 'Dropped from the plan.' : 'Gone. Itinerary’s lighter.')
+    } else {
+      add(eventToItem(event), surface)
+      toast.success(lineup ? 'On the itinerary.' : 'Locked in. It’s on your Itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } })
+    }
   }
   const label = inIt ? 'On Your Itinerary' : 'Add to Itinerary'
+
+  if (lineup) {
+    const lineLabel = inIt ? 'Remove from my itinerary' : 'Add to my itinerary'
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn('relative z-20 p-1.5 rounded-md', inIt ? 'text-primary' : 'text-muted-foreground hover:text-foreground', className)}
+        aria-label={lineLabel}
+        aria-pressed={inIt}
+        title={inIt ? 'In my itinerary' : 'Add to my itinerary'}
+      >
+        {inIt ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+      </button>
+    )
+  }
 
   if (compact) {
     return (

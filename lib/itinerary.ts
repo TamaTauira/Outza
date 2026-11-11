@@ -166,12 +166,12 @@ export function useItinerary() {
   }, [])
 
   const has = useCallback((id: string) => items.some((i) => i.id === id), [items])
-  const add = useCallback((item: Omit<ItineraryItem, 'addedAt'>) => {
+  const add = useCallback((item: Omit<ItineraryItem, 'addedAt'>, surface?: string) => {
     const list = read()
     if (list.some((i) => i.id === item.id)) return
     write([...list, { ...item, addedAt: Date.now() }])
     if (item.kind === 'event') {
-      fetch(`/api/events/${encodeURIComponent(item.id)}/signal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'ITINERARY' }), keepalive: true })
+      fetch(`/api/events/${encodeURIComponent(item.id)}/signal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'ITINERARY', ...(surface ? { surface } : {}) }), keepalive: true })
         .catch((err) => console.error('Itinerary count failed:', err))
     }
   }, [])

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 type PlanRow = { token: string; name: string; city: string | null; items: number }
 
 /** Adds one event to an VibePeep Together plan. Anyone with the invite link can vote. */
-export function AddToPlanButton({ eventId, city, className, icon = false }: { eventId: string; city?: string | null; className?: string; icon?: boolean }) {
+export function AddToPlanButton({ eventId, city, className, icon = false, surface }: { eventId: string; city?: string | null; className?: string; icon?: boolean; surface?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [plans, setPlans] = useState<PlanRow[]>([])
@@ -29,7 +29,7 @@ export function AddToPlanButton({ eventId, city, className, icon = false }: { ev
   const addTo = async (token: string) => {
     setBusy(true)
     try {
-      const res = await fetch(`/api/together/${token}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId }) })
+      const res = await fetch(`/api/together/${token}/items`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId, ...(surface ? { surface } : {}) }) })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error ?? 'Could not add it')
       toast.success('Added to the plan')
@@ -45,7 +45,7 @@ export function AddToPlanButton({ eventId, city, className, icon = false }: { ev
     try {
       const res = await fetch('/api/together', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, city: city || undefined, eventIds: [eventId] }),
+        body: JSON.stringify({ name, city: city || undefined, eventIds: [eventId], ...(surface ? { surface } : {}) }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error ?? 'Could not create the plan')

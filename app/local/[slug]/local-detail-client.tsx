@@ -7,6 +7,9 @@ import { toast } from 'sonner'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { ItineraryButton } from '@/components/itinerary-button'
+import { EventReactions } from '@/components/event-reactions'
+import { AddToPlanButton } from '@/components/add-to-plan'
+import { shareEvent } from '@/app/events/[id]/_components/event-extras'
 import { VenueMap } from '@/components/venue-map'
 import { EventImage } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
@@ -29,23 +32,14 @@ export interface LocalDetail {
 const CAT_COLOR: Record<string, string> = { GARAGE: '#b45309', WAREHOUSE: '#475569', MARKET: '#15803d', COMMUNITY: '#7c3aed' }
 
 export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; date: string }) {
-  const { saved, isSaved, toggle } = useSaved()
+  const { saved, isSaved, toggle, signedIn } = useSaved()
   const ev = localToBoard({ ...l, date })
+  const stop = { ...ev, venueAddress: `${l.suburb} ${l.postcode}`, lat: l.lat, lng: l.lng, imageUrl: l.imageUrl }
   const place = `${l.address}, ${l.suburb} ${l.postcode}`
   const dest = l.lat != null && l.lng != null ? `${l.lat},${l.lng}` : place
   const dir = (mode: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=${mode}`
   const transit = TRANSIT[l.city]
   const others = l.upcoming.filter((d) => d !== date).slice(0, 8)
-
-  const share = async () => {
-    const url = window.location.origin + localPath(l, date)
-    try {
-      if (navigator.share) await navigator.share({ title: l.title, url })
-      else { await navigator.clipboard.writeText(url); toast.success('Link copied') }
-    } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') console.error('Share failed:', err)
-    }
-  }
 
   const report = async () => {
     const reason = window.prompt('What is wrong with this listing? (e.g. private event, wrong address, cancelled, prohibited items)')
@@ -87,7 +81,6 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
             <h1 className="font-display text-2xl md:text-4xl font-bold tracking-tight mb-3">{l.title}</h1>
             <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" />{l.sourceName ? `From a public listing on ${l.sourceName} · confirm details on the original page` : 'Listed by the organiser · checked automatically before publishing'}</span>
-              <button onClick={share} className="inline-flex items-center gap-1.5 font-medium text-foreground hover:text-primary"><Share2 className="w-4 h-4" />Share</button>
             </div>
 
             <div className="grid md:grid-cols-2 gap-6 mb-6">
@@ -115,14 +108,28 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                     {l.sourceName ? 'Original listing' : <>Organiser&apos;s page</>} <ExternalLink className="w-4 h-4" />
                   </a>
                 )}
-                <ItineraryButton event={{ ...ev, venueAddress: `${l.suburb} ${l.postcode}`, lat: l.lat, lng: l.lng }} />
-                <button
-                  onClick={() => toggle(ev)}
-                  className={cn('flex items-center justify-center gap-2 w-full py-3 rounded-lg border font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
-                >
-                  <Bookmark className={cn('w-4 h-4', isSaved(ev.id) && 'fill-current')} />
-                  {isSaved(ev.id) ? 'Saved' : 'Save'}
-                </button>
+                <EventReactions eventId={ev.id} signedIn={signedIn} />
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggle(ev, 'local')}
+                    aria-label={isSaved(ev.id) ? 'Saved' : 'Save'}
+                    className={cn('flex h-10 flex-col items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
+                  >
+                    <Bookmark className={cn('w-4 h-4', isSaved(ev.id) && 'fill-current')} />
+                    Save
+                  </button>
+                  <ItineraryButton event={stop} compact surface="local" className="h-10 w-full rounded-lg" />
+                  <AddToPlanButton eventId={ev.id} city={l.city} icon surface="local" />
+                  <button
+                    type="button"
+                    onClick={() => shareEvent({ id: ev.id, title: l.title }, 'local')}
+                    aria-label="Share"
+                    className="flex h-10 flex-col items-center justify-center rounded-lg border border-border text-[10px] font-semibold hover:bg-muted"
+                  >
+                    <Share2 className="w-4 h-4" />Share
+                  </button>
+                </div>
               </div>
             </div>
 

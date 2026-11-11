@@ -62,9 +62,9 @@ export function EventGallery({ event, children }: { event: any; children: React.
 }
 
 /** Copies or shares the listing, and counts the share. Click handler only — never during render. */
-export async function shareEvent(event: { id: string; title: string }) {
+export async function shareEvent(event: { id: string; title: string }, surface?: string) {
   const url = window.location.href
-  fetch(`/api/events/${event.id}/signal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'SHARE' }), keepalive: true }).catch((err) => console.error('Share count failed:', err))
+  fetch(`/api/events/${event.id}/signal`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'SHARE', ...(surface ? { surface } : {}) }), keepalive: true }).catch((err) => console.error('Share count failed:', err))
   try {
     if (navigator.share) await navigator.share({ title: event.title, url })
     else { await navigator.clipboard.writeText(url); toast.success('Link copied. Go on, send it.') }

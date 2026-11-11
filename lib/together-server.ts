@@ -194,7 +194,7 @@ async function touchMember(planId: string, who: Actor, name?: string) {
   })
 }
 
-export async function createPlan(who: Actor, input: { name?: unknown; city?: unknown; planDate?: unknown; eventIds?: unknown }) {
+export async function createPlan(who: Actor, input: { name?: unknown; city?: unknown; planDate?: unknown; eventIds?: unknown; surface?: unknown }) {
   const name = cleanPlanName(input.name)
   if (!name) return { error: 'Give the plan a name', status: 400 as const }
   const city = typeof input.city === 'string' && CITY_NAMES.includes(input.city) ? input.city : null
@@ -214,10 +214,16 @@ export async function createPlan(who: Actor, input: { name?: unknown; city?: unk
     select: { id: true, token: true },
   })
   await touchMember(plan.id, who)
+  const { metricSurface } = await import('@/lib/organiser-reach')
+  const dim = metricSurface(input.surface)
+  if (events.length && dim) {
+    const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
+    await recordProductMetrics(events.map((event) => ({ name: METRIC.plan, subjectId: event.id, subjectKind: 'event', dim })))
+  }
   return { token: plan.token }
 }
 
-export async function addEvents(token: string, who: Actor, eventIds: string[]) {
+export async function addEvents(token: string, who: Actor, eventIds: string[], surface?: string) {
   const plan = await prisma.togetherPlan.findUnique({ where: { token }, select: { id: true, _count: { select: { items: true } } } })
   if (!plan) return { error: 'Plan not found', status: 404 as const }
   const room = Math.max(0, 30 - plan._count.items)
@@ -231,7 +237,9 @@ export async function addEvents(token: string, who: Actor, eventIds: string[]) {
     const fresh = events.filter((event) => !have.has(event.id))
     if (fresh.length) {
       const { METRIC, recordProductMetrics } = await import('@/lib/product-metrics')
-      await recordProductMetrics(fresh.map((event) => ({ name: METRIC.plan, subjectId: event.id, subjectKind: 'event' })))
+      const { metricSurface } = await import('@/lib/organiser-reach')
+      const dim = metricSurface(surface)
+      await recordProductMetrics(fresh.map((event) => ({ name: METRIC.plan, subjectId: event.id, subjectKind: 'event', ...(dim ? { dim } : {}) })))
     }
   }
   await touchMember(plan.id, who)

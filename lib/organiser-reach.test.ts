@@ -9,6 +9,8 @@ import {
   costPerClick,
   funnel,
   impressionSydneyDay,
+  isSurface,
+  metricSurface,
   normalizeSearchTerm,
   parseReachRange,
   peakHour,
@@ -34,6 +36,15 @@ test('range stays inside 180 days and custom dates are kept', () => {
 test('Sydney midnight in November is the previous UTC afternoon', () => {
   const start = sydneyInstant('2026-11-10')
   assert.equal(start.toISOString(), '2026-11-09T13:00:00.000Z')
+})
+
+test('only a known surface is stored on an action', () => {
+  assert.equal(metricSurface('local'), 'local')
+  assert.equal(metricSurface('board'), 'board')
+  assert.equal(metricSurface('Local'), '')
+  assert.equal(metricSurface('homepage'), '')
+  assert.equal(metricSurface(undefined), '')
+  assert.equal(isSurface('local'), true)
 })
 
 test('search terms drop emails and tiny or odd strings', () => {

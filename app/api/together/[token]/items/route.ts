@@ -11,7 +11,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   const ids = Array.isArray(body.eventIds) ? body.eventIds : body.eventId ? [body.eventId] : []
   const clean = ids.filter((id: unknown) => typeof id === 'string')
   if (!clean.length) return NextResponse.json({ error: 'Choose an event to add' }, { status: 400 })
-  const result = await addEvents(token, await actor(), clean)
+  const result = await addEvents(token, await actor(), clean, typeof body.surface === 'string' ? body.surface : undefined)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: result.status })
   return NextResponse.json(result)
 }
