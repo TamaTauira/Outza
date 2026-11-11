@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Check, ChevronRight, MapPin, Plus } from 'lucide-react'
+import { Bookmark, Check, ChevronRight, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useItinerary, eventToItem } from '@/lib/itinerary'
 import { eventPath } from '@/lib/seo'
@@ -32,7 +32,7 @@ const STATUS_CLASS: Record<Status['tone'], string> = {
   tbc: 'text-muted-foreground',
 }
 
-export const BOARD_COLS = 'xl:grid-cols-[92px_minmax(0,1fr)_minmax(0,250px)_130px_104px_104px_100px]'
+export const BOARD_COLS = 'xl:grid-cols-[92px_minmax(0,1fr)_minmax(0,250px)_130px_104px_104px_88px]'
 
 function Finish({ when, compact }: { when: BoardRange; compact?: boolean }) {
   if (!when.endLine && !when.endNote) return null
@@ -58,10 +58,9 @@ interface BoardRowProps {
   showDate?: string
   trackSearch?: boolean
   active?: boolean
-  onLocate?: (ev: BoardEvent) => void
 }
 
-export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch, active, onLocate }: BoardRowProps) {
+export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch, active }: BoardRowProps) {
   const cat = CATEGORIES.find((c) => c.name === ev.category)
   const color = cat?.color ?? '#FF7A1A'
   const Icon = categoryIcon(ev.category)
@@ -90,12 +89,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
     if (e.metaKey || e.ctrlKey) { window.open(href, '_blank', 'noopener'); return }
     router.push(href)
   }
-  const canLocate = !!onLocate && ev.latitude != null && ev.longitude != null
-  const locateButton = canLocate ? (
-    <button type="button" onClick={() => onLocate?.(ev)} className="relative z-20 p-1.5 rounded-md text-muted-foreground hover:text-foreground" aria-label={`Show ${ev.title} on the map`} title="Show on the map">
-      <MapPin className="w-4 h-4" />
-    </button>
-  ) : null
   const itLabel = inIt ? 'Remove from my itinerary' : 'Add to my itinerary'
   const itButton = (extra: string) => (
     <button
@@ -134,7 +127,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
       </div>
       <div className="relative z-20 flex items-center">
-        {locateButton}
         <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
           <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
         </button>
@@ -221,7 +213,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
       {/* Actions */}
       <div className="hidden xl:flex items-center justify-end gap-1">
         <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-        {locateButton}
         <button
           onClick={() => onToggleSave(ev)}
           className={cn('relative z-20 shrink-0 p-1.5 rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
