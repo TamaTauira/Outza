@@ -99,7 +99,7 @@ export function HomeDiscover({
         <p className="mt-1 text-muted-foreground">Pick a mood. We’ll open the real filters, or ask VibePeep.</p>
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {MOODS.map((mood) => (
-            <button key={mood.title} type="button" onClick={() => onMood(mood.action)} className="group relative aspect-[4/5] overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <button key={mood.title} type="button" onClick={() => onMood(mood.action)} className="group relative aspect-[4/3] overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               <img src={mood.image} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
               <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/10" />
               <span className="absolute inset-x-0 bottom-0 p-3 font-display text-base font-bold leading-tight text-white sm:text-lg">{mood.title}</span>
@@ -141,30 +141,41 @@ export function HomeDiscover({
         </section>
       )}
 
-      <section aria-label="Community discoveries">
-        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">The little things happening around the corner.</h2>
-        <p className="mt-1 max-w-2xl text-muted-foreground">Garage sales, markets, fundraisers and the rest of the neighbourhood. These open the live community pages.</p>
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {community.map((tile) => (
-            <Link key={tile.key} href={city ? communityCityPath(tile.key, city) : communitySectionPath(tile.key)} className="group overflow-hidden rounded-2xl border border-border bg-card">
-              {tile.src && <img src={tile.srcSmall ?? tile.src} alt={tile.alt} className="aspect-square w-full object-cover" loading="lazy" />}
-              <span className="block px-3 py-2 text-sm font-semibold">{tile.label}</span>
-            </Link>
-          ))}
-          <button type="button" onClick={onWorkshops} className="overflow-hidden rounded-2xl border border-border bg-card text-left">
-            <img src="/placeholders/education/card.webp" alt="" className="aspect-square w-full object-cover" loading="lazy" />
-            <span className="block px-3 py-2 text-sm font-semibold">Workshops</span>
-          </button>
+      <section aria-label="Community discoveries" className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]">
+        <div>
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">The little things happening around the corner.</h2>
+          <p className="mt-2 max-w-xl text-muted-foreground">Garage sales, markets, fundraisers and the rest of the neighbourhood. Each one opens the live community page.</p>
         </div>
+        <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
+          {community.map((tile) => (
+            <li key={tile.key}>
+              <Link href={city ? communityCityPath(tile.key, city) : communitySectionPath(tile.key)} className="flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-muted">
+                {tile.srcSmall && <img src={tile.srcSmall} alt="" className="h-10 w-10 rounded-lg object-cover" loading="lazy" />}
+                <span>{tile.label}</span>
+              </Link>
+            </li>
+          ))}
+          <li>
+            <button type="button" onClick={onWorkshops} className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold hover:bg-muted">
+              <img src="/placeholders/education/square.webp" alt="" className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+              <span>Workshops</span>
+            </button>
+          </li>
+        </ul>
       </section>
 
       <section aria-label="Ask VibePeep" className="overflow-hidden rounded-3xl bg-[#0c0f0e] text-white">
-        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+        <form className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6" onSubmit={(e) => { e.preventDefault(); const q = new FormData(e.currentTarget).get('q'); if (typeof q === 'string' && q.trim()) onAsk(q.trim()); }}>
           <VibePeepMascot onDark className="w-16 shrink-0 sm:w-20" sizes="80px" alt="VibePeep" />
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Not sure what you’re in the mood for?</h2>
-            <p className="mt-1 text-white/75">Ask VibePeep. These go through the same search as the bar above.</p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <p className="mt-1 text-white/75">Ask VibePeep. This uses the same search as the bar above.</p>
+            <div className="mt-4 flex gap-2">
+              <label className="sr-only" htmlFor="ask-vibepeep">Ask VibePeep</label>
+              <input id="ask-vibepeep" name="q" placeholder="Ask VibePeep anything…" className="h-12 min-w-0 flex-1 rounded-full bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-500" />
+              <button type="submit" className="h-12 shrink-0 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Ask</button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
               {ASKS.map((query) => (
                 <button key={query} type="button" onClick={() => onAsk(query)} className="rounded-full bg-white/10 px-3 py-2 text-left text-sm text-white hover:bg-white/20">
                   {query}
@@ -172,7 +183,7 @@ export function HomeDiscover({
               ))}
             </div>
           </div>
-        </div>
+        </form>
       </section>
     </div>
   )

@@ -61,6 +61,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [resultsView, setResultsViewState] = useState<'list' | 'map'>('list');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [askRequest, setAskRequest] = useState<{ id: number; text: string } | null>(null);
+  const [heroPhoto, setHeroPhoto] = useState<string | null>(null);
   const askSeq = useRef(0);
   const [now, setNow] = useState<SydneyNow | null>(initialNow);
   const [day, setDay] = useBackState<string | null>('home:day', initialNow.date);
@@ -194,6 +195,18 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   }, []);
 
   useEffect(() => {
+    let live = true;
+    fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const photo = (data?.items ?? []).find((item: { imageUrl?: string | null }) => item.imageUrl && /^https?:\/\//i.test(item.imageUrl) && !/picsum\.photos/i.test(item.imageUrl))?.imageUrl ?? null;
+        if (live) setHeroPhoto(photo);
+      })
+      .catch(() => { if (live) setHeroPhoto(null); });
+    return () => { live = false; };
+  }, [city]);
+
+  useEffect(() => {
     fetch(`/api/events/stats${city ? `?city=${encodeURIComponent(city)}` : ''}`).
     then((r) => r.json()).
     then((data) => setLastRefresh(data?.lastRefresh ?? null)).
@@ -324,13 +337,15 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           : !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.dateFrom
             ? 'weekend'
             : '';
-  const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string }[] = [
-    { key: 'today', label: 'Today' },
-    { key: 'tonight', label: 'Tonight' },
-    { key: 'tomorrow', label: 'Tomorrow' },
-    { key: 'weekend', label: 'This weekend' },
-    { key: 'next', label: 'Next week' },
-  ];
+  const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const weekendSat = today ? days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6) : null;
+  const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string; detail: string }[] = today ? [
+    { key: 'today', label: 'Today', detail: shortDate(today) },
+    { key: 'tonight', label: 'Tonight', detail: 'From 5pm' },
+    { key: 'tomorrow', label: 'Tomorrow', detail: shortDate(addDays(today, 1)) },
+    { key: 'weekend', label: 'This weekend', detail: weekendSat ? `${shortDate(weekendSat)} – ${shortDate(addDays(weekendSat, 1))}` : 'Sat – Sun' },
+    { key: 'next', label: 'Next week', detail: nextWeek ? `${shortDate(nextWeek.from)} – ${shortDate(nextWeek.to)}` : 'Next week' },
+  ] : [];
   const boardPicked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
   const noType = boardPicked.length === 0
   const quickLinks = [
@@ -348,8 +363,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'vp-wrap px-4 sm:px-6 pt-5'}>
         {view === 'board' ? (
-          <section className="mb-8 overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
-            <div className="flex items-start justify-between gap-4">
+          <section className="relative mb-8 min-h-[28rem] overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
+            {heroPhoto && <img src={heroPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
+            <div className="relative flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
                   <span className="block">Your city’s calling.</span>
@@ -359,10 +376,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
                 <LocalClock city={city} className="vp-hero-clock text-right" />
-                <VibePeepMascot onDark className="w-14 sm:w-20" sizes="80px" alt="VibePeep" />
+                <VibePeepMascot onDark className="w-16 sm:w-24" sizes="96px" alt="VibePeep" />
               </div>
             </div>
-            <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+            <div className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
               <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
                 <MapPin className="h-4 w-4 shrink-0 text-primary" />
                 <span className="sr-only">Choose a city</span>
@@ -373,7 +390,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               </label>
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="What’s your vibe? Live music, cheap eats, something different…" queryRequest={askRequest} />
             </div>
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
                 { label: 'Tonight’s looking good.', run: () => applyPlan('tonight') },
                 { label: 'Something free.', run: () => { update({ isFree: true }); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
@@ -427,9 +444,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {planChips.map((chip) => (
-                <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70')}>{chip.label}</button>
+                <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('rounded-2xl border px-4 py-4 text-left', planKey === chip.key ? 'border-foreground bg-foreground text-background' : 'border-border bg-card hover:border-primary')}>
+                  <span className="block text-base font-semibold">{chip.label}</span>
+                  <span className={cn('mt-1 block text-sm', planKey === chip.key ? 'text-background/70' : 'text-muted-foreground')}>{chip.detail}</span>
+                </button>
               ))}
             </div>
           </section>

@@ -150,7 +150,15 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
           <section className="mt-10">
             <h2 className="font-display text-2xl font-bold">Your collections.</h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Personal collections, like date-night ideas or gigs you want to see, are a future enhancement. There isn’t a collection of your saved events here yet, so nothing below is pretending to hold them.</p>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Suggested names only. Personal collections are a future enhancement, so these do not hold any of your saved events.</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {['Date night ideas', 'Gigs I want to see', 'Weekend adventures'].map((name) => (
+                <div key={name} className="rounded-2xl border border-dashed border-border bg-card p-4">
+                  <p className="font-semibold">{name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Not available yet</p>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="mt-6 flex flex-col gap-4 rounded-3xl bg-[#0c0f0e] px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between">

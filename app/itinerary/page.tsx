@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Trash2, AlertTriangle, Plus, MapPin, Clock, Footprints, Car, Navigation, Loader2, Pencil, ExternalLink, ChevronUp, ChevronDown, Share2, CalendarPlus, Search } from 'lucide-react'
+import { CalendarRange, Trash2, AlertTriangle, Plus, MapPin, Clock, Footprints, Car, Navigation, Loader2, Pencil, ExternalLink, ChevronUp, ChevronDown, Share2, CalendarPlus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
 import { Navbar } from '@/components/navbar'
@@ -132,6 +132,7 @@ export default function ItineraryPage() {
   const [locating, setLocating] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [mobileView, setMobileView] = useState<'list' | 'map'>('list')
+  const [focusPane, setFocusPane] = useState<'list' | 'map'>('list')
   const [wide, setWide] = useState(false)
   const [mapFull, setMapFull] = useState(false)
   const [panel, setPanel] = useState<'event' | 'custom' | 'nearby' | null>(null)
@@ -325,8 +326,9 @@ export default function ItineraryPage() {
 
         {!arranged.length ? (
           <div className="mt-8">
-            <div className="rounded-3xl border border-border bg-card px-4 py-8 text-center sm:px-8">
-              <h2 className="font-display text-3xl font-bold">A blank canvas. A thousand possibilities.</h2>
+            <div className="rounded-3xl border border-[#FF4E6A]/20 bg-[#fff5f6] px-4 py-8 text-center dark:bg-[#2a1218] sm:px-8">
+              <CalendarRange className="mx-auto h-8 w-8 text-primary" />
+              <h2 className="mt-3 font-display text-3xl font-bold">A blank canvas. A thousand possibilities.</h2>
               <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Find something worth going to, add it to your itinerary and let VibePeep help sort out the rest.</p>
               <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">It stays on this device for the account you’re signed in with, and clears from view when you sign out. It’s separate from Saved.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -374,14 +376,14 @@ export default function ItineraryPage() {
               </div>
             </section>
 
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 lg:hidden">
-              <ViewToggle value={mobileView} onChange={setMobileView} listLabel="Timeline" mapLabel="Map" label="Itinerary view" />
-              {showMap && <button type="button" onClick={() => setMapFull((on) => !on)} className="h-11 rounded-full border border-border px-4 text-sm font-semibold">{mapFull ? 'Shrink map' : 'Full-screen map'}</button>}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <ViewToggle value={wide ? focusPane : mobileView} onChange={(next) => { setFocusPane(next); setMobileView(next); if (wide) document.getElementById(next === 'map' ? 'itinerary-map' : 'itinerary-timeline')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} listLabel="Timeline" mapLabel="Map" label="Itinerary view" />
+              {showMap && <button type="button" onClick={() => setMapFull((on) => !on)} className="h-11 rounded-full border border-border px-4 text-sm font-semibold lg:hidden">{mapFull ? 'Shrink map' : 'Full-screen map'}</button>}
             </div>
 
             <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(20rem,0.9fr)] lg:items-start lg:gap-6">
               {showList && (
-                <div className="space-y-8">
+                <div id="itinerary-timeline" className="space-y-8 scroll-mt-28">
                   {days.map((d) => (
                     <section key={d}>
                       <h3 className="mb-3 font-display text-lg font-semibold">{dayLabel(d)}</h3>
@@ -448,7 +450,7 @@ export default function ItineraryPage() {
                 </div>
               )}
               {showMap && (
-                <div className={`relative overflow-hidden rounded-3xl border border-border bg-muted ${mapFull ? 'h-[100dvh]' : 'h-[70vh] min-h-[420px]'} lg:sticky lg:top-24`}>
+                <div id="itinerary-map" className={`relative scroll-mt-28 overflow-hidden rounded-3xl border border-border bg-muted ${mapFull ? 'h-[100dvh]' : 'h-[70vh] min-h-[420px]'} lg:sticky lg:top-24`}>
                   <ItineraryMap stops={arranged} activeId={activeId} onSelect={selectStop} />
                 </div>
               )}
