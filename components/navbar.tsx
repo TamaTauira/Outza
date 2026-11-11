@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { LayoutList, MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, House, Users, Sparkles, ShieldCheck, Building2 } from 'lucide-react'
+import { MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, House, Users, Sparkles, ShieldCheck, Building2 } from 'lucide-react'
+import type { ComponentType } from 'react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
@@ -12,6 +13,7 @@ import {
 import { useMounted } from '@/components/client-only'
 import { cn } from '@/lib/utils'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { PeepIcon } from '@/components/peep-icon'
 import { BottomNav } from '@/components/bottom-nav'
 
 export type AppView = 'board' | 'map' | 'saved'
@@ -21,8 +23,8 @@ interface NavbarProps {
 }
 
 // Board, Map and Saved each have their own address, so Back, bookmarks and sharing all work.
-const TABS: { key: AppView; label: string; Icon: typeof LayoutList; href: string }[] = [
-  { key: 'board', label: 'Board', Icon: LayoutList, href: '/' },
+const TABS: { key: AppView; label: string; Icon: ComponentType<{ className?: string }>; href: string }[] = [
+  { key: 'board', label: 'Peep', Icon: PeepIcon, href: '/' },
   { key: 'map', label: 'Map', Icon: MapPin, href: '/map' },
   { key: 'saved', label: 'Saved', Icon: Bookmark, href: '/saved' },
 ]
