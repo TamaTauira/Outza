@@ -123,10 +123,15 @@ html[data-walkstill='1'] .vp-hero-clock {
   position: relative;
   z-index: 1;
   pointer-events: auto;
+}
+
+/* The shadow sits on the figure, not the actor. A filter on the actor
+   made WebKit drop the speech bubble that hangs outside that box. */
+.vp-roam .vp-stage {
   filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.28));
 }
 
-.dark .vp-roam .vp-actor {
+.dark .vp-roam .vp-stage {
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.55));
 }
 
@@ -153,19 +158,44 @@ html[data-walkstill='1'] .vp-hero-clock {
   border-radius: 40%;
 }
 
+/* The dismiss control sits outside .vp-roam. That layer is translated, and
+   WebKit rasterises text and 1px borders inside it, then the fractional
+   translate smears them. Fixed position, snapped in JS, keeps the circle crisp. */
+.vp-buddy-anchor > .vp-buddy-min {
+  position: fixed;
+  z-index: 36;
+  left: -80px;
+  top: -80px;
+  right: auto;
+  bottom: auto;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  transform: none;
+  will-change: auto;
+  background: #fff;
+  color: #1a120e;
+  border: 1px solid #ff8a1a;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
+  display: grid;
+  place-items: center;
+}
+
+.vp-buddy-anchor > .vp-buddy-min svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
 .vp-roam .vp-buddy-min {
   width: 44px;
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-  top: calc(-44px - 10px - 24%);
-  right: 0;
-  left: auto;
-  background: #fff;
-  color: #1a120e;
-  border-color: #ff8a1a;
-  font-weight: 800;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
 }
 
 .vp-roam-parked .vp-roam-show {
@@ -379,34 +409,42 @@ html[data-walkstill='1'] .vp-hero-clock {
   }
 }
 
-/* Narrow viewports tuck him into the gutter while the page scrolls.
-   The clip is the antenna-and-eyes window from scrollPeekClip().
+/* Narrow viewports: a vertical half leans out of the nearer edge, down in
+   the corner above the nav. No clip. The screen edge hides the other half.
    Wider than 767px is unchanged. */
-@media (max-width: 767px) {
-  .vp-roam[data-scroll-peek='1'] .vp-slot {
+@media (max-width: 767px) and (orientation: portrait) {
+  .vp-roam[data-scroll-peek='1'] .vp-roam-body {
     transform: translate3d(var(--vp-peek-dx, 0px), var(--vp-peek-dy, 0px), 0);
-    clip-path: inset(0% 31% 48% 39%);
     transition: transform var(--vp-peek-ms, 240ms) var(--vp-peek-ease, cubic-bezier(0.22, 0.8, 0.2, 1));
   }
 
-  /* Off the edge and invisible. A 44px control will not fit in the gutter. */
-  .vp-roam[data-scroll-peek='1'] .vp-buddy-min {
+  /* 44px target on the visible half, its right edge on the screen edge. */
+  .vp-roam[data-scroll-peek='1'] .vp-hit,
+  .vp-roam[data-scroll-peek='1'] .vp-rig,
+  .vp-roam[data-scroll-peek='1'] .vp-stage {
+    pointer-events: none;
+  }
+
+  .vp-roam[data-scroll-peek='1'] .vp-hit::after {
+    top: auto;
+    bottom: 18%;
+    left: auto;
+    right: 40%;
+    width: 44px;
+    height: 44px;
+    pointer-events: auto;
+  }
+
+  /* Off the edge and invisible while he is peeking. */
+  .vp-roam[data-scroll-peek='1'] .vp-buddy-min,
+  .vp-buddy-anchor:has(.vp-roam[data-scroll-peek='1']) > .vp-buddy-min {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translate3d(var(--vp-close-dx, 0px), var(--vp-close-dy, 0px), 0);
-    transition: transform var(--vp-peek-ms, 240ms) var(--vp-peek-ease, cubic-bezier(0.22, 0.8, 0.2, 1));
+    transform: none;
   }
 
-  /* The visible slice is the tap target, including the antenna above the old hit box. */
-  .vp-roam[data-scroll-peek='1'] .vp-hit::after {
-    top: 0;
-    right: 31%;
-    bottom: 48%;
-    left: 39%;
-  }
-
-  /* Hold the neutral face in the window. A bob or dance would slide the antenna out of the clip. */
+  /* Hold the front face still so the half reads as him, upright. */
   .vp-roam[data-scroll-peek='1'] .vp-bob,
   .vp-roam[data-scroll-peek='1'] .vp-stage,
   .vp-roam[data-scroll-peek='1'] .vp-act,
@@ -416,7 +454,6 @@ html[data-walkstill='1'] .vp-hero-clock {
     transform: none !important;
   }
 
-  /* Front face, so both eyes and the attached antenna are what peek. */
   .vp-roam[data-scroll-peek='1'] .vp-front {
     visibility: visible !important;
   }
@@ -435,11 +472,15 @@ html[data-walkstill='1'] .vp-hero-clock {
   }
 }
 
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  .vp-roam[data-scroll-peek='1'] .vp-slot,
+@media (max-width: 767px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
+  .vp-roam[data-scroll-peek='1'] .vp-roam-body,
   .vp-roam[data-scroll-peek='1'] .vp-buddy-min {
     transition: none;
   }
+}
+
+html:has(.vp-roam[data-scroll-peek='1']) {
+  overflow-x: clip;
 }
 
 @media print {

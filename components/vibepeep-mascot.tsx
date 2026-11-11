@@ -322,8 +322,8 @@ export function VibePeepMascot({
           </span>
           <span className="vp-dance-label" aria-hidden="true" />
         </span>
-        <span className="vp-bubble" aria-hidden="true" />
       </button>
+      <span className="vp-bubble" aria-hidden="true" />
       <span className="vp-live sr-only" aria-live="polite" />
     </span>
   )

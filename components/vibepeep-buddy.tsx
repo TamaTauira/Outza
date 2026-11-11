@@ -62,27 +62,31 @@ export function VibePeepBuddy() {
   }
 
   return (
-    <div
-      key="roam"
-      ref={rootRef}
-      className={`vp-roam pointer-events-none ${onMap ? 'vp-roam-map' : ''}`}
-      data-map={onMap ? '1' : undefined}
-      data-face="right"
-    >
-      <div className="vp-roam-body">
-        <span className="vp-shadow" aria-hidden="true" />
-        <div className="vp-actor">
-          <VibePeepMascot
-            rig
-            className="w-full"
-            bubble="start"
-            alt="VibePeep"
-          />
-          <button type="button" className="vp-buddy-min" aria-label="Minimise VibePeep" onClick={() => save(true)}>
-            <span aria-hidden="true">×</span>
-          </button>
+    <div className="vp-buddy-anchor">
+      <div
+        key="roam"
+        ref={rootRef}
+        className={`vp-roam pointer-events-none ${onMap ? 'vp-roam-map' : ''}`}
+        data-map={onMap ? '1' : undefined}
+        data-face="right"
+      >
+        <div className="vp-roam-body">
+          <span className="vp-shadow" aria-hidden="true" />
+          <div className="vp-actor">
+            <VibePeepMascot
+              rig
+              className="w-full"
+              bubble="start"
+              alt="VibePeep"
+            />
+          </div>
         </div>
       </div>
+      <button type="button" className="vp-buddy-min" aria-label="Minimise VibePeep" onClick={() => save(true)}>
+        <svg viewBox="0 0 22 22" width="22" height="22" aria-hidden="true" focusable="false">
+          <path d="M6 6l10 10M16 6L6 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        </svg>
+      </button>
     </div>
   )
 }

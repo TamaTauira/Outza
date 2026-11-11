@@ -31,10 +31,36 @@ jobs:
           node-version: 22
       - name: Install
         run: corepack enable && corepack yarn install --immutable
-      - name: Install Chromium
-        run: corepack yarn exec playwright install --with-deps chromium
+      - name: Install Chromium and WebKit
+        run: |
+          corepack yarn exec playwright install-deps chromium webkit
+          corepack yarn exec playwright install chromium chromium-headless-shell webkit
       - name: Public smoke and axe
-        run: corepack yarn exec playwright test
+        run: corepack yarn exec playwright test e2e/public.spec.ts e2e/signed-in.spec.ts
         env:
           CI: '1'
           PLAYWRIGHT_BASE_URL: https://outza-outza.vercel.app
+      - name: Preview URL for the mascot collision test
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            branch="${GITHUB_HEAD_REF//\//-}"
+            url="https://outza-git-${branch}-outza.vercel.app"
+          else
+            url="https://outza-outza.vercel.app"
+          fi
+          echo "MASCOT_COLLISION_URL=$url" >> "$GITHUB_ENV"
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+            if [ "$code" = "200" ]; then
+              echo "ready $url"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "preview not ready: $url" >&2
+          exit 1
+      - name: Mascot collision
+        run: corepack yarn exec playwright test e2e/mascot-collision.spec.ts
+        env:
+          CI: '1'
+          MASCOT_COLLISION_URL: ${{ env.MASCOT_COLLISION_URL }}

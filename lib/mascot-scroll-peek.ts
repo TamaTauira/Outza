@@ -1,8 +1,7 @@
 /**
- * Phone tuck. While a narrow viewport is scrolling, the rig slides to the
- * nearer screen edge until only the antenna and the eyes are in the gutter.
- * The whole figure moves together, so the antenna stays on his head.
- * Desktop (wider than SCROLL_PEEK_MAX_WIDTH) never tucks.
+ * Phone tuck. While a narrow viewport is scrolling, he leans out from the
+ * nearer screen edge: a vertical half of the upright figure, antenna still
+ * on his head, parked in the bottom corner above the nav. Desktop never tucks.
  */
 
 /** Matches a max-width media query. 768px and up stay as they are. */
@@ -12,46 +11,39 @@ export const SCROLL_PEEK_MAX_WIDTH = 767
 export const SCROLL_PEEK_SETTLE_MS = 1000
 
 /**
- * Page padding is 1rem (`px-4`). The visible slice has to fit in that gutter
- * or he covers the ends of lines. Phone width is 3.27rem, so this slice is
- * 0.30 × 3.27 = 0.98rem.
- *
- * Framed on the face, not a sliver of one eye. The antenna (0.416–0.587)
- * stays whole. The left eye white runs to 0.472 and the right eye white
- * starts at 0.613, so both sit inside the window.
+ * Antenna box on the rig (mascot-rig.json). The ball fills that box, so a
+ * cut through the centre line would slice it. The visible share stays just
+ * past the ball.
  */
-export const SCROLL_PEEK_WINDOW = { left: 0.39, right: 0.69, top: 0, bottom: 0.52 } as const
+export const PEEK_ANTENNA = { left: 0.4155, right: 0.4155 + 0.1717 } as const
+
+/**
+ * Share of the rig that stays on screen. Half the body, plus enough that the
+ * centre-line antenna stays whole and attached. One eye is fully in frame.
+ */
+export const SCROLL_PEEK_VISIBLE = 0.6
 
 /** The dismiss control. Same numbers as `.vp-buddy-min` in the roam CSS. */
 export const CLOSE_BUTTON = { size: 44, gap: 10, lift: 0.24 } as const
 
-/** Clearance so the dismiss control never sits on the peeking face. */
-export const CLOSE_CLEARANCE = 8
-
-const SCREEN_MARGIN = 4
+/** Gap between his feet and the bottom nav (or the safe area). */
+export const PEEK_CORNER_GAP = 8
 
 export function scrollPeekActive(input: {
   width: number
+  /** Sideways phones stay as they are. Desktop width already fails the max-width check. */
+  portrait: boolean
   atBottom: boolean
   revealed: boolean
   /** Null until the reader has actually scrolled. */
   msSinceScroll: number | null
   settleMs?: number
 }): boolean {
+  if (!input.portrait) return false
   if (input.width > SCROLL_PEEK_MAX_WIDTH) return false
   if (input.atBottom || input.revealed) return false
   if (input.msSinceScroll == null) return false
   return input.msSinceScroll < (input.settleMs ?? SCROLL_PEEK_SETTLE_MS)
-}
-
-/** Clip that leaves the antenna-and-eyes window. `none` is the full figure. */
-export function scrollPeekClip(window = SCROLL_PEEK_WINDOW): string {
-  const pct = (n: number) => `${Number((n * 100).toFixed(2))}%`
-  const top = window.top
-  const right = 1 - window.right
-  const bottom = 1 - window.bottom
-  const left = window.left
-  return `inset(${pct(top)} ${pct(right)} ${pct(bottom)} ${pct(left)})`
 }
 
 export function closeButtonBox(width: number, height: number) {
@@ -72,15 +64,22 @@ export type ScrollPeekLayout = {
   slotDy: number
   closeDx: number
   closeDy: number
-  window: PeekRect
+  /** The on-screen half. The rest of the rig is past the screen edge. */
+  visible: PeekRect
   close: PeekRect
 }
 
+/** Local x span that stays on screen, 0–1 across the rig. */
+export function peekVisibleSpan(edge: 'left' | 'right', visible = SCROLL_PEEK_VISIBLE) {
+  if (edge === 'right') return { left: 0, right: visible }
+  return { left: 1 - visible, right: 1 }
+}
+
 /**
- * Slide the rig toward the nearer side so the antenna-and-eyes window sits
- * flush in the screen gutter. The dismiss control tucks off that same edge
- * so it is not a 44px button over the line endings. It returns above his
- * head, still 44px and clear of his face, when the peek ends.
+ * Slide the whole upright rig off the right edge so a vertical half leans
+ * out, and drop him into the bottom corner above `bottomReserve`. The right
+ * edge only: the left edge is the iOS back swipe. The dismiss control goes
+ * off screen. No crop: the viewport edge is the only thing hiding him.
  */
 export function scrollPeekLayout(input: {
   x: number
@@ -90,71 +89,49 @@ export function scrollPeekLayout(input: {
   viewportW: number
   viewportH: number
   close: { left: number; top: number; width: number; height: number }
-  /** Text starts this far in from each side. The window must fit inside it. */
-  gutter?: number
+  /** Pixels to keep clear at the bottom: nav offset (includes safe area) plus a gap. */
+  bottomReserve?: number
 }): ScrollPeekLayout {
-  const gutter = input.gutter ?? 16
-  const win = SCROLL_PEEK_WINDOW
-  const winLeftLocal = win.left * input.width
-  const winRightLocal = win.right * input.width
-  const winTopLocal = win.top * input.height
-  const winBottomLocal = win.bottom * input.height
-  const edge: 'left' | 'right' = input.x + input.width / 2 < input.viewportW / 2 ? 'left' : 'right'
+  const reserve = Math.max(0, input.bottomReserve ?? 0)
+  const edge: 'left' | 'right' = 'right'
+  const span = peekVisibleSpan(edge)
+  const slotDx = edge === 'right'
+    ? input.viewportW - (input.x + span.right * input.width)
+    : 0 - (input.x + span.left * input.width)
 
-  let slotDx = edge === 'right'
-    ? input.viewportW - (input.x + winRightLocal)
-    : 0 - (input.x + winLeftLocal)
-  let slotDy = 0
+  const minTop = 8
+  const maxTop = Math.max(minTop, input.viewportH - reserve - input.height)
+  const slotDy = maxTop - input.y
 
-  const winTop = () => input.y + slotDy + winTopLocal
-  const winBottom = () => input.y + slotDy + winBottomLocal
-  if (winTop() < SCREEN_MARGIN) slotDy += SCREEN_MARGIN - winTop()
-  if (winBottom() > input.viewportH - SCREEN_MARGIN) slotDy -= winBottom() - (input.viewportH - SCREEN_MARGIN)
-
-  // If the slice is wider than the gutter, push the extra off the screen.
-  const onScreen = () => edge === 'right'
-    ? input.viewportW - (input.x + slotDx + winLeftLocal)
-    : input.x + slotDx + winRightLocal
-  if (onScreen() > gutter) {
-    const extra = onScreen() - gutter
-    slotDx += edge === 'right' ? extra : -extra
-  }
-
-  const windowRect: PeekRect = {
-    left: input.x + slotDx + winLeftLocal,
-    top: input.y + slotDy + winTopLocal,
-    right: input.x + slotDx + winRightLocal,
-    bottom: input.y + slotDy + winBottomLocal,
+  const figureLeft = input.x + slotDx
+  const figureTop = input.y + slotDy
+  const visible: PeekRect = {
+    left: figureLeft + span.left * input.width,
+    right: figureLeft + span.right * input.width,
+    top: figureTop,
+    bottom: figureTop + input.height,
   }
 
   const naturalLeft = input.x + input.close.left
   const naturalTop = input.y + input.close.top
   const size = input.close.width
-  const height = input.close.height
   const tuck = 12
   const closeLeft = edge === 'right' ? input.viewportW + tuck : -(size + tuck)
-  const closeTop = windowRect.top - CLOSE_CLEARANCE - height
-  const chosen: PeekRect = {
+  const closeTop = visible.top - input.close.height
+  const close: PeekRect = {
     left: closeLeft,
     top: closeTop,
     right: closeLeft + size,
-    bottom: closeTop + height,
+    bottom: closeTop + input.close.height,
   }
 
   return {
     edge,
     slotDx,
     slotDy,
-    closeDx: chosen.left - naturalLeft,
-    closeDy: chosen.top - naturalTop,
-    window: windowRect,
-    close: chosen,
+    closeDx: closeLeft - naturalLeft,
+    closeDy: closeTop - naturalTop,
+    visible,
+    close,
   }
-}
-
-export function peekClearsText(layout: ScrollPeekLayout, viewportW: number, gutter = 16): boolean {
-  const { window: box } = layout
-  const inLeft = box.right <= gutter + 0.5
-  const inRight = box.left >= viewportW - gutter - 0.5
-  return (inLeft || inRight) && box.right - box.left <= gutter + 0.5
 }

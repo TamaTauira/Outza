@@ -22,8 +22,10 @@ import {
 } from '@/lib/mascot-roam'
 import { roamBottomChrome } from '@/lib/bottom-nav'
 import {
+  PEEK_CORNER_GAP,
   SCROLL_PEEK_MAX_WIDTH,
   SCROLL_PEEK_SETTLE_MS,
+  SCROLL_PEEK_VISIBLE,
   closeButtonBox,
   scrollPeekActive,
   scrollPeekLayout,
@@ -50,11 +52,13 @@ export function attachRoam(root: HTMLElement): () => void {
   const bubble = root.querySelector<HTMLElement>('.vp-bubble')
   const live = root.querySelector<HTMLElement>('.vp-live')
   if (!slot || !button || !bubble || !live) return () => {}
+  root.dataset.chrome = 'joint'
 
   const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)')
   if (/walkdemo|walkstill/.test(location.search)) document.documentElement.dataset.walkstill = '1'
   const mobileMq = window.matchMedia('(max-width: 639px)')
   const narrowPeekMq = window.matchMedia(`(max-width: ${SCROLL_PEEK_MAX_WIDTH}px)`)
+  const portraitPeekMq = window.matchMedia('(orientation: portrait)')
   const navMq = window.matchMedia('(max-width: 1023px), (pointer: coarse) and (orientation: portrait) and (max-width: 1400px), (horizontal-viewport-segments: 2), (spanning: single-fold-vertical)')
   let navOffset = 0
   let segment = { w: 0, h: 0 }
@@ -249,6 +253,27 @@ export function attachRoam(root: HTMLElement): () => void {
     const width = size()
     const rig = root.querySelector<HTMLElement>('.vp-rig')
     const height = rig && rig.clientHeight > 8 ? rig.clientHeight : width * (1092 / 763)
+    const closeEl = root.parentElement?.querySelector<HTMLElement>(':scope > .vp-buddy-min')
+    if (closeEl) closeEl.style.transform = 'none'
+    const safe = probe('width:0;height:env(safe-area-inset-bottom, 0px)').height
+    let chrome = Number.isFinite(safe) ? safe : 0
+    const navEl = document.querySelector<HTMLElement>('.vp-bottom-nav')
+    if (navEl) {
+      const box = navEl.getBoundingClientRect()
+      if (box.height > 8 && box.top < window.innerHeight - 4) {
+        chrome = Math.max(chrome, window.innerHeight - box.top)
+      }
+    }
+    const columnLeft = window.innerWidth - width * SCROLL_PEEK_VISIBLE - 6
+    const foot = window.innerHeight - chrome
+    document.querySelectorAll<HTMLElement>('.leaflet-control, .maplibregl-ctrl, button, a').forEach((el) => {
+      if (el.closest('.vp-roam, .vp-bottom-nav, header')) return
+      const r = el.getBoundingClientRect()
+      if (r.width < 8 || r.height < 8 || r.width > 88 || r.height > 140) return
+      if (r.right < columnLeft || r.left > window.innerWidth - 2) return
+      if (r.bottom < foot - height - 12 || r.top > foot) return
+      chrome = Math.max(chrome, window.innerHeight - r.top + 8)
+    })
     const layout = scrollPeekLayout({
       x: pos.x,
       y: pos.y,
@@ -257,6 +282,7 @@ export function attachRoam(root: HTMLElement): () => void {
       viewportW: window.innerWidth,
       viewportH: window.innerHeight,
       close: closeButtonBox(width, height),
+      bottomReserve: chrome + PEEK_CORNER_GAP,
     })
     root.style.setProperty('--vp-peek-dx', `${layout.slotDx.toFixed(1)}px`)
     root.style.setProperty('--vp-peek-dy', `${layout.slotDy.toFixed(1)}px`)
@@ -285,7 +311,8 @@ export function attachRoam(root: HTMLElement): () => void {
   const peekNow = () =>
     !skipPeek() &&
     scrollPeekActive({
-      width: narrowPeekMq.matches ? Math.min(window.innerWidth, SCROLL_PEEK_MAX_WIDTH) : window.innerWidth,
+      width: window.innerWidth,
+      portrait: portraitPeekMq.matches,
       atBottom: nearPageBottom(window.scrollY, window.innerHeight, Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0)),
       revealed: peekRevealed,
       msSinceScroll: lastScrollAt == null ? null : performance.now() - lastScrollAt,
@@ -343,23 +370,38 @@ export function attachRoam(root: HTMLElement): () => void {
       kick()
       return
     }
-    root.style.setProperty('--vp-peek-ms', '240ms')
-    root.style.setProperty('--vp-peek-ease', 'cubic-bezier(0.34, 1.25, 0.64, 1)')
+    root.style.setProperty('--vp-peek-ms', '420ms')
+    root.style.setProperty('--vp-peek-ease', 'cubic-bezier(0.22, 0.8, 0.2, 1)')
     clearPeekShift()
-    window.clearTimeout(peekHomeTimer)
-    peekHomeTimer = window.setTimeout(() => {
+    const body = root.querySelector<HTMLElement>('.vp-roam-body')
+    const finish = () => {
       if (scrollPeeking) return
       delete root.dataset.scrollPeek
       kick()
-    }, 260)
+    }
+    const onEnd = (event: TransitionEvent) => {
+      if (event.propertyName !== 'transform' || event.target !== body) return
+      body?.removeEventListener('transitionend', onEnd)
+      window.clearTimeout(peekHomeTimer)
+      finish()
+    }
+    body?.addEventListener('transitionend', onEnd)
+    window.clearTimeout(peekHomeTimer)
+    peekHomeTimer = window.setTimeout(() => {
+      body?.removeEventListener('transitionend', onEnd)
+      finish()
+    }, 520)
   }
 
   const apply = () => {
-    root.style.transform = `translate3d(${Math.min(pos.x, window.innerWidth - size() - 8).toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
+    if (root.style.getPropertyPriority('transform') !== 'important') {
+      root.style.transform = `translate3d(${Math.min(pos.x, window.innerWidth - size() - 8).toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
+    }
     if (root.dataset.face !== face) root.dataset.face = face
     const side = pos.x + size() / 2 > window.innerWidth * 0.5 ? 'start' : 'center'
     if (slot.dataset.bubble !== side) slot.dataset.bubble = side
     if (scrollPeeking && !peekIntro) writePeekShift()
+    else if (!scrollPeeking) layoutChrome()
   }
 
   /** Lowest control above `ceiling` on Local, so the figure can sit in the gap under the filters. */
@@ -659,36 +701,307 @@ export function attachRoam(root: HTMLElement): () => void {
     apply()
   }
 
+  type Box = { left: number; top: number; right: number; bottom: number; width: number; height: number }
+
+  const boxOf = (left: number, top: number, width: number, height: number): Box => ({
+    left, top, right: left + width, bottom: top + height, width, height,
+  })
+
+  /** True when `a` and `b` stay at least `pad` pixels apart. */
+  const separated = (a: Box, b: Box, pad: number) =>
+    a.right + pad <= b.left || b.right + pad <= a.left || a.bottom + pad <= b.top || b.bottom + pad <= a.top
+
+  const onScreen = (r: Box, margin = 8) =>
+    r.left >= margin && r.top >= margin && r.right <= window.innerWidth - margin && r.bottom <= window.innerHeight - margin
+
+  const controlRects = (): Box[] => {
+    const rects: Box[] = []
+    const push = (el: Element) => {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) return
+      const r = el.getBoundingClientRect()
+      if (r.width < 8 || r.height < 8 || r.width > 220 || r.height > 90) return
+      rects.push(boxOf(r.left, r.top, r.width, r.height))
+    }
+    document.querySelectorAll('.vp-site-header button, .vp-site-header a').forEach(push)
+    document.querySelectorAll('a, button').forEach((el) => {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam, .vp-bottom-nav, .vp-site-header')) return
+      const r = el.getBoundingClientRect()
+      if (r.top > 110 || r.height > 48 || r.width < 8) return
+      push(el)
+    })
+    const nav = document.querySelector('.vp-bottom-nav')
+    if (nav instanceof HTMLElement) {
+      const r = nav.getBoundingClientRect()
+      if (r.height > 8 && r.top < window.innerHeight - 4) rects.push(boxOf(r.left, r.top, r.width, r.height))
+    }
+    return rects
+  }
+
+  const keepOutBottom = () => {
+    let y = 8
+    for (const r of controlRects()) {
+      if (r.top > 140) continue
+      y = Math.max(y, r.bottom + 8)
+    }
+    return y
+  }
+
+  /** Small pills such as FREE EVENT. Not the whole card. */
+  const labelRects = () => {
+    const rects: DOMRect[] = []
+    document.querySelectorAll('div, span, a').forEach((el) => {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam, .vp-site-header, .vp-bottom-nav')) return
+      if (el.children.length > 1) return
+      const text = (el.textContent || '').trim()
+      if (text.length < 3 || text.length > 24) return
+      const r = el.getBoundingClientRect()
+      if (r.width < 28 || r.width > 150 || r.height < 14 || r.height > 34) return
+      rects.push(r)
+    })
+    return rects
+  }
+
+  const clearBubbleShift = () => {
+    for (const prop of ['top', 'left', 'right', 'bottom', 'translate', 'margin', 'max-width', 'width']) {
+      bubble.style.removeProperty(prop)
+    }
+    bubble.style.removeProperty('--vp-bub-x')
+    bubble.style.removeProperty('--vp-bub-y')
+    delete bubble.dataset.tail
+  }
+
+  let layoutAt = 0
+  let layoutX = Number.NaN
+  let layoutY = Number.NaN
+
+  const showClose = (btn: HTMLElement) => {
+    btn.style.visibility = ''
+    btn.style.pointerEvents = ''
+    delete btn.dataset.held
+  }
+
+  const hideClose = (btn: HTMLElement) => {
+    btn.style.visibility = 'hidden'
+    btn.style.pointerEvents = 'none'
+    btn.dataset.held = '1'
+  }
+
+  const layoutChrome = (force = false) => {
+    const btn = root.parentElement?.querySelector<HTMLElement>(':scope > .vp-buddy-min')
+      ?? root.querySelector<HTMLElement>('.vp-buddy-min')
+    if (!btn) return
+    if (scrollPeeking || root.dataset.scrollPeek === '1') {
+      btn.style.transform = ''
+      showClose(btn)
+      return
+    }
+    const now = performance.now()
+    const moved = Math.abs(pos.x - layoutX) > 1 || Math.abs(pos.y - layoutY) > 1
+    if (!force && !moved && now - layoutAt < 80) return
+    layoutAt = now
+    layoutX = pos.x
+    layoutY = pos.y
+
+    const mascotEl = root.querySelector('.vp-rig')
+    const mascotRaw = mascotEl?.getBoundingClientRect()
+    if (!mascotRaw || mascotRaw.width < 8) return
+    const mascot = boxOf(mascotRaw.left, mascotRaw.top, mascotRaw.width, mascotRaw.height)
+    const blocks = controlRects()
+    const topLimit = keepOutBottom()
+    const headY = mascot.top + Math.min(mascot.height * 0.28, 26)
+    const talking = button.getAttribute('data-line') === '1' && !!bubble.textContent
+
+    const xSpots = (bubbleBox?: Box): Box[] => {
+      const s = 44
+      const raw = [
+        boxOf(mascot.right - s, mascot.top - 8 - s, s, s),
+        boxOf(mascot.left, mascot.top - 8 - s, s, s),
+        boxOf(mascot.right + 8, mascot.top, s, s),
+        boxOf(mascot.left - 8 - s, mascot.top, s, s),
+        boxOf(mascot.right + 8, mascot.bottom - s, s, s),
+        boxOf(mascot.left - 8 - s, mascot.bottom - s, s, s),
+        boxOf(mascot.left + (mascot.width - s) / 2, mascot.bottom + 8, s, s),
+      ]
+      const freeSideFirst = bubbleBox && bubbleBox.left + bubbleBox.width / 2 < mascot.left + mascot.width / 2
+      return freeSideFirst ? raw : [raw[1], raw[3], raw[5], raw[0], raw[2], raw[4], raw[6]]
+    }
+
+    const xOk = (spot: Box, bubbleBox?: Box) => {
+      if (!onScreen(spot)) return false
+      if (!separated(spot, mascot, 2)) return false
+      if (blocks.some((block) => !separated(spot, block, 8))) return false
+      if (bubbleBox && !separated(spot, bubbleBox, 8)) return false
+      return true
+    }
+
+    const snap = (n: number) => {
+      const dpr = window.devicePixelRatio || 1
+      return Math.round(n * dpr) / dpr
+    }
+    const placeX = (spot: Box) => {
+      btn.style.position = 'fixed'
+      btn.style.right = 'auto'
+      btn.style.bottom = 'auto'
+      btn.style.margin = '0'
+      btn.style.transform = 'none'
+      btn.style.left = `${snap(spot.left)}px`
+      btn.style.top = `${snap(spot.top)}px`
+      showClose(btn)
+    }
+
+    if (!talking) {
+      clearBubbleShift()
+      const spot = xSpots().find((candidate) => xOk(candidate))
+      if (spot) placeX(spot)
+      else hideClose(btn)
+      return
+    }
+
+    const slot = bubble.parentElement
+    if (!slot) return
+    const measure = (maxW: number) => {
+      const width = Math.max(104, Math.floor(maxW))
+      bubble.style.setProperty('position', 'fixed', 'important')
+      bubble.style.setProperty('max-width', `${width}px`, 'important')
+      bubble.style.setProperty('width', 'max-content', 'important')
+      bubble.style.setProperty('bottom', 'auto', 'important')
+      bubble.style.setProperty('right', 'auto', 'important')
+      bubble.style.setProperty('translate', 'none', 'important')
+      bubble.style.setProperty('margin', '0', 'important')
+      bubble.style.setProperty('top', '0px', 'important')
+      bubble.style.setProperty('left', '0px', 'important')
+      const r = bubble.getBoundingClientRect()
+      bubble.style.setProperty('position', 'absolute', 'important')
+      return { w: Math.ceil(r.width), h: Math.ceil(r.height) }
+    }
+    const full = measure(Math.min(168, window.innerWidth - 16))
+    const labels = labelRects()
+    let sideW = full.w
+    for (const label of labels) {
+      if (label.bottom < headY - 40 || label.top > headY + full.h) continue
+      if (label.right < mascot.left) sideW = Math.min(sideW, mascot.left - 4 - (label.right + 12))
+      if (label.left > mascot.right) sideW = Math.min(sideW, label.left - 12 - (mascot.right + 4))
+    }
+    sideW = Math.max(104, sideW)
+    const side = sideW < full.w - 1 ? measure(sideW) : full
+
+    type Spot = { left: number; top: number; w: number; h: number; tail: 'down' | 'left' | 'right' }
+    const ideas: Spot[] = []
+    const aboveLeft = Math.max(8, Math.min(window.innerWidth - 8 - full.w, mascot.left + mascot.width / 2 - full.w / 2))
+    const aboveTop = mascot.top - 4 - full.h
+    if (aboveTop >= topLimit && aboveLeft < mascot.right - 4 && aboveLeft + full.w > mascot.left + 4) {
+      ideas.push({ left: aboveLeft, top: aboveTop, w: full.w, h: full.h, tail: 'down' })
+    }
+    const leftX = mascot.left - 4 - side.w
+    if (leftX >= 8) {
+      ideas.push({
+        left: leftX,
+        top: Math.max(topLimit, Math.min(window.innerHeight - 8 - side.h, headY - Math.min(side.h * 0.42, 22))),
+        w: side.w,
+        h: side.h,
+        tail: 'right',
+      })
+    }
+    const rightX = mascot.right + 4
+    if (rightX + side.w <= window.innerWidth - 8) {
+      ideas.push({
+        left: rightX,
+        top: Math.max(topLimit, Math.min(window.innerHeight - 8 - side.h, headY - Math.min(side.h * 0.42, 22))),
+        w: side.w,
+        h: side.h,
+        tail: 'left',
+      })
+    }
+
+    const aimTail = (placed: DOMRect) => {
+      const besideLeft = placed.right <= mascot.left + 2
+      const besideRight = placed.left >= mascot.right - 2
+      if (besideLeft || besideRight) {
+        bubble.dataset.tail = besideLeft ? 'right' : 'left'
+        const y = Math.max(14, Math.min(placed.height - 14, headY - placed.top))
+        bubble.style.setProperty('--vp-bub-y', `${y.toFixed(1)}px`)
+        bubble.style.removeProperty('--vp-bub-x')
+        return
+      }
+      delete bubble.dataset.tail
+      const aim = mascot.left + mascot.width / 2 - (placed.left + placed.width / 2)
+      const half = Math.max(0, placed.width / 2 - 16)
+      bubble.style.setProperty('--vp-bub-x', `${Math.max(-half, Math.min(half, -aim)).toFixed(1)}px`)
+      bubble.style.removeProperty('--vp-bub-y')
+    }
+
+    const put = (idea: Spot) => {
+      if (idea.w < full.w - 1) measure(idea.w)
+      const slotBox = slot.getBoundingClientRect()
+      bubble.style.setProperty('left', `${(idea.left - slotBox.left).toFixed(1)}px`, 'important')
+      bubble.style.setProperty('top', `${(idea.top - slotBox.top).toFixed(1)}px`, 'important')
+      let placed = bubble.getBoundingClientRect()
+      if (idea.tail === 'down' && placed.bottom > mascot.top - 4) {
+        bubble.style.setProperty('top', `${(parseFloat(bubble.style.top) - (placed.bottom - (mascot.top - 4))).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      if (idea.tail === 'right' && placed.right > mascot.left - 4) {
+        bubble.style.setProperty('left', `${(parseFloat(bubble.style.left) - (placed.right - (mascot.left - 4))).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      if (idea.tail === 'left' && placed.left < mascot.right + 4) {
+        bubble.style.setProperty('left', `${(parseFloat(bubble.style.left) + (mascot.right + 4 - placed.left)).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      let dx = 0
+      let dy = 0
+      if (placed.left < 8) dx = 8 - placed.left
+      if (placed.right > window.innerWidth - 8) dx = window.innerWidth - 8 - placed.right
+      if (placed.top < 8) dy = 8 - placed.top
+      if (placed.bottom > window.innerHeight - 8) dy = window.innerHeight - 8 - placed.bottom
+      if (dx || dy) {
+        bubble.style.setProperty('left', `${(parseFloat(bubble.style.left) + dx).toFixed(1)}px`, 'important')
+        bubble.style.setProperty('top', `${(parseFloat(bubble.style.top) + dy).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      return placed
+    }
+
+    const acceptable = (placed: DOMRect) => {
+      const rect = boxOf(placed.left, placed.top, placed.width, placed.height)
+      if (!onScreen(rect)) return false
+      if (!separated(rect, mascot, 2)) return false
+      if (blocks.some((block) => !separated(rect, block, 8))) return false
+      return true
+    }
+
+    let kept: DOMRect | null = null
+    for (const idea of ideas) {
+      const placed = put(idea)
+      if (!acceptable(placed)) continue
+      const rect = boxOf(placed.left, placed.top, placed.width, placed.height)
+      aimTail(placed)
+      const spot = xSpots(rect).find((candidate) => xOk(candidate, rect))
+      if (spot) {
+        placeX(spot)
+        const again = btn.getBoundingClientRect()
+        const bub = bubble.getBoundingClientRect()
+        if (!separated(boxOf(again.left, again.top, again.width, again.height), boxOf(bub.left, bub.top, bub.width, bub.height), 8)) hideClose(btn)
+        return
+      }
+      kept = placed
+    }
+    if (!kept && ideas[0]) put(ideas[0])
+    const fallback = bubble.getBoundingClientRect()
+    aimTail(fallback)
+    hideClose(btn)
+  }
+
+  const fitBubble = () => layoutChrome(true)
+
+
   const say = (line: string) => {
     if (reduce || button.hasAttribute('data-react') || button.getAttribute('data-mood') === 'sulk') return
     bubble.textContent = line
     live.textContent = line
     button.setAttribute('data-line', '1')
     window.requestAnimationFrame(() => {
-      const box = bubble.getBoundingClientRect()
-      if (box.width < 4) return
-      const blocked = [...document.querySelectorAll('button, a, input, select, .rounded-xl, .rounded-2xl')].some((el) => {
-        if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) return false
-        const rect = el.getBoundingClientRect()
-        if (rect.width < 8 || rect.height < 8) return false
-        return box.right > rect.left && box.left < rect.right && box.bottom > rect.top && box.top < rect.bottom
-      })
-      const margin = 8
-      let shiftX = 0
-      let shiftY = 0
-      if (box.left < margin) shiftX = margin - box.left
-      if (box.right > window.innerWidth - margin) shiftX = window.innerWidth - margin - box.right
-      if (box.top < margin) shiftY = margin - box.top
-      if (box.bottom > window.innerHeight - margin) shiftY = window.innerHeight - margin - box.bottom
-      if (blocked) root.dataset.bub = root.dataset.bub === 'up' ? 'down' : 'up'
-      if (mobileMq.matches) {
-        const close = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
-        if (close && box.right > close.left && box.left < close.right && box.bottom > close.top && box.top < close.bottom) {
-          shiftY += close.bottom + 6 - box.top
-        }
-      }
-      const shiftAcross = mobileMq.matches ? `${shiftX.toFixed(0)}px` : `calc(-50% + ${shiftX.toFixed(0)}px)`
-      bubble.style.translate = `${shiftAcross} ${shiftY.toFixed(0)}px`
+      fitBubble()
       if (mobileMq.matches && location.pathname.startsWith('/map') && !spotClear(pos.x, pos.y)) {
         pos = firstClear(bounds())
         apply()
@@ -1023,12 +1336,15 @@ export function attachRoam(root: HTMLElement): () => void {
     const y = window.scrollY
     const delta = Math.abs(y - lastScrollY)
     lastScrollY = y
-    if (delta >= 2 && performance.now() >= peekReadyAt && !skipPeek() && narrowPeekMq.matches) {
-      peekRevealed = false
-      lastScrollAt = performance.now()
-      syncScrollPeek()
-      armPeekSettle()
+    if (delta >= 2 && performance.now() >= peekReadyAt && !skipPeek() && narrowPeekMq.matches && portraitPeekMq.matches) {
+      if (performance.now() >= peekHoldUntil) {
+        peekRevealed = false
+        lastScrollAt = performance.now()
+        syncScrollPeek()
+        armPeekSettle()
+      }
     }
+    if (!scrollPeeking) layoutChrome()
     const atBottom = nearPageBottom(window.scrollY, window.innerHeight, document.documentElement.scrollHeight)
     if (!atBottom) {
       cheered = false
@@ -1043,7 +1359,7 @@ export function attachRoam(root: HTMLElement): () => void {
   const onResize = () => {
     cachedSize = 0
     readChrome()
-    if (!narrowPeekMq.matches && (scrollPeeking || root.dataset.scrollPeek === '1')) {
+    if (!(narrowPeekMq.matches && portraitPeekMq.matches) && (scrollPeeking || root.dataset.scrollPeek === '1')) {
       scrollPeeking = false
       peekIntro = false
       peekFrozen = 0
@@ -1056,10 +1372,12 @@ export function attachRoam(root: HTMLElement): () => void {
     }
     if (reduce) {
       park()
+      fitBubble()
       syncScrollPeek()
       return
     }
     pos = phase.type === 'goto' && phase.then === 'peek' ? pos : clampPoint(pos, bounds())
+    fitBubble()
     apply()
     syncScrollPeek()
   }
@@ -1098,10 +1416,24 @@ export function attachRoam(root: HTMLElement): () => void {
     kick()
   }
 
-  const onPeekUp = (event: PointerEvent) => {
-    if (event.button !== 0 || !scrollPeeking) return
+  let swallowPeekClick = false
+  let peekHoldUntil = 0
+
+  const revealPeek = () => {
+    swallowPeekClick = true
     peekRevealed = true
+    peekHoldUntil = performance.now() + 700
     syncScrollPeek()
+    window.setTimeout(() => {
+      swallowPeekClick = false
+    }, 400)
+  }
+
+  const onPeekUp = (event: PointerEvent) => {
+    if (event.button > 0 || root.dataset.scrollPeek !== '1') return
+    event.preventDefault()
+    event.stopPropagation()
+    revealPeek()
   }
 
   const onDown = (event: PointerEvent) => {
@@ -1148,6 +1480,13 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const onClickCapture = (event: MouseEvent) => {
+    if (swallowPeekClick || root.dataset.scrollPeek === '1') {
+      swallowPeekClick = false
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      if (root.dataset.scrollPeek === '1') revealPeek()
+      return
+    }
     if (!suppressClick) return
     suppressClick = false
     event.preventDefault()
@@ -1219,7 +1558,13 @@ export function attachRoam(root: HTMLElement): () => void {
   reduceMq.addEventListener('change', onReduce)
   navMq.addEventListener('change', onResize)
   narrowPeekMq.addEventListener('change', onResize)
+  portraitPeekMq.addEventListener('change', onResize)
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
+  const bubWatch = new MutationObserver(() => {
+    window.requestAnimationFrame(() => fitBubble())
+  })
+  bubWatch.observe(bubble, { childList: true, characterData: true, subtree: true })
+  bubWatch.observe(button, { attributes: true, attributeFilter: ['data-line'] })
 
   let pinTimer = 0
   const shoveOffPins = () => {
@@ -1260,6 +1605,7 @@ export function attachRoam(root: HTMLElement): () => void {
     window.clearTimeout(scrollSettleTimer)
     window.clearTimeout(peekHomeTimer)
     mo.disconnect()
+    bubWatch.disconnect()
     pinWatch.disconnect()
     window.clearTimeout(pinTimer)
     window.clearInterval(pinPoll)
@@ -1277,6 +1623,7 @@ export function attachRoam(root: HTMLElement): () => void {
     reduceMq.removeEventListener('change', onReduce)
     navMq.removeEventListener('change', onResize)
     narrowPeekMq.removeEventListener('change', onResize)
+    portraitPeekMq.removeEventListener('change', onResize)
     document.body.style.userSelect = ''
     root.style.transform = ''
     delete root.dataset.scrollPeek
