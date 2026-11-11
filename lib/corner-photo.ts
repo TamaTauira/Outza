@@ -1,14 +1,23 @@
-import { sectionByKey } from '@/lib/community-shared'
 import { placeholderPath } from '@/lib/placeholders'
 
 /**
- * Corner block on the homepage. A listing qualifies from its community type,
- * category, or tags. The title is only a fallback. Venue and address text
- * never count, so "31 Market Street" is not a market.
+ * Corner photo on the homepage.
+ * A listing picture is used only for a genuine Local type (garage sale, market,
+ * fete, fundraiser, pop-up, community) and only when we know the file is a
+ * scene rather than a text poster. Remote images do not say which they are,
+ * so the corner uses the Local page hero instead of guessing.
  */
-const KIND = /\b(?:markets?|garage sales?|fetes?|fundraisers?|pop-?ups?|pop ups?|community)\b/i
+const LOCAL_TYPES = new Set([
+  'garage-sales',
+  'farmers-markets',
+  'school-fundraisers',
+  'charity-events',
+  'neighbourhood-popups',
+  'community-sport',
+])
 
-export const CORNER_ARTWORK = placeholderPath('Community', 'hero')
+/** Same file the Local page shows in its hero when a listing has no picture. */
+export const LOCAL_PAGE_HERO = placeholderPath('Community', 'hero')
 
 export type CornerListing = {
   title: string
@@ -20,36 +29,25 @@ export type CornerListing = {
   venueAddress?: string | null
 }
 
-export const usableListingPhoto = (url?: string | null) =>
-  !!url && /^https?:\/\//i.test(url) && !/picsum\.photos/i.test(url)
+export const isGenuineLocalType = (ev: CornerListing) => !!ev.communityKey && LOCAL_TYPES.has(ev.communityKey)
 
-/** Higher means a closer local/community match. Zero means this listing is not a corner photo. */
-export function cornerMatchScore(ev: CornerListing): number {
-  if (ev.communityKey && sectionByKey(ev.communityKey)) return 8
-  if (KIND.test((ev.subTags ?? []).join(' '))) return 7
-  if ((ev.category ?? '').trim().toLowerCase() === 'community') return 6
-  if (KIND.test(ev.title ?? '')) return 3
-  return 0
+/**
+ * True only when the picture is known to be a scene. A URL, a board category,
+ * or a title cannot prove that, so this stays false and the hero is used.
+ */
+export function listingPhotoIsScene(_ev: CornerListing): boolean {
+  return false
 }
 
 export function pickCornerPhoto(
   events: CornerListing[],
-  options: { localPhoto?: string | null; used?: Set<string> } = {},
+  options: { used?: Set<string> } = {},
 ): string {
   const used = options.used ?? new Set<string>()
-  const ranked = events
-    .map((ev) => ({ ev, score: cornerMatchScore(ev) }))
-    .filter((row) => row.score > 0 && usableListingPhoto(row.ev.imageUrl) && !used.has(row.ev.imageUrl!))
-    .sort((a, b) => b.score - a.score || a.ev.title.localeCompare(b.ev.title))
-  const chosen = ranked[0]?.ev.imageUrl
-  if (chosen) {
-    used.add(chosen)
-    return chosen
+  const scene = events.find((ev) => isGenuineLocalType(ev) && listingPhotoIsScene(ev) && ev.imageUrl && !used.has(ev.imageUrl))
+  if (scene?.imageUrl) {
+    used.add(scene.imageUrl)
+    return scene.imageUrl
   }
-  const local = options.localPhoto
-  if (usableListingPhoto(local) && !used.has(local!)) {
-    used.add(local!)
-    return local!
-  }
-  return CORNER_ARTWORK
+  return LOCAL_PAGE_HERO
 }
