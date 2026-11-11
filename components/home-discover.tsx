@@ -58,7 +58,7 @@ function TilePhoto({ src, tint }: { src: string | null; tint: string }) {
     return <span className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint} 0%, #14120f 78%)` }} />
   }
   return (
-    <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" onError={() => setFailedSrc(src)} />
+    <img src={src} alt="" loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" onError={() => setFailedSrc(src)} />
   )
 }
 
