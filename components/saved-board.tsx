@@ -74,7 +74,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
   return (
     <div className="mb-10">
-      <section className="overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white sm:px-8 sm:py-8">
+      <section className="overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 pb-8 pt-24 text-white sm:px-8 sm:pt-28">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Saved events</p>
@@ -88,9 +88,10 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved events">
           {tabs.map((item) => (
-            <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
-              {item.label}{item.count != null ? ` (${item.count})` : ''}
-            </button>
+                <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
+                  {item.label}{item.count != null ? ` (${item.count})` : ''}
+                  {item.key === 'past' && <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">Coming soon</span>}
+                </button>
           ))}
         </div>
         <ViewToggle value={resultsView} onChange={chooseView} />
@@ -98,13 +99,14 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
       {!signedIn || saved.length === 0 ? (
         resultsView === 'map' ? (
-          <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">The map stays hidden because there are no saved events with a location we can place. {signedIn ? 'Save something with a venue pin and it will show up here.' : 'Sign in to load the keepers on your account.'}</p>
+          <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">{signedIn ? 'Nothing with a pin yet. Save a night out and we’ll drop it on the map.' : 'Sign in and your keepers with a pin will land on the map.'}</p>
         ) : (
-        <div className="px-2 py-12 text-center">
-          <VibePeepMascot className="mx-auto w-24 sm:w-28" alt="VibePeep" />
-          <h2 className="mt-4 font-display text-3xl font-bold">Nothing saved. Yet.</h2>
-          <p className="mx-auto mt-2 max-w-md text-muted-foreground">{signedIn ? 'Your future plans are out there. See something you love? Tap the heart and we’ll keep it here for you.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}</p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <div className="mt-6 grid items-center gap-6 rounded-3xl border border-border bg-card px-5 py-8 sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
+          <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
+          <div className="text-center lg:text-left">
+          <h2 className="font-display text-3xl font-bold sm:text-4xl">Nothing saved. Yet.</h2>
+          <p className="mt-2 max-w-xl text-muted-foreground">{signedIn ? 'Your future plans are out there. See something you love? Tap the heart and we’ll keep it here for you.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}</p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
             {signedIn ? (
               <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find something good.</button>
             ) : (
@@ -114,17 +116,18 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               </>
             )}
           </div>
+          </div>
         </div>
         )
       ) : (
         <>
           {tab === 'past' ? (
-            <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">Past events stay on your account, but this page only lists what’s still ahead. Browsing them here is a future enhancement.</p>
+            <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">The ones that have been. We’ll line them up here.</p>
           ) : resultsView === 'map' && pins.length === 0 ? (
-            <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">The map stays hidden because none of these saved events have a location we can place. Venue names without a trusted pin are not guessed.</p>
+            <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">None of these have a pin we trust, so the map’s sitting this one out.</p>
           ) : resultsView === 'map' ? (
             <div className="mt-4">
-              {pins.length < visible.length && <p className="mb-2 text-sm text-muted-foreground">{visible.length - pins.length} saved {visible.length - pins.length === 1 ? 'event is' : 'events are'} missing a map pin, so {pins.length === 1 ? 'it isn’t' : 'they aren’t'} on this map.</p>}
+              {pins.length < visible.length && <p className="mb-2 text-sm text-muted-foreground">{visible.length - pins.length} of these haven’t got a spot on the map yet.</p>}
               <div className="h-[70vh] min-h-[420px] overflow-hidden rounded-2xl border border-border">
                 <MapView filters={QUIET_FILTERS} searchQuery="" city="" bleed eventsOverride={pins} focusId={focusId} onSelect={setFocusId} countNoun="saved events" />
               </div>
@@ -156,12 +159,11 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
           <section className="mt-10">
             <h2 className="font-display text-2xl font-bold">Your collections.</h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Suggested names only. Personal collections are a future enhancement, so these do not hold any of your saved events.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {['Date night ideas', 'Gigs I want to see', 'Weekend adventures'].map((name) => (
                 <div key={name} className="rounded-2xl border border-dashed border-border bg-card p-4">
                   <p className="font-semibold">{name}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Not available yet</p>
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-primary">Coming soon</p>
                 </div>
               ))}
             </div>
@@ -170,7 +172,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
           <section className="mt-6 flex flex-col gap-4 rounded-3xl bg-[#0c0f0e] px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-display text-xl font-bold">Don’t let this one slip past.</h2>
-              <p className="mt-1 text-sm text-white/75">Reminders already live on My VibePeep. This opens that setting. It doesn’t invent a new alert.</p>
+              <p className="mt-1 text-sm text-white/75">A nudge before it starts.</p>
             </div>
             <Link href={signedIn ? '/watchlist' : '/login?next=/watchlist'} className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Set reminders</Link>
           </section>
@@ -178,7 +180,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
           <section className="mt-6 flex flex-col items-start justify-between gap-3 rounded-3xl border border-border bg-card px-5 py-5 sm:flex-row sm:items-center">
             <div>
               <h2 className="font-display text-xl font-bold">Looking for more to save?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The board is still the same list, with the heart on every event.</p>
+              <p className="mt-1 text-sm text-muted-foreground">The good stuff is still out there.</p>
             </div>
             <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find events</button>
           </section>

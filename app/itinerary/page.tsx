@@ -446,7 +446,7 @@ export default function ItineraryPage() {
                       </ol>
                     </section>
                   ))}
-                  <p className="text-xs text-muted-foreground">Travel times are rough estimates from the distance between stops. They don’t include traffic or timetables. Move a stop to change the route order. The clock times stay the ones you saved. {unpinned > 0 ? `${unpinned} ${unpinned === 1 ? 'stop isn’t' : 'stops aren’t'} on the map because there isn’t a trusted pin.` : ''}</p>
+                  <p className="text-xs text-muted-foreground">Rough distances, not a traffic report. Directions has the live route.{unpinned > 0 ? ` ${unpinned} ${unpinned === 1 ? 'stop is' : 'stops are'} off the map until there’s a pin we trust.` : ''}</p>
                 </div>
               )}
               {showMap && (
@@ -516,12 +516,11 @@ export default function ItineraryPage() {
 
         <section className="mt-8 rounded-3xl bg-[#0c0f0e] px-5 py-6 text-white">
           <h2 className="font-display text-2xl font-bold">Good plans are better shared.</h2>
-          <p className="mt-2 max-w-2xl text-sm text-white/75">Share sends this plan as text, or copies it if sharing isn’t available. The calendar file is the stops you actually have. A public link and editing with friends are a future enhancement.</p>
+          <p className="mt-2 max-w-2xl text-sm text-white/75">Send the plan, or drop the whole thing in your calendar.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" onClick={share} disabled={!arranged.length} className="inline-flex h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Share2 className="h-4 w-4" /> Share itinerary</button>
             <button type="button" onClick={() => downloadIcs(arranged, title)} disabled={!arranged.length} className="inline-flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-neutral-900 disabled:opacity-50"><CalendarPlus className="h-4 w-4" /> Add to calendar</button>
           </div>
-          <p className="mt-4 text-xs text-white/60">Let’s make this a good one. Overlaps and travel gaps use the stops above. Departure reminders aren’t wired up yet.</p>
         </section>
       </main>
       <Footer lastRefresh={null} />

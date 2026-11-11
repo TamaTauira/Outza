@@ -51,7 +51,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
             <Star className="h-4 w-4 fill-current text-[#F5B700]" />
             <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Hot right now.</h2>
           </div>
-          <p className="mt-1 text-muted-foreground">Everyone’s talking about it. Sponsored placements stay labelled.</p>
+          <p className="mt-1 text-muted-foreground">Everyone’s talking about it.</p>
         </div>
         <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Feature your event</Link>
       </div>

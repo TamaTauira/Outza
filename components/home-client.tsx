@@ -20,7 +20,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
 import { HomeDiscover, type MoodAction } from '@/components/home-discover';
 import { ViewToggle } from '@/components/view-toggle';
-import { VibePeepMascot } from '@/components/vibepeep-mascot';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
@@ -374,10 +373,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 </h1>
                 <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Good gigs. Hidden gems. Things you didn’t know were happening. Your next favourite plan starts here.</p>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-2">
-                <LocalClock city={city} className="vp-hero-clock text-right" />
-                <VibePeepMascot onDark className="w-16 sm:w-24" sizes="96px" alt="VibePeep" />
-              </div>
+              <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
             </div>
             <div className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
               <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
@@ -411,7 +407,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">What’s the plan?</h2>
-                <p className="mt-1 text-muted-foreground">Same dates on the list and the map.</p>
+                <p className="mt-1 text-muted-foreground">Today, tonight, or a bit further out.</p>
               </div>
               <Popover open={calOpen} onOpenChange={(open) => {
                 setCalOpen(open);
@@ -453,16 +449,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               ))}
             </div>
           </section>
-        )}
-        {view === 'board' && (
-          <HomeDiscover
-            city={city}
-            today={today}
-            onMood={applyMood}
-            onSuburb={(suburb) => { setFilters((f) => ({ ...f, suburb })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
-            onAsk={ask}
-            onWorkshops={() => applyMood({ kind: 'filters', categories: ['Education'], subTag: 'Workshop' })}
-          />
         )}
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
@@ -520,13 +506,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         )}
 
         {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
-        {view === 'board' && <div ref={boardRef} id="line-up" className="scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+        {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
           {view === 'board' && (
             <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/95 px-3 py-3 backdrop-blur sm:top-16 sm:px-4">
-              <div>
-                <h2 className="font-display text-xl font-bold">The line-up</h2>
-                <p className="text-xs text-muted-foreground">List and map use this search, these filters and this date.</p>
-              </div>
+              <h2 className="font-display text-xl font-bold">The line-up</h2>
               <ViewToggle value={discovery} onChange={(next) => { setFocusId(focusId); rememberView(next); }} />
             </div>
           )}
@@ -705,6 +688,16 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </>
           }
         </div>}
+        {view === 'board' && (
+          <HomeDiscover
+            city={city}
+            today={today}
+            onMood={applyMood}
+            onSuburb={(suburb) => { setFilters((f) => ({ ...f, suburb })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
+            onAsk={ask}
+            onWorkshops={() => applyMood({ kind: 'filters', categories: ['Education'], subTag: 'Workshop' })}
+          />
+        )}
       </main>
 
       {/* Filters drawer */}
