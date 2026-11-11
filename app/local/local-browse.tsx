@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Bookmark, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, Plus, Search } from 'lucide-react'
+import { Bookmark, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
 import { LocalNeighbourhoodMap, type LocalMapPin } from '@/components/local-neighbourhood-map'
-import { CITY_NAMES } from '@/lib/cities'
+import { CITIES } from '@/lib/cities'
+import { LocalClock } from '@/components/local-clock'
 import { sectionByKey } from '@/lib/community-shared'
 import { dayLabel } from '@/lib/board'
 import { fmtTime } from '@/lib/local-shared'
@@ -131,7 +132,12 @@ export function LocalBrowse({
   const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
   const filtered = category || suburb || when !== 'weekend'
   const featured = (items ?? []).slice(0, 4)
-  const heroShot = (items ?? []).find((ev) => ev.imageUrl) ?? null
+  const heroChips = [
+    { key: 'farmers-markets', label: 'Markets' },
+    { key: 'garage-sales', label: 'Garage sales' },
+    { key: 'school-fundraisers', label: 'Fetes' },
+    { key: 'neighbourhood-popups', label: 'Pop-ups' },
+  ]
   const ordered = useMemo(() => days.map(([day, rows]) => [day, sort === 'name' ? [...rows].sort((a, b) => a.title.localeCompare(b.title)) : rows] as [string, LocalItem[]]), [days, sort])
   const weekendDays = useMemo(() => {
     const grouped = new Map<string, LocalItem[]>()
@@ -147,32 +153,46 @@ export function LocalBrowse({
 
   return (
     <div className="mt-6 min-w-0">
-      <header className="grid items-center gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.8fr)]">
-        <div className="min-w-0">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-primary">VibePeep Local</p>
-          <h1 className="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.15rem] lg:leading-[1.05]">Good things are happening around the corner.</h1>
-          <p className="mt-3 max-w-xl text-base text-muted-foreground sm:text-lg">From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you.</p>
-          <form className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(8.5rem,11rem)_minmax(0,1fr)_auto]" onSubmit={(event) => { event.preventDefault(); applySuburb(suburb) }}>
-            <select value={city} onChange={(event) => setCity(event.target.value)} aria-label="City" className="box-border h-12 min-h-12 w-full appearance-none rounded-full border border-border bg-card px-4 text-base leading-normal">
-              {CITY_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}
+      <header className="relative overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
+        <img src="/local/market-hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+              <span className="block">Good things are happening</span>
+              <span className="block text-brand-gradient">around the corner.</span>
+            </h1>
+            <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you.</p>
+          </div>
+          <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
+        </div>
+        <form className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start" onSubmit={(event) => { event.preventDefault(); applySuburb(suburb) }}>
+          <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
+            <MapPin className="h-4 w-4 shrink-0 text-primary" />
+            <span className="sr-only">Choose a city</span>
+            <select value={city} onChange={(event) => setCity(event.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="City">
+              {CITIES.map((item) => <option key={item.name} value={item.name} className="bg-popover text-popover-foreground">{item.name}, {item.state}</option>)}
             </select>
-            <input value={suburb} onChange={(event) => setSuburb(event.target.value)} placeholder="Suburb" aria-label="Suburb" className="box-border h-12 min-h-12 w-full rounded-full border border-border bg-card px-4 text-base leading-normal" />
-            <button type="submit" className="box-border inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold leading-normal text-background sm:w-auto">
+          </label>
+          <div className="flex min-w-0 items-center gap-2 rounded-xl bg-white p-1.5 text-neutral-900 shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] ring-2 ring-primary/50">
+            <Search className="ml-2 h-4 w-4 shrink-0 text-primary" />
+            <input value={suburb} onChange={(event) => setSuburb(event.target.value)} placeholder="Suburb" aria-label="Suburb" className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
+            <button type="submit" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
               <Search className="h-4 w-4" />Search
             </button>
-          </form>
-          <button type="button" onClick={onList} className="mt-3 inline-flex h-11 items-center gap-1.5 text-sm font-semibold text-primary">
-            <Plus className="h-4 w-4" />List your thing free
-          </button>
-        </div>
-        <div className="relative h-52 overflow-hidden rounded-3xl bg-[#110e16] shadow-sm ring-1 ring-border sm:h-64 lg:h-72">
-          {heroShot ? (
-            <ListingPicture ev={heroShot} slot="hero" priority alt={heroShot.title} />
-          ) : (
-            <EventImage category="community" slot="hero" wideSlot="hero-wide" kind="hero" alt="" sizes="(min-width: 1024px) 520px, 100vw" />
-          )}
+          </div>
+        </form>
+        <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {heroChips.map((chip) => (
+            <button key={chip.key} type="button" aria-pressed={category === chip.key} onClick={() => pick(chip.key)} className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20 aria-pressed:bg-white aria-pressed:text-neutral-900">
+              {chip.label}
+            </button>
+          ))}
         </div>
       </header>
+      <button type="button" onClick={onList} className="mt-3 inline-flex h-11 items-center gap-1.5 text-sm font-semibold text-primary">
+        <Plus className="h-4 w-4" />List your thing free
+      </button>
 
       <section className="mt-10" aria-labelledby="local-categories">
         <div className="flex items-end justify-between gap-3">
