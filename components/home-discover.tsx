@@ -9,6 +9,7 @@ import { addDays, formatPrice } from '@/lib/board'
 import { LOCAL_TILES } from '@/lib/local-tiles'
 import { eventPath } from '@/lib/seo'
 import { categoryColor } from '@/lib/categories'
+import { pickCornerPhoto } from '@/lib/corner-photo'
 
 type NearbyEvent = {
   id: string
@@ -205,10 +206,7 @@ export function HomeDiscover({
     return claim(ranked[0]?.ev)
   }
   const moodPhotos = MOODS.map((mood) => best(mood.rank))
-  const communityPhoto = (localPhoto && !used.has(localPhoto) ? (used.add(localPhoto), localPhoto) : null)
-    ?? best((ev) => (/\b(markets?|garage sale|fete|fetes|school fair)\b/i.test(ev.title) ? 8 : /\b(markets?|garage sale|fete|fetes|school fair)\b/i.test(listingText(ev)) ? 4 : 0))
-    ?? best((ev) => (ev.communityKey && usablePhoto(ev.imageUrl) ? 4 : 0))
-    ?? best((ev) => (ev.category === 'Community' && usablePhoto(ev.imageUrl) ? 3 : 0))
+  const communityPhoto = pickCornerPhoto(events, { localPhoto, used })
 
   const nearby = (() => {
     const groups = new Map<string, NearbyEvent[]>()
@@ -277,7 +275,7 @@ export function HomeDiscover({
 
       <section aria-label="Community discoveries" className="grid items-center gap-6 lg:grid-cols-2">
         <div data-photo-tile="community" className="relative aspect-[16/10] overflow-hidden rounded-3xl">
-          <TilePhoto src={usablePhoto(communityPhoto) ? communityPhoto : null} tint={categoryColor('Community')} />
+          <TilePhoto src={communityPhoto} tint={categoryColor('Community')} />
         </div>
         <div>
           <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">The little things happening around the corner.</h2>
