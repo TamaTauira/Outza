@@ -8,7 +8,9 @@ import { CITY_NAMES } from '@/lib/cities'
 import { sectionByKey } from '@/lib/community-shared'
 import { dayLabel } from '@/lib/board'
 import { fmtTime } from '@/lib/local-shared'
-import { LOCAL_TILE_LICENCE, localTileFor, moreTiles, primaryTiles, type LocalTile } from '@/lib/local-tiles'
+import { EventImage } from '@/components/event-image'
+import { localTileFor, moreTiles, primaryTiles, type LocalTile } from '@/lib/local-tiles'
+import type { PlaceholderSlot } from '@/lib/placeholders'
 import { citySlug } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +30,7 @@ export type LocalItem = {
   lat?: number | null
   lng?: number | null
   blurb?: string | null
+  imageUrl?: string | null
 }
 
 const WHEN = [
@@ -55,6 +58,15 @@ const rowKey = (ev: LocalItem) => `${ev.kind ?? 'row'}:${ev.id}:${ev.date}`
 function clock(time: string | null) {
   if (!time || !/^\d{1,2}:\d{2}/.test(time)) return ''
   return fmtTime(time)
+}
+
+function ListingPicture({ ev, slot, className, alt, priority }: { ev: LocalItem; slot: PlaceholderSlot; className?: string; alt?: string; priority?: boolean }) {
+  const kind = slot === 'hero' || slot === 'featured' || slot === 'square' ? slot : 'card'
+  return (
+    <span className={cn('relative block overflow-hidden bg-[#110e16]', className)}>
+      <EventImage src={ev.imageUrl} category={ev.section} slot={slot} wideSlot={slot === 'hero' ? 'hero-wide' : undefined} kind={kind} alt={alt || ''} sizes={slot === 'hero' ? '(min-width: 1024px) 520px, 100vw' : '(min-width: 1024px) 280px, 45vw'} crop={!!ev.imageUrl} priority={priority} />
+    </span>
+  )
 }
 
 function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: string }) {
@@ -119,6 +131,7 @@ export function LocalBrowse({
   const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
   const filtered = category || suburb || when !== 'weekend'
   const featured = (items ?? []).slice(0, 4)
+  const heroShot = (items ?? []).find((ev) => ev.imageUrl) ?? null
   const ordered = useMemo(() => days.map(([day, rows]) => [day, sort === 'name' ? [...rows].sort((a, b) => a.title.localeCompare(b.title)) : rows] as [string, LocalItem[]]), [days, sort])
   const weekendDays = useMemo(() => {
     const grouped = new Map<string, LocalItem[]>()
@@ -139,12 +152,12 @@ export function LocalBrowse({
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-primary">VibePeep Local</p>
           <h1 className="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.15rem] lg:leading-[1.05]">Good things are happening around the corner.</h1>
           <p className="mt-3 max-w-xl text-base text-muted-foreground sm:text-lg">From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you.</p>
-          <form className="mt-5 flex min-w-0 flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); applySuburb(suburb) }}>
-            <select value={city} onChange={(event) => setCity(event.target.value)} aria-label="City" className="h-12 rounded-full border border-border bg-card px-4 text-base sm:w-40">
+          <form className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(8.5rem,11rem)_minmax(0,1fr)_auto]" onSubmit={(event) => { event.preventDefault(); applySuburb(suburb) }}>
+            <select value={city} onChange={(event) => setCity(event.target.value)} aria-label="City" className="box-border h-12 min-h-12 w-full appearance-none rounded-full border border-border bg-card px-4 text-base leading-normal">
               {CITY_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}
             </select>
-            <input value={suburb} onChange={(event) => setSuburb(event.target.value)} placeholder="Suburb" aria-label="Suburb" className="h-12 min-w-0 flex-1 rounded-full border border-border bg-card px-4 text-base" />
-            <button type="submit" className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold text-background">
+            <input value={suburb} onChange={(event) => setSuburb(event.target.value)} placeholder="Suburb" aria-label="Suburb" className="box-border h-12 min-h-12 w-full rounded-full border border-border bg-card px-4 text-base leading-normal" />
+            <button type="submit" className="box-border inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-sm font-semibold leading-normal text-background sm:w-auto">
               <Search className="h-4 w-4" />Search
             </button>
           </form>
@@ -152,8 +165,12 @@ export function LocalBrowse({
             <Plus className="h-4 w-4" />List your thing free
           </button>
         </div>
-        <div className="flex h-52 max-h-[46vh] items-center justify-center rounded-3xl bg-white p-3 shadow-sm ring-1 ring-border sm:h-64 lg:h-72">
-          <img src="/local-tiles/pop-up.webp" alt="VibePeep’s mascot popping in with a party cracker and a little flag." className="h-full w-auto max-w-full object-contain object-center" />
+        <div className="relative h-52 overflow-hidden rounded-3xl bg-[#110e16] shadow-sm ring-1 ring-border sm:h-64 lg:h-72">
+          {heroShot ? (
+            <ListingPicture ev={heroShot} slot="hero" priority alt={heroShot.title} />
+          ) : (
+            <EventImage category="community" slot="hero" wideSlot="hero-wide" kind="hero" alt="" sizes="(min-width: 1024px) 520px, 100vw" />
+          )}
         </div>
       </header>
 
@@ -177,7 +194,6 @@ export function LocalBrowse({
             ))}
           </div>
         )}
-        <p className="mt-2 text-[11px] text-muted-foreground">{LOCAL_TILE_LICENCE}</p>
       </section>
 
       <section className="mt-10" aria-labelledby="local-finds">
@@ -198,7 +214,7 @@ export function LocalBrowse({
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((ev, index) => (
               <article key={rowKey(ev)} className={cn('flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm', index === 0 && 'sm:col-span-2 lg:row-span-2')}>
-                <MascotFrame tile={localTileFor(ev.section)} className={index === 0 ? 'h-48 sm:h-56' : 'h-36'} />
+                <ListingPicture ev={ev} slot={index === 0 ? 'featured' : 'card'} className={index === 0 ? 'h-48 sm:h-56' : 'h-40'} alt={ev.title} />
                 <div className="flex min-w-0 flex-1 flex-col p-4" style={{ borderTop: `3px solid ${ACCENT[ev.section] ?? '#ea580c'}` }}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectionByKey(ev.section)?.short ?? 'Local'}</p>
                   <Link href={ev.href || '/local'} className="mt-1 font-display text-lg font-bold leading-snug hover:text-primary">{ev.title}</Link>
@@ -301,7 +317,7 @@ export function LocalBrowse({
                 const key = rowKey(ev)
                 return (
                   <div key={key} data-row={key} onMouseEnter={() => setHotKey(key)} onMouseLeave={() => setHotKey(null)} className={cn('flex items-center gap-3 border-t border-border/70 px-3 py-2', (hotKey === key || focusKey === key) && 'bg-primary/10')}>
-                    <MascotFrame tile={localTileFor(ev.section)} className="h-12 w-12 shrink-0 rounded-lg" />
+                    <ListingPicture ev={ev} slot="square" className="h-12 w-12 shrink-0 rounded-lg" alt="" />
                     <Link href={ev.href || '/local'} className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{ev.title}</span>
                       <span className="text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), sectionByKey(ev.section)?.short].filter(Boolean).join(' · ')}</span>
@@ -334,7 +350,7 @@ export function LocalBrowse({
               <ul className="mt-2 space-y-2">
                 {rows.slice(0, 4).map((ev) => (
                   <li key={rowKey(ev)} className="flex items-center gap-2">
-                    <MascotFrame tile={localTileFor(ev.section)} className="h-10 w-10 shrink-0 rounded-md" />
+                    <ListingPicture ev={ev} slot="square" className="h-10 w-10 shrink-0 rounded-md" alt="" />
                     <Link href={ev.href || '/local'} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-primary">{ev.title}</Link>
                     <span className="shrink-0 text-xs text-muted-foreground">{clock(ev.time)}</span>
                   </li>
@@ -370,7 +386,7 @@ function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: bool
   const status = ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''
   return (
     <article data-row={key} onMouseEnter={() => onHot(key)} onMouseLeave={() => onHot(null)} className={cn('flex min-w-0 gap-3 rounded-2xl border border-border bg-card p-3', hot && 'bg-primary/10')} style={{ boxShadow: `inset 3px 0 0 ${ACCENT[ev.section] ?? '#ea580c'}` }}>
-      <MascotFrame tile={localTileFor(ev.section)} className="h-20 w-20 shrink-0 rounded-xl" />
+      <ListingPicture ev={ev} slot="square" className="h-20 w-20 shrink-0 rounded-xl" alt="" />
       <div className="min-w-0 flex-1">
         <Link href={ev.href || '/local'} className="block truncate font-semibold hover:text-primary">{ev.title}</Link>
         <p className="mt-0.5 text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), status].filter(Boolean).join(' · ')}</p>

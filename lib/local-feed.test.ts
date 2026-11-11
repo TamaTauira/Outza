@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { chooseFeedPin, dedupeFeed, feedBlurb, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from './local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from './local-feed'
 
 const row = (extra: Partial<FeedItem>): FeedItem => ({
   id: '1', title: 'Saturday garage sale', section: 'garage-sales', suburb: 'Newtown', city: 'Sydney',
@@ -46,6 +46,11 @@ test('card blurbs use the listing text and stay short', () => {
   const blurbed = feedBlurb(long)
   assert.ok(blurbed && blurbed.length <= 161)
   assert.match(blurbed!, /…$/)
+})
+
+test('only a real picture URL is a listing photo', () => {
+  assert.equal(feedPhoto([null, '', '/placeholders/community/card.webp']), null)
+  assert.equal(feedPhoto([null, 'https://cdn.example/photo.webp']), 'https://cdn.example/photo.webp')
 })
 
 test('school listings stay on the suburb pin', () => {
