@@ -5,7 +5,7 @@ import { fetchFrontierEvents, fetchCityOfSydneyEvents, fetchHumanitixEvents } fr
 import { runQualityPass } from '@/lib/quality-pass'
 import { fetchCuratedEvents } from '@/lib/sources/curated'
 import { fetchBrisbaneCouncilEvents } from '@/lib/sources/brisbane-council'
-import { recordQualityAlert, sourceVolumeSignal, sweepRunFromLog, volumeDropDetail } from '@/lib/source-health'
+import { recordQualityAlert, retireVolumeFault, sourceVolumeSignal, sweepRunFromLog, volumeDropDetail } from '@/lib/source-health'
 import { runImagePass } from '@/lib/images/runner'
 import { importLocalFromBoard } from '@/lib/local-import'
 import { fetchMoshtixEvents, fetchOztixEvents, fetchTicketekEvents } from '@/lib/sources/ticketing'
@@ -25,7 +25,7 @@ import {
 } from '@/lib/refresh-plan'
 
 /** A listings fetch. A resumable source returns sweep flags; every other source returns a count. */
-export type SourceFetchResult = { saved: number; continuation?: boolean; more?: boolean }
+export type SourceFetchResult = { saved: number; continuation?: boolean; more?: boolean; sweepId?: string | null }
 
 const SOURCES: [string, () => Promise<number | SourceFetchResult>][] = [
   ['Ticketmaster', fetchTicketmasterEvents],
@@ -134,6 +134,7 @@ function readSourceRun(value: number | SourceFetchResult | null, fallbackSaved: 
       saved: value.saved,
       continuation: value.continuation === true,
       more: value.more === true,
+      sweepId: value.sweepId ?? null,
     }
   }
   const progress = readSweepProgress(error)
@@ -141,6 +142,7 @@ function readSourceRun(value: number | SourceFetchResult | null, fallbackSaved: 
     saved: typeof value === 'number' ? value : fallbackSaved,
     continuation: progress?.continuation === true,
     more: progress?.more === true,
+    sweepId: progress?.sweepId ?? null,
   }
 }
 
@@ -156,7 +158,7 @@ async function runNamed(name: string, fn: () => Promise<number | SourceFetchResu
       : null
   if (error) console.error(`[refresh] ${name} finished with ${added} events: ${error}`)
   else console.log(`[refresh] ${name} finished: ${added} events`)
-  return { added, error, continuation: outcome.continuation, more: outcome.more }
+  return { added, error, continuation: outcome.continuation, more: outcome.more, sweepId: outcome.sweepId }
 }
 
 async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
@@ -188,11 +190,11 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
       continue
     }
     const sourceLog = opts.chunk ? await prisma.refreshLog.create({ data: { status: 'running' } }) : null
-    const { added, error, continuation, more } = await runNamed(name, fn, budgetFor(name))
+    const { added, error, continuation, more, sweepId } = await runNamed(name, fn, budgetFor(name))
     total += added
     sourcesRun.push(name)
     if (error) errors.push(error)
-    const storedError = withSweepMark(error, { continuation, more })
+    const storedError = withSweepMark(error, { continuation, more, sweepId })
     if (sourceLog) {
       await prisma.refreshLog.update({
         where: { id: sourceLog.id },
@@ -205,7 +207,7 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
       })
       if (error) await faultIfSourceRepeated(name, error, sourceLog.id)
     }
-    await noteVolume(name, { saved: added, continuation, more }, error, sourceLog?.id ?? null)
+    await noteVolume(name, { saved: added, continuation, more, sweepId }, error, sourceLog?.id ?? null)
   }
 
   if (runPost && !opts.chunk) {
@@ -247,7 +249,7 @@ async function invalidatePublicListings() {
 
 async function noteVolume(
   name: string,
-  outcome: { saved: number; continuation: boolean; more: boolean },
+  outcome: { saved: number; continuation: boolean; more: boolean; sweepId?: string | null },
   error: string | null,
   logId: string | null,
 ) {
@@ -267,10 +269,14 @@ async function noteVolume(
     continuation: outcome.continuation,
     more: outcome.more,
     unmarked: false,
+    sweepId: outcome.sweepId ?? null,
     failed: !!error && !isPartialRefresh(error),
     timedOut: isPartialRefresh(error),
   })
-  if (!signal) return
+  if (!signal) {
+    if (comparison.comparable) await retireVolumeFault(name)
+    return
+  }
   await recordQualityAlert({
     kind: signal === 'zero' ? 'ZERO_EVENTS' : 'VOLUME_DROP',
     source: name,

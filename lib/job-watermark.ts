@@ -31,6 +31,9 @@ function ensureTable(): Promise<void> {
       await prisma.$executeRaw`
         ALTER TABLE "JobWatermark" ADD COLUMN IF NOT EXISTS "cursorPageSize" INTEGER NOT NULL DEFAULT 0
       `
+      await prisma.$executeRaw`
+        ALTER TABLE "JobWatermark" ADD COLUMN IF NOT EXISTS "sweepId" TEXT NOT NULL DEFAULT ''
+      `
     })().catch((err) => {
       ready = null
       throw err
@@ -39,21 +42,23 @@ function ensureTable(): Promise<void> {
   return ready
 }
 
-export type JobMark = { at: Date; page: number; pageSize: number }
+export type JobMark = { at: Date; page: number; pageSize: number; sweepId: string | null }
 
 async function readMark(job: JobName): Promise<JobMark | null> {
   await ensureTable()
-  const rows = await prisma.$queryRaw<{ cursorAt: Date; cursorPage: number | null; cursorPageSize: number | null }[]>`
-    SELECT "cursorAt", "cursorPage", "cursorPageSize" FROM "JobWatermark" WHERE "job" = ${jobs[job]} LIMIT 1
+  const rows = await prisma.$queryRaw<{ cursorAt: Date; cursorPage: number | null; cursorPageSize: number | null; sweepId: string | null }[]>`
+    SELECT "cursorAt", "cursorPage", "cursorPageSize", "sweepId" FROM "JobWatermark" WHERE "job" = ${jobs[job]} LIMIT 1
   `
   const at = rows[0]?.cursorAt
   if (!at) return null
   const page = rows[0]?.cursorPage
   const pageSize = rows[0]?.cursorPageSize
+  const sweepId = rows[0]?.sweepId
   return {
     at: new Date(at),
     page: page != null && page > 0 ? page : 0,
     pageSize: pageSize != null && pageSize > 0 ? pageSize : 0,
+    sweepId: sweepId && /^[a-z0-9]+$/i.test(sweepId) ? sweepId.toLowerCase() : null,
   }
 }
 
@@ -67,15 +72,16 @@ export async function readJobMark(job: JobName): Promise<JobMark | null> {
   return readMark(job)
 }
 
-/** Remember a cursor. Pass the time the pass started so rows written during it are read next time. */
-export async function writeJobCursor(job: JobName, cursorAt: Date, page = 0, pageSize = 0): Promise<void> {
+/** Remember a cursor. Pass the time the pass started so rows written during it are read next time. An empty sweep id clears one. */
+export async function writeJobCursor(job: JobName, cursorAt: Date, page = 0, pageSize = 0, sweepId: string | null = null): Promise<void> {
   await ensureTable()
   const storedPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0
   const storedSize = Number.isFinite(pageSize) ? Math.max(0, Math.floor(pageSize)) : 0
+  const storedSweep = sweepId && /^[a-z0-9]+$/i.test(sweepId) ? sweepId.toLowerCase().slice(0, 40) : ''
   await prisma.$executeRaw`
-    INSERT INTO "JobWatermark" ("job", "cursorAt", "cursorPage", "cursorPageSize", "updatedAt")
-    VALUES (${jobs[job]}, ${cursorAt}, ${storedPage}, ${storedSize}, NOW())
-    ON CONFLICT ("job") DO UPDATE SET "cursorAt" = ${cursorAt}, "cursorPage" = ${storedPage}, "cursorPageSize" = ${storedSize}, "updatedAt" = NOW()
+    INSERT INTO "JobWatermark" ("job", "cursorAt", "cursorPage", "cursorPageSize", "sweepId", "updatedAt")
+    VALUES (${jobs[job]}, ${cursorAt}, ${storedPage}, ${storedSize}, ${storedSweep}, NOW())
+    ON CONFLICT ("job") DO UPDATE SET "cursorAt" = ${cursorAt}, "cursorPage" = ${storedPage}, "cursorPageSize" = ${storedSize}, "sweepId" = ${storedSweep}, "updatedAt" = NOW()
   `
 }
 

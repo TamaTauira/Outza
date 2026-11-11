@@ -90,6 +90,62 @@ test('a resumable sweep is compared once, not chunk against chunk', () => {
   assert.equal(three.comparison.chunks, 4)
 })
 
+test('overlapping Moshtix passes are not one sweep, and a real drop still alerts', () => {
+  // Production 11 Nov: finished chunks were labelled as continuations and summed to 4538, then 1544 alerted.
+  const seq = [
+    sweepRunFromLog(870, '[sweep:more]'),
+    sweepRunFromLog(662, '[sweep:continued]'),
+    sweepRunFromLog(830, '[sweep:continued+more]'),
+    sweepRunFromLog(672, '[sweep:continued]'),
+    sweepRunFromLog(794, '[sweep:continued+more]'),
+    sweepRunFromLog(709, '[sweep:continued+more]'),
+    sweepRunFromLog(1, '[sweep:continued]'),
+    sweepRunFromLog(791, '[sweep:more]'),
+    sweepRunFromLog(648, '[sweep:continued+more]'),
+    sweepRunFromLog(105, '[sweep:continued]'),
+  ]
+  const at = (index: number) => sourceVolumeSignal(seq.slice(0, index).reverse(), seq[index])
+
+  const second = at(3)
+  assert.equal(second.signal, null)
+  assert.equal(second.comparison.currentTotal, 830 + 672)
+  assert.equal(second.comparison.previousTotal, 870 + 662)
+
+  const third = at(6)
+  assert.equal(third.signal, null)
+  assert.equal(third.comparison.currentTotal, 794 + 709 + 1)
+  assert.equal(third.comparison.previousTotal, 830 + 672)
+
+  const faulted = at(9)
+  assert.equal(faulted.signal, null)
+  assert.equal(faulted.comparison.comparable, true)
+  assert.equal(faulted.comparison.currentTotal, 791 + 648 + 105)
+  assert.equal(faulted.comparison.previousTotal, 794 + 709 + 1)
+  assert.notEqual(faulted.comparison.previousTotal, 4538)
+
+  const drop = sourceVolumeSignal(seq.slice().reverse(), {
+    events: 400,
+    continuation: false,
+    more: false,
+    unmarked: false,
+    sweepId: 'drop1',
+  })
+  assert.equal(drop.signal, 'drop')
+  assert.equal(drop.comparison.currentTotal, 400)
+  assert.equal(drop.comparison.previousTotal, 1544)
+  assert.match(volumeDropDetail('Moshtix', 'drop', drop.comparison), /saved 400 events/)
+
+  const zero = sourceVolumeSignal(seq.slice().reverse(), {
+    events: 0,
+    continuation: false,
+    more: false,
+    unmarked: false,
+    sweepId: 'drop0',
+  })
+  assert.equal(zero.signal, 'zero')
+  assert.equal(zero.comparison.previousTotal, 1544)
+})
+
 test('one-shot sources still alert on a real drop and ignore a cut-short run', () => {
   const drop = sourceVolumeSignal([sweepRunFromLog(120, null)], chunk({ events: 40, unmarked: true }))
   assert.equal(drop.signal, 'drop')

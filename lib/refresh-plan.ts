@@ -69,20 +69,25 @@ export function isPartialRefresh(error: string | null | undefined) {
   return isBudgetSkip(error) || isMoshtixPause(error)
 }
 
-export type SweepProgress = { continuation: boolean; more: boolean }
+export type SweepProgress = { continuation: boolean; more: boolean; sweepId: string | null }
 
-const SWEEP_MARK = /\[sweep:(continued\+more|continued|more)\]/
+const SWEEP_MARK = /\[sweep:(continued\+more|continued|more)(?:\s+id=([a-z0-9]+))?\]/i
+
+function cleanSweepId(id: string | null | undefined): string | null {
+  if (!id || !/^[a-z0-9]+$/i.test(id)) return null
+  return id.toLowerCase()
+}
 
 /** Remember that a run resumed a sweep, or stopped with more of it left. Not a failure. */
-export function sweepToken(flags: { continuation?: boolean; more?: boolean }): string | null {
-  if (flags.continuation && flags.more) return '[sweep:continued+more]'
-  if (flags.continuation) return '[sweep:continued]'
-  if (flags.more) return '[sweep:more]'
-  return null
+export function sweepToken(flags: { continuation?: boolean; more?: boolean; sweepId?: string | null }): string | null {
+  const body = flags.continuation && flags.more ? 'continued+more' : flags.continuation ? 'continued' : flags.more ? 'more' : null
+  if (!body) return null
+  const id = cleanSweepId(flags.sweepId)
+  return id ? `[sweep:${body} id=${id}]` : `[sweep:${body}]`
 }
 
 /** Attach a sweep mark to a log error. A chunk with no real error is stored as the mark alone. */
-export function withSweepMark(error: string | null, flags: { continuation?: boolean; more?: boolean }): string | null {
+export function withSweepMark(error: string | null, flags: { continuation?: boolean; more?: boolean; sweepId?: string | null }): string | null {
   const mark = sweepToken(flags)
   if (!mark) return error
   if (!error) return mark
@@ -92,10 +97,12 @@ export function withSweepMark(error: string | null, flags: { continuation?: bool
 
 export function readSweepMark(error: string | null | undefined): SweepProgress & { marked: boolean } {
   const match = error?.match(SWEEP_MARK)
-  if (!match) return { continuation: false, more: false, marked: false }
-  if (match[1] === 'continued+more') return { continuation: true, more: true, marked: true }
-  if (match[1] === 'continued') return { continuation: true, more: false, marked: true }
-  return { continuation: false, more: true, marked: true }
+  if (!match) return { continuation: false, more: false, sweepId: null, marked: false }
+  const sweepId = cleanSweepId(match[2])
+  const kind = match[1].toLowerCase()
+  if (kind === 'continued+more') return { continuation: true, more: true, sweepId, marked: true }
+  if (kind === 'continued') return { continuation: true, more: false, sweepId, marked: true }
+  return { continuation: false, more: true, sweepId, marked: true }
 }
 
 /** Failure text with the sweep mark removed. Null when the log is only sweep progress. */
@@ -115,17 +122,18 @@ export function sweepFlagsFromLog(errors: string | null | undefined): SweepProgr
   const mark = readSweepMark(errors)
   const pause = isMoshtixPause(errors)
   if (mark.marked || pause) {
-    return { continuation: mark.continuation, more: mark.more || pause, unmarked: false }
+    return { continuation: mark.continuation, more: mark.more || pause, sweepId: mark.sweepId, unmarked: false }
   }
-  return { continuation: false, more: false, unmarked: true }
+  return { continuation: false, more: false, sweepId: null, unmarked: true }
 }
 
 /** Keep sweep progress on a thrown error so the refresh log can record the chunk. */
-export function attachSweepProgress(err: unknown, progress: SweepProgress): Error {
+export function attachSweepProgress(err: unknown, progress: { continuation: boolean; more: boolean; sweepId?: string | null }): Error {
   const error = err instanceof Error ? err : new Error(String(err))
   ;(error as Error & { sweepProgress?: SweepProgress }).sweepProgress = {
     continuation: progress.continuation === true,
     more: progress.more === true,
+    sweepId: cleanSweepId(progress.sweepId),
   }
   return error
 }
@@ -134,7 +142,11 @@ export function readSweepProgress(err: unknown): SweepProgress | null {
   if (!err || typeof err !== 'object' || !('sweepProgress' in err)) return null
   const progress = (err as { sweepProgress?: Partial<SweepProgress> }).sweepProgress
   if (!progress) return null
-  return { continuation: progress.continuation === true, more: progress.more === true }
+  return {
+    continuation: progress.continuation === true,
+    more: progress.more === true,
+    sweepId: cleanSweepId(progress.sweepId),
+  }
 }
 
 export type CycleLog = {

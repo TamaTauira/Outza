@@ -7,12 +7,15 @@ import {
   MOSHTIX_SMALL_PAGE_SIZE,
   isMoshtixPause,
   moshtixFailureReason,
+  moshtixCatalogueExhausted,
   moshtixNoteEvent,
   moshtixNotePage,
   moshtixPauseMessage,
+  moshtixPreviousSweepOpen,
   moshtixResume,
   moshtixResumePageSize,
   moshtixRetryDecision,
+  moshtixSweepPlan,
   moshtixTransientFailure,
 } from './moshtix-refresh'
 
@@ -137,4 +140,49 @@ test('a pause is not a hard Moshtix failure', () => {
   assert.doesNotMatch(src, /pageSize: 200/)
   assert.match(src, /more: !done/)
   assert.match(src, /attachSweepProgress/)
+  assert.match(src, /moshtixSweepPlan/)
+  assert.match(src, /moshtixCatalogueExhausted/)
+})
+
+test('a short page is the end of the catalogue only when totalCount is covered', () => {
+  assert.equal(moshtixCatalogueExhausted({ itemCount: 0, pageSize: 50, page: 0, totalCount: 0 }), true)
+  assert.equal(moshtixCatalogueExhausted({ itemCount: 0, pageSize: 50, page: 0, totalCount: 916 }), false)
+  assert.equal(moshtixCatalogueExhausted({ itemCount: 30, pageSize: 50, page: 0, totalCount: 916 }), false)
+  assert.equal(moshtixCatalogueExhausted({ itemCount: 3, pageSize: 50, page: 0, totalCount: 3 }), true)
+  assert.equal(moshtixCatalogueExhausted({ itemCount: 50, pageSize: 50, page: 0, totalCount: 2159 }), false)
+  assert.equal(moshtixCatalogueExhausted({ itemCount: 16, pageSize: 50, page: 1, totalCount: 66 }), true)
+})
+
+test('a finished sweep ignores a stale cursor and starts again from the lookback floor', () => {
+  const now = Date.parse('2026-11-11T05:10:50.246Z')
+  const stale = Date.parse('2026-11-12T11:30:00.000Z')
+  assert.equal(moshtixPreviousSweepOpen({ more: false, unmarked: false }), false)
+  assert.equal(moshtixPreviousSweepOpen({ more: true, unmarked: false }), true)
+  assert.equal(moshtixPreviousSweepOpen({ more: false, unmarked: true, partial: true }), true)
+  assert.equal(moshtixPreviousSweepOpen(null), false)
+
+  const fresh = moshtixSweepPlan({
+    now,
+    storedFromMs: stale,
+    storedPage: 2,
+    storedPageSize: MOSHTIX_PAGE_SIZE,
+    storedSweepId: 'oldsweep',
+    previousOpen: false,
+    nextSweepId: 'fresh1',
+  })
+  assert.equal(fresh.continuation, false)
+  assert.equal(fresh.sweepId, 'fresh1')
+  assert.deepEqual(fresh.cursor, { fromMs: now - MOSHTIX_LOOKBACK_MS, page: 0 })
+
+  const resume = moshtixSweepPlan({
+    now,
+    storedFromMs: stale,
+    storedPage: 0,
+    storedPageSize: MOSHTIX_PAGE_SIZE,
+    storedSweepId: 'Same1',
+    previousOpen: true,
+  })
+  assert.equal(resume.continuation, true)
+  assert.equal(resume.sweepId, 'same1')
+  assert.deepEqual(resume.cursor, { fromMs: stale, page: 0 })
 })

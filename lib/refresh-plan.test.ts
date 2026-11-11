@@ -163,18 +163,21 @@ test('a sweep progress mark is not a source failure', () => {
   assert.equal(withSweepMark(null, { more: true }), '[sweep:more]')
   assert.equal(withSweepMark(null, { continuation: true }), '[sweep:continued]')
   assert.equal(withSweepMark(null, { continuation: true, more: true }), '[sweep:continued+more]')
+  assert.equal(withSweepMark(null, { more: true, sweepId: 'AbC12' }), '[sweep:more id=abc12]')
   const budget = 'Moshtix: time budget reached after saving 634 events'
   assert.equal(withSweepMark(budget, { more: true }), `${budget} [sweep:more]`)
   assert.equal(withSweepMark(`${budget} [sweep:more]`, { more: true }), `${budget} [sweep:more]`)
   assert.equal(refreshFailure('[sweep:continued]'), null)
+  assert.equal(refreshFailure('[sweep:continued id=abc12]'), null)
   assert.equal(refreshFailure(`${budget} [sweep:more]`), budget)
   assert.equal(isPartialRefresh(refreshFailure(`${budget} [sweep:more]`)), true)
-  assert.deepEqual(sweepFlagsFromLog('[sweep:continued+more]'), { continuation: true, more: true, unmarked: false })
-  assert.deepEqual(sweepFlagsFromLog('Moshtix: upstream 504 after saving 796 events; continuing next run'), { continuation: false, more: true, unmarked: false })
-  assert.deepEqual(sweepFlagsFromLog(null), { continuation: false, more: false, unmarked: true })
-  const tagged = attachSweepProgress(new Error('Moshtix API 500'), { continuation: true, more: true })
+  assert.deepEqual(sweepFlagsFromLog('[sweep:continued+more]'), { continuation: true, more: true, unmarked: false, sweepId: null })
+  assert.deepEqual(sweepFlagsFromLog('[sweep:continued+more id=abc12]'), { continuation: true, more: true, unmarked: false, sweepId: 'abc12' })
+  assert.deepEqual(sweepFlagsFromLog('Moshtix: upstream 504 after saving 796 events; continuing next run'), { continuation: false, more: true, unmarked: false, sweepId: null })
+  assert.deepEqual(sweepFlagsFromLog(null), { continuation: false, more: false, unmarked: true, sweepId: null })
+  const tagged = attachSweepProgress(new Error('Moshtix API 500'), { continuation: true, more: true, sweepId: 'abc12' })
   assert.equal(tagged.message, 'Moshtix API 500')
-  assert.deepEqual(readSweepProgress(tagged), { continuation: true, more: true })
+  assert.deepEqual(readSweepProgress(tagged), { continuation: true, more: true, sweepId: 'abc12' })
 
   const open = assessRefreshCycle(
     [
