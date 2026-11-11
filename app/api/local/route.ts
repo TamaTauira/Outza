@@ -8,7 +8,9 @@ import { storagePath } from '@/lib/s3'
 import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
 import { eventPath } from '@/lib/seo'
-import { chooseFeedPin, dedupeFeed, feedBlurb, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { publicUrl } from '@/lib/s3'
+import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { placeFromText } from '@/lib/venue-place'
 import { aiModeration, expiryFor, findDuplicate, hardBlock, ipHash, parseLocal, recentCount, spamSignals, validateAddress } from '@/lib/local'
 import { unverifiedGate } from '@/lib/account-flow'
@@ -16,6 +18,31 @@ import { unverifiedGate } from '@/lib/account-flow'
 export const dynamic = 'force-dynamic'
 
 const PUBLIC = { id: true, title: true, category: true, description: true, address: true, suburb: true, postcode: true, city: true, lat: true, lng: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true, websiteUrl: true, userId: true, sourceName: true } as const
+
+function assetUrl(asset: { status: string; variants: unknown } | null | undefined): string | null {
+  if (!asset || asset.status === 'FAILED' || !asset.variants || typeof asset.variants !== 'object') return null
+  const manifest = asset.variants as VariantManifest
+  const sizes = manifest.sizes
+  for (const kind of ['card', 'featured', 'hero', 'square'] as const) {
+    const widths = sizes?.[kind]
+    if (widths?.length) return variantUrl(manifest, kind, widths[widths.length - 1], 'webp')
+  }
+  return null
+}
+
+function communityPhoto(ev: {
+  communityKey?: string | null
+  childrenInImage?: boolean | null
+  imageKidSafe?: boolean | null
+  communityFlags?: string[] | null
+  imageUrl?: string | null
+  imageAsset?: { status: string; variants: unknown } | null
+}): string | null {
+  const school = ev.communityKey === 'school-fundraisers'
+  const flagged = (ev.communityFlags ?? []).includes('SCHOOL_IMAGE')
+  if (ev.childrenInImage || flagged || (school && !ev.imageKidSafe)) return null
+  return feedPhoto([assetUrl(ev.imageAsset), ev.imageUrl])
+}
 
 function feedPin(section: string, city: string, suburb: string, lat?: number | null, lng?: number | null) {
   const place = placeFromText({ city, suburb })
@@ -62,7 +89,7 @@ export async function GET(req: Request) {
   try {
   const rows = await prisma.localListing.findMany({
     where: { status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(validCity ? { city } : {}) },
-    select: PUBLIC, take: 600,
+    select: { ...PUBLIC, imagePath: true, imageAsset: { select: imageAssetSelect } }, take: 600,
   })
   const seen = new Set<string>()
   const localItems: FeedItem[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
@@ -85,6 +112,7 @@ export async function GET(req: Request) {
         lat: pin?.lat ?? null,
         lng: pin?.lng ?? null,
         blurb: feedBlurb(l.description),
+        imageUrl: feedPhoto([assetUrl(l.imageAsset), l.imagePath ? publicUrl(l.imagePath) : null]),
       }
     })
   const events = await prisma.event.findMany({
@@ -92,7 +120,8 @@ export async function GET(req: Request) {
     select: {
       id: true, title: true, description: true, date: true, endDate: true, time: true, suburb: true, city: true,
       venueName: true, venueAddress: true, isFree: true, price: true, status: true, recurrence: true, communityKey: true,
-      locationVisibility: true, childrenInImage: true, imageKidSafe: true, latitude: true, longitude: true,
+      locationVisibility: true, childrenInImage: true, imageKidSafe: true, communityFlags: true, latitude: true, longitude: true,
+      imageUrl: true, imageAsset: { select: imageAssetSelect },
     },
     take: 400,
   }).catch(() => [])
@@ -125,6 +154,7 @@ export async function GET(req: Request) {
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
       blurb: feedBlurb(typeof ev.description === 'string' ? ev.description : null),
+      imageUrl: communityPhoto(ev),
     }
   })
   const items = filterFeed(dedupeFeed([...communityItems, ...localItems]), { section, suburb }).slice(0, 300)

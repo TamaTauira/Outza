@@ -22,6 +22,16 @@ export interface FeedItem {
   lng?: number | null
   /** Short fact from the listing text. Never invented. */
   blurb?: string | null
+  /** The listing's own picture. Empty when there isn't one; the page uses a genre holding image then. */
+  imageUrl?: string | null
+}
+
+/** First real http(s) picture. Holding art is chosen by the page, not stored here. */
+export function feedPhoto(urls: Array<string | null | undefined>): string | null {
+  for (const url of urls) {
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) return url
+  }
+  return null
 }
 
 /** A card line from the listing's own words. Too-short blurbs stay off the card. */
