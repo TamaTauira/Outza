@@ -85,10 +85,24 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
         </div>
       </section>
 
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved events">
+          {tabs.map((item) => (
+            <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
+              {item.label}{item.count != null ? ` (${item.count})` : ''}
+            </button>
+          ))}
+        </div>
+        <ViewToggle value={resultsView} onChange={chooseView} />
+      </div>
+
       {!signedIn || saved.length === 0 ? (
+        resultsView === 'map' ? (
+          <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">The map stays hidden because there are no saved events with a location we can place. {signedIn ? 'Save something with a venue pin and it will show up here.' : 'Sign in to load the keepers on your account.'}</p>
+        ) : (
         <div className="px-2 py-12 text-center">
           <VibePeepMascot className="mx-auto w-24 sm:w-28" alt="VibePeep" />
-          <h2 className="mt-4 font-display text-3xl font-bold">{signedIn ? 'Nothing saved. Yet.' : 'Nothing saved. Yet.'}</h2>
+          <h2 className="mt-4 font-display text-3xl font-bold">Nothing saved. Yet.</h2>
           <p className="mx-auto mt-2 max-w-md text-muted-foreground">{signedIn ? 'Your future plans are out there. See something you love? Tap the heart and we’ll keep it here for you.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}</p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
             {signedIn ? (
@@ -101,19 +115,9 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
             )}
           </div>
         </div>
+        )
       ) : (
         <>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved events">
-              {tabs.map((item) => (
-                <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
-                  {item.label}{item.count != null ? ` (${item.count})` : ''}
-                </button>
-              ))}
-            </div>
-            <ViewToggle value={resultsView} onChange={chooseView} />
-          </div>
-
           {tab === 'past' ? (
             <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">Past events stay on your account, but this page only lists what’s still ahead. Browsing them here is a future enhancement.</p>
           ) : resultsView === 'map' && pins.length === 0 ? (
@@ -147,6 +151,8 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               ))}
             </div>
           )}
+        </>
+      )}
 
           <section className="mt-10">
             <h2 className="font-display text-2xl font-bold">Your collections.</h2>
@@ -176,8 +182,6 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
             </div>
             <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find events</button>
           </section>
-        </>
-      )}
     </div>
   )
 }
