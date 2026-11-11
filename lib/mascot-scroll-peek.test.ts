@@ -40,20 +40,25 @@ test('the peek keeps the antenna attached and both eyes in a slice that fits the
   assert.ok(antenna.right <= SCROLL_PEEK_WINDOW.right)
   assert.ok(antenna.top >= SCROLL_PEEK_WINDOW.top)
   assert.ok(antenna.bottom <= SCROLL_PEEK_WINDOW.bottom)
-  // Left eye ends at 0.470, right eye starts at 0.614 (body art, mapped onto the rig).
-  assert.ok(SCROLL_PEEK_WINDOW.left < 0.47 && SCROLL_PEEK_WINDOW.right > 0.251)
-  assert.ok(SCROLL_PEEK_WINDOW.left < 0.784 && SCROLL_PEEK_WINDOW.right > 0.614)
-  assert.ok(SCROLL_PEEK_WINDOW.bottom >= 0.493)
+  // Eye whites from the body art, mapped onto the rig. Both need a real share of the window.
+  const overlap = (eye: { left: number; right: number }) =>
+    Math.min(SCROLL_PEEK_WINDOW.right, eye.right) - Math.max(SCROLL_PEEK_WINDOW.left, eye.left)
+  assert.ok(overlap({ left: 0.25, right: 0.472 }) >= 0.06)
+  assert.ok(overlap({ left: 0.613, right: 0.788 }) >= 0.06)
+  assert.ok(SCROLL_PEEK_WINDOW.bottom >= 0.5)
   const slice = SCROLL_PEEK_WINDOW.right - SCROLL_PEEK_WINDOW.left
   const phoneRem = Number.parseFloat(MASCOT_PHONE_WIDTH)
   assert.ok(slice * phoneRem < 1, 'slice must sit inside the 1rem page padding')
-  assert.equal(scrollPeekClip(), 'inset(0% 36% 50% 36%)')
+  assert.equal(scrollPeekClip(), 'inset(0% 31% 48% 39%)')
 })
 
-test('he slides into the gutter and the dismiss control stays on screen, clear of his face', () => {
+test('he slides into the gutter and the dismiss control tucks off screen with him', () => {
   const close = closeButtonBox(PHONE_W, PHONE_H)
   assert.equal(close.width, CLOSE_BUTTON.size)
   assert.equal(close.height, CLOSE_BUTTON.size)
+
+  const offText = (box: { left: number; right: number }, viewportW: number) =>
+    box.right <= 16 || box.left >= viewportW - 16
 
   const right = scrollPeekLayout({
     x: 300,
@@ -66,11 +71,9 @@ test('he slides into the gutter and the dismiss control stays on screen, clear o
   })
   assert.equal(right.edge, 'right')
   assert.equal(peekClearsText(right, 390), true)
-  assert.ok(right.close.left >= 4)
-  assert.ok(right.close.right <= 390 - 4)
-  assert.ok(right.close.top >= 4)
-  assert.ok(right.close.bottom <= 844 - 4)
-  assert.ok(right.close.bottom + CLOSE_CLEARANCE <= right.window.top || right.close.top >= right.window.bottom + CLOSE_CLEARANCE || right.close.right + CLOSE_CLEARANCE <= right.window.left || right.window.right + CLOSE_CLEARANCE <= right.close.left)
+  assert.ok(right.close.left >= 390)
+  assert.equal(offText(right.close, 390), true)
+  assert.ok(right.close.right - right.close.left === CLOSE_BUTTON.size)
 
   const left = scrollPeekLayout({
     x: 8,
@@ -83,8 +86,8 @@ test('he slides into the gutter and the dismiss control stays on screen, clear o
   })
   assert.equal(left.edge, 'left')
   assert.equal(peekClearsText(left, 360), true)
-  assert.ok(left.close.left >= 4 && left.close.right <= 356)
-  assert.ok(left.close.top >= 4 && left.close.bottom <= 736)
+  assert.ok(left.close.right <= 0)
+  assert.equal(offText(left.close, 360), true)
 
   const desktop = scrollPeekLayout({
     x: 1100,
@@ -109,6 +112,8 @@ test('the tuck is phone-only CSS and reduced motion snaps instead of sliding', (
   assert.equal(/min-width:\s*768px/.test(media), false)
   assert.match(css, /@media \(max-width: 767px\) and \(prefers-reduced-motion: reduce\)[\s\S]*transition: none;/)
   assert.match(css, /data-scroll-peek='1'/)
+  assert.match(css, /\.vp-roam\[data-scroll-peek='1'\] \.vp-buddy-min \{[^}]*visibility: hidden;/)
+  assert.match(css, /\.vp-roam\[data-scroll-peek='1'\] \.vp-buddy-min \{[^}]*pointer-events: none;/)
   assert.match(css, /\.vp-roam \.vp-buddy-min \{[^}]*min-width: 44px;/)
   assert.match(css, /\.vp-roam \.vp-buddy-min \{[^}]*min-height: 44px;/)
 })

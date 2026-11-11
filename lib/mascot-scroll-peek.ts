@@ -13,14 +13,14 @@ export const SCROLL_PEEK_SETTLE_MS = 1000
 
 /**
  * Page padding is 1rem (`px-4`). The visible slice has to fit in that gutter
- * or he covers the ends of lines. Phone width is 3.27rem, so the slice is
- * 0.28 × 3.27 = 0.92rem.
+ * or he covers the ends of lines. Phone width is 3.27rem, so this slice is
+ * 0.30 × 3.27 = 0.98rem.
  *
- * The box is the centre of the rig: the antenna (0.416–0.587) and the inner
- * part of both eyes. Measured from the body art, the left eye reaches 0.470
- * and the right eye starts at 0.614.
+ * Framed on the face, not a sliver of one eye. The antenna (0.416–0.587)
+ * stays whole. The left eye white runs to 0.472 and the right eye white
+ * starts at 0.613, so both sit inside the window.
  */
-export const SCROLL_PEEK_WINDOW = { left: 0.36, right: 0.64, top: 0, bottom: 0.5 } as const
+export const SCROLL_PEEK_WINDOW = { left: 0.39, right: 0.69, top: 0, bottom: 0.52 } as const
 
 /** The dismiss control. Same numbers as `.vp-buddy-min` in the roam CSS. */
 export const CLOSE_BUTTON = { size: 44, gap: 10, lift: 0.24 } as const
@@ -76,19 +76,11 @@ export type ScrollPeekLayout = {
   close: PeekRect
 }
 
-function gapBetween(a: PeekRect, b: PeekRect): number {
-  const dx = Math.max(a.left - b.right, b.left - a.right)
-  const dy = Math.max(a.top - b.bottom, b.top - a.bottom)
-  if (dx < 0 && dy < 0) return Math.max(dx, dy)
-  if (dx < 0) return dy
-  if (dy < 0) return dx
-  return Math.hypot(dx, dy)
-}
-
 /**
  * Slide the rig toward the nearer side so the antenna-and-eyes window sits
- * flush in the screen gutter. The dismiss control moves on its own so it
- * stays fully on screen and clear of that window.
+ * flush in the screen gutter. The dismiss control tucks off that same edge
+ * so it is not a 44px button over the line endings. It returns above his
+ * head, still 44px and clear of his face, when the peek ends.
  */
 export function scrollPeekLayout(input: {
   x: number
@@ -139,41 +131,14 @@ export function scrollPeekLayout(input: {
   const naturalTop = input.y + input.close.top
   const size = input.close.width
   const height = input.close.height
-
-  const placed = (left: number, top: number): PeekRect => ({
-    left,
-    top,
-    right: left + size,
-    bottom: top + height,
-  })
-  const onScreenBox = (box: PeekRect) =>
-    box.left >= SCREEN_MARGIN &&
-    box.top >= SCREEN_MARGIN &&
-    box.right <= input.viewportW - SCREEN_MARGIN &&
-    box.bottom <= input.viewportH - SCREEN_MARGIN
-
-  const candidates: Array<{ left: number; top: number }> = []
-  const outerLeft = edge === 'right' ? input.viewportW - SCREEN_MARGIN - size : SCREEN_MARGIN
-  candidates.push({ left: outerLeft, top: naturalTop })
-  candidates.push({ left: outerLeft, top: windowRect.top - CLOSE_CLEARANCE - height })
-  candidates.push({ left: outerLeft, top: windowRect.bottom + CLOSE_CLEARANCE })
-  candidates.push({
-    left: edge === 'right' ? windowRect.left - CLOSE_CLEARANCE - size : windowRect.right + CLOSE_CLEARANCE,
-    top: Math.max(SCREEN_MARGIN, windowRect.top),
-  })
-
-  let chosen = placed(
-    Math.min(input.viewportW - SCREEN_MARGIN - size, Math.max(SCREEN_MARGIN, outerLeft)),
-    Math.min(input.viewportH - SCREEN_MARGIN - height, Math.max(SCREEN_MARGIN, naturalTop)),
-  )
-  for (const candidate of candidates) {
-    const left = Math.min(input.viewportW - SCREEN_MARGIN - size, Math.max(SCREEN_MARGIN, candidate.left))
-    const top = Math.min(input.viewportH - SCREEN_MARGIN - height, Math.max(SCREEN_MARGIN, candidate.top))
-    const box = placed(left, top)
-    if (onScreenBox(box) && gapBetween(box, windowRect) >= CLOSE_CLEARANCE) {
-      chosen = box
-      break
-    }
+  const tuck = 12
+  const closeLeft = edge === 'right' ? input.viewportW + tuck : -(size + tuck)
+  const closeTop = windowRect.top - CLOSE_CLEARANCE - height
+  const chosen: PeekRect = {
+    left: closeLeft,
+    top: closeTop,
+    right: closeLeft + size,
+    bottom: closeTop + height,
   }
 
   return {
