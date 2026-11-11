@@ -18,6 +18,28 @@ const TM_HORIZON_DEFAULT_MS = 730 * 24 * 3600 * 1000
 /** Hard stop so a bad far-future date cannot walk for years (~36 months). */
 const TM_HORIZON_CAP_MS = 36 * 30 * 24 * 3600 * 1000
 
+export type TicketmasterAttemptStats = {
+  attempts: number
+  failures: number
+  lastStatus: number | null
+}
+
+/**
+ * A missing key, or a run where every Discovery call failed, is not an empty feed.
+ * A successful response with no rows stays a real zero so the volume check can still alert.
+ * Events already saved are kept: a late failure must not turn a partial save into a hard error.
+ */
+export function ticketmasterFetchFailure(
+  apiKey: string | undefined,
+  saved: number,
+  stats: TicketmasterAttemptStats,
+): string | null {
+  if (!apiKey) return 'TICKETMASTER_API_KEY is not set'
+  if (saved > 0 || stats.attempts === 0 || stats.failures !== stats.attempts) return null
+  const status = stats.lastStatus != null ? ` (last HTTP ${stats.lastStatus})` : ''
+  return `Ticketmaster requests failed (${stats.failures} of ${stats.attempts})${status}`
+}
+
 function tmStamp(d: Date): string {
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
@@ -27,15 +49,19 @@ function cityUrl(city: CityDef, apiKey: string, extra: string): string {
   return `https://app.ticketmaster.com/discovery/v2/events.json?${area}&size=${TM_PAGE_SIZE}&${extra}&apikey=${apiKey}`
 }
 
-async function tmJson(url: string, label: string): Promise<any | null> {
+async function tmJson(url: string, label: string, stats: TicketmasterAttemptStats): Promise<any | null> {
+  stats.attempts++
   try {
     const res = await fetch(url, { signal: sourceFetchSignal(20000) })
     if (!res.ok) {
+      stats.failures++
+      stats.lastStatus = res.status
       console.error(`Ticketmaster ${label} returned ${res.status}`)
       return null
     }
     return await res.json()
   } catch (err: any) {
+    stats.failures++
     console.error(`Ticketmaster ${label} failed: ${err?.message}`)
     return null
   }
@@ -43,28 +69,29 @@ async function tmJson(url: string, label: string): Promise<any | null> {
 
 export async function fetchTicketmasterEvents(): Promise<number> {
   const apiKey = process.env.TICKETMASTER_API_KEY
-  if (!apiKey) {
-    console.error('TICKETMASTER_API_KEY not set')
-    return 0
-  }
+  const stats: TicketmasterAttemptStats = { attempts: 0, failures: 0, lastStatus: null }
+  if (!apiKey) throw new Error(ticketmasterFetchFailure(apiKey, 0, stats) ?? 'TICKETMASTER_API_KEY is not set')
   let total = 0
   for (const city of CITIES) {
     if (yieldIfBudget('cities')) break
-    total += await fetchCity(city, apiKey)
+    total += await fetchCity(city, apiKey, stats)
     noteSourceSaved(total)
   }
+  const outage = ticketmasterFetchFailure(apiKey, total, stats)
+  if (outage) throw new Error(outage)
   console.log(`Ticketmaster: added/updated ${total} events across Australia`)
   return total
 }
 
 /** End of the range this city actually lists, capped so a junk date cannot run away. */
-async function horizonEnd(city: CityDef, apiKey: string): Promise<Date> {
+async function horizonEnd(city: CityDef, apiKey: string, stats: TicketmasterAttemptStats): Promise<Date> {
   const now = new Date()
   const cap = new Date(now.getTime() + TM_HORIZON_CAP_MS)
   const fallback = new Date(Math.min(now.getTime() + TM_HORIZON_DEFAULT_MS, cap.getTime()))
   const data = await tmJson(
     cityUrl(city, apiKey, `page=0&sort=date,desc&startDateTime=${tmStamp(now)}`),
     `${city.name} horizon`,
+    stats,
   )
   await sleep(300)
   const ev = data?._embedded?.events?.[0]
@@ -81,14 +108,14 @@ async function horizonEnd(city: CityDef, apiKey: string): Promise<Date> {
   return furthest > cap ? cap : furthest
 }
 
-async function fetchCity(city: CityDef, apiKey: string): Promise<number> {
-  const horizon = await horizonEnd(city, apiKey)
+async function fetchCity(city: CityDef, apiKey: string, stats: TicketmasterAttemptStats): Promise<number> {
+  const horizon = await horizonEnd(city, apiKey, stats)
   let saved = 0
   let cursor = new Date()
   while (cursor < horizon) {
     if (yieldIfBudget('date windows')) break
     const end = new Date(Math.min(horizon.getTime(), cursor.getTime() + TM_WINDOW_MS))
-    saved += await fetchWindow(city, apiKey, cursor, end)
+    saved += await fetchWindow(city, apiKey, cursor, end, stats)
     cursor = end
   }
   console.log(`Ticketmaster ${city.name}: added/updated ${saved} events`)
@@ -99,11 +126,11 @@ async function fetchCity(city: CityDef, apiKey: string): Promise<number> {
  * One [start, end) slice. Discovery only returns 1,000 rows per query, so a slice that
  * reports that many (or more) is halved until it fits, down to a single day.
  */
-async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date): Promise<number> {
+async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date, stats: TicketmasterAttemptStats): Promise<number> {
   if (yieldIfBudget('date windows')) return 0
   if (end.getTime() - start.getTime() < 1000) return 0
   const range = `startDateTime=${tmStamp(start)}&endDateTime=${tmStamp(end)}`
-  const first = await tmJson(cityUrl(city, apiKey, `page=0&sort=date,asc&${range}`), `${city.name} ${tmStamp(start)}`)
+  const first = await tmJson(cityUrl(city, apiKey, `page=0&sort=date,asc&${range}`), `${city.name} ${tmStamp(start)}`, stats)
   await sleep(300)
   if (!first) return 0
   const events: any[] = first?._embedded?.events ?? []
@@ -114,8 +141,8 @@ async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date
   const saturated = total >= TM_PAGE_SIZE * TM_MAX_PAGES || totalPages > TM_MAX_PAGES
   if (saturated && span > TM_MIN_WINDOW_MS) {
     const mid = new Date(start.getTime() + Math.floor(span / 2))
-    const left = await fetchWindow(city, apiKey, start, mid)
-    const right = await fetchWindow(city, apiKey, mid, end)
+    const left = await fetchWindow(city, apiKey, start, mid, stats)
+    const right = await fetchWindow(city, apiKey, mid, end, stats)
     return left + right
   }
   if (saturated) {
@@ -124,7 +151,7 @@ async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date
   let saved = await saveTmEvents(events, city)
   const pages = Math.min(TM_MAX_PAGES, Math.max(totalPages, 1))
   for (let page = 1; page < pages; page++) {
-    const data = await tmJson(cityUrl(city, apiKey, `page=${page}&sort=date,asc&${range}`), `${city.name} page ${page}`)
+    const data = await tmJson(cityUrl(city, apiKey, `page=${page}&sort=date,asc&${range}`), `${city.name} page ${page}`, stats)
     await sleep(300)
     const more: any[] = data?._embedded?.events ?? []
     if (!data || more.length === 0) break
