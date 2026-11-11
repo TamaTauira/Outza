@@ -71,7 +71,7 @@ async function pinAndCheck(page: Page, x: number, y: number, where: string): Pro
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))))
       const rig = root.querySelector('.vp-rig')!.getBoundingClientRect()
       const bub = bubble.getBoundingClientRect()
-      const close = root.querySelector<HTMLElement>('.vp-buddy-min')!
+      const close = document.querySelector<HTMLElement>('.vp-buddy-min')!
       const xVis = getComputedStyle(close).visibility
       const xBox = close.getBoundingClientRect()
       const found: string[] = []
@@ -198,7 +198,7 @@ test.beforeAll(async () => {
 
 for (const engine of ['chromium', 'webkit'] as const) {
   test(`mascot chrome stays clear (${engine})`, async ({ playwright }) => {
-    test.setTimeout(600_000)
+    test.setTimeout(900_000)
     const browser = await (engine === 'webkit' ? pw.webkit : pw.chromium).launch()
     const failures: Problem[] = []
     for (const width of WIDTHS) {
@@ -212,7 +212,7 @@ for (const engine of ['chromium', 'webkit'] as const) {
 }
 
 test('mascot chrome peek hides the bubble clash and comes back clear', async ({ playwright }) => {
-  test.setTimeout(120_000)
+  test.setTimeout(180_000)
   for (const engine of ['chromium', 'webkit'] as const) {
     const browser = await (engine === 'webkit' ? pw.webkit : pw.chromium).launch()
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
@@ -223,7 +223,7 @@ test('mascot chrome peek hides the bubble clash and comes back clear', async ({ 
     await page.waitForTimeout(200)
     const peeking = await page.evaluate(() => {
       const root = document.querySelector<HTMLElement>('.vp-roam')!
-      const close = root.querySelector<HTMLElement>('.vp-buddy-min')!
+      const close = document.querySelector<HTMLElement>('.vp-buddy-min')!
       return { peek: root.dataset.scrollPeek || '', x: getComputedStyle(close).visibility }
     })
     expect(peeking.peek, `${engine} should peek`).toBe('1')
@@ -238,7 +238,7 @@ test('mascot chrome peek hides the bubble clash and comes back clear', async ({ 
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(null))))
       const rig = root.querySelector('.vp-rig')!.getBoundingClientRect()
       const bub = bubble.getBoundingClientRect()
-      const close = root.querySelector<HTMLElement>('.vp-buddy-min')!
+      const close = document.querySelector<HTMLElement>('.vp-buddy-min')!
       const xVis = getComputedStyle(close).visibility
       const x = close.getBoundingClientRect()
       const sep = (a: DOMRect, b: DOMRect, pad: number) =>

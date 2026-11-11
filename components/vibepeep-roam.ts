@@ -253,8 +253,8 @@ export function attachRoam(root: HTMLElement): () => void {
     const width = size()
     const rig = root.querySelector<HTMLElement>('.vp-rig')
     const height = rig && rig.clientHeight > 8 ? rig.clientHeight : width * (1092 / 763)
-    const closeEl = root.querySelector<HTMLElement>('.vp-buddy-min')
-    if (closeEl) closeEl.style.transform = ''
+    const closeEl = root.parentElement?.querySelector<HTMLElement>(':scope > .vp-buddy-min')
+    if (closeEl) closeEl.style.transform = 'none'
     const safe = probe('width:0;height:env(safe-area-inset-bottom, 0px)').height
     let chrome = Number.isFinite(safe) ? safe : 0
     const navEl = document.querySelector<HTMLElement>('.vp-bottom-nav')
@@ -787,7 +787,8 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const layoutChrome = (force = false) => {
-    const btn = root.querySelector<HTMLElement>('.vp-buddy-min')
+    const btn = root.parentElement?.querySelector<HTMLElement>(':scope > .vp-buddy-min')
+      ?? root.querySelector<HTMLElement>('.vp-buddy-min')
     if (!btn) return
     if (scrollPeeking || root.dataset.scrollPeek === '1') {
       btn.style.transform = ''
@@ -833,10 +834,18 @@ export function attachRoam(root: HTMLElement): () => void {
       return true
     }
 
+    const snap = (n: number) => {
+      const dpr = window.devicePixelRatio || 1
+      return Math.round(n * dpr) / dpr
+    }
     const placeX = (spot: Box) => {
-      btn.style.transform = ''
-      const natural = btn.getBoundingClientRect()
-      btn.style.transform = `translate(${(spot.left - natural.left).toFixed(1)}px, ${(spot.top - natural.top).toFixed(1)}px)`
+      btn.style.position = 'fixed'
+      btn.style.right = 'auto'
+      btn.style.bottom = 'auto'
+      btn.style.margin = '0'
+      btn.style.transform = 'none'
+      btn.style.left = `${snap(spot.left)}px`
+      btn.style.top = `${snap(spot.top)}px`
       showClose(btn)
     }
 
