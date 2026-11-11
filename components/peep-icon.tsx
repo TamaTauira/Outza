@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react'
 
-/** Two mascot eyes, drawn with the same line weight as the other nav icons. */
+/** Two mascot eyes, sized to the same box and stroke as the other nav icons. */
 export function PeepIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -16,10 +16,10 @@ export function PeepIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
       className={className}
       {...props}
     >
-      <circle cx="7" cy="12" r="3.5" />
-      <circle cx="17" cy="12" r="3.5" />
-      <circle cx="7.9" cy="11.2" r="1.35" fill="currentColor" stroke="none" />
-      <circle cx="17.9" cy="11.2" r="1.35" fill="currentColor" stroke="none" />
+      <circle cx="6.75" cy="12" r="5.6" />
+      <circle cx="17.25" cy="12" r="5.6" />
+      <circle cx="7.9" cy="11.15" r="2.15" fill="currentColor" stroke="none" />
+      <circle cx="18.4" cy="11.15" r="2.15" fill="currentColor" stroke="none" />
     </svg>
   )
 }
