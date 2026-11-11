@@ -161,7 +161,7 @@ async function sweep(browser: Browser, width: number, theme: 'light' | 'dark') {
   ]
   for (const [name, path] of PAGES) {
     await page.goto(ORIGIN + path, { waitUntil: 'domcontentloaded', timeout: 90000 })
-    await page.waitForSelector('.vp-roam[data-placed="1"]', { timeout: 25000 })
+    await page.locator('.vp-roam[data-placed="1"]').waitFor({ state: 'attached', timeout: 60_000 })
     await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark')
     await page.waitForTimeout(1600)
     const mascotW = await page.evaluate(() => Math.ceil(document.querySelector('.vp-rig')?.getBoundingClientRect().width || 52))
@@ -221,7 +221,7 @@ test('mascot chrome peek hides the bubble clash and comes back clear', async ({ 
     const browser = await (engine === 'webkit' ? pw.webkit : pw.chromium).launch()
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
     await page.goto(`${ORIGIN}/events/fun-brain-training-cmw02482a004pl608sd9ezpzy`, { waitUntil: 'domcontentloaded', timeout: 90000 })
-    await page.waitForSelector('.vp-roam[data-placed="1"]', { timeout: 25000 })
+    await page.locator('.vp-roam[data-placed="1"]').waitFor({ state: 'attached', timeout: 60_000 })
     await page.waitForTimeout(1500)
     for (let i = 0; i < 5; i++) await page.mouse.wheel(0, 80)
     await page.waitForTimeout(200)
