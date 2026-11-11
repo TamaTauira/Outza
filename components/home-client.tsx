@@ -508,9 +508,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
         {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
           {view === 'board' && (
-            <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/95 px-3 py-3 backdrop-blur sm:top-16 sm:px-4">
-              <h2 className="font-display text-xl font-bold">The line-up</h2>
-              <ViewToggle value={discovery} onChange={(next) => { setFocusId(focusId); rememberView(next); }} />
+            <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+              <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">The line-up</h2>
+              <ViewToggle compact value={discovery} onChange={(next) => { setFocusId(focusId); rememberView(next); }} />
             </div>
           )}
           {view === 'board' &&
@@ -585,8 +585,8 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               </div>
               {/* Time windows (board only) */}
               {view === 'board' &&
-              <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-2 bg-muted/60 border-b border-border">
-                <div className="flex gap-1 overflow-x-auto [scrollbar-width:none]">
+              <div className="flex min-w-0 items-center border-b border-border bg-muted/60 px-3 py-2 sm:px-4">
+                <div className="flex w-full min-w-0 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {WINDOWS.map((w) => {
                   const disabled = !!w.todayOnly && !isToday;
                   const active = timeWindow === w.key && !disabled;
