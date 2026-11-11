@@ -17,13 +17,8 @@ import { recordCampaignConversion } from '@/lib/sponsorship-store'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 import { listingProvenance } from '@/lib/listing-provenance'
 import { contributedFieldSources } from '@/lib/source-record'
-import { buildEventInsight, type InsightPrefs } from '@/lib/event-insight'
-import { eventInsightAiEnabled } from '@/lib/feature-flags'
-import { cityDef } from '@/lib/cities'
-import { boardClockLine } from '@/lib/listing-window'
-import { areaForPostcode, includeInAudience, isUnder18 } from '@/lib/profile-shared'
+import { areaForPostcode, includeInAudience } from '@/lib/profile-shared'
 import { isQaAccountEmail } from '@/lib/qa-account'
-import { asVibe } from '@/lib/vibe-shared'
 
 const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -235,52 +230,6 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
     })
   }
 
-  const insightPrefs = me ? await loadInsightPrefs(me.id, { id: event.id, category: event.category, city: event.city, venueName: event.venueName }).catch(() => null) : null
-  const city = cityDef(event.city)
-  const insightBase = buildEventInsight({
-    title: event.title,
-    category: event.category,
-    city: event.city,
-    venueName: event.venueName,
-    dateLabel: event.date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: city.tz }),
-    time: boardClockLine({
-      date: event.date,
-      endDate: event.endDate,
-      time: event.time,
-      endTime: event.endTime,
-      city: event.city,
-      allDay: event.allDay,
-      startsAt: event.startsAt,
-      endsAt: event.endsAt,
-    }),
-    isFree: event.isFree,
-    price: event.price,
-    description: event.description,
-    accessibilityInfo: event.accessibilityInfo,
-    ageRestriction: event.ageRestriction,
-    transportInfo: event.transportInfo,
-    relatedTitles: core.related.map((row) => row.title).filter((title: string) => !!title),
-    source: event.source,
-    sourceUrl: event.sourceUrl || event.organiserUrl || event.ticketUrl,
-    lastChecked: (event.lastVerifiedAt ?? event.updatedAt)?.toISOString?.() ?? null,
-    organiserUpdated: !!core.event.organiserUpdate,
-  }, insightPrefs)
-  let insight = insightBase
-  if (insight && eventInsightAiEnabled()) {
-    const { cachedRewrite, ensureRewrite } = await import('@/lib/event-insight-ai')
-    const allowed = insight.sentences.join(' ')
-    const rewrite = await cachedRewrite(event.id, insight.hash, allowed).catch(() => null)
-    if (rewrite) {
-      insight = { ...insight, rewrite }
-      insight.sources = insight.sources.map((source) => source.kind === 'summary' ? { ...source, label: 'Short version written by AI from the listing text' } : source)
-    } else {
-      const eventId = event.id
-      const hash = insight.hash
-      const sentences = insight.sentences
-      after(() => ensureRewrite(eventId, hash, sentences))
-    }
-  }
-
   const [friends, mine, following] = await Promise.all([
     me ? friendsGoing(me.id, [event.id]) : Promise.resolve({} as Record<string, string[]>),
     me ? prisma.attendance.findUnique({ where: { userId_eventId: { userId: me.id, eventId: event.id } } }) : Promise.resolve(null),
@@ -297,7 +246,6 @@ export async function personalizeEvent(core: PublicEvent, opts: DetailOpts = {})
       followingPromoter: !!following,
       isMine: !!me && !!event.promoterId && event.promoterId === me.id,
       canManageListing: me ? (await canManageEvent(me.id, event.id, me.role === 'ADMIN').catch(() => null))?.access.allowed ?? false : false,
-      insight,
     },
     related: core.related,
     signedIn: !!me,
@@ -309,26 +257,6 @@ export async function getEventDetail(idOrParam: string, opts: DetailOpts = {}) {
   const core = await getPublicEvent(idOrParam)
   if (!core) return null
   return personalizeEvent(core, opts)
-}
-
-async function loadInsightPrefs(userId: string, event: { id: string; category: string; city: string; venueName: string }): Promise<InsightPrefs | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { preferredCategories: true, homeCity: true, vibeProfile: true, birthYear: true },
-  })
-  if (!user || isUnder18(user.birthYear)) return null
-  const [savedInCategory, follow] = await Promise.all([
-    prisma.savedEvent.count({ where: { userId, event: { category: event.category, id: { not: event.id } } } }),
-    prisma.venueFollow.findFirst({ where: { userId, venueName: event.venueName }, select: { venueName: true } }),
-  ])
-  const vibe = asVibe(user.vibeProfile)
-  return {
-    preferredCategories: user.preferredCategories,
-    homeCity: user.homeCity,
-    savedInCategory,
-    followedVenue: !!follow,
-    freePreferred: (vibe.spend ?? []).includes('Free is my favourite price'),
-  }
 }
 
 export type EventDetailPayload = NonNullable<Awaited<ReturnType<typeof getEventDetail>>>
