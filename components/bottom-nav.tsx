@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { Bookmark, CalendarRange, House, LayoutList, MapPin, Sparkles, User } from 'lucide-react'
+import { Bookmark, CalendarRange, House, MapPin, Sparkles, User } from 'lucide-react'
+import { PeepIcon } from '@/components/peep-icon'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { AskSheet } from '@/components/ask-sheet'
@@ -11,7 +12,7 @@ import { navShouldHide, shouldPopSaved } from '@/lib/bottom-nav'
 import './bottom-nav.css'
 
 const LEFT = [
-  { key: 'board', label: 'Board', href: '/', Icon: LayoutList },
+  { key: 'board', label: 'Peep', href: '/', Icon: PeepIcon },
   { key: 'map', label: 'Map', href: '/map', Icon: MapPin },
   { key: 'local', label: 'Local', href: '/local', Icon: House },
 ] as const

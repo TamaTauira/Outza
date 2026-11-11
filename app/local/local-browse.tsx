@@ -262,7 +262,7 @@ export function LocalBrowse({
             <h2 id="local-board-title" className="font-display text-2xl font-bold">Your weekend, laid out.</h2>
             <p className="mt-1 text-muted-foreground">Everything happening around you. All in one place.</p>
           </div>
-          <Link href="/" className="text-sm font-semibold text-primary">Open the full Board</Link>
+          <Link href="/" className="text-sm font-semibold text-primary">Open Peep</Link>
         </div>
         <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-1 rounded-full bg-muted p-1" role="tablist" aria-label="Local board view">
@@ -298,7 +298,7 @@ export function LocalBrowse({
         {mode !== 'map' && items && !items.length && !error && (
           <div className="mt-4 rounded-2xl border border-border bg-card p-8 text-center">
             <p className="font-display text-lg font-bold">The noticeboard’s quiet for {city} {whenLabel}.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Clear a filter, peek at the full Board, or list the thing you already know about.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Clear a filter, open Peep, or list the thing you already know about.</p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button type="button" onClick={() => { setCategory(''); setWhen('30') }} className="h-11 rounded-full bg-muted px-4 text-sm font-semibold">Next 30 days</button>
               <Link href={`/${citySlug(city)}`} className="inline-flex h-11 items-center rounded-full bg-muted px-4 text-sm font-semibold">Back to what’s on</Link>

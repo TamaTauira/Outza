@@ -17,7 +17,7 @@ export default function NotFound() {
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Keep looking</p>
           <ul className="mt-3 grid grid-cols-2 gap-3 text-sm">
             {[
-              ['/', 'Board'],
+              ['/', 'Peep'],
               ['/map', 'Map'],
               ['/local', 'Local'],
               ['/itinerary', 'Itinerary'],
