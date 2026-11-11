@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { ViewToggle } from '@/components/view-toggle'
 import { EventImage } from '@/components/event-image'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
+import { PageMasthead } from '@/components/page-masthead'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventToItem, useItinerary } from '@/lib/itinerary'
 import { addDays, formatPrice } from '@/lib/board'
@@ -74,16 +75,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
   return (
     <div className="mb-10">
-      <section className="overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 pb-8 pt-24 text-white sm:px-8 sm:pt-28">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Saved</p>
-            <h1 className="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">The keepers.</h1>
-            <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Your little collection of good times. All the things you’ve spotted, loved and don’t want to forget.</p>
-          </div>
-          <VibePeepMascot onDark className="w-16 shrink-0 sm:w-24" sizes="96px" alt="VibePeep" />
-        </div>
-      </section>
+      <PageMasthead title="The keepers." lede="Your little collection of good times. All the things you’ve spotted, loved and don’t want to forget." />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
