@@ -74,7 +74,7 @@ export function ClaimForm({ venueId, defaultName, defaultEmail, dispute }: { ven
       <input name="roleAtVenue" placeholder="Your role, such as owner or duty manager" aria-label="Role" className={field} />
       <input required type="email" name="businessEmail" defaultValue={defaultEmail} placeholder="Business email" aria-label="Business email" className={field} />
       <input name="evidenceReference" placeholder={dispute ? 'Tell us what’s wrong, or add a link' : 'Optional link that shows you work here'} aria-label="Evidence" className={field} />
-      <button disabled={busy} className="h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">{dispute ? 'Send request' : 'Submit claim'}</button>
+      <button disabled={busy} className="h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">{dispute ? 'Send Request' : 'Submit Claim'}</button>
     </form>
   )
 }

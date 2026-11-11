@@ -178,8 +178,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           </Fact>
         ) : (
           <Fact icon={Clock}>
-            <span className="text-muted-foreground">Start time isn’t on the listing</span>
-            <span className="block text-xs text-muted-foreground">Possibly available</span>
+            <span className="text-muted-foreground">No start time listed yet</span>
+            <span className="block text-xs text-muted-foreground">Time not listed</span>
           </Fact>
         )}
         {(where || event?.venueName) && (

@@ -10,7 +10,7 @@ export default function FaqPage() {
   return (
     <InfoPage
       variant="faq"
-      title="FAQ"
+      title="Quick answers"
       lede="Short answers. The pricing and refund pages have the money details."
       sections={[
         { title: 'Where do I see the source?', body: ['Each event page has one short line: the source, linked when we have a page, and when the listing was updated, next to the times. Use Report a problem if a detail looks wrong.'] },

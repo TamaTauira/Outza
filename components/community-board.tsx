@@ -100,8 +100,8 @@ export async function CommunityBoard({
         <p className="mt-4"><Link href={`/local?tab=submit&category=${section.key}`} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">List your thing free</Link></p>
 
         <form method="get" action={action} className="mt-6 grid gap-3 rounded-2xl bg-card p-4 shadow-sm sm:grid-cols-2">
-          <label className="text-sm font-semibold sm:col-span-2">Filter this page
-            <span className="mt-1 block font-normal text-muted-foreground">Suburb, city and dates use the listing’s own details. A weekly event shows on the days it actually runs.</span>
+          <label className="text-sm font-semibold sm:col-span-2">Narrow it down
+            <span className="mt-1 block font-normal text-muted-foreground">Filters match each listing’s own dates. Weekly things only show on the days they run.</span>
           </label>
           {!city && (
             <label className="text-sm font-semibold">City
@@ -130,11 +130,11 @@ export async function CommunityBoard({
             <input type="checkbox" name="free" value="1" defaultChecked={free} className="h-4 w-4 accent-[#FF4E6A]" />
             Free listings only
           </label>
-          <button type="submit" className="h-12 rounded-full bg-foreground px-5 text-sm font-semibold text-background sm:col-span-2">Show listings</button>
+          <button type="submit" className="h-12 rounded-full bg-foreground px-5 text-sm font-semibold text-background sm:col-span-2">Show Listings</button>
         </form>
 
         {!indexable && (
-          <p className="mt-4 text-sm text-muted-foreground">This page stays out of search until there are enough real listings here. What’s on the page is what’s actually published.</p>
+          <p className="mt-4 text-sm text-muted-foreground">Thin on listings for now. What you see is what’s actually live.</p>
         )}
 
         <ul className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">

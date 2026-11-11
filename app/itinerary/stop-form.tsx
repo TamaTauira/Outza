@@ -43,16 +43,16 @@ export function StopForm({ initial, submitLabel, onSubmit, onCancel, keepDate, s
       </div>
       {form.time && form.endTime && form.endTime < form.time && <p className="sm:col-span-2 text-xs text-muted-foreground">Ends after midnight? Night owl energy. We&apos;ll count it as finishing the next morning.</p>}
       {error && <p role="alert" className="sm:col-span-2 text-xs text-destructive">{error}</p>}
-      <input value={form.where} onChange={set('where')} placeholder="Where (address or place, for travel times)" className={`${field} sm:col-span-2`} aria-label="Where" />
+      <input value={form.where} onChange={set('where')} placeholder="Where is it? (so we can guess travel time)" className={`${field} sm:col-span-2`} aria-label="Where" />
       {showCategory && (
         <label className="text-xs text-muted-foreground sm:col-span-2">Category, optional
           <select value={form.category ?? ''} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-1 w-full text-foreground`} aria-label="Category">
-            <option value="">No category</option>
+            <option value="">Pick a type (optional)</option>
             {STOP_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
           </select>
         </label>
       )}
-      <input value={form.note} onChange={set('note')} placeholder="Note (optional)" className={`${field} sm:col-span-2`} aria-label="Note" />
+      <input value={form.note} onChange={set('note')} placeholder="Who’s coming, meet-up spot… (optional)" className={`${field} sm:col-span-2`} aria-label="Note" />
       <div className={`sm:col-span-2 grid gap-3 ${onCancel ? 'grid-cols-2' : ''}`}>
         {onCancel && <button type="button" onClick={onCancel} className="h-10 rounded-md border border-border text-sm font-semibold hover:bg-muted">Cancel</button>}
         <button type="submit" className="h-10 rounded-md bg-primary text-primary-foreground font-semibold text-sm">{submitLabel}</button>

@@ -41,5 +41,5 @@ test('venue dashboard opens for Hall North and not as a signed-out page', async 
 test('consumer account page opens', async ({ page }) => {
   await signIn(page, 'consumer-1')
   await page.goto('/account')
-  await expect(page.getByRole('heading', { name: 'My account & emails' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your account & inbox' })).toBeVisible()
 })

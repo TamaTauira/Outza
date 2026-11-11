@@ -25,7 +25,7 @@ const theme = '#0c0f0e'
 export const metadata = {
   metadataBase: new URL(siteUrl()),
   title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
-  description: `${BRAND_SUBLINE} The friend who knows what's on: gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save events, follow venues, and get email picks.`,
+  description: `${BRAND_SUBLINE} The friend who knows what's on: gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save what looks good, follow venues, and get a nudge when it’s on.`,
   applicationName: BRAND_NAME,
   manifest: '/manifest.webmanifest',
   robots: { index: true, follow: true },

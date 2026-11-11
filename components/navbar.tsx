@@ -110,7 +110,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <DropdownMenuItem asChild><Link href="/watchlist"><Bookmark className="w-4 h-4 mr-2" />My VibePeep</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/outings"><Sparkles className="w-4 h-4 mr-2" />Plan a day or night</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />My account & emails</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />Your account & inbox</Link></DropdownMenuItem>
                 {isPromoter
                   ? <DropdownMenuItem asChild><Link href="/promoter"><Megaphone className="w-4 h-4 mr-2" />Promoter dashboard</Link></DropdownMenuItem>
                   : <DropdownMenuItem asChild><Link href="/promoters"><Megaphone className="w-4 h-4 mr-2" />For promoters</Link></DropdownMenuItem>}

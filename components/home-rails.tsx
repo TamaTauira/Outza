@@ -110,7 +110,7 @@ function RailCard({ ev }: { ev: RailEvent }) {
       </div>
       <div className="p-2.5">
         <p className="truncate text-sm font-semibold">{ev.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{ev.time ? `${time.hm}${time.ampm ? ` ${time.ampm}` : ''}` : 'Possibly available'} · {ev.venueName}</p>
+        <p className="truncate text-xs text-muted-foreground">{ev.time ? `${time.hm}${time.ampm ? ` ${time.ampm}` : ''}` : 'Time not listed'} · {ev.venueName}</p>
       </div>
     </Link>
   )

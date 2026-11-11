@@ -39,11 +39,11 @@ function VerifyForm() {
   return (
     <div className="space-y-4">
       {!token && <p className="text-sm text-destructive" role="alert">That verification link is missing.</p>}
-      {done && <p className="text-sm" role="status">Your email is verified. You can publish and use organiser tools.</p>}
+      {done && <p className="text-sm" role="status">Email verified. You can publish listings and pay for promotions.</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       {!done && (
         <Button type="button" className="w-full h-11" disabled={loading || !token} onClick={verify}>
-          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Verify email
+          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Verify Email
         </Button>
       )}
       <p className="text-sm text-center"><Link href="/" className="text-primary font-medium hover:underline">Back to events</Link></p>
@@ -53,7 +53,7 @@ function VerifyForm() {
 
 export default function VerifyEmailPage() {
   return (
-    <AuthShell title="Verify your email" subtitle="This unlocks publishing and payments. Browsing and saving already work.">
+    <AuthShell title="Verify your email" subtitle="Verify once and you can publish and pay. Browse and save work either way.">
       <Suspense fallback={null}><VerifyForm /></Suspense>
     </AuthShell>
   )

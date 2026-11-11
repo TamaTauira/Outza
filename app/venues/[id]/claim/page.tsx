@@ -21,7 +21,7 @@ export default async function VenueClaimPage({ params, searchParams }: { params:
     <main className="max-w-xl mx-auto px-4 sm:px-6 py-6 pb-16">
       <Link href={`/venues/${id}`} className="text-sm text-muted-foreground underline">Back to {venue.name}</Link>
       <h1 className="font-display text-2xl font-bold mt-3">{dispute ? 'Request access' : 'Claim this venue'}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">It’s free. We check that you can speak for the venue before anyone can edit the profile. A model does not make that call.</p>
+      <p className="mt-2 text-sm text-muted-foreground">It’s free. We check you can speak for the venue before anyone can edit the profile. A person reviews it.</p>
       <dl className="mt-4 text-sm space-y-1">
         <div><dt className="text-muted-foreground inline">Venue </dt><dd className="inline">{venue.name}</dd></div>
         {venue.address && <div><dt className="text-muted-foreground inline">Address </dt><dd className="inline">{venue.address}</dd></div>}

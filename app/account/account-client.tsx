@@ -116,14 +116,14 @@ export function AccountClient() {
     <main className="vp-wrap px-4 pb-6 pt-3 sm:px-6 sm:pb-8 lg:pt-5">
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <div className="mt-4">
-        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">My account &amp; emails {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">Your account &amp; inbox {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
       <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
 
       <section className={`${card} lg:col-span-2`}>
         <h2 className="font-semibold mb-1">About you</h2>
-        <p className="text-xs text-muted-foreground mb-3">{yearRequired ? 'Year of birth is required for event-goer accounts. We don’t store the day. Postcode is up to you.' : 'Optional for promoter accounts.'}</p>
+        <p className="text-xs text-muted-foreground mb-3">{yearRequired ? 'Year of birth keeps things fair for event-goers. We don’t store the day. Postcode is your call.' : 'Optional for promoter accounts.'}</p>
         <form noValidate onSubmit={(e) => { e.preventDefault(); void saveAbout() }}>
           <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} yearRequired={yearRequired} yearError={shown.yearError} postcodeError={shown.postcodeError} onBirthYearBlur={() => setYearTouched(true)} onEnter={() => { void saveAbout() }} yearRef={yearRef} postcodeRef={pcRef} />
           {/* pointer-events-none while disabled lets the same tap read the inputs. iOS can commit the last digit on blur after the button has already ignored the click. */}
@@ -161,7 +161,7 @@ export function AccountClient() {
         <button onClick={preview} className="mt-4 h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Show Me a Sneak Peek</button>
         <label className="flex items-start gap-3 text-sm mt-4 cursor-pointer">
           <input type="checkbox" checked={!!me.reminderOptIn} onChange={(e) => save({ reminderOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
-          <span>Remind me by email when a saved event is coming up. This stays off until you tick it, and it only sends when email is configured.</span>
+          <span>Nudge me about a day before a saved event. Off until you tick it, and only when emails are switched on.</span>
         </label>
         <p className="mt-3 text-sm text-muted-foreground">Saves, venue follows and the calendar file live on <Link href="/watchlist" className="text-primary underline">My VibePeep</Link>.</p>
       </section>

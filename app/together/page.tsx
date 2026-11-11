@@ -4,7 +4,7 @@ import { TogetherHome } from './together-home'
 
 export const metadata: Metadata = {
   title: 'VibePeep Together',
-  description: 'VibePeep Together: shortlist events with friends and vote on the night.',
+  description: 'Shortlist gigs with mates, share one link, and vote on the night.',
   robots: { index: false, follow: false },
 }
 

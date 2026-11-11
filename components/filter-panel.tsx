@@ -160,8 +160,8 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
             filters.isFree ? 'bg-free/15 text-free border border-free/30' : 'bg-muted text-muted-foreground hover:bg-muted/80'
           )}
         >
-          <span>🎉 Free Events Only</span>
-          <span className="text-xs">{filters.isFree ? 'ON' : 'OFF'}</span>
+          <span>Free only</span>
+          <span className="text-xs">{filters.isFree ? 'On' : 'Off'}</span>
         </button>
 
         <button
@@ -173,8 +173,8 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
           )}
         >
-          <span>🏳️‍🌈 LGBTIQ+ Events</span>
-          <span className="text-xs">{filters.isLGBTI ? 'ON' : 'OFF'}</span>
+          <span>LGBTIQ+ events</span>
+          <span className="text-xs">{filters.isLGBTI ? 'On' : 'Off'}</span>
         </button>
       </div>
 

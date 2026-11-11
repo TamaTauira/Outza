@@ -21,7 +21,7 @@ export function SuggestionButton() {
     try {
       const res = await fetch('/api/suggestions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, role, name, email }) })
       if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? 'Failed')
-      toast.success('Thanks! Your idea has been sent.')
+      toast.success('Got it. Your idea’s in.')
       setMessage(''); setOpen(false)
     } catch (err) {
       console.error('Suggestion failed:', err)
@@ -35,14 +35,14 @@ export function SuggestionButton() {
       {/* In the page flow on small screens so it does not cover Hot Right Now or the map loading label. */}
       <div className="px-4 pb-8">
         <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 px-4 h-11 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:opacity-90">
-          <Lightbulb className="w-4 h-4" /> Suggest an Idea
+          <Lightbulb className="w-4 h-4" /> Got an Idea
         </button>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Got a bright idea?</DialogTitle>
-            <DialogDescription>Tell us what would make VibePeep even better. Event-goers and promoters welcome.</DialogDescription>
+            <DialogDescription>What should we add? Gig-goers and promoters both welcome.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-3">
             <div className="flex gap-2">

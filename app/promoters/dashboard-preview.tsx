@@ -69,8 +69,8 @@ export function DashboardPreview() {
       <div className="min-w-0 rounded-[1.75rem] bg-[#141418] p-4 text-white shadow-[0_20px_50px_rgba(0,0,0,0.16)] sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/60">VibePeep for Business</p>
-            <p className="mt-1 font-display text-xl font-bold">Your event performance</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/60">VibePeep for promoters</p>
+            <p className="mt-1 font-display text-xl font-bold">How your event is travelling</p>
           </div>
           <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold">Illustrative</span>
         </div>

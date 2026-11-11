@@ -53,7 +53,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
           </div>
           <p className="mt-1 text-muted-foreground">Everyone’s talking about it.</p>
         </div>
-        <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Feature your event</Link>
+        <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Put your gig up here</Link>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1 snap-x [scrollbar-width:thin] lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-4">
         {cards}
@@ -82,7 +82,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
         <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[4/3]" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
           <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={it.title} sizes="(min-width: 1024px) 25vw, 80vw" crop accent={color} category={it.category} slot="featured" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-          <span title={it.tier === 'HOT' ? 'Popular on VibePeep' : `${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
+          <span title={it.tier === 'HOT' ? 'On the hot list' : `${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
             {it.tier === 'HOT' && <Flame className="h-2.5 w-2.5" />}{badge.label}
           </span>
           <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">{it.category}</span>
@@ -106,8 +106,8 @@ function PromoteCard() {
   return (
     <Link href="/promoters" className="flex w-[78vw] max-w-[320px] shrink-0 flex-col justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/60 p-4 transition hover:bg-primary/5 lg:w-auto lg:max-w-none">
       <Megaphone className="w-6 h-6 text-primary" />
-      <p className="font-semibold text-sm">Your event could be here</p>
-      <p className="text-xs text-muted-foreground">Get it seen from $19.</p>
+      <p className="font-semibold text-sm">This spot could be yours</p>
+      <p className="text-xs text-muted-foreground">From $19 to get eyes on it.</p>
     </Link>
   )
 }

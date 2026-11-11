@@ -39,7 +39,7 @@ export function MenuSheet({
         { href: '/watchlist', label: 'My VibePeep', Icon: Bookmark },
         { href: '/together', label: 'Plan with your crew', Icon: Users },
         { href: '/outings', label: 'Plan a day or night', Icon: Sparkles },
-        { href: '/account', label: 'My account & emails', Icon: Settings },
+        { href: '/account', label: 'Your account & inbox', Icon: Settings },
         isPromoter
           ? { href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }
           : { href: '/promoters', label: 'For promoters', Icon: Megaphone },

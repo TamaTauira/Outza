@@ -76,8 +76,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
   const itinerary = useItinerary()
   const inIt = itinerary.has(ev.id)
   const toggleItinerary = () => {
-    if (inIt) { itinerary.remove(ev.id); toast('Removed from your itinerary') }
-    else { itinerary.add(eventToItem(ev)); toast.success('Added to your itinerary', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
+    if (inIt) { itinerary.remove(ev.id); toast('Dropped from the plan.') }
+    else { itinerary.add(eventToItem(ev)); toast.success('On the itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
   }
   const router = useRouter()
   const href = ev.href ?? eventPath(ev)

@@ -56,7 +56,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed md:px-8">
           Listings refreshed {refreshed} ({zoneName}) from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring and City of Sydney.
-          Times and prices can change — always check with the organiser before you go.
+          Times and prices shift, so check with whoever’s running it before you head out.
         </p>
         {quickLinks.length > 0 && (
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground md:max-w-[340px] md:justify-end">

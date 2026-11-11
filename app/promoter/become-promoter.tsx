@@ -23,14 +23,14 @@ export function BecomePromoter() {
       router.refresh()
     } catch (e) {
       console.error(e)
-      toast.error('Could not switch your account. Try again.')
+      toast.error('Couldn’t switch you over. Give it another go.')
       setLoading(false)
     }
   }
 
   return (
     <Button onClick={switchRole} disabled={loading} className="h-10 px-5 font-semibold">
-      {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Switch my account to promoter
+      {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Switch to Promoter
     </Button>
   )
 }

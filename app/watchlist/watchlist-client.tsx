@@ -87,7 +87,7 @@ export function WatchlistClient() {
 
       <div className="mt-5 flex flex-wrap gap-2">
         <button type="button" onClick={download} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2">
-          <Calendar className="w-4 h-4" />Add to my calendar
+          <Calendar className="w-4 h-4" />Add to My Calendar
         </button>
         <Link href="/saved" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">See the keepers</Link>
         <Link href="/together" className="h-10 px-4 rounded-md border border-border text-sm font-semibold inline-flex items-center">Plan with your crew</Link>
@@ -109,7 +109,7 @@ export function WatchlistClient() {
               {tags.map((tag) => (
                 <button key={tag} type="button" onClick={() => unfollowTag(tag)} className="px-3 h-9 rounded-full bg-primary text-primary-foreground text-sm">{tag} · Unfollow</button>
               ))}
-              {!tags.length && <p className="text-sm text-muted-foreground">No interests yet. Follow one from an event page, or pick them in My account.</p>}
+              {!tags.length && <p className="text-sm text-muted-foreground">No interests yet. Follow one from an event, or pick them in your account.</p>}
             </div>
             <h3 className="mt-4 text-sm font-semibold">Venues</h3>
             <ul className="mt-2 space-y-2">
