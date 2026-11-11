@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { test } from 'node:test'
 import { COMMUNITY_SECTIONS } from './community-shared'
-import { LOCAL_TILES, LOCAL_TILE_LICENCE, moreTiles, primaryTiles } from './local-tiles'
+import { CORNER_LOCAL_CATEGORY, LOCAL_TILES, LOCAL_TILE_LICENCE, localCategoryPath, moreTiles, primaryTiles } from './local-tiles'
 
 test('Local shortcuts filter real sections and use the approved mascot art', () => {
   assert.deepEqual(primaryTiles().map((tile) => tile.label), ['Garage Sales', 'Markets', 'School Fetes', 'Fundraisers', 'Pop-ups', 'Community Events'])
@@ -20,4 +20,17 @@ test('Local shortcuts filter real sections and use the approved mascot art', () 
     assert.ok(existsSync(`public${tile.srcSmall}`))
   }
   assert.match(LOCAL_TILE_LICENCE, /VibePeep/)
+})
+
+test('corner buttons open Local with the category it already filters on', () => {
+  assert.equal(localCategoryPath('garage-sales'), '/local?category=garage-sales')
+  assert.equal(localCategoryPath('farmers-markets'), '/local?category=farmers-markets')
+  assert.equal(localCategoryPath('school-fundraisers'), '/local?category=school-fundraisers')
+  assert.equal(localCategoryPath('community-sport'), '/local?category=community-sport')
+  assert.equal(localCategoryPath('neighbourhood-popups'), '/local?category=neighbourhood-popups')
+  assert.equal(CORNER_LOCAL_CATEGORY.workshops, 'neighbourhood-popups')
+  assert.equal(localCategoryPath('workshops'), '/local?category=neighbourhood-popups')
+  for (const key of Object.values(CORNER_LOCAL_CATEGORY)) {
+    assert.ok(LOCAL_TILES.some((tile) => tile.key === key), key)
+  }
 })

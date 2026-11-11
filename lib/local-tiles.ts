@@ -35,5 +35,24 @@ export const LOCAL_TILE_LICENCE = 'Owned by VibePeep. Generated mascot art, appr
 
 export const localTileFor = (section: string | null | undefined) => LOCAL_TILES.find((tile) => tile.key === section) ?? null
 
+/**
+ * Homepage corner buttons. Workshops has no Local filter of its own.
+ * A workshop that is not a garage sale, market, fete, fundraiser, sport or art
+ * listing is filed under neighbourhood pop-ups, so that chip is the closest match.
+ */
+export const CORNER_LOCAL_CATEGORY: Record<string, string> = {
+  'garage-sales': 'garage-sales',
+  'neighbourhood-popups': 'neighbourhood-popups',
+  'school-fundraisers': 'school-fundraisers',
+  'community-sport': 'community-sport',
+  'farmers-markets': 'farmers-markets',
+  workshops: 'neighbourhood-popups',
+}
+
+export function localCategoryPath(cornerKey: string): string {
+  const category = CORNER_LOCAL_CATEGORY[cornerKey] ?? cornerKey
+  return `/local?category=${encodeURIComponent(category)}`
+}
+
 export const primaryTiles = () => LOCAL_TILES.filter((tile) => tile.primary)
 export const moreTiles = () => LOCAL_TILES.filter((tile) => !tile.primary)
