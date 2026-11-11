@@ -3,17 +3,22 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import { FilterState } from '@/components/filter-panel'
-import { knownCategories } from '@/lib/categories'
-import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
-import { DAY_PARTS, dayLabel, listSpan, orderedDayParts, toMinutes, type TimeWindow } from '@/lib/board'
+import { CATEGORIES, knownCategories } from '@/lib/categories'
+import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent, type Status } from '@/components/board-row'
+import { ListingBoardCard } from '@/components/listing-board-card'
+import { ItineraryButton } from '@/components/itinerary-button'
+import { DAY_PARTS, dayLabel, formatPrice, listSpan, orderedDayParts, toMinutes, type TimeWindow } from '@/lib/board'
 import { rankBoard, resolveSchedule } from '@/lib/listing-window'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
-import { Loader2, Sparkles, ChevronRight } from 'lucide-react'
+import { Bookmark, ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
 import { listDepthToLoad } from '@/lib/scroll-restore'
 import { ReachBeacon } from '@/components/reach-beacon'
+import { displaySuburb } from '@/lib/cities'
+import { fmtTime } from '@/lib/local-shared'
+import { eventPath } from '@/lib/seo'
 export type BoardSeed = {
   city: string
   from: string
@@ -35,6 +40,7 @@ interface EventListProps {
   city?: string
   initialBoard?: BoardSeed | null
   activeId?: string | null
+  layout?: 'list' | 'board'
 }
 
 function filtersAreOpen(filters: FilterState) {
@@ -44,7 +50,7 @@ function filtersAreOpen(filters: FilterState) {
   )
 }
 
-export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null, activeId = null }: EventListProps) {
+export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null, activeId = null, layout = 'list' }: EventListProps) {
   const { status: authStatus } = useSession()
   const span = listSpan(day, filters.dateFrom, filters.dateTo)
   const seedMatches = !!initialBoard
@@ -268,6 +274,47 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     ].filter((section) => section.rows.length)
     : []
 
+  const clockLabel = (time: string | null | undefined) => {
+    if (!time) return ''
+    return /^\d{1,2}:\d{2}/.test(time) ? fmtTime(time) : time
+  }
+  const showRows = (rows: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
+    if (layout !== 'board') {
+      return rows.map(({ ev, status, showDate }) => (
+        <BoardRow key={ev.id} ev={ev} status={status ?? getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes)} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={showDate} trackSearch={!!searchQuery} active={activeId === ev.id} />
+      ))
+    }
+    return (
+      <div className="grid w-full grid-cols-1 gap-2 p-2 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map(({ ev }) => {
+          const cat = CATEGORIES.find((item) => item.name === ev.category)
+          const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
+          return (
+            <ListingBoardCard
+              key={ev.id}
+              title={ev.title}
+              href={ev.href ?? eventPath(ev)}
+              imageUrl={ev.imageUrl}
+              imageCategory={ev.category}
+              meta={[displaySuburb(ev.suburb, ev.venueAddress, ev.city), clockLabel(ev.time)].filter(Boolean).join(' · ')}
+              tag={ev.subTags?.[0] || ev.category}
+              accent={cat?.color ?? '#FF7A1A'}
+              price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span> : price.value !== 'Price TBA' ? <span className="font-mono text-xs text-foreground">{price.value}</span> : null}
+              actions={(
+                <>
+                  <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 place-items-center rounded-full', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
+                    <Bookmark className={cn('h-4 w-4', isSaved(ev.id) && 'fill-current')} />
+                  </button>
+                  <ItineraryButton lineup event={ev} className="grid h-11 w-11 place-items-center rounded-full p-0" />
+                </>
+              )}
+            />
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div>
       <ReachBeacon surface={searchQuery ? 'search' : 'board'} ids={events.map((event) => event.id)} term={searchQuery} />
@@ -285,7 +332,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         )}
       </div>
 
-      <BoardHeadings />
+      {layout === 'list' && <BoardHeadings />}
 
       {loading ? (
         <div aria-busy="true" aria-label="Loading events">
@@ -311,9 +358,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         [...timed.reduce((map, row) => map.set(row.date, [...(map.get(row.date) ?? []), row]), new Map<string, typeof timed>())].map(([date, rows]) => (
           <section key={date}>
             <GroupBar label={dayLabel(date, today)} count={rows.length} open={!closed[date]} onToggle={() => setClosed((c) => ({ ...c, [date]: !c[date] }))} />
-            {!closed[date] && rows.map(({ ev, status }) => (
-              <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={dayLabel(date, today)} trackSearch={!!searchQuery} active={activeId === ev.id} />
-            ))}
+            {!closed[date] && showRows(rows.map((row) => ({ ...row, showDate: dayLabel(date, today) })))}
           </section>
         ))
       ) : windowRank ? (
@@ -331,17 +376,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             return (
               <section key={section.key}>
                 <GroupBar label={section.label} count={section.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [section.key]: open }))} />
-                {open && section.rows.map(({ ev }) => (
-                  <BoardRow
-                    key={ev.id}
-                    ev={ev}
-                    status={section.possibly ? { label: 'Time not listed', tone: 'tbc' } : getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes)}
-                    saved={isSaved(ev.id)}
-                    onToggleSave={toggle}
-                    active={activeId === ev.id}
-                    trackSearch={!!searchQuery}
-                  />
-                ))}
+                {open && showRows(section.rows.map(({ ev }) => ({ ev, status: section.possibly ? { label: 'Time not listed', tone: 'tbc' as const } : getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes) })))}
               </section>
             )
           }) : eveningGroups.map((g) => {
@@ -349,18 +384,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             return (
               <section key={g.key}>
                 <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
-                {open && g.rows.map(({ ev, status }) => (
-                  <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
-                ))}
+                {open && showRows(g.rows)}
               </section>
             )
           })}
           {effectiveWindow === 'evening' && windowRank.possibly.length > 0 && (
             <section>
               <GroupBar label="Time not listed" count={windowRank.possibly.length} open={!closed.possibly} onToggle={() => setClosed((c) => ({ ...c, possibly: !c.possibly }))} />
-              {!closed.possibly && windowRank.possibly.map((ev) => (
-                <BoardRow key={ev.id} ev={ev} status={{ label: 'Time not listed', tone: 'tbc' }} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
-              ))}
+              {!closed.possibly && showRows(windowRank.possibly.map((ev) => ({ ev, status: { label: 'Time not listed', tone: 'tbc' as const } })))}
             </section>
           )}
         </>
@@ -378,9 +409,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           return (
             <section key={g.key}>
               <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
-              {open && g.rows.map(({ ev, status }) => (
-                <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
-              ))}
+              {open && showRows(g.rows)}
             </section>
           )
         })
@@ -408,9 +437,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <span className="ml-auto font-mono text-xs text-muted-foreground">{untimed.length}</span>
             <ChevronRight className={cn('w-4 h-4 text-muted-foreground transition-transform', allDayOpen && 'rotate-90')} />
           </button>
-          {allDayOpen && day && untimed.map((ev) => (
-            <BoardRow key={ev.id} ev={ev} status={getStatus(ev, day, today, nowMinutes)} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
-          ))}
+          {allDayOpen && day && showRows(untimed.map((ev) => ({ ev, status: getStatus(ev, day, today, nowMinutes) })))}
         </div>
       )}
     </div>

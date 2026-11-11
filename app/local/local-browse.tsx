@@ -15,6 +15,7 @@ import type { PlaceholderSlot } from '@/lib/placeholders'
 import { citySlug } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { ItineraryButton } from '@/components/itinerary-button'
+import { ListingBoardCard } from '@/components/listing-board-card'
 
 export type LocalItem = {
   id: string
@@ -410,23 +411,27 @@ function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; on
 }
 
 function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void }) {
-  const key = rowKey(ev)
   const status = ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''
   return (
-    <article data-row={key} onMouseEnter={() => onHot(key)} onMouseLeave={() => onHot(null)} className={cn('flex min-w-0 gap-3 rounded-2xl border border-border bg-card p-3', hot && 'bg-primary/10')} style={{ boxShadow: `inset 3px 0 0 ${ACCENT[ev.section] ?? '#ea580c'}` }}>
-      <ListingPicture ev={ev} slot="square" className="h-20 w-20 shrink-0 rounded-xl" alt="" />
-      <div className="min-w-0 flex-1">
-        <Link href={ev.href || '/local'} className="block truncate font-semibold hover:text-primary">{ev.title}</Link>
-        <p className="mt-0.5 text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), status].filter(Boolean).join(' · ')}</p>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground"><span className="truncate">{sectionByKey(ev.section)?.short ?? 'Local'}</span>{priceLine(ev)}</span>
-          <span className="flex shrink-0 items-center">
-            <SaveButton saved={saved} onClick={onSave} />
-            <LocalPlus ev={ev} />
-          </span>
-        </div>
-      </div>
-    </article>
+    <ListingBoardCard
+      rowId={rowKey(ev)}
+      title={ev.title}
+      href={ev.href || '/local'}
+      imageUrl={ev.imageUrl}
+      imageCategory={ev.section}
+      meta={[ev.suburb, clock(ev.time), status].filter(Boolean).join(' · ')}
+      tag={sectionByKey(ev.section)?.short ?? 'Local'}
+      accent={ACCENT[ev.section] ?? '#ea580c'}
+      price={priceLine(ev)}
+      hot={hot}
+      onHot={(on) => onHot(on ? rowKey(ev) : null)}
+      actions={(
+        <>
+          <SaveButton saved={saved} onClick={onSave} />
+          <LocalPlus ev={ev} />
+        </>
+      )}
+    />
   )
 }
 

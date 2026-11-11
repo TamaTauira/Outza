@@ -1,32 +1,36 @@
 'use client'
 
-import { LayoutList, Map as MapIcon } from 'lucide-react'
+import { LayoutList, Map as MapIcon, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-/** Shared List / Map control. The two buttons always stay on the same dataset. */
-export function ViewToggle({
+type Choice<T extends string> = { key: T; text: string; Icon: LucideIcon }
+
+/** Shared two-way view control. Callers that pass `options` can offer List and Board instead of List and Map. */
+export function ViewToggle<T extends string = 'list' | 'map'>({
   value,
   onChange,
   listLabel = 'List',
   mapLabel = 'Map',
   label = 'List or map',
   compact = false,
+  options,
 }: {
-  value: 'list' | 'map'
-  onChange: (next: 'list' | 'map') => void
+  value: T
+  onChange: (next: T) => void
   listLabel?: string
   mapLabel?: string
   label?: string
   /** Shorter buttons so the control can sit beside a heading on a phone. */
   compact?: boolean
+  options?: Choice<T>[]
 }) {
-  const options = [
-    { key: 'list' as const, text: listLabel, Icon: LayoutList },
-    { key: 'map' as const, text: mapLabel, Icon: MapIcon },
+  const items: Choice<T>[] = options ?? [
+    { key: 'list' as T, text: listLabel, Icon: LayoutList },
+    { key: 'map' as T, text: mapLabel, Icon: MapIcon },
   ]
   return (
     <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full shrink-0 rounded-full bg-muted', compact ? 'p-0.5' : 'p-1')}>
-      {options.map(({ key, text, Icon }) => {
+      {items.map(({ key, text, Icon }) => {
         const on = value === key
         return (
           <button
