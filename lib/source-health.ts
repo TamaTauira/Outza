@@ -29,6 +29,8 @@ export type SweepRun = {
   more: boolean
   /** No sweep mark. An ordinary one-shot run, or a chunk saved before marks existed. */
   unmarked: boolean
+  /** Set on chunks that belong to one Moshtix pass. Absent on older logs. */
+  sweepId?: string | null
   failed?: boolean
   timedOut?: boolean
 }
@@ -50,7 +52,9 @@ function countsInSweep(run: SweepRun): boolean {
 /**
  * Add up the finished sweep whose newest run is `history[tail]`.
  * History is newest first. A continuation keeps walking until the chunk that started the sweep.
- * One unmarked run immediately before that chain can be the start chunk from before marks existed.
+ * Chunks that share a sweep id are one pass. A finished continuation (`more` false) is the end of
+ * an earlier pass, so a later stale cursor is not added onto it.
+ * One unmarked run immediately before a legacy chain can be the start chunk from before marks existed.
  * Returns null when a continuation has no start we can see.
  */
 function sumSweep(history: SweepRun[], tail: number): { total: number; chunks: number; next: number } | null {
@@ -58,10 +62,24 @@ function sumSweep(history: SweepRun[], tail: number): { total: number; chunks: n
   if (!run || run.more || run.failed || run.timedOut) return null
   let total = run.events
   let chunks = 1
+  const sweepId = run.sweepId || null
   if (!run.continuation) return { total, chunks, next: tail + 1 }
   for (let i = tail + 1; i < history.length; i++) {
     const older = history[i]
+    if (sweepId && older.sweepId && older.sweepId !== sweepId) {
+      return history[i - 1].continuation ? null : { total, chunks, next: i }
+    }
+    if (sweepId && older.sweepId === sweepId) {
+      if (!countsInSweep(older)) return null
+      total += older.events
+      chunks++
+      if (!older.continuation) return { total, chunks, next: i + 1 }
+      continue
+    }
+    if (sweepId && !older.sweepId) return history[i - 1].continuation ? null : { total, chunks, next: i }
     if (!countsInSweep(older)) return null
+    // The previous pass already finished. This chain is a later pass that was labelled as a continuation.
+    if (!older.more && older.continuation) return { total, chunks, next: i }
     if (!older.more && !older.continuation) {
       if (!older.unmarked) return null
       total += older.events
@@ -132,8 +150,19 @@ export function sweepRunFromLog(events: number, errors: string | null | undefine
     continuation: flags.continuation,
     more: flags.more,
     unmarked: flags.unmarked,
+    sweepId: flags.sweepId,
     failed: !!failure && !isPartialRefresh(failure),
     timedOut: isPartialRefresh(failure),
+  }
+}
+
+/** Drop a volume or empty-feed fault once a finished sweep is a normal size, so the old baseline cannot email again. */
+export async function retireVolumeFault(source: string) {
+  const keys = [`fault:quality-VOLUME_DROP-${source}`, `fault:quality-ZERO_EVENTS-${source}`]
+  try {
+    await prisma.ownerAlert.deleteMany({ where: { key: { in: keys } } })
+  } catch (err) {
+    if (!missingRelation(err)) console.error('[quality-alert] fault clear failed', (err as { message?: string })?.message)
   }
 }
 

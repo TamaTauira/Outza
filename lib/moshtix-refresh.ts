@@ -141,3 +141,60 @@ export function moshtixRetryDecision(input: MoshtixRetryInput): MoshtixRetryDeci
   if (input.progressed || input.saved > 0) return { action: 'pause' }
   return { action: 'fail' }
 }
+
+/** A short or empty page is the end of the catalogue only when totalCount agrees nothing remains. */
+export function moshtixCatalogueExhausted(input: { itemCount: number; pageSize: number; page: number; totalCount: number }): boolean {
+  if (!Number.isFinite(input.totalCount) || input.totalCount < 0) return false
+  if (input.itemCount <= 0) return input.totalCount <= 0
+  if (input.itemCount >= input.pageSize) return false
+  const page = Number.isFinite(input.page) && input.page > 0 ? Math.floor(input.page) : 0
+  return page * input.pageSize + input.itemCount >= input.totalCount
+}
+
+/** Id for one fresh pass. Stable when `entropy` is passed so tests can pin it. */
+export function newMoshtixSweepId(now = Date.now(), entropy = Math.floor(Math.random() * 0x1000000)): string {
+  const stamp = Math.floor(now).toString(36)
+  const noise = Math.floor(Math.abs(entropy)).toString(36).padStart(4, '0').slice(-4)
+  return `${stamp}${noise}`.slice(0, 24)
+}
+
+/**
+ * The latest finished chunk left the catalogue open.
+ * A chunk that already reported completion is closed, even if a cursor was left behind.
+ * A budget cut with no sweep mark is still open: the cursor is the rest of that pass.
+ */
+export function moshtixPreviousSweepOpen(flags: { more: boolean; unmarked: boolean; partial?: boolean } | null | undefined): boolean {
+  if (!flags) return false
+  if (flags.more) return true
+  return flags.unmarked === true && flags.partial === true
+}
+
+export type MoshtixSweepPlan = { cursor: MoshtixCursor; sweepId: string | null; continuation: boolean }
+
+/**
+ * A fresh sweep starts at the lookback floor with a new id.
+ * Resume only when the previous chunk still had catalogue left and the cursor is inside the window.
+ * A cursor left behind after a finished chunk is ignored, so it cannot extend that sweep.
+ */
+export function moshtixSweepPlan(input: {
+  now: number
+  storedFromMs: number | null
+  storedPage: number
+  storedPageSize?: number | null
+  storedSweepId?: string | null
+  previousOpen: boolean
+  nextSweepId?: string
+}): MoshtixSweepPlan {
+  const floor = input.now - MOSHTIX_LOOKBACK_MS
+  const resumed = moshtixResume(input.now, input.storedFromMs, input.storedPage, input.storedPageSize)
+  const continuation = input.previousOpen && resumed.fromMs > floor
+  if (!continuation) {
+    return {
+      cursor: { fromMs: floor, page: 0 },
+      sweepId: input.nextSweepId ?? newMoshtixSweepId(input.now),
+      continuation: false,
+    }
+  }
+  const sweepId = input.storedSweepId && /^[a-z0-9]+$/i.test(input.storedSweepId) ? input.storedSweepId.toLowerCase() : null
+  return { cursor: resumed, sweepId, continuation: true }
+}

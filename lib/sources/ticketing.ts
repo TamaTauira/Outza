@@ -1,18 +1,19 @@
 import { saveEvent, toSydneyParts, sleep } from '@/lib/event-store'
 import { readJobMark, writeJobCursor } from '@/lib/job-watermark'
 import {
-  MOSHTIX_LOOKBACK_MS,
+  moshtixCatalogueExhausted,
   moshtixFailureReason,
   moshtixNoteEvent,
   moshtixNotePage,
   moshtixPauseMessage,
-  moshtixResume,
+  moshtixPreviousSweepOpen,
   moshtixResumePageSize,
+  moshtixSweepPlan,
   moshtixRetryDecision,
   moshtixTransientFailure,
   type MoshtixCursor,
 } from '@/lib/moshtix-refresh'
-import { attachSweepProgress } from '@/lib/refresh-plan'
+import { attachSweepProgress, isPartialRefresh, refreshFailure, sourceLogStatus, sweepFlagsFromLog } from '@/lib/refresh-plan'
 import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
@@ -67,14 +68,32 @@ function moshtixNearBudget() {
   return sourceOverBudget() || remainingBudgetMs(30_000) < 5_000
 }
 
-async function saveMoshtixCursor(cursor: MoshtixCursor | null, pageSize: number) {
+async function saveMoshtixCursor(cursor: MoshtixCursor | null, pageSize: number, sweepId: string | null) {
   if (!cursor) return
-  await writeJobCursor('moshtix', new Date(cursor.fromMs), cursor.page, pageSize).catch((err) => {
+  await writeJobCursor('moshtix', new Date(cursor.fromMs), cursor.page, pageSize, sweepId).catch((err) => {
     console.error('[moshtix] cursor write failed', err instanceof Error ? err.message : err)
   })
 }
 
-export async function fetchMoshtixEvents(): Promise<{ saved: number; continuation: boolean; more: boolean }> {
+/** Whether the last finished Moshtix chunk still had catalogue left. Null when the log cannot be read. */
+async function readPreviousMoshtixSweep(): Promise<{ open: boolean } | null> {
+  try {
+    const { prisma } = await import('@/lib/prisma')
+    const last = await prisma.refreshLog.findFirst({
+      where: { status: sourceLogStatus('Moshtix'), endedAt: { not: null } },
+      orderBy: { startedAt: 'desc' },
+      select: { errors: true },
+    })
+    if (!last) return { open: false }
+    const flags = sweepFlagsFromLog(last.errors)
+    return { open: moshtixPreviousSweepOpen({ ...flags, partial: isPartialRefresh(refreshFailure(last.errors)) }) }
+  } catch (err) {
+    console.error('[moshtix] sweep read failed', err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+export async function fetchMoshtixEvents(): Promise<{ saved: number; continuation: boolean; more: boolean; sweepId: string | null }> {
   const mark = await readJobMark('moshtix').catch((err) => {
     console.error('[moshtix] cursor read failed', err instanceof Error ? err.message : err)
     return null
@@ -82,15 +101,33 @@ export async function fetchMoshtixEvents(): Promise<{ saved: number; continuatio
   const now = Date.now()
   const storedPageSize = mark?.pageSize ?? 0
   let pageSize = moshtixResumePageSize(storedPageSize)
-  let cursor = moshtixResume(now, mark?.at.getTime() ?? null, mark?.page ?? 0, storedPageSize)
-  // A cursor inside the lookback window is the rest of a sweep, not a new one.
-  const continuation = cursor.fromMs > now - MOSHTIX_LOOKBACK_MS
+  const previous = await readPreviousMoshtixSweep()
+  const storedFromMs = mark?.at.getTime() ?? null
+  const resumedWouldContinue = moshtixSweepPlan({
+    now,
+    storedFromMs,
+    storedPage: mark?.page ?? 0,
+    storedPageSize,
+    storedSweepId: mark?.sweepId,
+    previousOpen: true,
+  }).continuation
+  const plan = moshtixSweepPlan({
+    now,
+    storedFromMs,
+    storedPage: mark?.page ?? 0,
+    storedPageSize,
+    storedSweepId: mark?.sweepId,
+    previousOpen: previous ? previous.open : resumedWouldContinue,
+  })
+  let cursor = plan.cursor
+  const sweepId = plan.sweepId
+  const continuation = plan.continuation
   let saved = 0
   let progressed = false
   let total = Infinity
   let done = false
   let pages = 0
-  console.log(`[moshtix] from ${new Date(cursor.fromMs).toISOString()} page ${cursor.page} size ${pageSize}`)
+  console.log(`[moshtix] from ${new Date(cursor.fromMs).toISOString()} page ${cursor.page} size ${pageSize} sweep ${sweepId ?? 'legacy'} ${continuation ? 'resume' : 'fresh'}`)
   try {
     while (pages < MOSHTIX_MAX_PAGES) {
       if (stopMoshtix('page')) break
@@ -157,7 +194,7 @@ export async function fetchMoshtixEvents(): Promise<{ saved: number; continuatio
       total = conn.totalCount ?? 0
       const items: any[] = conn.items ?? []
       if (items.length === 0) {
-        done = true
+        done = moshtixCatalogueExhausted({ itemCount: 0, pageSize, page: cursor.page, totalCount: total })
         break
       }
       let finishedPage = true
@@ -222,25 +259,30 @@ export async function fetchMoshtixEvents(): Promise<{ saved: number; continuatio
           progressed = true
         }
       }
-      if (finishedPage) {
-        cursor = moshtixNotePage(pageCursor, cursor, pageStartMs, pageEndMs)
-        progressed = true
-        if (items.length < pageSize) done = true
+      if (!finishedPage) break
+      const next = moshtixNotePage(pageCursor, cursor, pageStartMs, pageEndMs)
+      progressed = true
+      if (moshtixCatalogueExhausted({ itemCount: items.length, pageSize, page: pageCursor.page, totalCount: total })) {
+        cursor = next
+        done = true
+        break
       }
-      if (!finishedPage || done) break
+      if (next.fromMs === pageCursor.fromMs && next.page === pageCursor.page) break
+      cursor = next
       await sleep(1000)
     }
   } catch (err) {
     // The cursor saved below is where the next run resumes, including after a hard error.
-    throw attachSweepProgress(err, { continuation, more: !done })
+    throw attachSweepProgress(err, { continuation, more: !done, sweepId })
   } finally {
     if (pages >= MOSHTIX_MAX_PAGES && !done) {
       console.warn(`[moshtix] stopped at ${MOSHTIX_MAX_PAGES} pages; totalCount=${total}`)
     }
-    await saveMoshtixCursor(done ? { fromMs: 0, page: 0 } : cursor, pageSize)
+    // A finished sweep drops the cursor and the id. The next chunk must not resume it.
+    await saveMoshtixCursor(done ? { fromMs: 0, page: 0 } : cursor, pageSize, done ? null : sweepId)
   }
   console.log(`[moshtix] saved ${saved} events${done ? '' : ' (more next run)'}`)
-  return { saved, continuation, more: !done }
+  return { saved, continuation, more: !done, sweepId }
 }
 
 // ---------------- Oztix (public event guide search used by oztix.com.au) ----------------
