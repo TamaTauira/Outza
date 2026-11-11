@@ -42,13 +42,12 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
     category: 'Nightlife',
     action: { kind: 'filters', categories: ['Nightlife'] },
     rank: (ev) => {
-      const text = listingText(ev)
-      if (/\b(breathing|business|book club|running club|watercolour|watercolor)\b/i.test(text)) return 0
+      const title = ev.title
+      if (/\b(breathing|business|book club|running club|watercolour|watercolor)\b/i.test(title)) return 0
       let score = 0
-      if (/\b(dj|djs|rave|disco|club night)\b/i.test(text)) score += 8
-      if (/\b(dance party|dancing|line danc\w*)\b/i.test(text)) score += 6
-      if (ev.category === 'Nightlife' && /\b(dj|dance|club|night)\b/i.test(text)) score += 4
-      if (ev.category === 'Music' && /\b(dj|dance|disco)\b/i.test(text)) score += 3
+      if (/\b(djs?|rave|disco|club night)\b/i.test(title)) score += 8
+      if (/\b(dance party|dancing|line danc\w*)\b/i.test(title)) score += 6
+      if (ev.category === 'Nightlife' && /\b(dj|dance|club)\b/i.test(title)) score += 4
       return score
     },
   },
@@ -57,11 +56,11 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
     category: 'Arts & Culture',
     action: { kind: 'ask', query: 'Something a little fancy' },
     rank: (ev) => {
-      const text = listingText(ev)
-      if (/\b(coffee|consultation|kids|toddler|yrs|years|class)\b/i.test(text)) return 0
+      const title = ev.title
+      if (/\b(coffee|consultation|kids|toddler|yrs|years|class|lecture)\b/i.test(title)) return 0
       let score = 0
-      if (/\b(gala|opera|fine dining|cocktail)\b/i.test(text)) score += 8
-      if (/\b(theatre|theater|ballet|high tea|aperitivo)\b/i.test(text)) score += 6
+      if (/\b(gala|opera|fine dining|cocktails?)\b/i.test(title)) score += 8
+      if (/\b(theatre|theater|ballet|high tea|aperitivo)\b/i.test(title)) score += 6
       return score
     },
   },
@@ -69,7 +68,11 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
     title: 'Culture fix.',
     category: 'Arts & Culture',
     action: { kind: 'filters', categories: ['Arts & Culture'] },
-    rank: (ev) => (ev.category === 'Arts & Culture' && usablePhoto(ev.imageUrl) ? 2 + (/\b(ballet|theatre|theater|opera|gallery|exhibition)\b/i.test(listingText(ev)) ? 4 : 0) : 0),
+    rank: (ev) => {
+      if (ev.category !== 'Arts & Culture' || !usablePhoto(ev.imageUrl)) return 0
+      if (/\b(class|kids|toddler|yrs|years)\b/i.test(ev.title)) return 0
+      return /\b(ballet|theatre|theater|opera|gallery|exhibition)\b/i.test(ev.title) ? 6 : 2
+    },
   },
   {
     title: 'Good food, good company.',
@@ -77,10 +80,9 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
     action: { kind: 'filters', categories: ['Food & Drink'] },
     rank: (ev) => {
       if (ev.category !== 'Food & Drink' || !usablePhoto(ev.imageUrl)) return 0
-      const text = listingText(ev)
-      if (/\b(coffee consultation|homebrew)\b/i.test(text)) return 1
+      if (/\b(coffee consultation|homebrew|lecture)\b/i.test(ev.title)) return 1
       let score = 3
-      if (/\b(dinner|foodie|market|cellar|table|tapas|street food|high tea)\b/i.test(text)) score += 4
+      if (/\b(dinner|foodie|market|cellar|table|tapas|street food|high tea)\b/i.test(ev.title)) score += 4
       return score
     },
   },
@@ -204,7 +206,7 @@ export function HomeDiscover({
   }
   const moodPhotos = MOODS.map((mood) => best(mood.rank))
   const communityPhoto = (localPhoto && !used.has(localPhoto) ? (used.add(localPhoto), localPhoto) : null)
-    ?? best((ev) => (/\b(market|markets|garage sale|fete|fetes|school fair)\b/i.test(listingText(ev)) ? 6 : 0))
+    ?? best((ev) => (/\b(markets?|garage sale|fete|fetes|school fair)\b/i.test(ev.title) ? 8 : /\b(markets?|garage sale|fete|fetes|school fair)\b/i.test(listingText(ev)) ? 4 : 0))
     ?? best((ev) => (ev.communityKey && usablePhoto(ev.imageUrl) ? 4 : 0))
     ?? best((ev) => (ev.category === 'Community' && usablePhoto(ev.imageUrl) ? 3 : 0))
 
