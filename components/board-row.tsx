@@ -2,9 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Check, ChevronRight, Plus } from 'lucide-react'
-import { toast } from 'sonner'
-import { useItinerary, eventToItem } from '@/lib/itinerary'
+import { Bookmark, ChevronRight } from 'lucide-react'
+import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
 import { categoryIcon, checkedAgo, formatPrice, latestIso } from '@/lib/board'
@@ -72,12 +71,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
   const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
   const venue = tidyVenueName(ev.venueName, ev.venueAddress, ev.city)
   const reported = statusInfo(ev.status, ev.statusSource)
-  const itinerary = useItinerary()
-  const inIt = itinerary.has(ev.id)
-  const toggleItinerary = () => {
-    if (inIt) { itinerary.remove(ev.id); toast('Dropped from the plan.') }
-    else { itinerary.add(eventToItem(ev)); toast.success('On the itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
-  }
   const router = useRouter()
   const href = ev.href ?? eventPath(ev)
   const noteSearch = () => {
@@ -89,19 +82,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
     if (e.metaKey || e.ctrlKey) { window.open(href, '_blank', 'noopener'); return }
     router.push(href)
   }
-  const itLabel = inIt ? 'Remove from my itinerary' : 'Add to my itinerary'
-  const itButton = (extra: string) => (
-    <button
-      onClick={toggleItinerary}
-      className={cn('relative z-20 p-1.5 rounded-md', inIt ? 'text-primary' : 'text-muted-foreground hover:text-foreground', extra)}
-      aria-label={itLabel}
-      aria-pressed={inIt}
-      title={inIt ? 'In my itinerary' : 'Add to my itinerary'}
-    >
-      {inIt ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-    </button>
-  )
-
   const meta = [venue, suburb].filter(Boolean).join(' · ')
   return (
     <>
@@ -130,7 +110,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
           <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
         </button>
-        {itButton('')}
+        <ItineraryButton lineup event={ev} />
       </div>
     </div>
     <div
@@ -174,7 +154,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         >
           <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
         </button>
-        {itButton('hover:bg-muted')}
+        <ItineraryButton lineup event={ev} className="hover:bg-muted" />
       </div>
 
       {/* Venue / suburb */}
@@ -221,7 +201,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         >
           <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
         </button>
-        {itButton('hover:bg-background')}
+        <ItineraryButton lineup event={ev} className="hover:bg-background" />
       </div>
     </div>
     </>

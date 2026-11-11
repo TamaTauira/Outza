@@ -91,6 +91,11 @@ export function isSurface(value: string): value is Surface {
   return (SURFACES as readonly string[]).includes(value)
 }
 
+/** Product-metric dim for an action that happened on a known surface. Anything else stays blank. */
+export function metricSurface(value: unknown): string {
+  return typeof value === 'string' && isSurface(value) ? value : ''
+}
+
 export function clickRate(part: number, whole: number): number | null {
   if (whole <= 0 || part < 0) return null
   return Math.round((part / whole) * 1000) / 10

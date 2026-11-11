@@ -14,6 +14,7 @@ import { localTileFor, moreTiles, primaryTiles, type LocalTile } from '@/lib/loc
 import type { PlaceholderSlot } from '@/lib/placeholders'
 import { citySlug } from '@/lib/seo'
 import { cn } from '@/lib/utils'
+import { ItineraryButton } from '@/components/itinerary-button'
 
 export type LocalItem = {
   id: string
@@ -242,7 +243,10 @@ export function LocalBrowse({
                   {ev.blurb && <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{ev.blurb}</p>}
                   <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                     <span className="flex items-center gap-2">{priceLine(ev)}<Link href={ev.href || '/local'} className="text-sm font-semibold text-primary">Take a look</Link></span>
-                    <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
+                    <span className="flex shrink-0 items-center">
+                      <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
+                      <LocalPlus ev={ev} />
+                    </span>
                   </div>
                 </div>
               </article>
@@ -343,7 +347,10 @@ export function LocalBrowse({
                       <span className="text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), sectionByKey(ev.section)?.short].filter(Boolean).join(' · ')}</span>
                     </Link>
                     {priceLine(ev)}
-                    <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
+                    <span className="flex shrink-0 items-center">
+                      <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
+                      <LocalPlus ev={ev} />
+                    </span>
                   </div>
                 )
               })}
@@ -373,6 +380,7 @@ export function LocalBrowse({
                     <ListingPicture ev={ev} slot="square" className="h-10 w-10 shrink-0 rounded-md" alt="" />
                     <Link href={ev.href || '/local'} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-primary">{ev.title}</Link>
                     <span className="shrink-0 text-xs text-muted-foreground">{clock(ev.time)}</span>
+                    <LocalPlus ev={ev} />
                   </li>
                 ))}
               </ul>
@@ -412,7 +420,10 @@ function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: bool
         <p className="mt-0.5 text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), status].filter(Boolean).join(' · ')}</p>
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground"><span className="truncate">{sectionByKey(ev.section)?.short ?? 'Local'}</span>{priceLine(ev)}</span>
-          <SaveButton saved={saved} onClick={onSave} />
+          <span className="flex shrink-0 items-center">
+            <SaveButton saved={saved} onClick={onSave} />
+            <LocalPlus ev={ev} />
+          </span>
         </div>
       </div>
     </article>
@@ -424,5 +435,28 @@ function SaveButton({ saved, onClick }: { saved: boolean; onClick: () => void })
     <button type="button" onClick={onClick} aria-label={saved ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-full', saved ? 'text-primary' : 'text-muted-foreground')}>
       <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} />
     </button>
+  )
+}
+
+function LocalPlus({ ev }: { ev: LocalItem }) {
+  return (
+    <ItineraryButton
+      lineup
+      surface="local"
+      event={{
+        id: ev.id,
+        title: ev.title,
+        date: ev.date,
+        time: ev.time,
+        venueName: ev.suburb || ev.title,
+        suburb: ev.suburb,
+        city: ev.city,
+        href: ev.href || '/local',
+        lat: ev.lat,
+        lng: ev.lng,
+        imageUrl: ev.imageUrl,
+      }}
+      className="grid h-11 w-11 place-items-center rounded-full p-0"
+    />
   )
 }

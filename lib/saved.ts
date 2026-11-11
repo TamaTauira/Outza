@@ -52,7 +52,7 @@ export interface SavedEvent {
 
 const EVT = 'sydney-events-saved-change'
 
-interface PendingSave { eventId: string; saved: boolean; snapshot?: SavedEvent }
+interface PendingSave { eventId: string; saved: boolean; snapshot?: SavedEvent; surface?: string }
 
 function purgeLegacy() {
   try {
@@ -115,12 +115,12 @@ export function setSavedAccountLinked(v: boolean, userId?: string | null) {
   activeUserId = v ? (userId ?? null) : null
 }
 
-function pushToAccount(userId: string, eventId: string, saved: boolean, snapshot?: SavedEvent) {
+function pushToAccount(userId: string, eventId: string, saved: boolean, snapshot?: SavedEvent, surface?: string) {
   const pending = readPending(userId).filter((p) => p.eventId !== eventId)
-  pending.push({ eventId, saved, ...(snapshot ? { snapshot } : {}) })
+  pending.push({ eventId, saved, ...(snapshot ? { snapshot } : {}), ...(surface ? { surface } : {}) })
   writePending(userId, pending)
   fetch('/api/me/saved', {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId, saved }),
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId, saved, ...(surface ? { surface } : {}) }),
   }).then((r) => {
     if (!r.ok) return
     writePending(userId, readPending(userId).filter((p) => p.eventId !== eventId))
@@ -146,7 +146,7 @@ export async function syncSavedWithAccount(userId?: string | null) {
     writeFor(id, applyPending(server, kept))
     for (const p of kept) {
       const res = await fetch('/api/me/saved', {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: p.eventId, saved: p.saved }),
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: p.eventId, saved: p.saved, ...(p.surface ? { surface: p.surface } : {}) }),
       }).catch(() => null)
       if (res?.ok) writePending(id, readPending(id).filter((row) => row.eventId !== p.eventId))
     }
@@ -181,7 +181,7 @@ export function useSaved() {
 
   const isSaved = useCallback((id: string) => saved.some((s) => s.id === id), [saved])
 
-  const toggle = useCallback((ev: SavedEvent) => {
+  const toggle = useCallback((ev: SavedEvent, surface?: string) => {
     if (!userId) {
       toast('Sign in to save events', {
         action: { label: 'Sign in', onClick: () => router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`) },
@@ -210,7 +210,7 @@ export function useSaved() {
       ...(ev.organiserUrl ? { organiserUrl: ev.organiserUrl } : {}),
     }
     writeFor(userId, exists ? list.filter((s) => s.id !== ev.id) : [...list, snapshot])
-    pushToAccount(userId, ev.id, !exists, snapshot)
+    pushToAccount(userId, ev.id, !exists, snapshot, surface)
   }, [userId, router])
 
   return { saved, isSaved, toggle, signedIn: !!userId }
