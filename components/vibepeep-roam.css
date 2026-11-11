@@ -394,6 +394,12 @@ html[data-walkstill='1'] .vp-hero-clock {
   }
 
   /* 44px target on the visible half, its right edge on the screen edge. */
+  .vp-roam[data-scroll-peek='1'] .vp-hit,
+  .vp-roam[data-scroll-peek='1'] .vp-rig,
+  .vp-roam[data-scroll-peek='1'] .vp-stage {
+    pointer-events: none;
+  }
+
   .vp-roam[data-scroll-peek='1'] .vp-hit::after {
     top: auto;
     bottom: 18%;
@@ -401,6 +407,7 @@ html[data-walkstill='1'] .vp-hero-clock {
     right: 40%;
     width: 44px;
     height: 44px;
+    pointer-events: auto;
   }
 
   /* Off the edge and invisible while he is peeking. */
