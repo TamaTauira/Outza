@@ -1,13 +1,16 @@
 'use client'
 
-import { Plus, Check } from 'lucide-react'
 import { toast } from 'sonner'
+import { CalendarCheckIcon, CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { useItinerary, eventToItem } from '@/lib/itinerary'
 import { cn } from '@/lib/utils'
 
 type Ev = Parameters<typeof eventToItem>[0]
 
-/** Add to My Itinerary toggle. `compact` is the icon on an event page. `lineup` matches the board-row plus. */
+const ADD_LABEL = 'Add to itinerary'
+const ADDED_LABEL = 'Added to itinerary'
+
+/** Add to the itinerary. `compact` and `lineup` are icon-only; the default button includes the words. */
 export function ItineraryButton({ event, compact = false, lineup = false, surface, className }: { event: Ev; compact?: boolean; lineup?: boolean; surface?: string; className?: string }) {
   const { has, add, remove } = useItinerary()
   const inIt = has(event.id)
@@ -22,36 +25,37 @@ export function ItineraryButton({ event, compact = false, lineup = false, surfac
       toast.success(lineup ? 'On the itinerary.' : 'Locked in. It’s on your Itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } })
     }
   }
-  const label = inIt ? 'On Your Itinerary' : 'Add to Itinerary'
+  const iconLabel = inIt ? ADDED_LABEL : ADD_LABEL
+  const Icon = inIt ? CalendarCheckIcon : CalendarPlusIcon
 
-  if (lineup) {
-    const lineLabel = inIt ? 'Remove from my itinerary' : 'Add to my itinerary'
+  if (lineup || compact) {
     return (
       <button
         type="button"
         onClick={onClick}
-        className={cn('relative z-20 p-1.5 rounded-md', inIt ? 'text-primary' : 'text-muted-foreground hover:text-foreground', className)}
-        aria-label={lineLabel}
+        className={cn(
+          lineup
+            ? 'relative z-20 p-1.5 rounded-md'
+            : 'w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-colors',
+          inIt
+            ? lineup ? 'text-primary' : 'bg-primary text-primary-foreground'
+            : lineup ? 'text-muted-foreground hover:text-foreground' : 'bg-white/95 dark:bg-card/95 text-foreground hover:bg-primary hover:text-primary-foreground',
+          className,
+        )}
+        aria-label={iconLabel}
         aria-pressed={inIt}
-        title={inIt ? 'In my itinerary' : 'Add to my itinerary'}
+        title={iconLabel}
       >
-        {inIt ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+        <Icon className={lineup ? 'w-4 h-4' : compact && !lineup ? 'w-5 h-5' : 'w-4 h-4'} aria-hidden />
       </button>
     )
   }
 
-  if (compact) {
-    return (
-      <button onClick={onClick} aria-label={label} title={label}
-        className={cn('w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-colors', inIt ? 'bg-primary text-primary-foreground' : 'bg-white/95 dark:bg-card/95 text-foreground hover:bg-primary hover:text-primary-foreground', className)}>
-        {inIt ? <Check className="w-4 h-4" /> : <Plus className="w-5 h-5" />}
-      </button>
-    )
-  }
+  const label = inIt ? 'On Your Itinerary' : 'Add to Itinerary'
   return (
-    <button onClick={onClick}
+    <button type="button" onClick={onClick}
       className={cn('flex items-center justify-center gap-2 w-full py-3 rounded-lg font-semibold transition-colors', inIt ? 'bg-primary/15 text-primary' : 'bg-foreground text-background hover:opacity-90', className)}>
-      {inIt ? <Check className="w-4 h-4" /> : <Plus className="w-5 h-5" />}{label}
+      <Icon className="w-5 h-5" aria-hidden />{label}
     </button>
   )
 }

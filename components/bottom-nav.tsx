@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { Bookmark, CalendarRange, House, MapPin, Sparkles, User } from 'lucide-react'
+import { Bookmark, House, MapPin, Sparkles, User } from 'lucide-react'
+import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { PeepIcon } from '@/components/peep-icon'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -18,7 +19,7 @@ const LEFT = [
 ] as const
 
 const RIGHT = [
-  { key: 'itinerary', label: 'Itinerary', href: '/itinerary', Icon: CalendarRange },
+  { key: 'itinerary', label: 'Itinerary', href: '/itinerary', Icon: CalendarPlusIcon },
   { key: 'saved', label: 'Saved', href: '/saved', Icon: Bookmark },
 ] as const
 

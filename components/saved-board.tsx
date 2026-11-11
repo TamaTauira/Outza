@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Heart, MapPin, Plus } from 'lucide-react'
+import { Heart, MapPin } from 'lucide-react'
+import { CalendarCheckIcon, CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { toast } from 'sonner'
 import { ViewToggle } from '@/components/view-toggle'
 import { EventImage } from '@/components/event-image'
@@ -217,7 +218,7 @@ function SavedCard({
         <p className="font-mono text-sm">{[price.prefix, price.value].filter(Boolean).join(' ')} · {ev.category}</p>
         <div className="flex flex-wrap gap-2 pt-1">
           <button type="button" onClick={onPlan} className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground">
-            <Plus className="h-4 w-4" /> {inPlan ? 'Remove from itinerary' : 'Add to itinerary'}
+            {inPlan ? <CalendarCheckIcon className="h-4 w-4" aria-hidden /> : <CalendarPlusIcon className="h-4 w-4" aria-hidden />} {inPlan ? 'Remove from itinerary' : 'Add to itinerary'}
           </button>
           {onMap && <button type="button" onClick={onMap} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-semibold"><MapPin className="h-4 w-4" /> Map</button>}
           <button type="button" onClick={onSave} className="inline-flex h-10 items-center rounded-full border border-border px-3 text-sm font-semibold">Remove</button>

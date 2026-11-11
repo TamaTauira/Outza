@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, CalendarRange, House, Users, Sparkles, ShieldCheck, Building2 } from 'lucide-react'
+import { MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, House, Users, Sparkles, ShieldCheck, Building2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
@@ -14,6 +14,7 @@ import { useMounted } from '@/components/client-only'
 import { cn } from '@/lib/utils'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { PeepIcon } from '@/components/peep-icon'
+import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { BottomNav } from '@/components/bottom-nav'
 
 export type AppView = 'board' | 'map' | 'saved'
@@ -85,7 +86,7 @@ export function Navbar({ savedCount }: NavbarProps) {
             )
           })}
           <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
-            <CalendarRange className="w-4 h-4" /><span>Itinerary</span>
+            <CalendarPlusIcon className="w-4 h-4" /><span>Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
         </nav>
@@ -108,7 +109,7 @@ export function Navbar({ savedCount }: NavbarProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="truncate">{user.name || user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link href="/itinerary"><CalendarRange className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/itinerary"><CalendarPlusIcon className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/watchlist"><Bookmark className="w-4 h-4 mr-2" />My VibePeep</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/outings"><Sparkles className="w-4 h-4 mr-2" />Plan a day or night</Link></DropdownMenuItem>
