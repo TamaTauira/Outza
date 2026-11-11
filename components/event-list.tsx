@@ -35,7 +35,6 @@ interface EventListProps {
   city?: string
   initialBoard?: BoardSeed | null
   activeId?: string | null
-  onLocate?: (ev: BoardEvent) => void
 }
 
 function filtersAreOpen(filters: FilterState) {
@@ -45,7 +44,7 @@ function filtersAreOpen(filters: FilterState) {
   )
 }
 
-export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null, activeId = null, onLocate }: EventListProps) {
+export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null, activeId = null }: EventListProps) {
   const { status: authStatus } = useSession()
   const span = listSpan(day, filters.dateFrom, filters.dateTo)
   const seedMatches = !!initialBoard
@@ -313,7 +312,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           <section key={date}>
             <GroupBar label={dayLabel(date, today)} count={rows.length} open={!closed[date]} onToggle={() => setClosed((c) => ({ ...c, [date]: !c[date] }))} />
             {!closed[date] && rows.map(({ ev, status }) => (
-              <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={dayLabel(date, today)} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
+              <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} showDate={dayLabel(date, today)} trackSearch={!!searchQuery} active={activeId === ev.id} />
             ))}
           </section>
         ))
@@ -340,7 +339,6 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
                     saved={isSaved(ev.id)}
                     onToggleSave={toggle}
                     active={activeId === ev.id}
-                    onLocate={onLocate}
                     trackSearch={!!searchQuery}
                   />
                 ))}
@@ -352,7 +350,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
               <section key={g.key}>
                 <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
                 {open && g.rows.map(({ ev, status }) => (
-                  <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
+                  <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
                 ))}
               </section>
             )
@@ -361,7 +359,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <section>
               <GroupBar label="Time not listed" count={windowRank.possibly.length} open={!closed.possibly} onToggle={() => setClosed((c) => ({ ...c, possibly: !c.possibly }))} />
               {!closed.possibly && windowRank.possibly.map((ev) => (
-                <BoardRow key={ev.id} ev={ev} status={{ label: 'Time not listed', tone: 'tbc' }} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
+                <BoardRow key={ev.id} ev={ev} status={{ label: 'Time not listed', tone: 'tbc' }} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
               ))}
             </section>
           )}
@@ -381,7 +379,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <section key={g.key}>
               <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
               {open && g.rows.map(({ ev, status }) => (
-                <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
+                <BoardRow key={ev.id} ev={ev} status={status} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
               ))}
             </section>
           )
@@ -411,7 +409,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <ChevronRight className={cn('w-4 h-4 text-muted-foreground transition-transform', allDayOpen && 'rotate-90')} />
           </button>
           {allDayOpen && day && untimed.map((ev) => (
-            <BoardRow key={ev.id} ev={ev} status={getStatus(ev, day, today, nowMinutes)} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
+            <BoardRow key={ev.id} ev={ev} status={getStatus(ev, day, today, nowMinutes)} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} />
           ))}
         </div>
       )}

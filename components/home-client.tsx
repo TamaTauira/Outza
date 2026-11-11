@@ -251,11 +251,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     try { sessionStorage.setItem('vp-results-view', next); } catch {}
     if (next === 'list' && view === 'map') goView('board');
   };
-  const showOnMap = (id: string) => {
-    setFocusId(id);
-    rememberView('map');
-    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
   const goBoard = (fn: () => void) => () => {
     fn();
     setWindowPinned(true);
@@ -677,8 +672,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             windowPinned={windowPinned}
             city={city}
             initialBoard={initialBoard}
-            activeId={focusId}
-            onLocate={(ev) => showOnMap(ev.id)} />
+            activeId={focusId} />
           </div>
           <div className="flex justify-center border-t border-border px-4 py-3 lg:hidden">
             <button type="button" onClick={() => setBoardOpen((open) => !open)} className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">
