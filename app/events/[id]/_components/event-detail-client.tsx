@@ -30,7 +30,6 @@ import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 import { ClaimedTick } from '@/components/ClaimedTick'
 import { EventReactions } from '@/components/event-reactions'
 import { ListingSources } from '@/components/listing-sources'
-import { EventInsightPanel } from '@/components/event-insight-panel'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
 
@@ -322,7 +321,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
 
           <div className="min-w-0 space-y-4 lg:col-start-1">
             {event?.description ? <Lowdown text={event.description} /> : null}
-            <EventInsightPanel insight={event.insight} />
             <EventExtras event={event} />
             <ListingTrustActions event={event} />
           </div>

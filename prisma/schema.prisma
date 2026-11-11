@@ -1618,7 +1618,7 @@ model DailyBriefing {
   @@unique([city, edition, day])
 }
 
-/// Optional short AI rewrite of a listing summary. Facts stay on the event. Regenerated when the hash changes.
+/// Cached listing rewrite. The event page no longer reads or writes this table.
 model EventInsight {
   eventId     String   @id
   contentHash String
