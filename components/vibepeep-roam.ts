@@ -21,6 +21,13 @@ import {
   type RoamAct,
 } from '@/lib/mascot-roam'
 import { roamBottomChrome } from '@/lib/bottom-nav'
+import {
+  SCROLL_PEEK_MAX_WIDTH,
+  SCROLL_PEEK_SETTLE_MS,
+  closeButtonBox,
+  scrollPeekActive,
+  scrollPeekLayout,
+} from '@/lib/mascot-scroll-peek'
 
 const BLOCK = 'a, button, input, textarea, select, label, summary, header, nav, [role="button"], [role="link"], [role="tab"], [data-sonner-toaster], .leaflet-control, .leaflet-marker-icon, .se-cluster, .vp-map-float, .vp-map-cards, .vp-map-rail, .vp-map-toolbar, .vp-map-chips, .vp-map-ask, .rounded-xl, .rounded-2xl, p, h1, h2, h3, h4, li'
 
@@ -47,6 +54,7 @@ export function attachRoam(root: HTMLElement): () => void {
   const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)')
   if (/walkdemo|walkstill/.test(location.search)) document.documentElement.dataset.walkstill = '1'
   const mobileMq = window.matchMedia('(max-width: 639px)')
+  const narrowPeekMq = window.matchMedia(`(max-width: ${SCROLL_PEEK_MAX_WIDTH}px)`)
   const navMq = window.matchMedia('(max-width: 1023px), (pointer: coarse) and (orientation: portrait) and (max-width: 1400px), (horizontal-viewport-segments: 2), (spanning: single-fold-vertical)')
   let navOffset = 0
   let segment = { w: 0, h: 0 }
@@ -115,6 +123,16 @@ export function attachRoam(root: HTMLElement): () => void {
   const pointer = { x: 0, y: 0, t: 0 }
   let drag: { id: number; x: number; y: number; ox: number; oy: number; lastX: number; moved: boolean } | null = null
   let suppressClick = false
+  /** Phone tuck while the page is scrolling. Desktop never sets this. */
+  let scrollPeeking = false
+  let peekRevealed = false
+  let peekIntro = false
+  let lastScrollAt: number | null = null
+  let lastScrollY = window.scrollY
+  let peekFrozen = 0
+  let scrollSettleTimer = 0
+  let peekHomeTimer = 0
+  const peekReadyAt = performance.now() + 1200
 
   const size = () => {
     if (cachedSize > 8) return cachedSize
@@ -222,11 +240,126 @@ export function attachRoam(root: HTMLElement): () => void {
     if (root.dataset.move !== move) root.dataset.move = move
   }
 
+  const skipPeek = () =>
+    root.dataset.showoff === '1' ||
+    root.dataset.closeup === '1' ||
+    /(?:^|[?&])(peepclose|peepshow|peepdrive|walkstill|walkdemo)=1/.test(location.search)
+
+  const writePeekShift = () => {
+    const width = size()
+    const rig = root.querySelector<HTMLElement>('.vp-rig')
+    const height = rig && rig.clientHeight > 8 ? rig.clientHeight : width * (1092 / 763)
+    const layout = scrollPeekLayout({
+      x: pos.x,
+      y: pos.y,
+      width,
+      height,
+      viewportW: window.innerWidth,
+      viewportH: window.innerHeight,
+      close: closeButtonBox(width, height),
+    })
+    root.style.setProperty('--vp-peek-dx', `${layout.slotDx.toFixed(1)}px`)
+    root.style.setProperty('--vp-peek-dy', `${layout.slotDy.toFixed(1)}px`)
+    root.style.setProperty('--vp-close-dx', `${layout.closeDx.toFixed(1)}px`)
+    root.style.setProperty('--vp-close-dy', `${layout.closeDy.toFixed(1)}px`)
+  }
+
+  const clearPeekShift = () => {
+    root.style.setProperty('--vp-peek-dx', '0px')
+    root.style.setProperty('--vp-peek-dy', '0px')
+    root.style.setProperty('--vp-close-dx', '0px')
+    root.style.setProperty('--vp-close-dy', '0px')
+  }
+
+  const shiftPeekClock = (drift: number) => {
+    if (drift <= 0) return
+    if (phase.type === 'goto') phase.start += drift
+    if (phase.type === 'pause' || phase.type === 'act' || phase.type === 'chase' || phase.type === 'bounce' || phase.type === 'turn') {
+      phase.until += drift
+    }
+    if (phase.type === 'bounce') phase.last += drift
+    lastActivity += drift
+    nextVignetteAt += drift
+  }
+
+  const peekNow = () =>
+    !skipPeek() &&
+    scrollPeekActive({
+      width: narrowPeekMq.matches ? Math.min(window.innerWidth, SCROLL_PEEK_MAX_WIDTH) : window.innerWidth,
+      atBottom: nearPageBottom(window.scrollY, window.innerHeight, Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0)),
+      revealed: peekRevealed,
+      msSinceScroll: lastScrollAt == null ? null : performance.now() - lastScrollAt,
+    })
+
+  const armPeekSettle = () => {
+    window.clearTimeout(scrollSettleTimer)
+    const elapsed = lastScrollAt == null ? 0 : performance.now() - lastScrollAt
+    const wait = Math.max(40, SCROLL_PEEK_SETTLE_MS - elapsed + 30)
+    scrollSettleTimer = window.setTimeout(() => {
+      syncScrollPeek()
+      if (scrollPeeking) armPeekSettle()
+    }, wait)
+  }
+
+  const syncScrollPeek = () => {
+    const want = peekNow()
+    if (want) {
+      window.clearTimeout(peekHomeTimer)
+      if (!scrollPeeking) {
+        peekFrozen = performance.now()
+        scrollPeeking = true
+        peekIntro = !reduce
+        root.dataset.scrollPeek = '1'
+        root.style.setProperty('--vp-peek-ms', reduce ? '0ms' : '420ms')
+        root.style.setProperty('--vp-peek-ease', 'cubic-bezier(0.22, 0.8, 0.2, 1)')
+        clearPeekShift()
+        if (reduce) {
+          peekIntro = false
+          writePeekShift()
+        } else {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              peekIntro = false
+              if (scrollPeeking) writePeekShift()
+            })
+          })
+        }
+      } else if (!peekIntro) {
+        writePeekShift()
+      }
+      return
+    }
+    if (!scrollPeeking && root.dataset.scrollPeek !== '1') return
+    const wasPeeking = scrollPeeking
+    scrollPeeking = false
+    peekIntro = false
+    if (wasPeeking && peekFrozen) {
+      shiftPeekClock(performance.now() - peekFrozen)
+      peekFrozen = 0
+    }
+    if (reduce) {
+      delete root.dataset.scrollPeek
+      clearPeekShift()
+      kick()
+      return
+    }
+    root.style.setProperty('--vp-peek-ms', '240ms')
+    root.style.setProperty('--vp-peek-ease', 'cubic-bezier(0.34, 1.25, 0.64, 1)')
+    clearPeekShift()
+    window.clearTimeout(peekHomeTimer)
+    peekHomeTimer = window.setTimeout(() => {
+      if (scrollPeeking) return
+      delete root.dataset.scrollPeek
+      kick()
+    }, 260)
+  }
+
   const apply = () => {
     root.style.transform = `translate3d(${Math.min(pos.x, window.innerWidth - size() - 8).toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
     if (root.dataset.face !== face) root.dataset.face = face
     const side = pos.x + size() / 2 > window.innerWidth * 0.5 ? 'start' : 'center'
     if (slot.dataset.bubble !== side) slot.dataset.bubble = side
+    if (scrollPeeking && !peekIntro) writePeekShift()
   }
 
   /** Lowest control above `ceiling` on Local, so the figure can sit in the gap under the filters. */
@@ -741,6 +874,7 @@ export function attachRoam(root: HTMLElement): () => void {
     if (new URLSearchParams(location.search).get('peepclose') === '1' || new URLSearchParams(location.search).get('peepshow') === '1' || new URLSearchParams(location.search).get('peepdrive') === '1') {
       return 'sleep'
     }
+    if (scrollPeeking || root.dataset.scrollPeek === '1') return 'sleep'
     if (phase.type === 'turn') {
       if (now < phase.until) return 'raf'
       delete root.dataset.turn
@@ -886,6 +1020,15 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const onScroll = () => {
     bump()
+    const y = window.scrollY
+    const delta = Math.abs(y - lastScrollY)
+    lastScrollY = y
+    if (delta >= 2 && performance.now() >= peekReadyAt && !skipPeek() && narrowPeekMq.matches) {
+      peekRevealed = false
+      lastScrollAt = performance.now()
+      syncScrollPeek()
+      armPeekSettle()
+    }
     const atBottom = nearPageBottom(window.scrollY, window.innerHeight, document.documentElement.scrollHeight)
     if (!atBottom) {
       cheered = false
@@ -900,16 +1043,25 @@ export function attachRoam(root: HTMLElement): () => void {
   const onResize = () => {
     cachedSize = 0
     readChrome()
+    if (!narrowPeekMq.matches && (scrollPeeking || root.dataset.scrollPeek === '1')) {
+      scrollPeeking = false
+      peekIntro = false
+      peekFrozen = 0
+      delete root.dataset.scrollPeek
+      clearPeekShift()
+    }
     if (desktopBoard()) {
       if (boardPhase === 'done') pinBoard()
       return
     }
     if (reduce) {
       park()
+      syncScrollPeek()
       return
     }
     pos = phase.type === 'goto' && phase.then === 'peek' ? pos : clampPoint(pos, bounds())
     apply()
+    syncScrollPeek()
   }
 
   const onVis = () => {
@@ -946,8 +1098,15 @@ export function attachRoam(root: HTMLElement): () => void {
     kick()
   }
 
+  const onPeekUp = (event: PointerEvent) => {
+    if (event.button !== 0 || !scrollPeeking) return
+    peekRevealed = true
+    syncScrollPeek()
+  }
+
   const onDown = (event: PointerEvent) => {
     if (event.button !== 0) return
+    if (root.dataset.scrollPeek === '1') return
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, ox: pos.x, oy: pos.y, lastX: event.clientX, moved: false }
     button.setPointerCapture?.(event.pointerId)
   }
@@ -1008,7 +1167,7 @@ export function attachRoam(root: HTMLElement): () => void {
   })
 
   const settle = () => {
-    if (!running || dragging) return
+    if (!running || dragging || scrollPeeking) return
     if (phase.type === 'goto' || phase.type === 'turn' || phase.type === 'bounce' || phase.type === 'chase') return
     if (desktopBoard()) {
       if (boardPhase !== 'done') return
@@ -1049,6 +1208,7 @@ export function attachRoam(root: HTMLElement): () => void {
   button.addEventListener('pointerdown', onDown)
   button.addEventListener('pointermove', onDrag)
   button.addEventListener('pointerup', onUp)
+  button.addEventListener('pointerup', onPeekUp)
   button.addEventListener('pointercancel', onUp)
   button.addEventListener('click', onClickCapture, true)
   window.addEventListener('pointermove', onPointer, { passive: true })
@@ -1058,6 +1218,7 @@ export function attachRoam(root: HTMLElement): () => void {
   document.addEventListener('visibilitychange', onVis)
   reduceMq.addEventListener('change', onReduce)
   navMq.addEventListener('change', onResize)
+  narrowPeekMq.addEventListener('change', onResize)
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
 
   let pinTimer = 0
@@ -1096,6 +1257,8 @@ export function attachRoam(root: HTMLElement): () => void {
     window.clearTimeout(wake)
     window.clearTimeout(speechTimer)
     window.clearTimeout(boingTimer)
+    window.clearTimeout(scrollSettleTimer)
+    window.clearTimeout(peekHomeTimer)
     mo.disconnect()
     pinWatch.disconnect()
     window.clearTimeout(pinTimer)
@@ -1103,6 +1266,7 @@ export function attachRoam(root: HTMLElement): () => void {
     button.removeEventListener('pointerdown', onDown)
     button.removeEventListener('pointermove', onDrag)
     button.removeEventListener('pointerup', onUp)
+    button.removeEventListener('pointerup', onPeekUp)
     button.removeEventListener('pointercancel', onUp)
     button.removeEventListener('click', onClickCapture, true)
     window.removeEventListener('pointermove', onPointer)
@@ -1112,8 +1276,16 @@ export function attachRoam(root: HTMLElement): () => void {
     document.removeEventListener('visibilitychange', onVis)
     reduceMq.removeEventListener('change', onReduce)
     navMq.removeEventListener('change', onResize)
+    narrowPeekMq.removeEventListener('change', onResize)
     document.body.style.userSelect = ''
     root.style.transform = ''
+    delete root.dataset.scrollPeek
+    root.style.removeProperty('--vp-peek-dx')
+    root.style.removeProperty('--vp-peek-dy')
+    root.style.removeProperty('--vp-close-dx')
+    root.style.removeProperty('--vp-close-dy')
+    root.style.removeProperty('--vp-peek-ms')
+    root.style.removeProperty('--vp-peek-ease')
     delete root.dataset.ready
     delete root.dataset.move
     delete root.dataset.face
