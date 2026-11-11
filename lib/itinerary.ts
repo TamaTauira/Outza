@@ -29,6 +29,12 @@ export interface ItineraryItem {
   okWith?: string[]
   /** Set when the stop came from a paid local recommendation (shown with a Sponsored label). */
   adId?: string | null
+  /** Optional label for a custom stop. Events keep their own category. */
+  stopCategory?: string | null
+  /** Picture copied from the listing when the stop was added. */
+  imageUrl?: string | null
+  /** Manual order within a day. Absent until the visitor rearranges that day. */
+  order?: number | null
 }
 
 const EVT = 'outza-itinerary-change'
@@ -71,8 +77,37 @@ export function bindItineraryUser(userId: string | null) {
   const previous = boundUser
   boundUser = userId
   try { localStorage.removeItem(LEGACY_ITINERARY_KEY) } catch {}
-  if (shouldClearGuestItinerary(previous, userId)) writeKey(GUEST_ITINERARY_KEY, [])
-  else window.dispatchEvent(new Event(EVT))
+  if (shouldClearGuestItinerary(previous, userId)) {
+    writeKey(GUEST_ITINERARY_KEY, [])
+    try { localStorage.removeItem(`${GUEST_ITINERARY_KEY}:label`) } catch {}
+  } else window.dispatchEvent(new Event(EVT))
+}
+
+const labelKey = () => `${storageKey()}:label`
+
+/** The name the visitor gave this plan. Empty means the page should derive one from the stops. */
+export function useItineraryLabel() {
+  const [label, setLabel] = useState('')
+  useEffect(() => {
+    const sync = () => {
+      try { setLabel(localStorage.getItem(labelKey()) ?? '') } catch { setLabel('') }
+    }
+    sync()
+    window.addEventListener(EVT, sync)
+    window.addEventListener('storage', sync)
+    return () => { window.removeEventListener(EVT, sync); window.removeEventListener('storage', sync) }
+  }, [])
+  const save = useCallback((next: string) => {
+    try {
+      const clean = next.trim().slice(0, 80)
+      if (clean) localStorage.setItem(labelKey(), clean)
+      else localStorage.removeItem(labelKey())
+      window.dispatchEvent(new Event(EVT))
+    } catch (err) {
+      console.error('Could not save itinerary name:', err)
+    }
+  }, [])
+  return { label, save }
 }
 
 export const sortItinerary = (list: ItineraryItem[]) =>
@@ -148,12 +183,13 @@ export function useItinerary() {
 }
 
 /** Builds an itinerary entry from an event as returned by the APIs. */
-export function eventToItem(ev: { id: string; title: string; date: string; time?: string | null; endTime?: string | null; venueName?: string | null; venueAddress?: string | null; suburb?: string | null; city?: string | null; href?: string | null; latitude?: number | null; longitude?: number | null; lat?: number | null; lng?: number | null }): Omit<ItineraryItem, 'addedAt'> {
+export function eventToItem(ev: { id: string; title: string; date: string; time?: string | null; endTime?: string | null; venueName?: string | null; venueAddress?: string | null; suburb?: string | null; city?: string | null; href?: string | null; latitude?: number | null; longitude?: number | null; lat?: number | null; lng?: number | null; imageUrl?: string | null }): Omit<ItineraryItem, 'addedAt'> {
   const lat = ev.lat ?? ev.latitude ?? null, lng = ev.lng ?? ev.longitude ?? null
   const place = [ev.venueName, ev.venueAddress, ev.suburb].filter(Boolean).join(', ') || null
   return {
     id: ev.id, kind: 'event', title: ev.title, date: String(ev.date).slice(0, 10), time: ev.time ?? null, endTime: ev.endTime ?? null,
     venueName: ev.venueName ?? null, suburb: ev.suburb ?? null, note: null, ...(ev.href ? { href: ev.href } : {}),
     place, city: ev.city ?? null, ...(lat != null && lng != null ? { lat, lng } : {}),
+    ...(ev.imageUrl ? { imageUrl: ev.imageUrl } : {}),
   }
 }

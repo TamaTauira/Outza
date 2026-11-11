@@ -29,6 +29,11 @@ interface MapViewProps {
   bleed?: boolean
   /** Category chips. They sit in the map column, never over the list. */
   chips?: ReactNode
+  /** When set, the map draws these records instead of fetching. Same pin, popup and cluster behaviour. */
+  eventsOverride?: any[]
+  focusId?: string | null
+  onSelect?: (id: string) => void
+  countNoun?: string
 }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
@@ -77,7 +82,7 @@ function markerIcon(L: any, e: { imageUrl?: string | null; imageAsset?: ClientIm
 const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coordinates are never stored)
 type LocState = 'idle' | 'asking' | 'locating' | 'found' | 'denied' | 'unavailable'
 
-export function MapView({ filters, searchQuery, city = '', bleed = false, chips = null }: MapViewProps) {
+export function MapView({ filters, searchQuery, city = '', bleed = false, chips = null, eventsOverride, focusId = null, onSelect, countNoun = 'events' }: MapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileRef = useRef<any>(null)
@@ -96,6 +101,9 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const [dock, setDock] = useState(0)
   const { resolvedTheme } = useTheme()
   const dark = resolvedTheme !== 'light'
+  const locked = Array.isArray(eventsOverride)
+  const onSelectRef = useRef(onSelect)
+  onSelectRef.current = onSelect
 
   const fetchEvents = useCallback(async () => {
     const seq = ++fetchSeq.current
@@ -131,7 +139,14 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     }
   }, [searchQuery, filters, city])
 
-  useEffect(() => { fetchEvents() }, [fetchEvents])
+  useEffect(() => { if (!locked) fetchEvents() }, [fetchEvents, locked])
+
+  useEffect(() => {
+    if (!locked) return
+    setEvents(eventsOverride ?? [])
+    setFeatured([])
+    setLoading(false)
+  }, [locked, eventsOverride])
 
   // Create the map once Leaflet has loaded
   useEffect(() => {
@@ -174,9 +189,10 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!ready || !map) return
+    if (locked) return
     if (city) { const c = cityDef(city); map.setView([c.lat, c.lng], 12) }
     else map.setView([-27.5, 134], 4)
-  }, [ready, city])
+  }, [ready, city, locked])
 
   // Zoom to the visitor's own location (only after they've opted in; used in the browser only)
   const locate = useCallback(() => {
@@ -250,13 +266,14 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         title: e?.title,
         zIndexOffset: tier === 'GOLD' ? 1000 : tier === 'BRONZE' ? 500 : 0,
       }).bindPopup(popupHtml(e, tier), { className: 'se-popup', maxWidth: 280 })
+      m.on('click', () => onSelectRef.current?.(e.id))
       markerById.current.set(e.id, m)
       mcg.addLayer(m)
     }
 
     for (const e of events) {
       const tier = e.promoTier ?? tierById.get(e.id)
-      if (tier === 'GOLD') continue
+      if (tier === 'GOLD' && !locked) continue
       addMarker(e, tier)
     }
     for (const f of featured) {
@@ -266,7 +283,11 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     map.addLayer(mcg)
     markersRef.current = mcg
     goldRef.current = null
-  }, [events, featured, ready])
+    if (locked && typeof mcg.getBounds === 'function') {
+      const bounds = mcg.getBounds()
+      if (bounds?.isValid?.()) map.fitBounds(bounds.pad(0.25), { maxZoom: 14, animate: false })
+    }
+  }, [events, featured, ready, locked])
 
   const count = events.filter((e: any) => e?.latitude && e?.longitude).length
   const pinned = events.filter((e: any) => e?.latitude && e?.longitude).slice(0, 40)
@@ -294,6 +315,13 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     markerById.current.get(e.id)?.openPopup()
   }
   useEffect(() => {
+    if (!ready || !focusId) return
+    const match = events.find((event) => event.id === focusId)
+    if (match) focus(match)
+    // Markers are rebuilt in the effect above. Re-open after that paint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, focusId, events])
+  useEffect(() => {
     if (!ready) return
     const map = mapInstanceRef.current
     const id = requestAnimationFrame(() => map?.invalidateSize())
@@ -315,7 +343,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
               const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
               const when = `${boardClockLine(e) || 'All day'} · ${e.venueName} · ${price.value}`
               return (
-                <button key={e.id} type="button" onClick={() => focus(e)} title={e.title} className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5 overflow-hidden border-b border-border px-4 py-3 text-left hover:bg-muted">
+                <button key={e.id} type="button" onClick={() => { onSelect?.(e.id); focus(e) }} title={e.title} className={`grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5 overflow-hidden border-b border-border px-4 py-3 text-left hover:bg-muted ${focusId === e.id ? 'bg-primary/10' : ''}`}>
                   <span className="truncate font-semibold">{e.title}</span>
                   <span className="truncate text-xs text-muted-foreground">{when}</span>
                 </button>
@@ -339,7 +367,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       )}
       <div ref={mapRef} className={bleed ? 'se-map absolute inset-0 overflow-hidden' : 'se-map absolute inset-0 overflow-hidden rounded-2xl'} />
       <div className={bleed ? 'vp-map-float vp-map-count absolute left-3 top-3 z-20 max-w-[calc(100%-4.75rem)] truncate rounded-full bg-white/80 px-3 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white lg:hidden' : 'vp-map-float absolute left-1/2 top-4 z-20 max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white sm:left-4 sm:max-w-none sm:translate-x-0'}>
-        {loading ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> events on map</>}
+        {loading ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> {countNoun} on map</>}
       </div>
       {!loading && count === 0 && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6">
@@ -390,7 +418,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
           {pinned.slice(0, 12).map((e) => {
             const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
             return (
-              <button key={e.id} type="button" onClick={() => focus(e)} title={e.title} className="pointer-events-auto w-44 shrink-0 rounded-xl border border-border bg-card p-3 text-left shadow-lg">
+              <button key={e.id} type="button" onClick={() => { onSelect?.(e.id); focus(e) }} title={e.title} className={`pointer-events-auto w-44 shrink-0 rounded-xl border bg-card p-3 text-left shadow-lg ${focusId === e.id ? 'border-primary' : 'border-border'}`}>
                 <span className="block truncate text-sm font-semibold">{e.title}</span>
                 <span className="vp-map-card-venue block truncate text-xs text-muted-foreground">{e.venueName}</span>
                 <span className="mt-1 block truncate font-mono text-xs">{price.value}</span>

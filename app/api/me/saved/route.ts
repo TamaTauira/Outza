@@ -5,6 +5,7 @@ import { recordLandingFromCookieJar } from '@/lib/landing-stats'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { sydneyToday } from '@/lib/event-store'
 import { isPastEvent } from '@/lib/seo'
+import { omitCommunitySecrets, redactCommunityPublic } from '@/lib/community-shared'
 export const dynamic = 'force-dynamic'
 
 /** DB pre-filter one day wide (cities west of Sydney can still be on yesterday); the exact per-city check is isPastEvent. */
@@ -19,19 +20,24 @@ async function list(userId: string) {
       event: {
         select: {
           id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true,
-          venueName: true, suburb: true, city: true, category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true,
+          venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true,
+          imageUrl: true, latitude: true, longitude: true,
           ticketUrl: true, organiserUrl: true, source: true, status: true, statusSource: true, lastVerifiedAt: true, duplicateOfId: true,
+          communityKey: true, locationVisibility: true, childrenInImage: true, imageKidSafe: true, communityFlags: true,
         },
       },
     },
   })
   const upcoming = rows.filter((r) => !isPastEvent(r.event)).map((r) => r.event)
   return NextResponse.json({
-    events: upcoming.map((event) => ({
-      ...event,
-      description: event.description?.slice(0, 400) ?? null,
-      lastVerifiedAt: event.lastVerifiedAt?.toISOString() ?? null,
-    })),
+    events: upcoming.map((event) => {
+      const opened = omitCommunitySecrets(redactCommunityPublic({
+        ...event,
+        description: event.description?.slice(0, 400) ?? null,
+        lastVerifiedAt: event.lastVerifiedAt?.toISOString() ?? null,
+      }))
+      return opened
+    }),
   })
 }
 

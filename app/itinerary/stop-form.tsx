@@ -2,21 +2,24 @@
 
 import { useState } from 'react'
 
-export type StopFormValues = { title: string; date: string; time: string; endTime: string; where: string; note: string }
-export const emptyStop: StopFormValues = { title: '', date: '', time: '', endTime: '', where: '', note: '' }
+export const STOP_CATEGORIES = ['Food and drink', 'Entertainment', 'Transport', 'Activity', 'Other'] as const
+export type StopFormValues = { title: string; date: string; time: string; endTime: string; where: string; note: string; category?: string }
+export const emptyStop: StopFormValues = { title: '', date: '', time: '', endTime: '', where: '', note: '', category: '' }
 
 const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm'
 
 /** Add / edit form for the visitor's own stops. Start and end times are both required. */
-export function StopForm({ initial, submitLabel, onSubmit, onCancel, keepDate }: {
+export function StopForm({ initial, submitLabel, onSubmit, onCancel, keepDate, showCategory = false }: {
   initial: StopFormValues
   submitLabel: string
   onSubmit: (v: StopFormValues) => void
   onCancel?: () => void
   /** After adding, keep the date so the next stop is quicker to add. */
   keepDate?: boolean
+  /** Itinerary-only. Other callers keep the original fields. */
+  showCategory?: boolean
 }) {
-  const [form, setForm] = useState(initial)
+  const [form, setForm] = useState<StopFormValues>({ ...initial, category: initial.category ?? '' })
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof StopFormValues) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value })
 
@@ -41,6 +44,14 @@ export function StopForm({ initial, submitLabel, onSubmit, onCancel, keepDate }:
       {form.time && form.endTime && form.endTime < form.time && <p className="sm:col-span-2 text-xs text-muted-foreground">Ends after midnight? Night owl energy. We&apos;ll count it as finishing the next morning.</p>}
       {error && <p role="alert" className="sm:col-span-2 text-xs text-destructive">{error}</p>}
       <input value={form.where} onChange={set('where')} placeholder="Where (address or place, for travel times)" className={`${field} sm:col-span-2`} aria-label="Where" />
+      {showCategory && (
+        <label className="text-xs text-muted-foreground sm:col-span-2">Category, optional
+          <select value={form.category ?? ''} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-1 w-full text-foreground`} aria-label="Category">
+            <option value="">No category</option>
+            {STOP_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+          </select>
+        </label>
+      )}
       <input value={form.note} onChange={set('note')} placeholder="Note (optional)" className={`${field} sm:col-span-2`} aria-label="Note" />
       <div className={`sm:col-span-2 grid gap-3 ${onCancel ? 'grid-cols-2' : ''}`}>
         {onCancel && <button type="button" onClick={onCancel} className="h-10 rounded-md border border-border text-sm font-semibold hover:bg-muted">Cancel</button>}
