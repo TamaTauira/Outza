@@ -58,7 +58,9 @@ function cosSlug(url: string | null | undefined): string | null {
 
 function bccId(url: string | null | undefined): string | null {
   if (!url) return null
-  const match = url.match(/eventid=(\d+)/i)
+  let text = url
+  try { text = decodeURIComponent(url) } catch { /* the raw link still gets a chance */ }
+  const match = text.match(/eventid=(\d+)/i)
   return match?.[1] ?? null
 }
 
