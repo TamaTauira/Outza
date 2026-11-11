@@ -23,7 +23,7 @@ export function VerifyEmailBanner() {
       const body = await res.json().catch(() => ({}))
       if (body.already) setNote('This email is already verified.')
       else if (body.limited) setNote('A link was sent recently. Check your inbox, then try again in an hour.')
-      else if (body.sent) setNote('Verification link sent.')
+      else if (body.sent) setNote('Link sent. Check your inbox.')
       else setNote('We couldn’t send just now. Try again shortly.')
     } catch {
       setNote('We couldn’t send just now. Try again shortly.')
@@ -35,7 +35,7 @@ export function VerifyEmailBanner() {
   return (
     <div className="border-b border-border bg-primary/10 py-2 text-sm text-foreground">
       <div className="vp-wrap flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6">
-        <p>Verify your email to publish events or pay. You can still browse and save.</p>
+        <p>Quick one: verify your email to publish or pay. Browse and save still work.</p>
         <button type="button" onClick={resend} disabled={busy} className="inline-flex h-9 items-center font-semibold text-primary underline disabled:opacity-60">
           {busy && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Send the link again
         </button>

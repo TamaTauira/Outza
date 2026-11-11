@@ -40,7 +40,7 @@ function InsightCard({ i }: { i: Insight }) {
       {i.highlight && <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1">LGBTIQ+</p>}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="font-semibold text-sm">{i.title}</p>
-        <span className={cn('text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0', CONF_STYLE[i.confidence])}>Confidence: {CONFIDENCE_LABEL[i.confidence]}</span>
+        <span className={cn('text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0', CONF_STYLE[i.confidence])}>How sure: {CONFIDENCE_LABEL[i.confidence]}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-1.5">{i.detail}</p>
       {!!i.links?.length && (
@@ -256,7 +256,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           </div>
 
           <details className={cn(card, 'group')}>
-            <summary className="cursor-pointer list-none font-semibold flex items-center justify-between gap-2"><span className="flex items-center gap-2"><Info className="w-4 h-4 text-primary" />Sources, freshness & limitations</span><ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" /></summary>
+            <summary className="cursor-pointer list-none font-semibold flex items-center justify-between gap-2"><span className="flex items-center gap-2"><Info className="w-4 h-4 text-primary" />Where this data comes from</span><ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" /></summary>
             <ul className="mt-4 space-y-3">
               {data.sources.map((s) => (
                 <li key={s.key} className="text-xs">

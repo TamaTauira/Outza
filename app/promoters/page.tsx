@@ -19,8 +19,8 @@ export default async function PromotersPage() {
   const isPromoter = role === 'PROMOTER' || role === 'ADMIN'
   const signedIn = !!session?.user
   const primaryHref = isPromoter || signedIn ? '/promoter' : '/signup?role=promoter'
-  const primaryLabel = isPromoter ? 'Open Promoter Dashboard' : signedIn ? 'Switch to a promoter account' : 'Create your free account'
-  const finalLabel = isPromoter ? 'Open Promoter Dashboard' : signedIn ? 'Switch to a promoter account' : 'Create your free promoter account'
+  const primaryLabel = isPromoter ? 'Open Your Dashboard' : signedIn ? 'Switch to a promoter account' : 'Create your free account'
+  const finalLabel = isPromoter ? 'Open Your Dashboard' : signedIn ? 'Switch to a promoter account' : 'Create your free promoter account'
   const localHref = isPromoter ? '/promoter?tab=local' : primaryHref
   const localLabel = 'Advertise my business'
   const proLabel = isPromoter ? 'Get Pro in your dashboard' : 'Go Pro'

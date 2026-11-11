@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils'
 export function ViewToggle({
   value,
   onChange,
-  listLabel = 'List View',
-  mapLabel = 'Map View',
-  label = 'Results view',
+  listLabel = 'List',
+  mapLabel = 'Map',
+  label = 'List or map',
 }: {
   value: 'list' | 'map'
   onChange: (next: 'list' | 'map') => void

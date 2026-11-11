@@ -7,7 +7,7 @@ export const VERIFY_TTL_MS = 24 * 60 * 60 * 1000
 export const RESET_MAX_PER_HOUR = 3
 export const VERIFY_MAX_PER_HOUR = 3
 
-export const GENERIC_RESET_MESSAGE = 'If an account exists for that email, a reset link is on its way. The link works once and expires in about an hour.'
+export const GENERIC_RESET_MESSAGE = 'If an account exists for that email, we’ll send a reset link. It works once and expires in about an hour.'
 export const VERIFY_GATE_MESSAGE = 'Verify your email before you publish or pay. You can still browse and save.'
 
 export type AuthPurpose = 'PASSWORD_RESET' | 'EMAIL_VERIFY'

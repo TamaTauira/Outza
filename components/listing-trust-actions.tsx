@@ -114,7 +114,7 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
             <div>
             <h3 className="font-semibold text-base">Claim this listing</h3>
             <p className="text-muted-foreground mt-1">
-              Are you the organiser? Verify your connection to this event to update its details and view performance. If your account email uses the same domain as the event’s website, the claim is accepted straight away. Otherwise we review it. Knowing the public details is not enough.
+              Are you the organiser? Verify your connection so you can update the details and see how it’s travelling. If your account email uses the same domain as the event’s website, the claim is accepted straight away. Otherwise a person reviews it. Knowing the public details is not enough.
             </p>
             </div>
             <button type="button" aria-label="Close" onClick={() => setOpen('')} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
@@ -126,7 +126,7 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
             <textarea className={field} rows={3} maxLength={2000} placeholder="Anything else that helps us check this claim" value={claim.message} onChange={(e) => setClaim({ ...claim, message: e.target.value })} />
             <p className="text-xs text-muted-foreground">Claiming is free. Signed in as {session?.user?.email}.</p>
             <button type="submit" disabled={busy} className="w-full h-10 rounded-md bg-primary text-primary-foreground font-semibold hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-2">
-              {busy && <Loader2 className="w-4 h-4 animate-spin" />}Submit claim
+              {busy && <Loader2 className="w-4 h-4 animate-spin" />}Submit Claim
             </button>
           </form>
         </section>

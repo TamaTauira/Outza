@@ -371,7 +371,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   <span className="block">Your city’s calling.</span>
                   <span className="block text-brand-gradient">Answer it.</span>
                 </h1>
-                <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Good gigs. Hidden gems. Things you didn’t know were happening. Your next favourite plan starts here.</p>
+                <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Good gigs. Hidden gems. Things you didn’t know were happening. Go on, have a peep.</p>
               </div>
               <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
             </div>
@@ -526,7 +526,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   enterKeyHint="search"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder={`Search ${city ? city : 'Australian'} events — artist, venue, jazz, trivia…`}
+                  placeholder={`Search ${city ? city : 'Australian'} gigs, venues, suburbs — jazz, trivia, whatever…`}
                   aria-label="Search events"
                   className="w-full h-14 pl-12 pr-12 rounded-xl border-2 border-border bg-background text-base placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20" />
                 
@@ -595,7 +595,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                       key={w.key}
                       onClick={() => pinWindow(w.key)}
                       disabled={disabled}
-                      title={w.todayOnly && !isToday ? 'Only available for today' : undefined}
+                      title={w.todayOnly && !isToday ? 'Today only' : undefined}
                       className={cn(
                         'shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-md text-sm font-medium transition-colors',
                         active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',

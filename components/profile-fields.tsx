@@ -61,7 +61,7 @@ export function ProfileFields({
         />
       </div>
       {showNote && <p className="text-xs text-muted-foreground leading-relaxed">
-        We only keep the year, not the day. Under-18s are left out of organiser insights. Organisers never see your year or postcode, and any group under 10 people stays hidden. <Link href="/privacy#audience" target="_blank" className="underline hover:text-foreground">Privacy policy</Link>
+        We only store the year, never the day. Under-18s sit out of organiser insights. Organisers never see your year or postcode, and groups under 10 stay hidden. <Link href="/privacy#audience" target="_blank" className="underline hover:text-foreground">Privacy policy</Link>
       </p>}
     </div>
   )

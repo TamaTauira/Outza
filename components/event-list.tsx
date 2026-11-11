@@ -265,7 +265,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       { key: 'next', label: 'Starting soon', rows: windowRank.soon.map(rowFor), possibly: false },
       { key: 'still', label: 'Still on', rows: windowRank.still.map(rowFor), possibly: false },
       { key: 'allday', label: 'All day', rows: windowRank.allday.map(rowFor), possibly: false },
-      { key: 'possibly', label: 'Possibly available', rows: windowRank.possibly.map(rowFor), possibly: true },
+      { key: 'possibly', label: 'Time not listed', rows: windowRank.possibly.map(rowFor), possibly: true },
     ].filter((section) => section.rows.length)
     : []
 
@@ -275,7 +275,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       {/* Summary row */}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{loading ? '…' : (windowRank ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length : timed.length)}</span> timed events
+        <span className="font-semibold text-foreground">{loading ? '…' : (windowRank ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length : timed.length)}</span> with a start time
         {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
@@ -322,9 +322,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           {(effectiveWindow === 'now' ? nowSections.length === 0 : eveningGroups.length === 0 && windowRank.possibly.length === 0) ? (
             <PeepEmpty
               title="Crickets. I checked twice."
-              body="Nothing with a confirmed time in this window. Untimed listings are listed separately when we have them."
+              body="Nothing with a set time in this window. All-day and untimed bits sit in their own section."
               action={onWindowChange ? (
-                <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show Full Day</button>
+                <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
               ) : null}
             />
           ) : effectiveWindow === 'now' ? nowSections.map((section) => {
@@ -336,7 +336,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
                   <BoardRow
                     key={ev.id}
                     ev={ev}
-                    status={section.possibly ? { label: 'Possibly available', tone: 'tbc' } : getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes)}
+                    status={section.possibly ? { label: 'Time not listed', tone: 'tbc' } : getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes)}
                     saved={isSaved(ev.id)}
                     onToggleSave={toggle}
                     active={activeId === ev.id}
@@ -359,9 +359,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           })}
           {effectiveWindow === 'evening' && windowRank.possibly.length > 0 && (
             <section>
-              <GroupBar label="Possibly available" count={windowRank.possibly.length} open={!closed.possibly} onToggle={() => setClosed((c) => ({ ...c, possibly: !c.possibly }))} />
+              <GroupBar label="Time not listed" count={windowRank.possibly.length} open={!closed.possibly} onToggle={() => setClosed((c) => ({ ...c, possibly: !c.possibly }))} />
               {!closed.possibly && windowRank.possibly.map((ev) => (
-                <BoardRow key={ev.id} ev={ev} status={{ label: 'Possibly available', tone: 'tbc' }} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
+                <BoardRow key={ev.id} ev={ev} status={{ label: 'Time not listed', tone: 'tbc' }} saved={isSaved(ev.id)} onToggleSave={toggle} trackSearch={!!searchQuery} active={activeId === ev.id} onLocate={onLocate} />
               ))}
             </section>
           )}
@@ -371,7 +371,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           title="Crickets. I checked twice."
           body={effectiveWindow !== 'all' ? 'Nothing in this window. Hit “Full day”, pick another date or loosen your filters.' : 'Try widening the dates: pick another date or loosen your filters.'}
           action={effectiveWindow !== 'all' && onWindowChange ? (
-            <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show Full Day</button>
+            <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
           ) : null}
         />
       ) : (
@@ -396,7 +396,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
           >
             {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
-            Load More ({Math.max(total - events.length, 0)} remaining)
+            Show {Math.max(total - events.length, 0)} More
           </button>
         </div>
       )}

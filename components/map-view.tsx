@@ -396,10 +396,10 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
           </button>
           <p className="pr-6 font-display text-lg font-bold leading-tight">Where you at?</p>
           <p className="mt-1.5 text-sm text-muted-foreground">Share your location and we'll zoom straight to the action around you.</p>
-          <p className="mt-2 text-xs text-muted-foreground">Your location is only used in your browser to centre the map. We don't store it.</p>
+          <p className="mt-2 text-xs text-muted-foreground">We only use it in your browser to centre the map. Nothing gets saved.</p>
           <div className="mt-3 flex gap-2">
-            <button onClick={locate} className="h-10 flex-1 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90">Share My Location</button>
-            <button onClick={declineLocation} className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Not Now</button>
+            <button onClick={locate} className="h-10 flex-1 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90">Use My Location</button>
+            <button onClick={declineLocation} className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Skip for Now</button>
           </div>
         </div>
       )}

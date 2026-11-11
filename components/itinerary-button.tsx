@@ -17,7 +17,7 @@ export function ItineraryButton({ event, compact = false, className }: { event: 
     if (inIt) { remove(event.id); toast('Gone. Itinerary’s lighter.') }
     else { add(eventToItem(event)); toast.success('Locked in. It’s on your Itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } }) }
   }
-  const label = inIt ? 'In My Itinerary' : 'Add to My Itinerary'
+  const label = inIt ? 'On Your Itinerary' : 'Add to Itinerary'
 
   if (compact) {
     return (

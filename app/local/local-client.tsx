@@ -94,7 +94,7 @@ export function LocalClient() {
         if (requestRef.current !== ticket) return
         if (d?.notice && !d?.items?.length) {
           setData(null)
-          setLoadError({ key, message: 'We couldn’t load local listings just now. Give it another go in a moment.' })
+          setLoadError({ key, message: 'Local list didn’t load. Try again in a tick.' })
           return
         }
         setData({ key, items: d?.items ?? [], counts: d?.counts ?? {} })
@@ -104,7 +104,7 @@ export function LocalClient() {
         console.error(e)
         if (requestRef.current !== ticket || (e?.name === 'AbortError' && !timedOut)) return
         setData(null)
-        setLoadError({ key, message: timedOut || e?.name === 'AbortError' ? 'Listings are taking too long to load. Nothing is waiting — try again in a moment, or list something yourself.' : 'We couldn’t load local listings just now.' })
+        setLoadError({ key, message: timedOut || e?.name === 'AbortError' ? 'This is taking ages. Try again, or be the first to list something.' : 'Local list didn’t load. Try again in a tick.' })
       })
       .finally(() => { clearTimeout(timer); release() })
     return () => { clearTimeout(timer); ac.abort(); release() }

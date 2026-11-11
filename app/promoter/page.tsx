@@ -18,8 +18,8 @@ export default async function PromoterPage() {
         <SiteHeader />
         <main className="vp-wrap grid items-center gap-8 px-4 pb-16 pt-8 lg:grid-cols-2 lg:gap-12 lg:pt-12">
           <div className="text-center lg:text-left">
-            <h1 className="mb-2 font-display text-2xl font-bold lg:text-4xl">Promoter accounts only</h1>
-            <p className="mb-6 text-muted-foreground">Switch your account to a promoter account to list and promote your events. You&apos;ll keep your saved events and follows.</p>
+            <h1 className="mb-2 font-display text-2xl font-bold lg:text-4xl">This bit’s for promoters</h1>
+            <p className="mb-6 text-muted-foreground">Flip to a promoter account to list and boost your events. Your saves and follows stay put.</p>
             <BecomePromoter />
           </div>
           <aside className="rounded-xl border border-border bg-card p-6 text-left shadow-sm">

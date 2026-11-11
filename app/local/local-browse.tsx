@@ -206,7 +206,7 @@ export function LocalBrowse({
             <p className="mt-1 text-sm text-muted-foreground">Try a wider window, or be the neighbour who puts the first thing on the noticeboard.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={() => { setCategory(''); setWhen('30') }} className="h-11 rounded-full bg-muted px-4 text-sm font-semibold">Widen the search</button>
-              <button type="button" onClick={onList} className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">List your community event</button>
+              <button type="button" onClick={onList} className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">List your thing free</button>
             </div>
           </div>
         )}
@@ -221,7 +221,7 @@ export function LocalBrowse({
                   <p className="mt-1 text-sm text-muted-foreground">{[ev.suburb, dayLabel(ev.date, today), clock(ev.time)].filter(Boolean).join(' · ')}</p>
                   {ev.blurb && <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{ev.blurb}</p>}
                   <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                    <span className="flex items-center gap-2">{priceLine(ev)}<Link href={ev.href || '/local'} className="text-sm font-semibold text-primary">View event</Link></span>
+                    <span className="flex items-center gap-2">{priceLine(ev)}<Link href={ev.href || '/local'} className="text-sm font-semibold text-primary">Take a look</Link></span>
                     <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export function LocalBrowse({
         <h2 className="font-display text-2xl font-bold">Got something happening?</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">Big community event or little neighbourhood find? There’s a place for it on VibePeep. Garage sales, fundraisers, school fetes, markets and pop-ups are all welcome, and it’s free to add yours.</p>
         <button type="button" onClick={onList} className="mt-4 inline-flex h-12 items-center gap-1.5 rounded-full bg-primary px-5 text-base font-semibold text-primary-foreground">
-          <Plus className="h-4 w-4" />List your community event
+          <Plus className="h-4 w-4" />List your thing free
         </button>
       </section>
     </div>

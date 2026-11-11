@@ -56,7 +56,7 @@ export function ProfileGate() {
       <form onSubmit={save} className="w-full max-w-md rounded-2xl bg-card shadow-2xl p-6 space-y-4">
         <div>
           <h2 id="profile-gate-title" className="font-display text-2xl font-bold">One quick thing before the fun</h2>
-          <p className="text-sm text-muted-foreground mt-1">We need the year you were born to finish setting up your account. We don’t ask for the day. Postcode is optional.</p>
+          <p className="text-sm text-muted-foreground mt-1">Pop in the year you were born (not the day) so we can finish your account. Postcode is optional.</p>
         </div>
         <ProfileFields idPrefix="gate" birthYear={birthYear} homePostcode={homePostcode} onBirthYear={setBirthYear} onPostcode={setHomePostcode} />
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}

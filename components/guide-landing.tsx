@@ -88,20 +88,20 @@ export function GuideLanding(props: {
           {total > 0 && (
             <p className="mt-3 hidden text-muted-foreground leading-relaxed md:block">
               {topic?.key === 'tonight' || when === 'tonight' ? (
-                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}. Listings without a start time are marked possibly available and sit after the timed ones. Morning-only times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
+                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}. Listings without a start time are marked time not listed and sit after the timed ones. Morning-only times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
               ) : (
-                <>We currently list <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
+                <>Right now there {total === 1 ? 'is' : 'are'} <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
                 {suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
               )}
-              {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` The most common categories on this page are ${list(cats).toLowerCase()}.`}
-              {venues.length > 0 && ` Venues with the most listings on this page include ${list(venues)}.`}
+              {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` Plenty of ${list(cats).toLowerCase()} if that’s your thing.`}
+              {venues.length > 0 && ` You’ll see ${list(venues)} a fair bit on this page.`}
               {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} of the events shown here ${freeShown === 1 ? 'is' : 'are'} listed as free.`}
               {local.length > 0 && ` ${local.length} ${local.length === 1 ? 'is a community listing' : 'are community listings'} from VibePeep Local.`}
             </p>
           )}
           {refreshed && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Listings last refreshed <time dateTime={refreshed.toISOString()}>{refreshed.toLocaleString('en-AU', { timeZone: city.tz, day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</time> ({city.name} time). Past events drop off automatically.
+              Listings updated <time dateTime={refreshed.toISOString()}>{refreshed.toLocaleString('en-AU', { timeZone: city.tz, day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</time> ({city.name} time). Past events drop off on their own.
             </p>
           )}
         </header>
@@ -156,14 +156,14 @@ export function GuideLanding(props: {
             {local.length > 0 && (
               <section aria-labelledby="local-listings">
                 <h2 id="local-listings" className="font-display text-xl font-bold mb-1">From VibePeep Local</h2>
-                <p className="text-sm text-muted-foreground mb-4">Public community listings added by organisers. <Link href="/local?tab=submit" className="text-primary underline">List yours free</Link>.</p>
+                <p className="text-sm text-muted-foreground mb-4">Neighbourhood listings from locals. <Link href="/local?tab=submit" className="text-primary underline">List yours free</Link>.</p>
                 <LocalListingCards items={local.slice(0, 30)} listingQuery={listingQuery} />
               </section>
             )}
             {total > 0 && (
               <p className="text-sm leading-relaxed text-muted-foreground md:hidden">
                 {topic?.key === 'tonight' || when === 'tonight' ? (
-                  <>Tonight covers 5pm onwards in {city.name}. Untimed listings are marked possibly available.</>
+                  <>Tonight covers 5pm onwards in {city.name}. Untimed listings are marked time not listed.</>
                 ) : (
                   <>{total} upcoming {total === 1 ? 'event' : 'events'}{suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
                 )}

@@ -70,7 +70,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-5 pb-20">
-      <p className="text-xs text-muted-foreground">{city} · {role === 'ADMINISTRATOR' ? 'Venue administrator' : 'Venue manager'}</p>
+      <p className="text-xs text-muted-foreground">{city} · {role === 'ADMINISTRATOR' ? 'You manage this venue' : 'Venue manager'}</p>
       <h1 className="font-display text-2xl sm:text-3xl font-bold">{name}</h1>
       <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 text-sm" aria-label="Venue sections">
         {tabs.map((item) => (
@@ -82,10 +82,10 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
         <section className="mt-5 space-y-3">
           <p className="text-sm text-muted-foreground">{events.length} upcoming listing{events.length === 1 ? '' : 's'} at this venue. Editing an event needs a separate organiser grant.</p>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setTab('My Venue')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Edit Venue Profile</button>
-            <button type="button" onClick={() => setTab('Upcoming Events')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">View Upcoming Events</button>
-            <button type="button" onClick={() => setTab('Analytics')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">View Analytics</button>
-            <button type="button" onClick={() => setTab('Promotions')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Promote Venue</button>
+            <button type="button" onClick={() => setTab('My Venue')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Edit Profile</button>
+            <button type="button" onClick={() => setTab('Upcoming Events')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">What’s On</button>
+            <button type="button" onClick={() => setTab('Analytics')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">The Numbers</button>
+            <button type="button" onClick={() => setTab('Promotions')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Promote the Venue</button>
           </div>
         </section>
       )}

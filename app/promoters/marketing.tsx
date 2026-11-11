@@ -36,7 +36,7 @@ const PATHS = [
 const STEPS = [
   { n: '01', title: 'Claim', Icon: CalendarPlus, body: 'Claim a listing already on the board, or create one free. A matching email domain is accepted straight away; otherwise we check the claim by hand.' },
   { n: '02', title: 'Boost', Icon: Megaphone, body: 'Pick Boost, Spotlight or Headliner, preview the sponsored card, and pay once. It starts as soon as payment is confirmed.' },
-  { n: '03', title: 'Report', Icon: BarChart3, body: 'Results shows the day-by-day read, the funnel, reactions, Spotlight and where people saw the listing. Views and clicks unlock when the event is promoted, or with Promoter Pro. Email a recap weekly, or when you ask.' },
+  { n: '03', title: 'Report', Icon: BarChart3, body: 'Results shows the day-by-day read: opens, saves, reactions, Spotlight and where people found you. Full reads unlock with a campaign or Promoter Pro. Email a recap weekly, or when you ask.' },
 ] as const
 
 const PLAN_POINTS: Record<string, string[]> = {
@@ -72,8 +72,8 @@ export function Hero({ primaryHref, primaryLabel, showSignIn }: { primaryHref: s
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/85">
             {[
               [Ticket, 'Free event listings'],
-              [SlidersHorizontal, 'Flexible promotion options'],
-              [LineChart, 'Measurable results'],
+              [SlidersHorizontal, 'Promote when you’re ready'],
+              [LineChart, 'See what’s working'],
             ].map(([Icon, label]) => {
               const ItemIcon = Icon as typeof Ticket
               return (
@@ -95,7 +95,7 @@ export function PathCards() {
   return (
     <section id="paths" className="scroll-mt-24 py-12 sm:py-14">
       <div className={sectionPad}>
-        <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Choose what you want to do</h2>
+        <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">What are you here for?</h2>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {PATHS.map((path) => (
             <a
@@ -144,7 +144,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
     <section id="plans" className="scroll-mt-24 bg-card/40 py-12 sm:py-16">
       <div className={sectionPad}>
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#9F1239]">Monthly · separate from one-off packages</p>
-        <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Built for businesses that do more.</h2>
+        <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">For crews who always have something on.</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">For venues, organisers and businesses that have things happening regularly.</p>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {BUSINESS_PLANS.map((plan) => (
@@ -171,8 +171,8 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
         </div>
         <p className="mt-5 text-sm text-muted-foreground">Subscribe from the promoter dashboard once a plan is on sale. If card billing is not switched on, the dashboard takes a quote instead and does not charge a card. Listing an event stays free. Coming soon plans on this page can’t be bought.</p>
         <div className="mt-5 rounded-2xl border-l-4 border-[#9A3412] bg-[#9A3412]/10 px-5 py-4">
-          <p className="font-semibold">Our principle: we charge for better marketing tools, never for the basic ability to contribute quality events.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Free submissions help grow the listings that bring people to VibePeep — so listing stays free.</p>
+          <p className="font-semibold">We charge for reach and tools. Listing an event stays free.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Free listings help fill the board that brings people to VibePeep, so the basic listing never costs a cent.</p>
         </div>
       </div>
     </section>
@@ -266,7 +266,7 @@ export function DashboardSection() {
     <section id="dashboard" className="scroll-mt-24 py-12 sm:py-16">
       <div className={sectionPad}>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Your events. Your numbers. Your next move.</h2>
-        <p className="mt-2 max-w-2xl text-muted-foreground">Manage events, buy promotions and see what’s working — all in one place.</p>
+        <p className="mt-2 max-w-2xl text-muted-foreground">Your listings, your campaigns, your numbers. One screen.</p>
         <div className="mt-8">
           <DashboardPreview />
         </div>

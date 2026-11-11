@@ -60,7 +60,7 @@ export function EventReactions({ eventId, signedIn }: { eventId: string; signedI
       if (body.counts) setCounts({ ...EMPTY, ...body.counts })
       if (Array.isArray(body.mine)) setMine(body.mine)
     } catch {
-      setNote('Could not save that reaction')
+      setNote('That didn’t stick. Try again.')
     } finally {
       setBusy(null)
     }
@@ -68,7 +68,7 @@ export function EventReactions({ eventId, signedIn }: { eventId: string; signedI
 
   return (
     <div>
-      <p className="text-xs font-medium text-muted-foreground mb-1.5">React</p>
+      <p className="text-xs font-medium text-muted-foreground mb-1.5">What’s the vibe?</p>
       <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Event reactions">
         {REACTION_KINDS.map((kind) => {
           const active = mine.includes(kind)

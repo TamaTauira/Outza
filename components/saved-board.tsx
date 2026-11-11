@@ -77,7 +77,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
       <section className="overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 pb-8 pt-24 text-white sm:px-8 sm:pt-28">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Saved events</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">Saved</p>
             <h1 className="mt-2 font-display text-4xl font-bold tracking-tight sm:text-5xl">The keepers.</h1>
             <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Your little collection of good times. All the things you’ve spotted, loved and don’t want to forget.</p>
           </div>
@@ -86,7 +86,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
       </section>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved events">
+        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
           {tabs.map((item) => (
                 <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
                   {item.label}{item.count != null ? ` (${item.count})` : ''}
@@ -145,9 +145,9 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
                   active={focusId === ev.id}
                   onSave={() => toggle(ev)}
                   onPlan={() => {
-                    if (itinerary.has(ev.id)) { itinerary.remove(ev.id); toast('Removed from your itinerary'); return }
+                    if (itinerary.has(ev.id)) { itinerary.remove(ev.id); toast('Dropped from the plan.'); return }
                     itinerary.add(eventToItem(ev))
-                    toast.success('Added to your itinerary')
+                    toast.success('On the itinerary.')
                   }}
                   onMap={located(ev) ? () => { setFocusId(ev.id); chooseView('map') } : undefined}
                 />
@@ -182,7 +182,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               <h2 className="font-display text-xl font-bold">Looking for more to save?</h2>
               <p className="mt-1 text-sm text-muted-foreground">The good stuff is still out there.</p>
             </div>
-            <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find events</button>
+            <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">See What’s On</button>
           </section>
     </div>
   )

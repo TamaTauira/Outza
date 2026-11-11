@@ -128,7 +128,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               </div>
             )}
             {event.availabilityKind === 'possibly' && (
-              <p className="text-xs text-muted-foreground">Possibly available</p>
+              <p className="text-xs text-muted-foreground">Time not listed</p>
             )}
 
             {/* Price + CTA */}
@@ -162,7 +162,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{event.title}</p>
         <p className="truncate text-sm text-muted-foreground">
-          {event.availabilityKind === 'possibly' ? 'Possibly available' : (clock ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
+          {event.availabilityKind === 'possibly' ? 'Time not listed' : (clock ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
         </p>
       </div>
       <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{price.value}</span>

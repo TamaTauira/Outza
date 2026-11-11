@@ -104,7 +104,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
       const res = await fetch('/api/ai-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: text.length >= 2 ? text : '', city, hints: h, ...(coords ?? {}) }) })
       if (id !== reqId.current) return
       const d = await res.json().catch(() => ({}))
-      if (!res.ok) { setError(d?.error ?? 'Search is unavailable right now.'); setData(null); return }
+      if (!res.ok) { setError(d?.error ?? 'Can’t search just now. Give it another go in a tick.'); setData(null); return }
       if (d?.needsLocation && !coords) {
         if (typeof navigator === 'undefined' || !navigator.geolocation) {
           setError('Allow location for “near me”, or name a city or suburb. We won’t guess from the board city.')
@@ -502,7 +502,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
       {!planning && data && (
         <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span className="text-white/60">{data.ai ? 'VibePeep AI understood:' : 'Searching for:'}</span>
+            <span className="text-white/60">{data.ai ? 'Got it:' : 'Searching for:'}</span>
             {understood(data.filters, today).map((c) => <span key={c} className="rounded-full bg-primary/15 text-[#ffb4a6] px-2.5 py-0.5 ring-1 ring-primary/30">{c}</span>)}
           </div>
           {data.relaxed && <p className="mt-2 text-xs sm:text-sm text-white/70">Couldn’t nail every word, but these tick most of your boxes.</p>}
@@ -534,12 +534,12 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
           )}
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-white/55">Real listings only. Our AI reads your request; it never makes events up.</p>
+            <p className="text-xs text-white/55">Real events only. We read your ask. We don’t invent listings.</p>
             <div className="flex gap-2">
-              <button type="button" onClick={() => { reqId.current++; setBusy(false); setData(null); setQ(''); setHints(NO_HINTS); setError(''); inputRef.current?.focus() }} className="rounded-lg px-3 h-9 text-sm text-white/80 hover:text-white hover:bg-white/[0.06]">New Search</button>
+              <button type="button" onClick={() => { reqId.current++; setBusy(false); setData(null); setQ(''); setHints(NO_HINTS); setError(''); inputRef.current?.focus() }} className="rounded-lg px-3 h-9 text-sm text-white/80 hover:text-white hover:bg-white/[0.06]">Start Fresh</button>
               {data.total > 0 && (
                 <button type="button" onClick={() => onShowAll(data.filters)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-3 h-9 text-sm font-medium hover:bg-white/[0.14]">
-                  {data.total > data.results.length ? `See All ${data.total} on the Board` : 'Open on the Board'}<ArrowRight className="w-3.5 h-3.5" />
+                  {data.total > data.results.length ? `See all ${data.total} on the board` : 'Open on the board'}<ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>

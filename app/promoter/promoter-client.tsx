@@ -155,7 +155,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
             {tab === 'promote' && (
               <section className={card}>
                 <h2 className="font-display text-xl font-bold mb-1">Build a campaign</h2>
-                <p className="text-sm text-muted-foreground mb-6">Four quick steps. Your campaign starts the moment payment is confirmed.</p>
+                <p className="text-sm text-muted-foreground mb-6">Four steps. Live as soon as payment lands.</p>
                 <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} initialDays={promoteDays ?? undefined} onEventChange={setPromoteId} onDone={() => { load(); setTab('events') }} />
               </section>
             )}
@@ -237,8 +237,8 @@ function ReportsCard({ account, onAccount }: { account: Account; onAccount: (a: 
   }
   return (
     <div className={card}>
-      <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /><p className="font-semibold text-sm">Emailed performance reports</p></div>
-      <p className="text-xs text-muted-foreground mt-1">Views, ticket clicks, saves and traffic sources for your events, sent to your account email.</p>
+      <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-primary" /><p className="font-semibold text-sm">Email me the numbers</p></div>
+      <p className="text-xs text-muted-foreground mt-1">Opens, ticket taps, saves and where people came from, straight to your inbox.</p>
       <div className="mt-3 flex items-center justify-between gap-3 text-sm">
         <span id="weekly-report-label">Weekly report</span>
         <button type="button" role="switch" aria-labelledby="weekly-report-label" aria-checked={!!account.weeklyReport} onClick={toggle} disabled={saving}
@@ -341,8 +341,8 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
           </ol>
           {!events.length && (
             <div className="mt-6 rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">No listings on your dashboard yet</p>
-              <p className="mt-1">Create an event you can edit, claim one you organise, or add a local business ad. Views and clicks show up here once people open your listings.</p>
+              <p className="font-medium text-foreground">Nothing on your board yet</p>
+              <p className="mt-1">Create an event you can edit, claim one you organise, or add a local business ad. Views and ticket taps show up here once people open your listings.</p>
             </div>
           )}
           {events.length > 0 && <ListingHealth events={events} onPromote={onPromote} goEvents={goEvents} />}

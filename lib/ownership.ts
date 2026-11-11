@@ -38,15 +38,15 @@ export const CLAIMED_TICK_COPY = {
 
 export const MANAGE_VENUE_LABEL = 'Manage this Venue'
 export const MANAGE_VENUE_BLURB =
-  'Own or manage this venue? Claim your free profile to update venue information, view upcoming events and understand how people discover your venue.'
+  'Run this room? Claim your free profile to fix the details, see what’s on, and peek at who’s looking.'
 
 export const MANAGE_EVENT_LABEL = 'Manage this event'
 export const MANAGE_EVENT_BLURB =
-  'Are you the organiser? Verify your connection to this event to update its details and view performance.'
+  'Organising this one? Verify your connection to update the details and see how it’s travelling.'
 
 export const SOURCE_FIRST_HEADING = 'Keep your event details in sync'
 export const SOURCE_FIRST_BODY =
-  'We recommend updating your event details at the original event source. This helps keep information consistent across VibePeep and other places where your event appears. Once the original source updates, VibePeep will automatically refresh your listing when new information becomes available.'
+  'Update the details at the original source when you can. That keeps the same story everywhere the event shows up. Once that source changes, VibePeep picks it up on the next refresh.'
 
 export const DIRECT_EDIT_TITLE = 'Editing directly in VibePeep'
 export const DIRECT_EDIT_BODY =

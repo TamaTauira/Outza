@@ -37,8 +37,8 @@ function LoginForm() {
   }
 
   const modes = [
-    { key: 'CONSUMER' as const, label: 'Event-goer', sub: 'Saved events & emails', Icon: Ticket },
-    { key: 'PROMOTER' as const, label: 'Promoter', sub: 'Dashboard & packages', Icon: Megaphone },
+    { key: 'CONSUMER' as const, label: 'Event-goer', sub: 'Saves & emails', Icon: Ticket },
+    { key: 'PROMOTER' as const, label: 'Promoter', sub: 'List, boost, check the numbers', Icon: Megaphone },
   ]
 
   return (
@@ -65,11 +65,11 @@ function LoginForm() {
         <Input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
         <p className="text-right text-sm"><Link href="/forgot-password" className="text-primary font-medium hover:underline">Forgot password</Link></p>
       </div>
-      {created && !error && <p className="text-sm text-foreground" role="status">Account created. Sign in with the email and password you just chose. Check your email to verify the address.</p>}
+      {created && !error && <p className="text-sm text-foreground" role="status">You’re in. Sign in with the email and password you just picked, and peek at your inbox to verify the address.</p>}
       {params.get('reset') === '1' && !error && <p className="text-sm text-foreground" role="status">Password updated. Sign in with the new one.</p>}
       {error && <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
-        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{mode === 'PROMOTER' ? 'Sign In to Promoter Dashboard' : 'Sign In'}
+        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{mode === 'PROMOTER' ? 'Promoter Sign In' : 'Sign In'}
       </Button>
 
       {mode === 'PROMOTER' ? (

@@ -68,7 +68,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
           <p className="text-sm text-muted-foreground">Dinner, drinks, parking and more near {venue}.</p>
         </div>
         {canBuy && !open && (
-          <button onClick={() => setOpen(true)} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold">Recommend your business here · {formatAud(LOCAL_AD.priceCents)}</button>
+          <button onClick={() => setOpen(true)} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold">Put your venue here · {formatAud(LOCAL_AD.priceCents)}</button>
         )}
       </div>
 
@@ -98,9 +98,9 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
         </div>
       )}
       {ads.length > 0 && !promoter && (
-        <p className="mt-3 text-xs text-muted-foreground">Recommendations are paid placements from local businesses. <Link href="/promoters#local" className="underline">Advertise your business</Link></p>
+        <p className="mt-3 text-xs text-muted-foreground">Sponsored by locals nearby. <Link href="/promoters#local" className="underline">Advertise your business</Link></p>
       )}
-      {ads.length > 0 && promoter && youHaveOne && <p className="mt-3 text-xs text-muted-foreground">Your recommendation is running on this event. Track it in your promoter dashboard.</p>}
+      {ads.length > 0 && promoter && youHaveOne && <p className="mt-3 text-xs text-muted-foreground">Your ad’s live here. Tweak it in your promoter dashboard.</p>}
 
       {open && (
         <form onSubmit={submit} className="mt-5 rounded-xl bg-card border border-primary/40 p-5 shadow-sm space-y-4">

@@ -92,10 +92,10 @@ function TravelLeg({ from, to, locating }: { from: ItineraryItem; to: ItineraryI
   const planned = planLeg(from, to)
   if (planned.kind === 'same') return <div className={box}><MapPin className="h-3.5 w-3.5" />Same location</div>
   if (planned.kind === 'different-city') {
-    return <div className={box}><Navigation className="h-3.5 w-3.5" />These stops are in {planned.fromCity} and {planned.toCity}. No travel time — they are not one trip unless you mean them to be.</div>
+    return <div className={box}><Navigation className="h-3.5 w-3.5" />These stops are in {planned.fromCity} and {planned.toCity}. Different cities, so we’re not calling that one trip.</div>
   }
   if (planned.kind === 'unreliable') {
-    return <div className={box}><Navigation className="h-3.5 w-3.5" />Same city, but the map pins are too far apart to trust. Open the venue for directions rather than using this estimate.</div>
+    return <div className={box}><Navigation className="h-3.5 w-3.5" />Same city, but the pins look too far apart. Hit Directions for the real route.</div>
   }
   if (planned.kind === 'missing') {
     if (locating) return <div className={box}><Loader2 className="h-3.5 w-3.5 animate-spin" />Working out travel time…</div>
@@ -271,9 +271,9 @@ export default function ItineraryPage() {
             .sort((a, b) => a.km - b.km)
             .slice(0, 8)
           setNearbyHits(ranked)
-          if (!ranked.length) setNearbyNote('Nothing else with a trusted pin within 8 km of that spot on this day.')
+          if (!ranked.length) setNearbyNote('Nothing else with a solid map pin within about 8 km that day.')
         })
-        .catch(() => setNearbyNote('The event list didn’t load. Try again in a moment.'))
+        .catch(() => setNearbyNote('Couldn’t load events just now. Give it another go.'))
         .finally(() => setNearbyBusy(false))
     }
     if (anchor?.lat != null && anchor.lng != null) {
@@ -282,12 +282,12 @@ export default function ItineraryPage() {
     }
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setNearbyBusy(false)
-      setNearbyNote('Add a stop with a location first. This browser can’t share a location either.')
+      setNearbyNote('Add a stop with an address first. This browser won’t share where you are.')
       return
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => run({ lat: pos.coords.latitude, lng: pos.coords.longitude, city: null }),
-      () => { setNearbyBusy(false); setNearbyNote('No located stop, and location stayed off. Add a place to a stop and I’ll look from there.') },
+      () => { setNearbyBusy(false); setNearbyNote('No pin to start from, and location’s off. Add a place to a stop and we’ll look from there.') },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     )
   }
@@ -297,7 +297,7 @@ export default function ItineraryPage() {
     try {
       if (navigator.share) { await navigator.share({ title, text }); return }
       await navigator.clipboard.writeText(text)
-      toast.success('Plan copied')
+      toast.success('Plan’s copied. Send it.')
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return
       toast('Couldn’t share that just now')
@@ -328,9 +328,9 @@ export default function ItineraryPage() {
           <div className="mt-8">
             <div className="rounded-3xl border border-[#FF4E6A]/20 bg-[#fff5f6] px-4 py-8 text-center dark:bg-[#2a1218] sm:px-8">
               <CalendarRange className="mx-auto h-8 w-8 text-primary" />
-              <h2 className="mt-3 font-display text-3xl font-bold">A blank canvas. A thousand possibilities.</h2>
-              <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Find something worth going to, add it to your itinerary and let VibePeep help sort out the rest.</p>
-              <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">It stays on this device for the account you’re signed in with, and clears from view when you sign out. It’s separate from Saved.</p>
+              <h2 className="mt-3 font-display text-3xl font-bold">Nothing lined up yet.</h2>
+              <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Spot something worth leaving the house for, add it here, and stack the rest around it.</p>
+              <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <button type="button" onClick={() => openPanel('event')} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Start planning.</button>
                 {status !== 'authenticated' && <Link href="/login?next=/itinerary" className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Sign in</Link>}
@@ -353,7 +353,7 @@ export default function ItineraryPage() {
                   {naming ? (
                     <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); saveLabel(nameDraft); setNaming(false) }}>
                       <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={80} aria-label="Itinerary name" className="h-11 min-w-[16rem] rounded-full border border-border bg-background px-4 text-sm" />
-                      <button type="submit" className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Save name</button>
+                      <button type="submit" className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Save Name</button>
                       <button type="button" onClick={() => setNaming(false)} className="h-11 rounded-full border border-border px-4 text-sm">Cancel</button>
                     </form>
                   ) : <h2 className="font-display text-2xl font-bold sm:text-3xl">{title}</h2>}
@@ -367,7 +367,7 @@ export default function ItineraryPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={share} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Share2 className="h-4 w-4" /> Share</button>
-                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Edit itinerary</button>
+                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename Plan</button>
                   <details className="relative">
                     <summary className="flex h-11 cursor-pointer list-none items-center rounded-full border border-border px-4 text-sm font-semibold">More options</summary>
                     <button type="button" onClick={() => { if (confirm('Clear the whole plan?')) clear() }} className="absolute right-0 z-10 mt-2 whitespace-nowrap rounded-xl border border-border bg-popover px-4 py-3 text-sm shadow-lg">Clear all</button>
@@ -399,7 +399,7 @@ export default function ItineraryPage() {
                                 {editing === i.id ? (
                                   <>
                                     <p className="mb-3 flex items-center gap-2 text-sm font-semibold"><Pencil className="h-4 w-4 text-primary" />Tweak your stop</p>
-                                    <StopForm showCategory initial={{ title: i.title, date: i.date, time: i.time ?? '', endTime: i.endTime ?? '', where: i.place ?? i.venueName ?? '', note: i.note ?? '', category: i.stopCategory ?? '' }} submitLabel="Save Changes" onSubmit={(v) => saveEdit(i, v)} onCancel={() => setEditing(null)} />
+                                    <StopForm showCategory initial={{ title: i.title, date: i.date, time: i.time ?? '', endTime: i.endTime ?? '', where: i.place ?? i.venueName ?? '', note: i.note ?? '', category: i.stopCategory ?? '' }} submitLabel="Save Stop" onSubmit={(v) => saveEdit(i, v)} onCancel={() => setEditing(null)} />
                                   </>
                                 ) : (
                                   <>
@@ -432,7 +432,7 @@ export default function ItineraryPage() {
                                     )}
                                     {clash.has(i.id) && (
                                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-amber-700 dark:text-amber-400">
-                                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />Overlaps another stop on this day</span>
+                                        <span className="flex items-center gap-1.5"><AlertTriangle className="h-3.5 w-3.5" />Clashes with another stop today</span>
                                         <button type="button" onClick={() => dismissClash(i)} className="font-semibold underline underline-offset-2 hover:text-foreground">All good, I’ll head off early. Hide this</button>
                                       </div>
                                     )}
@@ -463,8 +463,8 @@ export default function ItineraryPage() {
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <button type="button" onClick={() => openPanel('event')} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary">
               <Search className="h-5 w-5 text-primary" />
-              <p className="mt-2 font-semibold">Add an event from VibePeep</p>
-              <p className="mt-1 text-sm text-muted-foreground">Search the live listings and drop one in.</p>
+              <p className="mt-2 font-semibold">Add something from the board</p>
+              <p className="mt-1 text-sm text-muted-foreground">Search what’s on and drop it in.</p>
             </button>
             <button type="button" onClick={() => openPanel('custom')} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary">
               <Plus className="h-5 w-5 text-primary" />
@@ -474,12 +474,12 @@ export default function ItineraryPage() {
             <button type="button" onClick={() => openPanel('nearby')} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary">
               <MapPin className="h-5 w-5 text-primary" />
               <p className="mt-2 font-semibold">Find something nearby</p>
-              <p className="mt-1 text-sm text-muted-foreground">Real listings within 8 km of your last located stop.</p>
+              <p className="mt-1 text-sm text-muted-foreground">More things on, within about 8 km of your last pin.</p>
             </button>
           </div>
           {panel === 'event' && (
             <div className="mt-4 rounded-2xl border border-border bg-card p-4">
-              <label className="text-sm font-semibold">Search events
+              <label className="text-sm font-semibold">Find an event
                 <input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)} placeholder="Artist, venue, jazz…" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
               </label>
               {eventBusy && <p className="mt-3 text-sm text-muted-foreground">Looking…</p>}

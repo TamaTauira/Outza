@@ -216,8 +216,8 @@ export function HomeDiscover({
 
   return (
     <div className="mb-8 space-y-10">
-      <section aria-label="Explore by mood">
-        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Explore by mood.</h2>
+      <section aria-label="What's the mood?">
+        <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">What’s the mood?</h2>
         <p className="mt-1 text-muted-foreground">What are you in the mood for?</p>
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {MOODS.map((mood, index) => (
@@ -247,7 +247,7 @@ export function HomeDiscover({
                     <div className="flex items-end justify-between gap-3 p-4">
                       <div>
                         <h3 className="font-display text-xl font-bold">{row.suburb}</h3>
-                        <p className="text-sm text-muted-foreground">{row.count} {row.count === 1 ? 'listing' : 'listings'}</p>
+                        <p className="text-sm text-muted-foreground">{row.count} {row.count === 1 ? 'thing on' : 'things on'}</p>
                       </div>
                       <span className="text-sm font-semibold text-primary">See them</span>
                     </div>
