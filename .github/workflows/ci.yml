@@ -32,9 +32,9 @@ jobs:
       - name: Install
         run: corepack enable && corepack yarn install --immutable
       - name: Install Chromium and WebKit
-        run: corepack yarn exec playwright install --with-deps chromium webkit
+        run: corepack yarn exec playwright install --with-deps chromium chromium-headless-shell webkit
       - name: Public smoke and axe
-        run: corepack yarn exec playwright test --grep-invert "mascot chrome"
+        run: corepack yarn exec playwright test e2e/public.spec.ts e2e/signed-in.spec.ts
         env:
           CI: '1'
           PLAYWRIGHT_BASE_URL: https://outza-outza.vercel.app
