@@ -41,6 +41,8 @@ jobs:
           CI: '1'
           PLAYWRIGHT_BASE_URL: https://outza-outza.vercel.app
       - name: Preview URL for the mascot collision test
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             branch="${GITHUB_HEAD_REF//\//-}"
@@ -48,12 +50,20 @@ jobs:
           else
             url="https://outza-outza.vercel.app"
           fi
-          echo "MASCOT_COLLISION_URL=$url" >> "$GITHUB_ENV"
+          ready() { [ "$(curl -s -o /dev/null -w "%{http_code}" "$1" || true)" = "200" ]; }
           for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
-            if [ "$code" = "200" ]; then
+            if ready "$url"; then
+              echo "MASCOT_COLLISION_URL=$url" >> "$GITHUB_ENV"
               echo "ready $url"
               exit 0
+            fi
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              found=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --jq '[.[] | select(.user.login=="vercel[bot]") | .body] | last' | grep -oE 'outza[a-z0-9.-]*\.vercel\.app' | tail -1 || true)
+              if [ -n "$found" ] && ready "https://$found"; then
+                echo "MASCOT_COLLISION_URL=https://$found" >> "$GITHUB_ENV"
+                echo "ready https://$found"
+                exit 0
+              fi
             fi
             sleep 10
           done
