@@ -728,6 +728,21 @@ export function attachRoam(root: HTMLElement): () => void {
     return y
   }
 
+  /** Small pills such as FREE EVENT. Not the whole card. */
+  const labelRects = () => {
+    const rects: DOMRect[] = []
+    document.querySelectorAll('div, span, a').forEach((el) => {
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam, .vp-site-header, .vp-bottom-nav')) return
+      if (el.children.length > 1) return
+      const text = (el.textContent || '').trim()
+      if (text.length < 3 || text.length > 24) return
+      const r = el.getBoundingClientRect()
+      if (r.width < 28 || r.width > 150 || r.height < 14 || r.height > 34) return
+      rects.push(r)
+    })
+    return rects
+  }
+
   const clearBubbleShift = () => {
     for (const prop of ['top', 'left', 'right', 'bottom', 'translate', 'margin', 'max-width', 'width']) {
       bubble.style.removeProperty(prop)
@@ -765,18 +780,18 @@ export function attachRoam(root: HTMLElement): () => void {
       return
     }
     const size = 44
+    const tail = bubble.dataset.tail
     const spots = [
-      { x: mascot.left - 10 - size, y: Math.max(mascot.top + mascot.height * 0.42, (bubbleBox?.bottom ?? 0) + 8) },
-      { x: mascot.left - 10 - size, y: mascot.top + 4 },
-      { x: mascot.left + (mascot.width - size) / 2, y: mascot.bottom + 8 },
-      { x: mascot.right + 8, y: mascot.top + mascot.height * 0.2 },
+      { x: mascot.right - size, y: mascot.top - 6 - size },
+      { x: mascot.left, y: mascot.top - 6 - size },
+      { x: tail === 'left' ? mascot.left - 4 - size : mascot.right + 4, y: mascot.top },
+      { x: tail === 'left' ? mascot.right + 4 : mascot.left - 4 - size, y: mascot.top },
     ]
     for (const spot of spots) {
-      const x = Math.max(8, Math.min(window.innerWidth - 8 - size, spot.x))
-      const y = Math.max(8, Math.min(window.innerHeight - 8 - size, spot.y))
-      const rect = new DOMRect(x, y, size, size)
+      if (spot.x < 8 || spot.y < 8 || spot.x + size > window.innerWidth - 8 || spot.y + size > window.innerHeight - 8) continue
+      const rect = new DOMRect(spot.x, spot.y, size, size)
       if (blocked(rect)) continue
-      btn.style.transform = `translate(${(x - natural.left).toFixed(1)}px, ${(y - natural.top).toFixed(1)}px)`
+      btn.style.transform = `translate(${(spot.x - natural.left).toFixed(1)}px, ${(spot.y - natural.top).toFixed(1)}px)`
       return
     }
   }
@@ -788,10 +803,11 @@ export function attachRoam(root: HTMLElement): () => void {
       return
     }
     const margin = 8
+    const gap = 2
     const topLimit = keepOutBottom()
     const slot = bubble.parentElement
     if (!slot) return
-    bubble.style.setProperty('max-width', `${Math.min(176, window.innerWidth - 16)}px`, 'important')
+    bubble.style.setProperty('max-width', `${Math.min(168, window.innerWidth - 16)}px`, 'important')
     bubble.style.setProperty('width', 'max-content', 'important')
     bubble.style.setProperty('bottom', 'auto', 'important')
     bubble.style.setProperty('right', 'auto', 'important')
@@ -802,25 +818,30 @@ export function attachRoam(root: HTMLElement): () => void {
     let box = bubble.getBoundingClientRect()
     if (box.width < 4 || box.height < 4) return
     const mascot = root.querySelector('.vp-rig')?.getBoundingClientRect() ?? root.getBoundingClientRect()
-    const headY = mascot.top + Math.min(mascot.height * 0.3, 28)
+    const headY = mascot.top + Math.min(mascot.height * 0.28, 26)
     const roomLeft = mascot.left - margin
     const roomRight = window.innerWidth - mascot.right - margin
     const aboveLeft = Math.max(margin, Math.min(window.innerWidth - margin - box.width, mascot.left + mascot.width / 2 - box.width / 2))
-    const aboveTop = mascot.top - 8 - box.height
+    const aboveTop = mascot.top - gap - box.height
     const aboveReaches = aboveLeft < mascot.right - 6 && aboveLeft + box.width > mascot.left + 6
     let left = aboveLeft
     let top = aboveTop
     let tail: 'down' | 'left' | 'right' = 'down'
     if (aboveTop < topLimit || !aboveReaches || aboveLeft < margin || aboveLeft + box.width > window.innerWidth - margin) {
       const besideLeft = roomLeft >= roomRight
-      const room = besideLeft ? roomLeft : roomRight
-      const maxW = Math.max(112, Math.min(box.width, room - 8))
+      let maxW = Math.min(box.width, (besideLeft ? roomLeft : roomRight) - gap)
+      const labels = labelRects().filter((r) => r.bottom > headY - 36 && r.top < headY + 48)
+      for (const label of labels) {
+        if (besideLeft && label.right < mascot.left) maxW = Math.min(maxW, mascot.left - gap - (label.right + 12))
+        if (!besideLeft && label.left > mascot.right) maxW = Math.min(maxW, label.left - 12 - (mascot.right + gap))
+      }
+      maxW = Math.max(104, maxW)
       if (maxW < box.width - 1) {
         bubble.style.setProperty('max-width', `${Math.floor(maxW)}px`, 'important')
         box = bubble.getBoundingClientRect()
       }
-      left = besideLeft ? mascot.left - 8 - box.width : mascot.right + 8
-      top = headY - box.height * 0.45
+      left = besideLeft ? mascot.left - gap - box.width : mascot.right + gap
+      top = headY - Math.min(box.height * 0.42, 22)
       tail = besideLeft ? 'right' : 'left'
     }
     left = Math.max(margin, Math.min(window.innerWidth - margin - box.width, left))

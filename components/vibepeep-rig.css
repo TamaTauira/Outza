@@ -1520,18 +1520,24 @@ html[data-peepclose='1'] .vp-roam {
   transform: translateX(-50%) rotate(45deg);
 }
 
-.vp-roam .vp-bubble[data-tail='right']::after {
-  left: auto;
-  right: -5px;
-  top: var(--vp-bub-y, 18px);
-  bottom: auto;
-  transform: translateY(-50%) rotate(45deg);
+/* The start/center rule above is more specific and pins the tail to the
+   bottom. These have to beat it, or a bubble on his left still points down. */
+.vp-roam .vp-bubble[data-tail='right']::after,
+.vp-roam .vp-slot[data-bubble='start'] .vp-bubble[data-tail='right']::after,
+.vp-roam .vp-slot[data-bubble='center'] .vp-bubble[data-tail='right']::after {
+  left: auto !important;
+  right: -6px !important;
+  top: var(--vp-bub-y, 18px) !important;
+  bottom: auto !important;
+  transform: translateY(-50%) rotate(45deg) !important;
 }
 
-.vp-roam .vp-bubble[data-tail='left']::after {
-  left: -5px;
-  right: auto;
-  top: var(--vp-bub-y, 18px);
-  bottom: auto;
-  transform: translateY(-50%) rotate(45deg);
+.vp-roam .vp-bubble[data-tail='left']::after,
+.vp-roam .vp-slot[data-bubble='start'] .vp-bubble[data-tail='left']::after,
+.vp-roam .vp-slot[data-bubble='center'] .vp-bubble[data-tail='left']::after {
+  left: -6px !important;
+  right: auto !important;
+  top: var(--vp-bub-y, 18px) !important;
+  bottom: auto !important;
+  transform: translateY(-50%) rotate(45deg) !important;
 }
