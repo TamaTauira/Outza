@@ -772,8 +772,7 @@
 }
 
 @keyframes vp-bubble-in {
-  0% { opacity: 0; transform: translateY(8px) scale(0.86); }
-  65% { opacity: 1; transform: translateY(-3px) scale(1.05); }
+  0% { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: none; }
 }
 

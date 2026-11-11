@@ -684,36 +684,63 @@ export function attachRoam(root: HTMLElement): () => void {
     apply()
   }
 
+  const fitBubble = () => {
+    if (button.getAttribute('data-line') !== '1' || !bubble.textContent) {
+      bubble.style.marginLeft = ''
+      bubble.style.marginTop = ''
+      bubble.style.removeProperty('--vp-bub-x')
+      return
+    }
+    bubble.style.marginLeft = '0px'
+    bubble.style.marginTop = '0px'
+    const margin = 8
+    const header = document.querySelector('header')
+    const topLimit = Math.max(margin, header ? header.getBoundingClientRect().bottom + 6 : margin)
+    const overlaps = (a: DOMRect, b: DOMRect | undefined) =>
+      !!b && b.width > 8 && a.right > b.left + 1 && a.left < b.right - 1 && a.bottom > b.top + 1 && a.top < b.bottom - 1
+    const offscreen = (r: DOMRect) =>
+      r.left < margin || r.right > window.innerWidth - margin || r.top < topLimit || r.bottom > window.innerHeight - margin
+    let box = bubble.getBoundingClientRect()
+    if (box.width < 4 || box.height < 4) return
+    const mascot = root.getBoundingClientRect()
+    const close = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
+    if (offscreen(box) || overlaps(box, close)) {
+      const roomLeft = mascot.left - margin
+      const roomRight = window.innerWidth - mascot.right - margin
+      const shiftX = roomLeft >= roomRight ? mascot.left - 8 - box.right : mascot.right + 8 - box.left
+      const shiftY = mascot.top + Math.min(18, mascot.height * 0.2) - box.top
+      bubble.style.marginLeft = `${shiftX.toFixed(1)}px`
+      bubble.style.marginTop = `${shiftY.toFixed(1)}px`
+      box = bubble.getBoundingClientRect()
+    }
+    let nudgeX = 0
+    let nudgeY = 0
+    if (box.left < margin) nudgeX = margin - box.left
+    if (box.right + nudgeX > window.innerWidth - margin) nudgeX = window.innerWidth - margin - box.right
+    if (box.top < topLimit) nudgeY = topLimit - box.top
+    if (box.bottom + nudgeY > window.innerHeight - margin) nudgeY = window.innerHeight - margin - box.bottom
+    if (close && overlaps(new DOMRect(box.x + nudgeX, box.y + nudgeY, box.width, box.height), close)) {
+      nudgeY += close.bottom + 6 - (box.top + nudgeY)
+    }
+    if (nudgeX || nudgeY) {
+      const left = (parseFloat(bubble.style.marginLeft) || 0) + nudgeX
+      const top = (parseFloat(bubble.style.marginTop) || 0) + nudgeY
+      bubble.style.marginLeft = `${left.toFixed(1)}px`
+      bubble.style.marginTop = `${top.toFixed(1)}px`
+      box = bubble.getBoundingClientRect()
+    }
+    const aim = mascot.left + mascot.width / 2 - (box.left + box.width / 2)
+    const half = Math.max(0, box.width / 2 - 16)
+    bubble.style.setProperty('--vp-bub-x', `${Math.max(-half, Math.min(half, -aim)).toFixed(1)}px`)
+  }
+
   const say = (line: string) => {
     if (reduce || button.hasAttribute('data-react') || button.getAttribute('data-mood') === 'sulk') return
     bubble.textContent = line
     live.textContent = line
     button.setAttribute('data-line', '1')
     window.requestAnimationFrame(() => {
-      const box = bubble.getBoundingClientRect()
-      if (box.width < 4) return
-      const blocked = [...document.querySelectorAll('button, a, input, select, .rounded-xl, .rounded-2xl')].some((el) => {
-        if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) return false
-        const rect = el.getBoundingClientRect()
-        if (rect.width < 8 || rect.height < 8) return false
-        return box.right > rect.left && box.left < rect.right && box.bottom > rect.top && box.top < rect.bottom
-      })
-      const margin = 8
-      let shiftX = 0
-      let shiftY = 0
-      if (box.left < margin) shiftX = margin - box.left
-      if (box.right > window.innerWidth - margin) shiftX = window.innerWidth - margin - box.right
-      if (box.top < margin) shiftY = margin - box.top
-      if (box.bottom > window.innerHeight - margin) shiftY = window.innerHeight - margin - box.bottom
-      if (blocked) root.dataset.bub = root.dataset.bub === 'up' ? 'down' : 'up'
-      if (mobileMq.matches) {
-        const close = root.querySelector('.vp-buddy-min')?.getBoundingClientRect()
-        if (close && box.right > close.left && box.left < close.right && box.bottom > close.top && box.top < close.bottom) {
-          shiftY += close.bottom + 6 - box.top
-        }
-      }
-      const shiftAcross = mobileMq.matches ? `${shiftX.toFixed(0)}px` : `calc(-50% + ${shiftX.toFixed(0)}px)`
-      bubble.style.translate = `${shiftAcross} ${shiftY.toFixed(0)}px`
+      fitBubble()
       if (mobileMq.matches && location.pathname.startsWith('/map') && !spotClear(pos.x, pos.y)) {
         pos = firstClear(bounds())
         apply()
@@ -1260,6 +1287,11 @@ export function attachRoam(root: HTMLElement): () => void {
   narrowPeekMq.addEventListener('change', onResize)
   portraitPeekMq.addEventListener('change', onResize)
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
+  const bubWatch = new MutationObserver(() => {
+    window.requestAnimationFrame(() => fitBubble())
+  })
+  bubWatch.observe(bubble, { childList: true, characterData: true, subtree: true })
+  bubWatch.observe(button, { attributes: true, attributeFilter: ['data-line'] })
 
   let pinTimer = 0
   const shoveOffPins = () => {
@@ -1300,6 +1332,7 @@ export function attachRoam(root: HTMLElement): () => void {
     window.clearTimeout(scrollSettleTimer)
     window.clearTimeout(peekHomeTimer)
     mo.disconnect()
+    bubWatch.disconnect()
     pinWatch.disconnect()
     window.clearTimeout(pinTimer)
     window.clearInterval(pinPoll)

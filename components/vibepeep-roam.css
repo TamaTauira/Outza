@@ -442,6 +442,10 @@ html[data-walkstill='1'] .vp-hero-clock {
   }
 }
 
+html:has(.vp-roam[data-scroll-peek='1']) {
+  overflow-x: clip;
+}
+
 @media print {
   .vp-roam {
     display: none !important;

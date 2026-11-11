@@ -1431,6 +1431,13 @@ html[data-peepclose='1'] .vp-roam {
     pointer-events: none;
   }
 
+  /* Centre placement set top without clearing bottom, so the pill was
+     stretched to a sliver and the words spilled out underneath. */
+  .vp-slot[data-bubble='center'] .vp-bubble,
+  .vp-roam .vp-slot[data-bubble='center'] .vp-bubble {
+    bottom: auto;
+  }
+
   .vp-roam .vp-hit::after {
     left: 26%;
     right: 22%;
@@ -1470,4 +1477,45 @@ html[data-peepclose='1'] .vp-roam {
   .vp-hit[data-react='sparkle'] .vp-pupil {
     opacity: 0;
   }
+}
+
+/* One bubble for every line. Sits above his head, grows with the words,
+   and can be nudged back on screen. Beats the side rules that set both
+   top and bottom. */
+.vp-roam .vp-bubble,
+.vp-roam .vp-slot[data-bubble='start'] .vp-bubble,
+.vp-roam .vp-slot[data-bubble='center'] .vp-bubble {
+  top: auto !important;
+  bottom: calc(100% + 8px) !important;
+  left: 50% !important;
+  right: auto !important;
+  translate: -50% 0;
+  display: block;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(11rem, calc(100vw - 24px));
+  height: auto !important;
+  min-height: 0;
+  padding: 8px 10px 9px;
+  border-radius: 14px;
+  background: #fff;
+  color: #1a120e;
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: break-word;
+  z-index: 8;
+}
+
+.vp-roam .vp-bubble::after,
+.vp-roam .vp-slot[data-bubble='start'] .vp-bubble::after,
+.vp-roam .vp-slot[data-bubble='center'] .vp-bubble::after {
+  left: calc(50% - var(--vp-bub-x, 0px));
+  right: auto;
+  top: auto;
+  bottom: -5px;
+  transform: translateX(-50%) rotate(45deg);
 }
