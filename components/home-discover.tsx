@@ -2,7 +2,6 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { communityCityPath, communitySectionPath } from '@/lib/community-shared'
 import { displaySuburb } from '@/lib/cities'
 import { addDays, formatPrice } from '@/lib/board'
@@ -108,13 +107,6 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
 
 const COMMUNITY_KEYS = ['garage-sales', 'neighbourhood-popups', 'school-fundraisers', 'community-sport', 'farmers-markets'] as const
 
-const ASKS = [
-  'Find something fun this Saturday under $50.',
-  'Where can I hear live jazz tonight?',
-  'Plan a date night around Surry Hills.',
-  'What’s happening that’s a little different?',
-]
-
 function TilePhoto({ src, tint }: { src: string | null; tint: string }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [readySrc, setReadySrc] = useState<string | null>(null)
@@ -150,14 +142,12 @@ export function HomeDiscover({
   today,
   onMood,
   onSuburb,
-  onAsk,
   onWorkshops,
 }: {
   city: string
   today: string | null
   onMood: (action: MoodAction) => void
   onSuburb: (suburb: string) => void
-  onAsk: (query: string) => void
   onWorkshops: () => void
 }) {
   const [events, setEvents] = useState<NearbyEvent[]>([])
@@ -295,28 +285,6 @@ export function HomeDiscover({
             </li>
           </ul>
         </div>
-      </section>
-
-      <section aria-label="Ask VibePeep" className="overflow-hidden rounded-3xl bg-[#0c0f0e] text-white">
-        <form className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6" onSubmit={(e) => { e.preventDefault(); const q = new FormData(e.currentTarget).get('q'); if (typeof q === 'string' && q.trim()) onAsk(q.trim()); }}>
-          <VibePeepMascot onDark className="hidden w-16 shrink-0 sm:block" sizes="80px" alt="VibePeep" />
-          <div className="min-w-0 flex-1">
-            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Not sure what you’re in the mood for?</h2>
-            <p className="mt-1 text-white/75">Ask VibePeep.</p>
-            <div className="mt-4 flex gap-2">
-              <label className="sr-only" htmlFor="ask-vibepeep">Ask VibePeep</label>
-              <input id="ask-vibepeep" name="q" placeholder="Ask VibePeep anything…" className="h-12 min-w-0 flex-1 rounded-full bg-white px-4 text-sm text-neutral-900 placeholder:text-neutral-500" />
-              <button type="submit" className="h-12 shrink-0 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Ask</button>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {ASKS.map((query) => (
-                <button key={query} type="button" onClick={() => onAsk(query)} className="rounded-full bg-white/10 px-3 py-2 text-left text-sm text-white hover:bg-white/20">
-                  {query}
-                </button>
-              ))}
-            </div>
-          </div>
-        </form>
       </section>
     </div>
   )
