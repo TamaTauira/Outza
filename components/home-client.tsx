@@ -12,7 +12,7 @@ import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
-import { CalendarDays, Check, LayoutGrid, MapPin, Search, SlidersHorizontal, Ticket, X } from 'lucide-react';
+import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, Search, SlidersHorizontal, Ticket, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,6 +24,7 @@ import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { useBackState } from '@/lib/scroll-memory';
+import { lineupView } from '@/lib/lineup-view';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
 const MapView = dynamic(() => import('@/components/map-view').then((m) => m.MapView), {
   ssr: false,
@@ -57,7 +58,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   // List and map share one filter set, one search and one date, so toggling views does not start again.
   const [filters, setFilters] = useBackState<FilterState>('home:filters', EMPTY_FILTERS);
-  const [resultsView, setResultsViewState] = useState<'list' | 'map'>('list');
+  const [resultsView, setResultsViewState] = useState<'list' | 'board'>('list');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [askRequest, setAskRequest] = useState<{ id: number; text: string } | null>(null);
   const [heroPhoto, setHeroPhoto] = useState<string | null>(null);
@@ -185,7 +186,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (Object.keys(patch).length) setFilters((f) => ({ ...f, ...patch }));
     try {
       const remembered = sessionStorage.getItem('vp-results-view');
-      if (remembered === 'list' || remembered === 'map') setResultsViewState(remembered);
+      if (lineupView(remembered) === 'board') setResultsViewState('board');
     } catch {}
     if (dateFrom) setDay(dateFrom);
     const q = p.get('q') || p.get('search') || '';
@@ -247,9 +248,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const picked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
 
   const rememberView = (next: 'list' | 'map') => {
+    if (next !== 'list') return;
+    setResultsViewState('list');
+    try { sessionStorage.setItem('vp-results-view', 'list'); } catch {}
+    if (view === 'map') goView('board');
+  };
+  const rememberLineup = (next: 'list' | 'board') => {
     setResultsViewState(next);
     try { sessionStorage.setItem('vp-results-view', next); } catch {}
-    if (next === 'list' && view === 'map') goView('board');
   };
   const goBoard = (fn: () => void) => () => {
     fn();
@@ -319,7 +325,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   };
   const span = listSpan(day, filters.dateFrom, filters.dateTo);
   const mapFilters: FilterState = span ? { ...filters, dateFrom: span.from, dateTo: span.to } : filters;
-  const discovery: 'list' | 'map' = view === 'map' ? 'map' : resultsView;
   const planKey = filters.dateFrom && nextWeek && filters.dateFrom === nextWeek.from && filters.dateTo === nextWeek.to
     ? 'next'
     : day === today && timeWindow === 'evening' && !filters.dateFrom
@@ -505,7 +510,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           {view === 'board' && (
             <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
               <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">The line-up</h2>
-              <ViewToggle compact value={discovery} onChange={(next) => { setFocusId(focusId); rememberView(next); }} />
+              <ViewToggle compact value={resultsView} label="Line-up view" options={[{ key: 'list', text: 'List', Icon: LayoutList }, { key: 'board', text: 'Board', Icon: LayoutGrid }]} onChange={rememberLineup} />
             </div>
           )}
           {view === 'board' &&
@@ -653,15 +658,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             </>
           }
 
-          {view === 'board' && discovery === 'map' && (
-            <div className="h-[70vh] min-h-[420px]">
-              <MapView filters={mapFilters} searchQuery={searchQuery} city={city} bleed focusId={focusId} onSelect={setFocusId} />
-            </div>
-          )}
-          {view === 'board' && discovery === 'list' &&
+          {view === 'board' &&
           <>
           <div className={cn(!boardOpen && 'max-lg:max-h-[32rem] max-lg:overflow-hidden')}>
           <EventList
+            layout={resultsView}
             filters={filters}
             searchQuery={searchQuery}
             day={day}
