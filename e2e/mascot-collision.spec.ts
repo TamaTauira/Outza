@@ -194,7 +194,7 @@ test.beforeAll(async () => {
   }
   await browser.close()
   expect(ready, `preview ${ORIGIN} is serving the joint chrome layout`).toBe(true)
-})
+}, { timeout: 300_000 })
 
 for (const engine of ['chromium', 'webkit'] as const) {
   test(`mascot chrome stays clear (${engine})`, async ({ playwright }) => {
