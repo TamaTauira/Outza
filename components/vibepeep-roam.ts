@@ -52,6 +52,7 @@ export function attachRoam(root: HTMLElement): () => void {
   const bubble = root.querySelector<HTMLElement>('.vp-bubble')
   const live = root.querySelector<HTMLElement>('.vp-live')
   if (!slot || !button || !bubble || !live) return () => {}
+  root.dataset.chrome = 'joint'
 
   const reduceMq = window.matchMedia('(prefers-reduced-motion: reduce)')
   if (/walkdemo|walkstill/.test(location.search)) document.documentElement.dataset.walkstill = '1'
@@ -393,12 +394,14 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const apply = () => {
-    root.style.transform = `translate3d(${Math.min(pos.x, window.innerWidth - size() - 8).toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
+    if (root.style.getPropertyPriority('transform') !== 'important') {
+      root.style.transform = `translate3d(${Math.min(pos.x, window.innerWidth - size() - 8).toFixed(1)}px, ${pos.y.toFixed(1)}px, 0)`
+    }
     if (root.dataset.face !== face) root.dataset.face = face
     const side = pos.x + size() / 2 > window.innerWidth * 0.5 ? 'start' : 'center'
     if (slot.dataset.bubble !== side) slot.dataset.bubble = side
     if (scrollPeeking && !peekIntro) writePeekShift()
-    else if (!scrollPeeking) placeClose()
+    else if (!scrollPeeking) layoutChrome()
   }
 
   /** Lowest control above `ceiling` on Local, so the figure can sit in the gap under the filters. */
@@ -698,24 +701,39 @@ export function attachRoam(root: HTMLElement): () => void {
     apply()
   }
 
-  const overlaps = (a: DOMRect, b: DOMRect | undefined) =>
-    !!b && b.width > 8 && b.height > 8 && a.right > b.left + 1 && a.left < b.right - 1 && a.bottom > b.top + 1 && a.top < b.bottom - 1
+  type Box = { left: number; top: number; right: number; bottom: number; width: number; height: number }
 
-  const controlRects = () => {
-    const rects: DOMRect[] = []
+  const boxOf = (left: number, top: number, width: number, height: number): Box => ({
+    left, top, right: left + width, bottom: top + height, width, height,
+  })
+
+  /** True when `a` and `b` stay at least `pad` pixels apart. */
+  const separated = (a: Box, b: Box, pad: number) =>
+    a.right + pad <= b.left || b.right + pad <= a.left || a.bottom + pad <= b.top || b.bottom + pad <= a.top
+
+  const onScreen = (r: Box, margin = 8) =>
+    r.left >= margin && r.top >= margin && r.right <= window.innerWidth - margin && r.bottom <= window.innerHeight - margin
+
+  const controlRects = (): Box[] => {
+    const rects: Box[] = []
     const push = (el: Element) => {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) return
       const r = el.getBoundingClientRect()
-      if (r.width < 8 || r.height < 8 || r.height > 80) return
-      rects.push(r)
+      if (r.width < 8 || r.height < 8 || r.width > 220 || r.height > 90) return
+      rects.push(boxOf(r.left, r.top, r.width, r.height))
     }
-    document.querySelectorAll('header a, header button, .vp-bottom-nav, .vp-bottom-nav a, .vp-bottom-nav button').forEach(push)
+    document.querySelectorAll('.vp-site-header button, .vp-site-header a').forEach(push)
     document.querySelectorAll('a, button').forEach((el) => {
-      if (!(el instanceof HTMLElement) || el.closest('.vp-roam, header, .vp-bottom-nav')) return
+      if (!(el instanceof HTMLElement) || el.closest('.vp-roam, .vp-bottom-nav, .vp-site-header')) return
       const r = el.getBoundingClientRect()
-      if (r.top > 130 || r.height > 48 || r.width < 8) return
-      rects.push(r)
+      if (r.top > 110 || r.height > 48 || r.width < 8) return
+      push(el)
     })
+    const nav = document.querySelector('.vp-bottom-nav')
+    if (nav instanceof HTMLElement) {
+      const r = nav.getBoundingClientRect()
+      if (r.height > 8 && r.top < window.innerHeight - 4) rects.push(boxOf(r.left, r.top, r.width, r.height))
+    }
     return rects
   }
 
@@ -752,118 +770,221 @@ export function attachRoam(root: HTMLElement): () => void {
     delete bubble.dataset.tail
   }
 
-  let closeTick = 0
-  const placeClose = (force = false) => {
+  let layoutAt = 0
+  let layoutX = Number.NaN
+  let layoutY = Number.NaN
+
+  const showClose = (btn: HTMLElement) => {
+    btn.style.visibility = ''
+    btn.style.pointerEvents = ''
+    delete btn.dataset.held
+  }
+
+  const hideClose = (btn: HTMLElement) => {
+    btn.style.visibility = 'hidden'
+    btn.style.pointerEvents = 'none'
+    btn.dataset.held = '1'
+  }
+
+  const layoutChrome = (force = false) => {
     const btn = root.querySelector<HTMLElement>('.vp-buddy-min')
     if (!btn) return
     if (scrollPeeking || root.dataset.scrollPeek === '1') {
       btn.style.transform = ''
+      showClose(btn)
       return
     }
     const now = performance.now()
-    if (!force && now - closeTick < 90) return
-    closeTick = now
-    btn.style.transform = ''
-    const natural = btn.getBoundingClientRect()
-    const mascot = root.querySelector('.vp-rig')?.getBoundingClientRect()
-    if (!mascot || mascot.width < 8) return
-    const blocks = controlRects()
-    const bubbleBox = button.getAttribute('data-line') === '1' && bubble.textContent ? bubble.getBoundingClientRect() : undefined
-    const blocked = (r: DOMRect) => blocks.some((b) => overlaps(r, b)) || overlaps(r, bubbleBox) || overlaps(r, mascot)
-    if (
-      natural.left >= 4 &&
-      natural.top >= 4 &&
-      natural.right <= window.innerWidth - 4 &&
-      natural.bottom <= window.innerHeight - 4 &&
-      !blocked(natural)
-    ) {
-      return
-    }
-    const size = 44
-    const tail = bubble.dataset.tail
-    const spots = [
-      { x: mascot.right - size, y: mascot.top - 6 - size },
-      { x: mascot.left, y: mascot.top - 6 - size },
-      { x: tail === 'left' ? mascot.left - 4 - size : mascot.right + 4, y: mascot.top },
-      { x: tail === 'left' ? mascot.right + 4 : mascot.left - 4 - size, y: mascot.top },
-    ]
-    for (const spot of spots) {
-      if (spot.x < 8 || spot.y < 8 || spot.x + size > window.innerWidth - 8 || spot.y + size > window.innerHeight - 8) continue
-      const rect = new DOMRect(spot.x, spot.y, size, size)
-      if (blocked(rect)) continue
-      btn.style.transform = `translate(${(spot.x - natural.left).toFixed(1)}px, ${(spot.y - natural.top).toFixed(1)}px)`
-      return
-    }
-  }
+    const moved = Math.abs(pos.x - layoutX) > 1 || Math.abs(pos.y - layoutY) > 1
+    if (!force && !moved && now - layoutAt < 80) return
+    layoutAt = now
+    layoutX = pos.x
+    layoutY = pos.y
 
-  const fitBubble = () => {
-    if (button.getAttribute('data-line') !== '1' || !bubble.textContent) {
+    const mascotEl = root.querySelector('.vp-rig')
+    const mascotRaw = mascotEl?.getBoundingClientRect()
+    if (!mascotRaw || mascotRaw.width < 8) return
+    const mascot = boxOf(mascotRaw.left, mascotRaw.top, mascotRaw.width, mascotRaw.height)
+    const blocks = controlRects()
+    const topLimit = keepOutBottom()
+    const headY = mascot.top + Math.min(mascot.height * 0.28, 26)
+    const talking = button.getAttribute('data-line') === '1' && !!bubble.textContent
+
+    const xSpots = (bubbleBox?: Box): Box[] => {
+      const s = 44
+      const raw = [
+        boxOf(mascot.right - s, mascot.top - 8 - s, s, s),
+        boxOf(mascot.left, mascot.top - 8 - s, s, s),
+        boxOf(mascot.right + 8, mascot.top, s, s),
+        boxOf(mascot.left - 8 - s, mascot.top, s, s),
+        boxOf(mascot.right + 8, mascot.bottom - s, s, s),
+        boxOf(mascot.left - 8 - s, mascot.bottom - s, s, s),
+        boxOf(mascot.left + (mascot.width - s) / 2, mascot.bottom + 8, s, s),
+      ]
+      const freeSideFirst = bubbleBox && bubbleBox.left + bubbleBox.width / 2 < mascot.left + mascot.width / 2
+      return freeSideFirst ? raw : [raw[1], raw[3], raw[5], raw[0], raw[2], raw[4], raw[6]]
+    }
+
+    const xOk = (spot: Box, bubbleBox?: Box) => {
+      if (!onScreen(spot)) return false
+      if (!separated(spot, mascot, 2)) return false
+      if (blocks.some((block) => !separated(spot, block, 8))) return false
+      if (bubbleBox && !separated(spot, bubbleBox, 8)) return false
+      return true
+    }
+
+    const placeX = (spot: Box) => {
+      btn.style.transform = ''
+      const natural = btn.getBoundingClientRect()
+      btn.style.transform = `translate(${(spot.left - natural.left).toFixed(1)}px, ${(spot.top - natural.top).toFixed(1)}px)`
+      showClose(btn)
+    }
+
+    if (!talking) {
       clearBubbleShift()
-      placeClose(true)
+      const spot = xSpots().find((candidate) => xOk(candidate))
+      if (spot) placeX(spot)
+      else hideClose(btn)
       return
     }
-    const margin = 8
-    const gap = 2
-    const topLimit = keepOutBottom()
+
     const slot = bubble.parentElement
     if (!slot) return
-    bubble.style.setProperty('max-width', `${Math.min(168, window.innerWidth - 16)}px`, 'important')
-    bubble.style.setProperty('width', 'max-content', 'important')
-    bubble.style.setProperty('bottom', 'auto', 'important')
-    bubble.style.setProperty('right', 'auto', 'important')
-    bubble.style.setProperty('translate', 'none', 'important')
-    bubble.style.setProperty('margin', '0', 'important')
-    bubble.style.setProperty('top', '0px', 'important')
-    bubble.style.setProperty('left', '0px', 'important')
-    let box = bubble.getBoundingClientRect()
-    if (box.width < 4 || box.height < 4) return
-    const mascot = root.querySelector('.vp-rig')?.getBoundingClientRect() ?? root.getBoundingClientRect()
-    const headY = mascot.top + Math.min(mascot.height * 0.28, 26)
-    const roomLeft = mascot.left - margin
-    const roomRight = window.innerWidth - mascot.right - margin
-    const aboveLeft = Math.max(margin, Math.min(window.innerWidth - margin - box.width, mascot.left + mascot.width / 2 - box.width / 2))
-    const aboveTop = mascot.top - gap - box.height
-    const aboveReaches = aboveLeft < mascot.right - 6 && aboveLeft + box.width > mascot.left + 6
-    let left = aboveLeft
-    let top = aboveTop
-    let tail: 'down' | 'left' | 'right' = 'down'
-    if (aboveTop < topLimit || !aboveReaches || aboveLeft < margin || aboveLeft + box.width > window.innerWidth - margin) {
-      const besideLeft = roomLeft >= roomRight
-      let maxW = Math.min(box.width, (besideLeft ? roomLeft : roomRight) - gap)
-      const labels = labelRects().filter((r) => r.bottom > headY - 36 && r.top < headY + 48)
-      for (const label of labels) {
-        if (besideLeft && label.right < mascot.left) maxW = Math.min(maxW, mascot.left - gap - (label.right + 12))
-        if (!besideLeft && label.left > mascot.right) maxW = Math.min(maxW, label.left - 12 - (mascot.right + gap))
-      }
-      maxW = Math.max(104, maxW)
-      if (maxW < box.width - 1) {
-        bubble.style.setProperty('max-width', `${Math.floor(maxW)}px`, 'important')
-        box = bubble.getBoundingClientRect()
-      }
-      left = besideLeft ? mascot.left - gap - box.width : mascot.right + gap
-      top = headY - Math.min(box.height * 0.42, 22)
-      tail = besideLeft ? 'right' : 'left'
+    const measure = (maxW: number) => {
+      const width = Math.max(104, Math.floor(maxW))
+      bubble.style.setProperty('position', 'fixed', 'important')
+      bubble.style.setProperty('max-width', `${width}px`, 'important')
+      bubble.style.setProperty('width', 'max-content', 'important')
+      bubble.style.setProperty('bottom', 'auto', 'important')
+      bubble.style.setProperty('right', 'auto', 'important')
+      bubble.style.setProperty('translate', 'none', 'important')
+      bubble.style.setProperty('margin', '0', 'important')
+      bubble.style.setProperty('top', '0px', 'important')
+      bubble.style.setProperty('left', '0px', 'important')
+      const r = bubble.getBoundingClientRect()
+      bubble.style.setProperty('position', 'absolute', 'important')
+      return { w: Math.ceil(r.width), h: Math.ceil(r.height) }
     }
-    left = Math.max(margin, Math.min(window.innerWidth - margin - box.width, left))
-    top = Math.max(topLimit, Math.min(window.innerHeight - margin - box.height, top))
-    const slotBox = slot.getBoundingClientRect()
-    bubble.style.setProperty('left', `${(left - slotBox.left).toFixed(1)}px`, 'important')
-    bubble.style.setProperty('top', `${(top - slotBox.top).toFixed(1)}px`, 'important')
-    box = bubble.getBoundingClientRect()
-    if (tail === 'down') {
+    const full = measure(Math.min(168, window.innerWidth - 16))
+    const labels = labelRects()
+    let sideW = full.w
+    for (const label of labels) {
+      if (label.bottom < headY - 40 || label.top > headY + full.h) continue
+      if (label.right < mascot.left) sideW = Math.min(sideW, mascot.left - 4 - (label.right + 12))
+      if (label.left > mascot.right) sideW = Math.min(sideW, label.left - 12 - (mascot.right + 4))
+    }
+    sideW = Math.max(104, sideW)
+    const side = sideW < full.w - 1 ? measure(sideW) : full
+
+    type Spot = { left: number; top: number; w: number; h: number; tail: 'down' | 'left' | 'right' }
+    const ideas: Spot[] = []
+    const aboveLeft = Math.max(8, Math.min(window.innerWidth - 8 - full.w, mascot.left + mascot.width / 2 - full.w / 2))
+    const aboveTop = mascot.top - 4 - full.h
+    if (aboveTop >= topLimit && aboveLeft < mascot.right - 4 && aboveLeft + full.w > mascot.left + 4) {
+      ideas.push({ left: aboveLeft, top: aboveTop, w: full.w, h: full.h, tail: 'down' })
+    }
+    const leftX = mascot.left - 4 - side.w
+    if (leftX >= 8) {
+      ideas.push({
+        left: leftX,
+        top: Math.max(topLimit, Math.min(window.innerHeight - 8 - side.h, headY - Math.min(side.h * 0.42, 22))),
+        w: side.w,
+        h: side.h,
+        tail: 'right',
+      })
+    }
+    const rightX = mascot.right + 4
+    if (rightX + side.w <= window.innerWidth - 8) {
+      ideas.push({
+        left: rightX,
+        top: Math.max(topLimit, Math.min(window.innerHeight - 8 - side.h, headY - Math.min(side.h * 0.42, 22))),
+        w: side.w,
+        h: side.h,
+        tail: 'left',
+      })
+    }
+
+    const aimTail = (placed: DOMRect) => {
+      const besideLeft = placed.right <= mascot.left + 2
+      const besideRight = placed.left >= mascot.right - 2
+      if (besideLeft || besideRight) {
+        bubble.dataset.tail = besideLeft ? 'right' : 'left'
+        const y = Math.max(14, Math.min(placed.height - 14, headY - placed.top))
+        bubble.style.setProperty('--vp-bub-y', `${y.toFixed(1)}px`)
+        bubble.style.removeProperty('--vp-bub-x')
+        return
+      }
       delete bubble.dataset.tail
-      const aim = mascot.left + mascot.width / 2 - (box.left + box.width / 2)
-      const half = Math.max(0, box.width / 2 - 16)
+      const aim = mascot.left + mascot.width / 2 - (placed.left + placed.width / 2)
+      const half = Math.max(0, placed.width / 2 - 16)
       bubble.style.setProperty('--vp-bub-x', `${Math.max(-half, Math.min(half, -aim)).toFixed(1)}px`)
       bubble.style.removeProperty('--vp-bub-y')
-    } else {
-      bubble.dataset.tail = tail
-      const y = Math.max(14, Math.min(box.height - 14, headY - box.top))
-      bubble.style.setProperty('--vp-bub-y', `${y.toFixed(1)}px`)
-      bubble.style.removeProperty('--vp-bub-x')
     }
-    placeClose(true)
+
+    const put = (idea: Spot) => {
+      if (idea.w < full.w - 1) measure(idea.w)
+      const slotBox = slot.getBoundingClientRect()
+      bubble.style.setProperty('left', `${(idea.left - slotBox.left).toFixed(1)}px`, 'important')
+      bubble.style.setProperty('top', `${(idea.top - slotBox.top).toFixed(1)}px`, 'important')
+      let placed = bubble.getBoundingClientRect()
+      if (idea.tail === 'down' && placed.bottom > mascot.top - 4) {
+        bubble.style.setProperty('top', `${(parseFloat(bubble.style.top) - (placed.bottom - (mascot.top - 4))).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      if (idea.tail === 'right' && placed.right > mascot.left - 4) {
+        bubble.style.setProperty('left', `${(parseFloat(bubble.style.left) - (placed.right - (mascot.left - 4))).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      if (idea.tail === 'left' && placed.left < mascot.right + 4) {
+        bubble.style.setProperty('left', `${(parseFloat(bubble.style.left) + (mascot.right + 4 - placed.left)).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      let dx = 0
+      let dy = 0
+      if (placed.left < 8) dx = 8 - placed.left
+      if (placed.right > window.innerWidth - 8) dx = window.innerWidth - 8 - placed.right
+      if (placed.top < 8) dy = 8 - placed.top
+      if (placed.bottom > window.innerHeight - 8) dy = window.innerHeight - 8 - placed.bottom
+      if (dx || dy) {
+        bubble.style.setProperty('left', `${(parseFloat(bubble.style.left) + dx).toFixed(1)}px`, 'important')
+        bubble.style.setProperty('top', `${(parseFloat(bubble.style.top) + dy).toFixed(1)}px`, 'important')
+        placed = bubble.getBoundingClientRect()
+      }
+      return placed
+    }
+
+    const acceptable = (placed: DOMRect) => {
+      const rect = boxOf(placed.left, placed.top, placed.width, placed.height)
+      if (!onScreen(rect)) return false
+      if (!separated(rect, mascot, 2)) return false
+      if (blocks.some((block) => !separated(rect, block, 8))) return false
+      return true
+    }
+
+    let kept: DOMRect | null = null
+    for (const idea of ideas) {
+      const placed = put(idea)
+      if (!acceptable(placed)) continue
+      const rect = boxOf(placed.left, placed.top, placed.width, placed.height)
+      aimTail(placed)
+      const spot = xSpots(rect).find((candidate) => xOk(candidate, rect))
+      if (spot) {
+        placeX(spot)
+        const again = btn.getBoundingClientRect()
+        const bub = bubble.getBoundingClientRect()
+        if (!separated(boxOf(again.left, again.top, again.width, again.height), boxOf(bub.left, bub.top, bub.width, bub.height), 8)) hideClose(btn)
+        return
+      }
+      kept = placed
+    }
+    if (!kept && ideas[0]) put(ideas[0])
+    const fallback = bubble.getBoundingClientRect()
+    aimTail(fallback)
+    hideClose(btn)
   }
+
+  const fitBubble = () => layoutChrome(true)
+
 
   const say = (line: string) => {
     if (reduce || button.hasAttribute('data-react') || button.getAttribute('data-mood') === 'sulk') return
@@ -1214,6 +1335,7 @@ export function attachRoam(root: HTMLElement): () => void {
         armPeekSettle()
       }
     }
+    if (!scrollPeeking) layoutChrome()
     const atBottom = nearPageBottom(window.scrollY, window.innerHeight, document.documentElement.scrollHeight)
     if (!atBottom) {
       cheered = false
