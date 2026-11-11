@@ -181,20 +181,24 @@ async function sweep(browser: Browser, width: number, theme: 'light' | 'dark') {
 }
 
 test.beforeAll(async () => {
+  // This Playwright version times hooks from the config minute unless the
+  // hook itself asks for longer. The preview can take a cold start.
+  test.setTimeout(300_000)
   if (!ORIGIN.includes('vercel.app')) return
   const browser = await pw.chromium.launch()
   const page = await browser.newPage()
   const deadline = Date.now() + 240_000
   let ready = false
   while (Date.now() < deadline) {
-    await page.goto(ORIGIN + '/', { waitUntil: 'domcontentloaded', timeout: 90000 }).catch(() => null)
+    await page.goto(ORIGIN + '/', { waitUntil: 'domcontentloaded', timeout: 30_000 }).catch(() => null)
     ready = (await page.locator('.vp-roam[data-chrome="joint"]').count().catch(() => 0)) > 0
     if (ready) break
-    await page.waitForTimeout(10_000)
+    await page.waitForTimeout(5_000)
   }
+  const where = `${page.url()} ${await page.locator('body').innerText().catch(() => '')}`
   await browser.close()
-  expect(ready, `preview ${ORIGIN} is serving the joint chrome layout`).toBe(true)
-}, { timeout: 300_000 })
+  expect(ready, `preview ${ORIGIN} is serving the joint chrome layout. Saw: ${where.slice(0, 220)}`).toBe(true)
+})
 
 for (const engine of ['chromium', 'webkit'] as const) {
   test(`mascot chrome stays clear (${engine})`, async ({ playwright }) => {
