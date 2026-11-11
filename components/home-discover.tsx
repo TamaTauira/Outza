@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { communityCityPath, communitySectionPath } from '@/lib/community-shared'
@@ -25,6 +25,7 @@ type NearbyEvent = {
   priceMax?: number | null
   imageUrl?: string | null
   communityKey?: string | null
+  subTags?: string[]
 }
 
 export type MoodAction =
@@ -33,13 +34,73 @@ export type MoodAction =
 
 const usablePhoto = (url?: string | null) => !!url && /^https?:\/\//i.test(url) && !/picsum\.photos/i.test(url)
 
-const MOODS: { title: string; category: string; match: (ev: NearbyEvent) => boolean; action: MoodAction }[] = [
-  { title: 'Feel like dancing?', category: 'Nightlife', match: (ev) => ev.category === 'Nightlife', action: { kind: 'filters', categories: ['Nightlife'] } },
-  { title: 'Something a little fancy?', category: 'Food & Drink', match: (ev) => ev.category === 'Food & Drink', action: { kind: 'ask', query: 'Something a little fancy' } },
-  { title: 'Culture fix.', category: 'Arts & Culture', match: (ev) => ev.category === 'Arts & Culture', action: { kind: 'filters', categories: ['Arts & Culture'] } },
-  { title: 'Good food, good company.', category: 'Food & Drink', match: (ev) => ev.category === 'Food & Drink', action: { kind: 'filters', categories: ['Food & Drink'] } },
-  { title: 'Free and fabulous.', category: 'Community', match: (ev) => ev.isFree, action: { kind: 'filters', isFree: true } },
-  { title: 'Something unexpected.', category: 'Arts & Culture', match: (ev) => ev.category === 'Wellness' || ev.category === 'Community', action: { kind: 'ask', query: 'Something unexpected' } },
+const listingText = (ev: NearbyEvent) => `${ev.title} ${ev.venueName ?? ''} ${(ev.subTags ?? []).join(' ')}`
+
+const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => number; action: MoodAction }[] = [
+  {
+    title: 'Feel like dancing?',
+    category: 'Nightlife',
+    action: { kind: 'filters', categories: ['Nightlife'] },
+    rank: (ev) => {
+      const text = listingText(ev)
+      if (/\b(breathing|business|book club|running club|watercolour|watercolor)\b/i.test(text)) return 0
+      let score = 0
+      if (/\b(dj|djs|rave|disco|club night)\b/i.test(text)) score += 8
+      if (/\b(dance party|dancing|line danc\w*)\b/i.test(text)) score += 6
+      if (ev.category === 'Nightlife' && /\b(dj|dance|club|night)\b/i.test(text)) score += 4
+      if (ev.category === 'Music' && /\b(dj|dance|disco)\b/i.test(text)) score += 3
+      return score
+    },
+  },
+  {
+    title: 'Something a little fancy?',
+    category: 'Arts & Culture',
+    action: { kind: 'ask', query: 'Something a little fancy' },
+    rank: (ev) => {
+      const text = listingText(ev)
+      if (/\b(coffee|consultation|kids|toddler|yrs|years|class)\b/i.test(text)) return 0
+      let score = 0
+      if (/\b(gala|opera|fine dining|cocktail)\b/i.test(text)) score += 8
+      if (/\b(theatre|theater|ballet|high tea|aperitivo)\b/i.test(text)) score += 6
+      return score
+    },
+  },
+  {
+    title: 'Culture fix.',
+    category: 'Arts & Culture',
+    action: { kind: 'filters', categories: ['Arts & Culture'] },
+    rank: (ev) => (ev.category === 'Arts & Culture' && usablePhoto(ev.imageUrl) ? 2 + (/\b(ballet|theatre|theater|opera|gallery|exhibition)\b/i.test(listingText(ev)) ? 4 : 0) : 0),
+  },
+  {
+    title: 'Good food, good company.',
+    category: 'Food & Drink',
+    action: { kind: 'filters', categories: ['Food & Drink'] },
+    rank: (ev) => {
+      if (ev.category !== 'Food & Drink' || !usablePhoto(ev.imageUrl)) return 0
+      const text = listingText(ev)
+      if (/\b(coffee consultation|homebrew)\b/i.test(text)) return 1
+      let score = 3
+      if (/\b(dinner|foodie|market|cellar|table|tapas|street food|high tea)\b/i.test(text)) score += 4
+      return score
+    },
+  },
+  {
+    title: 'Free and fabulous.',
+    category: 'Community',
+    action: { kind: 'filters', isFree: true },
+    rank: (ev) => (ev.isFree && usablePhoto(ev.imageUrl) ? 2 : 0),
+  },
+  {
+    title: 'Something unexpected.',
+    category: 'Wellness',
+    action: { kind: 'ask', query: 'Something unexpected' },
+    rank: (ev) => {
+      if (!usablePhoto(ev.imageUrl)) return 0
+      if (ev.category === 'Wellness') return 4
+      if (ev.category === 'Community') return 2
+      return 0
+    },
+  },
 ]
 
 const COMMUNITY_KEYS = ['garage-sales', 'neighbourhood-popups', 'school-fundraisers', 'community-sport', 'farmers-markets'] as const
@@ -52,13 +113,32 @@ const ASKS = [
 ]
 
 function TilePhoto({ src, tint }: { src: string | null; tint: string }) {
+  const imgRef = useRef<HTMLImageElement>(null)
+  const [readySrc, setReadySrc] = useState<string | null>(null)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const failed = !src || failedSrc === src
-  if (failed) {
-    return <span className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint} 0%, #14120f 78%)` }} />
-  }
+  const show = !!src && readySrc === src && failedSrc !== src
+
+  useLayoutEffect(() => {
+    const node = imgRef.current
+    if (src && node?.complete && node.naturalWidth > 0) setReadySrc(src)
+  }, [src])
+
   return (
-    <img src={src} alt="" loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" onError={() => setFailedSrc(src)} />
+    <>
+      <span className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint} 0%, #14120f 78%)` }} aria-hidden />
+      {src && failedSrc !== src ? (
+        <img
+          ref={imgRef}
+          src={src}
+          alt=""
+          loading="eager"
+          decoding="sync"
+          className={`absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105 ${show ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setReadySrc(src)}
+          onError={() => setFailedSrc(src)}
+        />
+      ) : null}
+    </>
   )
 }
 
@@ -82,7 +162,7 @@ export function HomeDiscover({
 
   useEffect(() => {
     if (!today) return
-    const params = new URLSearchParams({ limit: '200', dateFrom: today, dateTo: addDays(today, 14) })
+    const params = new URLSearchParams({ limit: '300', dateFrom: today, dateTo: addDays(today, 21) })
     if (city) params.set('city', city)
     let live = true
     fetch(`/api/events?${params}`)
@@ -102,33 +182,46 @@ export function HomeDiscover({
   }, [city, today])
 
   const used = new Set<string>()
-  const moodPhotos = MOODS.map((mood) => {
-    const hit = events.find((ev) => mood.match(ev) && usablePhoto(ev.imageUrl) && !used.has(ev.imageUrl!))
-      ?? events.find((ev) => mood.match(ev) && usablePhoto(ev.imageUrl))
-    if (hit?.imageUrl) used.add(hit.imageUrl)
-    return hit?.imageUrl && usablePhoto(hit.imageUrl) ? hit.imageUrl : null
-  })
+  const claim = (ev: NearbyEvent | undefined) => {
+    const url = ev && usablePhoto(ev.imageUrl) ? ev.imageUrl! : null
+    if (!url || used.has(url)) return null
+    used.add(url)
+    return url
+  }
+  const photoRank = (ev: NearbyEvent) => {
+    const url = ev.imageUrl ?? ''
+    if (!usablePhoto(url) || used.has(url)) return 0
+    if (/cityofsydney/.test(url)) return 3
+    if (/humanitix/.test(url)) return 2
+    return 1
+  }
+  const best = (rank: (ev: NearbyEvent) => number) => {
+    const ranked = events
+      .map((ev) => ({ ev, score: rank(ev) }))
+      .filter((row) => row.score > 0 && usablePhoto(row.ev.imageUrl) && !used.has(row.ev.imageUrl!))
+      .sort((a, b) => b.score - a.score || photoRank(b.ev) - photoRank(a.ev) || listingText(a.ev).localeCompare(listingText(b.ev)))
+    return claim(ranked[0]?.ev)
+  }
+  const moodPhotos = MOODS.map((mood) => best(mood.rank))
+  const communityPhoto = (localPhoto && !used.has(localPhoto) ? (used.add(localPhoto), localPhoto) : null)
+    ?? best((ev) => (/\b(market|markets|garage sale|fete|fetes|school fair)\b/i.test(listingText(ev)) ? 6 : 0))
+    ?? best((ev) => (ev.communityKey && usablePhoto(ev.imageUrl) ? 4 : 0))
+    ?? best((ev) => (ev.category === 'Community' && usablePhoto(ev.imageUrl) ? 3 : 0))
 
   const nearby = (() => {
-    const groups = new Map<string, { count: number; sample: NearbyEvent }>()
+    const groups = new Map<string, NearbyEvent[]>()
     for (const ev of events) {
       const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
       if (!suburb) continue
-      const current = groups.get(suburb)
-      if (!current) groups.set(suburb, { count: 1, sample: ev })
-      else {
-        current.count += 1
-        if (!usablePhoto(current.sample.imageUrl) && usablePhoto(ev.imageUrl)) current.sample = ev
-      }
+      groups.set(suburb, [...(groups.get(suburb) ?? []), ev])
     }
-    return [...groups.entries()].sort((a, b) => b[1].count - a[1].count || a[0].localeCompare(b[0])).slice(0, 6)
-      .map(([suburb, row]) => ({ suburb, ...row }))
+    return [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).slice(0, 6)
+      .map(([suburb, list]) => {
+        const sample = [...list].sort((a, b) => photoRank(b) - photoRank(a)).find((ev) => usablePhoto(ev.imageUrl) && !used.has(ev.imageUrl!))
+        const photo = claim(sample)
+        return { suburb, count: list.length, sample: sample ?? list[0], photo }
+      })
   })()
-
-  const communityPhoto = localPhoto
-    ?? events.find((ev) => ev.communityKey && usablePhoto(ev.imageUrl))?.imageUrl
-    ?? events.find((ev) => ev.category === 'Community' && usablePhoto(ev.imageUrl))?.imageUrl
-    ?? null
   const community = COMMUNITY_KEYS.map((key) => LOCAL_TILES.find((tile) => tile.key === key)).filter((tile): tile is NonNullable<typeof tile> => !!tile)
 
   return (
@@ -138,7 +231,7 @@ export function HomeDiscover({
         <p className="mt-1 text-muted-foreground">What are you in the mood for?</p>
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {MOODS.map((mood, index) => (
-            <button key={mood.title} type="button" onClick={() => onMood(mood.action)} className="group relative aspect-[4/3] overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <button key={mood.title} type="button" data-photo-tile="mood" onClick={() => onMood(mood.action)} className="group relative aspect-[4/3] overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               <TilePhoto src={moodPhotos[index]} tint={categoryColor(mood.category)} />
               <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
               <span className="absolute inset-x-0 bottom-0 p-3 font-display text-base font-bold leading-snug text-white drop-shadow-sm">{mood.title}</span>
@@ -154,9 +247,9 @@ export function HomeDiscover({
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {nearby.map((row) => {
               const price = formatPrice(row.sample.isFree, row.sample.price, row.sample.priceMin, row.sample.priceMax)
-              const photo = usablePhoto(row.sample.imageUrl) ? row.sample.imageUrl! : null
+              const photo = row.photo
               return (
-                <article key={row.suburb} className="overflow-hidden rounded-2xl border border-border bg-card">
+                <article key={row.suburb} data-photo-tile="nearby" className="overflow-hidden rounded-2xl border border-border bg-card">
                   <button type="button" onClick={() => onSuburb(row.suburb)} className="group block w-full text-left">
                     <div className="relative aspect-[16/9]">
                       <TilePhoto src={photo} tint={categoryColor(row.sample.category)} />
@@ -181,7 +274,7 @@ export function HomeDiscover({
       )}
 
       <section aria-label="Community discoveries" className="grid items-center gap-6 lg:grid-cols-2">
-        <div className="relative aspect-[16/10] overflow-hidden rounded-3xl">
+        <div data-photo-tile="community" className="relative aspect-[16/10] overflow-hidden rounded-3xl">
           <TilePhoto src={usablePhoto(communityPhoto) ? communityPhoto : null} tint={categoryColor('Community')} />
         </div>
         <div>
