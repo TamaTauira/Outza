@@ -73,10 +73,10 @@ export function peekVisibleSpan(edge: 'left' | 'right', visible = SCROLL_PEEK_VI
 }
 
 /**
- * Slide the whole upright rig to the nearer edge so a vertical half leans
- * out, and drop him into the bottom corner above `bottomReserve`. The
- * dismiss control goes off that same edge. No crop: the screen edge is the
- * only thing hiding him.
+ * Slide the whole upright rig off the right edge so a vertical half leans
+ * out, and drop him into the bottom corner above `bottomReserve`. The right
+ * edge only: the left edge is the iOS back swipe. The dismiss control goes
+ * off screen. No crop: the viewport edge is the only thing hiding him.
  */
 export function scrollPeekLayout(input: {
   x: number
@@ -90,7 +90,7 @@ export function scrollPeekLayout(input: {
   bottomReserve?: number
 }): ScrollPeekLayout {
   const reserve = Math.max(0, input.bottomReserve ?? 0)
-  const edge: 'left' | 'right' = input.x + input.width / 2 < input.viewportW / 2 ? 'left' : 'right'
+  const edge: 'left' | 'right' = 'right'
   const span = peekVisibleSpan(edge)
   const slotDx = edge === 'right'
     ? input.viewportW - (input.x + span.right * input.width)

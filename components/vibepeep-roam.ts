@@ -354,15 +354,27 @@ export function attachRoam(root: HTMLElement): () => void {
       kick()
       return
     }
-    root.style.setProperty('--vp-peek-ms', '240ms')
-    root.style.setProperty('--vp-peek-ease', 'cubic-bezier(0.34, 1.25, 0.64, 1)')
+    root.style.setProperty('--vp-peek-ms', '420ms')
+    root.style.setProperty('--vp-peek-ease', 'cubic-bezier(0.22, 0.8, 0.2, 1)')
     clearPeekShift()
-    window.clearTimeout(peekHomeTimer)
-    peekHomeTimer = window.setTimeout(() => {
+    const body = root.querySelector<HTMLElement>('.vp-roam-body')
+    const finish = () => {
       if (scrollPeeking) return
       delete root.dataset.scrollPeek
       kick()
-    }, 260)
+    }
+    const onEnd = (event: TransitionEvent) => {
+      if (event.propertyName !== 'transform' || event.target !== body) return
+      body?.removeEventListener('transitionend', onEnd)
+      window.clearTimeout(peekHomeTimer)
+      finish()
+    }
+    body?.addEventListener('transitionend', onEnd)
+    window.clearTimeout(peekHomeTimer)
+    peekHomeTimer = window.setTimeout(() => {
+      body?.removeEventListener('transitionend', onEnd)
+      finish()
+    }, 520)
   }
 
   const apply = () => {
@@ -1109,10 +1121,18 @@ export function attachRoam(root: HTMLElement): () => void {
     kick()
   }
 
+  let swallowPeekClick = false
+
   const onPeekUp = (event: PointerEvent) => {
     if (event.button !== 0 || !scrollPeeking) return
+    swallowPeekClick = true
     peekRevealed = true
+    event.preventDefault()
+    event.stopPropagation()
     syncScrollPeek()
+    window.setTimeout(() => {
+      swallowPeekClick = false
+    }, 400)
   }
 
   const onDown = (event: PointerEvent) => {
@@ -1159,6 +1179,12 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const onClickCapture = (event: MouseEvent) => {
+    if (swallowPeekClick) {
+      swallowPeekClick = false
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      return
+    }
     if (!suppressClick) return
     suppressClick = false
     event.preventDefault()

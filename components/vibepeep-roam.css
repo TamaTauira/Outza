@@ -388,6 +388,16 @@ html[data-walkstill='1'] .vp-hero-clock {
     transition: transform var(--vp-peek-ms, 240ms) var(--vp-peek-ease, cubic-bezier(0.22, 0.8, 0.2, 1));
   }
 
+  /* 44px target on the visible half, its right edge on the screen edge. */
+  .vp-roam[data-scroll-peek='1'] .vp-hit::after {
+    top: auto;
+    bottom: 18%;
+    left: auto;
+    right: 40%;
+    width: 44px;
+    height: 44px;
+  }
+
   /* Off the edge and invisible while he is peeking. */
   .vp-roam[data-scroll-peek='1'] .vp-buddy-min {
     opacity: 0;

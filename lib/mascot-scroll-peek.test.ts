@@ -76,7 +76,7 @@ test('he leans out of the nearer edge and sits above the bottom nav', () => {
   assert.ok(Math.abs(right.visible.bottom - right.visible.top - PHONE_H) < 0.01)
   assert.ok(right.close.left >= 390)
 
-  const left = scrollPeekLayout({
+  const stillRight = scrollPeekLayout({
     x: 8,
     y: 200,
     width: PHONE_W,
@@ -86,11 +86,10 @@ test('he leans out of the nearer edge and sits above the bottom nav', () => {
     close,
     bottomReserve: reserve,
   })
-  assert.equal(left.edge, 'left')
-  assert.ok(Math.abs(left.visible.left) < 0.6)
-  assert.ok(Math.abs(left.visible.right - PHONE_W * SCROLL_PEEK_VISIBLE) < 0.6)
-  assert.ok(Math.abs(left.visible.bottom - (800 - reserve)) < 0.6)
-  assert.ok(left.close.right <= 0)
+  assert.equal(stillRight.edge, 'right')
+  assert.ok(Math.abs(stillRight.visible.right - 360) < 0.6)
+  assert.ok(Math.abs(stillRight.visible.bottom - (800 - reserve)) < 0.6)
+  assert.ok(stillRight.close.left >= 360)
 
   assert.equal(scrollPeekActive({ width: 1440, atBottom: false, revealed: false, msSinceScroll: 10 }), false)
 })
@@ -104,6 +103,9 @@ test('the tuck is a phone-only slide with no face crop, and reduced motion snaps
   assert.match(block, /@media \(max-width: 767px\) and \(prefers-reduced-motion: reduce\)[\s\S]*transition: none;/)
   assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-buddy-min \{[^}]*visibility: hidden;/)
   assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-buddy-min \{[^}]*pointer-events: none;/)
+  assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-hit::after \{[^}]*width: 44px;[^}]*height: 44px;/)
+  const roam = readFileSync(new URL('../components/vibepeep-roam.ts', import.meta.url), 'utf8')
+  assert.match(roam, /stopImmediatePropagation\(\)/)
   assert.match(css, /\.vp-roam \.vp-buddy-min \{[^}]*min-width: 44px;/)
   assert.match(css, /\.vp-roam \.vp-buddy-min \{[^}]*min-height: 44px;/)
 })
