@@ -83,8 +83,8 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
               <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" />{l.sourceName ? `From a public listing on ${l.sourceName} · confirm details on the original page` : 'Listed by the organiser · checked automatically before publishing'}</span>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              <div className="space-y-3">
+            <div className="grid min-w-0 md:grid-cols-2 gap-6 mb-6">
+              <div className="min-w-0 space-y-3">
                 <div className="flex items-center gap-3 text-muted-foreground"><Calendar className="w-5 h-5 text-primary" /><span>{fmtDay(date)}</span></div>
                 <div className="flex items-center gap-3 text-muted-foreground"><Clock className="w-5 h-5 text-primary" /><span>{fmtTime(l.startTime)} – {fmtTime(l.endTime)}</span></div>
                 <div className="flex items-center gap-3 text-muted-foreground">
@@ -97,7 +97,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="min-w-0 space-y-4">
                 <div className="bg-muted/50 rounded-lg p-4">
                   <p className="text-sm text-muted-foreground mb-1">Price</p>
                   <p className="text-2xl font-bold text-foreground">{l.priceNote ?? 'Ask the organiser'}</p>
@@ -109,23 +109,23 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                   </a>
                 )}
                 <EventReactions eventId={ev.id} signedIn={signedIn} />
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid min-w-0 grid-cols-4 gap-1.5">
                   <button
                     type="button"
                     onClick={() => toggle(ev, 'local')}
                     aria-label={isSaved(ev.id) ? 'Saved' : 'Save'}
-                    className={cn('flex h-10 flex-col items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
+                    className={cn('flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
                   >
                     <Bookmark className={cn('w-4 h-4', isSaved(ev.id) && 'fill-current')} />
                     Save
                   </button>
-                  <ItineraryButton event={stop} compact surface="local" className="h-10 w-full rounded-lg" />
-                  <AddToPlanButton eventId={ev.id} city={l.city} icon surface="local" />
+                  <ItineraryButton event={stop} compact surface="local" className="h-10 w-full min-w-0 rounded-lg shadow-none" />
+                  <AddToPlanButton eventId={ev.id} city={l.city} icon surface="local" className="min-w-0" />
                   <button
                     type="button"
                     onClick={() => shareEvent({ id: ev.id, title: l.title }, 'local')}
                     aria-label="Share"
-                    className="flex h-10 flex-col items-center justify-center rounded-lg border border-border text-[10px] font-semibold hover:bg-muted"
+                    className="flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border border-border text-[10px] font-semibold hover:bg-muted"
                   >
                     <Share2 className="w-4 h-4" />Share
                   </button>
