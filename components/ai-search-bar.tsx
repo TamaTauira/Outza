@@ -64,7 +64,7 @@ const pickClass = (on: boolean) => cn(
 
 /** Hero search: plain-English request → AI-parsed filters → real listings only.
  *  Ask suggestions stay inside the bar. Plan mode keeps day-plan chips in the bar too. */
-export function AiSearchBar({ city, today, onShowAll }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void }) {
+export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null }) {
   const [mode, setMode] = useState<'ask' | 'plan'>('ask')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
@@ -82,6 +82,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
   const reqId = useRef(0)
   const planReq = useRef(0)
   const loadedSlug = useRef<string | null>(null)
+  const asked = useRef(0)
   const hasHints = pickedHints(hints)
   const planning = mode === 'plan'
   const working = planning ? planBusy : busy
@@ -214,6 +215,15 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-search only when picks or city change
   }, [hintsKey, city])
 
+  useEffect(() => {
+    if (!queryRequest || queryRequest.id === asked.current) return
+    asked.current = queryRequest.id
+    setMode('ask')
+    setQ(queryRequest.text)
+    void search(queryRequest.text, NO_HINTS, false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run only when a new prompt is requested
+  }, [queryRequest])
+
   // A plan already on screen follows the city select.
   useEffect(() => {
     if (!planning || !loadedSlug.current) return
@@ -332,7 +342,7 @@ export function AiSearchBar({ city, today, onShowAll }: { city: string; today: s
               else focusPanel()
             }}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={planning ? 'Name the day, e.g. Saturday date night' : 'Tell us your vibe, e.g. ‘cheap jazz Friday night’'}
+            placeholder={planning ? 'Name the day, e.g. Saturday date night' : (placeholder ?? 'Tell us your vibe, e.g. ‘cheap jazz Friday night’')}
             className="flex-1 min-w-0 bg-transparent text-base sm:text-lg text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
           <p id="ai-search-help" className="sr-only">{planning ? 'I’ll stitch together a date night, a family Sunday or a lazy free arvo.' : 'Tell us your vibe, or open ideas and filters for times, budget, suburb and suggestions.'}</p>
           {(q || (planning && plan)) && !working && (

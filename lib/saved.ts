@@ -47,6 +47,7 @@ export interface SavedEvent {
   confidenceLevel?: 'high' | 'medium' | 'low'
   /** Detail link for non-board items (e.g. VibePeep Local listings); defaults to the event page. */
   href?: string
+  imageUrl?: string | null
 }
 
 const EVT = 'sydney-events-saved-change'
@@ -197,6 +198,10 @@ export function useSaved() {
       ...(ev.city ? { city: ev.city } : {}),
       ...(ev.latitude != null ? { latitude: ev.latitude } : {}),
       ...(ev.longitude != null ? { longitude: ev.longitude } : {}),
+      ...(ev.imageUrl ? { imageUrl: ev.imageUrl } : {}),
+      ...(ev.priceMin != null ? { priceMin: ev.priceMin } : {}),
+      ...(ev.priceMax != null ? { priceMax: ev.priceMax } : {}),
+      ...(ev.venueAddress ? { venueAddress: ev.venueAddress } : {}),
       ...(ev.status ? { status: ev.status } : {}),
       ...(ev.statusSource ? { statusSource: ev.statusSource } : {}),
       ...(ev.source ? { source: ev.source } : {}),

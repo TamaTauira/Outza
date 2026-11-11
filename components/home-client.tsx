@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
@@ -11,7 +10,7 @@ import { EventList, type BoardSeed } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
 import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
-import { addDays, categoryIcon, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
+import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
 import { CalendarDays, Check, LayoutGrid, MapPin, Search, SlidersHorizontal, Ticket, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,7 +18,9 @@ import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
-import { HomeRails } from '@/components/home-rails';
+import { HomeDiscover, type MoodAction } from '@/components/home-discover';
+import { ViewToggle } from '@/components/view-toggle';
+import { VibePeepMascot } from '@/components/vibepeep-mascot';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
@@ -55,11 +56,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
-  // Board and map keep their own filters. City is shared. Music on the board does not follow you onto /map.
-  const [boardFilters, setBoardFilters] = useBackState<FilterState>('home:filters', EMPTY_FILTERS);
-  const [mapFilters, setMapFilters] = useBackState<FilterState>('map:filters', EMPTY_FILTERS);
-  const filters = view === 'map' ? mapFilters : boardFilters;
-  const setFilters = view === 'map' ? setMapFilters : setBoardFilters;
+  // List and map share one filter set, one search and one date, so toggling views does not start again.
+  const [filters, setFilters] = useBackState<FilterState>('home:filters', EMPTY_FILTERS);
+  const [resultsView, setResultsViewState] = useState<'list' | 'map'>('list');
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [askRequest, setAskRequest] = useState<{ id: number; text: string } | null>(null);
+  const askSeq = useRef(0);
   const [now, setNow] = useState<SydneyNow | null>(initialNow);
   const [day, setDay] = useBackState<string | null>('home:day', initialNow.date);
   // Land on what's on now. Full day stays on the Today chip, and ended rows stay hidden until "Show ended".
@@ -87,8 +89,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       if (!f.suburb || nextAreas.has(f.suburb) || !previousAreas.has(f.suburb)) return f;
       return { ...f, suburb: '' };
     };
-    setBoardFilters(keep);
-    setMapFilters(keep);
+    setFilters(keep);
   };
   const pinWindow = (w: TimeWindow) => { setWindowPinned(true); setTimeWindow(w); };
 
@@ -99,8 +100,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     let previous = '';
     try { previous = sessionStorage.getItem(FILTER_OWNER) ?? ''; } catch {}
     if (previous !== owner) {
-      setBoardFilters(EMPTY_FILTERS);
-      setMapFilters(EMPTY_FILTERS);
+      setFilters(EMPTY_FILTERS);
       try {
         sessionStorage.setItem(FILTER_OWNER, owner);
         sessionStorage.removeItem('outza-ui:home:filters');
@@ -113,7 +113,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         const raw = localStorage.getItem(`${CAT_KEY}:user:${userId}`);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) setBoardFilters((f) => withCategories(f, parsed));
+          if (Array.isArray(parsed)) setFilters((f) => withCategories(f, parsed));
         }
       } catch {}
     }
@@ -123,9 +123,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   useEffect(() => {
     if (!catsHydrated || !userId) return;
     if (filterUser.current !== userId) { filterUser.current = userId; return; }
-    const list = knownCategories(Array.isArray(boardFilters.categories) ? boardFilters.categories : boardFilters.category ? [boardFilters.category] : []);
+    const list = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
     try { localStorage.setItem(`${CAT_KEY}:user:${userId}`, JSON.stringify(list)); } catch {}
-  }, [catsHydrated, userId, boardFilters.categories, boardFilters.category]);
+  }, [catsHydrated, userId, filters.categories, filters.category]);
 
   useEffect(() => {
     if (authStatus === 'loading') return;
@@ -182,7 +182,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (p.get('lgbtiq') === '1' || p.get('isLGBTI') === 'true') patch.isLGBTI = true;
     if (dateFrom) patch.dateFrom = dateFrom;
     if (dateTo) patch.dateTo = dateTo;
-    if (Object.keys(patch).length) setBoardFilters((f) => ({ ...f, ...patch }));
+    if (Object.keys(patch).length) setFilters((f) => ({ ...f, ...patch }));
+    try {
+      const remembered = sessionStorage.getItem('vp-results-view');
+      if (remembered === 'list' || remembered === 'map') setResultsViewState(remembered);
+    } catch {}
     if (dateFrom) setDay(dateFrom);
     const q = p.get('q') || p.get('search') || '';
     if (q) setSearchInput(q);
@@ -230,10 +234,61 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const advancedCount = [filters.subTag, filters.suburb, filters.dateFrom || filters.dateTo].filter(Boolean).length;
   const picked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
 
+  const rememberView = (next: 'list' | 'map') => {
+    setResultsViewState(next);
+    try { sessionStorage.setItem('vp-results-view', next); } catch {}
+    if (next === 'list' && view === 'map') goView('board');
+  };
+  const showOnMap = (id: string) => {
+    setFocusId(id);
+    rememberView('map');
+    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
   const goBoard = (fn: () => void) => () => {
     fn();
     setWindowPinned(true);
+    rememberView('list');
     if (view !== 'board') goView('board');
+    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const ask = (text: string) => {
+    askSeq.current += 1;
+    setAskRequest({ id: askSeq.current, text });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const nextWeek = today ? (() => {
+    const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
+    const untilMonday = dow === 0 ? 1 : 8 - dow;
+    const monday = addDays(today, untilMonday);
+    return { from: monday, to: addDays(monday, 6) };
+  })() : null;
+  const applyPlan = (key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next') => {
+    if (!today) return;
+    setWindowPinned(true);
+    if (key === 'today') { setDay(today); setTimeWindow('all'); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }
+    if (key === 'tonight') { setDay(today); setTimeWindow('evening'); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }
+    if (key === 'tomorrow') { setDay(addDays(today, 1)); setTimeWindow('all'); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }
+    if (key === 'weekend') {
+      const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6);
+      if (sat) setDay(sat);
+      setTimeWindow('all');
+      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+    }
+    if (key === 'next' && nextWeek) {
+      setDay(nextWeek.from);
+      setTimeWindow('all');
+      setFilters((f) => ({ ...f, dateFrom: nextWeek.from, dateTo: nextWeek.to, datePreset: '' }));
+    }
+    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+  const applyMood = (action: MoodAction) => {
+    if (action.kind === 'ask') { ask(action.query); return; }
+    setFilters((f) => {
+      const next = withCategories({ ...f, isFree: action.isFree ?? f.isFree }, action.categories ?? []);
+      return action.subTag ? { ...next, subTag: action.subTag } : next;
+    });
+    setWindowPinned(true);
+    rememberView('list');
     requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   // Hero AI search → open the same filters on the full board
@@ -241,7 +296,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     setDay(f.dateFrom);
     setTimeWindow(f.soon ? 'now' : f.timeOfDay === 'evening' ? 'evening' : 'all');
     setSearchInput(f.keywords.join(' '));
-    setBoardFilters({
+    setFilters({
       ...EMPTY_FILTERS,
       categories: f.category ? [f.category] : [],
       category: f.category,
@@ -255,15 +310,36 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (f.city) setCity(f.city);
     requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
-  const boardPicked = knownCategories(Array.isArray(boardFilters.categories) ? boardFilters.categories : boardFilters.category ? [boardFilters.category] : []);
+  const span = listSpan(day, filters.dateFrom, filters.dateTo);
+  const mapFilters: FilterState = span ? { ...filters, dateFrom: span.from, dateTo: span.to } : filters;
+  const discovery: 'list' | 'map' = view === 'map' ? 'map' : resultsView;
+  const planKey = filters.dateFrom && nextWeek && filters.dateFrom === nextWeek.from && filters.dateTo === nextWeek.to
+    ? 'next'
+    : day === today && timeWindow === 'evening' && !filters.dateFrom
+      ? 'tonight'
+      : day === today && timeWindow === 'all' && !filters.dateFrom
+        ? 'today'
+        : today && day === addDays(today, 1) && timeWindow === 'all' && !filters.dateFrom
+          ? 'tomorrow'
+          : !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.dateFrom
+            ? 'weekend'
+            : '';
+  const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string }[] = [
+    { key: 'today', label: 'Today' },
+    { key: 'tonight', label: 'Tonight' },
+    { key: 'tomorrow', label: 'Tomorrow' },
+    { key: 'weekend', label: 'This weekend' },
+    { key: 'next', label: 'Next week' },
+  ];
+  const boardPicked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
   const noType = boardPicked.length === 0
   const quickLinks = [
-  { label: 'Today', active: day === today && timeWindow === 'all' && !boardFilters.isFree && !boardFilters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('all'); setBoardFilters(EMPTY_FILTERS); }) },
-  { label: 'Tonight', active: day === today && timeWindow === 'evening' && !boardFilters.isFree && !boardFilters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setBoardFilters(EMPTY_FILTERS); }) },
-  { label: 'This weekend', active: !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !boardFilters.isFree && !boardFilters.isLGBTI && noType, onClick: goBoard(() => { const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6); if (sat) setDay(sat); pinWindow('all'); setBoardFilters(EMPTY_FILTERS); }) },
-  { label: 'Free events', active: boardFilters.isFree, onClick: goBoard(() => setBoardFilters((f) => ({ ...f, isFree: !f.isFree }))) },
-  { label: 'LGBTIQ+ events', active: boardFilters.isLGBTI, onClick: goBoard(() => setBoardFilters((f) => ({ ...f, isLGBTI: !f.isLGBTI }))) },
-  { label: 'Live music', active: boardPicked.length === 1 && boardPicked[0] === 'Music', onClick: goBoard(() => setBoardFilters((f) => withCategories(f, boardPicked.length === 1 && boardPicked[0] === 'Music' ? [] : ['Music']))) }];
+  { label: 'Today', active: day === today && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'Tonight', active: day === today && timeWindow === 'evening' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'This weekend', active: !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6); if (sat) setDay(sat); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'Free events', active: filters.isFree, onClick: goBoard(() => setFilters((f) => ({ ...f, isFree: !f.isFree }))) },
+  { label: 'LGBTIQ+ events', active: filters.isLGBTI, onClick: goBoard(() => setFilters((f) => ({ ...f, isLGBTI: !f.isLGBTI }))) },
+  { label: 'Live music', active: boardPicked.length === 1 && boardPicked[0] === 'Music', onClick: goBoard(() => setFilters((f) => withCategories(f, boardPicked.length === 1 && boardPicked[0] === 'Music' ? [] : ['Music']))) }];
 
 
   return (
@@ -271,53 +347,116 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       <Navbar savedCount={saved.length} />
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'vp-wrap px-4 sm:px-6 pt-5'}>
-        {view === 'saved' ? (
-          <div className="mb-4">
-            <h1 className="font-display text-3xl sm:text-[40px] font-bold tracking-tight leading-none">The keepers.</h1>
-            <p className="mt-3 text-muted-foreground text-base sm:text-xl leading-snug">Everything you saved, in one tidy line-up. <Link href="/watchlist" className="text-primary underline">My VibePeep</Link> also keeps follows, reminders and a calendar file.</p>
-          </div>
-        ) : view === 'board' ? (
-          <section className="mb-4 rounded-2xl bg-[#0c0f0e] text-white px-4 py-3 sm:px-6 sm:py-4 shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-            <div className="vp-hero-row flex flex-col gap-2.5 xl:flex-row xl:items-start xl:gap-3">
-              <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
-                <div className="vp-city-stack shrink-0">
-                  <label className="inline-flex h-12 w-full items-center gap-2 rounded-xl border border-primary/40 bg-white/[0.03] px-3">
-                    <MapPin className="w-4 h-4 text-primary shrink-0" />
-                    <span className="sr-only">Choose a city</span>
-                    <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent pr-1 font-medium text-white focus:outline-none" aria-label="Choose a city">
-                      <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
-                      {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
-                    </select>
-                  </label>
-                  <h1 className="vp-city-call font-display font-bold"><span>Your city’s calling.</span><span>Answer it.</span></h1>
-                </div>
-                <LocalClock city={city} className="vp-hero-clock ml-auto shrink-0 text-right xl:ml-0" />
+        {view === 'board' ? (
+          <section className="mb-8 overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+                  <span className="block">Your city’s calling.</span>
+                  <span className="block text-brand-gradient">Answer it.</span>
+                </h1>
+                <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Good gigs. Hidden gems. Things you didn’t know were happening. Your next favourite plan starts here.</p>
               </div>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} />
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <LocalClock city={city} className="vp-hero-clock text-right" />
+                <VibePeepMascot onDark className="w-14 sm:w-20" sizes="80px" alt="VibePeep" />
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+              <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
+                <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                <span className="sr-only">Choose a city</span>
+                <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="Choose a city">
+                  <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
+                  {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
+                </select>
+              </label>
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="What’s your vibe? Live music, cheap eats, something different…" queryRequest={askRequest} />
+            </div>
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[
+                { label: 'Tonight’s looking good.', run: () => applyPlan('tonight') },
+                { label: 'Something free.', run: () => { update({ isFree: true }); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
+                { label: 'Date night.', run: () => ask('Date night') },
+                { label: 'Live music.', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
+                { label: 'A little culture.', run: () => { setFilters((f) => withCategories(f, ['Arts & Culture'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
+                { label: 'Something unexpected.', run: () => ask('Something unexpected') },
+              ].map((chip) => (
+                <button key={chip.label} type="button" onClick={chip.run} className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20">{chip.label}</button>
+              ))}
             </div>
           </section>
         ) : null}
 
         {view === 'board' && <FeaturedTurnstile city={city} />}
         {view === 'board' && today && (
-          <HomeRails
+          <section className="mb-8" aria-label="What’s the plan?">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">What’s the plan?</h2>
+                <p className="mt-1 text-muted-foreground">Same dates on the list and the map.</p>
+              </div>
+              <Popover open={calOpen} onOpenChange={(open) => {
+                setCalOpen(open);
+                if (open) {
+                  const iso = filters.dateFrom || day;
+                  if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
+                }
+              }}>
+                <PopoverTrigger asChild>
+                  <button className="inline-flex h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold hover:bg-muted">
+                    <CalendarDays className="h-4 w-4" /> Pick a date
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    month={calMonth}
+                    onMonthChange={setCalMonth}
+                    selected={day ? new Date(`${day}T12:00:00`) : undefined}
+                    disabled={today ? { before: new Date(`${today}T00:00:00`) } : undefined}
+                    onSelect={(d) => {
+                      if (!d) return;
+                      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                      setDay(iso);
+                      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                      setCalOpen(false);
+                      requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                    }}
+                    initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {planChips.map((chip) => (
+                <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70')}>{chip.label}</button>
+              ))}
+            </div>
+          </section>
+        )}
+        {view === 'board' && (
+          <HomeDiscover
             city={city}
             today={today}
-            onSeeAll={(kind) => {
-              setBoardOpen(true);
-              if (kind === 'free') setBoardFilters((f) => ({ ...f, isFree: true }));
-              if (kind === 'tonight' && today) { setDay(today); pinWindow('evening'); }
-              if (kind === 'weekend') {
-                const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6);
-                if (sat) setDay(sat);
-                pinWindow('all');
-              }
-              requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-            }}
+            onMood={applyMood}
+            onSuburb={(suburb) => { setFilters((f) => ({ ...f, suburb })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
+            onAsk={ask}
+            onWorkshops={() => applyMood({ kind: 'filters', categories: ['Education'], subTag: 'Workshop' })}
           />
         )}
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
+            <div className="vp-map-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4">
+              <ViewToggle value="map" onChange={rememberView} />
+              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {planChips.map((chip) => (
+                  <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('h-10 shrink-0 rounded-full px-3 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted')}>{chip.label}</button>
+                ))}
+              </div>
+              <button type="button" onClick={() => setShowFilters(true)} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-semibold">
+                <SlidersHorizontal className="h-4 w-4" /> Filters
+              </button>
+            </div>
             <div className="vp-map-toolbar flex shrink-0 items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4 lg:gap-0 lg:px-0">
               <div className="w-[46%] max-w-[220px] shrink-0 lg:w-80 lg:max-w-none lg:px-4">
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
@@ -339,10 +478,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <div className="relative min-h-0 flex-1">
               <div className="absolute inset-0">
               <MapView
-                filters={filters}
+                filters={mapFilters}
                 searchQuery={searchQuery}
                 city={city}
                 bleed
+                focusId={focusId}
+                onSelect={setFocusId}
                 chips={(
                   <>
                     <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
@@ -358,7 +499,17 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </div>
         )}
 
-        {view !== 'map' && <div ref={boardRef} className="scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+        {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
+        {view === 'board' && <div ref={boardRef} id="line-up" className="scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+          {view === 'board' && (
+            <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/95 px-3 py-3 backdrop-blur sm:top-16 sm:px-4">
+              <div>
+                <h2 className="font-display text-xl font-bold">The line-up</h2>
+                <p className="text-xs text-muted-foreground">List and map use this search, these filters and this date.</p>
+              </div>
+              <ViewToggle value={discovery} onChange={(next) => { setFocusId(focusId); rememberView(next); }} />
+            </div>
+          )}
           {view === 'board' &&
           <>
               {/* Big search */}
@@ -387,7 +538,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                     <Popover open={calOpen} onOpenChange={(open) => {
                       setCalOpen(open);
                       if (open) {
-                        const iso = boardFilters.dateFrom || day;
+                        const iso = filters.dateFrom || day;
                         if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
                       }
                     }}>
@@ -407,7 +558,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                         if (!d) return;
                         const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                         setDay(iso);
-                        setBoardFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                        setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
                         setCalOpen(false);
                       }}
                       initialFocus />
@@ -419,7 +570,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                     const dt = new Date(`${d}T00:00:00Z`);
                     const label = d === today ? 'Today' : i === 1 && days[0] === today ? 'Tomorrow' : dt.toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' });
                     return (
-                      <button key={d} onClick={() => { setDay(d); setBoardFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }} className={cn('shrink-0 h-11 min-w-[64px] px-3 rounded-lg border text-center leading-tight transition-colors', day === d ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted')}>
+                      <button key={d} onClick={() => { setDay(d); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }} className={cn('shrink-0 h-11 min-w-[64px] px-3 rounded-lg border text-center leading-tight transition-colors', day === d ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted')}>
                             <div className="text-xs font-semibold">{label}</div>
                             <div className="text-xs opacity-80">{dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })}</div>
                           </button>);
@@ -504,7 +655,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             </>
           }
 
-          {view === 'board' &&
+          {view === 'board' && discovery === 'map' && (
+            <div className="h-[70vh] min-h-[420px]">
+              <MapView filters={mapFilters} searchQuery={searchQuery} city={city} bleed focusId={focusId} onSelect={setFocusId} />
+            </div>
+          )}
+          {view === 'board' && discovery === 'list' &&
           <>
           <div className={cn(!boardOpen && 'max-lg:max-h-[32rem] max-lg:overflow-hidden')}>
           <EventList
@@ -517,7 +673,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             onWindowChange={setTimeWindow}
             windowPinned={windowPinned}
             city={city}
-            initialBoard={initialBoard} />
+            initialBoard={initialBoard}
+            activeId={focusId}
+            onLocate={(ev) => showOnMap(ev.id)} />
           </div>
           <div className="flex justify-center border-t border-border px-4 py-3 lg:hidden">
             <button type="button" onClick={() => setBoardOpen((open) => !open)} className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">
@@ -526,7 +684,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </div>
           </>
           }
-          {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
         </div>}
       </main>
 
@@ -541,16 +698,16 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               onClose={() => setShowFilters(false)}
               isMobile
               areas={areasForCity(city)}
-              when={view === 'board' && day === today ? timeWindow : ''}
-              onWhen={view === 'board' ? (w) => {
+              when={day === today ? timeWindow : ''}
+              onWhen={(w) => {
                 if (!today) return;
                 setDay(today);
                 setWindowPinned(true);
-                setBoardFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
                 pinWindow(w);
                 setShowFilters(false);
                 requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-              } : undefined}
+              }}
             />
           </div>
         </div>
