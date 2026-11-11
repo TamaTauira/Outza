@@ -107,7 +107,7 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
 
 const COMMUNITY_KEYS = ['garage-sales', 'neighbourhood-popups', 'school-fundraisers', 'community-sport', 'farmers-markets'] as const
 
-function TilePhoto({ src, tint }: { src: string | null; tint: string }) {
+function TilePhoto({ src, tint, fit = 'cover' }: { src: string | null; tint: string; fit?: 'cover' | 'contain' }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [readySrc, setReadySrc] = useState<string | null>(null)
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
@@ -128,7 +128,7 @@ function TilePhoto({ src, tint }: { src: string | null; tint: string }) {
           alt=""
           loading="eager"
           decoding="sync"
-          className={`absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105 ${show ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 h-full w-full ${fit === 'contain' ? 'object-contain' : 'object-cover'} transition duration-300 group-hover:scale-105 ${show ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setReadySrc(src)}
           onError={() => setFailedSrc(src)}
         />
@@ -149,7 +149,6 @@ export function HomeDiscover({
   onSuburb: (suburb: string) => void
 }) {
   const [events, setEvents] = useState<NearbyEvent[]>([])
-  const [localPhoto, setLocalPhoto] = useState<string | null>(null)
 
   useEffect(() => {
     if (!today) return
@@ -160,15 +159,6 @@ export function HomeDiscover({
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data) => { if (live) setEvents((data?.events ?? []) as NearbyEvent[]) })
       .catch(() => { if (live) setEvents([]) })
-    const localParams = new URLSearchParams()
-    if (city) localParams.set('city', city)
-    fetch(`/api/local?${localParams}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((data) => {
-        const photo = ((data?.items ?? []) as { imageUrl?: string | null }[]).find((item) => usablePhoto(item.imageUrl))?.imageUrl ?? null
-        if (live) setLocalPhoto(photo)
-      })
-      .catch(() => { if (live) setLocalPhoto(null) })
     return () => { live = false }
   }, [city, today])
 
@@ -194,7 +184,7 @@ export function HomeDiscover({
     return claim(ranked[0]?.ev)
   }
   const moodPhotos = MOODS.map((mood) => best(mood.rank))
-  const communityPhoto = pickCornerPhoto(events, { localPhoto, used })
+  const communityPhoto = pickCornerPhoto(events, { used })
 
   const nearby = (() => {
     const groups = new Map<string, NearbyEvent[]>()
@@ -262,8 +252,8 @@ export function HomeDiscover({
       )}
 
       <section aria-label="Community discoveries" className="grid items-center gap-6 lg:grid-cols-2">
-        <div data-photo-tile="community" className="relative aspect-[16/10] overflow-hidden rounded-3xl">
-          <TilePhoto src={communityPhoto} tint={categoryColor('Community')} />
+        <div data-photo-tile="community" className="relative aspect-[16/10] overflow-hidden rounded-3xl bg-[#110e16]">
+          <TilePhoto src={communityPhoto} tint="#110e16" fit="contain" />
         </div>
         <div>
           <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">The little things happening around the corner.</h2>

@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CORNER_ARTWORK, cornerMatchScore, pickCornerPhoto, type CornerListing } from './corner-photo'
+import { LOCAL_PAGE_HERO, isGenuineLocalType, listingPhotoIsScene, pickCornerPhoto, type CornerListing } from './corner-photo'
+
+const bingo: CornerListing = {
+  title: 'BINGO BOTANICA [Thu 12 Nov]',
+  category: 'Community',
+  venueName: 'Universal Sydney',
+  venueAddress: '85-91 Oxford St, Darlinghurst NSW 2010',
+  imageUrl: 'https://images.humanitix.com/i/dad5feb7-8a8a-44fb-8e9e-b499147d1f9e.jpeg@original',
+}
 
 const christmas: CornerListing = {
   title: 'Wundrful World of Christmas',
@@ -10,34 +18,34 @@ const christmas: CornerListing = {
   imageUrl: 'https://cdn.example/christmas.webp',
 }
 
+test('plant bingo is not a garage sale, market or fete, so the corner uses the Local hero', () => {
+  assert.equal(isGenuineLocalType(bingo), false)
+  assert.equal(listingPhotoIsScene(bingo), false)
+  assert.equal(pickCornerPhoto([bingo]), LOCAL_PAGE_HERO)
+})
+
 test('a street named Market is not a market', () => {
-  assert.equal(cornerMatchScore(christmas), 0)
-  assert.equal(pickCornerPhoto([christmas]), CORNER_ARTWORK)
+  assert.equal(isGenuineLocalType(christmas), false)
+  assert.equal(pickCornerPhoto([christmas, bingo]), LOCAL_PAGE_HERO)
+})
+
+test('a genuine Local listing still uses the hero when the picture might be a flyer', () => {
   const market: CornerListing = {
     title: 'Saturday produce',
     category: 'Food & Drink',
     communityKey: 'farmers-markets',
-    venueName: 'Town Hall',
     imageUrl: 'https://cdn.example/produce.webp',
   }
-  assert.equal(pickCornerPhoto([christmas, market]), market.imageUrl)
-})
-
-test('category, type and tags outrank a title, and the title is only a word-boundary fallback', () => {
-  const titled: CornerListing = { title: 'Friday Foodie Market', category: 'Food & Drink', imageUrl: 'https://cdn.example/foodie.webp' }
-  const tagged: CornerListing = { title: 'Saturday stall', category: 'Food & Drink', subTags: ['Market'], imageUrl: 'https://cdn.example/stall.webp' }
-  const community: CornerListing = { title: 'Neighbourhood meetup', category: 'Community', imageUrl: 'https://cdn.example/meetup.webp' }
-  const popup: CornerListing = { title: 'One weekend only', communityKey: 'neighbourhood-popups', imageUrl: 'https://cdn.example/popup.webp' }
-  assert.equal(pickCornerPhoto([titled, tagged]), tagged.imageUrl)
-  assert.equal(pickCornerPhoto([titled, community]), community.imageUrl)
-  assert.equal(pickCornerPhoto([titled, popup]), popup.imageUrl)
-  assert.equal(pickCornerPhoto([titled, christmas]), titled.imageUrl)
-  assert.equal(cornerMatchScore({ title: 'Marketing breakfast', category: 'Business', venueName: 'The Markets Hotel' }), 0)
-})
-
-test('with no matching photo, the Local picture is used, then the community artwork', () => {
-  const local = 'https://cdn.example/local-hero.webp'
-  assert.equal(pickCornerPhoto([christmas], { localPhoto: local }), local)
-  assert.equal(pickCornerPhoto([{ title: 'Garage sale on the lawn', category: 'Community', imageUrl: null }], { localPhoto: 'https://picsum.photos/seed/x/800/450' }), CORNER_ARTWORK)
-  assert.equal(pickCornerPhoto([]), CORNER_ARTWORK)
+  const sale: CornerListing = { title: 'Driveway sale', communityKey: 'garage-sales', imageUrl: 'https://cdn.example/sale.webp' }
+  const fete: CornerListing = { title: 'School fair', communityKey: 'school-fundraisers', imageUrl: 'https://cdn.example/fete.webp' }
+  const fundraiser: CornerListing = { title: 'Sausage sizzle', communityKey: 'charity-events', imageUrl: 'https://cdn.example/fund.webp' }
+  const popup: CornerListing = { title: 'Weekend stall', communityKey: 'neighbourhood-popups', imageUrl: 'https://cdn.example/popup.webp' }
+  const sport: CornerListing = { title: 'Park footy', communityKey: 'community-sport', imageUrl: 'https://cdn.example/footy.webp' }
+  for (const ev of [market, sale, fete, fundraiser, popup, sport]) {
+    assert.equal(isGenuineLocalType(ev), true, ev.title)
+    assert.equal(listingPhotoIsScene(ev), false, ev.title)
+    assert.equal(pickCornerPhoto([ev, bingo]), LOCAL_PAGE_HERO, ev.title)
+  }
+  assert.equal(isGenuineLocalType({ title: 'Friday Foodie Market', category: 'Food & Drink', subTags: ['Market'] }), false)
+  assert.equal(LOCAL_PAGE_HERO, '/placeholders/community/hero.webp')
 })
