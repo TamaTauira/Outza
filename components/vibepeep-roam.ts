@@ -22,6 +22,7 @@ import {
 } from '@/lib/mascot-roam'
 import { roamBottomChrome } from '@/lib/bottom-nav'
 import {
+  PEEK_CORNER_GAP,
   SCROLL_PEEK_MAX_WIDTH,
   SCROLL_PEEK_SETTLE_MS,
   closeButtonBox,
@@ -249,6 +250,15 @@ export function attachRoam(root: HTMLElement): () => void {
     const width = size()
     const rig = root.querySelector<HTMLElement>('.vp-rig')
     const height = rig && rig.clientHeight > 8 ? rig.clientHeight : width * (1092 / 763)
+    const safe = probe('width:0;height:env(safe-area-inset-bottom, 0px)').height
+    let chrome = Number.isFinite(safe) ? safe : 0
+    const navEl = document.querySelector<HTMLElement>('.vp-bottom-nav')
+    if (navEl) {
+      const box = navEl.getBoundingClientRect()
+      if (box.height > 8 && box.top < window.innerHeight - 4) {
+        chrome = Math.max(chrome, window.innerHeight - box.top)
+      }
+    }
     const layout = scrollPeekLayout({
       x: pos.x,
       y: pos.y,
@@ -257,6 +267,7 @@ export function attachRoam(root: HTMLElement): () => void {
       viewportW: window.innerWidth,
       viewportH: window.innerHeight,
       close: closeButtonBox(width, height),
+      bottomReserve: chrome + PEEK_CORNER_GAP,
     })
     root.style.setProperty('--vp-peek-dx', `${layout.slotDx.toFixed(1)}px`)
     root.style.setProperty('--vp-peek-dy', `${layout.slotDy.toFixed(1)}px`)

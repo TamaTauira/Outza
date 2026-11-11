@@ -379,17 +379,16 @@ html[data-walkstill='1'] .vp-hero-clock {
   }
 }
 
-/* Narrow viewports tuck him into the gutter while the page scrolls.
-   The clip is the antenna-and-eyes window from scrollPeekClip().
+/* Narrow viewports: a vertical half leans out of the nearer edge, down in
+   the corner above the nav. No clip. The screen edge hides the other half.
    Wider than 767px is unchanged. */
 @media (max-width: 767px) {
-  .vp-roam[data-scroll-peek='1'] .vp-slot {
+  .vp-roam[data-scroll-peek='1'] .vp-roam-body {
     transform: translate3d(var(--vp-peek-dx, 0px), var(--vp-peek-dy, 0px), 0);
-    clip-path: inset(0% 31% 48% 39%);
     transition: transform var(--vp-peek-ms, 240ms) var(--vp-peek-ease, cubic-bezier(0.22, 0.8, 0.2, 1));
   }
 
-  /* Off the edge and invisible. A 44px control will not fit in the gutter. */
+  /* Off the edge and invisible while he is peeking. */
   .vp-roam[data-scroll-peek='1'] .vp-buddy-min {
     opacity: 0;
     visibility: hidden;
@@ -398,15 +397,7 @@ html[data-walkstill='1'] .vp-hero-clock {
     transition: transform var(--vp-peek-ms, 240ms) var(--vp-peek-ease, cubic-bezier(0.22, 0.8, 0.2, 1));
   }
 
-  /* The visible slice is the tap target, including the antenna above the old hit box. */
-  .vp-roam[data-scroll-peek='1'] .vp-hit::after {
-    top: 0;
-    right: 31%;
-    bottom: 48%;
-    left: 39%;
-  }
-
-  /* Hold the neutral face in the window. A bob or dance would slide the antenna out of the clip. */
+  /* Hold the front face still so the half reads as him, upright. */
   .vp-roam[data-scroll-peek='1'] .vp-bob,
   .vp-roam[data-scroll-peek='1'] .vp-stage,
   .vp-roam[data-scroll-peek='1'] .vp-act,
@@ -416,7 +407,6 @@ html[data-walkstill='1'] .vp-hero-clock {
     transform: none !important;
   }
 
-  /* Front face, so both eyes and the attached antenna are what peek. */
   .vp-roam[data-scroll-peek='1'] .vp-front {
     visibility: visible !important;
   }
@@ -436,7 +426,7 @@ html[data-walkstill='1'] .vp-hero-clock {
 }
 
 @media (max-width: 767px) and (prefers-reduced-motion: reduce) {
-  .vp-roam[data-scroll-peek='1'] .vp-slot,
+  .vp-roam[data-scroll-peek='1'] .vp-roam-body,
   .vp-roam[data-scroll-peek='1'] .vp-buddy-min {
     transition: none;
   }
