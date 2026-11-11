@@ -10,7 +10,7 @@ import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
-import { VibePeepMascot } from '@/components/vibepeep-mascot'
+import { PageMasthead } from '@/components/page-masthead'
 import { ViewToggle } from '@/components/view-toggle'
 import { useItinerary, useItineraryLabel, sortItinerary, clashMap, eventToItem, type ItineraryItem } from '@/lib/itinerary'
 import { boardClockLine } from '@/lib/listing-window'
@@ -314,15 +314,7 @@ export default function ItineraryPage() {
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
       <main className="vp-wrap px-4 py-6 sm:px-6 lg:py-8">
-        <section className="overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white sm:px-8 sm:py-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl">Make a day of it.</h1>
-              <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Line up the good stuff. The gig, the dinner, the drinks and everything in between.</p>
-            </div>
-            <VibePeepMascot onDark className="w-16 shrink-0 sm:w-24" sizes="96px" alt="VibePeep" />
-          </div>
-        </section>
+        <PageMasthead title="Make a day of it." lede="Line up the good stuff. The gig, the dinner, the drinks and everything in between." />
 
         {!arranged.length ? (
           <div className="mt-8">
