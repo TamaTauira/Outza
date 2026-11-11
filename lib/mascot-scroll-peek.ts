@@ -31,12 +31,15 @@ export const PEEK_CORNER_GAP = 8
 
 export function scrollPeekActive(input: {
   width: number
+  /** Sideways phones stay as they are. Desktop width already fails the max-width check. */
+  portrait: boolean
   atBottom: boolean
   revealed: boolean
   /** Null until the reader has actually scrolled. */
   msSinceScroll: number | null
   settleMs?: number
 }): boolean {
+  if (!input.portrait) return false
   if (input.width > SCROLL_PEEK_MAX_WIDTH) return false
   if (input.atBottom || input.revealed) return false
   if (input.msSinceScroll == null) return false

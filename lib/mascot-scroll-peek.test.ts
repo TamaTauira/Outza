@@ -21,12 +21,13 @@ const RIGHT_EYE = { left: 0.613, right: 0.788 }
 test('tuck only while a narrow page is scrolling, and pop back at the bottom or after a second', () => {
   assert.equal(SCROLL_PEEK_MAX_WIDTH, 767)
   assert.equal(SCROLL_PEEK_SETTLE_MS, 1000)
-  const scrolling = { width: 390, atBottom: false, revealed: false, msSinceScroll: 200 }
+  const scrolling = { width: 390, portrait: true, atBottom: false, revealed: false, msSinceScroll: 200 }
   assert.equal(scrollPeekActive(scrolling), true)
   assert.equal(scrollPeekActive({ ...scrolling, width: 360 }), true)
   assert.equal(scrollPeekActive({ ...scrolling, width: 767 }), true)
   assert.equal(scrollPeekActive({ ...scrolling, width: 768 }), false)
   assert.equal(scrollPeekActive({ ...scrolling, width: 1440 }), false)
+  assert.equal(scrollPeekActive({ ...scrolling, width: 667, portrait: false }), false)
   assert.equal(scrollPeekActive({ ...scrolling, msSinceScroll: null }), false)
   assert.equal(scrollPeekActive({ ...scrolling, msSinceScroll: 999 }), true)
   assert.equal(scrollPeekActive({ ...scrolling, msSinceScroll: 1000 }), false)
@@ -91,16 +92,16 @@ test('he leans out of the nearer edge and sits above the bottom nav', () => {
   assert.ok(Math.abs(stillRight.visible.bottom - (800 - reserve)) < 0.6)
   assert.ok(stillRight.close.left >= 360)
 
-  assert.equal(scrollPeekActive({ width: 1440, atBottom: false, revealed: false, msSinceScroll: 10 }), false)
+  assert.equal(scrollPeekActive({ width: 1440, portrait: true, atBottom: false, revealed: false, msSinceScroll: 10 }), false)
 })
 
 test('the tuck is a phone-only slide with no face crop, and reduced motion snaps', () => {
   const css = readFileSync(new URL('../components/vibepeep-roam.css', import.meta.url), 'utf8')
   const block = css.slice(css.indexOf('/* Narrow viewports:'))
-  assert.match(block, /@media \(max-width: 767px\)/)
+  assert.match(block, /@media \(max-width: 767px\) and \(orientation: portrait\)/)
   assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-roam-body/)
   assert.equal(block.includes('clip-path'), false)
-  assert.match(block, /@media \(max-width: 767px\) and \(prefers-reduced-motion: reduce\)[\s\S]*transition: none;/)
+  assert.match(block, /@media \(max-width: 767px\) and \(orientation: portrait\) and \(prefers-reduced-motion: reduce\)[\s\S]*transition: none;/)
   assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-buddy-min \{[^}]*visibility: hidden;/)
   assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-buddy-min \{[^}]*pointer-events: none;/)
   assert.match(block, /\.vp-roam\[data-scroll-peek='1'\] \.vp-hit::after \{[^}]*width: 44px;[^}]*height: 44px;/)

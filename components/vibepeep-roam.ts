@@ -56,6 +56,7 @@ export function attachRoam(root: HTMLElement): () => void {
   if (/walkdemo|walkstill/.test(location.search)) document.documentElement.dataset.walkstill = '1'
   const mobileMq = window.matchMedia('(max-width: 639px)')
   const narrowPeekMq = window.matchMedia(`(max-width: ${SCROLL_PEEK_MAX_WIDTH}px)`)
+  const portraitPeekMq = window.matchMedia('(orientation: portrait)')
   const navMq = window.matchMedia('(max-width: 1023px), (pointer: coarse) and (orientation: portrait) and (max-width: 1400px), (horizontal-viewport-segments: 2), (spanning: single-fold-vertical)')
   let navOffset = 0
   let segment = { w: 0, h: 0 }
@@ -296,7 +297,8 @@ export function attachRoam(root: HTMLElement): () => void {
   const peekNow = () =>
     !skipPeek() &&
     scrollPeekActive({
-      width: narrowPeekMq.matches ? Math.min(window.innerWidth, SCROLL_PEEK_MAX_WIDTH) : window.innerWidth,
+      width: window.innerWidth,
+      portrait: portraitPeekMq.matches,
       atBottom: nearPageBottom(window.scrollY, window.innerHeight, Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0)),
       revealed: peekRevealed,
       msSinceScroll: lastScrollAt == null ? null : performance.now() - lastScrollAt,
@@ -1046,7 +1048,7 @@ export function attachRoam(root: HTMLElement): () => void {
     const y = window.scrollY
     const delta = Math.abs(y - lastScrollY)
     lastScrollY = y
-    if (delta >= 2 && performance.now() >= peekReadyAt && !skipPeek() && narrowPeekMq.matches) {
+    if (delta >= 2 && performance.now() >= peekReadyAt && !skipPeek() && narrowPeekMq.matches && portraitPeekMq.matches) {
       peekRevealed = false
       lastScrollAt = performance.now()
       syncScrollPeek()
@@ -1066,7 +1068,7 @@ export function attachRoam(root: HTMLElement): () => void {
   const onResize = () => {
     cachedSize = 0
     readChrome()
-    if (!narrowPeekMq.matches && (scrollPeeking || root.dataset.scrollPeek === '1')) {
+    if (!(narrowPeekMq.matches && portraitPeekMq.matches) && (scrollPeeking || root.dataset.scrollPeek === '1')) {
       scrollPeeking = false
       peekIntro = false
       peekFrozen = 0
@@ -1256,6 +1258,7 @@ export function attachRoam(root: HTMLElement): () => void {
   reduceMq.addEventListener('change', onReduce)
   navMq.addEventListener('change', onResize)
   narrowPeekMq.addEventListener('change', onResize)
+  portraitPeekMq.addEventListener('change', onResize)
   mo.observe(button, { attributes: true, attributeFilter: ['data-react', 'data-mood'] })
 
   let pinTimer = 0
@@ -1314,6 +1317,7 @@ export function attachRoam(root: HTMLElement): () => void {
     reduceMq.removeEventListener('change', onReduce)
     navMq.removeEventListener('change', onResize)
     narrowPeekMq.removeEventListener('change', onResize)
+    portraitPeekMq.removeEventListener('change', onResize)
     document.body.style.userSelect = ''
     root.style.transform = ''
     delete root.dataset.scrollPeek

@@ -382,7 +382,7 @@ html[data-walkstill='1'] .vp-hero-clock {
 /* Narrow viewports: a vertical half leans out of the nearer edge, down in
    the corner above the nav. No clip. The screen edge hides the other half.
    Wider than 767px is unchanged. */
-@media (max-width: 767px) {
+@media (max-width: 767px) and (orientation: portrait) {
   .vp-roam[data-scroll-peek='1'] .vp-roam-body {
     transform: translate3d(var(--vp-peek-dx, 0px), var(--vp-peek-dy, 0px), 0);
     transition: transform var(--vp-peek-ms, 240ms) var(--vp-peek-ease, cubic-bezier(0.22, 0.8, 0.2, 1));
@@ -435,7 +435,7 @@ html[data-walkstill='1'] .vp-hero-clock {
   }
 }
 
-@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+@media (max-width: 767px) and (orientation: portrait) and (prefers-reduced-motion: reduce) {
   .vp-roam[data-scroll-peek='1'] .vp-roam-body,
   .vp-roam[data-scroll-peek='1'] .vp-buddy-min {
     transition: none;
