@@ -59,13 +59,14 @@ export function lockPageScroll(): () => void {
   if (next.styles) {
     const body = document.body
     const html = document.documentElement
-    body.style.position = next.styles.position
-    body.style.top = next.styles.top
-    body.style.left = next.styles.left
-    body.style.right = next.styles.right
-    body.style.width = next.styles.width
-    body.style.overflow = next.styles.overflow
-    html.style.overflow = 'hidden'
+    // important: dialog libraries also write body position, and a plain inline value loses.
+    body.style.setProperty('position', next.styles.position, 'important')
+    body.style.setProperty('top', next.styles.top, 'important')
+    body.style.setProperty('left', next.styles.left, 'important')
+    body.style.setProperty('right', next.styles.right, 'important')
+    body.style.setProperty('width', next.styles.width, 'important')
+    body.style.setProperty('overflow', next.styles.overflow, 'important')
+    html.style.setProperty('overflow', 'hidden', 'important')
     html.dataset.vpScrollLock = '1'
   }
   let released = false
@@ -77,13 +78,13 @@ export function lockPageScroll(): () => void {
     if (done.restoreY == null) return
     const body = document.body
     const html = document.documentElement
-    body.style.position = ''
-    body.style.top = ''
-    body.style.left = ''
-    body.style.right = ''
-    body.style.width = ''
-    body.style.overflow = ''
-    html.style.overflow = ''
+    body.style.removeProperty('position')
+    body.style.removeProperty('top')
+    body.style.removeProperty('left')
+    body.style.removeProperty('right')
+    body.style.removeProperty('width')
+    body.style.removeProperty('overflow')
+    html.style.removeProperty('overflow')
     delete html.dataset.vpScrollLock
     writeY(done.restoreY)
   }
