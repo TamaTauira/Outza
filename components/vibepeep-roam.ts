@@ -204,6 +204,10 @@ export function attachRoam(root: HTMLElement): () => void {
         lane = { minX, minY, maxX, maxY }
       }
     }
+    if (mobile && (location.pathname === '/' || location.pathname === '')) {
+      const nav = navOffset > 0 ? navOffset : 72
+      lane = { ...lane, maxY: Math.max(lane.maxY, fullH - box.height - nav - 8) }
+    }
     if (mobile && location.pathname.startsWith('/local')) {
       const heading = document.querySelector<HTMLElement>('main h1')
       const headingBottom = heading?.getBoundingClientRect().bottom ?? 0
