@@ -90,16 +90,20 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
   }
 
   return (
-    <picture className="absolute inset-0 block h-full w-full">
-      {wideSrc && <source media="(min-width: 640px)" srcSet={wideSrc} />}
-      <img
-        src={fallbackSrc}
-        alt={alt}
-        loading={loading}
-        decoding="async"
-        className={cn('h-full w-full object-contain', className)}
-        style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #110e16 72%)` : '#110e16' }}
-      />
-    </picture>
+    <>
+      <picture className="absolute inset-0 block h-full w-full">
+        {wideSrc && <source media="(min-width: 640px)" srcSet={wideSrc} />}
+        <img
+          src={fallbackSrc}
+          alt={alt}
+          loading={loading}
+          decoding="async"
+          className={cn('h-full w-full object-cover', className)}
+          style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #110e16 72%)` : '#110e16' }}
+        />
+      </picture>
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-1.5 bg-[#fb923c]" />
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1.5 bg-[#f472b6]" />
+    </>
   )
 }

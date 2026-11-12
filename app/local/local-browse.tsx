@@ -16,6 +16,7 @@ import { citySlug } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { ListingBoardCard } from '@/components/listing-board-card'
+import { BoardHeadings, BoardRow, getStatus, type BoardEvent } from '@/components/board-row'
 
 export type LocalItem = {
   id: string
@@ -104,7 +105,7 @@ function priceLine(ev: LocalItem) {
 export function LocalBrowse({
   city, setCity, suburb, setSuburb, applySuburb, category, setCategory, when, setWhen,
   items, error, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
-  closed, setClosed, more, setMore, isSaved, save, onList,
+  closed, setClosed, more, setMore,   isSaved, save, onList, onMine, onHow, hasListings, signedIn, nowMinutes,
 }: {
   city: string
   setCity: (city: string) => void
@@ -131,9 +132,14 @@ export function LocalBrowse({
   isSaved: (id: string) => boolean
   save: (ev: LocalItem) => void
   onList: () => void
+  onMine: () => void
+  onHow: () => void
+  hasListings: boolean
+  signedIn: boolean
+  nowMinutes: number
 }) {
   const [seeAll, setSeeAll] = useState(false)
-  const [mode, setMode] = useState<'board' | 'map' | 'list'>('board')
+  const [mode, setMode] = useState<'board' | 'map' | 'list'>('list')
   const [sort, setSort] = useState<'soon' | 'name'>('soon')
   const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
   const filtered = category || suburb || when !== 'weekend'
@@ -193,6 +199,11 @@ export function LocalBrowse({
             </button>
           </div>
         </form>
+        <div className="relative mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={onList} className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
+          {hasListings && <button type="button" onClick={onMine} className="inline-flex h-11 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">Your listings</button>}
+          <button type="button" onClick={onHow} className="inline-flex h-11 items-center rounded-full bg-white/10 px-4 text-sm font-semibold text-white">How it works</button>
+        </div>
       </header>
 
       <section className="relative mt-10" aria-labelledby="local-categories">
@@ -275,7 +286,7 @@ export function LocalBrowse({
         </div>
         <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-1 rounded-full bg-muted p-1" role="tablist" aria-label="Local board view">
-            {([['board', 'Board', LayoutGrid], ['map', 'Map', MapIcon], ['list', 'List', List]] as const).map(([key, label, Icon]) => (
+            {([['list', 'List', List], ['board', 'Board', LayoutGrid], ['map', 'Map', MapIcon]] as const).map(([key, label, Icon]) => (
               <button key={key} type="button" role="tab" aria-selected={mode === key} onClick={() => setMode(key)} className={cn('inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold lg:flex-none', mode === key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
                 <Icon className="h-4 w-4" />{label}
               </button>
@@ -348,20 +359,22 @@ export function LocalBrowse({
                 <span className="text-sm font-semibold">{dayHeading(day, today, rows.length)}</span>
                 <ChevronDown className={cn('ml-auto h-4 w-4 text-primary', !open && '-rotate-90')} />
               </button>
+              {open && <BoardHeadings />}
               {open && shown.map((ev, index) => {
                 const key = rowKey(ev)
+                const board = toBoardEvent(ev)
                 return (
-                  <div key={key} data-row={key} onMouseEnter={() => setHotKey(key)} onMouseLeave={() => setHotKey(null)} className={cn('flex items-center gap-3 border-t border-border/70 px-3 py-2', (hotKey === key || focusKey === key) && 'bg-primary/10')}>
-                    <ListingPicture ev={ev} slot="square" className="h-12 w-12 shrink-0 rounded-lg" alt="" variant={index % 2 === 1 ? 1 : 0} />
-                    <Link href={ev.href || '/local'} className="min-w-0 flex-1">
-                      <span className="block font-semibold leading-snug line-clamp-2">{ev.title}</span>
-                      <span className="text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), sectionByKey(ev.section)?.short].filter(Boolean).join(' · ')}</span>
-                    </Link>
-                    {priceLine(ev)}
-                    <span className="flex shrink-0 items-center">
-                      <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
-                      <LocalPlus ev={ev} />
-                    </span>
+                  <div key={key} data-row={key} onMouseEnter={() => setHotKey(key)} onMouseLeave={() => setHotKey(null)} className={cn((hotKey === key || focusKey === key) && 'bg-primary/10')}>
+                    <BoardRow
+                      ev={board}
+                      status={getStatus(board, ev.date, today, nowMinutes)}
+                      saved={isSaved(ev.id)}
+                      onToggleSave={() => save(ev)}
+                      withMedia
+                      signedIn={signedIn}
+                      variant={index % 2 === 1 ? 1 : 0}
+                      active={hotKey === key || focusKey === key}
+                    />
                   </div>
                 )
               })}
@@ -389,6 +402,33 @@ function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; on
       <span className="block px-2 py-2 text-center text-sm font-semibold leading-tight">{tile.label}</span>
     </button>
   )
+}
+
+function toBoardEvent(ev: LocalItem): BoardEvent {
+  const label = sectionByKey(ev.section)?.short ?? 'Local'
+  return {
+    id: ev.id,
+    title: ev.title,
+    description: ev.blurb ?? null,
+    date: ev.date,
+    endDate: null,
+    time: ev.time,
+    endTime: null,
+    venueName: ev.suburb || ev.title,
+    suburb: ev.suburb,
+    category: ev.section,
+    subTags: [label],
+    isLGBTI: false,
+    isFree: ev.isFree,
+    price: ev.price,
+    ticketUrl: null,
+    city: ev.city,
+    latitude: ev.lat ?? null,
+    longitude: ev.lng ?? null,
+    status: ev.status,
+    href: ev.href || '/local',
+    imageUrl: ev.imageUrl,
+  }
 }
 
 function BoardCard({ ev, hot, onHot, saved, onSave, variant = 0 }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void; variant?: 0 | 1 }) {
