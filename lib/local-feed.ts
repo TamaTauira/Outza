@@ -66,12 +66,14 @@ export function dedupeFeed(items: FeedItem[]): FeedItem[] {
 export function sectionForText(title: string, description?: string | null, category?: string | null): string {
   if (category === 'GARAGE') return 'garage-sales'
   if (category === 'WAREHOUSE') return 'warehouse-sales'
+  if (category === 'MARKET') return 'farmers-markets'
   const text = `${title} ${description ?? ''}`
   if (/\b(garage|car-?boot)\b/i.test(text)) return 'garage-sales'
   if (/\b(warehouse|clearance)\b/i.test(text)) return 'warehouse-sales'
   if (/\b(school|fete|sausage sizzle)\b/i.test(text)) return 'school-fundraisers'
+  if (/\b(markets?|farmers)\b/i.test(title)) return 'farmers-markets'
   if (/\b(dog|puppy|pup)\b/i.test(text)) return 'dog-friendly'
-  if (/\b(markets?|farmers)\b/i.test(text) || category === 'MARKET') return 'farmers-markets'
+  if (/\b(markets?|farmers)\b/i.test(text)) return 'farmers-markets'
   if (/\b(run(?:ning)? club|park ?runs?|athletics|sport|football|netball|cricket|soccer|footy|tennis)\b/i.test(text)) return 'community-sport'
   if (/\b(bird(?:ing|s|watch(?:ing)?)?|nature group|bushwalk|wildlife|conservation)\b/i.test(text)) return 'community-events'
   if (/\b(charity|fundraiser|donate|appeal)\b/i.test(text)) return 'charity-events'

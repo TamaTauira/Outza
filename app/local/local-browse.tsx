@@ -43,7 +43,7 @@ const WHEN = [
   { key: '30', label: 'Next 30 days' },
 ] as const
 
-const PREVIEW = 5
+const PREVIEW = 4
 const ACCENT: Record<string, string> = {
   'garage-sales': '#c2410c',
   'warehouse-sales': '#be123c',
@@ -329,7 +329,7 @@ export function LocalBrowse({
                 <ChevronDown className={cn('ml-auto h-4 w-4 text-primary transition-transform', !open && '-rotate-90')} />
               </button>
               {open && (
-                <div className="mt-2 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {shown.map((ev, index) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} variant={index % 2 === 1 ? 1 : 0} />)}
                 </div>
               )}
