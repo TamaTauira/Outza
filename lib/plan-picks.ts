@@ -15,8 +15,8 @@ export const PLAN_PICKS: PlanPick[] = [
 ]
 
 const ALIASES: Record<string, string[]> = {
-  'saturday-date-night': ['saturday date night', 'date night', 'saturday night'],
-  'family-sunday': ['family sunday', 'family sunday under 50', 'family day'],
+  'saturday-date-night': ['saturday date night', 'date night', 'saturday night', 'plan my saturday', 'plan saturday'],
+  'family-sunday': ['family sunday', 'family sunday under 50', 'family day', 'plan my sunday', 'plan sunday'],
   'free-afternoon': ['free afternoon', 'a free afternoon', 'free arvo'],
 }
 
