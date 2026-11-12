@@ -105,6 +105,7 @@ export async function GET(req: Request) {
         city: l.city,
         date,
         time: l.startTime,
+        endTime: l.endTime,
         isFree: !l.priceNote || /^free\b/i.test(l.priceNote.trim()),
         price: l.priceNote,
         href: localPath(l, date),
@@ -118,7 +119,7 @@ export async function GET(req: Request) {
   const events = await prisma.event.findMany({
     where: { communityKey: { not: null }, approvalState: 'APPROVED', deletedAt: null, duplicateOfId: null, ...(validCity ? { city } : {}) },
     select: {
-      id: true, title: true, description: true, date: true, endDate: true, time: true, suburb: true, city: true,
+      id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true, suburb: true, city: true,
       venueName: true, venueAddress: true, isFree: true, price: true, status: true, recurrence: true, communityKey: true,
       locationVisibility: true, childrenInImage: true, imageKidSafe: true, communityFlags: true, latitude: true, longitude: true,
       imageUrl: true, imageAsset: { select: imageAssetSelect },
@@ -133,6 +134,7 @@ export async function GET(req: Request) {
     endDate: ev.endDate ? ev.endDate.toISOString().slice(0, 10) : null,
     recurrence: ev.recurrence,
     time: ev.time,
+    endTime: ev.endTime,
     isFree: ev.isFree,
     status: ev.status,
   }))
@@ -147,6 +149,7 @@ export async function GET(req: Request) {
       city: ev.city,
       date: ev.occursOn,
       time: ev.time,
+      endTime: ev.endTime,
       isFree: ev.isFree,
       price: ev.price,
       href: eventPath(ev),

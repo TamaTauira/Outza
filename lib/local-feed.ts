@@ -12,6 +12,7 @@ export interface FeedItem {
   city: string
   date: string
   time: string | null
+  endTime?: string | null
   isFree: boolean
   price: string | null
   href: string
