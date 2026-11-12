@@ -505,6 +505,14 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const firstClear = (box: Bounds): Point => {
+    if (mobileMq.matches && (location.pathname === '/' || location.pathname === '') && document.querySelector('.vp-peep-hero')) {
+      const seeAll = [...document.querySelectorAll('button')].find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === 'See all')
+      const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
+      const anchor = seeAll?.getBoundingClientRect().bottom ?? hero?.getBoundingClientRect().bottom ?? box.minY
+      const lift = 44 + 10 + size() * (1092 / 763) * 0.24
+      const y = Math.min(box.maxY, Math.max(box.minY, anchor + lift + 8))
+      return { x: box.maxX, y }
+    }
     const stride = 24
     let best = { x: box.maxX, y: box.minY }
     let bestScore = Number.POSITIVE_INFINITY
@@ -520,8 +528,10 @@ export function attachRoam(root: HTMLElement): () => void {
     }
     const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
     if (hero) {
-      const floor = hero.getBoundingClientRect().bottom + 120
-      const y = Math.min(box.maxY, Math.max(box.minY, floor))
+      const seeAll = [...document.querySelectorAll('button')].find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === 'See all')
+      const anchor = seeAll?.getBoundingClientRect().bottom ?? hero.getBoundingClientRect().bottom
+      const lift = 44 + 10 + size() * (1092 / 763) * 0.24
+      const y = Math.min(box.maxY, Math.max(box.minY, anchor + lift + 8))
       return { x: box.maxX, y }
     }
     return best
@@ -705,7 +715,9 @@ export function attachRoam(root: HTMLElement): () => void {
       const x = window.innerWidth - s - 4 - 12
       const h = rigH()
       const lift = 44 + 10 + h * 0.24
-      const below = hero ? hero.getBoundingClientRect().bottom + lift + 64 : box.minY
+      const seeAll = [...document.querySelectorAll('button')].find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === 'See all')
+      const anchor = seeAll?.getBoundingClientRect().bottom ?? hero?.getBoundingClientRect().bottom ?? box.minY
+      const below = anchor + lift + 8
       let y = below
       if (!place(x, y)) {
         for (let yy = y; yy <= box.maxY; yy += 8) {
