@@ -520,7 +520,7 @@ export function attachRoam(root: HTMLElement): () => void {
     }
     const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
     if (hero) {
-      const floor = hero.getBoundingClientRect().bottom + 56
+      const floor = hero.getBoundingClientRect().bottom + 120
       const y = Math.min(box.maxY, Math.max(box.minY, floor))
       return { x: box.maxX, y }
     }
@@ -582,7 +582,7 @@ export function attachRoam(root: HTMLElement): () => void {
       for (let x = maxX; x >= band.left + 8; x -= 20) push(x, y)
     }
     const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
-    const floor = hero ? hero.getBoundingClientRect().bottom + 56 : 0
+    const floor = hero ? hero.getBoundingClientRect().bottom + 120 : 0
     for (const point of candidates) {
       if (point.y < floor) continue
       if (!blocksPage(point.x, point.y)) return point
@@ -705,7 +705,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const x = window.innerWidth - s - 4 - 12
       const h = rigH()
       const lift = 44 + 10 + h * 0.24
-      const below = hero ? hero.getBoundingClientRect().bottom + lift + 12 : box.minY
+      const below = hero ? hero.getBoundingClientRect().bottom + lift + 64 : box.minY
       let y = below
       if (!place(x, y)) {
         for (let yy = y; yy <= box.maxY; yy += 8) {
