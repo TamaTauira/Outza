@@ -30,6 +30,8 @@ test('local categories land in one neighbourhood section', () => {
   assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Moving sale' }), 'garage-sales')
   assert.equal(sectionForLocal({ category: 'WAREHOUSE', title: 'Label sample sale' }), 'warehouse-sales')
   assert.equal(sectionForLocal({ category: 'MARKET', title: 'Eveleigh Farmers Market' }), 'farmers-markets')
+  assert.equal(sectionForLocal({ category: 'MARKET', title: 'Oxford Street farmers market', description: 'A Saturday market with a dog-friendly policy.' }), 'farmers-markets')
+  assert.equal(sectionForLocal({ category: 'MARKET', title: 'Le Marché-French market', description: 'Dog friendly. Live jazz.' }), 'farmers-markets')
   assert.equal(sectionForLocal({ category: 'MARKET', title: 'Night market' }), 'farmers-markets')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'School fete', description: 'Sausage sizzle' }), 'school-fundraisers')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Park run club' }), 'community-sport')

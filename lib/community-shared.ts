@@ -15,7 +15,7 @@ export const COMMUNITY_SECTIONS = [
   { key: 'farmers-markets', label: 'Markets', short: 'Market', blurb: 'Produce, flowers, coffee and the Saturday that is worth setting an alarm for.', boardCategory: 'Food & Drink', subTags: ['Market'] },
   { key: 'neighbourhood-popups', label: 'Pop-ups', short: 'Pop-up', blurb: 'Here this weekend, gone next week. Stalls, shops and one-off hangs.', boardCategory: 'Community', subTags: [] as string[] },
   { key: 'community-sport', label: 'Community sport', short: 'Community sport', blurb: 'Park footy, social comps and the local side’s home game.', boardCategory: 'Sports', subTags: [] as string[] },
-  { key: 'community-events', label: 'Community events', short: 'Community event', blurb: 'Birding groups, meet-ups and the neighbourhood thing that is not a stall.', boardCategory: 'Community', subTags: [] as string[] },
+  { key: 'community-events', label: 'Community events', short: 'Community', blurb: 'Birding groups, meet-ups and the neighbourhood thing that is not a stall.', boardCategory: 'Community', subTags: [] as string[] },
   { key: 'charity-events', label: 'Charity events', short: 'Charity event', blurb: 'Fundraisers and community drives with a cause on the poster.', boardCategory: 'Community', subTags: ['Fundraiser'] },
   { key: 'dog-friendly', label: 'Dog-friendly meetups', short: 'Dog-friendly', blurb: 'Walks, pup picnics and parks that welcome the goodest plus-one.', boardCategory: 'Community', subTags: [] as string[] },
   { key: 'local-art', label: 'Local art', short: 'Local art', blurb: 'Studio trails, community galleries and the show in a converted shed.', boardCategory: 'Arts & Culture', subTags: ['Exhibition'] },
