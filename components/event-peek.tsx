@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
 import { EventImage } from '@/components/event-image'
@@ -16,6 +15,7 @@ import { eventOutbound } from '@/lib/listing-link'
 import { boardClockLine } from '@/lib/listing-window'
 import { mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { useSaved, type SavedEvent } from '@/lib/saved'
+import { fullPageNavigation } from '@/lib/full-page-nav'
 import { eventPath } from '@/lib/seo'
 import { shareEvent } from '@/app/events/[id]/_components/event-extras'
 import { cn } from '@/lib/utils'
@@ -236,13 +236,13 @@ export function EventPeek({ event }: { event: PeekEvent }) {
                   label={event.venueName || event.title}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <button type="button" onClick={() => toggle(savedEvent)} className={cn('flex h-11 items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold', saved ? 'border-primary text-primary' : 'border-border')}>
-                  <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} /> {saved ? 'Saved' : 'Save'}
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-1.5">
+                <button type="button" onClick={() => toggle(savedEvent)} className={cn('flex h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-1.5 text-[11px] font-semibold sm:text-xs', saved ? 'border-primary text-primary' : 'border-border')}>
+                  <Bookmark className={cn('h-4 w-4 shrink-0', saved && 'fill-current')} /> {saved ? 'Saved' : 'Save'}
                 </button>
-                <ItineraryButton event={savedEvent} className="h-11 rounded-xl" />
-                <button type="button" onClick={() => shareEvent(event)} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border text-sm font-semibold">
-                  <Share2 className="h-4 w-4" /> Share
+                <ItineraryButton event={savedEvent} outline />
+                <button type="button" onClick={() => shareEvent(event)} className="flex h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-border px-1.5 text-[11px] font-semibold sm:text-xs">
+                  <Share2 className="h-4 w-4 shrink-0" /> Share
                 </button>
               </div>
               <a
@@ -258,7 +258,18 @@ export function EventPeek({ event }: { event: PeekEvent }) {
               >
                 {outbound.label} <ExternalLink className="h-4 w-4" />
               </a>
-              <Link href={path} className="block text-center text-sm text-muted-foreground underline underline-offset-2">Open the full page</Link>
+              <a
+                href={path}
+                onClick={(click) => {
+                  click.preventDefault()
+                  const href = click.currentTarget.href
+                  if (fullPageNavigation(window.location.pathname, href) === 'reload') window.location.reload()
+                  else window.location.assign(href)
+                }}
+                className="block text-center text-sm text-muted-foreground underline underline-offset-2"
+              >
+                Open the full page
+              </a>
             </div>
           </div>
         </Dialog.Content>
