@@ -315,7 +315,7 @@ export default function ItineraryPage() {
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
       <main className="vp-wrap px-4 py-6 sm:px-6 lg:py-8">
-        <PageMasthead title="Make a day of it." lede="Line up the good stuff. The gig, the dinner, the drinks and everything in between." />
+        <PageMasthead variant="itinerary" />
 
         {!arranged.length ? (
           <div className="mt-8">
