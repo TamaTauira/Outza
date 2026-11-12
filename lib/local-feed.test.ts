@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from './local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, refineStoredSection, sectionCounts, sectionForLocal, type FeedItem } from './local-feed'
 
 const row = (extra: Partial<FeedItem>): FeedItem => ({
   id: '1', title: 'Saturday garage sale', section: 'garage-sales', suburb: 'Newtown', city: 'Sydney',
@@ -30,12 +30,23 @@ test('local categories land in one neighbourhood section', () => {
   assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Moving sale' }), 'garage-sales')
   assert.equal(sectionForLocal({ category: 'WAREHOUSE', title: 'Label sample sale' }), 'warehouse-sales')
   assert.equal(sectionForLocal({ category: 'MARKET', title: 'Eveleigh Farmers Market' }), 'farmers-markets')
-  assert.equal(sectionForLocal({ category: 'MARKET', title: 'Night market' }), 'neighbourhood-popups')
+  assert.equal(sectionForLocal({ category: 'MARKET', title: 'Night market' }), 'farmers-markets')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'School fete', description: 'Sausage sizzle' }), 'school-fundraisers')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Park run club' }), 'community-sport')
+  assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Community Birding Group' }), 'community-events')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Dog walk picnic' }), 'dog-friendly')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Gallery open studio' }), 'local-art')
+  assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Christmas Pop-Up Photo Studio' }), 'neighbourhood-popups')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Charity appeal night' }), 'charity-events')
+})
+
+test('a stored pop-up tag gives way when the title is a market or a nature group', () => {
+  assert.equal(refineStoredSection('neighbourhood-popups', 'Carriageworks Farmers Market', 'Produce every Saturday'), 'farmers-markets')
+  assert.equal(refineStoredSection('neighbourhood-popups', 'Community Birding Group', 'A walk looking for birds'), 'community-events')
+  assert.equal(refineStoredSection('neighbourhood-popups', 'Run Club for Her', 'Beginner run'), 'community-sport')
+  assert.equal(refineStoredSection('community-events', 'Carriageworks Farmers Market', ''), 'farmers-markets')
+  assert.equal(refineStoredSection('neighbourhood-popups', 'Saturday garage sale', ''), 'garage-sales')
+  assert.equal(refineStoredSection('dog-friendly', 'Sunday pup picnic', ''), 'dog-friendly')
 })
 
 test('card blurbs use the listing text and stay short', () => {

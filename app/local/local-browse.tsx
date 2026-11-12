@@ -51,6 +51,7 @@ const ACCENT: Record<string, string> = {
   'farmers-markets': '#15803d',
   'neighbourhood-popups': '#ea580c',
   'community-sport': '#0369a1',
+  'community-events': '#0f766e',
   'charity-events': '#be185d',
   'dog-friendly': '#b45309',
   'local-art': '#7c3aed',
@@ -63,11 +64,11 @@ function clock(time: string | null) {
   return fmtTime(time)
 }
 
-function ListingPicture({ ev, slot, className, alt, priority }: { ev: LocalItem; slot: PlaceholderSlot; className?: string; alt?: string; priority?: boolean }) {
+function ListingPicture({ ev, slot, className, alt, priority, variant = 0 }: { ev: LocalItem; slot: PlaceholderSlot; className?: string; alt?: string; priority?: boolean; variant?: 0 | 1 }) {
   const kind = slot === 'hero' || slot === 'featured' || slot === 'square' ? slot : 'card'
   return (
     <span className={cn('relative block overflow-hidden bg-[#110e16]', className)}>
-      <EventImage src={ev.imageUrl} category={ev.section} slot={slot} wideSlot={slot === 'hero' ? 'hero-wide' : undefined} kind={kind} alt={alt || ''} sizes={slot === 'hero' ? '(min-width: 1024px) 520px, 100vw' : '(min-width: 1024px) 280px, 45vw'} crop={!!ev.imageUrl} priority={priority} />
+      <EventImage src={ev.imageUrl} category={ev.section} slot={slot} wideSlot={slot === 'hero' ? 'hero-wide' : undefined} kind={kind} alt={alt || ''} sizes={slot === 'hero' ? '(min-width: 1024px) 520px, 100vw' : '(min-width: 1024px) 280px, 45vw'} crop={!!ev.imageUrl} priority={priority} variant={variant} />
     </span>
   )
 }
@@ -90,6 +91,10 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
   )
 }
 
+function dayHeading(day: string, today: string | null, count: number) {
+  return `${dayLabel(day, today)} · ${count} ${count === 1 ? 'event' : 'events'}`
+}
+
 function priceLine(ev: LocalItem) {
   if (ev.isFree) return <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span>
   if (ev.price) return <span className="font-mono text-xs text-foreground">{ev.price}</span>
@@ -98,7 +103,7 @@ function priceLine(ev: LocalItem) {
 
 export function LocalBrowse({
   city, setCity, suburb, setSuburb, applySuburb, category, setCategory, when, setWhen,
-  items, error, days, pins, weekend, today, hotKey, setHotKey, focusKey, focusPin,
+  items, error, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
   closed, setClosed, more, setMore, isSaved, save, onList,
 }: {
   city: string
@@ -114,7 +119,6 @@ export function LocalBrowse({
   error: string | null
   days: [string, LocalItem[]][]
   pins: LocalMapPin[]
-  weekend: LocalItem[] | null
   today: string | null
   hotKey: string | null
   setHotKey: (key: string | null) => void
@@ -133,19 +137,24 @@ export function LocalBrowse({
   const [sort, setSort] = useState<'soon' | 'name'>('soon')
   const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
   const filtered = category || suburb || when !== 'weekend'
-  const featured = (items ?? []).slice(0, 4)
-  const heroChips = [
-    { key: 'farmers-markets', label: 'Markets' },
-    { key: 'garage-sales', label: 'Garage sales' },
-    { key: 'school-fundraisers', label: 'Fetes' },
-    { key: 'neighbourhood-popups', label: 'Pop-ups' },
-  ]
+  const featured = useMemo(() => {
+    const pool = items ?? []
+    const picks: LocalItem[] = []
+    const seen = new Set<string>()
+    for (const ev of pool) {
+      if (seen.has(ev.section)) continue
+      seen.add(ev.section)
+      picks.push(ev)
+      if (picks.length === 4) return picks
+    }
+    for (const ev of pool) {
+      if (picks.some((pick) => pick.id === ev.id && pick.date === ev.date)) continue
+      picks.push(ev)
+      if (picks.length === 4) break
+    }
+    return picks
+  }, [items])
   const ordered = useMemo(() => days.map(([day, rows]) => [day, sort === 'name' ? [...rows].sort((a, b) => a.title.localeCompare(b.title)) : rows] as [string, LocalItem[]]), [days, sort])
-  const weekendDays = useMemo(() => {
-    const grouped = new Map<string, LocalItem[]>()
-    ;(weekend ?? []).forEach((item) => grouped.set(item.date, [...(grouped.get(item.date) ?? []), item]))
-    return [...grouped.entries()]
-  }, [weekend])
 
   const pick = (key: string) => setCategory(category === key ? '' : key)
   const reveal = (key: string) => {
@@ -184,43 +193,40 @@ export function LocalBrowse({
             </button>
           </div>
         </form>
-        <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {heroChips.map((chip) => (
-            <button key={chip.key} type="button" aria-pressed={category === chip.key} onClick={() => pick(chip.key)} className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20 aria-pressed:bg-white aria-pressed:text-neutral-900">
-              {chip.label}
-            </button>
-          ))}
-        </div>
       </header>
-      <button type="button" onClick={onList} className="mt-3 inline-flex h-11 items-center gap-1.5 text-sm font-semibold text-primary">
-        <Plus className="h-4 w-4" />List your thing free
-      </button>
 
-      <section className="mt-10" aria-labelledby="local-categories">
+      <section className="relative mt-10" aria-labelledby="local-categories">
         <div className="flex items-end justify-between gap-3">
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
-        <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
-          {primaryTiles().map((tile) => (
-            <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
-          ))}
-          <button type="button" aria-expanded={seeAll} onClick={() => setSeeAll((open) => !open)} className="flex h-auto w-[9.5rem] shrink-0 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card px-3 py-4 text-sm font-semibold lg:w-auto">
-            {seeAll ? 'Show fewer' : 'See all'}
-            <span className="text-xs font-normal text-muted-foreground">Clearance, dogs, art</span>
-          </button>
-        </div>
-        {seeAll && (
-          <div className="mt-3 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] lg:grid lg:grid-cols-7 [&::-webkit-scrollbar]:hidden">
-            {moreTiles().map((tile) => (
+        <div className="relative mt-4">
+          <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
+            {primaryTiles().map((tile) => (
               <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
             ))}
+            <button type="button" aria-expanded={seeAll} onClick={() => setSeeAll((open) => !open)} className="flex h-auto w-[9.5rem] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card px-3 py-4 text-sm font-semibold lg:w-auto">
+              {seeAll ? 'Show fewer' : 'See all'}
+              <span className="text-xs font-normal text-muted-foreground">Clearance, dogs and more</span>
+            </button>
+          </div>
+          <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
+        </div>
+        {seeAll && (
+          <div className="relative mt-3">
+            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
+              {moreTiles().map((tile) => (
+                <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
+              ))}
+            </div>
+            <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
           </div>
         )}
       </section>
 
-      <section className="mt-10" aria-labelledby="local-finds">
+      <section className="relative mt-10" aria-labelledby="local-finds">
         <h2 id="local-finds" className="font-display text-2xl font-bold">Little local finds.</h2>
-        {!items && !error && <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />)}</div>}
+        <p className="mt-1 text-muted-foreground">Four picks. Swipe across, then the full list is below.</p>
+        {!items && !error && <div className="mt-4 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="h-64 w-[78vw] max-w-[280px] shrink-0 animate-pulse rounded-2xl bg-muted" />)}</div>}
         {error && <p className="mt-4 rounded-2xl bg-card p-6 text-sm text-muted-foreground">{error}</p>}
         {items && !items.length && !error && (
           <div className="mt-4 rounded-2xl border border-border bg-card p-6">
@@ -228,30 +234,34 @@ export function LocalBrowse({
             <p className="mt-1 text-sm text-muted-foreground">Try a wider window, or be the neighbour who puts the first thing on the noticeboard.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" onClick={() => { setCategory(''); setWhen('30') }} className="h-11 rounded-full bg-muted px-4 text-sm font-semibold">Widen the search</button>
-              <button type="button" onClick={onList} className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">List your thing free</button>
+              <button type="button" onClick={onList} className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
             </div>
           </div>
         )}
         {!!featured.length && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {featured.map((ev, index) => (
-              <article key={rowKey(ev)} className={cn('flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm', index === 0 && 'sm:col-span-2 lg:row-span-2')}>
-                <ListingPicture ev={ev} slot={index === 0 ? 'featured' : 'card'} className={index === 0 ? 'h-48 sm:h-56' : 'h-40'} alt={ev.title} />
-                <div className="flex min-w-0 flex-1 flex-col p-4" style={{ borderTop: `3px solid ${ACCENT[ev.section] ?? '#ea580c'}` }}>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectionByKey(ev.section)?.short ?? 'Local'}</p>
-                  <Link href={ev.href || '/local'} className="mt-1 font-display text-lg font-bold leading-snug hover:text-primary">{ev.title}</Link>
-                  <p className="mt-1 text-sm text-muted-foreground">{[ev.suburb, dayLabel(ev.date, today), clock(ev.time)].filter(Boolean).join(' · ')}</p>
-                  {ev.blurb && <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{ev.blurb}</p>}
-                  <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                    <span className="flex items-center gap-2">{priceLine(ev)}<Link href={ev.href || '/local'} className="text-sm font-semibold text-primary">Take a look</Link></span>
-                    <span className="flex shrink-0 items-center">
-                      <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
-                      <LocalPlus ev={ev} />
-                    </span>
+          <div className="relative mt-4">
+            <div className={cn('flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] lg:grid lg:overflow-visible [&::-webkit-scrollbar]:hidden', featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2')}>
+              {featured.map((ev, index) => (
+                <article key={rowKey(ev)} className="flex w-[78vw] max-w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-auto lg:max-w-none">
+                  <Link href={ev.href || '/local'} className="block">
+                    <ListingPicture ev={ev} slot="card" className="h-40" alt={ev.title} variant={index % 2 === 1 ? 1 : 0} />
+                  </Link>
+                  <div className="flex min-w-0 flex-1 flex-col p-4" style={{ borderTop: `3px solid ${ACCENT[ev.section] ?? '#ea580c'}` }}>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectionByKey(ev.section)?.short ?? 'Local'}</p>
+                    <Link href={ev.href || '/local'} className="mt-1 font-display text-lg font-bold leading-snug line-clamp-2 hover:text-primary">{ev.title}</Link>
+                    <p className="mt-1 text-sm text-muted-foreground">{[ev.suburb, dayLabel(ev.date, today), clock(ev.time)].filter(Boolean).join(' · ')}</p>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                      {priceLine(ev)}
+                      <span className="flex shrink-0 items-center">
+                        <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
+                        <LocalPlus ev={ev} />
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
+            <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
           </div>
         )}
       </section>
@@ -262,7 +272,6 @@ export function LocalBrowse({
             <h2 id="local-board-title" className="font-display text-2xl font-bold">Your weekend, laid out.</h2>
             <p className="mt-1 text-muted-foreground">Everything happening around you. All in one place.</p>
           </div>
-          <Link href="/" className="text-sm font-semibold text-primary">Open Peep</Link>
         </div>
         <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-1 rounded-full bg-muted p-1" role="tablist" aria-label="Local board view">
@@ -272,7 +281,8 @@ export function LocalBrowse({
               </button>
             ))}
           </div>
-          <div className="flex min-w-0 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="relative min-w-0">
+            <div className="flex gap-2 overflow-x-auto pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {WHEN.map((item) => (
               <button key={item.key} type="button" onClick={() => setWhen(item.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-medium', when === item.key ? 'bg-foreground text-background' : 'border border-border bg-card')}>{item.label}</button>
             ))}
@@ -283,6 +293,8 @@ export function LocalBrowse({
               </select>
             )}
             {filtered && <button type="button" onClick={() => { setCategory(''); setSuburb(''); applySuburb(''); setWhen('weekend') }} className="h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-primary">Reset</button>}
+            </div>
+            <span className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
           </div>
         </div>
         <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}</p>
@@ -313,13 +325,12 @@ export function LocalBrowse({
           return (
             <div key={day} className="mt-4">
               <button type="button" onClick={() => setClosed((current) => ({ ...current, [day]: open }))} className="flex w-full items-center gap-3 rounded-xl bg-primary/[0.08] px-3 py-2.5 text-left" aria-expanded={open}>
-                <span className="text-sm font-semibold">{dayLabel(day, today)}</span>
-                <span className="font-mono text-xs text-muted-foreground">{rows.length} {rows.length === 1 ? 'event' : 'events'}</span>
+                <span className="text-sm font-semibold">{dayHeading(day, today, rows.length)}</span>
                 <ChevronDown className={cn('ml-auto h-4 w-4 text-primary transition-transform', !open && '-rotate-90')} />
               </button>
               {open && (
-                <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                  {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} />)}
+                <div className="mt-2 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+                  {shown.map((ev, index) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} variant={index % 2 === 1 ? 1 : 0} />)}
                 </div>
               )}
               {open && hidden > 0 && <button type="button" onClick={() => setMore((current) => ({ ...current, [day]: true }))} className="mt-2 text-sm font-semibold text-primary">Show {hidden} more {hidden === 1 ? 'event' : 'events'}</button>}
@@ -334,17 +345,16 @@ export function LocalBrowse({
           return (
             <div key={day} className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
               <button type="button" onClick={() => setClosed((current) => ({ ...current, [day]: open }))} className="flex w-full items-center gap-3 bg-primary/[0.08] px-3 py-2.5 text-left" aria-expanded={open}>
-                <span className="text-sm font-semibold">{dayLabel(day, today)}</span>
-                <span className="font-mono text-xs text-muted-foreground">{rows.length} {rows.length === 1 ? 'event' : 'events'}</span>
+                <span className="text-sm font-semibold">{dayHeading(day, today, rows.length)}</span>
                 <ChevronDown className={cn('ml-auto h-4 w-4 text-primary', !open && '-rotate-90')} />
               </button>
-              {open && shown.map((ev) => {
+              {open && shown.map((ev, index) => {
                 const key = rowKey(ev)
                 return (
                   <div key={key} data-row={key} onMouseEnter={() => setHotKey(key)} onMouseLeave={() => setHotKey(null)} className={cn('flex items-center gap-3 border-t border-border/70 px-3 py-2', (hotKey === key || focusKey === key) && 'bg-primary/10')}>
-                    <ListingPicture ev={ev} slot="square" className="h-12 w-12 shrink-0 rounded-lg" alt="" />
+                    <ListingPicture ev={ev} slot="square" className="h-12 w-12 shrink-0 rounded-lg" alt="" variant={index % 2 === 1 ? 1 : 0} />
                     <Link href={ev.href || '/local'} className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{ev.title}</span>
+                      <span className="block font-semibold leading-snug line-clamp-2">{ev.title}</span>
                       <span className="text-sm text-muted-foreground">{[ev.suburb, clock(ev.time), sectionByKey(ev.section)?.short].filter(Boolean).join(' · ')}</span>
                     </Link>
                     {priceLine(ev)}
@@ -361,35 +371,6 @@ export function LocalBrowse({
         })}
       </section>
 
-      <section className="mt-12" aria-labelledby="local-weekend">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 id="local-weekend" className="font-display text-2xl font-bold">Make the most of your weekend.</h2>
-            <p className="mt-1 text-muted-foreground">Saturday and Sunday in {city}, from the same list.</p>
-          </div>
-          <button type="button" onClick={() => { setWhen('weekend'); document.getElementById('local-board')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} className="h-11 text-sm font-semibold text-primary">See the whole weekend</button>
-        </div>
-        {!weekend && <div className="mt-4 h-24 animate-pulse rounded-2xl bg-muted" />}
-        {weekend && !weekend.length && <p className="mt-4 rounded-2xl bg-card p-5 text-sm text-muted-foreground">This weekend is still a blank page in {city}. A market, a fete or a dog walk would look good here.</p>}
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          {weekendDays.map(([day, rows]) => (
-            <div key={day} className="rounded-2xl border border-border bg-card p-4">
-              <h3 className="font-semibold">{dayLabel(day, today)} <span className="font-mono text-xs text-muted-foreground">{rows.length}</span></h3>
-              <ul className="mt-2 space-y-2">
-                {rows.slice(0, 4).map((ev) => (
-                  <li key={rowKey(ev)} className="flex items-center gap-2">
-                    <ListingPicture ev={ev} slot="square" className="h-10 w-10 shrink-0 rounded-md" alt="" />
-                    <Link href={ev.href || '/local'} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-primary">{ev.title}</Link>
-                    <span className="shrink-0 text-xs text-muted-foreground">{clock(ev.time)}</span>
-                    <LocalPlus ev={ev} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="mt-12 rounded-3xl bg-gradient-to-br from-primary/15 via-card to-accent/15 p-6 sm:p-8">
         <h2 className="font-display text-2xl font-bold">Got something happening?</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">Big community event or little neighbourhood find? There’s a place for it on VibePeep. Garage sales, fundraisers, school fetes, markets and pop-ups are all welcome, and it’s free to add yours.</p>
@@ -403,14 +384,14 @@ export function LocalBrowse({
 
 function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; onPick: () => void }) {
   return (
-    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('w-[9.5rem] shrink-0 overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition lg:w-auto', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
+    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('w-[9.5rem] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition lg:w-auto', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
       <MascotFrame tile={tile} className="h-32 w-full" />
       <span className="block px-2 py-2 text-center text-sm font-semibold leading-tight">{tile.label}</span>
     </button>
   )
 }
 
-function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void }) {
+function BoardCard({ ev, hot, onHot, saved, onSave, variant = 0 }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void; variant?: 0 | 1 }) {
   const status = ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''
   return (
     <ListingBoardCard
@@ -424,6 +405,7 @@ function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: bool
       accent={ACCENT[ev.section] ?? '#ea580c'}
       price={priceLine(ev)}
       hot={hot}
+      variant={variant}
       onHot={(on) => onHot(on ? rowKey(ev) : null)}
       actions={(
         <>

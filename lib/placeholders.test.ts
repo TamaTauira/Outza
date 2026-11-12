@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { test } from 'node:test'
 import { eventPictureSrc, hasListingPhoto, placeholderAbsolute, placeholderPath, placeholderSlug, PLACEHOLDER_SLOTS, PLACEHOLDER_SLUGS } from './placeholders'
 
@@ -24,10 +25,18 @@ test('category names map onto the ten holding-image folders, and unknown categor
   }
   assert.equal(placeholderSlug('theatre'), 'arts-culture')
   assert.equal(placeholderSlug('kids'), 'family')
-  assert.equal(placeholderSlug('garage-sales'), 'community')
+  assert.equal(placeholderSlug('garage-sales'), 'garage-sales')
+  assert.equal(placeholderSlug('farmers-markets'), 'farmers-markets')
+  assert.equal(placeholderPath('farmers-markets', 'card', 1), '/placeholders/farmers-markets/card-b.webp')
+  assert.equal(placeholderPath('Music', 'card', 1), '/placeholders/music/card.webp')
   assert.equal(placeholderSlug('something-else'), 'community')
   assert.equal(placeholderSlug(null), 'community')
   assert.equal(PLACEHOLDER_SLUGS.length, 10)
+  for (const slug of ['farmers-markets', 'community-sport', 'community-events', 'garage-sales', 'school-fundraisers', 'charity-events', 'dog-friendly', 'local-art', 'warehouse-sales', 'neighbourhood-popups']) {
+    assert.equal(existsSync(`public/placeholders/${slug}/card.webp`), true, slug)
+    assert.equal(existsSync(`public/placeholders/${slug}/card-b.webp`), true, `${slug} variant`)
+    assert.equal(existsSync(`public/placeholders/${slug}/hero-wide.webp`), true, `${slug} wide`)
+  }
 })
 
 test('a missing picture uses the slot file, and emails get an absolute URL', () => {
