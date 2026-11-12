@@ -185,7 +185,7 @@ export function LocalClient() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap min-w-0 px-4 py-6 pb-[calc(var(--vp-bottom-nav-offset)+2.5rem)] sm:px-6 lg:py-8 lg:pb-8">
+      <main className="vp-wrap min-w-0 px-4 pt-5 pb-[calc(var(--vp-bottom-nav-offset)+2.5rem)] sm:px-6 lg:pb-8">
         {(tab === 'browse' || tab === 'how') && (
           <>
           <LocalBrowse
@@ -221,7 +221,6 @@ export function LocalClient() {
               else setTab('how')
             }}
             hasListings={!!session?.user && !!mine && mine.length + mineCommunity.length > 0}
-            signedIn={!!session?.user}
             nowMinutes={now?.minutes ?? 0}
           />
           <section id="local-how" className="mt-10 scroll-mt-24 rounded-3xl border border-border bg-card">
