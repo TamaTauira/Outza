@@ -207,7 +207,7 @@ export function attachRoam(root: HTMLElement): () => void {
     if (mobile && location.pathname.startsWith('/local')) {
       const heading = document.querySelector<HTMLElement>('main h1')
       const headingBottom = heading?.getBoundingClientRect().bottom ?? 0
-      if (headingBottom > 40) lane = { ...lane, minY: Math.max(lane.minY, headingBottom + 8) }
+      if (headingBottom > 40) lane = { ...lane, minY: Math.max(lane.minY, headingBottom + 96) }
       const grid = document.querySelector<HTMLElement>('.vp-local-grid')
       const ceiling = grid?.getBoundingClientRect().top ?? 0
       if (ceiling > 80) {
@@ -666,7 +666,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const heading = document.querySelector('main h1')
       const anchor = mobileMq.matches ? heading : hero
       const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - (mobileMq.matches ? 16 : 28)))
-      let y = Math.max(box.minY, (anchor?.getBoundingClientRect().bottom ?? box.minY) + 12)
+      let y = Math.max(box.minY, (anchor?.getBoundingClientRect().bottom ?? box.minY) + (mobileMq.matches ? 96 : 16))
       if (y > box.maxY) y = box.maxY
       if (!coversCopy(x, y)) spot = { x, y }
       else {
