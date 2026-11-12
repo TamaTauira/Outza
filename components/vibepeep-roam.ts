@@ -205,6 +205,9 @@ export function attachRoam(root: HTMLElement): () => void {
       }
     }
     if (mobile && location.pathname.startsWith('/local')) {
+      const heading = document.querySelector<HTMLElement>('main h1')
+      const headingBottom = heading?.getBoundingClientRect().bottom ?? 0
+      if (headingBottom > 40) lane = { ...lane, minY: Math.max(lane.minY, headingBottom + 8) }
       const grid = document.querySelector<HTMLElement>('.vp-local-grid')
       const ceiling = grid?.getBoundingClientRect().top ?? 0
       if (ceiling > 80) {
@@ -460,7 +463,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const b = bubbleBox
       return !(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)
     }
-    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, main header, [role="tablist"], form, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
+    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, [role="tablist"], .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
       const r = el.getBoundingClientRect()
@@ -660,10 +663,11 @@ export function attachRoam(root: HTMLElement): () => void {
       }
     } else if (path.startsWith('/local')) {
       const hero = document.querySelector('main header')
-      const h = rigH()
+      const heading = document.querySelector('main h1')
+      const anchor = mobileMq.matches ? heading : hero
       const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - (mobileMq.matches ? 16 : 28)))
-      let y = Math.max(box.minY, (hero?.getBoundingClientRect().bottom ?? box.minY) + 16)
-      if (y + h > box.maxY) y = Math.max(box.minY, box.maxY)
+      let y = Math.max(box.minY, (anchor?.getBoundingClientRect().bottom ?? box.minY) + 12)
+      if (y > box.maxY) y = box.maxY
       if (!coversCopy(x, y)) spot = { x, y }
       else {
         for (let yy = y; yy <= box.maxY; yy += 12) {
@@ -673,6 +677,7 @@ export function attachRoam(root: HTMLElement): () => void {
           }
         }
       }
+      if (!spot) spot = { x, y }
     }
     if (spot && mobileMq.matches && path === '/' && !reduce) {
       walkTo(spot)
