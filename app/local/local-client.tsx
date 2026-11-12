@@ -23,7 +23,7 @@ type Item = LocalItem
 type Mine = { id: string; title: string; suburb: string; status: string; expiresAt: string; reviewNote: string | null; startDate: string; startTime: string; endTime: string; schedule: string }
 type MineCommunity = { id: string; title: string; suburb: string | null; city: string; communityKey: string | null; approvalState: string | null; status: string; href: string }
 
-const TABS = [{ key: 'browse', label: 'What’s on nearby', short: 'Nearby' }, { key: 'submit', label: 'List something', short: 'List' }, { key: 'mine', label: 'My listings', short: 'Mine' }, { key: 'how', label: 'How VibePeep Local works', short: 'How' }] as const
+const TABS = [{ key: 'browse', label: 'What’s on nearby', short: 'Nearby' }, { key: 'submit', label: 'Add your listing', short: 'Add yours' }, { key: 'mine', label: 'My listings', short: 'Mine' }, { key: 'how', label: 'How VibePeep Local works', short: 'How' }] as const
 
 function nowIn(tz: string) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
@@ -56,7 +56,6 @@ export function LocalClient() {
   const [more, setMore] = useState<Record<string, boolean>>({})
   const [hotKey, setHotKey] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
-  const [weekend, setWeekend] = useState<Item[] | null>(null)
 
   useEffect(() => {
     const tick = () => setNow(nowIn(cityDef(city).tz))
@@ -109,16 +108,6 @@ export function LocalClient() {
       .finally(() => { clearTimeout(timer); release() })
     return () => { clearTimeout(timer); ac.abort(); release() }
   }, [tab, city, category, when, suburbQuery, requestKey])
-
-  useEffect(() => {
-    if (tab !== 'browse') return
-    const ac = new AbortController()
-    fetch(`/api/local?${new URLSearchParams({ city, category, when: 'weekend', suburb: suburbQuery })}`, { signal: ac.signal })
-      .then((r) => r.json())
-      .then((d) => setWeekend(d?.notice && !d?.items?.length ? [] : d?.items ?? []))
-      .catch((e) => { if (e?.name !== 'AbortError') setWeekend([]) })
-    return () => ac.abort()
-  }, [tab, city, category, suburbQuery])
 
   const loadMine = useCallback(() => {
     fetch('/api/local?mine=1').then((r) => (r.ok ? r.json() : { listings: [] })).then((j) => { setMine(j.listings ?? []); setMineCommunity(j.community ?? []) }).catch((e) => { console.error(e); setMine([]); setMineCommunity([]) })
@@ -188,7 +177,7 @@ export function LocalClient() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap min-w-0 px-4 py-6 sm:px-6 lg:py-8">
+      <main className="vp-wrap min-w-0 px-4 py-6 pb-[calc(var(--vp-bottom-nav-offset)+2.5rem)] sm:px-6 lg:py-8 lg:pb-8">
         <div className="relative min-w-0">
           <div className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
             {TABS.map((t) => (
@@ -215,7 +204,6 @@ export function LocalClient() {
             error={error}
             days={days}
             pins={pins}
-            weekend={weekend}
             today={now?.date ?? null}
             hotKey={hotKey}
             setHotKey={setHotKey}
@@ -238,9 +226,16 @@ export function LocalClient() {
         {tab === 'mine' && (
           <section className="mt-8">
             {!session?.user ? (
-              <p className="text-sm text-muted-foreground"><Link href="/login?next=/local?tab=mine" className="text-primary underline">Sign in</Link> to see and manage the listings you’ve added.</p>
+              <div className="mx-auto max-w-md rounded-3xl border border-border bg-card px-6 py-10 text-center shadow-sm">
+                <h2 className="font-display text-2xl font-bold">Your listings live here.</h2>
+                <p className="mt-2 text-sm text-muted-foreground">Sign in to see what you’ve added, or put something new on the noticeboard.</p>
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  <Link href="/login?next=/local?tab=mine" className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Sign in</Link>
+                  <button type="button" onClick={() => setTab('submit')} className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Add yours</button>
+                </div>
+              </div>
             ) : !mine ? <p className="text-sm text-muted-foreground">Loading…</p> : !mine.length && !mineCommunity.length ? (
-              <p className="text-sm text-muted-foreground">Nothing here yet. Be the trailblazer. <button onClick={() => setTab('submit')} className="text-primary underline">List something</button></p>
+              <p className="text-sm text-muted-foreground">Nothing here yet. Be the trailblazer. <button onClick={() => setTab('submit')} className="text-primary underline">Add yours</button></p>
             ) : (
               <div className="grid gap-3 lg:grid-cols-2">
                 {mineCommunity.map((l) => (

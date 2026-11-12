@@ -63,17 +63,34 @@ export function dedupeFeed(items: FeedItem[]): FeedItem[] {
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? '') || a.title.localeCompare(b.title))
 }
 
-export function sectionForLocal(listing: { category: string; title: string; description?: string | null }): string {
-  if (listing.category === 'GARAGE') return 'garage-sales'
-  if (listing.category === 'WAREHOUSE') return 'warehouse-sales'
-  if (listing.category === 'MARKET') return /\bfarmers?\b/i.test(listing.title) ? 'farmers-markets' : 'neighbourhood-popups'
-  const text = `${listing.title} ${listing.description ?? ''}`
+export function sectionForText(title: string, description?: string | null, category?: string | null): string {
+  if (category === 'GARAGE') return 'garage-sales'
+  if (category === 'WAREHOUSE') return 'warehouse-sales'
+  const text = `${title} ${description ?? ''}`
+  if (/\b(garage|car-?boot)\b/i.test(text)) return 'garage-sales'
+  if (/\b(warehouse|clearance)\b/i.test(text)) return 'warehouse-sales'
   if (/\b(school|fete|sausage sizzle)\b/i.test(text)) return 'school-fundraisers'
   if (/\b(dog|puppy|pup)\b/i.test(text)) return 'dog-friendly'
+  if (/\b(markets?|farmers)\b/i.test(text) || category === 'MARKET') return 'farmers-markets'
+  if (/\b(run(?:ning)? club|park ?runs?|athletics|sport|football|netball|cricket|soccer|footy|tennis)\b/i.test(text)) return 'community-sport'
+  if (/\b(bird(?:ing|s|watch(?:ing)?)?|nature group|bushwalk|wildlife|conservation)\b/i.test(text)) return 'community-events'
   if (/\b(charity|fundraiser|donate|appeal)\b/i.test(text)) return 'charity-events'
-  if (/\b(sport|football|netball|park ?run|cricket|soccer)\b/i.test(text)) return 'community-sport'
+  if (/\b(pop-?ups?|popup|stall)\b/i.test(text)) return 'neighbourhood-popups'
   if (/\b(art|exhibition|gallery|studio)\b/i.test(text)) return 'local-art'
-  return 'neighbourhood-popups'
+  if (category === 'COMMUNITY') return 'community-events'
+  return 'community-events'
+}
+
+export function sectionForLocal(listing: { category: string; title: string; description?: string | null }): string {
+  return sectionForText(listing.title, listing.description, listing.category)
+}
+
+/** A stored Pop-up (or a generic community tag) loses to a clearer reading of the title. A deliberate other tag stays. */
+export function refineStoredSection(stored: string | null | undefined, title: string, description?: string | null): string {
+  const guessed = sectionForText(title, description)
+  if (!stored || stored === 'neighbourhood-popups') return guessed
+  if (stored === 'community-events' && guessed !== 'community-events') return guessed
+  return stored
 }
 
 export function filterFeed(items: FeedItem[], opts: { section?: string; suburb?: string }): FeedItem[] {

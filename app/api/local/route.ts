@@ -8,7 +8,7 @@ import { storagePath } from '@/lib/s3'
 import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
 import { eventPath } from '@/lib/seo'
-import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, refineStoredSection, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
 import { publicUrl } from '@/lib/s3'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { placeFromText } from '@/lib/venue-place'
@@ -95,7 +95,7 @@ export async function GET(req: Request) {
   const localItems: FeedItem[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
     .filter(({ l, date }) => { const k = `${localDupKey(l)}|${date}|${l.startTime}`; if (seen.has(k)) return false; seen.add(k); return true })
     .map(({ l, date }) => {
-      const section = sectionForLocal(l)
+      const section = refineStoredSection(sectionForLocal(l), l.title, l.description)
       const pin = feedPin(section, l.city, l.suburb, l.lat, l.lng)
       return {
         id: l.id,
@@ -137,11 +137,12 @@ export async function GET(req: Request) {
     status: ev.status,
   }))
   const communityItems: FeedItem[] = filterCommunityListings(shaped, { city: validCity ? city : null, from, to }, zone).map((ev) => {
-    const pin = feedPin(ev.communityKey, ev.city, ev.suburb || '', ev.latitude, ev.longitude)
+    const section = refineStoredSection(ev.communityKey, ev.title, typeof ev.description === 'string' ? ev.description : null)
+    const pin = feedPin(section, ev.city, ev.suburb || '', ev.latitude, ev.longitude)
     return {
       id: ev.id,
       title: ev.title,
-      section: ev.communityKey,
+      section,
       suburb: ev.suburb || '',
       city: ev.city,
       date: ev.occursOn,

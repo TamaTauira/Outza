@@ -20,6 +20,25 @@ export const PLACEHOLDER_SLUGS = [
 
 export type PlaceholderSlug = (typeof PLACEHOLDER_SLUGS)[number]
 
+/** Local sections. Each has its own holding art, separate from the ten genre folders. */
+export const LOCAL_HOLDING_SLUGS = [
+  'garage-sales',
+  'warehouse-sales',
+  'school-fundraisers',
+  'farmers-markets',
+  'neighbourhood-popups',
+  'community-sport',
+  'community-events',
+  'charity-events',
+  'dog-friendly',
+  'local-art',
+] as const
+
+export type LocalHoldingSlug = (typeof LOCAL_HOLDING_SLUGS)[number]
+export type HoldingSlug = PlaceholderSlug | LocalHoldingSlug
+
+const LOCAL_HOLDING = new Set<string>(LOCAL_HOLDING_SLUGS)
+
 /** Pixel size of the file for each slot. Aspect ratio is width / height. */
 export const PLACEHOLDER_SLOTS = {
   /** Event hero below 640px, and the email hero. 16:9. */
@@ -69,32 +88,27 @@ const ALIAS: Record<string, PlaceholderSlug> = {
   club: 'nightlife',
   garage: 'community',
   warehouse: 'community',
-  'garage-sales': 'community',
-  'warehouse-sales': 'community',
-  'school-fundraisers': 'family',
-  'farmers-markets': 'food-drink',
-  'neighbourhood-popups': 'community',
-  'community-sport': 'sports',
-  'charity-events': 'community',
-  'dog-friendly': 'community',
-  'local-art': 'arts-culture',
 }
 
 const DEFAULT_SLUG: PlaceholderSlug = 'community'
 
-export function placeholderSlug(category?: string | null): PlaceholderSlug {
+export function placeholderSlug(category?: string | null): HoldingSlug {
   const raw = (category ?? '').trim().toLowerCase()
   if (!raw) return DEFAULT_SLUG
+  if (LOCAL_HOLDING.has(raw)) return raw as LocalHoldingSlug
   if (ALIAS[raw]) return ALIAS[raw]
   const slug = raw.replace(/&/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  if (LOCAL_HOLDING.has(slug)) return slug as LocalHoldingSlug
   if (SLUGS.has(slug)) return slug as PlaceholderSlug
   if (ALIAS[slug]) return ALIAS[slug]
   return DEFAULT_SLUG
 }
 
-/** Site-relative path for one slot of a genre. */
-export function placeholderPath(category?: string | null, slot: PlaceholderSlot = 'hero'): string {
-  return `/placeholders/${placeholderSlug(category)}/${slot}.webp`
+/** Site-relative path for one slot of a genre. Local sections rotate a second file when variant is 1. */
+export function placeholderPath(category?: string | null, slot: PlaceholderSlot = 'hero', variant: 0 | 1 = 0): string {
+  const slug = placeholderSlug(category)
+  const file = variant === 1 && LOCAL_HOLDING.has(slug) ? `${slot}-b` : slot
+  return `/placeholders/${slug}/${file}.webp`
 }
 
 export function placeholderAbsolute(category: string | null | undefined, slot: PlaceholderSlot, origin: string): string {

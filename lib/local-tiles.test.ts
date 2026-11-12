@@ -5,8 +5,8 @@ import { COMMUNITY_SECTIONS } from './community-shared'
 import { CORNER_LOCAL_CATEGORY, LOCAL_TILES, LOCAL_TILE_LICENCE, localCategoryPath, moreTiles, primaryTiles } from './local-tiles'
 
 test('Local shortcuts filter real sections and use the approved mascot art', () => {
-  assert.deepEqual(primaryTiles().map((tile) => tile.label), ['Garage Sales', 'Markets', 'School Fetes', 'Fundraisers', 'Pop-ups', 'Community Events'])
-  assert.deepEqual(moreTiles().map((tile) => tile.key), ['warehouse-sales', 'dog-friendly', 'local-art'])
+  assert.deepEqual(primaryTiles().map((tile) => tile.label), ['Garage Sales', 'Markets', 'School fetes', 'Charity events', 'Pop-ups', 'Community sport'])
+  assert.deepEqual(moreTiles().map((tile) => tile.key), ['warehouse-sales', 'dog-friendly', 'local-art', 'community-events'])
   const withArt = LOCAL_TILES.filter((tile) => tile.src)
   assert.equal(withArt.length, 9)
   assert.equal(LOCAL_TILES.find((tile) => tile.key === 'charity-events')?.src, '/local-tiles/school-fundraiser.webp')
