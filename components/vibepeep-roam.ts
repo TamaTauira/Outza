@@ -184,7 +184,7 @@ export function attachRoam(root: HTMLElement): () => void {
         map,
         navOffset: limitedH ? 0 : navOffset,
         segmentLimited: limitedH,
-      }),
+      }) + (!map && location.pathname.startsWith('/local') ? (mobile ? 36 : 120) : 0),
     })
     const gutter = edgeGap()
     const insetX = Math.max(base.minX, 12)
@@ -216,8 +216,10 @@ export function attachRoam(root: HTMLElement): () => void {
     }
     if (!mobile && !map && location.pathname.startsWith('/local')) {
       const grid = document.querySelector<HTMLElement>('.vp-local-grid')
-      const listBtn = Array.from(document.querySelectorAll('button')).find((el) => /list your thing free/i.test(el.textContent || '') && !el.closest('.vp-local-grid'))
-      const edge = Math.max(grid?.getBoundingClientRect().right ?? 0, listBtn?.getBoundingClientRect().right ?? 0)
+      const hero = document.querySelector<HTMLElement>('main header')
+      const heroBottom = hero?.getBoundingClientRect().bottom ?? 0
+      if (heroBottom > 40) lane = { ...lane, minY: Math.max(lane.minY, heroBottom + 12) }
+      const edge = grid?.getBoundingClientRect().right ?? 0
       const gutterX = edge + 12
       if (edge > 80 && gutterX <= lane.maxX) {
         let maxY = lane.maxY
@@ -458,7 +460,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const b = bubbleBox
       return !(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)
     }
-    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
+    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, main header, [role="tablist"], form, .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
       const r = el.getBoundingClientRect()
@@ -656,37 +658,20 @@ export function attachRoam(root: HTMLElement): () => void {
           if (place(x, yy)) break
         }
       }
-    } else if (mobileMq.matches && path.startsWith('/local')) {
-      const grid = document.querySelector('.vp-local-grid')
-      const ceiling = grid?.getBoundingClientRect().top ?? 0
+    } else if (path.startsWith('/local')) {
+      const hero = document.querySelector('main header')
       const h = rigH()
-      const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - 4 - 16))
-      if (ceiling > 80) {
-        const y = Math.min(ceiling - h - 1, Math.max(box.minY, introFloor(ceiling) + 5))
-        if (y >= introFloor(ceiling) + 4 && y + h <= ceiling - 1) spot = { x, y }
-      }
-      if (!spot) {
-        let y = box.minY
-        const heading = document.querySelector('main h1')
-        if (heading) y = Math.max(y, heading.getBoundingClientRect().bottom + 16)
+      const x = Math.max(box.minX, Math.min(maxX, window.innerWidth - s - (mobileMq.matches ? 16 : 28)))
+      let y = Math.max(box.minY, (hero?.getBoundingClientRect().bottom ?? box.minY) + 16)
+      if (y + h > box.maxY) y = Math.max(box.minY, box.maxY)
+      if (!coversCopy(x, y)) spot = { x, y }
+      else {
         for (let yy = y; yy <= box.maxY; yy += 12) {
           if (!coversCopy(x, yy)) {
             spot = { x, y: yy }
             break
           }
         }
-      }
-    } else if (!mobileMq.matches && path.startsWith('/local')) {
-      const listBtn = Array.from(document.querySelectorAll('button')).find((el) => /list your thing free/i.test(el.textContent || '') && !el.closest('.vp-local-grid'))
-      const next30 = Array.from(document.querySelectorAll('button')).find((el) => /next 30 days/i.test(el.textContent || ''))
-      const h = rigH()
-      if (listBtn) {
-        const r = listBtn.getBoundingClientRect()
-        place(r.right + 12, r.top + (r.height - h) / 2)
-      }
-      if (!spot && next30) {
-        const r = next30.getBoundingClientRect()
-        place(r.right + 12, r.bottom - h)
       }
     }
     if (spot && mobileMq.matches && path === '/' && !reduce) {
