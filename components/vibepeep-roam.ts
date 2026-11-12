@@ -525,8 +525,8 @@ export function attachRoam(root: HTMLElement): () => void {
 
   /**
    * Desktop Board parks in the Hot right now band, 16px clear of the call to
-   * action. The old "Feature your event" link is gone; the gig link and the
-   * dashed promo card are what the band still renders.
+   * action, with his feet above the cards. The old "Feature your event" link
+   * is gone; the gig link is the anchor that is still there.
    */
   const boardSpot = (): Point | null => {
     if (!desktopBoard()) return null
@@ -536,42 +536,47 @@ export function attachRoam(root: HTMLElement): () => void {
     if (band.width < 48 || band.height < 48) return null
     const s = size()
     const h = Math.max(48, figure().height > 8 ? figure().height : s * (1092 / 763))
-    const hero = document.querySelector('main > section')
-    const heroBottom = hero ? hero.getBoundingClientRect().bottom : 0
-    // The × sits about 52px above the rig. Keep that circle below the hero.
-    const minY = heroBottom + 56
     const label = (el: HTMLElement) => (el.textContent || '').replace(/\s+/g, ' ').trim()
     const links = [...section.querySelectorAll('a')].filter((el): el is HTMLAnchorElement => el instanceof HTMLAnchorElement)
     const feature = links.find((el) => /feature your event/i.test(label(el)))
     const gig = links.find((el) => /put your gig up here/i.test(label(el)))
     const promo = links.find((el) => /this spot could be yours/i.test(label(el)))
     const anchor = feature || gig || promo
+    const tall = links.map((el) => el.getBoundingClientRect()).filter((r) => r.height > 80 && r.width > 8)
+    const cardsTop = tall.length ? Math.min(...tall.map((r) => r.top)) : band.bottom
+    const blocksPage = (x: number, y: number) => {
+      const body = { left: x, top: y, right: x + s, bottom: y + h }
+      const close = { left: x + s - 44, top: y - 52, right: x + s, bottom: y - 8 }
+      const hit = (a: typeof body, r: DOMRect, pad: number) =>
+        !(a.right < r.left - pad || a.left > r.right + pad || a.bottom < r.top - pad || a.top > r.bottom + pad)
+      for (const el of document.querySelectorAll('h1, h2, h3, h4, p, a, button, header.vp-site-header')) {
+        if (!(el instanceof HTMLElement) || el.closest('.vp-roam') || el.closest('.vp-buddy-min')) continue
+        const r = el.getBoundingClientRect()
+        if (r.width < 8 || r.height < 8) continue
+        if (hit(body, r, 8) || hit(close, r, 8)) return true
+      }
+      return false
+    }
     const candidates: Point[] = []
     const push = (x: number, y: number) => {
-      if (x < 8 || y < minY || x + s > window.innerWidth - 8) return
+      if (x < 8 || y < 8 || x + s > window.innerWidth - 8) return
       candidates.push({ x: Math.round(x), y: Math.round(y) })
     }
     if (anchor) {
       const r = anchor.getBoundingClientRect()
       if (r.width > 8 && r.height > 8 && r.height < 88) {
+        push(r.left - 16 - s, cardsTop - h - 12)
         push(r.left - 16 - s, r.top + (r.height - h) / 2)
-        push(r.left - 16 - s, r.bottom + 12)
-      } else if (r.width > 8 && r.height >= 88) {
-        push(r.left, r.top - h - 16)
-        push(r.right - s, r.top - h - 16)
+      } else if (r.width > 8) {
+        push(r.left, cardsTop - h - 12)
       }
     }
-    const heading = section.querySelector('h2')
-    const rowY = heading ? Math.max(minY, heading.getBoundingClientRect().bottom + 12) : Math.max(minY, band.top + 8)
-    const maxY = band.bottom - h - 8
     const maxX = Math.min(band.right, window.innerWidth) - s - 12
-    for (let y = rowY; y <= maxY; y += 16) {
-      for (let x = maxX; x >= band.left + 8; x -= 20) {
-        push(x, y)
-      }
+    for (let y = Math.max(8, cardsTop - h - 12); y <= band.bottom - h - 8; y += 16) {
+      for (let x = maxX; x >= band.left + 8; x -= 20) push(x, y)
     }
     for (const point of candidates) {
-      if (!coversCopy(point.x, point.y)) return point
+      if (!blocksPage(point.x, point.y)) return point
     }
     return null
   }
