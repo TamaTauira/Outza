@@ -4,11 +4,13 @@ const ci = !!process.env.CI
 
 export default defineConfig({
   testDir: 'e2e',
+  fullyParallel: true,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   retries: ci ? 1 : 0,
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://outza-outza.vercel.app',
+    ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
     ...(ci ? {} : { channel: 'chrome' }),
     ...devices['Desktop Chrome'],

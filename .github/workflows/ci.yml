@@ -24,53 +24,106 @@ jobs:
   browser:
     name: browser smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
     steps:
       - uses: actions/checkout@v4
+        timeout-minutes: 2
       - uses: actions/setup-node@v4
+        timeout-minutes: 2
         with:
           node-version: 22
       - name: Install
-        run: corepack enable && corepack yarn install --immutable
-      - name: Install Chromium and WebKit
+        timeout-minutes: 4
         run: |
-          corepack yarn exec playwright install-deps chromium webkit
-          corepack yarn exec playwright install chromium chromium-headless-shell webkit
-      - name: Public smoke and axe
-        run: corepack yarn exec playwright test e2e/public.spec.ts e2e/signed-in.spec.ts
-        env:
-          CI: '1'
-          PLAYWRIGHT_BASE_URL: https://outza-outza.vercel.app
-      - name: Preview URL for the mascot collision test
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            branch="${GITHUB_HEAD_REF//\//-}"
-            url="https://outza-git-${branch}-outza.vercel.app"
-          else
-            url="https://outza-outza.vercel.app"
-          fi
-          ready() { [ "$(curl -s -o /dev/null -w "%{http_code}" "$1" || true)" = "200" ]; }
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
-            if ready "$url"; then
-              echo "MASCOT_COLLISION_URL=$url" >> "$GITHUB_ENV"
-              echo "ready $url"
+          corepack enable
+          n=0
+          while [ "$n" -lt 3 ]; do
+            if corepack yarn install --immutable; then
+              version=$(node -p "require('@playwright/test/package.json').version")
+              echo "installed @playwright/test $version"
+              if [ "$version" != "1.65.0" ]; then
+                echo "browser image is v1.65.0-noble but @playwright/test is $version" >&2
+                exit 1
+              fi
               exit 0
             fi
-            if [ "${{ github.event_name }}" = "pull_request" ]; then
-              found=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --jq '[.[] | select(.user.login=="vercel[bot]") | .body] | last' | grep -oE 'outza[a-z0-9.-]*\.vercel\.app' | tail -1 || true)
-              if [ -n "$found" ] && ready "https://$found"; then
-                echo "MASCOT_COLLISION_URL=https://$found" >> "$GITHUB_ENV"
-                echo "ready https://$found"
-                exit 0
-              fi
+            n=$((n + 1))
+            echo "yarn install failed (attempt $n)" >&2
+            if [ "$n" -lt 3 ]; then
+              sleep $((n * 5))
             fi
-            sleep 10
           done
-          echo "preview not ready: $url" >&2
           exit 1
-      - name: Mascot collision
-        run: corepack yarn exec playwright test e2e/mascot-collision.spec.ts
+      - name: Generate Prisma client
+        timeout-minutes: 2
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+        run: corepack yarn exec prisma generate
+      - name: Build
+        timeout-minutes: 4
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          AUTH_SECRET: ci-browser-smoke
+          NEXTAUTH_SECRET: ci-browser-smoke
+        run: corepack yarn build
+      - name: Browser smoke
+        timeout-minutes: 18
         env:
           CI: '1'
-          MASCOT_COLLISION_URL: ${{ env.MASCOT_COLLISION_URL }}
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+          AUTH_SECRET: ci-browser-smoke
+          NEXTAUTH_SECRET: ci-browser-smoke
+          PLAYWRIGHT_BASE_URL: https://127.0.0.1:3458
+          MASCOT_COLLISION_URL: https://127.0.0.1:3458
+        run: |
+          corepack yarn start -H 127.0.0.1 -p 3457 > /tmp/next-start.log 2>&1 &
+          ready=0
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+            if node -e "fetch('http://127.0.0.1:3457/login').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != "1" ]; then
+            echo "local server did not become ready" >&2
+            cat /tmp/next-start.log >&2 || true
+            exit 1
+          fi
+          openssl req -x509 -newkey rsa:2048 -keyout /tmp/smoke-key.pem -out /tmp/smoke-cert.pem -days 1 -nodes -subj "/CN=127.0.0.1" -addext "subjectAltName=IP:127.0.0.1"
+          node <<'JS' &
+          const https = require('https')
+          const http = require('http')
+          const fs = require('fs')
+          const server = https.createServer({
+            key: fs.readFileSync('/tmp/smoke-key.pem'),
+            cert: fs.readFileSync('/tmp/smoke-cert.pem'),
+          }, (req, res) => {
+            const headers = { ...req.headers }
+            delete headers.host
+            const preq = http.request({ hostname: '127.0.0.1', port: 3457, path: req.url, method: req.method, headers }, (pres) => {
+              const out = { ...pres.headers }
+              if (typeof out.location === 'string') out.location = out.location.replace('http://127.0.0.1:3457', 'https://127.0.0.1:3458')
+              res.writeHead(pres.statusCode || 502, out)
+              pres.pipe(res)
+            })
+            preq.on('error', () => { if (!res.headersSent) res.writeHead(502); res.end() })
+            req.pipe(preq)
+          })
+          server.listen(3458, '127.0.0.1')
+          JS
+          https_ready=0
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if node -e "const https=require('https'); https.get({hostname:'127.0.0.1',port:3458,path:'/login',rejectUnauthorized:false},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"; then
+              https_ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$https_ready" != "1" ]; then
+            echo "https proxy did not become ready" >&2
+            exit 1
+          fi
+          corepack yarn exec playwright test e2e/public.spec.ts e2e/signed-in.spec.ts e2e/mascot-collision.spec.ts --workers=2
