@@ -149,18 +149,9 @@ async function pinAndCheck(page: Page, x: number, y: number, where: string): Pro
   }, { x, y, where, lines: LINES, reactions: REACTIONS, dances: DANCES })
 }
 
-/** Chrome is in the DOM. Desktop Board still waits on the old feature link, so placed may never arrive. */
+/** He has been placed by the page, including desktop Board. */
 async function mascotReady(page: Page) {
-  await page.locator('.vp-roam[data-chrome="joint"]').waitFor({ state: 'attached', timeout: 20_000 })
-  const placed = await page.locator('.vp-roam[data-placed="1"]').waitFor({ state: 'attached', timeout: 2_000 }).then(() => true).catch(() => false)
-  if (placed) return
-  await page.locator('.vp-rig').waitFor({ state: 'attached', timeout: 10_000 })
-  await page.evaluate(() => {
-    const root = document.querySelector<HTMLElement>('.vp-roam')
-    if (!root) return
-    root.dataset.ready = '1'
-    root.dataset.placed = '1'
-  })
+  await page.locator('.vp-roam[data-placed="1"]').waitFor({ state: 'attached', timeout: 20_000 })
 }
 
 async function sweep(browser: Browser, width: number, theme: 'light' | 'dark') {
