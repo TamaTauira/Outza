@@ -17,8 +17,7 @@ import { cn } from '@/lib/utils';
 import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { FeaturedTurnstile } from '@/components/featured-turnstile';
-import { HomeDiscover, type MoodAction } from '@/components/home-discover';
+import { HomeRails } from '@/components/home-rails';
 import { ViewToggle } from '@/components/view-toggle';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
@@ -37,13 +36,6 @@ const EMPTY_FILTERS: FilterState = {
 const CAT_KEY = 'se-categories-v1';
 const FILTER_OWNER = 'outza-filter-owner';
 const DAYS_AHEAD = 30;
-
-const WINDOWS: {key: TimeWindow;label: string;todayOnly?: boolean;}[] = [
-{ key: 'now', label: 'Now & next', todayOnly: true },
-{ key: 'hour', label: 'Next 60 min', todayOnly: true },
-{ key: 'evening', label: 'Evening' },
-{ key: 'all', label: 'Full day' }];
-
 
 export function HomeClient({ initialNow, initialBoard = null }: { initialNow: SydneyNow; initialBoard?: BoardSeed | null }) {
   // Board, Map and Saved are real addresses (/, /map, /saved) sharing this layout.
@@ -71,6 +63,8 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
   const [catsHydrated, setCatsHydrated] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
+  const [railIds, setRailIds] = useState<string[]>([]);
+  const [browseCount, setBrowseCount] = useState(0);
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState<Date | undefined>(undefined);
   const { saved } = useSaved();
@@ -242,7 +236,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (days.length && (!day || !days.includes(day))) setDay(days[0]);
   }, [days, day]);
 
-  const isToday = !!day && day === today;
   const update = (p: Partial<FilterState>) => setFilters((f) => ({ ...f, ...p }));
   const advancedCount = [filters.subTag, filters.suburb, filters.dateFrom || filters.dateTo].filter(Boolean).length;
   const picked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
@@ -292,16 +285,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       setTimeWindow('all');
       setFilters((f) => ({ ...f, dateFrom: nextWeek.from, dateTo: nextWeek.to, datePreset: '' }));
     }
-    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
-  const applyMood = (action: MoodAction) => {
-    if (action.kind === 'ask') { ask(action.query); return; }
-    setFilters((f) => {
-      const next = withCategories({ ...f, isFree: action.isFree ?? f.isFree }, action.categories ?? []);
-      return action.subTag ? { ...next, subTag: action.subTag } : next;
-    });
-    setWindowPinned(true);
-    rememberView('list');
     requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   // Hero AI search → open the same filters on the full board
@@ -362,7 +345,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'vp-wrap px-4 sm:px-6 pt-5'}>
         {view === 'board' ? (
-          <section className="relative mb-8 min-h-[28rem] overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
+          <section className="vp-peep-hero relative mb-6 overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
             {heroPhoto && <img src={heroPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />}
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
             <div className="relative flex items-start justify-between gap-4">
@@ -388,12 +371,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             </div>
             <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
-                { label: 'Tonight’s looking good.', run: () => applyPlan('tonight') },
-                { label: 'Something free.', run: () => { update({ isFree: true }); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
-                { label: 'Date night.', run: () => ask('Date night') },
-                { label: 'Live music.', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
-                { label: 'A little culture.', run: () => { setFilters((f) => withCategories(f, ['Arts & Culture'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
-                { label: 'Something unexpected.', run: () => ask('Something unexpected') },
+                { label: 'Tonight', run: () => applyPlan('tonight') },
+                { label: 'This weekend', run: () => applyPlan('weekend') },
+                { label: 'Next week', run: () => applyPlan('next') },
+                { label: 'Free', run: () => { update({ isFree: true }); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
+                { label: 'Live music', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
+                { label: 'Date night', run: () => ask('Date night') },
+                { label: 'Family', run: () => { setFilters((f) => withCategories(f, ['Family'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
+                { label: 'Near me', run: () => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
               ].map((chip) => (
                 <button key={chip.label} type="button" onClick={chip.run} className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20">{chip.label}</button>
               ))}
@@ -401,54 +386,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </section>
         ) : null}
 
-        {view === 'board' && <FeaturedTurnstile city={city} />}
-        {view === 'board' && today && (
-          <section className="mb-8" aria-label="What’s the plan?">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">What’s the plan?</h2>
-                <p className="mt-1 text-muted-foreground">Today, tonight, or a bit further out.</p>
-              </div>
-              <Popover open={calOpen} onOpenChange={(open) => {
-                setCalOpen(open);
-                if (open) {
-                  const iso = filters.dateFrom || day;
-                  if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
-                }
-              }}>
-                <PopoverTrigger asChild>
-                  <button className="inline-flex h-11 items-center gap-2 rounded-full border border-border px-4 text-sm font-semibold hover:bg-muted">
-                    <CalendarDays className="h-4 w-4" /> Pick a date
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <Calendar
-                    mode="single"
-                    month={calMonth}
-                    onMonthChange={setCalMonth}
-                    selected={day ? new Date(`${day}T12:00:00`) : undefined}
-                    disabled={today ? { before: new Date(`${today}T00:00:00`) } : undefined}
-                    onSelect={(d) => {
-                      if (!d) return;
-                      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                      setDay(iso);
-                      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
-                      setCalOpen(false);
-                      requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-                    }}
-                    initialFocus />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {planChips.map((chip) => (
-                <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('rounded-2xl border px-4 py-4 text-left', planKey === chip.key ? 'border-foreground bg-foreground text-background' : 'border-border bg-card hover:border-primary')}>
-                  <span className="block text-base font-semibold">{chip.label}</span>
-                  <span className={cn('mt-1 block text-sm', planKey === chip.key ? 'text-background/70' : 'text-muted-foreground')}>{chip.detail}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+        {view === 'board' && (
+          <HomeRails
+            city={city}
+            today={today}
+            onSeeAll={(kind) => applyPlan(kind)}
+            onShown={setRailIds}
+            onSuburb={(suburb) => { setFilters((f) => ({ ...f, suburb })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
+          />
         )}
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
@@ -509,49 +454,30 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
           {view === 'board' && (
             <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
-              <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">The line-up</h2>
+              <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
               <ViewToggle compact value={resultsView} label="Line-up view" options={[{ key: 'list', text: 'List', Icon: LayoutList }, { key: 'board', text: 'Board', Icon: LayoutGrid }]} onChange={rememberLineup} />
             </div>
           )}
           {view === 'board' &&
           <>
-              {/* Big search */}
-              <div className="px-3 sm:px-4 pt-4 pb-3 border-b border-border space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-                  <input
-                  type="text"
-                  role="searchbox"
-                  inputMode="search"
-                  enterKeyHint="search"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder={`Search ${city ? city : 'Australian'} gigs, venues, suburbs — jazz, trivia, whatever…`}
-                  aria-label="Search events"
-                  className="w-full h-14 pl-12 pr-12 rounded-xl border-2 border-border bg-background text-base placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20" />
-                
-                  {searchInput &&
-                <button onClick={() => setSearchInput('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted" aria-label="Clear search">
-                      <X className="w-4 h-4" />
+              <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-3 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
+                <button type="button" aria-pressed={planKey === 'today'} onClick={() => applyPlan('today')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'today' ? 'bg-foreground text-background' : 'bg-muted')}>Today</button>
+                <button type="button" aria-pressed={planKey === 'tonight'} onClick={() => applyPlan('tonight')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'tonight' ? 'bg-foreground text-background' : 'bg-muted')}>Tonight</button>
+                <button type="button" aria-pressed={planKey === 'weekend'} onClick={() => applyPlan('weekend')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'weekend' ? 'bg-foreground text-background' : 'bg-muted')}>This weekend</button>
+                <Popover open={calOpen} onOpenChange={(open) => {
+                  setCalOpen(open);
+                  if (open) {
+                    const iso = filters.dateFrom || day;
+                    if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
+                  }
+                }}>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-medium">
+                      <CalendarDays className="h-4 w-4" /> Pick a date
                     </button>
-                }
-                </div>
-                {view === 'board' &&
-              <div className="flex items-center gap-2">
-                    <Popover open={calOpen} onOpenChange={(open) => {
-                      setCalOpen(open);
-                      if (open) {
-                        const iso = filters.dateFrom || day;
-                        if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
-                      }
-                    }}>
-                      <PopoverTrigger asChild>
-                        <button className="shrink-0 h-11 flex items-center gap-2 px-4 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">
-                          <CalendarDays className="w-4 h-4" /> When are we going out?
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
                       mode="single"
                       month={calMonth}
                       onMonthChange={setCalMonth}
@@ -561,85 +487,22 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                         if (!d) return;
                         const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
                         setDay(iso);
+                        pinWindow('all');
                         setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
                         setCalOpen(false);
                       }}
                       initialFocus />
-                    
-                      </PopoverContent>
-                    </Popover>
-                    <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-w-0">
-                      {days.slice(0, 14).concat(day && !days.slice(0, 14).includes(day) ? [day] : []).map((d, i) => {
-                    const dt = new Date(`${d}T00:00:00Z`);
-                    const label = d === today ? 'Today' : i === 1 && days[0] === today ? 'Tomorrow' : dt.toLocaleDateString('en-AU', { weekday: 'short', timeZone: 'UTC' });
-                    return (
-                      <button key={d} onClick={() => { setDay(d); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }} className={cn('shrink-0 h-11 min-w-[64px] px-3 rounded-lg border text-center leading-tight transition-colors', day === d ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted')}>
-                            <div className="text-xs font-semibold">{label}</div>
-                            <div className="text-xs opacity-80">{dt.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })}</div>
-                          </button>);
-
-                  })}
-                    </div>
-                  </div>
-              }
-              </div>
-              {/* Time windows (board only) */}
-              {view === 'board' &&
-              <div className="flex min-w-0 items-center border-b border-border bg-muted/60 px-3 py-2 sm:px-4">
-                <div className="flex w-full min-w-0 gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {WINDOWS.map((w) => {
-                  const disabled = !!w.todayOnly && !isToday;
-                  const active = timeWindow === w.key && !disabled;
-                  return (
-                    <button
-                      key={w.key}
-                      onClick={() => pinWindow(w.key)}
-                      disabled={disabled}
-                      title={w.todayOnly && !isToday ? 'Today only' : undefined}
-                      className={cn(
-                        'shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-md text-sm font-medium transition-colors',
-                        active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                        disabled && 'opacity-40 cursor-not-allowed hover:text-muted-foreground'
-                      )}>
-                      
-                        {w.key === 'now' && <span className={cn('w-1.5 h-1.5 rounded-full', active ? 'bg-primary-foreground' : 'bg-primary')} />}
-                        {w.label}
-                      </button>);
-
-                })}
-                </div>
-              </div>
-              }
-
-              {/* Categories + search + toggles */}
-              <div className="flex flex-col lg:flex-row lg:items-center gap-3 px-3 sm:px-4 py-3 border-b border-border">
-                <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-1 px-1 lg:flex-1 min-w-0">
-                  <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All events" Icon={LayoutGrid} />
-                  {CATEGORIES.map((c) =>
-                <CategoryChip
-                  key={c.name}
-                  active={picked.includes(c.name)}
-                  onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))}
-                  label={c.name}
-                  Icon={categoryIcon(c.name)}
-                  color={c.color} />
-
-                )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <ToggleChip active={filters.isLGBTI} onClick={() => update({ isLGBTI: !filters.isLGBTI })} label="LGBTIQ+" />
-                  <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
-                  <button
-                  type="button"
-                  onClick={() => setShowFilters(true)}
-                  aria-label="Filters"
-                  className={cn('h-9 flex items-center gap-2 px-3 rounded-md border text-sm transition-colors', advancedCount ? 'border-primary text-primary' : 'border-border hover:bg-muted')}>
-                  
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span className="hidden sm:inline">Filters</span>
-                    {advancedCount > 0 && <span className="font-mono text-[11px]">{advancedCount}</span>}
-                  </button>
-                </div>
+                  </PopoverContent>
+                </Popover>
+                <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
+                {CATEGORIES.map((c) => (
+                  <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
+                ))}
+                <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
+                <button type="button" onClick={() => setShowFilters(true)} aria-label="Filters" className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm', advancedCount ? 'border-primary text-primary' : 'border-border')}>
+                  <SlidersHorizontal className="h-4 w-4" /> Filters
+                  {advancedCount > 0 && <span className="font-mono text-[11px]">{advancedCount}</span>}
+                </button>
               </div>
 
               {picked.length === 1 &&
@@ -660,7 +523,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
           {view === 'board' &&
           <>
-          <div className={cn(!boardOpen && 'max-lg:max-h-[32rem] max-lg:overflow-hidden')}>
           <EventList
             layout={resultsView}
             filters={filters}
@@ -672,25 +534,19 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             onWindowChange={setTimeWindow}
             windowPinned={windowPinned}
             city={city}
-            initialBoard={initialBoard}
-            activeId={focusId} />
-          </div>
-          <div className="flex justify-center border-t border-border px-4 py-3 lg:hidden">
+            initialBoard={boardOpen ? initialBoard : null}
+            activeId={focusId}
+            excludeIds={boardOpen ? [] : railIds}
+            previewLimit={boardOpen ? undefined : 8}
+            onListedCount={setBrowseCount} />
+          <div className="flex justify-center border-t border-border px-4 py-3">
             <button type="button" onClick={() => setBoardOpen((open) => !open)} className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">
-              {boardOpen ? 'Show less' : 'See all events'}
+              {boardOpen ? 'Show the short list' : `See all ${browseCount} events`}
             </button>
           </div>
           </>
           }
         </div>}
-        {view === 'board' && (
-          <HomeDiscover
-            city={city}
-            today={today}
-            onMood={applyMood}
-            onSuburb={(suburb) => { setFilters((f) => ({ ...f, suburb })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); }}
-          />
-        )}
       </main>
 
       {/* Filters drawer */}
@@ -719,7 +575,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         </div>
       }
 
-      {view !== 'map' && <Footer lastRefresh={lastRefresh} quickLinks={quickLinks} city={city} />}
+      {view !== 'map' && <Footer lastRefresh={lastRefresh} quickLinks={view === 'board' ? [] : quickLinks} city={city} />}
       {view !== 'map' && <SuggestionButton />}
     </div>);
 

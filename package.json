@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "tsx --test lib/*.test.ts lib/intel/*.test.ts lib/newsletter/*.test.ts"
+    "test": "tsx --test lib/*.test.ts lib/intel/*.test.ts lib/newsletter/*.test.ts components/home-rails.test.ts"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/safe-seed.ts"

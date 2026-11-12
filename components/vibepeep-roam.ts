@@ -463,7 +463,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const b = bubbleBox
       return !(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)
     }
-    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, [role="tablist"], .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
+    const hard = document.querySelectorAll('.vp-peep-hero, main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, [role="tablist"], .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
       const r = el.getBoundingClientRect()
@@ -530,7 +530,7 @@ export function attachRoam(root: HTMLElement): () => void {
    */
   const boardSpot = (): Point | null => {
     if (!desktopBoard()) return null
-    const section = document.querySelector<HTMLElement>('[aria-label="Hot right now"]')
+    const section = document.querySelector<HTMLElement>('[data-peep-rail], [aria-label="Hot right now"]')
     if (!section) return null
     const band = section.getBoundingClientRect()
     if (band.width < 48 || band.height < 48) return null
@@ -691,7 +691,7 @@ export function attachRoam(root: HTMLElement): () => void {
       return false
     }
     if (mobileMq.matches && path === '/') {
-      const hero = document.querySelector('main > section.rounded-2xl')
+      const hero = document.querySelector('.vp-peep-hero, main > section.rounded-2xl')
       const hot = Array.from(document.querySelectorAll('h2')).find((el) => /hot right now/i.test(el.textContent || ''))
       const x = window.innerWidth - s - 4 - 12
       const h = rigH()
