@@ -105,17 +105,16 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
 
+  const categoryKey = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : []).join('\u0000')
   const fetchEvents = useCallback(async () => {
     const seq = ++fetchSeq.current
     try {
       setLoading(true)
-      setEvents([])
-      setFeatured([])
       const params = new URLSearchParams()
       params.set('limit', '300')
       if (city) params.set('city', city)
       if (searchQuery) params.set('search', searchQuery)
-      const cats = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : [])
+      const cats = categoryKey ? categoryKey.split('\u0000') : []
       if (cats.length === 1) params.set('category', cats[0])
       else if (cats.length > 1) params.set('categories', cats.join(','))
       if (filters.subTag) params.set('subTag', filters.subTag)
@@ -137,7 +136,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
     }
-  }, [searchQuery, filters, city])
+  }, [searchQuery, city, categoryKey, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI, filters.dateFrom, filters.dateTo])
 
   useEffect(() => { if (!locked) fetchEvents() }, [fetchEvents, locked])
 
@@ -360,14 +359,14 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         </div>
       ) : null}
       <div className={bleed ? 'vp-map-stage relative min-h-0 w-full flex-1' : 'vp-map-stage relative h-full min-h-0 w-full'} style={stageStyle}>
-      {loading && (
+      {loading && events.length === 0 && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/40">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       )}
       <div ref={mapRef} className={bleed ? 'se-map absolute inset-0 overflow-hidden' : 'se-map absolute inset-0 overflow-hidden rounded-2xl'} />
       <div className={bleed ? 'vp-map-float vp-map-count absolute left-3 top-3 z-20 max-w-[calc(100%-4.75rem)] truncate rounded-full bg-white/80 px-3 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white lg:hidden' : 'vp-map-float absolute left-1/2 top-4 z-20 max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white sm:left-4 sm:max-w-none sm:translate-x-0'}>
-        {loading ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> {countNoun} on map</>}
+        {loading && events.length === 0 ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> {countNoun} on map</>}
       </div>
       {!loading && count === 0 && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6">
