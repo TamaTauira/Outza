@@ -398,14 +398,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         )}
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="vp-map-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4">
-              {planChips.map((chip) => (
-                <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('h-10 shrink-0 rounded-full px-3 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted')}>{chip.label}</button>
-              ))}
-              <button type="button" onClick={() => setShowFilters(true)} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-semibold">
-                <SlidersHorizontal className="h-4 w-4" /> Filters
-              </button>
-            </div>
             <div className="vp-map-toolbar flex shrink-0 items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4 lg:gap-0 lg:px-0">
               <div className="w-[46%] max-w-[220px] shrink-0 lg:w-80 lg:max-w-none lg:px-4">
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
@@ -435,6 +427,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 onSelect={setFocusId}
                 chips={(
                   <>
+                    <button type="button" onClick={() => setShowFilters(true)} aria-label="Filters" className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold', advancedCount ? 'border-primary text-primary' : 'border-border')}>
+                      <SlidersHorizontal className="h-4 w-4" /> Filters
+                      {advancedCount > 0 && <span className="font-mono text-[11px]">{advancedCount}</span>}
+                    </button>
+                    {planChips.map((chip) => (
+                      <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>{chip.label}</button>
+                    ))}
+                    <span aria-hidden className="mx-1 h-5 w-px shrink-0 self-center bg-border" />
                     <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
                     {CATEGORIES.map((c) => (
                       <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
