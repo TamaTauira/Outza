@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
     steps:
       - uses: actions/checkout@v4
         timeout-minutes: 2
@@ -41,6 +41,12 @@ jobs:
           n=0
           while [ "$n" -lt 3 ]; do
             if corepack yarn install --immutable; then
+              version=$(node -p "require('@playwright/test/package.json').version")
+              echo "installed @playwright/test $version"
+              if [ "$version" != "1.65.0" ]; then
+                echo "browser image is v1.65.0-noble but @playwright/test is $version" >&2
+                exit 1
+              fi
               exit 0
             fi
             n=$((n + 1))
