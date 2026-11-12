@@ -399,12 +399,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="vp-map-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4">
-              <ViewToggle value="map" onChange={rememberView} />
-              <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {planChips.map((chip) => (
-                  <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('h-10 shrink-0 rounded-full px-3 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted')}>{chip.label}</button>
-                ))}
-              </div>
+              {planChips.map((chip) => (
+                <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('h-10 shrink-0 rounded-full px-3 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted')}>{chip.label}</button>
+              ))}
               <button type="button" onClick={() => setShowFilters(true)} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-semibold">
                 <SlidersHorizontal className="h-4 w-4" /> Filters
               </button>
