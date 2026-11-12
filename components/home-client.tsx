@@ -384,7 +384,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="What’s your vibe? Live music, cheap eats, something different…" queryRequest={askRequest} />
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Ask for a vibe…" queryRequest={askRequest} />
             </div>
             <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
