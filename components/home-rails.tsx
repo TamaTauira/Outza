@@ -74,28 +74,44 @@ export function HomeRails({
 }) {
   const [rows, setRows] = useState<RailEvent[]>([])
   const [featured, setFeatured] = useState<RailEvent[]>([])
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     if (!today) return
     const weekend = weekendFrom(today)
-    const params = new URLSearchParams({ limit: '80', dateFrom: today, dateTo: weekend.to })
-    if (city) params.set('city', city)
+    const tonightParams = new URLSearchParams({ limit: '24', dateFrom: today, dateTo: today, timeFrom: '17:00' })
+    const weekendParams = new URLSearchParams({ limit: '24', dateFrom: weekend.from, dateTo: weekend.to })
+    if (city) {
+      tonightParams.set('city', city)
+      weekendParams.set('city', city)
+    }
     let live = true
     const release = holdScrollRestore('home-rails')
     Promise.all([
-      fetch(`/api/events?${params}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/events?${tonightParams}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/events?${weekendParams}`).then((r) => r.json()).catch(() => ({})),
       fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((r) => r.json()).catch(() => ({})),
-    ]).then(([events, hot]) => {
+    ]).then(([tonight, weekendEvents, hot]) => {
       if (!live) return
-      setRows(events?.events ?? [])
+      const seen = new Set<string>()
+      const merged: RailEvent[] = []
+      for (const ev of [...(tonight?.events ?? []), ...(weekendEvents?.events ?? [])]) {
+        if (seen.has(ev.id)) continue
+        seen.add(ev.id)
+        merged.push(ev)
+      }
+      setRows(merged)
       const items: RailEvent[] = (hot?.items ?? []).map((it: RailEvent & { tier?: string; sponsored?: boolean }) => ({
         ...it,
         sponsored: it.sponsored === true || (!!it.tier && it.tier !== 'HOT'),
       }))
       setFeatured(city ? items.filter((it) => !it.city || it.city === city) : items)
+      setReady(true)
     }).finally(release)
     return () => { live = false; release() }
   }, [city, today])
+
+  useEffect(() => { setReady(false) }, [city, today])
 
   if (!today) return null
   const weekend = weekendFrom(today)
@@ -110,9 +126,9 @@ export function HomeRails({
   const weekendRows = mixRail(weekendSponsored, weekendOrganic)
   const place = city || 'Australia'
   const rails = [
-    { key: 'tonight' as const, label: `Tonight in ${place}`, items: tonight },
-    { key: 'weekend' as const, label: 'This weekend', items: weekendRows },
-  ].filter((r) => r.items.length > 0)
+    { key: 'tonight' as const, label: `Tonight in ${place}`, items: tonight, empty: 'Nothing still on from 5pm.' },
+    { key: 'weekend' as const, label: 'This weekend', items: weekendRows, empty: 'Nothing on the books for Saturday and Sunday yet.' },
+  ]
   const shown = rails.flatMap((r) => r.items.map((ev) => ev.id))
 
   const areas = areasForCity(city)
@@ -133,9 +149,13 @@ export function HomeRails({
             <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{rail.label}</h2>
             <button type="button" onClick={() => onSeeAll(rail.key)} className="text-sm font-semibold text-primary hover:underline">See all</button>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
-            {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
-          </div>
+          {rail.items.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
+              {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
+            </div>
+          ) : ready ? (
+            <p className="text-sm text-muted-foreground">{rail.empty}</p>
+          ) : null}
         </section>
       ))}
       {neighbourhoods.length > 0 && (

@@ -54,7 +54,7 @@ const pickClass = (on: boolean) => cn(
 )
 
 /** Hero search. A plan-shaped ask shows a ready-made outing. Everything else stays a listing search. */
-export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null }) {
+export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -315,7 +315,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
           </button>
         </form>
 
-        {(
+        {chips && (
           <div className="px-3 pb-2.5">
             <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Suggested searches">
               {SUGGESTIONS.map((s) => (

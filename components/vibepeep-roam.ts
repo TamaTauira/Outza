@@ -692,20 +692,17 @@ export function attachRoam(root: HTMLElement): () => void {
     }
     if (mobileMq.matches && path === '/') {
       const hero = document.querySelector('.vp-peep-hero, main > section.rounded-2xl')
-      const hot = Array.from(document.querySelectorAll('h2')).find((el) => /hot right now/i.test(el.textContent || ''))
       const x = window.innerWidth - s - 4 - 12
       const h = rigH()
-      let y = hero ? hero.getBoundingClientRect().bottom + 14 : box.minY
-      if (hot) {
-        const cap = hot.getBoundingClientRect().top - h - 10
-        if (y > cap) y = cap
-        if (hero && y < hero.getBoundingClientRect().bottom + 14) y = hero.getBoundingClientRect().bottom + 14
-      }
+      const lift = 44 + 10 + h * 0.24
+      const below = hero ? hero.getBoundingClientRect().bottom + lift + 12 : box.minY
+      let y = below
       if (!place(x, y)) {
-        for (let yy = y; yy <= y + 120; yy += 2) {
+        for (let yy = y; yy <= box.maxY; yy += 8) {
           if (place(x, yy)) break
         }
       }
+      if (!spot) spot = { x, y: Math.min(below, box.maxY) }
     } else if (path.startsWith('/local')) {
       const hero = document.querySelector('main header')
       const heading = document.querySelector('main h1')
