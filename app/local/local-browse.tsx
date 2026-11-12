@@ -26,6 +26,7 @@ export type LocalItem = {
   city: string
   date: string
   time: string | null
+  endTime?: string | null
   isFree: boolean
   price: string | null
   href: string
@@ -410,7 +411,7 @@ function toBoardEvent(ev: LocalItem): BoardEvent {
     date: ev.date,
     endDate: null,
     time: ev.time,
-    endTime: null,
+    endTime: ev.endTime ?? null,
     venueName: ev.suburb || ev.title,
     suburb: null,
     category: sectionByKey(ev.section)?.boardCategory ?? 'Community',
