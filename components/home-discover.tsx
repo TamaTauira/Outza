@@ -2,13 +2,10 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { localCategoryPath } from '@/lib/local-tiles'
 import { displaySuburb } from '@/lib/cities'
 import { addDays, formatPrice } from '@/lib/board'
-import { LOCAL_TILES } from '@/lib/local-tiles'
 import { eventPath } from '@/lib/seo'
 import { categoryColor } from '@/lib/categories'
-import { pickCornerPhoto } from '@/lib/corner-photo'
 
 type NearbyEvent = {
   id: string
@@ -105,8 +102,6 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
   },
 ]
 
-const COMMUNITY_KEYS = ['garage-sales', 'neighbourhood-popups', 'school-fundraisers', 'community-sport', 'farmers-markets'] as const
-
 function TilePhoto({ src, tint, fit = 'cover' }: { src: string | null; tint: string; fit?: 'cover' | 'contain' }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [readySrc, setReadySrc] = useState<string | null>(null)
@@ -184,7 +179,6 @@ export function HomeDiscover({
     return claim(ranked[0]?.ev)
   }
   const moodPhotos = MOODS.map((mood) => best(mood.rank))
-  const communityPhoto = pickCornerPhoto(events, { used })
 
   const nearby = (() => {
     const groups = new Map<string, NearbyEvent[]>()
@@ -200,7 +194,6 @@ export function HomeDiscover({
         return { suburb, count: list.length, sample: sample ?? list[0], photo }
       })
   })()
-  const community = COMMUNITY_KEYS.map((key) => LOCAL_TILES.find((tile) => tile.key === key)).filter((tile): tile is NonNullable<typeof tile> => !!tile)
 
   return (
     <div className="mb-8 space-y-10">
@@ -250,30 +243,6 @@ export function HomeDiscover({
           </div>
         </section>
       )}
-
-      <section aria-label="Community discoveries" className="grid items-center gap-6 lg:grid-cols-2">
-        <div data-photo-tile="community" className="relative aspect-[16/10] overflow-hidden rounded-3xl bg-[#110e16]">
-          <TilePhoto src={communityPhoto} tint="#110e16" fit="contain" />
-        </div>
-        <div>
-          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">The little things happening around the corner.</h2>
-          <p className="mt-2 text-muted-foreground">Garage sales, markets, fetes. The good local stuff.</p>
-          <ul className="mt-4 grid grid-cols-2 gap-2">
-            {community.map((tile) => (
-              <li key={tile.key}>
-                <Link href={localCategoryPath(tile.key)} className="flex h-12 items-center rounded-xl border border-border bg-card px-3 text-sm font-semibold hover:border-primary">
-                  {tile.label}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href={localCategoryPath('workshops')} className="flex h-12 items-center rounded-xl border border-border bg-card px-3 text-sm font-semibold hover:border-primary">
-                Workshops
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </section>
     </div>
   )
 }
