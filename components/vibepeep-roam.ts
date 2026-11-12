@@ -518,6 +518,12 @@ export function attachRoam(root: HTMLElement): () => void {
         }
       }
     }
+    const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
+    if (hero) {
+      const floor = hero.getBoundingClientRect().bottom + 56
+      const y = Math.min(box.maxY, Math.max(box.minY, floor))
+      return { x: box.maxX, y }
+    }
     return best
   }
 
@@ -575,9 +581,13 @@ export function attachRoam(root: HTMLElement): () => void {
     for (let y = Math.max(8, cardsTop - h - 12); y <= band.bottom - h - 8; y += 16) {
       for (let x = maxX; x >= band.left + 8; x -= 20) push(x, y)
     }
+    const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
+    const floor = hero ? hero.getBoundingClientRect().bottom + 56 : 0
     for (const point of candidates) {
+      if (point.y < floor) continue
       if (!blocksPage(point.x, point.y)) return point
     }
+    if (floor > 0) return { x: Math.max(8, window.innerWidth - size() - 16), y: Math.round(floor) }
     return null
   }
 
@@ -721,8 +731,13 @@ export function attachRoam(root: HTMLElement): () => void {
       }
       if (!spot) spot = { x, y }
     }
-    if (spot && mobileMq.matches && path === '/' && !reduce) {
-      walkTo(spot)
+    if (spot && mobileMq.matches && path === '/') {
+      pos = spot
+      face = 'right'
+      root.dataset.ready = '1'
+      root.dataset.placed = '1'
+      setMove('still')
+      apply()
       return
     }
     pos = spot ?? firstClear({ ...box, maxX })
