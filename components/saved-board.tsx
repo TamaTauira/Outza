@@ -76,7 +76,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
   return (
     <div className="mb-10">
-      <PageMasthead title="The keepers." lede="Your little collection of good times. All the things you’ve spotted, loved and don’t want to forget." />
+      <PageMasthead variant="saved" />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
