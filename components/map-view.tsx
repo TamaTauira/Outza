@@ -369,7 +369,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       )}
       <div className={bleed ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'relative h-full min-h-0 min-w-0'}>
       {bleed && chips ? (
-        <div className="vp-map-chips flex min-w-0 shrink-0 touch-pan-x gap-1.5 overflow-x-auto overscroll-x-contain border-b border-border bg-background px-3 py-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden" role="toolbar" aria-label="Map categories">
+        <div className="vp-map-chips flex min-w-0 shrink-0 touch-pan-x items-center gap-1.5 overflow-x-auto overscroll-x-contain border-b border-border bg-background px-3 py-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden" role="toolbar" aria-label="When and what">
           {chips}
         </div>
       ) : null}
