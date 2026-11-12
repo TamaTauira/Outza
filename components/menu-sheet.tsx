@@ -2,10 +2,11 @@
 
 import type { ComponentType, ReactNode } from 'react'
 import Link from 'next/link'
-import { Bookmark, Building2, LogOut, Megaphone, Settings, ShieldCheck, Sparkles, User, Users } from 'lucide-react'
+import { Bookmark, Building2, List, LogOut, Megaphone, Settings, ShieldCheck, Sparkles, User, Users } from 'lucide-react'
 import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { signOut } from 'next-auth/react'
 import { TrustCount } from '@/components/admin-nav'
+import { useHasLocalListings } from '@/components/use-has-local-listings'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 type Item = {
@@ -34,6 +35,7 @@ export function MenuSheet({
 }) {
   const close = () => onOpenChange(false)
   const venue = process.env.NEXT_PUBLIC_OWNERSHIP_UI !== '0'
+  const hasListings = useHasLocalListings(signedIn)
   const items: Item[] = signedIn
     ? [
         { href: '/itinerary', label: 'Itinerary', Icon: CalendarPlusIcon },
@@ -41,6 +43,7 @@ export function MenuSheet({
         { href: '/together', label: 'Plan with your crew', Icon: Users },
         { href: '/outings', label: 'Plan a day or night', Icon: Sparkles },
         { href: '/account', label: 'Your account & inbox', Icon: Settings },
+        ...(hasListings ? [{ href: '/local?tab=mine', label: 'Your listings', Icon: List }] : []),
         isPromoter
           ? { href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }
           : { href: '/promoters', label: 'For promoters', Icon: Megaphone },

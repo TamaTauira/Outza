@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { ShieldCheck, Trash2 } from 'lucide-react'
+import { ChevronDown, ShieldCheck, Trash2 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 import { type LocalMapPin } from '@/components/local-neighbourhood-map'
@@ -23,7 +23,7 @@ type Item = LocalItem
 type Mine = { id: string; title: string; suburb: string; status: string; expiresAt: string; reviewNote: string | null; startDate: string; startTime: string; endTime: string; schedule: string }
 type MineCommunity = { id: string; title: string; suburb: string | null; city: string; communityKey: string | null; approvalState: string | null; status: string; href: string }
 
-const TABS = [{ key: 'browse', label: 'What’s on nearby', short: 'Nearby' }, { key: 'submit', label: 'Add your listing', short: 'Add yours' }, { key: 'mine', label: 'My listings', short: 'Mine' }, { key: 'how', label: 'How VibePeep Local works', short: 'How' }] as const
+const TAB_KEYS = ['browse', 'submit', 'mine', 'how'] as const
 
 function nowIn(tz: string) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
@@ -38,7 +38,7 @@ export function LocalClient() {
   const params = useSearchParams()
   const { saved, isSaved, toggle } = useSaved()
   const { data: session } = useSession() || {}
-  const tab = (TABS.find((t) => t.key === params.get('tab'))?.key ?? 'browse') as (typeof TABS)[number]['key']
+  const tab = (TAB_KEYS.find((key) => key === params.get('tab')) ?? 'browse')
   const setTab = (t: string) => router.replace(t === 'browse' ? '/local' : `/local?tab=${t}`, { scroll: false })
 
   const [city, setCityState] = useState(DEFAULT_CITY)
@@ -56,6 +56,7 @@ export function LocalClient() {
   const [more, setMore] = useState<Record<string, boolean>>({})
   const [hotKey, setHotKey] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
+  const [howOpen, setHowOpen] = useState(params.get('tab') === 'how')
 
   useEffect(() => {
     const tick = () => setNow(nowIn(cityDef(city).tz))
@@ -80,7 +81,7 @@ export function LocalClient() {
   const requestKey = `${city}|${category}|${when}|${suburbQuery}`
   const requestRef = useRef(0)
   useEffect(() => {
-    if (tab !== 'browse') return
+    if (tab === 'submit' || tab === 'mine') return
     const key = requestKey
     const ticket = ++requestRef.current
     const ac = new AbortController()
@@ -112,7 +113,14 @@ export function LocalClient() {
   const loadMine = useCallback(() => {
     fetch('/api/local?mine=1').then((r) => (r.ok ? r.json() : { listings: [] })).then((j) => { setMine(j.listings ?? []); setMineCommunity(j.community ?? []) }).catch((e) => { console.error(e); setMine([]); setMineCommunity([]) })
   }, [])
-  useEffect(() => { if (tab === 'mine' && session?.user) loadMine() }, [tab, session?.user, loadMine])
+  useEffect(() => { if (session?.user) loadMine() }, [session?.user, loadMine])
+
+  useEffect(() => {
+    if (tab !== 'how') return
+    setHowOpen(true)
+    const id = window.setTimeout(() => document.getElementById('local-how')?.scrollIntoView({ block: 'start' }), 60)
+    return () => window.clearTimeout(id)
+  }, [tab])
 
   const view = data?.key === requestKey ? data : null
   const error = loadError?.key === requestKey ? loadError.message : null
@@ -178,18 +186,8 @@ export function LocalClient() {
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
       <main className="vp-wrap min-w-0 px-4 py-6 pb-[calc(var(--vp-bottom-nav-offset)+2.5rem)] sm:px-6 lg:py-8 lg:pb-8">
-        <div className="relative min-w-0">
-          <div className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-            {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)} className={cn('relative h-12 shrink-0 px-3 text-sm whitespace-nowrap sm:px-4', tab === t.key ? 'font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                <span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span>
-                {tab === t.key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {tab === 'browse' && (
+        {(tab === 'browse' || tab === 'how') && (
+          <>
           <LocalBrowse
             city={city}
             setCity={setCity}
@@ -216,15 +214,69 @@ export function LocalClient() {
             isSaved={isSaved}
             save={save}
             onList={() => setTab('submit')}
+            onMine={() => setTab('mine')}
+            onHow={() => {
+              setHowOpen(true)
+              if (tab === 'how') document.getElementById('local-how')?.scrollIntoView({ block: 'start' })
+              else setTab('how')
+            }}
+            hasListings={!!session?.user && !!mine && mine.length + mineCommunity.length > 0}
+            signedIn={!!session?.user}
+            nowMinutes={now?.minutes ?? 0}
           />
+          <section id="local-how" className="mt-10 scroll-mt-24 rounded-3xl border border-border bg-card">
+            <button type="button" aria-expanded={howOpen} onClick={() => setHowOpen((open) => !open)} className="flex w-full items-center gap-3 px-5 py-4 text-left">
+              <span className="font-display text-xl font-bold">How it works</span>
+              <ChevronDown className={cn('ml-auto h-5 w-5 text-primary', !howOpen && '-rotate-90')} />
+            </button>
+            {howOpen && (
+              <div className="grid gap-6 px-5 pb-6 lg:grid-cols-[1fr_1.2fr]">
+                <div>
+                  <h2 className="flex items-center gap-2 font-display text-xl font-bold"><ShieldCheck className="h-5 w-5 text-primary" />Listing rules</h2>
+                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+                    <li>Public events and sales only. Birthday parties, private home gatherings and invitation-only functions are never listed.</li>
+                    <li>Weekly, fortnightly and monthly events are created once and repeat automatically for up to six months. Renew any time.</li>
+                    <li>Every listing expires automatically after its last date.</li>
+                    <li>Each submission is checked for duplicates, a real address, spam and inappropriate content. Anything flagged is reviewed by a person before it goes live.</li>
+                    <li>No photos are taken from other sites or social media. Listings imported from public event pages show the facts only and link to the original.</li>
+                    <li>Your contact email is never shown publicly. Three visitor reports send a listing back for review.</li>
+                    <li>New listings confirm with an email code. The street stays off the public page unless you opt in. School listings are suburb-only, and photos of children are not published.</li>
+                    <li>After it is confirmed you get a manage link and a printable poster with a QR code.</li>
+                    <li>No weapons, vapes, prescription medicines, adult services, scams or job and rental ads.</li>
+                  </ul>
+                </div>
+                <div className="overflow-x-auto">
+                  <h2 className="font-display text-xl font-bold">Where listings come from</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">We don’t scrape private social media events or republish anyone’s images without permission. Public listings show the facts only and always link back to the original page.</p>
+                  <table className="mt-4 w-full text-sm">
+                    <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground"><th className="pb-2 pr-3">Source</th><th className="pb-2 pr-3">Best for</th><th className="pb-2">Status</th></tr></thead>
+                    <tbody>
+                      {LOCAL_SOURCES.map((s) => (
+                        <tr key={s.name} className="border-t border-border align-top">
+                          <td className="py-2 pr-3 font-semibold">{s.url?.startsWith('http') ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{s.name}</a> : s.name}</td>
+                          <td className="py-2 pr-3 text-muted-foreground">{s.bestFor}</td>
+                          <td className="py-2 text-muted-foreground">{s.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
+          </>
         )}
 
         {tab === 'submit' && (
-          <CommunitySubmitForm category={params.get('category') ?? (category || undefined)} email={session?.user?.email ?? ''} />
+          <div className="mt-6">
+            <button type="button" onClick={() => setTab('browse')} className="text-sm font-semibold text-primary">Back to what’s nearby</button>
+            <CommunitySubmitForm category={params.get('category') ?? (category || undefined)} email={session?.user?.email ?? ''} />
+          </div>
         )}
 
         {tab === 'mine' && (
           <section className="mt-8">
+            <button type="button" onClick={() => setTab('browse')} className="text-sm font-semibold text-primary">Back to what’s nearby</button>
             {!session?.user ? (
               <div className="mx-auto max-w-md rounded-3xl border border-border bg-card px-6 py-10 text-center shadow-sm">
                 <h2 className="font-display text-2xl font-bold">Your listings live here.</h2>
@@ -263,41 +315,6 @@ export function LocalClient() {
                 ))}
               </div>
             )}
-          </section>
-        )}
-
-        {tab === 'how' && (
-          <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-            <div className="rounded-2xl bg-card p-6 shadow-sm">
-              <h2 className="flex items-center gap-2 font-display text-xl font-bold"><ShieldCheck className="h-5 w-5 text-primary" />Listing rules</h2>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
-                <li>Public events and sales only. Birthday parties, private home gatherings and invitation-only functions are never listed.</li>
-                <li>Weekly, fortnightly and monthly events are created once and repeat automatically for up to six months. Renew any time.</li>
-                <li>Every listing expires automatically after its last date.</li>
-                <li>Each submission is checked for duplicates, a real address, spam and inappropriate content. Anything flagged is reviewed by a person before it goes live.</li>
-                <li>No photos are taken from other sites or social media. Listings imported from public event pages show the facts only and link to the original.</li>
-                <li>Your contact email is never shown publicly. Three visitor reports send a listing back for review.</li>
-                <li>New listings confirm with an email code. The street stays off the public page unless you opt in. School listings are suburb-only, and photos of children are not published.</li>
-                <li>After it is confirmed you get a manage link and a printable poster with a QR code.</li>
-                <li>No weapons, vapes, prescription medicines, adult services, scams or job and rental ads.</li>
-              </ul>
-            </div>
-            <div className="overflow-x-auto rounded-2xl bg-card p-6 shadow-sm">
-              <h2 className="font-display text-xl font-bold">Where listings come from</h2>
-              <p className="mt-1 text-sm text-muted-foreground">We don’t scrape private social media events or republish anyone’s images without permission. Public listings show the facts only and always link back to the original page.</p>
-              <table className="mt-4 w-full text-sm">
-                <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground"><th className="pb-2 pr-3">Source</th><th className="pb-2 pr-3">Best for</th><th className="pb-2">Status</th></tr></thead>
-                <tbody>
-                  {LOCAL_SOURCES.map((s) => (
-                    <tr key={s.name} className="border-t border-border align-top">
-                      <td className="py-2 pr-3 font-semibold">{s.url?.startsWith('http') ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{s.name}</a> : s.name}</td>
-                      <td className="py-2 pr-3 text-muted-foreground">{s.bestFor}</td>
-                      <td className="py-2 text-muted-foreground">{s.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </section>
         )}
       </main>

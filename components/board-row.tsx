@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Bookmark, ChevronRight } from 'lucide-react'
 import { ItineraryButton } from '@/components/itinerary-button'
+import { EventImage } from '@/components/event-image'
+import { EventReactions } from '@/components/event-reactions'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
 import { categoryIcon, checkedAgo, formatPrice, latestIso } from '@/lib/board'
@@ -57,9 +59,13 @@ interface BoardRowProps {
   showDate?: string
   trackSearch?: boolean
   active?: boolean
+  /** Local list: photo instead of the genre icon, plus reaction chips. */
+  withMedia?: boolean
+  signedIn?: boolean
+  variant?: 0 | 1
 }
 
-export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch, active }: BoardRowProps) {
+export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch, active, withMedia, signedIn, variant = 0 }: BoardRowProps) {
   const cat = CATEGORIES.find((c) => c.name === ev.category)
   const color = cat?.color ?? '#FF7A1A'
   const Icon = categoryIcon(ev.category)
@@ -99,12 +105,19 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{when.ampm}</span>
         <Finish when={when} compact />
       </div>
-      <span className="flex h-10 w-10 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
-        <Icon className="w-4 h-4" />
+      <span className="relative block h-10 w-10 overflow-hidden rounded-md bg-[#110e16]">
+        {withMedia ? (
+          <EventImage src={ev.imageUrl} category={ev.category} slot="square" kind="square" crop={!!ev.imageUrl} alt="" sizes="40px" variant={variant} />
+        ) : (
+          <span className="flex h-10 w-10 items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
+            <Icon className="w-4 h-4" />
+          </span>
+        )}
       </span>
       <div className="min-w-0">
         <Link href={href} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
         <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
+        {withMedia && <div className="relative z-20 mt-1"><EventReactions eventId={ev.id} signedIn={!!signedIn} /></div>}
       </div>
       <div className="relative z-20 flex items-center">
         <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
@@ -132,10 +145,17 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
       </div>
 
       {/* Event */}
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
-          <Icon className="w-3.5 h-3.5" />
-        </span>
+      <div className="min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
+        {withMedia ? (
+          <span className="relative hidden h-12 w-12 shrink-0 overflow-hidden rounded-md bg-[#110e16] sm:block">
+            <EventImage src={ev.imageUrl} category={ev.category} slot="square" kind="square" crop={!!ev.imageUrl} alt="" sizes="48px" variant={variant} />
+          </span>
+        ) : (
+          <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
+            <Icon className="w-3.5 h-3.5" />
+          </span>
+        )}
         <Link href={href} onClick={noteSearch} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {ev.title}
         </Link>
@@ -143,6 +163,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-[10px] font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
         {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
         {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-[9px] font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
+        </div>
+        {withMedia && <div className="relative z-20 mt-1"><EventReactions eventId={ev.id} signedIn={!!signedIn} /></div>}
       </div>
 
       {/* Save + itinerary (mobile top-right) */}
