@@ -460,6 +460,27 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           )}
           {view === 'board' &&
           <>
+              <div className="border-b border-border px-3 pb-3 pt-4 sm:px-4">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
+                  <input
+                    type="text"
+                    role="searchbox"
+                    inputMode="search"
+                    enterKeyHint="search"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder={`Search ${city ? city : 'Australian'} gigs, venues, suburbs — jazz, trivia, whatever…`}
+                    aria-label="Search events"
+                    className="h-12 w-full rounded-xl border-2 border-border bg-background pl-12 pr-12 text-base placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 sm:h-14"
+                  />
+                  {searchInput && (
+                    <button type="button" onClick={() => setSearchInput('')} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-3 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
                 <button type="button" aria-pressed={planKey === 'today'} onClick={() => applyPlan('today')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'today' ? 'bg-foreground text-background' : 'bg-muted')}>Today</button>
                 <button type="button" aria-pressed={planKey === 'tonight'} onClick={() => applyPlan('tonight')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'tonight' ? 'bg-foreground text-background' : 'bg-muted')}>Tonight</button>
@@ -536,7 +557,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             city={city}
             initialBoard={initialBoard}
             activeId={focusId}
-            excludeIds={boardOpen ? [] : railIds}
+            excludeIds={boardOpen || searchQuery ? [] : railIds}
             previewLimit={boardOpen ? undefined : 8}
             onListedCount={setBrowseCount} />
           <div className="flex justify-center border-t border-border px-4 py-3">
