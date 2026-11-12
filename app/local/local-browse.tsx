@@ -415,7 +415,7 @@ function toBoardEvent(ev: LocalItem): BoardEvent {
     time: ev.time,
     endTime: null,
     venueName: ev.suburb || ev.title,
-    suburb: ev.suburb,
+    suburb: null,
     category: ev.section,
     subTags: [label],
     isLGBTI: false,
