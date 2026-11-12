@@ -220,7 +220,6 @@ export function LocalBrowse({
               <span className="text-xs font-normal text-muted-foreground">Clearance, dogs and more</span>
             </button>
           </div>
-          <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
         </div>
         {seeAll && (
           <div className="relative mt-3">
@@ -229,7 +228,6 @@ export function LocalBrowse({
                 <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
               ))}
             </div>
-            <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
           </div>
         )}
       </section>
@@ -272,7 +270,6 @@ export function LocalBrowse({
                 </article>
               ))}
             </div>
-            <span className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
           </div>
         )}
       </section>
@@ -293,7 +290,7 @@ export function LocalBrowse({
             ))}
           </div>
           <div className="relative min-w-0">
-            <div className="flex gap-2 overflow-x-auto pr-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {WHEN.map((item) => (
               <button key={item.key} type="button" onClick={() => setWhen(item.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-medium', when === item.key ? 'bg-foreground text-background' : 'border border-border bg-card')}>{item.label}</button>
             ))}
@@ -305,7 +302,6 @@ export function LocalBrowse({
             )}
             {filtered && <button type="button" onClick={() => { setCategory(''); setSuburb(''); applySuburb(''); setWhen('weekend') }} className="h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-primary">Reset</button>}
             </div>
-            <span className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent lg:hidden" aria-hidden />
           </div>
         </div>
         <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}</p>
