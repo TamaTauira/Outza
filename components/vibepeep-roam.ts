@@ -523,17 +523,57 @@ export function attachRoam(root: HTMLElement): () => void {
 
   const desktopBoard = () => !mobileMq.matches && (location.pathname === '/' || location.pathname === '')
 
-  /** One spot on desktop Board: centred in the Hot right now row, × on screen, clear of the feature link. */
+  /**
+   * Desktop Board parks in the Hot right now band, 16px clear of the call to
+   * action. The old "Feature your event" link is gone; the gig link and the
+   * dashed promo card are what the band still renders.
+   */
   const boardSpot = (): Point | null => {
     if (!desktopBoard()) return null
-    const feature = document.querySelector('[aria-label="Hot right now"] a')
-    const row = feature?.parentElement
-    if (!(feature instanceof HTMLElement) || !(row instanceof HTMLElement)) return null
-    if (!/feature your event/i.test(feature.textContent || '')) return null
-    const fr = feature.getBoundingClientRect()
-    const rr = row.getBoundingClientRect()
-    if (fr.width < 8 || rr.height < 8) return null
-    return { x: 1048, y: 284 }
+    const section = document.querySelector<HTMLElement>('[aria-label="Hot right now"]')
+    if (!section) return null
+    const band = section.getBoundingClientRect()
+    if (band.width < 48 || band.height < 48) return null
+    const s = size()
+    const h = Math.max(48, figure().height > 8 ? figure().height : s * (1092 / 763))
+    const hero = document.querySelector('main > section')
+    const heroBottom = hero ? hero.getBoundingClientRect().bottom : 0
+    // The × sits about 52px above the rig. Keep that circle below the hero.
+    const minY = heroBottom + 56
+    const label = (el: HTMLElement) => (el.textContent || '').replace(/\s+/g, ' ').trim()
+    const links = [...section.querySelectorAll('a')].filter((el): el is HTMLAnchorElement => el instanceof HTMLAnchorElement)
+    const feature = links.find((el) => /feature your event/i.test(label(el)))
+    const gig = links.find((el) => /put your gig up here/i.test(label(el)))
+    const promo = links.find((el) => /this spot could be yours/i.test(label(el)))
+    const anchor = feature || gig || promo
+    const candidates: Point[] = []
+    const push = (x: number, y: number) => {
+      if (x < 8 || y < minY || x + s > window.innerWidth - 8) return
+      candidates.push({ x: Math.round(x), y: Math.round(y) })
+    }
+    if (anchor) {
+      const r = anchor.getBoundingClientRect()
+      if (r.width > 8 && r.height > 8 && r.height < 88) {
+        push(r.left - 16 - s, r.top + (r.height - h) / 2)
+        push(r.left - 16 - s, r.bottom + 12)
+      } else if (r.width > 8 && r.height >= 88) {
+        push(r.left, r.top - h - 16)
+        push(r.right - s, r.top - h - 16)
+      }
+    }
+    const heading = section.querySelector('h2')
+    const rowY = heading ? Math.max(minY, heading.getBoundingClientRect().bottom + 12) : Math.max(minY, band.top + 8)
+    const maxY = band.bottom - h - 8
+    const maxX = Math.min(band.right, window.innerWidth) - s - 12
+    for (let y = rowY; y <= maxY; y += 16) {
+      for (let x = maxX; x >= band.left + 8; x -= 20) {
+        push(x, y)
+      }
+    }
+    for (const point of candidates) {
+      if (!coversCopy(point.x, point.y)) return point
+    }
+    return null
   }
 
   const pinBoard = () => {
@@ -1047,9 +1087,7 @@ export function attachRoam(root: HTMLElement): () => void {
     const wait = ms ?? (demo && script.length ? 700 : 2200 + Math.random() * 3400)
     if (desktopBoard()) {
       if (boardPhase !== 'done') return
-      pos = { x: 1048, y: 284 }
-      apply()
-      setMove('still')
+      pinBoard()
     } else if (!spotClear(pos.x, pos.y)) {
       pos = firstClear(bounds())
       apply()
@@ -1100,9 +1138,7 @@ export function attachRoam(root: HTMLElement): () => void {
     if (!running || reduce) return 'sleep'
     if (desktopBoard() && (act === 'hop' || act === 'perch' || act === 'peek' || act === 'bounce' || act === 'chase')) {
       if (boardPhase !== 'done') return 'sleep'
-      pos = { x: 1048, y: 284 }
-      apply()
-      setMove('still')
+      pinBoard()
       phase = { type: 'pause', until: performance.now() + 4000 }
       return 'sleep'
     }
@@ -1196,8 +1232,7 @@ export function attachRoam(root: HTMLElement): () => void {
       }
       if (desktopBoard()) {
         boardPhase = 'done'
-        pos = { x: 1048, y: 284 }
-        apply()
+        pinBoard()
       }
       pauseNext()
       return 'sleep'
