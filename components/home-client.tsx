@@ -18,6 +18,7 @@ import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { HomeRails } from '@/components/home-rails';
+import { PageScrollLock } from '@/components/page-scroll-lock';
 import { ViewToggle } from '@/components/view-toggle';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
@@ -571,6 +572,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       </main>
 
       {/* Filters drawer */}
+      {showFilters && <PageScrollLock />}
       {showFilters &&
       <div className="fixed inset-0 z-[60]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilters(false)} />

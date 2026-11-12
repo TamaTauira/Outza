@@ -53,7 +53,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
     >
-      <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} className="block group">
+      <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="block group">
         <div className="bg-card rounded-xl overflow-hidden shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] transition-all duration-300 group-hover:-translate-y-1">
           {/* Image */}
           <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A1A'}, #1a120c)` }}>
@@ -155,7 +155,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
   const clock = boardClockLine(event)
   return (
-    <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
+    <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
         <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} slot="square" />
       </div>
