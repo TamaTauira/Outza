@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, type CSSProperties, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { FilterState } from '@/components/filter-panel'
 import { Loader2, LocateFixed, X } from 'lucide-react'
@@ -64,7 +65,7 @@ function popupHtml(e: any, tier?: string) {
     <div class="se-pop-title">${esc(e?.title)}</div>
     <div class="se-pop-meta">${esc(date)}${clock ? ` · ${esc(clock)}` : ''}<br/>${esc(e?.venueName)}</div>
     <div class="se-pop-row"><span class="se-pop-price ${p.kind === 'free' ? 'free' : ''}">${esc(p.prefix ? `${p.prefix} ` : '')}${esc(p.value)}</span>
-    <a href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
+    <a data-event-peek="1" href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
 }
 
 function markerIcon(L: any, e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, color: string, tier?: string) {
@@ -83,6 +84,7 @@ const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coo
 type LocState = 'idle' | 'asking' | 'locating' | 'found' | 'denied' | 'unavailable'
 
 export function MapView({ filters, searchQuery, city = '', bleed = false, chips = null, eventsOverride, focusId = null, onSelect, countNoun = 'events' }: MapViewProps) {
+  const router = useRouter()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const tileRef = useRef<any>(null)
@@ -104,6 +106,19 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const locked = Array.isArray(eventsOverride)
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
+
+  useEffect(() => {
+    const openPeek = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest?.('a[data-event-peek]')
+      if (!(link instanceof HTMLAnchorElement)) return
+      const href = link.getAttribute('href')
+      if (!href) return
+      event.preventDefault()
+      router.push(href, { scroll: false })
+    }
+    document.addEventListener('click', openPeek)
+    return () => document.removeEventListener('click', openPeek)
+  }, [router])
 
   const categoryKey = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : []).join('\u0000')
   const fetchEvents = useCallback(async () => {

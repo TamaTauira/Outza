@@ -80,7 +80,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
   const openRow = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('a,button,input,select,label')) return
     if (e.metaKey || e.ctrlKey) { window.open(href, '_blank', 'noopener'); return }
-    router.push(href)
+    router.push(href, { scroll: false })
   }
   const meta = [venue, suburb].filter(Boolean).join(' · ')
   return (
@@ -103,7 +103,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <Icon className="w-4 h-4" />
       </span>
       <div className="min-w-0">
-        <Link href={href} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
+        <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
         <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
       </div>
       <div className="relative z-20 flex items-center">
@@ -136,7 +136,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
           <Icon className="w-3.5 h-3.5" />
         </span>
-        <Link href={href} onClick={noteSearch} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
+        <Link href={href} scroll={false} onClick={noteSearch} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {ev.title}
         </Link>
         {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}

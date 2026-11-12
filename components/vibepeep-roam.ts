@@ -204,6 +204,10 @@ export function attachRoam(root: HTMLElement): () => void {
         lane = { minX, minY, maxX, maxY }
       }
     }
+    if (mobile && (location.pathname === '/' || location.pathname === '')) {
+      const nav = navOffset > 0 ? navOffset : 72
+      lane = { ...lane, maxY: Math.max(lane.maxY, fullH - box.height - nav - 8) }
+    }
     if (mobile && location.pathname.startsWith('/local')) {
       const heading = document.querySelector<HTMLElement>('main h1')
       const headingBottom = heading?.getBoundingClientRect().bottom ?? 0
@@ -463,7 +467,7 @@ export function attachRoam(root: HTMLElement): () => void {
       const b = bubbleBox
       return !(b.right < r.left - gap || b.left > r.right + gap || b.bottom < r.top - gap || b.top > r.bottom + gap)
     }
-    const hard = document.querySelectorAll('main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, [role="tablist"], .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
+    const hard = document.querySelectorAll('.vp-peep-hero, main > section.rounded-2xl, .vp-hero-clock, header.vp-site-header, [role="tablist"], .vp-local-grid, .vp-map-ask, .vp-map-cards, .vp-map-float')
     for (const el of hard) {
       if (!(el instanceof HTMLElement) || el.closest('.vp-roam')) continue
       const r = el.getBoundingClientRect()
@@ -505,6 +509,14 @@ export function attachRoam(root: HTMLElement): () => void {
   }
 
   const firstClear = (box: Bounds): Point => {
+    if (mobileMq.matches && (location.pathname === '/' || location.pathname === '') && document.querySelector('.vp-peep-hero')) {
+      const seeAll = [...document.querySelectorAll('button')].find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === 'See all')
+      const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
+      const anchor = seeAll?.getBoundingClientRect().bottom ?? hero?.getBoundingClientRect().bottom ?? box.minY
+      const lift = 44 + 10 + size() * (1092 / 763) * 0.24
+      const y = Math.min(box.maxY, Math.max(box.minY, anchor + lift + 8))
+      return { x: box.maxX, y }
+    }
     const stride = 24
     let best = { x: box.maxX, y: box.minY }
     let bestScore = Number.POSITIVE_INFINITY
@@ -518,6 +530,14 @@ export function attachRoam(root: HTMLElement): () => void {
         }
       }
     }
+    const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
+    if (hero) {
+      const seeAll = [...document.querySelectorAll('button')].find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === 'See all')
+      const anchor = seeAll?.getBoundingClientRect().bottom ?? hero.getBoundingClientRect().bottom
+      const lift = 44 + 10 + size() * (1092 / 763) * 0.24
+      const y = Math.min(box.maxY, Math.max(box.minY, anchor + lift + 8))
+      return { x: box.maxX, y }
+    }
     return best
   }
 
@@ -530,7 +550,7 @@ export function attachRoam(root: HTMLElement): () => void {
    */
   const boardSpot = (): Point | null => {
     if (!desktopBoard()) return null
-    const section = document.querySelector<HTMLElement>('[aria-label="Hot right now"]')
+    const section = document.querySelector<HTMLElement>('[data-peep-rail], [aria-label="Hot right now"]')
     if (!section) return null
     const band = section.getBoundingClientRect()
     if (band.width < 48 || band.height < 48) return null
@@ -575,9 +595,13 @@ export function attachRoam(root: HTMLElement): () => void {
     for (let y = Math.max(8, cardsTop - h - 12); y <= band.bottom - h - 8; y += 16) {
       for (let x = maxX; x >= band.left + 8; x -= 20) push(x, y)
     }
+    const hero = document.querySelector<HTMLElement>('.vp-peep-hero')
+    const floor = hero ? hero.getBoundingClientRect().bottom + 120 : 0
     for (const point of candidates) {
+      if (point.y < floor) continue
       if (!blocksPage(point.x, point.y)) return point
     }
+    if (floor > 0) return { x: Math.max(8, window.innerWidth - size() - 16), y: Math.round(floor) }
     return null
   }
 
@@ -691,21 +715,20 @@ export function attachRoam(root: HTMLElement): () => void {
       return false
     }
     if (mobileMq.matches && path === '/') {
-      const hero = document.querySelector('main > section.rounded-2xl')
-      const hot = Array.from(document.querySelectorAll('h2')).find((el) => /hot right now/i.test(el.textContent || ''))
+      const hero = document.querySelector('.vp-peep-hero, main > section.rounded-2xl')
       const x = window.innerWidth - s - 4 - 12
       const h = rigH()
-      let y = hero ? hero.getBoundingClientRect().bottom + 14 : box.minY
-      if (hot) {
-        const cap = hot.getBoundingClientRect().top - h - 10
-        if (y > cap) y = cap
-        if (hero && y < hero.getBoundingClientRect().bottom + 14) y = hero.getBoundingClientRect().bottom + 14
-      }
+      const lift = 44 + 10 + h * 0.24
+      const seeAll = [...document.querySelectorAll('button')].find((el) => (el.textContent || '').replace(/\s+/g, ' ').trim() === 'See all')
+      const anchor = seeAll?.getBoundingClientRect().bottom ?? hero?.getBoundingClientRect().bottom ?? box.minY
+      const below = anchor + lift + 8
+      let y = below
       if (!place(x, y)) {
-        for (let yy = y; yy <= y + 120; yy += 2) {
+        for (let yy = y; yy <= box.maxY; yy += 8) {
           if (place(x, yy)) break
         }
       }
+      if (!spot) spot = { x, y: Math.min(below, box.maxY) }
     } else if (path.startsWith('/local')) {
       const hero = document.querySelector('main header')
       const heading = document.querySelector('main h1')
@@ -724,8 +747,13 @@ export function attachRoam(root: HTMLElement): () => void {
       }
       if (!spot) spot = { x, y }
     }
-    if (spot && mobileMq.matches && path === '/' && !reduce) {
-      walkTo(spot)
+    if (spot && mobileMq.matches && path === '/') {
+      pos = spot
+      face = 'right'
+      root.dataset.ready = '1'
+      root.dataset.placed = '1'
+      setMove('still')
+      apply()
       return
     }
     pos = spot ?? firstClear({ ...box, maxX })

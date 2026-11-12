@@ -71,8 +71,10 @@ export const viewport = {
 
 export default function RootLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode
+  modal?: React.ReactNode
 }) {
   return (
     <html lang="en-AU" suppressHydrationWarning>
@@ -93,7 +95,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="vp-hinge" aria-hidden="true" />
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            {modal}
+          </Providers>
           <VibePeepBuddySlot />
           <Toaster />
           <ChunkLoadErrorHandler />

@@ -41,6 +41,11 @@ interface EventListProps {
   initialBoard?: BoardSeed | null
   activeId?: string | null
   layout?: 'list' | 'board'
+  /** Ids already shown in the Peep rails, so the preview does not repeat them. */
+  excludeIds?: string[]
+  /** When set, only this many rows render. Omit it for the full list. */
+  previewLimit?: number
+  onListedCount?: (count: number) => void
 }
 
 function filtersAreOpen(filters: FilterState) {
@@ -50,7 +55,7 @@ function filtersAreOpen(filters: FilterState) {
   )
 }
 
-export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null, activeId = null, layout = 'list' }: EventListProps) {
+export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWindow, onWindowChange, windowPinned, city, initialBoard = null, activeId = null, layout = 'list', excludeIds = [], previewLimit, onListedCount }: EventListProps) {
   const { status: authStatus } = useSession()
   const span = listSpan(day, filters.dateFrom, filters.dateTo)
   const seedMatches = !!initialBoard
@@ -65,6 +70,8 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
   const [loading, setLoading] = useState(!(initialBoard && seedMatches))
+  const listed = events
+  const railSkip = useMemo(() => new Set(excludeIds), [excludeIds])
   const [loadingMore, setLoadingMore] = useState(false)
   // Ended rows are hidden by default; "Show ended" is the opt-in.
   const [showEnded, setShowEnded] = useBackState('board:showEnded', false)
@@ -192,11 +199,11 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const effectiveWindow: TimeWindow = useMemo(() => {
     if (span?.spanning) return 'all'
     if (windowPinned || loading) return requestedWindow
-    if (countFor(events, requestedWindow) > 0) return requestedWindow
-    if (countFor(events, 'evening') > 0) return 'evening'
-    if (countFor(events, 'all') > 0) return 'all'
+    if (countFor(listed, requestedWindow) > 0) return requestedWindow
+    if (countFor(listed, 'evening') > 0) return 'evening'
+    if (countFor(listed, 'all') > 0) return 'all'
     return requestedWindow
-  }, [span?.spanning, windowPinned, loading, requestedWindow, events, nowMinutes])
+  }, [span?.spanning, windowPinned, loading, requestedWindow, listed, nowMinutes])
 
   useEffect(() => {
     if (span?.spanning) return
@@ -208,7 +215,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     const u: BoardEvent[] = []
     let ended = 0
     if (!span) return { timed: t, untimed: u, endedCount: 0 }
-    for (const ev of events) {
+    for (const ev of listed) {
       const date = String(ev.date).slice(0, 10)
       const rowDay = span.spanning ? date : (day ?? span.from)
       const sched = resolveSchedule(ev, rowDay)
@@ -234,18 +241,18 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       t.push({ ev, status, start, date })
     }
     return { timed: t, untimed: u, endedCount: ended }
-  }, [events, day, span, today, nowMinutes, effectiveWindow, hideEnded])
+  }, [listed, day, span, today, nowMinutes, effectiveWindow, hideEnded])
 
   const windowRank = useMemo(() => {
     if (!span || span.spanning || (effectiveWindow !== 'now' && effectiveWindow !== 'evening')) return null
     const dayKey = day ?? span.from
-    return rankBoard(events, {
+    return rankBoard(listed, {
       window: effectiveWindow === 'evening' ? 'tonight' : 'now',
       day: dayKey,
       nowMinutes,
       dropEnded: !!today && dayKey === today && hideEnded,
     })
-  }, [events, day, span, today, nowMinutes, effectiveWindow, hideEnded])
+  }, [listed, day, span, today, nowMinutes, effectiveWindow, hideEnded])
 
   const rowFor = (ev: BoardEvent) => {
     const date = String(ev.date).slice(0, 10)
@@ -273,6 +280,34 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       { key: 'possibly', label: 'Time not listed', rows: windowRank.possibly.map(rowFor), possibly: true },
     ].filter((section) => section.rows.length)
     : []
+
+  const listedCount = windowRank
+    ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length + windowRank.allday.length + windowRank.possibly.length
+    : timed.length + untimed.length
+  useEffect(() => { onListedCount?.(listedCount) }, [listedCount, onListedCount])
+  const previewFlat = previewLimit == null ? null : (() => {
+    const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
+    const push = (list: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
+      for (const row of list) {
+        if (railSkip.has(row.ev.id)) continue
+        if (rows.length < previewLimit) rows.push(row)
+      }
+    }
+    if (span?.spanning) push(timed.map((row) => ({ ...row, showDate: dayLabel(row.date, today) })))
+    else if (windowRank && effectiveWindow === 'now') nowSections.forEach((section) => push(section.rows.map(({ ev }) => ({ ev }))))
+    else if (windowRank) {
+      eveningGroups.forEach((group) => push(group.rows))
+      push(windowRank.possibly.map((ev) => ({ ev, status: { label: 'Time not listed', tone: 'tbc' as const } })))
+    } else groups.forEach((group) => push(group.rows))
+    return rows
+  })()
+  let previewLeft = previewLimit ?? Number.POSITIVE_INFINITY
+  const take = <T,>(rows: T[]): T[] => {
+    if (!Number.isFinite(previewLeft)) return rows
+    const next = rows.slice(0, previewLeft)
+    previewLeft -= next.length
+    return next
+  }
 
   const clockLabel = (time: string | null | undefined) => {
     if (!time) return ''
@@ -352,13 +387,17 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             ))}
           </div>
         </div>
+      ) : previewFlat ? (
+        previewFlat.length ? showRows(previewFlat) : (
+          <PeepEmpty title="Crickets. I checked twice." body="Nothing else in this window. Open the full list or loosen a filter." />
+        )
       ) : span?.spanning && timed.length === 0 ? (
         <PeepEmpty title="Crickets. I checked twice." body="Nothing in that date range. Widen the dates or loosen your filters." />
       ) : span?.spanning ? (
         [...timed.reduce((map, row) => map.set(row.date, [...(map.get(row.date) ?? []), row]), new Map<string, typeof timed>())].map(([date, rows]) => (
           <section key={date}>
             <GroupBar label={dayLabel(date, today)} count={rows.length} open={!closed[date]} onToggle={() => setClosed((c) => ({ ...c, [date]: !c[date] }))} />
-            {!closed[date] && showRows(rows.map((row) => ({ ...row, showDate: dayLabel(date, today) })))}
+            {!closed[date] && showRows(take(rows.map((row) => ({ ...row, showDate: dayLabel(date, today) }))))}
           </section>
         ))
       ) : windowRank ? (
@@ -376,7 +415,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             return (
               <section key={section.key}>
                 <GroupBar label={section.label} count={section.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [section.key]: open }))} />
-                {open && showRows(section.rows.map(({ ev }) => ({ ev, status: section.possibly ? { label: 'Time not listed', tone: 'tbc' as const } : getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes) })))}
+                {open && showRows(take(section.rows.map(({ ev }) => ({ ev, status: section.possibly ? { label: 'Time not listed', tone: 'tbc' as const } : getStatus(ev, day ?? String(ev.date).slice(0, 10), today, nowMinutes) }))))}
               </section>
             )
           }) : eveningGroups.map((g) => {
@@ -384,14 +423,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             return (
               <section key={g.key}>
                 <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
-                {open && showRows(g.rows)}
+                {open && showRows(take(g.rows))}
               </section>
             )
           })}
           {effectiveWindow === 'evening' && windowRank.possibly.length > 0 && (
             <section>
               <GroupBar label="Time not listed" count={windowRank.possibly.length} open={!closed.possibly} onToggle={() => setClosed((c) => ({ ...c, possibly: !c.possibly }))} />
-              {!closed.possibly && showRows(windowRank.possibly.map((ev) => ({ ev, status: { label: 'Time not listed', tone: 'tbc' as const } })))}
+              {!closed.possibly && showRows(take(windowRank.possibly.map((ev) => ({ ev, status: { label: 'Time not listed', tone: 'tbc' as const } }))))}
             </section>
           )}
         </>
@@ -409,13 +448,13 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           return (
             <section key={g.key}>
               <GroupBar label={g.label} count={g.rows.length} open={open} onToggle={() => setClosed((c) => ({ ...c, [g.key]: open }))} />
-              {open && showRows(g.rows)}
+              {open && showRows(take(g.rows))}
             </section>
           )
         })
       )}
 
-      {!loading && page < totalPages && span && (
+      {!loading && previewLimit == null && page < totalPages && span && (
         <div className="flex justify-center py-5 border-t border-border">
           <button
             onClick={() => { const n = page + 1; setPage(n); fetchSpan(span.from, span.to, n, true) }}
@@ -437,7 +476,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <span className="ml-auto font-mono text-xs text-muted-foreground">{untimed.length}</span>
             <ChevronRight className={cn('w-4 h-4 text-muted-foreground transition-transform', allDayOpen && 'rotate-90')} />
           </button>
-          {allDayOpen && day && showRows(untimed.map((ev) => ({ ev, status: getStatus(ev, day, today, nowMinutes) })))}
+          {allDayOpen && day && showRows(take(untimed.map((ev) => ({ ev, status: getStatus(ev, day, today, nowMinutes) }))))}
         </div>
       )}
     </div>

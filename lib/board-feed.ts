@@ -35,6 +35,7 @@ export type BoardArgs = {
   isLGBTI: boolean
   dateFrom: string
   dateTo: string
+  timeFrom?: string
   sortBy: string
   city: string
   promoterId: string
@@ -88,6 +89,7 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   if (a.isLGBTI) where.isLGBTI = true
   if (a.dateFrom) where.date = { ...(where.date as object), gte: new Date(a.dateFrom) }
   if (a.dateTo) where.date = { ...(where.date as object), lte: new Date(a.dateTo) }
+  if (a.timeFrom && /^\d{2}:\d{2}$/.test(a.timeFrom)) and.push({ time: { gte: a.timeFrom } })
   if (and.length) where.AND = and
   return where
 }
@@ -174,6 +176,7 @@ export function boardArgsFromSearch(sp: URLSearchParams): BoardArgs {
     isLGBTI: sp.get('isLGBTI') === 'true',
     dateFrom: sp.get('dateFrom') ?? '',
     dateTo: sp.get('dateTo') ?? '',
+    timeFrom: sp.get('timeFrom') ?? '',
     sortBy: sp.get('sortBy') ?? 'date',
     city: sp.get('city') ?? '',
     promoterId: sp.get('promoterId') ?? '',
