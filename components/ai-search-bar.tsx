@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CalendarDays, CalendarRange, ChevronDown, Loader2, MapPin, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, ChevronDown, Loader2, MapPin, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { categoryIcon, dayLabel, formatTime } from '@/lib/board'
 import { CATEGORIES } from '@/lib/categories'
 import { matchPlanPick, PLAN_PICKS, type PlanPick, type PlanView } from '@/lib/plan-picks'
@@ -28,7 +28,7 @@ const BUDGET_OPTS: { key: Exclude<Budget, ''>; label: string }[] = [
 interface AiResult { id: string; title: string; date: string; time: string | null; venueName: string; suburb: string | null; city: string; category: string; isFree: boolean; price: string | null }
 interface AiResponse { filters: AiSearchFilters; ai: boolean; relaxed: boolean; total: number; results: AiResult[] }
 
-const SUGGESTIONS = ['Live music', 'Family day out', 'Comedy under $40', 'LGBTIQ+ this week']
+const SUGGESTIONS = ['Saturday date night', 'Family Sunday', 'Free afternoon', 'Live music', 'Family day out', 'Comedy under $40', 'LGBTIQ+ this week']
 
 function pickedHints(h: Hints) {
   return !!(h.when || h.budget || h.category || h.area.trim())
@@ -53,10 +53,8 @@ const pickClass = (on: boolean) => cn(
   on ? 'bg-primary text-primary-foreground ring-primary font-medium' : 'bg-neutral-100 text-neutral-800 ring-neutral-200 hover:bg-neutral-200',
 )
 
-/** Hero search: plain-English request → AI-parsed filters → real listings only.
- *  Ask suggestions stay inside the bar. Plan mode keeps day-plan chips in the bar too. */
+/** Hero search. A plan-shaped ask shows a ready-made outing. Everything else stays a listing search. */
 export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null }) {
-  const [mode, setMode] = useState<'ask' | 'plan'>('ask')
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -66,6 +64,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
   const [planBusy, setPlanBusy] = useState(false)
   const [planError, setPlanError] = useState('')
   const [plan, setPlan] = useState<PlanView | null>(null)
+  const [planFallback, setPlanFallback] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -76,9 +75,45 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
   const asked = useRef(0)
   const hasHints = pickedHints(hints)
   const hintCount = [hints.when, hints.budget, hints.category, hints.area.trim()].filter(Boolean).length
-  const planning = mode === 'plan'
-  const working = planning ? planBusy : busy
-  const activeSlug = matchPlanPick(q)?.slug ?? ''
+  const working = planBusy || busy
+  const planReady = !!plan?.stops.some((stop) => stop.kind === 'event')
+
+  const loadPlan = async (pick: PlanPick): Promise<'ready' | 'empty' | 'error' | 'stale'> => {
+    const id = ++planReq.current
+    loadedSlug.current = pick.slug
+    setPlanBusy(true)
+    setPlanError('')
+    setError('')
+    try {
+      const params = new URLSearchParams({ slug: pick.slug, city: city || 'Sydney' })
+      const res = await fetch(`/api/outings?${params}`)
+      const body = await res.json().catch(() => ({}))
+      if (id !== planReq.current) return 'stale'
+      const view = body?.plan as PlanView | undefined
+      const live = !!view?.stops.some((stop) => stop.kind === 'event')
+      if (!res.ok || !view) {
+        setPlan(null)
+        setPlanError(typeof body?.error === 'string' ? body.error : 'The planner’s having a moment. Give it another go.')
+        return 'error'
+      }
+      if (!live) {
+        setPlan(null)
+        return 'empty'
+      }
+      setPlan(view)
+      setData(null)
+      setPlanFallback('')
+      return 'ready'
+    } catch (err) {
+      console.error(err)
+      if (id !== planReq.current) return 'stale'
+      setPlan(null)
+      setPlanError('The planner’s having a moment. Give it another go.')
+      return 'error'
+    } finally {
+      if (id === planReq.current) setPlanBusy(false)
+    }
+  }
 
   const search = async (query: string, h: Hints = hints, closeOnSend = false, coords?: { lat: number; lng: number }) => {
     const text = query.trim()
@@ -90,6 +125,17 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
       return
     }
     if (closeOnSend) setOpen(false)
+    const pick = matchPlanPick(text)
+    if (pick) {
+      setQ(text)
+      const outcome = await loadPlan(pick)
+      if (outcome === 'ready' || outcome === 'stale' || outcome === 'error') return
+      setPlanFallback('That plan’s a bit quiet on the board, so here’s a straight look instead.')
+    } else {
+      setPlan(null)
+      setPlanFallback('')
+      loadedSlug.current = null
+    }
     const id = ++reqId.current
     setQ(text); setBusy(true); setError('')
     try {
@@ -120,73 +166,12 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
     } finally { if (id === reqId.current) setBusy(false) }
   }
 
-  const loadPlan = async (pick: PlanPick) => {
-    const id = ++planReq.current
-    loadedSlug.current = pick.slug
-    setPlanBusy(true)
-    setPlanError('')
-    setError('')
-    setData(null)
-    try {
-      const params = new URLSearchParams({ slug: pick.slug, city: city || 'Sydney' })
-      const res = await fetch(`/api/outings?${params}`)
-      const body = await res.json().catch(() => ({}))
-      if (id !== planReq.current) return
-      if (!res.ok || !body?.plan) {
-        setPlan(null)
-        setPlanError(typeof body?.error === 'string' ? body.error : 'The planner’s having a moment. Give it another go.')
-        return
-      }
-      setPlan(body.plan as PlanView)
-    } catch (err) {
-      console.error(err)
-      if (id !== planReq.current) return
-      setPlan(null)
-      setPlanError('The planner’s having a moment. Give it another go.')
-    } finally {
-      if (id === planReq.current) setPlanBusy(false)
-    }
-  }
-
-  const submitPlan = () => {
-    const pick = matchPlanPick(q)
-    if (!pick) {
-      setPlan(null)
-      loadedSlug.current = null
-      setPlanError(q.trim()
-        ? 'I’ll stitch together a date night, a family Sunday or a lazy free arvo.'
-        : 'Tap a chip, or name the day. I’ll stitch together a date night, a family Sunday or a lazy free arvo.')
-      return
-    }
-    setQ(pick.fill)
-    void loadPlan(pick)
-  }
-
-  const chooseMode = (next: 'ask' | 'plan') => {
-    setMode(next)
-    setError('')
-    setPlanError('')
-    if (next === 'plan') {
-      setOpen(false)
-      reqId.current += 1
-      setBusy(false)
-    } else {
-      planReq.current += 1
-      setPlanBusy(false)
-    }
-  }
-
-  const runPick = (pick: PlanPick) => {
-    setQ(pick.fill)
-    setPlanError('')
-    void loadPlan(pick)
-  }
-
   const clearBar = () => {
     setQ('')
     setData(null)
     setError('')
     setPlan(null)
+    setPlanFallback('')
     setPlanError('')
     loadedSlug.current = null
     planReq.current += 1
@@ -199,7 +184,6 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
   const firstRun = useRef(true)
   useEffect(() => {
     if (firstRun.current) { firstRun.current = false; return }
-    if (planning) return
     if (!hasHints && !data) return
     if (!hasHints && q.trim().length < 2) return
     const t = setTimeout(() => search(q, hints), 450)
@@ -210,7 +194,6 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
   useEffect(() => {
     if (!queryRequest || queryRequest.id === asked.current) return
     asked.current = queryRequest.id
-    setMode('ask')
     setQ(queryRequest.text)
     void search(queryRequest.text, NO_HINTS, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run only when a new prompt is requested
@@ -218,9 +201,9 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
 
   // A plan already on screen follows the city select.
   useEffect(() => {
-    if (!planning || !loadedSlug.current) return
+    if (!loadedSlug.current) return
     const pick = PLAN_PICKS.find((item) => item.slug === loadedSlug.current)
-    if (pick) void loadPlan(pick)
+    if (pick) void search(pick.fill, NO_HINTS, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the city changes
   }, [city])
 
@@ -259,7 +242,6 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
   }, [open])
 
   const reveal = () => {
-    if (planning) return
     if (skipOpen.current) skipOpen.current = false
   }
   const focusPanel = () => {
@@ -290,36 +272,9 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
   return (
     <div className="flex-1 min-w-0">
       <div ref={rootRef} className="rounded-xl bg-white text-neutral-900 ring-2 ring-primary/50 focus-within:ring-primary shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] overflow-hidden">
-        <div role="radiogroup" aria-label="Ask VibePeep or Plan a day or night" className="grid grid-cols-2 gap-1 p-1.5 pb-0">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={!planning}
-            onClick={() => chooseMode('ask')}
-            className={cn('h-9 rounded-lg px-2 text-xs sm:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70', !planning ? 'bg-neutral-100 text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900')}
-          >
-            <span className="inline-flex items-center justify-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" aria-hidden />
-              Ask<span className="hidden sm:inline"> VibePeep</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={planning}
-            onClick={() => chooseMode('plan')}
-            className={cn('h-9 rounded-lg px-2 text-xs sm:text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70', planning ? 'bg-neutral-100 text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-900')}
-          >
-            <span className={cn('inline-flex items-center justify-center gap-1.5', planning && 'underline decoration-2 underline-offset-4 decoration-[#FF4E6A]')}>
-              <CalendarRange className="w-3.5 h-3.5 shrink-0 text-primary" aria-hidden />
-              <span className="sm:hidden">Plan</span>
-              <span className="hidden sm:inline">Plan a day or night</span>
-            </span>
-          </button>
-        </div>
-        <form role="search" onSubmit={(e) => { e.preventDefault(); if (planning) submitPlan(); else void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
-          {planning ? <CalendarRange className="w-5 h-5 text-primary shrink-0" aria-hidden /> : <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />}
-          <label htmlFor="ai-search" className="sr-only">{planning ? 'Plan a day or night' : 'Tell us your vibe'}</label>
+        <form role="search" onSubmit={(e) => { e.preventDefault(); void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
+          <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />
+          <label htmlFor="ai-search" className="sr-only">Tell us your vibe</label>
           <input
             id="ai-search" ref={inputRef} type="text" value={q} maxLength={200} autoComplete="off" enterKeyHint="search"
             aria-describedby="ai-search-help"
@@ -328,70 +283,39 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
             onKeyDown={(e) => {
               if (e.key !== 'ArrowDown') return
               e.preventDefault()
-              if (planning) document.getElementById('plan-picks')?.querySelector<HTMLElement>('button')?.focus()
-              else focusPanel()
+              focusPanel()
             }}
             onChange={(e) => setQ(e.target.value)}
-            placeholder={planning ? 'Name the day, e.g. Saturday date night' : (placeholder ?? 'Ask for a vibe…')}
+            placeholder={placeholder ?? 'Ask for a vibe…'}
             className="flex-1 min-w-0 bg-transparent text-base sm:text-lg text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
-          <p id="ai-search-help" className="sr-only">{planning ? 'I’ll stitch together a date night, a family Sunday or a lazy free arvo.' : 'Tell us your vibe, or open ideas and filters for times, budget, suburb and suggestions.'}</p>
-          {(q || (planning && plan)) && !working && (
+          <p id="ai-search-help" className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
+          {q && !working && (
             <button type="button" aria-label="Clear search" onClick={clearBar} className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"><X className="w-4 h-4" /></button>
           )}
-          {!planning && (
-            <button
-              type="button"
-              aria-expanded={open}
-              aria-controls="ai-search-panel"
-              aria-label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
-              onClick={() => setOpen((v) => !v)}
-              className="relative grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            >
-              <SlidersHorizontal className="h-4 w-4" aria-hidden />
-              {hintCount > 0 && (
-                <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground" aria-hidden>{hintCount}</span>
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="ai-search-panel"
+            aria-label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
+            onClick={() => setOpen((v) => !v)}
+            className="relative grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />
+            {hintCount > 0 && (
+              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground" aria-hidden>{hintCount}</span>
+            )}
+          </button>
           <button
             type="submit"
             disabled={working}
-            aria-label={planning ? undefined : 'Ask VibePeep'}
-            className={cn(
-              'inline-flex shrink-0 items-center justify-center rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30',
-              planning ? 'h-11 gap-2 px-4 text-sm sm:px-5 sm:text-base' : 'h-11 w-11',
-            )}
+            aria-label="Ask VibePeep"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30"
           >
             {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            {planning && (<><span className="hidden sm:inline">Plan it</span><span className="sm:hidden">Go</span></>)}
           </button>
         </form>
 
-        {planning && (
-          <div className="border-t border-neutral-200 px-3 py-2.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 sm:sr-only">Plan a day or night</p>
-            <div id="plan-picks" className="mt-2 flex min-w-0 gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] sm:mt-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Ready-made plans">
-              {PLAN_PICKS.map((pick) => (
-                <button
-                  key={pick.slug}
-                  type="button"
-                  aria-pressed={activeSlug === pick.slug}
-                  disabled={planBusy}
-                  onClick={() => runPick(pick)}
-                  className={cn(
-                    'h-8 shrink-0 rounded-full px-3 text-sm ring-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:opacity-60',
-                    activeSlug === pick.slug ? 'bg-primary font-semibold text-primary-foreground ring-primary' : 'bg-neutral-100 text-neutral-800 ring-neutral-200 hover:bg-neutral-200',
-                  )}
-                >
-                  {pick.label}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-[11px] leading-snug text-neutral-500">Tap one. I’ll fill the bar and line up real stops, with time to hop between them.</p>
-          </div>
-        )}
-
-        {!planning && (
+        {(
           <div className="px-3 pb-2.5">
             <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Suggested searches">
               {SUGGESTIONS.map((s) => (
@@ -403,7 +327,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
           </div>
         )}
 
-        {!planning && open && (
+        {open && (
           <div
             id="ai-search-panel"
             ref={panelRef}
@@ -459,15 +383,15 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
         )}
       </div>
 
-      {!planning && !open && errorEl}
+      {!open && errorEl}
 
-      {planning && planError && <p role="alert" className="mt-3 text-sm text-[#ffb4a6]">{planError}</p>}
+      {planError && <p role="alert" className="mt-3 text-sm text-[#ffb4a6]">{planError}</p>}
 
-      {planning && planBusy && !plan && (
+      {planBusy && !plan && (
         <p className="mt-4 text-sm text-white/80" aria-live="polite">Stitching the stops together…</p>
       )}
 
-      {planning && plan && (
+      {planReady && plan && (
         <div className="mt-4 rounded-xl bg-white/[0.04] p-4 ring-1 ring-white/10" aria-live="polite">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#ffb4a6]">Your plan</p>
           <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
@@ -487,12 +411,13 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest 
         </div>
       )}
 
-      {!planning && busy && !data && (
+      {busy && !data && !planReady && (
         <p className="mt-4 text-sm text-white/80" aria-live="polite">Having a peep…</p>
       )}
 
-      {!planning && data && (
+      {data && !planReady && (
         <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
+          {planFallback && <p className="mb-3 text-sm text-white/80">{planFallback}</p>}
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
             <span className="text-white/60">{data.ai ? 'Got it:' : 'Searching for:'}</span>
             {understood(data.filters, today).map((c) => <span key={c} className="rounded-full bg-primary/15 text-[#ffb4a6] px-2.5 py-0.5 ring-1 ring-primary/30">{c}</span>)}
