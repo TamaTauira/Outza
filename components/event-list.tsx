@@ -70,11 +70,8 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
   const [loading, setLoading] = useState(!(initialBoard && seedMatches))
-  const listed = useMemo(() => {
-    if (!excludeIds.length) return events
-    const skip = new Set(excludeIds)
-    return events.filter((event) => !skip.has(event.id))
-  }, [events, excludeIds])
+  const listed = events
+  const railSkip = useMemo(() => new Set(excludeIds), [excludeIds])
   const [loadingMore, setLoadingMore] = useState(false)
   // Ended rows are hidden by default; "Show ended" is the opt-in.
   const [showEnded, setShowEnded] = useBackState('board:showEnded', false)
@@ -292,6 +289,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
     const push = (list: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
       for (const row of list) {
+        if (railSkip.has(row.ev.id)) continue
         if (rows.length < previewLimit) rows.push(row)
       }
     }
