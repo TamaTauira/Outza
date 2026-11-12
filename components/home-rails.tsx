@@ -79,8 +79,8 @@ export function HomeRails({
   useEffect(() => {
     if (!today) return
     const weekend = weekendFrom(today)
-    const tonightParams = new URLSearchParams({ limit: '24', dateFrom: today, dateTo: today, timeFrom: '17:00' })
-    const weekendParams = new URLSearchParams({ limit: '24', dateFrom: weekend.from, dateTo: weekend.to })
+    const tonightParams = new URLSearchParams({ limit: '60', dateFrom: today, dateTo: today, timeFrom: '17:00' })
+    const weekendParams = new URLSearchParams({ limit: '40', dateFrom: weekend.from, dateTo: weekend.to, timeFrom: '10:00' })
     if (city) {
       tonightParams.set('city', city)
       weekendParams.set('city', city)
