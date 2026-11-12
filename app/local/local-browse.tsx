@@ -16,7 +16,7 @@ import { citySlug } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { ListingBoardCard } from '@/components/listing-board-card'
-import { BoardHeadings, BoardRow, getStatus, type BoardEvent } from '@/components/board-row'
+import { BoardHeadings, BoardRow, GroupBar, getStatus, type BoardEvent } from '@/components/board-row'
 
 export type LocalItem = {
   id: string
@@ -105,7 +105,7 @@ function priceLine(ev: LocalItem) {
 export function LocalBrowse({
   city, setCity, suburb, setSuburb, applySuburb, category, setCategory, when, setWhen,
   items, error, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
-  closed, setClosed, more, setMore,   isSaved, save, onList, onMine, onHow, hasListings, signedIn, nowMinutes,
+  closed, setClosed, more, setMore, isSaved, save, onList, onMine, onHow, hasListings, nowMinutes,
 }: {
   city: string
   setCity: (city: string) => void
@@ -135,7 +135,6 @@ export function LocalBrowse({
   onMine: () => void
   onHow: () => void
   hasListings: boolean
-  signedIn: boolean
   nowMinutes: number
 }) {
   const [seeAll, setSeeAll] = useState(false)
@@ -169,7 +168,7 @@ export function LocalBrowse({
   }
 
   return (
-    <div className="mt-6 min-w-0">
+    <div className="min-w-0">
       <header className="relative overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
         <img src="/local/market-hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
@@ -206,7 +205,7 @@ export function LocalBrowse({
         </div>
       </header>
 
-      <section className="relative mt-10" aria-labelledby="local-categories">
+      <section className="relative mt-8" aria-labelledby="local-categories">
         <div className="flex items-end justify-between gap-3">
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
@@ -349,39 +348,37 @@ export function LocalBrowse({
           )
         })}
 
-        {mode === 'list' && ordered.map(([day, rows]) => {
-          const open = !closed[day]
-          const shown = more[day] ? rows : rows.slice(0, PREVIEW)
-          const hidden = rows.length - shown.length
-          return (
-            <div key={day} className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
-              <button type="button" onClick={() => setClosed((current) => ({ ...current, [day]: open }))} className="flex w-full items-center gap-3 bg-primary/[0.08] px-3 py-2.5 text-left" aria-expanded={open}>
-                <span className="text-sm font-semibold">{dayHeading(day, today, rows.length)}</span>
-                <ChevronDown className={cn('ml-auto h-4 w-4 text-primary', !open && '-rotate-90')} />
-              </button>
-              {open && <BoardHeadings />}
-              {open && shown.map((ev, index) => {
-                const key = rowKey(ev)
-                const board = toBoardEvent(ev)
-                return (
-                  <div key={key} data-row={key} onMouseEnter={() => setHotKey(key)} onMouseLeave={() => setHotKey(null)} className={cn((hotKey === key || focusKey === key) && 'bg-primary/10')}>
-                    <BoardRow
-                      ev={board}
-                      status={getStatus(board, ev.date, today, nowMinutes)}
-                      saved={isSaved(ev.id)}
-                      onToggleSave={() => save(ev)}
-                      withMedia
-                      signedIn={signedIn}
-                      variant={index % 2 === 1 ? 1 : 0}
-                      active={hotKey === key || focusKey === key}
-                    />
-                  </div>
-                )
-              })}
-              {open && hidden > 0 && <button type="button" onClick={() => setMore((current) => ({ ...current, [day]: true }))} className="w-full border-t border-border px-3 py-3 text-left text-sm font-semibold text-primary">Show {hidden} more {hidden === 1 ? 'event' : 'events'}</button>}
-            </div>
-          )
-        })}
+        {mode === 'list' && (
+          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+            <BoardHeadings />
+            {ordered.map(([day, rows]) => {
+              const open = !closed[day]
+              const shown = more[day] ? rows : rows.slice(0, PREVIEW)
+              const hidden = rows.length - shown.length
+              return (
+                <div key={day}>
+                  <GroupBar label={dayLabel(day, today)} count={rows.length} open={open} onToggle={() => setClosed((current) => ({ ...current, [day]: open }))} />
+                  {open && shown.map((ev) => {
+                    const key = rowKey(ev)
+                    const board = toBoardEvent(ev)
+                    return (
+                      <div key={key} data-row={key} onMouseEnter={() => setHotKey(key)} onMouseLeave={() => setHotKey(null)}>
+                        <BoardRow
+                          ev={board}
+                          status={getStatus(board, ev.date, today, nowMinutes)}
+                          saved={isSaved(ev.id)}
+                          onToggleSave={() => save(ev)}
+                          active={hotKey === key || focusKey === key}
+                        />
+                      </div>
+                    )
+                  })}
+                  {open && hidden > 0 && <button type="button" onClick={() => setMore((current) => ({ ...current, [day]: true }))} className="w-full border-t border-border px-3 py-3 text-left text-sm font-semibold text-primary">Show {hidden} more {hidden === 1 ? 'event' : 'events'}</button>}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section className="mt-12 rounded-3xl bg-gradient-to-br from-primary/15 via-card to-accent/15 p-6 sm:p-8">
@@ -416,7 +413,7 @@ function toBoardEvent(ev: LocalItem): BoardEvent {
     endTime: null,
     venueName: ev.suburb || ev.title,
     suburb: null,
-    category: ev.section,
+    category: sectionByKey(ev.section)?.boardCategory ?? 'Community',
     subTags: [label],
     isLGBTI: false,
     isFree: ev.isFree,
