@@ -20,7 +20,6 @@ export function ListingBoardCard({
   hot,
   onHot,
   actions,
-  variant = 0,
 }: {
   rowId?: string
   title: string
@@ -34,7 +33,6 @@ export function ListingBoardCard({
   hot?: boolean
   onHot?: (on: boolean) => void
   actions: ReactNode
-  variant?: 0 | 1
 }) {
   const photo = cardPhoto(imageUrl)
   return (
@@ -46,7 +44,7 @@ export function ListingBoardCard({
       style={{ boxShadow: `inset 3px 0 0 ${accent}` }}
     >
       <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[#110e16]">
-        <EventImage src={photo} category={imageCategory} slot="square" kind="square" crop={!!photo} alt="" sizes="80px" variant={variant} />
+        <EventImage src={photo} category={imageCategory} slot="square" kind="square" crop={!!photo} alt="" sizes="80px" />
       </span>
       <div className="min-w-0 flex-1">
         <Link href={href} scroll={false} className="block font-semibold leading-snug line-clamp-2 hover:text-primary">{title}</Link>
