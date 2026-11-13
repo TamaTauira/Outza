@@ -31,6 +31,20 @@ test('a source that notices the budget returns what it saved', async () => {
   assert.ok((result.value ?? 99) < 40)
 })
 
+test('polling the budget stops a synchronous scan before the grace timer', async () => {
+  const started = Date.now()
+  const result = await runWithSourceBudget('Quality pass', 0, async () => {
+    for (let n = 0; n < 100; n++) {
+      if (yieldIfBudget('duplicate grouping')) return n
+    }
+    return 100
+  }, 5_000)
+  assert.equal(result.error, null)
+  assert.equal(result.timedOut, true)
+  assert.equal(result.value, 0)
+  assert.ok(Date.now() - started < 500)
+})
+
 test('a stuck source is abandoned after the grace period', async () => {
   const started = Date.now()
   const result = await runWithSourceBudget('Eventbrite', 20, () => new Promise<number>(() => {}), 40)
