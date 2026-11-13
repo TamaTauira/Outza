@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import vercel from '../vercel.json'
 import { SOURCE_NAMES } from './refresh'
@@ -6,8 +7,12 @@ import {
   HOURLY_SIDE_MINUTES,
   REFRESH_CHUNKS,
   REFRESH_CYCLE_WINDOW_MS,
+  FINALIZE_POST_BUDGET_MS,
+  LOCAL_IMPORT_BUDGET_MS,
+  QUALITY_PASS_BUDGET_MS,
   SOURCE_BUDGET_MAX_MS,
   assessRefreshCycle,
+  postStepBudget,
   attachSweepProgress,
   burstIdleMinutes,
   isBudgetSkip,
@@ -30,6 +35,38 @@ function row(partial: Partial<CycleLog> & Pick<CycleLog, 'status'>): CycleLog {
     ...partial,
   }
 }
+
+test('finalize post-steps stay well inside the 300s function limit', () => {
+  assert.equal(postStepBudget(0, 'quality'), QUALITY_PASS_BUDGET_MS)
+  assert.equal(postStepBudget(0, 'local'), LOCAL_IMPORT_BUDGET_MS)
+  assert.ok(QUALITY_PASS_BUDGET_MS + LOCAL_IMPORT_BUDGET_MS <= FINALIZE_POST_BUDGET_MS)
+  assert.ok(FINALIZE_POST_BUDGET_MS <= 180_000)
+  assert.ok(300_000 - FINALIZE_POST_BUDGET_MS >= 90_000)
+  assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.finalize)?.budgetMs, FINALIZE_POST_BUDGET_MS)
+  const afterQuality = postStepBudget(QUALITY_PASS_BUDGET_MS, 'local')
+  assert.equal(afterQuality, LOCAL_IMPORT_BUDGET_MS)
+  assert.equal(postStepBudget(FINALIZE_POST_BUDGET_MS - 4_000, 'local'), null)
+  assert.equal(postStepBudget(FINALIZE_POST_BUDGET_MS - LOCAL_IMPORT_BUDGET_MS, 'quality'), null)
+})
+
+test('finalize records the cycle before the quality pass', () => {
+  const src = readFileSync(new URL('./refresh.ts', import.meta.url), 'utf8')
+  const body = src.slice(src.indexOf('async function finalizeCycle'))
+  assert.ok(body.includes('Record the cycle before post-steps'))
+  assert.ok(body.indexOf('assessRefreshCycle') < body.indexOf('refreshLog.create'))
+  assert.ok(body.indexOf('refreshLog.create') < body.indexOf('runPostSteps'))
+  assert.equal(body.includes('refreshLog.create({ data: {} })'), false)
+})
+
+test('the duplicate scan stops on the quality budget instead of copying groups', () => {
+  const src = readFileSync(new URL('./quality-pass.ts', import.meta.url), 'utf8')
+  const merge = src.slice(src.indexOf('const groups = new Map'), src.indexOf('let linkedFill'))
+  assert.match(merge, /yieldIfBudget\('duplicate grouping'\)/)
+  assert.match(merge, /setImmediate/)
+  assert.equal(merge.includes('[...(groups.get'), false)
+  assert.match(src, /readOpenListings/)
+  assert.match(src, /take: DUP_PAGE/)
+})
 
 test('an abort is a real failure and a budget stop is not', () => {
   assert.equal(isBudgetSkip('Moshtix: This operation was aborted'), false)

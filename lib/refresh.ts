@@ -16,6 +16,7 @@ import {
   REFRESH_INVOCATION_BUDGET_MS,
   SOURCE_BUDGET_MAX_MS,
   assessRefreshCycle,
+  postStepBudget,
   chunkById,
   isPartialRefresh,
   readSweepProgress,
@@ -284,14 +285,23 @@ async function noteVolume(
   })
 }
 
-async function runPostSteps() {
+async function runPostSteps(startedAt = Date.now()) {
   const errors: string[] = []
-  const quality = await runWithSourceBudget('Quality pass', 100_000, () => runQualityPass())
-  if (quality.error) errors.push(`Quality pass: ${quality.error.message}`)
-  else if (quality.timedOut) errors.push('Quality pass: time budget reached')
-  const local = await runWithSourceBudget('Local import', 80_000, () => importLocalFromBoard())
-  if (local.error) errors.push(`Local import: ${local.error.message}`)
-  else if (local.timedOut) errors.push('Local import: time budget reached')
+  const elapsed = () => Date.now() - startedAt
+  const qualityBudget = postStepBudget(elapsed(), 'quality')
+  if (qualityBudget == null) errors.push('Quality pass: time budget reached')
+  else {
+    const quality = await runWithSourceBudget('Quality pass', qualityBudget, () => runQualityPass())
+    if (quality.error) errors.push(`Quality pass: ${quality.error.message}`)
+    else if (quality.timedOut) errors.push('Quality pass: time budget reached')
+  }
+  const localBudget = postStepBudget(elapsed(), 'local')
+  if (localBudget == null) errors.push('Local import: time budget reached')
+  else {
+    const local = await runWithSourceBudget('Local import', localBudget, () => importLocalFromBoard())
+    if (local.error) errors.push(`Local import: ${local.error.message}`)
+    else if (local.timedOut) errors.push('Local import: time budget reached')
+  }
   return errors
 }
 
@@ -318,39 +328,50 @@ async function reportFullRunFaults(logId: string, selected: number, sourceFailed
   }
 }
 
-/** Quality pass + local import, then one cycle log. Completed even if a source failed, as long as every chunk finished. */
+/**
+ * One cycle log, then the quality pass and local import.
+ * Source chunks have already saved listings. Record that outcome before post-steps
+ * so a slow quality pass cannot leave the row `running` until the function is killed.
+ * Completed even if a source failed or stopped at its time budget, as long as every chunk finished.
+ */
 async function finalizeCycle(): Promise<RefreshResult> {
-  const log = await prisma.refreshLog.create({ data: {} })
-  const errors = await runPostSteps()
   const since = new Date(Date.now() - REFRESH_CYCLE_WINDOW_MS)
   const logs = await prisma.refreshLog.findMany({
     where: { startedAt: { gte: since }, status: { startsWith: 'source:' } },
     select: { status: true, endedAt: true, errors: true, eventsAdded: true, startedAt: true },
   })
   const cycle = assessRefreshCycle(logs, SOURCE_NAMES)
-  for (const name of cycle.missing) errors.push(`${name}: chunk did not finish this cycle`)
+  const sourceErrors: string[] = []
+  for (const name of cycle.missing) sourceErrors.push(`${name}: chunk did not finish this cycle`)
   for (const name of [...cycle.failed, ...cycle.warned]) {
     const row = logs
       .filter((l) => l.status === sourceLogStatus(name) && l.endedAt)
       .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())[0]
-    if (row?.errors) errors.push(row.errors)
+    if (row?.errors) sourceErrors.push(row.errors)
   }
   const status = cycle.ok ? 'completed' : 'failed'
-  await prisma.refreshLog.update({
-    where: { id: log.id },
+  // Record the cycle before post-steps. Listings are already saved by the source chunks.
+  const log = await prisma.refreshLog.create({
     data: {
       status,
       endedAt: new Date(),
       eventsAdded: cycle.eventsAdded,
-      errors: errors.length ? errors.join('; ') : null,
+      errors: sourceErrors.length ? sourceErrors.join('; ') : null,
     },
   })
   console.log(`[refresh] cycle ${status}: ${cycle.eventsAdded} events, missing=${cycle.missing.length}, failed=${cycle.failed.length}, budget=${cycle.warned.length}`)
+  const postErrors = await runPostSteps()
+  if (postErrors.length) {
+    await prisma.refreshLog.update({
+      where: { id: log.id },
+      data: { errors: [...postErrors, ...sourceErrors].join('; ') },
+    }).catch((err) => console.error('[refresh] cycle error update failed', (err as { message?: string })?.message))
+  }
   if (cycle.ok) void runImagePass({ trigger: 'refresh' })
   await invalidatePublicListings()
   return {
     eventsAdded: cycle.eventsAdded,
-    errors,
+    errors: [...postErrors, ...sourceErrors],
     sourcesRun: SOURCE_NAMES.filter((name) => !cycle.missing.includes(name)),
     cycleOk: cycle.ok,
   }

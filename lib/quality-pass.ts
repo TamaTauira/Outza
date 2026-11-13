@@ -47,14 +47,35 @@ const DUP_SELECT = {
   _count: { select: { savedBy: true, attendees: true, promotions: true } },
 } as const
 
+type DupRow = Awaited<ReturnType<typeof prisma.event.findMany<{ select: typeof DUP_SELECT }>>>[number]
+const DUP_PAGE = 800
+
+/**
+ * Upcoming listings, one page at a time. A single read of every open row hydrates
+ * tens of thousands of records before the budget can be checked.
+ */
+async function readOpenListings(today: Date, note: (n: number) => void): Promise<DupRow[] | null> {
+  const rows: DupRow[] = []
+  let after: string | undefined
+  for (;;) {
+    if (yieldIfBudget('duplicate scan')) return null
+    const page = await prisma.event.findMany({
+      where: { date: { gte: today }, duplicateOfId: null, ...(after ? { id: { gt: after } } : {}) },
+      select: DUP_SELECT,
+      orderBy: { id: 'asc' },
+      take: DUP_PAGE,
+    })
+    note(page.length)
+    rows.push(...page)
+    if (page.length < DUP_PAGE) return rows
+    after = page[page.length - 1].id
+  }
+}
+
 /** Changed listings, the other rows on that city and day, and the same listing URL on that day in any city. */
 async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: number) => void) {
   const open = { date: { gte: today }, duplicateOfId: null }
-  if (!cursor) {
-    const rows = await prisma.event.findMany({ where: open, select: DUP_SELECT })
-    note(rows.length)
-    return rows
-  }
+  if (!cursor) return readOpenListings(today, note)
   const touched = await prisma.event.findMany({
     where: { ...open, updatedAt: { gt: cursor } },
     select: { city: true, date: true, sourceUrl: true, ticketUrl: true, organiserUrl: true },
@@ -62,11 +83,7 @@ async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: n
   })
   note(touched.length)
   if (!touched.length) return [] as Awaited<ReturnType<typeof prisma.event.findMany<{ select: typeof DUP_SELECT }>>>
-  if (touched.length > 1500) {
-    const rows = await prisma.event.findMany({ where: open, select: DUP_SELECT })
-    note(rows.length)
-    return rows
-  }
+  if (touched.length > 1500) return readOpenListings(today, note)
   const rows = await prisma.event.findMany({
     where: { ...open, OR: duplicatePeerClauses(touched) },
     select: DUP_SELECT,
@@ -85,8 +102,14 @@ async function runQualityPassInner() {
   const changed = changedSince(cursor)
   const upcoming = { date: { gte: today }, ...changed }
   let rowsRead = 0
+  let backfilled = 0
   let complete = true
   const note = (n: number) => { rowsRead += n }
+  const unfinished = (merged = 0) => {
+    complete = false
+    console.log('[quality] stopped at time budget', { rowsRead })
+    return { backfilled, merged, recurringSeries: 0, places: 0, categories: 0, audited: 0, expiredHidden: 0, rowsRead }
+  }
 
   // 0) Keep a usable source link. Repaired and copied only; a good URL is never cleared.
   const links = await backfillListingLinks(today, cursor, note)
@@ -100,6 +123,7 @@ async function runQualityPassInner() {
     ...(cursor ? { take: 2000, orderBy: { updatedAt: 'asc' as const } } : {}),
   })
   note(missing.length)
+  backfilled = missing.length
   await inBatches(missing, JOB_CONNECTION_LIMIT, (e) => {
     const r = parsePriceRange(e.isFree, e.price)
     return prisma.event.update({
@@ -108,55 +132,79 @@ async function runQualityPassInner() {
     })
   })
 
-  if (yieldIfBudget('quality pass')) {
-    complete = false
-    console.log('[quality] stopped at time budget', { rowsRead })
-    return { backfilled: missing.length, merged: 0, recurringSeries: 0, places: 0, categories: 0, audited: 0, expiredHidden: 0, rowsRead }
-  }
+  if (yieldIfBudget('quality pass')) return unfinished()
 
   // 2) Merge duplicates. Same city and day stay together. The same listing URL and
   // start are one group in any city. Another night on that page stays separate.
+  // A city-day of a few hundred listings is millions of pairwise comparisons. That
+  // work is synchronous, so the budget timer cannot fire until it returns. Poll the
+  // deadline and yield so the pass stops inside its budget instead of at the 300s kill.
   const rows = await duplicateCandidates(today, cursor, note)
-  const groups = new Map<string, typeof rows>()
-  for (const r of rows) {
+  if (!rows || yieldIfBudget('duplicate grouping')) return unfinished()
+  const groups = new Map<string, DupRow[]>()
+  for (let i = 0; i < rows.length; i++) {
+    if (i > 0 && i % 400 === 0 && yieldIfBudget('duplicate grouping')) return unfinished()
+    const r = rows[i]
     const keys = duplicateGroupKeys({
       city: r.city,
       date: r.date.toISOString().slice(0, 10),
       urls: [r.sourceUrl, r.ticketUrl, r.organiserUrl],
     })
-    for (const key of keys) groups.set(key, [...(groups.get(key) ?? []), r])
+    for (const key of keys) {
+      const list = groups.get(key)
+      if (list) list.push(r)
+      else groups.set(key, [r])
+    }
   }
   // Organiser-owned and promoted listings always win; then the most trusted source; then community activity
-  const rank = (r: (typeof rows)[number]) =>
+  const rank = (r: DupRow) =>
     (r.promoterId || r._count.promotions || r.organiserEditedAt || r.fieldOverrides.length ? 1000 : 0) + (SOURCES[r.source]?.trust ?? 20) + r._count.savedBy + r._count.attendees
   let merged = 0
   const audits: { eventId: string; action: string; detail: string }[] = []
   const consumed = new Set<string>()
+  let pairChecks = 0
+  const asIdentity = (row: DupRow) => ({
+    title: row.title,
+    venueName: row.venueName,
+    city: row.city,
+    date: row.date.toISOString().slice(0, 10),
+    time: row.time,
+    source: row.source,
+    organiserName: row.organiserName,
+    address: row.venueAddress,
+    status: row.status,
+    price: row.price,
+    url: row.sourceUrl || row.ticketUrl,
+    lat: row.latitude,
+    lng: row.longitude,
+  })
   for (const list of groups.values()) {
+    if (list.length < 2) continue
+    if (yieldIfBudget('duplicate grouping')) return unfinished(merged)
     const used = new Set<string>(consumed)
     const sorted = [...list].sort((a, b) => rank(b) - rank(a) || a.createdAt.getTime() - b.createdAt.getTime())
     for (const primary of sorted) {
       if (used.has(primary.id)) continue
       used.add(primary.id)
-      const asIdentity = (row: (typeof rows)[number]) => ({
-        title: row.title,
-        venueName: row.venueName,
-        city: row.city,
-        date: row.date.toISOString().slice(0, 10),
-        time: row.time,
-        source: row.source,
-        organiserName: row.organiserName,
-        address: row.venueAddress,
-        status: row.status,
-        price: row.price,
-        url: row.sourceUrl || row.ticketUrl,
-        lat: row.latitude,
-        lng: row.longitude,
-      })
-      const linked = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'link'
-      const review = (row: (typeof rows)[number]) => decideDuplicate(asIdentity(primary), asIdentity(row)).action === 'review'
-      const protectedRow = (o: (typeof rows)[number]) => !!(o.promoterId || o._count.promotions || o.organiserEditedAt || o.fieldOverrides.length)
-      const blocked = sorted.filter((o) => !used.has(o.id) && protectedRow(o) && (linked(o) || review(o)))
+      const primaryIdentity = asIdentity(primary)
+      const protectedRow = (o: DupRow) => !!(o.promoterId || o._count.promotions || o.organiserEditedAt || o.fieldOverrides.length)
+      const blocked: DupRow[] = []
+      const reviews: DupRow[] = []
+      const dups: DupRow[] = []
+      let overBudget = false
+      for (const other of sorted) {
+        if (used.has(other.id)) continue
+        if ((++pairChecks & 63) === 0) {
+          await new Promise((resolve) => setImmediate(resolve))
+          if (yieldIfBudget('duplicate grouping')) { overBudget = true; break }
+        }
+        const action = decideDuplicate(primaryIdentity, asIdentity(other)).action
+        if (action !== 'link' && action !== 'review') continue
+        if (protectedRow(other)) blocked.push(other)
+        else if (action === 'review') reviews.push(other)
+        else dups.push(other)
+      }
+      if (overBudget) return unfinished(merged)
       for (const other of blocked) {
         audits.push({
           eventId: other.id,
@@ -164,7 +212,6 @@ async function runQualityPassInner() {
           detail: `Likely duplicate of ${primary.id} (${primary.title}). Left in place because it is organiser-owned or promoted.`,
         })
       }
-      const reviews = sorted.filter((o) => !used.has(o.id) && !protectedRow(o) && review(o))
       for (const other of reviews) {
         audits.push({
           eventId: other.id,
@@ -172,7 +219,6 @@ async function runQualityPassInner() {
           detail: `Possible duplicate of ${primary.id} (${primary.title}). Left public because the match is not certain.`,
         })
       }
-      const dups = sorted.filter((o) => !used.has(o.id) && !protectedRow(o) && linked(o))
       if (!dups.length) continue
       dups.forEach((d) => { used.add(d.id); consumed.add(d.id) })
       for (const dup of dups) {

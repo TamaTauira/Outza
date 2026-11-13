@@ -18,6 +18,31 @@ export const HOURLY_SIDE_MINUTES = [22, 24] as const
 export const REFRESH_INVOCATION_BUDGET_MS = 240_000
 /** Headroom under the 300s limit for the status write. */
 export const SOURCE_BUDGET_MAX_MS = 220_000
+/**
+ * Post-steps on the finalize invocation. The cycle row is written before either
+ * of them. Together they stay well under the 300s function limit: a slow quality
+ * pass must not be what keeps the cycle from being recorded.
+ */
+export const QUALITY_PASS_BUDGET_MS = 70_000
+export const LOCAL_IMPORT_BUDGET_MS = 40_000
+/** Wall clock shared by both post-steps, including the gap before the response. */
+export const FINALIZE_POST_BUDGET_MS = 150_000
+const POST_STEP_TAIL_MS = 5_000
+
+/**
+ * Budget for one finalize post-step, or null when starting it would run past
+ * the finalize ceiling. Quality keeps the local-import budget in reserve.
+ */
+export function postStepBudget(elapsedMs: number, step: 'quality' | 'local'): number | null {
+  const left = FINALIZE_POST_BUDGET_MS - elapsedMs
+  if (step === 'quality') {
+    const reserve = LOCAL_IMPORT_BUDGET_MS + POST_STEP_TAIL_MS
+    if (left <= reserve) return null
+    return Math.min(QUALITY_PASS_BUDGET_MS, left - reserve)
+  }
+  if (left <= POST_STEP_TAIL_MS) return null
+  return Math.min(LOCAL_IMPORT_BUDGET_MS, left - POST_STEP_TAIL_MS)
+}
 
 export type RefreshChunk = {
   id: string
@@ -39,7 +64,7 @@ export const REFRESH_CHUNKS: RefreshChunk[] = [
   { id: 'eventbrite', minute: 16, budgetMs: SOURCE_BUDGET_MAX_MS, sources: ['Eventbrite'] },
   { id: 'popular-regulars', minute: 18, budgetMs: 100_000, sources: ['Popular regulars'] },
   { id: 'brisbane', minute: 20, budgetMs: 100_000, sources: ['Brisbane City Council'] },
-  { id: 'finalize', minute: 23, budgetMs: 200_000, finalize: true },
+  { id: 'finalize', minute: 23, budgetMs: FINALIZE_POST_BUDGET_MS, finalize: true },
 ]
 
 /** Minutes from the end of the burst until the next hour's first chunk. */
