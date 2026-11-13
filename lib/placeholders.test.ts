@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { test } from 'node:test'
-import { eventPictureSrc, hasListingPhoto, placeholderAbsolute, placeholderPath, placeholderSlug, PLACEHOLDER_SLOTS, PLACEHOLDER_SLUGS } from './placeholders'
+import { eventPictureSrc, hasListingPhoto, placeholderAbsolute, placeholderPath, placeholderSlug, LOCAL_HOLDING_SLUGS, PLACEHOLDER_SLOTS, PLACEHOLDER_SLUGS } from './placeholders'
 
 test('category names map onto the ten holding-image folders, and unknown categories use community', () => {
   const expected: Record<string, string> = {
@@ -25,17 +25,28 @@ test('category names map onto the ten holding-image folders, and unknown categor
   }
   assert.equal(placeholderSlug('theatre'), 'arts-culture')
   assert.equal(placeholderSlug('kids'), 'family')
-  assert.equal(placeholderSlug('garage-sales'), 'garage-sales')
-  assert.equal(placeholderSlug('farmers-markets'), 'farmers-markets')
-  assert.equal(placeholderPath('farmers-markets', 'card', 1), '/placeholders/farmers-markets/card-b.webp')
-  assert.equal(placeholderPath('Music', 'card', 1), '/placeholders/music/card.webp')
+  // Local sections: four have their own scene, the rest reuse a genre image.
+  const local: Record<string, string> = {
+    'neighbourhood-popups': 'neighbourhood-popups',
+    'garage-sales': 'garage-sales',
+    'dog-friendly': 'dog-friendly',
+    'charity-events': 'charity-events',
+    'farmers-markets': 'community',
+    markets: 'community',
+    'warehouse-sales': 'community',
+    'community-events': 'community',
+    'school-fundraisers': 'family',
+    'community-sport': 'sports',
+    'local-art': 'arts-culture',
+  }
+  for (const [key, slug] of Object.entries(local)) assert.equal(placeholderSlug(key), slug, key)
   assert.equal(placeholderSlug('something-else'), 'community')
   assert.equal(placeholderSlug(null), 'community')
   assert.equal(PLACEHOLDER_SLUGS.length, 10)
-  for (const slug of ['farmers-markets', 'community-sport', 'community-events', 'garage-sales', 'school-fundraisers', 'charity-events', 'dog-friendly', 'local-art', 'warehouse-sales', 'neighbourhood-popups']) {
-    assert.equal(existsSync(`public/placeholders/${slug}/card.webp`), true, slug)
-    assert.equal(existsSync(`public/placeholders/${slug}/card-b.webp`), true, `${slug} variant`)
-    assert.equal(existsSync(`public/placeholders/${slug}/hero-wide.webp`), true, `${slug} wide`)
+  for (const slug of [...PLACEHOLDER_SLUGS, ...LOCAL_HOLDING_SLUGS]) {
+    for (const slot of Object.keys(PLACEHOLDER_SLOTS)) {
+      assert.equal(existsSync(`public/placeholders/${slug}/${slot}.webp`), true, `${slug}/${slot}`)
+    }
   }
 })
 

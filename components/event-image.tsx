@@ -26,8 +26,6 @@ interface Props {
   slot?: PlaceholderSlot
   /** Second holding image, used from 640px up. The event hero switches 16:9 → 3:1 here. */
   wideSlot?: PlaceholderSlot
-  /** 0 or 1. Local categories keep a second composition so neighbours are not identical. */
-  variant?: 0 | 1
   className?: string
 }
 
@@ -36,7 +34,7 @@ interface Props {
  * otherwise the source artwork shown whole over a blurred copy of itself (never cropped),
  * otherwise the genre holding image for this slot, shown whole.
  */
-export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, crop, accent, category, slot, wideSlot, variant = 0, className }: Props) {
+export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, crop, accent, category, slot, wideSlot, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
   const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
   const m = image?.variants ?? null
@@ -46,8 +44,8 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
 
   const frame = cn('absolute inset-0 w-full h-full', crop ? 'object-cover' : 'object-contain', className)
   const fallbackSlot: PlaceholderSlot = slot ?? (kind === 'square' ? 'square' : kind === 'featured' ? 'featured' : kind === 'hero' ? 'hero' : 'card')
-  const fallbackSrc = placeholderPath(category, fallbackSlot, variant)
-  const wideSrc = wideSlot ? placeholderPath(category, wideSlot, variant) : null
+  const fallbackSrc = placeholderPath(category, fallbackSlot)
+  const wideSrc = wideSlot ? placeholderPath(category, wideSlot) : null
 
   if (stage === 'variant' && m && hasVariants) {
     const widths = m.sizes[kind]!

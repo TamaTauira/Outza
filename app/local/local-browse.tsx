@@ -66,11 +66,11 @@ function clock(time: string | null) {
   return fmtTime(time)
 }
 
-function ListingPicture({ ev, slot, className, alt, priority, variant = 0 }: { ev: LocalItem; slot: PlaceholderSlot; className?: string; alt?: string; priority?: boolean; variant?: 0 | 1 }) {
+function ListingPicture({ ev, slot, className, alt, priority }: { ev: LocalItem; slot: PlaceholderSlot; className?: string; alt?: string; priority?: boolean }) {
   const kind = slot === 'hero' || slot === 'featured' || slot === 'square' ? slot : 'card'
   return (
     <span className={cn('relative block overflow-hidden bg-[#110e16]', className)}>
-      <EventImage src={ev.imageUrl} category={ev.section} slot={slot} wideSlot={slot === 'hero' ? 'hero-wide' : undefined} kind={kind} alt={alt || ''} sizes={slot === 'hero' ? '(min-width: 1024px) 520px, 100vw' : '(min-width: 1024px) 280px, 45vw'} crop={!!ev.imageUrl} priority={priority} variant={variant} />
+      <EventImage src={ev.imageUrl} category={ev.section} slot={slot} kind={kind} alt={alt || ''} sizes={slot === 'hero' ? '(min-width: 1024px) 520px, 100vw' : '(min-width: 1024px) 280px, 45vw'} crop={!!ev.imageUrl} priority={priority} />
     </span>
   )
 }
@@ -250,10 +250,10 @@ export function LocalBrowse({
         {!!featured.length && (
           <div className="relative mt-4">
             <div className={cn('flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] lg:grid lg:overflow-visible [&::-webkit-scrollbar]:hidden', featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2')}>
-              {featured.map((ev, index) => (
+              {featured.map((ev) => (
                 <article key={rowKey(ev)} className="flex w-[78vw] max-w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-auto lg:max-w-none">
                   <Link href={ev.href || '/local'} className="block">
-                    <ListingPicture ev={ev} slot="card" className="h-40" alt={ev.title} variant={index % 2 === 1 ? 1 : 0} />
+                    <ListingPicture ev={ev} slot="hero" className="aspect-video" alt={ev.title} />
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col p-4" style={{ borderTop: `3px solid ${ACCENT[ev.section] ?? '#ea580c'}` }}>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectionByKey(ev.section)?.short ?? 'Local'}</p>
@@ -337,7 +337,7 @@ export function LocalBrowse({
               </button>
               {open && (
                 <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {shown.map((ev, index) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} variant={index % 2 === 1 ? 1 : 0} />)}
+                  {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} />)}
                 </div>
               )}
               {open && hidden > 0 && <button type="button" onClick={() => setMore((current) => ({ ...current, [day]: true }))} className="mt-2 text-sm font-semibold text-primary">Show {hidden} more {hidden === 1 ? 'event' : 'events'}</button>}
@@ -425,7 +425,7 @@ function toBoardEvent(ev: LocalItem): BoardEvent {
   }
 }
 
-function BoardCard({ ev, hot, onHot, saved, onSave, variant = 0 }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void; variant?: 0 | 1 }) {
+function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void }) {
   const status = ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''
   return (
     <ListingBoardCard
@@ -439,7 +439,6 @@ function BoardCard({ ev, hot, onHot, saved, onSave, variant = 0 }: { ev: LocalIt
       accent={ACCENT[ev.section] ?? '#ea580c'}
       price={priceLine(ev)}
       hot={hot}
-      variant={variant}
       onHot={(on) => onHot(on ? rowKey(ev) : null)}
       actions={(
         <>

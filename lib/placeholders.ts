@@ -20,18 +20,12 @@ export const PLACEHOLDER_SLUGS = [
 
 export type PlaceholderSlug = (typeof PLACEHOLDER_SLUGS)[number]
 
-/** Local sections. Each has its own holding art, separate from the ten genre folders. */
+/** Local sections with their own mascot scene. Every other Local section uses a genre folder. */
 export const LOCAL_HOLDING_SLUGS = [
-  'garage-sales',
-  'warehouse-sales',
-  'school-fundraisers',
-  'farmers-markets',
   'neighbourhood-popups',
-  'community-sport',
-  'community-events',
-  'charity-events',
+  'garage-sales',
   'dog-friendly',
-  'local-art',
+  'charity-events',
 ] as const
 
 export type LocalHoldingSlug = (typeof LOCAL_HOLDING_SLUGS)[number]
@@ -77,8 +71,8 @@ const ALIAS: Record<string, PlaceholderSlug> = {
   food: 'food-drink',
   drink: 'food-drink',
   dining: 'food-drink',
-  market: 'food-drink',
-  markets: 'food-drink',
+  market: 'community',
+  markets: 'community',
   sport: 'sports',
   kids: 'family',
   children: 'family',
@@ -88,6 +82,12 @@ const ALIAS: Record<string, PlaceholderSlug> = {
   club: 'nightlife',
   garage: 'community',
   warehouse: 'community',
+  'warehouse-sales': 'community',
+  'school-fundraisers': 'family',
+  'farmers-markets': 'community',
+  'community-sport': 'sports',
+  'community-events': 'community',
+  'local-art': 'arts-culture',
 }
 
 const DEFAULT_SLUG: PlaceholderSlug = 'community'
@@ -104,11 +104,9 @@ export function placeholderSlug(category?: string | null): HoldingSlug {
   return DEFAULT_SLUG
 }
 
-/** Site-relative path for one slot of a genre. Local sections rotate a second file when variant is 1. */
-export function placeholderPath(category?: string | null, slot: PlaceholderSlot = 'hero', variant: 0 | 1 = 0): string {
-  const slug = placeholderSlug(category)
-  const file = variant === 1 && LOCAL_HOLDING.has(slug) ? `${slot}-b` : slot
-  return `/placeholders/${slug}/${file}.webp`
+/** Site-relative path for one slot of a genre. */
+export function placeholderPath(category?: string | null, slot: PlaceholderSlot = 'hero'): string {
+  return `/placeholders/${placeholderSlug(category)}/${slot}.webp`
 }
 
 export function placeholderAbsolute(category: string | null | undefined, slot: PlaceholderSlot, origin: string): string {
