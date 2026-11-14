@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { isPastEvent } from '@/lib/seo'
 import { LEGACY_REMOVED_KEY, LEGACY_SAVED_KEY, pendingStorageKey, savedStorageKey, savesToUpload } from '@/lib/saved-scope'
+import { listenForOneReconnect, readJson } from '@/lib/client-fetch'
 
 export interface SavedEvent {
   id: string
@@ -111,6 +112,7 @@ function applyPending(list: SavedEvent[], pending: PendingSave[]): SavedEvent[] 
 
 /** The signed-in account, if any. Toggles before this is set are not stored. */
 let activeUserId: string | null = null
+let savedSyncMissed = false
 export function setSavedAccountLinked(v: boolean, userId?: string | null) {
   activeUserId = v ? (userId ?? null) : null
 }
@@ -136,9 +138,14 @@ export async function syncSavedWithAccount(userId?: string | null) {
   if (!id) return
   purgeLegacy()
   try {
-    const r = await fetch('/api/me/saved')
-    if (!r.ok) return
-    const { events } = (await r.json()) as { events: SavedEvent[] }
+    const loaded = await readJson<{ events: SavedEvent[] }>('/api/me/saved')
+    if (!loaded.ok) {
+      if (loaded.reason === 'network') savedSyncMissed = true
+      else if (loaded.reason !== 'abort') console.error('Saved sync failed:', loaded.status)
+      return
+    }
+    savedSyncMissed = false
+    const events = loaded.data.events
     const server = Array.isArray(events) ? events : []
     const pending = readPending(id)
     const uploadIds = savesToUpload(id, pending.map((p) => p.eventId))
@@ -151,6 +158,7 @@ export async function syncSavedWithAccount(userId?: string | null) {
       if (res?.ok) writePending(id, readPending(id).filter((row) => row.eventId !== p.eventId))
     }
   } catch (err) {
+    savedSyncMissed = true
     console.error('Saved sync failed:', err)
   }
 }
@@ -173,9 +181,11 @@ export function useSaved() {
     sync()
     window.addEventListener(EVT, sync)
     window.addEventListener('storage', sync)
+    const stopRetry = listenForOneReconnect(() => { void syncSavedWithAccount(userId) }, () => savedSyncMissed)
     return () => {
       window.removeEventListener(EVT, sync)
       window.removeEventListener('storage', sync)
+      stopRetry()
     }
   }, [userId])
 
