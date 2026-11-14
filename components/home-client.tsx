@@ -26,6 +26,7 @@ import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { useBackState } from '@/lib/scroll-memory';
 import { lineupView } from '@/lib/lineup-view';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
+import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch';
 const MapView = dynamic(() => import('@/components/map-view').then((m) => m.MapView), {
   ssr: false,
   loading: () => <div className="flex h-full min-h-[50vh] items-center justify-center text-sm text-muted-foreground">Unfolding the map…</div>,
@@ -151,11 +152,21 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       apply(null);
       return () => { cancelled = true; };
     }
-    fetch('/api/me')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => apply(typeof d?.user?.homeCity === 'string' ? d.user.homeCity : null))
-      .catch(() => apply(null));
-    return () => { cancelled = true; };
+    const retry = createReconnectRetry();
+    const loadHome = () => {
+      readJson<{ user?: { homeCity?: unknown } }>('/api/me').then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          if (result.reason === 'network') armReconnect(retry, () => { if (!cancelled) loadHome(); });
+          else apply(null);
+          return;
+        }
+        const home = result.data?.user?.homeCity;
+        apply(typeof home === 'string' ? home : null);
+      });
+    };
+    loadHome();
+    return () => { cancelled = true; retry.stop(); };
   }, [authStatus, userId]);
 
   // Live Sydney clock + old ?view=map|saved links forward to their own addresses
@@ -191,21 +202,37 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
   useEffect(() => {
     let live = true;
-    fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const photo = (data?.items ?? []).find((item: { imageUrl?: string | null }) => item.imageUrl && /^https?:\/\//i.test(item.imageUrl) && !/picsum\.photos/i.test(item.imageUrl))?.imageUrl ?? null;
-        if (live) setHeroPhoto(photo);
-      })
-      .catch(() => { if (live) setHeroPhoto(null); });
-    return () => { live = false; };
+    const retry = createReconnectRetry();
+    const load = () => {
+      readJson<{ items?: { imageUrl?: string | null }[] }>(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((result) => {
+        if (!live) return;
+        if (!result.ok) {
+          if (result.reason === 'network') armReconnect(retry, () => { if (live) load(); });
+          return;
+        }
+        const photo = (result.data?.items ?? []).find((item) => item.imageUrl && /^https?:\/\//i.test(item.imageUrl) && !/picsum\.photos/i.test(item.imageUrl))?.imageUrl ?? null;
+        setHeroPhoto(photo);
+      });
+    };
+    load();
+    return () => { live = false; retry.stop(); };
   }, [city]);
 
   useEffect(() => {
-    fetch(`/api/events/stats${city ? `?city=${encodeURIComponent(city)}` : ''}`).
-    then((r) => r.json()).
-    then((data) => setLastRefresh(data?.lastRefresh ?? null)).
-    catch((err) => console.error('Failed to load stats:', err));
+    let live = true;
+    const retry = createReconnectRetry();
+    const load = () => {
+      readJson<{ lastRefresh?: string | null }>(`/api/events/stats${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((result) => {
+        if (!live) return;
+        if (!result.ok) {
+          if (result.reason === 'network') armReconnect(retry, () => { if (live) load(); });
+          return;
+        }
+        setLastRefresh(result.data?.lastRefresh ?? null);
+      });
+    };
+    load();
+    return () => { live = false; retry.stop(); };
   }, [city]);
 
   // Debounce the search box

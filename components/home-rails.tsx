@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { holdScrollRestore } from '@/lib/scroll-memory'
+import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import Link from 'next/link'
 import { eventPath } from '@/lib/seo'
 import { areasForCity, CATEGORIES } from '@/lib/categories'
@@ -75,6 +76,8 @@ export function HomeRails({
   const [rows, setRows] = useState<RailEvent[]>([])
   const [featured, setFeatured] = useState<RailEvent[]>([])
   const [ready, setReady] = useState(false)
+  const [offline, setOffline] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!today) return
@@ -86,30 +89,51 @@ export function HomeRails({
       weekendParams.set('city', city)
     }
     let live = true
+    let released = false
+    const retry = createReconnectRetry()
     const release = holdScrollRestore('home-rails')
-    Promise.all([
-      fetch(`/api/events?${tonightParams}`).then((r) => r.json()).catch(() => ({})),
-      fetch(`/api/events?${weekendParams}`).then((r) => r.json()).catch(() => ({})),
-      fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((r) => r.json()).catch(() => ({})),
-    ]).then(([tonight, weekendEvents, hot]) => {
-      if (!live) return
-      const seen = new Set<string>()
-      const merged: RailEvent[] = []
-      for (const ev of [...(tonight?.events ?? []), ...(weekendEvents?.events ?? [])]) {
-        if (seen.has(ev.id)) continue
-        seen.add(ev.id)
-        merged.push(ev)
-      }
-      setRows(merged)
-      const items: RailEvent[] = (hot?.items ?? []).map((it: RailEvent & { tier?: string; sponsored?: boolean }) => ({
-        ...it,
-        sponsored: it.sponsored === true || (!!it.tier && it.tier !== 'HOT'),
-      }))
-      setFeatured(city ? items.filter((it) => !it.city || it.city === city) : items)
-      setReady(true)
-    }).finally(release)
-    return () => { live = false; release() }
-  }, [city, today])
+    const finish = () => { if (!released) { released = true; release() } }
+    const load = () => {
+      Promise.all([
+        readJson<{ events?: RailEvent[] }>(`/api/events?${tonightParams}`),
+        readJson<{ events?: RailEvent[] }>(`/api/events?${weekendParams}`),
+        readJson<{ items?: (RailEvent & { tier?: string; sponsored?: boolean })[] }>(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`),
+      ]).then(([tonight, weekendEvents, hot]) => {
+        if (!live) return
+        const outcomes = [tonight, weekendEvents, hot]
+        if (outcomes.every((item) => !item.ok && item.reason === 'abort')) return
+        if (outcomes.some((item) => !item.ok && item.reason === 'network')) {
+          setOffline(true)
+          setReady(true)
+          armReconnect(retry, () => { if (live) load() })
+          return
+        }
+        if (!tonight.ok || !weekendEvents.ok || !hot.ok) {
+          setReady(true)
+          return
+        }
+        const tonightRows = tonight.data.events ?? []
+        const weekendRows = weekendEvents.data.events ?? []
+        const seen = new Set<string>()
+        const merged: RailEvent[] = []
+        for (const ev of [...tonightRows, ...weekendRows]) {
+          if (seen.has(ev.id)) continue
+          seen.add(ev.id)
+          merged.push(ev)
+        }
+        setRows(merged)
+        const items: RailEvent[] = (hot.data.items ?? []).map((it) => ({
+          ...it,
+          sponsored: it.sponsored === true || (!!it.tier && it.tier !== 'HOT'),
+        }))
+        setFeatured(city ? items.filter((it) => !it.city || it.city === city) : items)
+        setOffline(false)
+        setReady(true)
+      }).finally(finish)
+    }
+    load()
+    return () => { live = false; retry.stop(); finish() }
+  }, [city, today, reloadKey])
 
   useEffect(() => { setReady(false) }, [city, today])
 
@@ -143,6 +167,9 @@ export function HomeRails({
 
   return (
     <div className="mb-8 space-y-6">
+      {offline && (rows.length > 0 || featured.length > 0) && (
+        <p className="text-sm text-muted-foreground" role="status">The connection dropped. Showing the last list. <button type="button" onClick={() => setReloadKey((n) => n + 1)} className="font-semibold text-primary">Try again</button></p>
+      )}
       {rails.map((rail, index) => (
         <section key={rail.key} aria-label={rail.label} data-peep-rail={index === 0 ? '1' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -153,6 +180,8 @@ export function HomeRails({
             <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
               {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
             </div>
+          ) : offline ? (
+            <p className="text-sm text-muted-foreground" role="status">The connection dropped. <button type="button" onClick={() => setReloadKey((n) => n + 1)} className="font-semibold text-primary">Try again</button></p>
           ) : ready ? (
             <p className="text-sm text-muted-foreground">{rail.empty}</p>
           ) : null}

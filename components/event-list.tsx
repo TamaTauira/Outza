@@ -19,6 +19,7 @@ import { ReachBeacon } from '@/components/reach-beacon'
 import { displaySuburb } from '@/lib/cities'
 import { fmtTime } from '@/lib/local-shared'
 import { eventPath } from '@/lib/seo'
+import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 export type BoardSeed = {
   city: string
   from: string
@@ -70,6 +71,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
   const [loading, setLoading] = useState(!(initialBoard && seedMatches))
+  const [offline, setOffline] = useState(false)
   const listed = events
   const railSkip = useMemo(() => new Set(excludeIds), [excludeIds])
   const [loadingMore, setLoadingMore] = useState(false)
@@ -96,14 +98,20 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       if (filters.suburb) params.set('suburb', filters.suburb)
       if (filters.isFree) params.set('isFree', 'true')
       if (filters.isLGBTI) params.set('isLGBTI', 'true')
-      const res = await fetch(`/api/events?${params.toString()}`)
-      const data = await res.json()
-      if (seq !== fetchSeq.current) return null
+      const result = await readJson<{ events?: BoardEvent[]; total?: number; totalPages?: number }>(`/api/events?${params.toString()}`)
+      if (seq !== fetchSeq.current || (!result.ok && result.reason === 'abort')) return null
+      if (!result.ok) {
+        if (result.reason === 'network') setOffline(true)
+        else console.error('Failed to fetch events:', result.status)
+        return null
+      }
+      const data = result.data
       const list: BoardEvent[] = (data?.events ?? []).filter((ev: BoardEvent) => !filters.isFree || !isPaidListing(ev))
       setEvents((prev) => (append ? [...prev, ...list] : list))
       const totalPages = data?.totalPages ?? 1
       setTotal(data?.total ?? 0)
       setTotalPages(totalPages)
+      setOffline(false)
       return { totalPages }
     } catch (err) {
       console.error('Failed to fetch events:', err)
@@ -158,6 +166,13 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       release()
     }
   }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard])
+
+  useEffect(() => {
+    if (!offline || !span) return
+    const retry = createReconnectRetry()
+    armReconnect(retry, () => { void fetchSpan(span.from, span.to, 1, false) })
+    return () => retry.stop()
+  }, [offline, span, fetchSpan])
 
   useEffect(() => { writeListDepth(page) }, [page])
 
@@ -350,13 +365,20 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     )
   }
 
+  const firstLoad = loading && events.length === 0
   return (
     <div>
       <ReachBeacon surface={searchQuery ? 'search' : 'board'} ids={events.map((event) => event.id)} term={searchQuery} />
       {/* Summary row */}
+      {offline && events.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2 text-sm sm:px-5" role="status">
+          <p>The connection dropped. Showing the last list we loaded.</p>
+          <button type="button" onClick={() => { if (span) void fetchSpan(span.from, span.to, 1, false) }} className="font-semibold text-primary">Try again</button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{loading ? '…' : (windowRank ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length : timed.length)}</span> with a start time
+        <span className="font-semibold text-foreground">{firstLoad ? '…' : (windowRank ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length : timed.length)}</span> with a start time
         {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
@@ -369,7 +391,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 
       {layout === 'list' && <BoardHeadings />}
 
-      {loading ? (
+      {firstLoad ? (
         <div aria-busy="true" aria-label="Loading events">
           <div className="flex flex-col items-center justify-center gap-2 py-8" aria-live="polite">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -387,6 +409,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             ))}
           </div>
         </div>
+      ) : offline && events.length === 0 ? (
+        <PeepEmpty title="The signal dropped." body="We couldn't reach the list. The page is fine. Try again when you're back online." action={(
+          <button type="button" onClick={() => { if (span) void fetchSpan(span.from, span.to, 1, false) }} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Try again</button>
+        )} />
       ) : previewFlat ? (
         previewFlat.length ? showRows(previewFlat) : (
           <PeepEmpty title="Crickets. I checked twice." body="Nothing else in this window. Open the full list or loosen a filter." />
