@@ -376,7 +376,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {pinned.map((e) => {
               const price = formatPrice(e.isFree, e.price, e.priceMin, e.priceMax)
-              const when = `${boardClockLine(e) || 'All day'} · ${e.venueName} · ${price.value}`
+              const when = `${boardClockLine(e) || 'All day'} · ${e.venueName} · ${[price.prefix, price.value].filter(Boolean).join(' ')}`
               return (
                 <button key={e.id} type="button" onClick={() => { onSelect?.(e.id); focus(e) }} title={e.title} className={`grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5 overflow-hidden border-b border-border px-4 py-3 text-left hover:bg-muted ${focusId === e.id ? 'bg-primary/10' : ''}`}>
                   <span className="truncate font-semibold">{e.title}</span>
@@ -465,7 +465,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
               <button key={e.id} type="button" onClick={() => { onSelect?.(e.id); focus(e) }} title={e.title} className={`pointer-events-auto w-44 shrink-0 rounded-xl border bg-card p-3 text-left shadow-lg ${focusId === e.id ? 'border-primary' : 'border-border'}`}>
                 <span className="block truncate text-sm font-semibold">{e.title}</span>
                 <span className="vp-map-card-venue block truncate text-xs text-muted-foreground">{e.venueName}</span>
-                <span className="mt-1 block truncate font-mono text-xs">{price.value}</span>
+                <span className="mt-1 block truncate font-mono text-xs">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
               </button>
             )
           })}

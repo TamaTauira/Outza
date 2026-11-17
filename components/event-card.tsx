@@ -165,7 +165,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
           {event.availabilityKind === 'possibly' ? 'Time not listed' : (clock ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
         </p>
       </div>
-      <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{price.value}</span>
+      <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
     </Link>
   )
 }

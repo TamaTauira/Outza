@@ -62,6 +62,10 @@
       "schedule": "23 * * * *"
     },
     {
+      "path": "/api/cron/price-enrich",
+      "schedule": "24 * * * *"
+    },
+    {
       "path": "/api/cron/digest",
       "schedule": "22 21 * * *"
     },

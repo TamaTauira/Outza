@@ -68,7 +68,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
   const Icon = categoryIcon(ev.category)
   const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
-  const priceValue = displayPriceValue(price.value, price.kind)
+  const priceValue = [price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')
   const until = runsUntilLabel(ev.date, ev.endDate)
   const checked = checkedAgo(latestIso(ev.lastVerifiedAt, ev.updatedAt))
   const done = status.tone === 'done'
@@ -181,7 +181,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
           <span
             className={cn('font-mono text-sm whitespace-nowrap', price.kind === 'free' ? 'text-free' : price.kind === 'unknown' ? 'text-muted-foreground' : 'text-foreground')}
             title={checked ? `Price checked ${checked}` : undefined}
-          >{priceValue}</span>
+          >{displayPriceValue(price.value, price.kind)}</span>
         </div>
         <span className={cn('xl:hidden text-sm', STATUS_CLASS[status.tone])}>
           {status.tone === 'live' && <span className="inline-block w-1.5 h-1.5 mr-1 rounded-full bg-free animate-pulse align-middle" />}

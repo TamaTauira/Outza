@@ -235,7 +235,7 @@ export function HomeDiscover({
                   </button>
                   <p className="border-t border-border px-4 py-3 text-sm">
                     <Link href={eventPath(row.sample)} className="font-semibold hover:text-primary">{row.sample.title}</Link>
-                    <span className="mt-0.5 block text-muted-foreground">{row.sample.venueName} · {price.value}</span>
+                    <span className="mt-0.5 block text-muted-foreground">{row.sample.venueName} · {[price.prefix, price.value].filter(Boolean).join(' ')}</span>
                   </p>
                 </article>
               )

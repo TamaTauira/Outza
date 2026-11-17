@@ -4,7 +4,7 @@
  */
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { preferDescription } from '@/lib/description-text'
-import { readPriceRows } from '@/lib/price'
+import { moneyNumber, priceFromAmounts, readPriceRows } from '@/lib/price'
 
 export type CosWhen = {
   date: string | null
@@ -90,6 +90,17 @@ export function cosPriceText(raw: unknown): string | null {
     return readPriceRows([{ label: String(item.label ?? item.category ?? ''), price: item.price ?? item.value }]).price
   }
   return null
+}
+
+/** Price string from a What's On record. Uses the price rows, then min/max when the rows are empty. */
+export function cosListedPrice(record: Record<string, unknown> | null | undefined): string | null {
+  if (!record) return null
+  const text = cosPriceText(record.prices ?? record.priceData ?? record.cost ?? record.price)
+  if (text) return text
+  const min = moneyNumber(record.minPrice)
+  const max = moneyNumber(record.maxPrice)
+  if (min == null && max == null) return null
+  return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price
 }
 
 export function cosDescriptionFromRecord(record: { description?: unknown; strapline?: unknown } | null | undefined): string | null {
