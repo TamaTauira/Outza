@@ -10,8 +10,8 @@ import { PRICE_REASON, TRANSIENT_PRICE_REASONS } from '@/lib/price-read'
 
 export { PRICE_ENRICH_BUDGET_MS }
 
-const WAVE = 80
-const CONCURRENCY = 4
+const WAVE = 60
+const CONCURRENCY = 2
 
 export type PriceEnrichReport = {
   checked: number
@@ -191,7 +191,12 @@ async function idsForGroup(group: PriceGroup): Promise<string[]> {
 }
 
 async function persist(group: PriceGroup, outcome: { price: string | null; isFree: boolean; min: number | null; max: number | null; reason: string | null }, now: Date) {
-  const ids = await idsForGroup(group)
+  const ids = [...group.ids]
+  try {
+    for (const id of await idsForGroup(group)) if (!ids.includes(id)) ids.push(id)
+  } catch (err) {
+    console.error('[price-enrich] sibling lookup failed', group.sample.id, err instanceof Error ? err.message : err)
+  }
   if (!ids.length) return
   if (outcome.price) {
     await prisma.event.updateMany({
