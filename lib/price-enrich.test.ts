@@ -53,6 +53,8 @@ test('humanitix payload prices are a range, and a class fee in prose is kept', (
 test('a humanitix tickets page supplies the price the event payload omitted', () => {
   const paid = '{"@type":"Offer",name:"1 class",price:30,availability:"InStock"},{"@type":"Offer",name:"5 classes at $25 each",price:125,availability:"InStock"}'
   assert.equal(humanitixTicketsHtml(paid)?.price, '$30 – $125')
+  const shown = 'displayPrice:"$27.50" displayPrice:"$22.00" {"@type":"Offer",name:"Adult",price:25}'
+  assert.equal(humanitixTicketsHtml(shown)?.price, '$22 – $27.50')
   const free = '<span class="price-label">Free </span> {"@type":"Offer",name:"By donation on the day",price:0} displayPrice:"Free"'
   assert.equal(humanitixTicketsHtml(free)?.isFree, true)
   assert.equal(humanitixTicketsHtml('{"@type":"Offer",name:"By donation",price:0}'), null)
