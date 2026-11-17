@@ -26,7 +26,7 @@ interface NavbarProps {
 
 // Board, Map and Saved each have their own address, so Back, bookmarks and sharing all work.
 const TABS: { key: AppView; label: string; Icon: ComponentType<{ className?: string }>; href: string }[] = [
-  { key: 'board', label: 'Peep', Icon: PeepIcon, href: '/' },
+  { key: 'board', label: 'Explore', Icon: PeepIcon, href: '/' },
   { key: 'map', label: 'Map', Icon: MapPin, href: '/map' },
   { key: 'saved', label: 'Saved', Icon: Bookmark, href: '/saved' },
 ]
@@ -72,7 +72,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 key={key}
                 href={href}
                 aria-current={view === key ? 'page' : undefined}
-                aria-label={key === 'saved' ? `Saved (${mounted ? savedCount : 0})` : label}
+                aria-label={key === 'saved' ? (mounted && savedCount > 0 ? `Saved, ${savedCount}` : 'Saved') : label}
                 className={cn(
                   'relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm transition-colors',
                   view === key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
@@ -80,8 +80,8 @@ export function Navbar({ savedCount }: NavbarProps) {
               >
                 <Icon className="w-4 h-4" />
                 <span>{label}</span>
-                {key === 'saved' && (
-                  <span className="min-w-[18px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{mounted ? savedCount : 0}</span>
+                {key === 'saved' && mounted && savedCount > 0 && (
+                  <span className="min-w-[18px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{savedCount}</span>
                 )}
                 {view === key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
               </Link>
@@ -91,6 +91,9 @@ export function Navbar({ savedCount }: NavbarProps) {
             <CalendarPlusIcon className="w-4 h-4" /><span>Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
+          <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
+            Ask
+          </button>
         </nav>
 
         <div className="vp-header-tools ml-auto flex items-center gap-1 sm:gap-2 shrink-0">

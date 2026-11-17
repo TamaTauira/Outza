@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
 import { statusInfo } from '@/lib/quality'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
+import { displayPriceValue, displayTitle, parentCategory, runsUntilLabel } from '@/lib/display-public'
 
 export type BoardEvent = SavedEvent
 
@@ -60,14 +61,18 @@ interface BoardRowProps {
 }
 
 export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch, active }: BoardRowProps) {
-  const cat = CATEGORIES.find((c) => c.name === ev.category)
+  const shownTitle = displayTitle(ev.title)
+  const catName = parentCategory(ev.category) || ev.category
+  const cat = CATEGORIES.find((c) => c.name === catName)
   const color = cat?.color ?? '#FF7A1A'
   const Icon = categoryIcon(ev.category)
   const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
+  const priceValue = displayPriceValue(price.value, price.kind)
+  const until = runsUntilLabel(ev.date, ev.endDate)
   const checked = checkedAgo(latestIso(ev.lastVerifiedAt, ev.updatedAt))
   const done = status.tone === 'done'
-  const type = ev.subTags?.[0] ?? ev.category
+  const type = ev.subTags?.[0] ?? catName
   const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
   const venue = tidyVenueName(ev.venueName, ev.venueAddress, ev.city)
   const reported = statusInfo(ev.status, ev.statusSource)
@@ -103,8 +108,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <Icon className="w-4 h-4" />
       </span>
       <div className="min-w-0">
-        <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{ev.title}</Link>
-        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{price.value} · {status.label}</p>
+        <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{shownTitle}</Link>
+        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}{until ? ` · ${until}` : ''}</p>
       </div>
       <div className="relative z-20 flex items-center">
         <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
@@ -137,7 +142,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
           <Icon className="w-3.5 h-3.5" />
         </span>
         <Link href={href} scroll={false} onClick={noteSearch} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
-          {ev.title}
+          {shownTitle}
         </Link>
         {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}
         {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-[10px] font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
@@ -176,7 +181,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
           <span
             className={cn('font-mono text-sm whitespace-nowrap', price.kind === 'free' ? 'text-free' : price.kind === 'unknown' ? 'text-muted-foreground' : 'text-foreground')}
             title={checked ? `Price checked ${checked}` : undefined}
-          >{price.value}</span>
+          >{priceValue}</span>
         </div>
         <span className={cn('xl:hidden text-sm', STATUS_CLASS[status.tone])}>
           {status.tone === 'live' && <span className="inline-block w-1.5 h-1.5 mr-1 rounded-full bg-free animate-pulse align-middle" />}
@@ -224,7 +229,7 @@ export function BoardHeadings() {
 
 export function GroupBar({ label, count, open, onToggle }: { label: string; count: number; open: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className="w-full flex items-center gap-3 px-3 sm:px-5 py-2.5 bg-primary/[0.07] border-y border-primary/20 text-left" aria-expanded={open}>
+    <button onClick={onToggle} className="sticky top-14 z-20 flex w-full items-center gap-3 border-y border-primary/20 bg-background px-3 py-2.5 text-left sm:top-16 sm:px-5" aria-expanded={open}>
       <span className="font-semibold text-sm">{label}</span>
       <span className="font-mono text-xs text-muted-foreground">{count} {count === 1 ? 'event' : 'events'}</span>
       <span className="flex-1 h-px bg-primary/25" />

@@ -1,9 +1,20 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { jsonLdString } from '@/lib/seo-server'
 import { BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { CITY_NAMES } from '@/lib/cities'
 import { siteUrl } from '@/lib/site-url'
 
-export const metadata: Metadata = { alternates: { canonical: '/' } }
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers()
+  const raw = h.get('x-vercel-ip-city')
+  const decoded = raw ? decodeURIComponent(raw).trim() : ''
+  const city = CITY_NAMES.find((name) => name.toLowerCase() === decoded.toLowerCase()) ?? 'Sydney'
+  return {
+    title: `What’s on in ${city}: events, gigs and things to do | VibePeep`,
+    alternates: { canonical: '/' },
+  }
+}
 
 /** One JSON-LD document for the canonical host. The root layout does not emit another. */
 export default function Page() {

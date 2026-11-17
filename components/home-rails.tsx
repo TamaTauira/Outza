@@ -170,23 +170,29 @@ export function HomeRails({
       {offline && (rows.length > 0 || featured.length > 0) && (
         <p className="text-sm text-muted-foreground" role="status">The connection dropped. Showing the last list. <button type="button" onClick={() => setReloadKey((n) => n + 1)} className="font-semibold text-primary">Try again</button></p>
       )}
-      {rails.map((rail, index) => (
+      {rails.map((rail, index) => {
+        if (rail.items.length === 0 && offline) {
+          return (
+            <section key={rail.key} aria-label={rail.label}>
+              <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{rail.label}</h2>
+              <p className="mt-2 text-sm text-muted-foreground" role="status">The connection dropped. <button type="button" onClick={() => setReloadKey((n) => n + 1)} className="font-semibold text-primary">Try again</button></p>
+            </section>
+          )
+        }
+        if (ready && rail.items.length < 4) return null
+        if (!ready && rail.items.length === 0) return null
+        return (
         <section key={rail.key} aria-label={rail.label} data-peep-rail={index === 0 ? '1' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">
             <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{rail.label}</h2>
-            <button type="button" onClick={() => onSeeAll(rail.key)} className="text-sm font-semibold text-primary hover:underline">See all</button>
+            {rail.items.length >= 4 && <button type="button" onClick={() => onSeeAll(rail.key)} className="text-sm font-semibold text-primary hover:underline">See all</button>}
           </div>
-          {rail.items.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
-              {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
-            </div>
-          ) : offline ? (
-            <p className="text-sm text-muted-foreground" role="status">The connection dropped. <button type="button" onClick={() => setReloadKey((n) => n + 1)} className="font-semibold text-primary">Try again</button></p>
-          ) : ready ? (
-            <p className="text-sm text-muted-foreground">{rail.empty}</p>
-          ) : null}
+          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
+            {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
+          </div>
         </section>
-      ))}
+        )
+      })}
       {neighbourhoods.length > 0 && (
         <section id="neighbourhoods" aria-label="A peep around the neighbourhoods">
           <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">A peep around the neighbourhoods</h2>
