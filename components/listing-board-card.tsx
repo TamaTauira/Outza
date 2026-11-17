@@ -19,6 +19,7 @@ export function ListingBoardCard({
   price,
   hot,
   onHot,
+  onOpen,
   actions,
 }: {
   rowId?: string
@@ -32,6 +33,7 @@ export function ListingBoardCard({
   price?: ReactNode
   hot?: boolean
   onHot?: (on: boolean) => void
+  onOpen?: () => void
   actions: ReactNode
 }) {
   const photo = cardPhoto(imageUrl)
@@ -40,7 +42,11 @@ export function ListingBoardCard({
       data-row={rowId}
       onMouseEnter={() => onHot?.(true)}
       onMouseLeave={() => onHot?.(false)}
-      className={cn('flex min-w-0 gap-3 rounded-2xl border border-border bg-card p-3', hot && 'bg-primary/10')}
+      onClick={onOpen ? (event) => {
+        if ((event.target as HTMLElement).closest('a,button,input,select,label')) return
+        onOpen()
+      } : undefined}
+      className={cn('flex min-w-0 gap-3 rounded-2xl border border-border bg-card p-3', hot && 'bg-primary/10', onOpen && 'cursor-pointer')}
       style={{ boxShadow: `inset 3px 0 0 ${accent}` }}
     >
       <span className="relative block h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[#110e16]">

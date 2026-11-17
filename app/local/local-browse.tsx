@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Bookmark, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
 import { LocalNeighbourhoodMap, type LocalMapPin } from '@/components/local-neighbourhood-map'
 import { CITIES } from '@/lib/cities'
@@ -10,7 +11,7 @@ import { sectionByKey } from '@/lib/community-shared'
 import { dayLabel } from '@/lib/board'
 import { fmtTime } from '@/lib/local-shared'
 import { EventImage } from '@/components/event-image'
-import { localTileFor, moreTiles, primaryTiles, type LocalTile } from '@/lib/local-tiles'
+import { LOCAL_TILES, localTileFor, type LocalTile } from '@/lib/local-tiles'
 import type { PlaceholderSlot } from '@/lib/placeholders'
 import { citySlug } from '@/lib/seo'
 import { cn } from '@/lib/utils'
@@ -138,7 +139,7 @@ export function LocalBrowse({
   hasListings: boolean
   nowMinutes: number
 }) {
-  const [seeAll, setSeeAll] = useState(false)
+  const router = useRouter()
   const [mode, setMode] = useState<'board' | 'map' | 'list'>('list')
   const [sort, setSort] = useState<'soon' | 'name'>('soon')
   const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
@@ -163,6 +164,7 @@ export function LocalBrowse({
   const ordered = useMemo(() => days.map(([day, rows]) => [day, sort === 'name' ? [...rows].sort((a, b) => a.title.localeCompare(b.title)) : rows] as [string, LocalItem[]]), [days, sort])
 
   const pick = (key: string) => setCategory(category === key ? '' : key)
+  const openListing = (href: string) => router.push(href || '/local', { scroll: false })
   const reveal = (key: string) => {
     setMode('board')
     focusPin(key)
@@ -211,25 +213,12 @@ export function LocalBrowse({
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
         <div className="relative mt-4">
-          <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
-            {primaryTiles().map((tile) => (
+          <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+            {LOCAL_TILES.map((tile) => (
               <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
             ))}
-            <button type="button" aria-expanded={seeAll} onClick={() => setSeeAll((open) => !open)} className="flex h-auto w-[9.5rem] shrink-0 snap-start flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card px-3 py-4 text-sm font-semibold lg:w-auto">
-              {seeAll ? 'Show fewer' : 'See all'}
-              <span className="text-xs font-normal text-muted-foreground">Clearance, dogs and more</span>
-            </button>
           </div>
         </div>
-        {seeAll && (
-          <div className="relative mt-3">
-            <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
-              {moreTiles().map((tile) => (
-                <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
-              ))}
-            </div>
-          </div>
-        )}
       </section>
 
       <section className="relative mt-10" aria-labelledby="local-finds">
@@ -251,13 +240,13 @@ export function LocalBrowse({
           <div className="relative mt-4">
             <div className={cn('flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] lg:grid lg:overflow-visible [&::-webkit-scrollbar]:hidden', featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2')}>
               {featured.map((ev) => (
-                <article key={rowKey(ev)} className="flex w-[78vw] max-w-[280px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-auto lg:max-w-none">
-                  <Link href={ev.href || '/local'} className="block">
+                <article key={rowKey(ev)} onClick={(event) => { if ((event.target as HTMLElement).closest('a,button')) return; openListing(ev.href) }} className="flex w-[78vw] max-w-[280px] shrink-0 cursor-pointer snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-auto lg:max-w-none">
+                  <Link href={ev.href || '/local'} scroll={false} className="block">
                     <ListingPicture ev={ev} slot="hero" className="aspect-video" alt={ev.title} />
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col p-4" style={{ borderTop: `3px solid ${ACCENT[ev.section] ?? '#ea580c'}` }}>
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{sectionByKey(ev.section)?.short ?? 'Local'}</p>
-                    <Link href={ev.href || '/local'} className="mt-1 font-display text-lg font-bold leading-snug line-clamp-2 hover:text-primary">{ev.title}</Link>
+                    <Link href={ev.href || '/local'} scroll={false} className="mt-1 font-display text-lg font-bold leading-snug line-clamp-2 hover:text-primary">{ev.title}</Link>
                     <p className="mt-1 text-sm text-muted-foreground">{[ev.suburb, dayLabel(ev.date, today), clock(ev.time)].filter(Boolean).join(' · ')}</p>
                     <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                       {priceLine(ev)}
@@ -337,7 +326,7 @@ export function LocalBrowse({
               </button>
               {open && (
                 <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} />)}
+                  {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} onOpen={() => openListing(ev.href)} />)}
                 </div>
               )}
               {open && hidden > 0 && <button type="button" onClick={() => setMore((current) => ({ ...current, [day]: true }))} className="mt-2 text-sm font-semibold text-primary">Show {hidden} more {hidden === 1 ? 'event' : 'events'}</button>}
@@ -391,7 +380,7 @@ export function LocalBrowse({
 
 function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; onPick: () => void }) {
   return (
-    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('w-[9.5rem] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition lg:w-auto', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
+    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('w-[9.5rem] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
       <MascotFrame tile={tile} className="h-32 w-full" />
       <span className="block px-2 py-2 text-center text-sm font-semibold leading-tight">{tile.label}</span>
     </button>
@@ -425,7 +414,7 @@ function toBoardEvent(ev: LocalItem): BoardEvent {
   }
 }
 
-function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void }) {
+function BoardCard({ ev, hot, onHot, saved, onSave, onOpen }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void; onOpen: () => void }) {
   const status = ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''
   return (
     <ListingBoardCard
@@ -440,6 +429,7 @@ function BoardCard({ ev, hot, onHot, saved, onSave }: { ev: LocalItem; hot: bool
       price={priceLine(ev)}
       hot={hot}
       onHot={(on) => onHot(on ? rowKey(ev) : null)}
+      onOpen={onOpen}
       actions={(
         <>
           <SaveButton saved={saved} onClick={onSave} />

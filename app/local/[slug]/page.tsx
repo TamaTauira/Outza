@@ -1,37 +1,18 @@
 import type { Metadata } from 'next'
-import { cache } from 'react'
 import { notFound, permanentRedirect } from 'next/navigation'
-import { prisma } from '@/lib/db'
 import { cityDef } from '@/lib/cities'
-import { addDaysStr, localCategoryLabel, localPath, occurrences, recurrenceLabel, todayIn, MAX_AHEAD_DAYS } from '@/lib/local-shared'
+import { localCategoryLabel, localPath } from '@/lib/local-shared'
 import { jsonLdString } from '@/lib/seo-server'
 import { tzOffset } from '@/lib/seo'
-import { publicUrl } from '@/lib/s3'
-import { imageAssetSelect, type ClientImage } from '@/lib/images/spec'
-import { LocalDetailClient, type LocalDetail } from './local-detail-client'
+import { canonicalLocalListing, loadLocalListing } from '../listing-load'
+import { LocalDetailClient } from './local-detail-client'
 
 export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }
 
-/** Loads a live (approved, not expired) listing from "/local/<slug>-<id>" and its upcoming dates. */
-const load = cache(async (param: string): Promise<LocalDetail | null> => {
-  const id = decodeURIComponent(param).split('-').pop() ?? ''
-  if (!id) return null
-  const l = await prisma.localListing.findFirst({
-    where: { id, status: 'APPROVED', expiresAt: { gte: new Date() } },
-    select: { id: true, title: true, category: true, description: true, address: true, suburb: true, postcode: true, city: true, lat: true, lng: true, addressVerified: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true, websiteUrl: true, sourceName: true, imagePath: true, imageAsset: { select: imageAssetSelect }, createdAt: true },
-  })
-  if (!l) return null
-  const today = todayIn(cityDef(l.city).tz)
-  const upcoming = occurrences(l, today, addDaysStr(today, MAX_AHEAD_DAYS))
-  if (!upcoming.length) return null
-  const { createdAt, imagePath, imageAsset, ...rest } = l
-  return { ...rest, imageUrl: imagePath ? publicUrl(imagePath) : null, imageAsset: (imageAsset as ClientImage | null) ?? null, listedAt: createdAt.toISOString(), upcoming, schedule: recurrenceLabel(l), recurring: l.recurrence !== 'NONE' }
-})
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const l = await load((await params).slug)
+  const l = await loadLocalListing((await params).slug)
   if (!l) return { title: 'Listing not found | VibePeep', robots: { index: false } }
   const desc = `${localCategoryLabel(l.category)} in ${l.suburb}, ${l.city} · ${l.schedule}. ${l.description.replace(/\s+/g, ' ').slice(0, 120)}…`
   return {
@@ -42,19 +23,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-/** Old links to a repeat copy of a listing go to the one we keep. */
-async function canonicalOf(param: string) {
-  const id = decodeURIComponent(param).split('-').pop() ?? ''
-  const dup = id ? await prisma.localListing.findFirst({ where: { id, duplicateOfId: { not: null } }, select: { duplicateOfId: true } }) : null
-  if (!dup?.duplicateOfId) return null
-  return prisma.localListing.findFirst({ where: { id: dup.duplicateOfId, status: 'APPROVED', expiresAt: { gte: new Date() } }, select: { id: true, title: true } })
-}
-
 export default async function LocalListingPage({ params, searchParams }: Props) {
   const slug = (await params).slug
-  const canon = await canonicalOf(slug)
-  if (canon) permanentRedirect(localPath(canon))
-  const l = await load(slug)
+  const canon = await canonicalLocalListing(slug)
+  if (canon) permanentRedirect(canon)
+  const l = await loadLocalListing(slug)
   if (!l) notFound()
   const q = (await searchParams).date
   const date = typeof q === 'string' && l.upcoming.includes(q) ? q : l.upcoming[0]

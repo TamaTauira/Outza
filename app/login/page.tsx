@@ -11,6 +11,7 @@ import { PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 import { AuthShell } from '@/components/auth-shell'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordField } from '@/components/password-field'
 import { Button } from '@/components/ui/button'
 import { GoogleButton } from '@/components/google-button'
 
@@ -62,7 +63,7 @@ function LoginForm() {
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+        <PasswordField id="password" name="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
         <p className="text-right text-sm"><Link href="/forgot-password" className="text-primary font-medium hover:underline">Forgot password</Link></p>
       </div>
       {created && !error && <p className="text-sm text-foreground" role="status">You’re in. Sign in with the email and password you just picked, and peek at your inbox to verify the address.</p>}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Calendar, Loader2 } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
@@ -11,6 +11,10 @@ import { cn } from '@/lib/utils'
 import { ProfileFields } from '@/components/profile-fields'
 import { aboutYouStatus, profileDigits, visibleAboutErrors } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
+import { eventsToIcs } from '@/lib/ics'
+import { eventPath } from '@/lib/seo'
+import { useSaved } from '@/lib/saved'
+import { PasswordField } from '@/components/password-field'
 
 type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
@@ -102,6 +106,12 @@ export function AccountClient() {
   const preview = async () => {
     const res = await fetch('/api/me/digest-preview', { method: 'POST' })
     const data = await res.json().catch(() => ({}))
+    if (res.ok) toast.success('City digest preview sent to your inbox')
+    else toast.error(typeof data?.error === 'string' ? data.error : 'Could not send preview')
+  }
+  const watchPreview = async () => {
+    const res = await fetch('/api/me/watchlist-preview', { method: 'POST' })
+    const data = await res.json().catch(() => ({}))
     if (res.ok) toast.success('Preview sent to your inbox')
     else toast.error(typeof data?.error === 'string' ? data.error : 'Could not send preview')
   }
@@ -149,21 +159,26 @@ export function AccountClient() {
         <div className="flex flex-wrap gap-2">{CITIES.map((c) => <button key={c.name} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })} className={chip((me.preferredCities ?? []).includes(c.name))}>{c.name}</button>)}</div>
       </section>
 
-      <section className={card}>
-        <h2 className="font-semibold mb-3">Email digest</h2>
-        <label className="flex items-center gap-3 text-sm cursor-pointer">
-          <input type="checkbox" checked={me.emailOptIn} onChange={(e) => save({ emailOptIn: e.target.checked })} className="w-4 h-4 accent-[hsl(var(--primary))]" />
-          Send me events I&apos;d like
+      <FollowsCard />
+
+      <section id="inbox" className={card}>
+        <h2 className="font-semibold mb-1">Email</h2>
+        <p className="mb-3 text-sm text-muted-foreground">One place for the daily note, the day-before nudge, and a preview. Nothing is sent until you tick a box.</p>
+        <label className="flex items-start gap-3 text-sm cursor-pointer">
+          <input type="checkbox" checked={me.emailOptIn} onChange={(e) => save({ emailOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
+          <span>Send me a note ({(me.emailFrequency || 'weekly').toLowerCase()}). I’ll round up upcoming keepers and new events at venues you follow.</span>
         </label>
-        <div className="flex flex-wrap gap-2 mt-3">
-          {['daily', 'weekly', 'monthly'].map((f) => <button key={f} disabled={!me.emailOptIn} onClick={() => save({ emailFrequency: f })} className={cn(chip(me.emailFrequency?.toLowerCase() === f), 'disabled:opacity-40')}>{f[0].toUpperCase() + f.slice(1)}</button>)}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {['daily', 'weekly', 'monthly'].map((f) => <button key={f} type="button" disabled={!me.emailOptIn} onClick={() => save({ emailFrequency: f })} className={cn(chip(me.emailFrequency?.toLowerCase() === f), 'disabled:opacity-40')}>{f[0].toUpperCase() + f.slice(1)}</button>)}
         </div>
-        <button onClick={preview} className="mt-4 h-9 px-4 rounded-md border border-border text-sm hover:bg-muted">Show Me a Sneak Peek</button>
-        <label className="flex items-start gap-3 text-sm mt-4 cursor-pointer">
+        <label className="mt-4 flex items-start gap-3 text-sm cursor-pointer">
           <input type="checkbox" checked={!!me.reminderOptIn} onChange={(e) => save({ reminderOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
-          <span>Nudge me about a day before a saved event. Off until you tick it, and only when emails are switched on.</span>
+          <span>Nudge me the day before a saved event. Off until you tick it, and only when the note is switched on.</span>
         </label>
-        <p className="mt-3 text-sm text-muted-foreground">Saves, venue follows and the calendar file live on <Link href="/watchlist" className="text-primary underline">My VibePeep</Link>.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={() => { void watchPreview() }} className="h-9 rounded-md border border-border px-4 text-sm hover:bg-muted">Send me a preview</button>
+          <button type="button" onClick={preview} className="h-9 rounded-md border border-border px-4 text-sm hover:bg-muted">Preview the city digest</button>
+        </div>
       </section>
 
       <section className={card}>
@@ -230,6 +245,89 @@ function PromoterProfile({ me, onSaved }: { me: Me; onSaved: (patch: Partial<Me>
   )
 }
 
+function FollowsCard() {
+  const { saved } = useSaved()
+  const [tags, setTags] = useState<string[]>([])
+  const [venues, setVenues] = useState<{ venueKey: string; venueName: string; city: string | null }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancel = false
+    fetch('/api/me/follows').then((r) => r.json()).then((d) => {
+      if (cancel) return
+      setTags(d?.tags ?? [])
+      setVenues(d?.venues ?? [])
+    }).catch(() => {}).finally(() => { if (!cancel) setLoading(false) })
+    return () => { cancel = true }
+  }, [])
+
+  const unfollowTag = async (tag: string) => {
+    const res = await fetch('/api/me/follows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'tag', value: tag, follow: false }) })
+    if (res.ok) setTags((list) => list.filter((item) => item !== tag))
+    else toast.error('Could not unfollow that')
+  }
+  const unfollowVenue = async (venue: { venueKey: string; venueName: string; city: string | null }) => {
+    const res = await fetch('/api/me/follows', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'venue', value: venue.venueName, city: venue.city, follow: false }) })
+    if (res.ok) setVenues((list) => list.filter((item) => item.venueKey !== venue.venueKey))
+    else toast.error('Could not unfollow that')
+  }
+  const download = async () => {
+    const res = await fetch('/api/me/calendar')
+    const body = res.ok ? await res.text() : eventsToIcs(saved.map((ev) => ({
+      id: ev.id, title: ev.title, date: ev.date, endDate: ev.endDate, time: ev.time, endTime: ev.endTime,
+      venueName: ev.venueName, city: ev.city,
+      url: ev.href?.startsWith('http') ? ev.href : `${window.location.origin}${ev.href ?? eventPath(ev)}`,
+    })), { calendarName: 'VibePeep' })
+    if (!body) { toast.error('The calendar didn’t land. Give it another go.'); return }
+    const blob = new Blob([body], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'vibepeep.ics'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <section id="following" className={`${card} lg:col-span-2`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-semibold">Following</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Interests and venues you follow. Saved events stay on <Link href="/saved" className="text-primary underline">Saved</Link>.</p>
+        </div>
+        <button type="button" onClick={() => { void download() }} className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm hover:bg-muted">
+          <Calendar className="h-4 w-4" />Add to my calendar
+        </button>
+      </div>
+      {loading ? <Loader2 className="mt-3 h-5 w-5 animate-spin text-primary" /> : (
+        <div className="mt-4 grid gap-5 sm:grid-cols-2">
+          <div>
+            <h3 className="text-sm font-semibold">Interests</h3>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <button key={tag} type="button" onClick={() => { void unfollowTag(tag) }} className="h-9 rounded-full bg-primary px-3 text-sm text-primary-foreground">{tag} · Unfollow</button>
+              ))}
+              {!tags.length && <p className="text-sm text-muted-foreground">No interests yet. Follow one from an event.</p>}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Venues</h3>
+            <ul className="mt-2 space-y-2">
+              {venues.map((venue) => (
+                <li key={venue.venueKey} className="flex items-center justify-between gap-3 text-sm">
+                  <span>{venue.venueName}{venue.city ? ` · ${venue.city}` : ''}</span>
+                  <button type="button" onClick={() => { void unfollowVenue(venue) }} className="rounded-full border border-border px-3 py-1 text-sm hover:bg-muted">Unfollow</button>
+                </li>
+              ))}
+              {!venues.length && <li className="text-sm text-muted-foreground">No venues yet. Follow one from its event page.</li>}
+            </ul>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function SecurityCard({ email }: { email: string }) {
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
@@ -261,8 +359,8 @@ function SecurityCard({ email }: { email: string }) {
     <section className={card}>
       <h2 className="font-semibold mb-3">Password</h2>
       <form onSubmit={change} className="space-y-2">
-        <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Current password" aria-label="Current password" autoComplete="current-password" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
-        <input type="password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="New password" aria-label="New password" autoComplete="new-password" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
+        <PasswordField value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Current password" aria-label="Current password" autoComplete="current-password" className="h-10" />
+        <PasswordField value={next} onChange={(e) => setNext(e.target.value)} placeholder="New password" aria-label="New password" autoComplete="new-password" className="h-10" />
         <button disabled={busy} className="h-9 px-4 rounded-md border border-border text-sm font-semibold hover:bg-muted disabled:opacity-60">Change password</button>
       </form>
       <h2 className="font-semibold mt-6 mb-1">Close account</h2>

@@ -396,7 +396,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
           <p className="text-xs font-semibold uppercase tracking-wide text-[#ffb4a6]">Your plan</p>
           <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
             <h2 className="font-display text-xl font-bold leading-tight">{plan.title}</h2>
-            <Link href={plan.href} className="inline-flex items-center gap-1 text-sm font-semibold text-[#ffb4a6] underline underline-offset-2">Open the full plan<ArrowRight className="w-3.5 h-3.5" /></Link>
+            <span className="text-sm text-[#ffb4a6]">This plan stays here. Save the stops you want.</span>
           </div>
           <p className="mt-1 text-sm text-white/70">{plan.city}{plan.date ? ` · ${dayLabel(plan.date, today)}` : ''}</p>
           <p className="mt-2 text-sm text-white/80">{plan.blurb}</p>
