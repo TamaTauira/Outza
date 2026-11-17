@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { cosListedPrice } from './cos-event'
 import { PRICE_ENRICH_BUDGET_MS, groupTargets, resolveEventPrice, type PriceFetch, type PriceResponse } from './price-lookup'
-import { explicitAdmissionPrice, humanitixPayloadPrice, jsonLdPrice, oztixSaysFree, pagePrice, ticketCtas } from './price-read'
+import { explicitAdmissionPrice, humanitixPayloadPrice, humanitixTicketsHtml, jsonLdPrice, oztixSaysFree, pagePrice, ticketCtas } from './price-read'
 import { REFRESH_CHUNKS } from './refresh-plan'
 import { priceSummary } from './quality'
 
@@ -48,6 +48,14 @@ test('humanitix payload prices are a range, and a class fee in prose is kept', (
   assert.equal(explicitAdmissionPrice('Small group • $22 per class, pay on the spot')?.price, '$22')
   assert.equal(explicitAdmissionPrice('step-free entry and free parking'), null)
   assert.equal(explicitAdmissionPrice('From $25')?.price, 'From $25')
+})
+
+test('a humanitix tickets page supplies the price the event payload omitted', () => {
+  const paid = '{"@type":"Offer",name:"1 class",price:30,availability:"InStock"},{"@type":"Offer",name:"5 classes at $25 each",price:125,availability:"InStock"}'
+  assert.equal(humanitixTicketsHtml(paid)?.price, '$30 – $125')
+  const free = '<span class="price-label">Free </span> {"@type":"Offer",name:"By donation on the day",price:0} displayPrice:"Free"'
+  assert.equal(humanitixTicketsHtml(free)?.isFree, true)
+  assert.equal(humanitixTicketsHtml('{"@type":"Offer",name:"By donation",price:0}'), null)
 })
 
 test('json-ld, oztix free and ticket buttons', () => {

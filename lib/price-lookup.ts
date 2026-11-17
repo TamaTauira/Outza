@@ -15,6 +15,7 @@ import {
   explicitAdmissionPrice,
   humanitixDataUrl,
   humanitixPayloadPrice,
+  humanitixTicketsHtml,
   isKnownTicketer,
   isTicketekHost,
   lookupKey,
@@ -109,6 +110,13 @@ async function readHumanitix(url: string, fetch: PriceFetch): Promise<PriceOutco
   const parsed = humanitixPayloadPrice(res.body)
   if (!parsed.event) return missed(PRICE_REASON.sourceDown, url)
   if (parsed.read?.price) return found(parsed.read, url)
+  const page = publicUrl(url)
+  const ticketsUrl = page ? `https://${page.hostname}${page.pathname.replace(/\/+$/, '')}/tickets` : null
+  if (!ticketsUrl) return missed(PRICE_REASON.humanitix, url)
+  const tickets = await fetch({ url: ticketsUrl })
+  if (!tickets.body || tickets.status >= 400) return missed(statusReason(tickets, true), ticketsUrl)
+  const fromTickets = humanitixTicketsHtml(tickets.body)
+  if (fromTickets?.price) return found(fromTickets, ticketsUrl)
   return missed(PRICE_REASON.humanitix, url)
 }
 

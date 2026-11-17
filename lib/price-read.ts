@@ -121,6 +121,23 @@ export function bccEventId(raw: string): string | null {
   return match?.[1] ?? null
 }
 
+/** Ticket list rendered on a Humanitix `/tickets` page. Schema offers are often absent from the event payload. */
+export function humanitixTicketsHtml(html: string): PriceRead | null {
+  const offers: { name: string; price: number }[] = []
+  for (const match of html.matchAll(/"@type":"Offer"[\s\S]{0,300}?name:"([^"]*)"[\s\S]{0,120}?price:(\d+(?:\.\d+)?)/g)) {
+    const price = Number(match[2])
+    if (Number.isFinite(price) && price >= 0 && price < 100000) offers.push({ name: match[1], price })
+  }
+  const paid = offers.map((offer) => offer.price).filter((price) => price > 0)
+  if (paid.length) return priceFromAmounts(Math.min(...paid), Math.max(...paid))
+  const display = [...html.matchAll(/displayPrice:"([^"]+)"/g)].map((match) => match[1].trim())
+  const labels = [...html.matchAll(/class="price-label">\s*([^<]+)/g)].map((match) => match[1].trim())
+  const saysFree = [...display, ...labels].some((text) => /^free$/i.test(text))
+    || offers.some((offer) => offer.price === 0 && /\bfree\b/i.test(offer.name))
+  if (saysFree) return FREE
+  return null
+}
+
 export function humanitixPayloadPrice(body: string): { event: boolean; read: PriceRead | null } {
   const listings = humanitixListingsFromJson(body)
   if (!listings.length) return { event: false, read: null }
