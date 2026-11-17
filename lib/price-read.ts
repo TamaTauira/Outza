@@ -122,7 +122,8 @@ export function bccEventId(raw: string): string | null {
 }
 
 function shownTicketAmount(text: string): number | null {
-  const match = text.match(/\$\s?(\d{1,4}(?:\.\d{2})?)/)
+  const cleaned = text.replace(/,(?=\d{3}(?:\D|$))/g, '')
+  const match = cleaned.match(/\$\s?(\d{1,6}(?:\.\d{2})?)/)
   if (!match) return null
   const amount = Number(match[1])
   return Number.isFinite(amount) && amount > 0 && amount < 100000 ? Math.round(amount * 100) / 100 : null
@@ -197,15 +198,16 @@ export function eventbriteAvailabilityPrice(availability: { is_free?: boolean; m
 
 /** A price written as the admission cost. Ignores a page full of unrelated amounts. */
 export function explicitAdmissionPrice(text: string): PriceRead | null {
+  text = text.replace(/,(?=\d{3}(?:\D|$))/g, '')
   const from: number[] = []
   const amounts: number[] = []
   const take = (bucket: number[], raw: string) => {
     const n = Number(raw)
     if (Number.isFinite(n) && n > 0 && n < 5000) bucket.push(Math.round(n * 100) / 100)
   }
-  for (const match of text.matchAll(/\b(?:from|starting(?:\s+at)?)\s+\$\s?(\d{1,4}(?:\.\d{2})?)\b/gi)) take(from, match[1])
-  for (const match of text.matchAll(/\$\s?(\d{1,4}(?:\.\d{2})?)\s+per\s+(?:class|person|ticket|session|entry|head)\b/gi)) take(amounts, match[1])
-  for (const match of text.matchAll(/\b(?:tickets?|entry|admission|cost)\s*(?:is|:|from)?\s*\$\s?(\d{1,4}(?:\.\d{2})?)\b/gi)) take(amounts, match[1])
+  for (const match of text.matchAll(/\b(?:from|starting(?:\s+at)?)\s+\$\s?(\d{1,6}(?:\.\d{2})?)\b/gi)) take(from, match[1])
+  for (const match of text.matchAll(/\$\s?(\d{1,6}(?:\.\d{2})?)\s+per\s+(?:class|person|ticket|session|entry|head)\b/gi)) take(amounts, match[1])
+  for (const match of text.matchAll(/\b(?:tickets?|entry|admission|cost)\s*(?:is|:|from)?\s*\$\s?(\d{1,6}(?:\.\d{2})?)\b/gi)) take(amounts, match[1])
   const nums = [...from, ...amounts]
   const distinct = [...new Set(nums)]
   if (!distinct.length || distinct.length > 4) return null
