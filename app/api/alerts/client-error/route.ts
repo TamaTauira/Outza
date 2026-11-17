@@ -1,5 +1,7 @@
+import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
-import { reportFault } from '@/lib/owner-alerts'
+import { noteTransientNetwork, reportFault } from '@/lib/owner-alerts'
+import { isBareNetworkFault, transientSessionId } from '@/lib/network-fault'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +15,21 @@ function sameOrigin(req: Request) {
   try { return new URL(source).host === host } catch { return false }
 }
 
-/** Page crashes caught by the app's error boundaries. Same-origin (or a shared key) and rate-limited. */
+function fallbackSession(ip: string, ua: string) {
+  return createHash('sha1').update(`${ip}\n${ua}`).digest('hex').slice(0, 20)
+}
+
+/**
+ * Page crashes caught by the app's error boundaries, plus stackless fetch
+ * failures forwarded by the same reporter. Same-origin (or a shared key) and
+ * rate-limited.
+ *
+ * "Load failed" / "Failed to fetch" / Firefox's NetworkError / "The network
+ * connection was lost" / AbortError, with no stack, are a dropped connection.
+ * They are counted and do not email as a page crash. A spike of distinct
+ * sessions still emails, under area Network. A crash that has a stack emails
+ * as before.
+ */
 export async function POST(req: Request) {
   const token = process.env.CLIENT_ERROR_TOKEN || process.env.NEXT_PUBLIC_CLIENT_ERROR_TOKEN
   if (token) {
@@ -31,17 +47,25 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => ({}))
   const message = String(b.message ?? '').slice(0, 300)
   if (!message) return NextResponse.json({ error: 'Missing message' }, { status: 400 })
+  const name = typeof b.name === 'string' ? b.name.slice(0, 80) : ''
+  const stack = typeof b.stack === 'string' ? b.stack : ''
   let path = String(b.path ?? '').slice(0, 200)
   try { path = new URL(path, 'http://x').pathname } catch {}
   const route = path.replace(/\/[^/]*-?c[a-z0-9]{20,}$/i, '/[id]')
+  const ua = (req.headers.get('user-agent') ?? '').slice(0, 200)
+  if (isBareNetworkFault({ message, name, stack })) {
+    const session = transientSessionId(b.session) ?? fallbackSession(ip, ua)
+    await noteTransientNetwork({ route: route || path || '/', message, sessionId: session, page: path || '/' })
+    return NextResponse.json({ ok: true, transient: true })
+  }
   await reportFault({
     area: 'Page crash',
     key: `client-${route}-${message.slice(0, 120)}`,
     route: route || path || '/',
     title: `${route || '/'}: ${message.slice(0, 120)}`,
     error: message,
-    stack: String(b.stack ?? ''),
-    detail: `Page: ${path}\nBrowser: ${(req.headers.get('user-agent') ?? '').slice(0, 200)}${b.digest ? `\nDigest: ${String(b.digest).slice(0, 60)}` : ''}\n\n${String(b.stack ?? '').slice(0, 3000)}`,
+    stack,
+    detail: `Page: ${path}\nBrowser: ${ua}${b.digest ? `\nDigest: ${String(b.digest).slice(0, 60)}` : ''}\n\n${stack.slice(0, 3000)}`,
   })
   return NextResponse.json({ ok: true })
 }

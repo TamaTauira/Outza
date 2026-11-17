@@ -14,6 +14,8 @@ import { createBasemap } from '@/lib/map-basemap'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
+import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
+import { isBareNetworkFault } from '@/lib/network-fault'
 import { ReachBeacon } from '@/components/reach-beacon'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { eventPictureSrc, type PlaceholderSlot } from '@/lib/placeholders'
@@ -94,6 +96,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const [events, setEvents] = useState<any[]>([])
   const [featured, setFeatured] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [offline, setOffline] = useState(false)
   const [ready, setReady] = useState(false)
   const youRef = useRef<any>(null)
   const Lref = useRef<any>(null)
@@ -138,22 +141,40 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       if (filters.isLGBTI) params.set('isLGBTI', 'true')
       if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
       if (filters.dateTo) params.set('dateTo', filters.dateTo)
-      const [res, feat] = await Promise.all([
-        fetch(`/api/events?${params.toString()}`).then((r) => r.json()),
-        fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((r) => r.json()).catch(() => ({ items: [] })),
+      const [eventsResult, featuredResult] = await Promise.all([
+        readJson<{ events?: { price?: string | null; priceMin?: number | null }[] }>(`/api/events?${params.toString()}`),
+        readJson<{ items?: unknown[] }>(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`),
       ])
       if (seq !== fetchSeq.current) return
-      const list = (res?.events ?? []).filter((ev: { price?: string | null; priceMin?: number | null }) => !filters.isFree || !isPaidListing(ev))
+      if ((!eventsResult.ok && eventsResult.reason === 'abort') || (!featuredResult.ok && featuredResult.reason === 'abort')) return
+      if ((!eventsResult.ok && eventsResult.reason === 'network') || (!featuredResult.ok && featuredResult.reason === 'network')) {
+        setOffline(true)
+        return
+      }
+      if (!eventsResult.ok) {
+        console.error('Failed to fetch events for map:', eventsResult.status)
+        return
+      }
+      const list = (eventsResult.data.events ?? []).filter((ev) => !filters.isFree || !isPaidListing(ev))
       setEvents(list)
-      setFeatured(feat?.items ?? [])
+      if (featuredResult.ok) setFeatured(featuredResult.data.items ?? [])
+      setOffline(false)
     } catch (err) {
-      console.error('Failed to fetch events for map:', err)
+      if (!isBareNetworkFault(err)) console.error('Failed to fetch events for map:', err)
+      else setOffline(true)
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
     }
   }, [searchQuery, city, categoryKey, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI, filters.dateFrom, filters.dateTo])
 
   useEffect(() => { if (!locked) fetchEvents() }, [fetchEvents, locked])
+
+  useEffect(() => {
+    if (!offline || locked) return
+    const retry = createReconnectRetry()
+    armReconnect(retry, () => { void fetchEvents() })
+    return () => retry.stop()
+  }, [offline, locked, fetchEvents])
 
   useEffect(() => {
     if (!locked) return
@@ -193,7 +214,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
       } catch (err) {
-        console.error('Map style failed to load:', err)
+        if (!isBareNetworkFault(err)) console.error('Map style failed to load:', err)
       }
     })()
     return () => { cancelled = true }
@@ -381,9 +402,18 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       )}
       <div ref={mapRef} className={bleed ? 'se-map absolute inset-0 overflow-hidden' : 'se-map absolute inset-0 overflow-hidden rounded-2xl'} />
       <div className={bleed ? 'vp-map-float vp-map-count absolute left-3 top-3 z-20 max-w-[calc(100%-4.75rem)] truncate rounded-full bg-white/80 px-3 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white lg:hidden' : 'vp-map-float absolute left-1/2 top-4 z-20 max-w-[calc(100%-7rem)] -translate-x-1/2 truncate rounded-full bg-white/80 px-4 py-2 text-sm font-medium text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/75 dark:text-white sm:left-4 sm:max-w-none sm:translate-x-0'}>
-        {loading && events.length === 0 ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> {countNoun} on map</>}
+        {loading && events.length === 0 ? <span>Loading map…</span> : <><span className="font-bold text-primary">{count}</span> {countNoun} on map{offline ? ' · last loaded' : ''}</>}
       </div>
-      {!loading && count === 0 && (
+      {!loading && offline && count === 0 && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6">
+          <div className="pointer-events-auto max-w-sm rounded-2xl bg-card/95 px-5 py-4 text-center text-card-foreground shadow-xl ring-1 ring-border" role="status">
+            <p className="font-display text-lg font-bold">The signal dropped.</p>
+            <p className="mt-1 text-sm text-muted-foreground">The map is fine. We just couldn&apos;t load the pins.</p>
+            <button type="button" onClick={() => { void fetchEvents() }} className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Try again</button>
+          </div>
+        </div>
+      )}
+      {!loading && !offline && count === 0 && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-6">
           <div className="pointer-events-auto max-w-sm rounded-2xl bg-card/95 px-5 py-4 text-center text-card-foreground shadow-xl ring-1 ring-border">
             <VibePeepMascot className="mx-auto mb-2 w-20" alt="" />

@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ProfileFields } from '@/components/profile-fields'
 import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
+import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 
 const OPEN_PATHS = ['/privacy', '/how-listings-work', '/disclaimer', '/login', '/signup']
 
@@ -25,13 +26,23 @@ export function ProfileGate() {
   useEffect(() => {
     if (status !== 'authenticated' || !uid) { setNeeded(false); return }
     let live = true
-    fetch('/api/me').then((r) => (r.ok ? r.json() : null)).then((d) => {
-      const u = d?.user
-      if (!live || !u) return
-      setNeeded(u.role === 'CONSUMER' && !u.birthYear)
-      if (u.homePostcode) setHomePostcode(u.homePostcode)
-    }).catch((err) => console.error('Profile check failed:', err))
-    return () => { live = false }
+    const retry = createReconnectRetry()
+    const load = () => {
+      readJson<{ user?: { role?: string; birthYear?: unknown; homePostcode?: string } }>('/api/me').then((result) => {
+        if (!live) return
+        if (!result.ok) {
+          if (result.reason === 'network') armReconnect(retry, () => { if (live) load() })
+          else if (result.reason !== 'abort') console.error('Profile check failed:', result.status)
+          return
+        }
+        const u = result.data?.user
+        if (!u) return
+        setNeeded(u.role === 'CONSUMER' && !u.birthYear)
+        if (u.homePostcode) setHomePostcode(u.homePostcode)
+      })
+    }
+    load()
+    return () => { live = false; retry.stop() }
   }, [status, uid])
 
   if (!needed || OPEN_PATHS.some((p) => pathname?.startsWith(p))) return null

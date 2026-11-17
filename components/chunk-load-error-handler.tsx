@@ -8,12 +8,22 @@
 
 import { useEffect } from 'react'
 import { isChunkLoadError } from '@/lib/chunk-load'
+import { isBareNetworkFault } from '@/lib/network-fault'
 import { reportCrash } from '@/components/report-crash'
 
 function asReportable(value: unknown): Error & { digest?: string } {
   if (value instanceof Error) return value
   if (typeof value === 'string' && value.trim()) return new Error(value)
   return new Error('Failed to load chunk')
+}
+
+function networkReport(value: unknown): Error {
+  if (value instanceof Error && value.stack) return value
+  const message = value instanceof Error ? (value.message || 'Load failed') : typeof value === 'string' && value.trim() ? value : 'Load failed'
+  const error = new Error(message)
+  error.name = value instanceof Error && value.name ? value.name : 'TypeError'
+  error.stack = ''
+  return error
 }
 
 function recover(value: unknown) {
@@ -23,15 +33,26 @@ function recover(value: unknown) {
 export function ChunkLoadErrorHandler() {
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
-      const value = isChunkLoadError(event.error) ? event.error : event.message
-      if (!isChunkLoadError(value)) return
+      const value = event.error ?? event.message
+      if (isChunkLoadError(value)) {
+        event.preventDefault()
+        recover(value)
+        return
+      }
+      // A fetch that rejects with no stack must not surface as a page crash.
+      if (!isBareNetworkFault(value)) return
       event.preventDefault()
-      recover(value)
+      reportCrash(networkReport(value))
     }
     const onRejection = (event: PromiseRejectionEvent) => {
-      if (!isChunkLoadError(event.reason)) return
+      if (isChunkLoadError(event.reason)) {
+        event.preventDefault()
+        recover(event.reason)
+        return
+      }
+      if (!isBareNetworkFault(event.reason)) return
       event.preventDefault()
-      recover(event.reason)
+      reportCrash(networkReport(event.reason))
     }
     window.addEventListener('error', onError)
     window.addEventListener('unhandledrejection', onRejection)

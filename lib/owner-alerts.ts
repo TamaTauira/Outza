@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
 import { emailLockup } from '@/lib/email-brand'
+import { TRANSIENT_WINDOW_MS, foldTransientSessions } from '@/lib/network-fault'
 
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
 const MAX_FAULT_EMAILS_PER_HOUR = 10
@@ -103,6 +104,43 @@ export function faultMachineBlock(facts: {
     stack: facts.stack,
   }
   return `VIBEPEEP_FAULT\n${JSON.stringify(payload)}`
+}
+
+const TRANSIENT_KEY = 'fault:transient-network'
+
+/**
+ * Counts a stackless fetch failure. One phone on a bad signal is logged and
+ * does not email. Enough distinct sessions in a short window still emails,
+ * so a real outage is not silent. Never throws.
+ */
+export async function noteTransientNetwork(opts: { route: string; message: string; sessionId: string; page?: string }) {
+  try {
+    const now = new Date()
+    const folded = await prisma.$transaction(async (tx) => {
+      const existing = await tx.ownerAlert.findUnique({ where: { key: TRANSIENT_KEY } })
+      const next = foldTransientSessions(existing?.detail ?? null, opts.sessionId, now.getTime())
+      const detail = JSON.stringify(next.ledger)
+      await tx.ownerAlert.upsert({
+        where: { key: TRANSIENT_KEY },
+        create: { key: TRANSIENT_KEY, kind: 'NETWORK', title: 'Transient network errors', detail, count: 1 },
+        update: { count: { increment: 1 }, lastSeen: now, detail, title: 'Transient network errors' },
+      })
+      return next
+    })
+    const where = opts.page || opts.route || '/'
+    console.warn(`[network] ${opts.message} on ${where} (${folded.distinct} sessions in ${TRANSIENT_WINDOW_MS / 60000}m)`)
+    if (!folded.spike) return
+    await reportFault({
+      area: 'Network',
+      key: 'transient-network-spike',
+      route: opts.route || '/',
+      title: `Fetch failures from ${folded.distinct} sessions in ${TRANSIENT_WINDOW_MS / 60000} minutes`,
+      error: opts.message,
+      detail: `Sessions: ${folded.distinct}\nLatest page: ${where}\nMessage: ${opts.message}\n\nA single dropped connection is not a page crash. This email means many browsers lost the network at once.`,
+    })
+  } catch (e: any) {
+    console.error('[network] transient note failed:', e?.message)
+  }
 }
 
 /** Records a serious fault and emails the owner straight away (deduped per fault, throttled). Never throws. */
