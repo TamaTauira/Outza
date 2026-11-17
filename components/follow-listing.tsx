@@ -39,7 +39,7 @@ export function FollowListing({ category, venueName, city, className }: { catego
     if (!res.ok) { toast.error(data?.error ?? 'Could not update that'); return }
     if (kind === 'tag') setTags(data.tags ?? [])
     else setVenues((list) => on ? list.filter((item) => item !== key) : [...list, key])
-    toast.success(on ? 'Removed from My VibePeep' : 'Following. New matches can land in your email if you opt in.')
+    toast.success(on ? 'Unfollowed' : 'Following. New matches can land in your email if you opt in.')
   }
 
   if (status === 'loading' || (!category && !venueName)) return null

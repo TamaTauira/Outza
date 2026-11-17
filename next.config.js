@@ -24,6 +24,9 @@ const nextConfig = {
   // git hostnames are left alone.
   async redirects() {
     const local = [
+      { source: '/watchlist', destination: '/account', statusCode: 308 },
+      { source: '/outings', destination: '/', statusCode: 308 },
+      { source: '/outings/:slug', destination: '/', statusCode: 308 },
       { source: '/community', destination: '/local', statusCode: 301 },
       { source: '/community/submit', destination: '/local?tab=submit', statusCode: 301 },
       { source: '/community/verify', destination: '/local/verify', statusCode: 301 },

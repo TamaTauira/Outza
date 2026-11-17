@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
+import { AddToPlanButton } from '@/components/add-to-plan'
 import { EventImage } from '@/components/event-image'
+import { EventReactions } from '@/components/event-reactions'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { VenueMap } from '@/components/venue-map'
 import { CATEGORIES } from '@/lib/categories'
@@ -53,13 +55,13 @@ type PeekEvent = {
 }
 
 /** Event opened over the page you were on. The address is the real event URL. */
-export function EventPeek({ event }: { event: PeekEvent }) {
+export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; fullHref?: string; surface?: string }) {
   const router = useRouter()
   const sheet = useRef<HTMLDivElement>(null)
   const drag = useRef<{ y: number; dy: number } | null>(null)
   const closing = useRef(false)
-  const path = eventPath(event)
-  const { isSaved, toggle } = useSaved()
+  const path = fullHref || eventPath(event)
+  const { isSaved, toggle, signedIn } = useSaved()
   const saved = isSaved(event.id)
   const savedEvent: SavedEvent = {
     id: event.id,
@@ -236,12 +238,14 @@ export function EventPeek({ event }: { event: PeekEvent }) {
                   label={event.venueName || event.title}
                 />
               </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-1.5">
-                <button type="button" onClick={() => toggle(savedEvent)} className={cn('flex h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-1.5 text-[11px] font-semibold sm:text-xs', saved ? 'border-primary text-primary' : 'border-border')}>
+              <EventReactions eventId={event.id} signedIn={signedIn} />
+              <div className="grid grid-cols-4 gap-1.5">
+                <button type="button" onClick={() => toggle(savedEvent, surface)} aria-label={saved ? 'Saved' : 'Save'} className={cn('flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border px-1 text-[10px] font-semibold sm:text-xs', saved ? 'border-primary text-primary' : 'border-border')}>
                   <Bookmark className={cn('h-4 w-4 shrink-0', saved && 'fill-current')} /> {saved ? 'Saved' : 'Save'}
                 </button>
-                <ItineraryButton event={savedEvent} outline />
-                <button type="button" onClick={() => shareEvent(event)} className="flex h-11 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-border px-1.5 text-[11px] font-semibold sm:text-xs">
+                <ItineraryButton event={savedEvent} compact surface={surface} className="h-11 w-full rounded-xl" />
+                <AddToPlanButton eventId={event.id} city={event.city} icon surface={surface} className="h-11 w-full min-w-0 rounded-xl" />
+                <button type="button" onClick={() => shareEvent(event, surface)} aria-label="Share" className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border px-1 text-[10px] font-semibold sm:text-xs">
                   <Share2 className="h-4 w-4 shrink-0" /> Share
                 </button>
               </div>
@@ -266,9 +270,9 @@ export function EventPeek({ event }: { event: PeekEvent }) {
                   if (fullPageNavigation(window.location.pathname, href) === 'reload') window.location.reload()
                   else window.location.assign(href)
                 }}
-                className="block text-center text-sm text-muted-foreground underline underline-offset-2"
+                className="block text-center text-sm font-semibold text-primary underline underline-offset-2"
               >
-                Open the full page
+                Open the full event page
               </a>
             </div>
           </div>

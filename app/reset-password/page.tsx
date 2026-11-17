@@ -6,8 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { AuthShell } from '@/components/auth-shell'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordField } from '@/components/password-field'
 
 function ResetForm() {
   const params = useSearchParams()
@@ -42,7 +42,7 @@ function ResetForm() {
       {!token && <p className="text-sm text-destructive" role="alert">That reset link is missing. Ask for a new one.</p>}
       <div className="space-y-1.5">
         <Label htmlFor="password">New password</Label>
-        <Input id="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+        <PasswordField id="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
       </div>
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading || !token}>

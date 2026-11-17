@@ -167,7 +167,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               <h2 className="font-display text-xl font-bold">Don’t let this one slip past.</h2>
               <p className="mt-1 text-sm text-white/75">A nudge before it starts.</p>
             </div>
-            <Link href={signedIn ? '/watchlist' : '/login?next=/watchlist'} className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Set reminders</Link>
+            <Link href={signedIn ? '/account#inbox' : '/login?next=/account'} className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Set reminders</Link>
           </section>
 
           <section className="mt-6 flex flex-col items-start justify-between gap-3 rounded-3xl border border-border bg-card px-5 py-5 sm:flex-row sm:items-center">

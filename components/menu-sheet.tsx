@@ -2,8 +2,7 @@
 
 import type { ComponentType, ReactNode } from 'react'
 import Link from 'next/link'
-import { Bookmark, Building2, List, LogOut, Megaphone, Settings, ShieldCheck, Sparkles, User, Users } from 'lucide-react'
-import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
+import { Building2, List, LogOut, Megaphone, Settings, ShieldCheck, User, Users } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { TrustCount } from '@/components/admin-nav'
 import { useHasLocalListings } from '@/components/use-has-local-listings'
@@ -38,10 +37,7 @@ export function MenuSheet({
   const hasListings = useHasLocalListings(signedIn)
   const items: Item[] = signedIn
     ? [
-        { href: '/itinerary', label: 'Itinerary', Icon: CalendarPlusIcon },
-        { href: '/watchlist', label: 'My VibePeep', Icon: Bookmark },
         { href: '/together', label: 'Plan with your crew', Icon: Users },
-        { href: '/outings', label: 'Plan a day or night', Icon: Sparkles },
         { href: '/account', label: 'Your account & inbox', Icon: Settings },
         ...(hasListings ? [{ href: '/local?tab=mine', label: 'Your listings', Icon: List }] : []),
         isPromoter

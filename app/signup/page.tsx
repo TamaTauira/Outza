@@ -15,6 +15,7 @@ import { GoogleButton } from '@/components/google-button'
 import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
 import { safeNextPath } from '@/lib/safe-next'
 import { ProfileFields } from '@/components/profile-fields'
+import { PasswordField } from '@/components/password-field'
 
 function SignupForm() {
   const router = useRouter()
@@ -108,7 +109,7 @@ function SignupForm() {
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+        <PasswordField id="password" name="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="homeCity">Home city</Label>

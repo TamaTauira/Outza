@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, House, Users, Sparkles, ShieldCheck, Building2, List } from 'lucide-react'
+import { MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, House, Users, ShieldCheck, Building2, List } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
@@ -112,9 +112,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <DropdownMenuLabel className="truncate">{user.name || user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/itinerary"><CalendarPlusIcon className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/watchlist"><Bookmark className="w-4 h-4 mr-2" />My VibePeep</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/outings"><Sparkles className="w-4 h-4 mr-2" />Plan a day or night</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />Your account & inbox</Link></DropdownMenuItem>
                 {hasListings && <DropdownMenuItem asChild><Link href="/local?tab=mine"><List className="w-4 h-4 mr-2" />Your listings</Link></DropdownMenuItem>}
                 {isPromoter

@@ -285,7 +285,7 @@ export function composeWatchEmail(input: {
     unsubscribeHref: unsubscribe,
     homeHref: home,
     disclaimer: DISCLAIMER,
-    reason: 'You asked for these notes. Turn them off any time from My VibePeep.',
+    reason: 'You asked for these notes. Turn them off any time from your account.',
   })
   return { subject, html, text: text.join('\n') }
 }
