@@ -302,11 +302,7 @@
   color: #1a1408;
 }
 
+/* The mascot styles already honour reduced motion. A global kill stops it settling. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
 }
