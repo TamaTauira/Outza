@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { ChevronDown, Headphones } from 'lucide-react'
-import { BOOSTS } from '@/lib/sponsorship'
-import { LOCAL_AD, PRO_PLAN, formatAud } from '@/lib/tiers'
+import { PRO_PLAN, formatAud } from '@/lib/tiers'
 import { ctaClass, sectionPad } from './styles'
 
 const proPayback = formatAud(Math.ceil(PRO_PLAN.priceCents / (PRO_PLAN.discountPct / 100) / 100) * 100)
@@ -19,7 +18,7 @@ export function FaqSection() {
     },
     {
       q: 'Where does my event appear?',
-      a: 'Boost, Spotlight and Headliner show in the Featured band for your event’s city. Headliner ranks above Spotlight, which ranks above Boost. Front-row placement is the add-on that can show in every city. Headliner events are eligible for subscriber newsletters. Every placement is labelled Sponsored.',
+      a: 'Boost, Spotlight and Headliner show in the Featured row for your event’s city. Headliner ranks above Spotlight, which ranks above Boost. Every placement is labelled Sponsored. Add-ons are chosen in checkout.',
     },
     {
       q: 'Is there a contract?',
@@ -35,7 +34,7 @@ export function FaqSection() {
     },
     {
       q: 'How does pricing for different durations work?',
-      a: `Each package and add-on has its own price for 7, 14 and 30 days, in AUD including GST. The price on the card is the price for that length. There is no duration discount. ${PRO_PLAN.name} takes ${PRO_PLAN.discountPct}% off packages, add-ons and short boosts while that pass is active.`,
+      a: 'Longer runs cost less per day. The price on each card is for the length you pick, and the per-day figure sits under it. The questions below do not repeat those amounts.',
     },
     {
       q: 'What’s included in Promoter Pro?',
@@ -51,15 +50,15 @@ export function FaqSection() {
     },
     {
       q: 'What is a short boost?',
-      a: `An evening pass is ${formatAud(BOOSTS.EVENING.priceCents)} for up to 6 hours, and a day pass is ${formatAud(BOOSTS.DAY_PASS.priceCents)} for up to 24 hours. Each is a Sponsored card in Hot right now for your event’s city, bought from the promoter dashboard. They are separate from the 7, 14 and 30 day packages. ${PRO_PLAN.name} takes ${PRO_PLAN.discountPct}% off them too. A boost that has not been shown can be refunded from the dashboard within 48 hours of the start you picked, or 7 days on Venue Plus.`,
+      a: 'The evening and day passes are priced in the row under the packages. Each is a Sponsored card in Hot right now for your event’s city, bought from the promoter dashboard. A boost that has not been shown can be refunded from the dashboard within 48 hours of the start you picked.',
     },
     {
       q: 'How do local recommendations work?',
-      a: `${formatAud(LOCAL_AD.priceCents)} per event, AUD incl. GST. The ad runs until that event ends. Up to 6 businesses per event, always labelled Sponsored. You can cancel a live recommendation from Local business ads. Cancelling removes it from the event page. The fee is not refunded, because the spot was reserved for that event.`,
+      a: <>The price and the placement are on the <Link href="/local-ads" className="font-semibold underline underline-offset-2">local business ads</Link> page. The ad runs until that event ends, always labelled Sponsored. Cancelling removes it from the event page. The fee is not refunded, because the spot was reserved for that event.</>,
     },
     {
       q: 'Do you guarantee views or clicks?',
-      a: 'No. Placements are subject to inventory and are always clearly labelled as sponsored. We don’t guarantee impressions or clicks.',
+      a: <>The line by the package buttons is the rule: one-off payment, placement for the days you buy, subject to inventory, and no guarantee of ticket sales. The <Link href="/refunds" className="font-semibold underline underline-offset-2">refunds page</Link> has the rest.</>,
     },
   ]
 
