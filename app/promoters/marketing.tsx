@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { BadgeCheck, BarChart3, Building2, CalendarPlus, Car, Compass, LineChart, Megaphone, SlidersHorizontal, Ticket, Utensils, Wine } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { BUSINESS_PLANS, LOCAL_AD, PRO_PLAN, formatAud } from '@/lib/tiers'
+import { DIGITAL_SERVICE_LINE } from '@/lib/digital-service'
 import { DashboardPreview } from './dashboard-preview'
 import { HeroStage } from './hero-stage'
 import { PlanInterest } from './plan-interest'
@@ -217,6 +218,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
             <span className="text-base font-normal text-muted-foreground"> per event · AUD incl. GST</span>
           </p>
           <p className="mt-3 text-sm text-muted-foreground">{LOCAL_AD.desc}</p>
+          <p className="mt-3 text-sm text-muted-foreground">{DIGITAL_SERVICE_LINE}</p>
           <ul className="mt-4 flex flex-wrap gap-2 text-sm">
             {[[Utensils, 'Pre-show dining'], [Wine, 'Nearby bars'], [Car, 'Parking'], [Compass, 'Experiences']].map(([Icon, name]) => {
               const ItemIcon = Icon as typeof Car

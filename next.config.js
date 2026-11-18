@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
 const { CANONICAL_SITE_URL, LEGACY_SITE_HOSTS } = require('./lib/canonical-host');
+const { contentSecurityPolicy } = require('./lib/content-security');
 
 const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || '.next',
@@ -54,22 +55,7 @@ const nextConfig = {
   },
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
-    const csp = [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'self'",
-      "object-src 'none'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https: wss:",
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
-      "worker-src 'self' blob:",
-      "manifest-src 'self'",
-      isProd ? 'upgrade-insecure-requests' : '',
-    ].filter(Boolean).join('; ');
+    const csp = contentSecurityPolicy(process.env.NODE_ENV, process.env.VERCEL_ENV);
     const security = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

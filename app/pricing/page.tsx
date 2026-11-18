@@ -4,6 +4,7 @@ import { Check } from 'lucide-react'
 import { PageShell } from '@/components/page-shell'
 import { BOOSTS } from '@/lib/sponsorship'
 import { DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
+import { DIGITAL_SERVICE_LINE } from '@/lib/digital-service'
 
 export const metadata: Metadata = {
   title: 'Pricing — VibePeep',
@@ -16,6 +17,7 @@ export default function PricingPage() {
       <main className="vp-wrap px-4 py-10 sm:px-6">
         <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">What promotion costs</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">All prices are AUD and include GST. Listing an event is free. Campaigns are a one-off payment for that event. The same packages are on the promoter page.</p>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{DIGITAL_SERVICE_LINE}</p>
 
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {TIERS.map((t) => (
