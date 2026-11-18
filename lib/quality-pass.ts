@@ -1,3 +1,4 @@
+import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
 import { JOB_CONNECTION_LIMIT } from '@/lib/db-url'
 import { prisma, runWithJobPrisma } from '@/lib/prisma'
 import { makeSeriesKey, sydneyToday } from '@/lib/event-store'
@@ -13,7 +14,10 @@ import { STALE_AFTER_DAYS, staleAlertDetail, staleShareAlert } from '@/lib/listi
 import { runVerificationPass } from '@/lib/verification-pass'
 import { runLinkedFill } from '@/lib/linked-fill-run'
 import { yieldIfBudget } from '@/lib/source-budget'
-import { changedSince, readJobCursor, writeJobCursor } from '@/lib/job-watermark'
+import { changedSince, readJobMark, writeJobCursor } from '@/lib/job-watermark'
+
+/** Parallel writes stay under the job pool so a pass cannot pin every connection. */
+const WRITE_CONCURRENCY = Math.min(3, JOB_CONNECTION_LIMIT)
 
 async function inBatches<T>(items: T[], size: number, fn: (t: T) => Promise<unknown>) {
   for (let i = 0; i < items.length; i += size) {
@@ -49,56 +53,68 @@ const DUP_SELECT = {
 
 type DupRow = Awaited<ReturnType<typeof prisma.event.findMany<{ select: typeof DUP_SELECT }>>>[number]
 const DUP_PAGE = 800
+/** Stop after two pages. The next run continues from the last id instead of reading the whole catalogue. */
+const DUP_SCAN_CAP = DUP_PAGE * 2
 
 /**
  * Upcoming listings, one page at a time. A single read of every open row hydrates
  * tens of thousands of records before the budget can be checked.
  */
-async function readOpenListings(today: Date, note: (n: number) => void): Promise<DupRow[] | null> {
+async function readOpenListings(today: Date, note: (n: number) => void, afterId?: string | null): Promise<{ rows: DupRow[]; resumeAfter: string | null } | null> {
   const rows: DupRow[] = []
-  let after: string | undefined
+  let after = afterId || undefined
   for (;;) {
     if (yieldIfBudget('duplicate scan')) return null
-    const page = await prisma.event.findMany({
+    if (rows.length >= DUP_SCAN_CAP) {
+      console.log('[quality] duplicate scan continuing next run', { rows: rows.length, after })
+      return { rows, resumeAfter: rows[rows.length - 1]?.id ?? afterId ?? null }
+    }
+    const page = await withStatementTimeout(8_000, (tx) => tx.event.findMany({
       where: { date: { gte: today }, duplicateOfId: null, ...(after ? { id: { gt: after } } : {}) },
       select: DUP_SELECT,
       orderBy: { id: 'asc' },
       take: DUP_PAGE,
-    })
+    }))
     note(page.length)
     rows.push(...page)
-    if (page.length < DUP_PAGE) return rows
+    if (page.length < DUP_PAGE) return { rows, resumeAfter: null }
     after = page[page.length - 1].id
   }
 }
 
 /** Changed listings, the other rows on that city and day, and the same listing URL on that day in any city. */
-async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: number) => void) {
+async function duplicateCandidates(today: Date, cursor: Date | null, note: (n: number) => void, resumeId: string | null) {
+  if (resumeId) return readOpenListings(today, note, resumeId)
   const open = { date: { gte: today }, duplicateOfId: null }
-  if (!cursor) return readOpenListings(today, note)
-  const touched = await prisma.event.findMany({
+  if (!cursor) return readOpenListings(today, note, null)
+  const touched = await withStatementTimeout(8_000, (tx) => tx.event.findMany({
     where: { ...open, updatedAt: { gt: cursor } },
     select: { city: true, date: true, sourceUrl: true, ticketUrl: true, organiserUrl: true },
     take: 1501,
-  })
+  }))
   note(touched.length)
-  if (!touched.length) return [] as Awaited<ReturnType<typeof prisma.event.findMany<{ select: typeof DUP_SELECT }>>>
-  if (touched.length > 1500) return readOpenListings(today, note)
-  const rows = await prisma.event.findMany({
+  if (!touched.length) return { rows: [] as DupRow[], resumeAfter: null }
+  // A refresh that rewrites the catalogue used to fall through to every open row (48k on 18 Nov).
+  if (touched.length > 1500) return readOpenListings(today, note, null)
+  const rows = await withStatementTimeout(8_000, (tx) => tx.event.findMany({
     where: { ...open, OR: duplicatePeerClauses(touched) },
     select: DUP_SELECT,
-  })
+    take: DUP_SCAN_CAP + 1,
+  }))
   note(rows.length)
-  return rows
+  if (rows.length > DUP_SCAN_CAP) return readOpenListings(today, note, null)
+  return { rows, resumeAfter: null }
 }
 
 async function runQualityPassInner() {
   const today = sydneyToday()
   const started = new Date()
-  const cursor = await readJobCursor('quality').catch((err) => {
+  const mark = await readJobMark('quality').catch((err) => {
     console.error('[quality] watermark read failed', (err as { message?: string })?.message)
     return null
   })
+  const cursor = mark?.at ?? null
+  const resumeId = mark?.sweepId ?? null
   const changed = changedSince(cursor)
   const upcoming = { date: { gte: today }, ...changed }
   let rowsRead = 0
@@ -114,17 +130,27 @@ async function runQualityPassInner() {
   // 0) Keep a usable source link. Repaired and copied only; a good URL is never cleared.
   const links = await backfillListingLinks(today, cursor, note)
 
-  // 1) Backfill fields for listings created before the quality fields existed
-  await prisma.$executeRaw`UPDATE "Event" SET "sources" = ARRAY["source"] WHERE cardinality("sources") = 0 AND "date" >= ${today}`
-  await prisma.$executeRaw`UPDATE "Event" SET "lastVerifiedAt" = "updatedAt" WHERE "lastVerifiedAt" IS NULL AND "date" >= ${today}`
+  // 1) Backfill fields for listings created before the quality fields existed.
+  // These two updates used to be able to run until the function was killed.
+  try {
+    await withStatementTimeout(8_000, async (tx) => {
+      await tx.$executeRaw`UPDATE "Event" SET "sources" = ARRAY["source"] WHERE cardinality("sources") = 0 AND "date" >= ${today}`
+      await tx.$executeRaw`UPDATE "Event" SET "lastVerifiedAt" = "updatedAt" WHERE "lastVerifiedAt" IS NULL AND "date" >= ${today}`
+    })
+  } catch (err) {
+    if (!isDbSaturation(err)) throw err
+    console.error('[quality] backfill saturated', err instanceof Error ? err.message : err)
+    return unfinished()
+  }
   const missing = await prisma.event.findMany({
     where: { ...upcoming, OR: [{ seriesKey: null }, { priceMin: null, price: { not: null } }, { priceMin: null, isFree: true }] },
     select: { id: true, title: true, venueName: true, city: true, isFree: true, price: true, seriesKey: true, updatedAt: true },
-    ...(cursor ? { take: 2000, orderBy: { updatedAt: 'asc' as const } } : {}),
+    take: 2000,
+    orderBy: { updatedAt: 'asc' },
   })
   note(missing.length)
   backfilled = missing.length
-  await inBatches(missing, JOB_CONNECTION_LIMIT, (e) => {
+  await inBatches(missing, WRITE_CONCURRENCY, (e) => {
     const r = parsePriceRange(e.isFree, e.price)
     return prisma.event.update({
       where: { id: e.id },
@@ -139,8 +165,13 @@ async function runQualityPassInner() {
   // A city-day of a few hundred listings is millions of pairwise comparisons. That
   // work is synchronous, so the budget timer cannot fire until it returns. Poll the
   // deadline and yield so the pass stops inside its budget instead of at the 300s kill.
-  const rows = await duplicateCandidates(today, cursor, note)
-  if (!rows || yieldIfBudget('duplicate grouping')) return unfinished()
+  const scanned = await duplicateCandidates(today, cursor, note, resumeId).catch((err) => {
+    if (!isDbSaturation(err)) throw err
+    console.error('[quality] duplicate scan saturated', err instanceof Error ? err.message : err)
+    return null
+  })
+  if (!scanned || yieldIfBudget('duplicate grouping')) return unfinished()
+  const rows = scanned.rows
   const groups = new Map<string, DupRow[]>()
   for (let i = 0; i < rows.length; i++) {
     if (i > 0 && i % 400 === 0 && yieldIfBudget('duplicate grouping')) return unfinished()
@@ -253,6 +284,15 @@ async function runQualityPassInner() {
       merged += dups.length
     }
   }
+  if (scanned.resumeAfter) {
+    // Keep the clock at the start of the scan. Moving it to the previous cursor would
+    // see the same refresh again and read the catalogue from the top every hour.
+    const epoch = resumeId ? (cursor ?? started) : started
+    await writeJobCursor('quality', epoch, 0, 0, scanned.resumeAfter).catch((err) => {
+      console.error('[quality] watermark write failed', (err as { message?: string })?.message)
+    })
+    return unfinished(merged)
+  }
   let linkedFill: { wouldUpdate: number; updated: number; gainPrice: number; gainTime: number } | null = null
   if (!yieldIfBudget('linked fill')) {
     try {
@@ -305,7 +345,7 @@ async function runQualityPassInner() {
     if (rec) recurring++
     if (g.current.size !== 1 || !g.current.has(rec)) updates.push([key, rec])
   }
-  await inBatches(updates, JOB_CONNECTION_LIMIT, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, date: { gte: today } }, data: { recurrence: rec } }))
+  await inBatches(updates, WRITE_CONCURRENCY, ([key, rec]) => prisma.event.updateMany({ where: { seriesKey: key, date: { gte: today } }, data: { recurrence: rec } }))
 
   if (yieldIfBudget('quality pass')) {
     complete = false
@@ -318,7 +358,8 @@ async function runQualityPassInner() {
   const review = await prisma.event.findMany({
     where: { ...upcoming, duplicateOfId: null, organiserEditedAt: null },
     select: { id: true, title: true, description: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true, updatedAt: true },
-    ...(cursor ? { take: 2000, orderBy: { updatedAt: 'asc' as const } } : {}),
+    take: 2000,
+    orderBy: { updatedAt: 'asc' },
   })
   note(review.length)
   let places = 0
@@ -342,7 +383,7 @@ async function runQualityPassInner() {
     if (data.suburb !== undefined || data.venueName) places++
     if (Object.keys(data).length) placeUpdates.push({ id: e.id, data })
   }
-  await inBatches(placeUpdates, JOB_CONNECTION_LIMIT, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
+  await inBatches(placeUpdates, WRITE_CONCURRENCY, (u) => prisma.event.update({ where: { id: u.id }, data: u.data }))
 
   const expired = await prisma.event.count({ where: { date: { lt: today }, duplicateOfId: null, status: 'SCHEDULED' } })
   const since = new Date(Date.now() - 20 * 60 * 60 * 1000)
@@ -394,9 +435,9 @@ async function runQualityPassInner() {
   let verification = { normalized: 0, flagged: 0, checks: 0 }
   if (yieldIfBudget('quality pass')) complete = false
   else verification = await runVerificationPass(new Date(), cursor)
-  let cursorOut = started
-  if (cursor && missing.length >= 2000) cursorOut = earlierCursor(cursorOut, missing[missing.length - 1]?.updatedAt)
-  if (cursor && review.length >= 2000) cursorOut = earlierCursor(cursorOut, review[review.length - 1]?.updatedAt)
+  let cursorOut = resumeId && cursor ? cursor : started
+  if (missing.length >= 2000) cursorOut = earlierCursor(cursorOut, missing[missing.length - 1]?.updatedAt)
+  if (review.length >= 2000) cursorOut = earlierCursor(cursorOut, review[review.length - 1]?.updatedAt)
   if (complete) {
     await writeJobCursor('quality', cursorOut).catch((err) => console.error('[quality] watermark write failed', (err as { message?: string })?.message))
   }
@@ -410,11 +451,12 @@ async function backfillListingLinks(today: Date, cursor: Date | null, note: (n: 
   const rows = await prisma.event.findMany({
     where: { date: { gte: today }, source: 'humanitix', ...(cursor ? { updatedAt: { gt: cursor } } : {}) },
     select: { id: true, ticketUrl: true, sourceUrl: true },
-    ...(cursor ? { take: 2000 } : {}),
+    take: 2000,
+    ...(cursor ? { orderBy: { updatedAt: 'asc' as const } } : {}),
   })
   note(rows.length)
   let repaired = 0
-  await inBatches(rows, JOB_CONNECTION_LIMIT, async (row) => {
+  await inBatches(rows, WRITE_CONCURRENCY, async (row) => {
     const ticketUrl = repairKnownListingUrl(row.ticketUrl, 'humanitix')
     const sourceUrl = repairKnownListingUrl(row.sourceUrl, 'humanitix') ?? ticketUrl
     if (ticketUrl === row.ticketUrl && sourceUrl === row.sourceUrl) return

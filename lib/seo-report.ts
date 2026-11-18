@@ -5,7 +5,7 @@ import { isComboKind } from '@/lib/local-seo'
 import { assessEditorial, EDITORIAL_GUIDES, editorialPath } from '@/lib/editorial'
 import { INDEX_FRESH_DAYS, INDEX_MAX_PARENT_OVERLAP, INDEX_MIN_FRESH } from '@/lib/indexability'
 import { TOPICS, MIN_INDEX, cityPath, cityToday, addDaysKey, type TopicKey } from '@/lib/seo'
-import { cityGuideModel, lastRefreshAt, topicTotal } from '@/lib/seo-server'
+import { lastRefreshAt, loadCityGuideModels, topicTotal } from '@/lib/seo-server'
 
 /**
  * Admin SEO report built ONLY from data VibePeep actually holds (database + page rules).
@@ -52,7 +52,7 @@ export async function getSeoReport(): Promise<SeoReport> {
   const suburbs: SeoReport['suburbs'] = []
   const combos: SeoReport['combos'] = []
   const seasons: SeoReport['seasons'] = []
-  const models = await Promise.all(CITIES.map(async (city) => ({ city, model: await cityGuideModel(city) })))
+  const models = await loadCityGuideModels()
   for (const { city, model } of models) {
     if (!model.ok) {
       for (const t of TOPICS) {

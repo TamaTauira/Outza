@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const range = r.topic?.key === 'this-weekend' && data.to ? ` (${formatGuideSpan(data.from, data.to)})` : ''
   const path = r.topic ? cityPath(r.city, r.topic.key) : suburbPath(r.city, r.suburb!)
   const self = model.decisions.find((d) => d.path === path)
-  const index = model.ok ? !!self?.index : data.total >= MIN_INDEX
+  const index = !data.degraded && (model.ok ? !!self?.index : data.total >= MIN_INDEX)
   const title = `${r.topic?.title?.(r.city.name) ?? headingFor(r)}${range} | VibePeep`
   const description = `${blurbFor(r)} ${data.total ? `${data.total} upcoming listing${data.total === 1 ? '' : 's'}.` : ''}`.trim()
   return {

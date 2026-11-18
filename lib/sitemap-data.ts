@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef } from '@/lib/cities'
 import { assessEditorial, EDITORIAL_GUIDES, editorialPath } from '@/lib/editorial'
 import { addDaysKey, cityPath, cityToday, eventPath } from '@/lib/seo'
-import { cityGuideModel } from '@/lib/seo-server'
+import { loadCityGuideModels } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
 import { addDaysStr, localPath, occurrences, todayIn, MAX_AHEAD_DAYS } from '@/lib/local-shared'
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
@@ -81,9 +81,10 @@ export function guidesSitemapXml() {
         select: { id: true, title: true, city: true, updatedAt: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true },
         take: 2000,
       }).catch(() => []),
-      Promise.all(CITIES.map((city) => cityGuideModel(city))),
+      loadCityGuideModels(),
     ])
-    for (const model of models) {
+    const guideModels = models.map((row) => row.model)
+    for (const model of guideModels) {
       if (!model.ok) continue
       for (const guide of model.decisions) {
         if (!guide.index) continue
@@ -95,7 +96,7 @@ export function guidesSitemapXml() {
       }
     }
     for (const guide of EDITORIAL_GUIDES) {
-      const perCity = CITIES.map((city, i) => models[i]?.decisions.find((d) => d.path === cityPath(city, guide.topic))?.total ?? 0)
+      const perCity = CITIES.map((city, i) => guideModels[i]?.decisions.find((d) => d.path === cityPath(city, guide.topic))?.total ?? 0)
       if (!assessEditorial(perCity).index) continue
       urls.push({ loc: `${origin}${editorialPath(guide.slug)}`, lastmod: now })
     }

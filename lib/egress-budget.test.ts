@@ -36,7 +36,7 @@ test('list and map payloads omit descriptions and raw ingest blobs', () => {
   const landing = read('./seo-server.ts')
   const select = landing.slice(landing.indexOf('const landingSelect = {'), landing.indexOf('} satisfies'))
   assert.equal(select.includes('description'), false)
-  const guide = landing.slice(landing.indexOf('async function queryGuideRows'), landing.indexOf('prisma.localListing.findMany'))
+  const guide = landing.slice(landing.indexOf('async function queryGuideRows'), landing.indexOf('localListing.findMany'))
   assert.equal(guide.includes('description: true'), false)
 })
 
@@ -84,7 +84,7 @@ test('jobs no longer scan the old wide sets', () => {
   assert.equal(firstSelect.includes('description'), false)
   assert.match(local, /readJobCursor\('localImport'\)/)
   const quality = read('./quality-pass.ts')
-  assert.match(quality, /readJobCursor\('quality'\)/)
+  assert.match(quality, /readJobMark\('quality'\)/)
   assert.match(quality, /duplicateCandidates/)
 })
 

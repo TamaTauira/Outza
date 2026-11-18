@@ -41,7 +41,7 @@ const loadCombo = cache(async function loadCombo(citySlug: string, a: string, b:
   const when: WhenKey | null = 'when' in parsed ? parsed.when : null
   const suburb = 'suburb' in parsed ? parsed.suburb : null
   const data = await landingData(city, activity, suburb ?? undefined, 60, when ?? undefined)
-  if (data.total === 0) return null
+  if (data.total === 0 && !data.degraded) return null
   const self = model.decisions.find((d) => d.path === path)
   if (model.ok && self?.reason === 'near-duplicate' && self.canonicalPath !== path) redirect(self.canonicalPath)
   const copy = guideCopy({
@@ -54,7 +54,7 @@ const loadCombo = cache(async function loadCombo(citySlug: string, a: string, b:
     to: when ? data.to : null,
     venues: venuesOf(data.events),
   })
-  return { city, model, path, activity, when, suburb, data, copy, index: !!(model.ok && self?.index) }
+  return { city, model, path, activity, when, suburb, data, copy, index: !!(model.ok && self?.index && !data.degraded) }
 })
 
 export async function comboMetadata(citySlug: string, segments: string[]): Promise<Metadata> {
