@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { BackLink } from '@/components/back-to-events-link'
 import { ArrowLeft, Bookmark, Building2, Bus, Calendar, Clock, ExternalLink, Flag, Map as MapIcon, MapPin, Repeat, Share2, ShieldCheck, Tag } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,7 +11,7 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { EventReactions } from '@/components/event-reactions'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { shareEvent } from '@/app/events/[id]/_components/event-extras'
-import { VenueMap } from '@/components/venue-map'
+const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mod.VenueMap), { ssr: false })
 import { EventImage } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
 import { useSaved } from '@/lib/saved'

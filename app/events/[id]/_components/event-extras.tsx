@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { Accessibility, Baby, Bus, Building2, ExternalLink, Map as MapIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
-import { VenueMap } from '@/components/venue-map'
+const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mod.VenueMap), { ssr: false })
 
 export const TRANSIT: Record<string, { name: string; url: string }> = {
   Sydney: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },

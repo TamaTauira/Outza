@@ -146,7 +146,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v6'], { revalidate: 120 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v7'], { revalidate: 900 })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 
