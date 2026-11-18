@@ -4,7 +4,7 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
 import { LEGAL_ARCHIVE, LEGAL_DOCS } from '@/lib/legal-docs'
 
-export const metadata = { title: 'Earlier legal versions — VibePeep', description: 'Previous versions of the VibePeep terms, privacy policy and disclaimer.' }
+export const metadata = { title: 'Earlier legal versions — VibePeep', description: 'Previous versions of the VibePeep terms, privacy policy, disclaimer and refunds page.' }
 
 export default function LegalArchivePage() {
   return (
@@ -27,7 +27,7 @@ export default function LegalArchivePage() {
           ))}
         </ul>
         <p className="mt-8 text-sm text-muted-foreground">
-          Current: <Link href={LEGAL_DOCS.terms.path} className="underline">terms</Link>, <Link href={LEGAL_DOCS.privacy.path} className="underline">privacy</Link>, <Link href={LEGAL_DOCS.disclaimer.path} className="underline">disclaimer</Link>, <Link href={LEGAL_DOCS.promoter.path} className="underline">promoter terms</Link>.
+          Current: <Link href={LEGAL_DOCS.terms.path} className="underline">terms</Link>, <Link href={LEGAL_DOCS.privacy.path} className="underline">privacy</Link>, <Link href={LEGAL_DOCS.disclaimer.path} className="underline">disclaimer</Link>, <Link href={LEGAL_DOCS.promoter.path} className="underline">promoter terms</Link>, <Link href={LEGAL_DOCS.refunds.path} className="underline">refunds</Link>.
         </p>
       </main>
     </PageShell>

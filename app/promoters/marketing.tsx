@@ -250,7 +250,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
             ))}
             <li className="flex gap-2 text-sm text-white/90">
               <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--vp-brand-orange)]" aria-hidden />
-              Extend any time. Ending it does not refund the days already paid.
+              Extend any time. Ending it yourself does not automatically refund days already used. The refunds page has the rest.
             </li>
           </ul>
         </div>

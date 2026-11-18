@@ -126,7 +126,7 @@ export function OrganiserPlans() {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="font-display text-xl font-bold">Monthly organiser plans</h2>
-      <p className="mt-1 text-sm text-muted-foreground">These are working tools, not just a louder listing. Promoter Pro and Spotlight stay one-off charges. A monthly plan can start with one free month, and nothing is charged until you tick the box.</p>
+      <p className="mt-1 text-sm text-muted-foreground">These are working tools, not just a louder listing. Promoter Pro and Spotlight stay one-off charges. A monthly plan can start with one free month, and nothing is charged until you tick the box. <Link href="/refunds" className="underline">Refunds</Link> include the Australian Consumer Law.</p>
       {current && (
         <p className="mt-3 text-sm">You are on <strong>{current.name}</strong>{current.status === 'TRIALING' ? ' · free month' : ''}{until ? ` until ${until}` : ''}{current.cancelAtPeriodEnd ? ' · renewal cancelled' : ''}{current.pendingPlanId ? ` · switches to ${current.pendingPlanId.replace('_', ' ')} next period` : ''}.</p>
       )}

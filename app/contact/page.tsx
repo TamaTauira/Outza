@@ -14,7 +14,7 @@ export default function ContactPage() {
       sections={[
         { title: 'A listing looks wrong', body: ['Open the event and use Report a problem. That is the fastest way to flag a wrong date, a duplicate, or a cancellation.'] },
         { title: 'A purchase or invoice', body: ['Open Pro & billing in the promoter dashboard and open the invoice. Include the invoice number when you write. Test-mode purchases are not card charges.'] },
-        { title: 'Your account', body: ['Password changes and closing an account are on My account. Closing an account does not by itself refund a campaign.'] },
+        { title: 'Your account', body: ['Password changes and closing an account are on My account. Closing an account does not by itself refund a campaign. The refunds page covers removal, a cancelled event, a placement that did not appear as described, and the Australian Consumer Law.'] },
       ]}
     />
   )

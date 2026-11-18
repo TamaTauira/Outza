@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Check, Loader2, Lock, Sparkles } from 'lucide-react'
 import { campaignEndsBeforeEvent } from '@/lib/promoter-listing'
@@ -148,7 +149,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
           <span className="font-semibold">Total</span>
           <span className="text-2xl font-bold tabular-nums">{formatAud(q.total)}</span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment — no lock-in. Placements are labelled Sponsored.</p>
+        <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment. Placements are labelled Sponsored. <Link href="/refunds" className="underline">Refunds</Link>, including under the Australian Consumer Law, are on the refunds page.</p>
         {early && <p className="mt-3 text-xs text-amber-700 dark:text-amber-400" role="status">This campaign ends before the event date, so it will not still be running on the day.</p>}
         <div className="mt-3"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}

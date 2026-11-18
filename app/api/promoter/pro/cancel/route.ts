@@ -4,7 +4,7 @@ import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/sessi
 
 export const dynamic = 'force-dynamic'
 
-/** Ends Promoter Pro now. Does not refund the current period. */
+/** Ends Promoter Pro now. Days already used are not automatically refunded. */
 export async function POST() {
   const me = await getSessionUser()
   if (!me) return unauthorized()

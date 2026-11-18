@@ -267,6 +267,14 @@ export function expireReason(
   return null
 }
 
+/** Dashboard card refunds may run only against a Stripe test secret. A live secret is refused here. */
+export function stripeRefundBlocked(secret: string | undefined | null): string | null {
+  const key = secret?.trim() ?? ''
+  if (!key) return 'There is no card charge to refund.'
+  if (key.startsWith('sk_test_')) return null
+  return 'Dashboard refunds run in Stripe test mode only. Write to us with the invoice number. Nothing was refunded.'
+}
+
 export function refundEligible(args: {
   status: string
   impressions: number

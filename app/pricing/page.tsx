@@ -59,12 +59,12 @@ export default function PricingPage() {
               <tr className="border-t border-border">
                 <th className="px-4 py-3 font-semibold">{PRO_PLAN.name}</th>
                 <td className="px-4 py-3 font-mono" colSpan={3}>{formatAud(PRO_PLAN.priceCents)} / {PRO_PLAN.days} days</td>
-                <td className="px-4 py-3 text-muted-foreground">{PRO_PLAN.discountPct}% off campaigns bought while it is active. Ending it does not refund the current period.</td>
+                <td className="px-4 py-3 text-muted-foreground">{PRO_PLAN.discountPct}% off campaigns bought while it is active. Ending it yourself does not automatically refund days already used. The refund policy still applies.</td>
               </tr>
               <tr className="border-t border-border">
                 <th className="px-4 py-3 font-semibold">Local recommendation</th>
                 <td className="px-4 py-3 font-mono" colSpan={3}>{formatAud(LOCAL_AD.priceCents)}</td>
-                <td className="px-4 py-3 text-muted-foreground">Runs until the event ends. One per event. Cancelling stops it showing and is not refunded automatically.</td>
+                <td className="px-4 py-3 text-muted-foreground">Runs until the event ends. One per event. Cancelling it yourself takes it off the page and does not automatically refund a spot that ran. See the refund policy.</td>
               </tr>
             </tbody>
           </table>

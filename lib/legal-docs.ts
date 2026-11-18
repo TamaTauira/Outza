@@ -2,7 +2,7 @@
 
 export const PROMOTER_TERMS_VERSION = '2026-11-18'
 
-export type LegalDocId = 'terms' | 'privacy' | 'disclaimer' | 'promoter'
+export type LegalDocId = 'terms' | 'privacy' | 'disclaimer' | 'promoter' | 'refunds'
 
 export type LegalDoc = {
   id: LegalDocId
@@ -17,6 +17,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
   privacy: { id: 'privacy', title: 'Privacy policy', version: '2026-11-18', updated: '18 November 2026', path: '/privacy' },
   disclaimer: { id: 'disclaimer', title: 'Disclaimer', version: '2026-11-18', updated: '18 November 2026', path: '/disclaimer' },
   promoter: { id: 'promoter', title: 'Promoter & Advertising Terms', version: PROMOTER_TERMS_VERSION, updated: '18 November 2026', path: '/terms/promoters' },
+  refunds: { id: 'refunds', title: 'Refunds', version: '2026-11-18', updated: '18 November 2026', path: '/refunds' },
 }
 
 /** Text that was on the site before this version. Stable archive URLs. */
@@ -24,6 +25,7 @@ export const LEGAL_ARCHIVE: { id: LegalDocId; title: string; version: string; up
   { id: 'terms', title: 'Terms of use', version: '2026-11-01', updated: 'Before 18 November 2026', path: '/legal/archive/terms/2026-11-01' },
   { id: 'privacy', title: 'Privacy policy', version: '2026-11-01', updated: 'Before 18 November 2026', path: '/legal/archive/privacy/2026-11-01' },
   { id: 'disclaimer', title: 'Disclaimer', version: '2026-11-01', updated: 'Before 18 November 2026', path: '/legal/archive/disclaimer/2026-11-01' },
+  { id: 'refunds', title: 'Refunds', version: '2026-11-01', updated: 'Before 18 November 2026', path: '/legal/archive/refunds/2026-11-01' },
 ]
 
 export const CONSUMER_DOC_IDS: LegalDocId[] = ['terms', 'privacy', 'disclaimer']

@@ -68,8 +68,12 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '8. Refunds',
     body: [
-      'Nothing in these terms takes away a guarantee, right or remedy under the Australian Consumer Law that cannot be excluded. Where a guarantee applies, we will provide the remedy the law requires.',
-      'Outside those guarantees, refunds follow the clauses above: unused prepaid time when we end a service without your breach, and when you reject a change under clause 10. A product page may offer an extra window, such as a refund of an unshown boost. That extra window does not limit the Consumer Law.',
+      'Nothing in these terms, and nothing in the refund policy, limits your rights under the Australian Consumer Law, including your right to a refund or other remedy for a major failure. Where a guarantee applies, we provide the remedy the law requires.',
+      'If we remove a listing or placement and the reason is not your breach, we refund the unused part of the fee already paid, pro rata for the days left. That is the same rule as clause 5.',
+      'If the event is cancelled, the unused part of a paid placement for that event is refunded or credited. Where it is practical, you choose the refund or the credit.',
+      'If a placement does not appear as described — for example Spotlight is not shown, or it runs on the wrong dates or in the wrong area — we refund that fee or make it good. Claim it from the contact page with the invoice number and what was wrong.',
+      'An approved refund goes back to the original payment method through Stripe within 5 to 10 business days of approval. Your bank may take further days to show it. A dashboard refund button, where one is offered for an unshown boost, uses Stripe test mode only and does not send a live refund.',
+      'Ending a pass yourself, or a campaign finishing because you chose a length that ends before the event, does not by itself refund days that already ran as described. Fewer views than you hoped is not, by itself, a failure of the placement.',
     ],
   },
   {

@@ -631,8 +631,8 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
             </table>
           </div>
         )}
-        <p className="text-[11px] text-muted-foreground mt-4">Prices in AUD, GST inclusive. Open any invoice to print it or save it as a PDF. Campaigns and local ads are not refunded automatically — see the <Link href="/refunds" className="underline">refund policy</Link>.</p>
-        {account.pro && <button type="button" onClick={async () => { if (!window.confirm('End Promoter Pro now? This does not refund the current period.')) return; const res = await fetch('/api/promoter/pro/cancel', { method: 'POST' }); if (res.ok) { toast.success('Pro ended'); onEnded() } else toast.error('Could not end Pro') }} className="mt-3 text-xs text-muted-foreground underline">End Pro</button>}
+        <p className="text-[11px] text-muted-foreground mt-4">Prices in AUD, GST inclusive. Open any invoice to print it or save it as a PDF. A purchase is not refunded automatically just because a campaign ends. See the <Link href="/refunds" className="underline">refund policy</Link>, including your rights under the Australian Consumer Law.</p>
+        {account.pro && <button type="button" onClick={async () => { if (!window.confirm('End Promoter Pro now? Days already used are not automatically refunded. The refunds page still applies.')) return; const res = await fetch('/api/promoter/pro/cancel', { method: 'POST' }); if (res.ok) { toast.success('Pro ended'); onEnded() } else toast.error('Could not end Pro') }} className="mt-3 text-xs text-muted-foreground underline">End Pro</button>}
       </section>
       <ProCard account={account} onPro={onPro} proBusy={proBusy} />
       </div>

@@ -46,6 +46,10 @@ test('the archive is the full text from before this version', () => {
   assert.match(disclaimer.sections.find((s) => s.title.startsWith('7.'))?.body.join(' ') ?? '', /you agree to indemnify/)
   assert.ok(PREVIOUS_LEGAL['privacy/2026-11-01'].sections.length >= 8)
   for (const item of LEGAL_ARCHIVE) assert.ok(PREVIOUS_LEGAL[`${item.id}/${item.version}`])
+  const previousRefunds = PREVIOUS_LEGAL['refunds/2026-11-01']
+  assert.match(previousRefunds.sections.map((s) => s.body.join(' ')).join(' '), /We do not refund a campaign/)
+  assert.match(previousRefunds.sections.map((s) => s.body.join(' ')).join(' '), /The fee is not refunded/)
+  assert.equal(LEGAL_DOCS.refunds.path, '/refunds')
   for (const doc of Object.values(LEGAL_DOCS)) {
     assert.equal(doc.version, '2026-11-18')
     assert.match(doc.updated, /18 November 2026/)

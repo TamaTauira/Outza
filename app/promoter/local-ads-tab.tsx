@@ -20,7 +20,7 @@ export function LocalAdsTab() {
   }
   useEffect(() => { load() }, [])
   const cancel = async (ad: Ad) => {
-    if (!window.confirm(`Cancel “${ad.businessName}”? It leaves the event page. This does not refund the ${formatAud(ad.amountCents)}.`)) return
+    if (!window.confirm(`Cancel “${ad.businessName}”? It leaves the event page. Cancelling it yourself does not automatically refund ${formatAud(ad.amountCents)}. The refunds page covers the other cases.`)) return
     const res = await fetch(`/api/local-ads/${ad.id}`, { method: 'DELETE' })
     if (!res.ok) { toast.error('Could not cancel that ad'); return }
     toast.success('Recommendation cancelled')
