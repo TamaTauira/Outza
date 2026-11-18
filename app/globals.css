@@ -85,6 +85,21 @@
   }
 }
 
+.vp-skip {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+.vp-skip:focus {
+  top: 1rem;
+}
+
 .leaflet-container {
   width: 100%;
   height: 100%;
