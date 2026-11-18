@@ -1,4 +1,4 @@
-import { Inter, Manrope, JetBrains_Mono } from 'next/font/google'
+import { Inter, Manrope } from 'next/font/google'
 import './globals.css'
 import '@/components/vibepeep-mascot.css'
 import '@/components/vibepeep-roam.css'
@@ -19,7 +19,6 @@ import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
 // Variable files: one download each. Weights still come from the spec (400–800).
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-display' })
-const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 const theme = '#0c0f0e'
 
@@ -87,7 +86,7 @@ export default function RootLayout({
           value="57fb6312-b0d5-4672-96a3-d75e8cef96f9"
         />
       </head>
-      <body className={`${inter.variable} ${manrope.variable} ${jetbrainsMono.variable} font-sans`}>
+      <body className={`${inter.variable} ${manrope.variable} font-sans`}>
         <style>{`:root{--vp-size-phone:${MASCOT_PHONE_WIDTH};--vp-size-desktop:${MASCOT_DESKTOP_WIDTH}}`}</style>
         <ThemeProvider
           attribute="class"
