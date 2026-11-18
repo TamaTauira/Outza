@@ -1,0 +1,62 @@
+/*
+ * VibePeep design tokens. Spec v1.1 section 10.2 is the dark palette.
+ * :root is the light theme (the theme toggle stays). .dark is the default
+ * and carries the spec hex values. Brand orange, pink and amber are shared.
+ */
+
+:root {
+  --vp-bg-canvas: #f6f4ee;
+  --vp-bg-surface: #ffffff;
+  --vp-bg-elevated: #f3f1ea;
+  --vp-bg-raised: #e7e4db;
+  --vp-border-subtle: #e4e0d6;
+  --vp-border-default: #d5d0c4;
+  --vp-text-primary: #161a18;
+  --vp-text-secondary: #3d4742;
+  --vp-text-muted: #5c6761;
+  --vp-brand-orange: #ff7a35;
+  --vp-brand-pink: #f05a9d;
+  --vp-brand-amber: #ffc078;
+  --vp-brand-orange-ink: #9a3412;
+  --vp-radius-sm: 8px;
+  --vp-radius-md: 12px;
+  --vp-radius-lg: 16px;
+  --vp-radius-xl: 20px;
+  --vp-space-1: 4px;
+  --vp-space-2: 8px;
+  --vp-space-3: 12px;
+  --vp-space-4: 16px;
+  --vp-space-5: 20px;
+  --vp-space-6: 24px;
+  --vp-space-8: 32px;
+  --vp-space-10: 40px;
+  --vp-space-12: 48px;
+  --vp-space-16: 64px;
+  --vp-container-max: 1760px;
+  --vp-bp-phone: 600px;
+  --vp-bp-nav: 768px;
+  --vp-shadow-sm: 0 1px 2px rgba(22, 26, 24, 0.06);
+  --vp-shadow-md: 0 6px 16px rgba(22, 26, 24, 0.08);
+  --vp-shadow-lg: 0 16px 36px rgba(22, 26, 24, 0.12);
+  --vp-duration-fast: 150ms;
+  --vp-duration-normal: 250ms;
+  --vp-duration-slow: 350ms;
+  --vp-measure: 68ch;
+  --vp-card-min: 260px;
+  --radius: 12px;
+}
+
+.dark {
+  --vp-bg-canvas: #0c0f0e;
+  --vp-bg-surface: #151a19;
+  --vp-bg-elevated: #1d2422;
+  --vp-bg-raised: #252d2a;
+  --vp-border-subtle: #26302c;
+  --vp-border-default: #303936;
+  --vp-text-primary: #f5f5f2;
+  --vp-text-secondary: #b8c0bc;
+  --vp-text-muted: #89938e;
+  --vp-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --vp-shadow-md: 0 8px 20px rgba(0, 0, 0, 0.32);
+  --vp-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
