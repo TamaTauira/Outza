@@ -8,6 +8,9 @@
  * suspend (the default idle timeout is 5 minutes) before the next hour.
  * Events are still refreshed at least once an hour.
  * Budgets stay at or under 220s so the log write still fits.
+ * Price lookup is not one of these chunks. It has its own cron at minute 24,
+ * the last minute of the burst, so a slow ticket-page pass cannot push
+ * finalize past the 300s limit or wake the database during the idle gap.
  */
 import { isMoshtixPause } from '@/lib/moshtix-refresh'
 

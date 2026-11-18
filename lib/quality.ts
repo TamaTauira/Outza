@@ -150,7 +150,8 @@ export function priceSummary(ev: { isFree: boolean; price?: string | null; price
   if (!paid && (ev.isFree || (ev.priceMin != null && ev.priceMin <= 0) || readPrice(ev.price).isFree)) return { range: 'Free', fees: null as string | null }
   const r = ev.priceMin != null && ev.priceMin > 0 ? { min: ev.priceMin, max: ev.priceMax ?? ev.priceMin } : parsePriceRange(false, ev.price)
   if (r.min == null || r.min <= 0) return { range: ev.price || 'Price not published', fees: null }
-  const range = r.max != null && r.max !== r.min ? `${money(r.min)} – ${money(r.max)}` : money(r.min)
+  const fromLabel = /\bfrom\b/i.test(ev.price ?? '') && (r.max == null || r.max === r.min)
+  const range = r.max != null && r.max !== r.min ? `${money(r.min)} – ${money(r.max)}` : fromLabel ? `From ${money(r.min)}` : money(r.min)
   const fees = ev.feesIncluded === true ? 'Includes booking fees' : 'Booking fees may apply at checkout'
   return { range, fees }
 }

@@ -367,7 +367,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
               meta={[displaySuburb(ev.suburb, ev.venueAddress, ev.city), clockLabel(ev.time)].filter(Boolean).join(' · ')}
               tag={ev.subTags?.[0] || ev.category}
               accent={cat?.color ?? '#FF7A1A'}
-              price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span> : <span className="font-mono text-xs text-foreground">{displayPriceValue(price.value, price.kind)}</span>}
+              price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span> : <span className="font-mono text-xs text-foreground">{[price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')}</span>}
               actions={(
                 <>
                   <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 place-items-center rounded-full', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>

@@ -45,6 +45,10 @@ model Event {
   sources        String[]  @default([])
   priceMin       Float?
   priceMax       Float?
+  /// When a missing price was last looked up. Null until that step has tried.
+  priceCheckedAt DateTime?
+  /// Why the price is still unknown. Cleared when a price is stored.
+  priceUnknownReason String?
   feesIncluded   Boolean?
   seriesKey      String?
   recurrence     String?   // DAILY | WEEKLY | FORTNIGHTLY | MONTHLY | RECURRING
@@ -132,6 +136,7 @@ model Event {
   @@index([date])
   @@index([category])
   @@index([isFree])
+  @@index([priceCheckedAt])
   @@index([isLGBTI])
   @@index([suburb])
   @@index([city, date])

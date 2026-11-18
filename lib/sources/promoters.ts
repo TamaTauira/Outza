@@ -1,6 +1,6 @@
 import { fetchHtml, saveEvent, extractNextData, sleep, toSydneyParts } from '@/lib/event-store'
 import { cityOfSydneyPlace } from '@/lib/cos-place'
-import { cosDescriptionFromRecord, cosHitsFromHtml, cosPriceText, cosWhen } from '@/lib/cos-event'
+import { cosDescriptionFromRecord, cosHitsFromHtml, cosListedPrice, cosWhen } from '@/lib/cos-event'
 import { cosDescriptionFromHtml, preferDescription } from '@/lib/description-text'
 import { extractListingVenue } from '@/lib/listing-venue'
 import { firstListingUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
@@ -57,7 +57,7 @@ function cosNumber(value: unknown): number | null {
 function detailFromRecord(record: Record<string, unknown>, html: string | null): CosDetail {
   const location = record.location && typeof record.location === 'object' ? record.location as Record<string, unknown> : null
   return {
-    price: cosPriceText(record.prices ?? record.priceData ?? record.cost ?? record.price),
+    price: cosListedPrice(record),
     description: cosDescriptionFromRecord(record),
     html,
     isFree: record.isFree === true || record.isFree === 'true' || record.freeEvent === true || record.freeEvent === 'true',
@@ -204,7 +204,7 @@ async function saveCosHit(h: any): Promise<boolean> {
     listedLng: listed?.lng ?? loaded.lng ?? (typeof hitLocation?.longitude === 'number' ? hitLocation.longitude : null),
     suburbName: loaded.suburbName || (typeof hitLocation?.suburbName === 'string' ? hitLocation.suburbName : null) || (typeof h.suburbName === 'string' ? h.suburbName : null),
   })
-  const priced = loaded.price || cosPriceText(h.priceData ?? h.cost ?? h.price)
+  const priced = loaded.price || cosListedPrice(h)
   const flaggedFree = h.freeEvent === 'true' || h.freeEvent === true || h.isFree === true || h.isFree === 'true' || loaded.isFree === true
   const free = flaggedFree && !priced
   const external = firstListingUrl(
