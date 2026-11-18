@@ -20,6 +20,7 @@ import { IntelTab } from './intel-tab'
 import { BoostStudio } from './boost-studio'
 import { OrganiserPlans } from './organiser-plans'
 import { InsightsPanel } from './insights-panel'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 type Promo = { id: string; tier: string; days?: number | null; orderId?: string | null; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
 type MyEvent = {
@@ -106,7 +107,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     if (!window.confirm(label)) return
     setProBusy(true)
     try {
-      const res = await fetch('/api/promotions/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan: 'PRO' }) })
+      const res = await fetch('/api/promotions/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan: 'PRO', agreePromoterTerms: true }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Checkout failed')
       if (d.url) { window.location.href = d.url; return }
@@ -186,6 +187,7 @@ function Kpi({ Icon, label, value, window, definition }: { Icon: typeof Eye; lab
 }
 
 function ProCard({ account, onPro, proBusy }: { account: Account; onPro: () => void; proBusy: boolean }) {
+  const [terms, setTerms] = useState(false)
   return (
     <div className="rounded-xl p-5 shadow-sm bg-gradient-to-br from-primary/20 via-card to-card border border-primary/40">
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /><p className="font-semibold">{PRO_PLAN.name}</p></div>
@@ -195,7 +197,8 @@ function ProCard({ account, onPro, proBusy }: { account: Account; onPro: () => v
         <p className="text-2xl font-bold mt-2">{formatAud(PRO_PLAN.priceCents)}<span className="text-xs font-normal text-muted-foreground"> / {PRO_PLAN.days} days</span></p>
       )}
       <ul className="mt-3 space-y-1.5">{PRO_PLAN.perks.map((p) => <li key={p} className="text-xs text-muted-foreground flex gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-primary shrink-0 mt-px" />{p}</li>)}</ul>
-      <button onClick={onPro} disabled={proBusy} className="mt-4 w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+      <div className="mt-4"><PromoterTermsCheck id="pro-promoter-terms" checked={terms} onChange={setTerms} /></div>
+      <button onClick={onPro} disabled={proBusy || !terms} className="mt-4 w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
         {proBusy && <Loader2 className="w-4 h-4 animate-spin" />}{account.pro ? 'Extend 30 days' : 'Go Pro'}
       </button>
     </div>

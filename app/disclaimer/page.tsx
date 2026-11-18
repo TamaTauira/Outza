@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
+import { LegalStamp } from '@/components/legal-stamp'
 
 export const metadata = {
   title: 'Disclaimer — VibePeep',
@@ -56,13 +57,13 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '7. Your responsibility and indemnity',
     body: [
-      'By using this website you agree that you use it at your own risk and that you are responsible for checking any information before relying on it. To the extent permitted by law, you agree to indemnify VibePeep and its owner and operators against any claim, loss or cost arising from your misuse of the website, any content you submit, or your breach of this disclaimer.',
+      'You use the listings at your own risk and you are responsible for checking details before you rely on them. To the extent the law allows, each side indemnifies the other for claims that arise from that side’s own content or that side’s own breach. The indemnity is reduced to the extent the other side caused or contributed to the loss. It is not a blank cheque for every claim connected with the site.',
     ],
   },
   {
     title: '8. Availability and changes',
     body: [
-      'We may change, suspend or discontinue any part of this website at any time without notice, and we do not guarantee that it will be uninterrupted, secure or free from errors, viruses or other harmful components. We may update this disclaimer at any time; continued use of the website after changes means you accept the updated version.',
+      'We may change, suspend or discontinue any part of this website, and we do not guarantee that it will be uninterrupted, secure or free from errors. A material change to this disclaimer is notified to account holders in the product and applies when they accept the new version. Keeping the site open is not, by itself, acceptance.',
     ],
   },
   {
@@ -88,8 +89,9 @@ export default function DisclaimerPage() {
         </BackToEventsLink>
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Disclaimer</h1>
+        <LegalStamp doc="disclaimer" />
         <p className="mt-4 text-muted-foreground leading-relaxed">
-          Please read this disclaimer carefully. By accessing or using VibePeep you acknowledge that you have read, understood and agree to it. If you do not agree, please do not use this website.
+          Please read this disclaimer carefully. Account holders agree to it when the account is created and that acceptance is recorded. If you do not agree, do not create an account.
         </p>
         <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
           {SECTIONS.map((s) => (

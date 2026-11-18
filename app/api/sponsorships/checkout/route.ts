@@ -6,6 +6,7 @@ import { planBoost } from '@/lib/sponsorship'
 import { createBoostSession, payments, prepareCatalog } from '@/lib/sponsorship-billing'
 import { activePlan, holdingBoostCount, missingTable, planKeyOf } from '@/lib/sponsorship-store'
 import { scheduleHorizonDays, boostSlots } from '@/lib/sponsorship'
+import { enforcePromoterCheckout } from '@/lib/terms-accept'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,8 @@ export async function POST(req: Request) {
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
   const body = await req.json().catch(() => ({}))
+  const terms = await enforcePromoterCheckout(me.id, body?.agreePromoterTerms)
+  if (terms) return NextResponse.json({ error: terms.error }, { status: terms.status })
   if (!payments().enabled) {
     return NextResponse.json({ payments: 'soon', charged: false })
   }

@@ -6,6 +6,7 @@ import { syncSavedWithAccount, setSavedAccountLinked } from '@/lib/saved'
 import { bindItineraryUser } from '@/lib/itinerary'
 import { ProfileGate } from '@/components/profile-gate'
 import { VerifyEmailBanner } from '@/components/verify-email-banner'
+import { LegalAcceptPrompt } from '@/components/legal-accept-prompt'
 import { installScrollMemory } from '@/lib/scroll-memory'
 
 function SavedSync() {
@@ -31,6 +32,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <SavedSync />
       <VerifyEmailBanner />
+      <LegalAcceptPrompt />
       {children}
       <ProfileGate />
     </SessionProvider>

@@ -16,6 +16,7 @@ import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
 import { safeNextPath } from '@/lib/safe-next'
 import { ProfileFields } from '@/components/profile-fields'
 import { PasswordField } from '@/components/password-field'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 function SignupForm() {
   const router = useRouter()
@@ -31,6 +32,7 @@ function SignupForm() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
+  const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,11 +43,12 @@ function SignupForm() {
       if (p.error) { setError(p.error); return }
       if (homePostcode && !isPostcode(homePostcode)) { setError('Postcodes are 4 digits'); return }
     }
+    if (role === 'PROMOTER' && !agreePromoterTerms) { setError('Tick that you agree to the Promoter Terms.'); return }
     setLoading(true)
     try {
       const r = await fetch('/api/signup', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role, orgName, homeCity, ...(role === 'CONSUMER' ? { birthYear, homePostcode } : {}) }),
+        body: JSON.stringify({ name, email, password, role, orgName, homeCity, agreePromoterTerms: role === 'PROMOTER' ? agreePromoterTerms : undefined, ...(role === 'CONSUMER' ? { birthYear, homePostcode } : {}) }),
       })
       const data = await r.json().catch(() => ({}))
       if (!r.ok) { setError(data.error || 'Couldn’t create that account. Please give it another go.'); return }
@@ -81,7 +84,7 @@ function SignupForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Account type">
         {roles.map(({ key, label, sub, Icon }) => (
-          <button key={key} type="button" role="radio" aria-checked={role === key} onClick={() => setRole(key)}
+          <button key={key} type="button" role="radio" aria-checked={role === key} onClick={() => { setRole(key); setAgreePromoterTerms(false) }}
             className={cn('rounded-xl border p-3 text-left transition-all',
               role === key ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:bg-muted')}>
             <Icon className={cn('w-5 h-5 mb-1.5', role === key ? 'text-primary' : 'text-muted-foreground')} />
@@ -90,9 +93,11 @@ function SignupForm() {
           </button>
         ))}
       </div>
-      {role === 'PROMOTER'
-        ? <GoogleButton redirectTo="/promoter?google=1" label="Sign up with Google" />
-        : <GoogleButton redirectTo="/account" label="Sign up with Google" />}
+      {role === 'PROMOTER' ? (
+        agreePromoterTerms
+          ? <GoogleButton redirectTo="/promoter?google=1" label="Sign up with Google" />
+          : <p className="text-xs text-muted-foreground">Tick the Promoter Terms before signing up with Google.</p>
+      ) : <GoogleButton redirectTo="/account" label="Sign up with Google" />}
       <div className="space-y-1.5">
         <Label htmlFor="name">Your name</Label>
         <Input id="name" name="name" required value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
@@ -119,13 +124,14 @@ function SignupForm() {
         </select>
       </div>
       {role === 'CONSUMER' && <ProfileFields birthYear={birthYear} homePostcode={homePostcode} onBirthYear={setBirthYear} onPostcode={setHomePostcode} />}
+      {role === 'PROMOTER' && <PromoterTermsCheck id="signup-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} />}
       {notice && <p className="text-sm text-foreground" role="status">{notice}</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Create Account
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        By creating an account you agree to our <Link href="/terms" className="underline hover:text-foreground">terms</Link> and <Link href="/disclaimer" className="underline hover:text-foreground">disclaimer</Link>.
+        By creating an account you agree to our <Link href="/terms" className="underline hover:text-foreground">terms</Link>, <Link href="/disclaimer" className="underline hover:text-foreground">disclaimer</Link> and <Link href="/privacy" className="underline hover:text-foreground">privacy policy</Link>.
       </p>
       <p className="text-sm text-muted-foreground text-center">
         Already have an account? <Link href="/login" className="text-primary font-medium hover:underline">Sign in</Link>

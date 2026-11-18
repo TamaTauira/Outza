@@ -6,6 +6,7 @@ import { LOCAL_AD } from '@/lib/tiers'
 import { activateLocalAd, kindLabel, validateLocalAd } from '@/lib/local-ads'
 import { unverifiedGate } from '@/lib/account-flow'
 import { unpaidTestCheckoutAllowed } from '@/lib/checkout-gate'
+import { enforcePromoterCheckout } from '@/lib/terms-accept'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +18,8 @@ export async function POST(req: Request) {
   const gate = await unverifiedGate(me.id)
   if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const body = await req.json().catch(() => ({}))
+  const terms = await enforcePromoterCheckout(me.id, body?.agreePromoterTerms)
+  if (terms) return NextResponse.json({ error: terms.error }, { status: terms.status })
   const v = await validateLocalAd(body, me.id)
   if ('error' in v) return NextResponse.json({ error: v.error }, { status: v.status ?? 400 })
 

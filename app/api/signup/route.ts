@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db'
 import { isPostcode, parseBirthYear, under16GeoBlock } from '@/lib/profile-shared'
 import { sendVerification } from '@/lib/account-flow'
 import { emailActivityDefault } from '@/lib/email-activity'
+import { consumerAcceptance, promoterAcceptance, signupTermsError } from '@/lib/legal-docs'
+import { recordAcceptance } from '@/lib/terms-accept'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,12 +33,20 @@ export async function POST(req: Request) {
     const pc = typeof body.homePostcode === 'string' ? body.homePostcode.trim() : ''
     if (pc && !isPostcode(pc)) return NextResponse.json({ error: 'Postcodes are 4 digits' }, { status: 400 })
 
+    const termsError = signupTermsError(role, body.agreePromoterTerms)
+    if (termsError) return NextResponse.json({ error: termsError }, { status: 400 })
+
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
 
     const user = await prisma.user.create({
       data: { email, name, role, orgName, homeCity, birthYear, homePostcode: pc || null, password: await bcrypt.hash(password, 10), emailActivityPersonalisation: emailActivityDefault(req.headers.get('x-vercel-ip-country')) },
       select: { id: true, email: true, role: true },
+    })
+    const docs = consumerAcceptance()
+    if (role === 'PROMOTER') docs.push(promoterAcceptance())
+    await recordAcceptance(user.id, docs, 'signup').catch((err) => {
+      console.error('[legal] could not record signup acceptance', err instanceof Error ? err.message : err)
     })
     const verification = await sendVerification(user.id, user.email).catch((err) => {
       console.error('[account] verification mail failed', err instanceof Error ? err.message : err)

@@ -7,6 +7,7 @@ import { Loader2, Megaphone } from 'lucide-react'
 import { BOOSTS, type BoostId, ATTRIBUTION_NOTE } from '@/lib/sponsorship'
 import { formatAud, formatAudCents } from '@/lib/tiers'
 import { clickRate, costPerClick, returnEstimate } from '@/lib/organiser-reach'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 type Ev = { id: string; title: string; date: string; city?: string; category?: string; venueName: string }
 type CatalogBoost = (typeof BOOSTS)[BoostId]
@@ -55,6 +56,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
   const [headline, setHeadline] = useState('')
   const [blurb, setBlurb] = useState('')
   const [consent, setConsent] = useState(false)
+  const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
   const [busy, setBusy] = useState(false)
   const [email, setEmail] = useState('')
   const [note, setNote] = useState('')
@@ -119,6 +121,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
     if (!selected) { toast.error('Choose an event first'); return }
     if (!preview) { setPreview(true); return }
     if (!consent) { toast.error('Tick the box. We will not charge you without it.'); return }
+    if (!agreePromoterTerms) { toast.error('Tick that you agree to the Promoter Terms.'); return }
     setBusy(true)
     try {
       const res = await fetch('/api/sponsorships/checkout', {
@@ -133,6 +136,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
           headline,
           blurb,
           consent: true,
+          agreePromoterTerms: true,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -254,7 +258,8 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
               </div>
             ) : (
               <>
-                <label className="mt-4 flex items-start gap-2 text-sm">
+                <div className="mt-4"><PromoterTermsCheck id="boost-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
+                <label className="mt-3 flex items-start gap-2 text-sm">
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
                   <span>Charge my card {formatAud(price)} AUD once. Spotlight, Boost and Headliner are one-off. They are not the free month on a monthly plan.</span>
                 </label>

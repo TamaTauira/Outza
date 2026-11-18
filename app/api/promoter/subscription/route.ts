@@ -6,6 +6,7 @@ import { cancelPlan, changePlan, createPlanSession, payments, planPriceId, prepa
 import { activePlan, missingTable, planKeyOf } from '@/lib/sponsorship-store'
 import { unverifiedGate } from '@/lib/account-flow'
 import { trialConsentCopy, trialPeriodDays } from '@/lib/account-trust'
+import { enforcePromoterCheckout } from '@/lib/terms-accept'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,6 +92,8 @@ export async function POST(req: Request) {
   if (action === 'checkout' || action === 'change') {
     const gate = await unverifiedGate(me.id)
     if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+    const terms = await enforcePromoterCheckout(me.id, body?.agreePromoterTerms)
+    if (terms) return NextResponse.json({ error: terms.error }, { status: terms.status })
   }
   try {
     if (action === 'cancel') {

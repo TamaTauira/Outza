@@ -7,6 +7,7 @@ import { campaignEndsBeforeEvent } from '@/lib/promoter-listing'
 import { ADDONS, DURATIONS, PRO_PLAN, TIERS, formatAud, quote, tierDef, type Addon, type Duration, type Tier } from '@/lib/tiers'
 import { cn } from '@/lib/utils'
 import { PlacementPreview } from './placement-preview'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 type Ev = { id: string; title: string; date: string; city?: string; venueName: string; imageUrl?: string | null }
 
@@ -33,6 +34,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
   const [addons, setAddons] = useState<Addon[]>([])
   const [busy, setBusy] = useState(false)
   const [review, setReview] = useState(false)
+  const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
   const [placed, setPlaced] = useState(false)
   const [now, setNow] = useState(0)
   useEffect(() => { setNow(Date.now()) }, [])
@@ -47,9 +49,10 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
   const checkout = async () => {
     if (!selected) { toast.error('Choose an event to promote'); return }
     if (!review) { setReview(true); return }
+    if (!agreePromoterTerms) { toast.error('Tick that you agree to the Promoter Terms.'); return }
     setBusy(true)
     try {
-      const res = await fetch('/api/promotions/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: selected.id, tier, days, addons }) })
+      const res = await fetch('/api/promotions/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: selected.id, tier, days, addons, agreePromoterTerms: true }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Checkout failed')
       if (d.url) { window.location.href = d.url; return }
@@ -147,6 +150,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment — no lock-in. Placements are labelled Sponsored.</p>
         {early && <p className="mt-3 text-xs text-amber-700 dark:text-amber-400" role="status">This campaign ends before the event date, so it will not still be running on the day.</p>}
+        <div className="mt-3"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}
         <button onClick={checkout} disabled={busy || !selected} className="mt-4 w-full h-11 rounded-md bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}

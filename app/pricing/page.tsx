@@ -70,7 +70,7 @@ export default function PricingPage() {
           </table>
         </div>
         <p className="mt-4 text-sm text-muted-foreground">Placements are labelled Sponsored. Headliner stays in the event’s city. Front-row is the add-on that can show in every city. GST is included in every price above.</p>
-        <p className="mt-6 text-sm"><Link href="/promoters" className="text-primary underline">Promoter packages and add-ons</Link><span className="text-muted-foreground"> · </span><Link href="/refunds" className="text-primary underline">Refunds</Link></p>
+        <p className="mt-6 text-sm"><Link href="/promoters" className="text-primary underline">Promoter packages and add-ons</Link><span className="text-muted-foreground"> · </span><Link href="/terms/promoters" className="text-primary underline">Promoter & Advertising Terms</Link><span className="text-muted-foreground"> · </span><Link href="/refunds" className="text-primary underline">Refunds</Link></p>
       </main>
     </PageShell>
   )

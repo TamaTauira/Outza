@@ -8,6 +8,7 @@ import { activateOrder, activateProPass, isProActive } from '@/lib/promotions'
 import { notifyPromotionPurchased, notifyProPurchased } from '@/lib/promotion-email'
 import { unverifiedGate } from '@/lib/account-flow'
 import { unpaidTestCheckoutAllowed } from '@/lib/checkout-gate'
+import { enforcePromoterCheckout } from '@/lib/terms-accept'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,8 @@ export async function POST(req: Request) {
   const gate = await unverifiedGate(me.id)
   if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const body = await req.json().catch(() => ({}))
+  const terms = await enforcePromoterCheckout(me.id, body?.agreePromoterTerms)
+  if (terms) return NextResponse.json({ error: terms.error }, { status: terms.status })
   const secretKey = process.env.STRIPE_SECRET_KEY?.trim() || ''
   if (!secretKey && !unpaidTestCheckoutAllowed()) {
     return NextResponse.json({ error: 'Payments are not switched on yet.' }, { status: 503 })

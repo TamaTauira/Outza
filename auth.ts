@@ -4,6 +4,8 @@ import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import { consumerAcceptance } from '@/lib/legal-docs'
+import { recordAcceptance } from '@/lib/terms-accept'
 
 const secureCookies = process.env.NODE_ENV === 'production'
 const cookieOpts = { httpOnly: true, sameSite: 'lax' as const, path: '/', secure: secureCookies }
@@ -53,6 +55,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await prisma.user.updateMany({ where: { id: user.id, emailVerified: null }, data: { emailVerified: new Date() } }).catch((err) => {
           console.error('[auth] google verify', err instanceof Error ? err.message : err)
         })
+      }
+      if (account?.provider === 'google' && user.id) {
+        const fresh = await prisma.user.findUnique({ where: { id: user.id }, select: { createdAt: true } }).catch(() => null)
+        if (fresh && Date.now() - fresh.createdAt.getTime() < 120_000) {
+          await recordAcceptance(user.id, consumerAcceptance(), 'signup').catch((err) => {
+            console.error('[legal] could not record Google signup acceptance', err instanceof Error ? err.message : err)
+          })
+        }
       }
       return true
     },
