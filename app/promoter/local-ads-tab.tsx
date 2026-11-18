@@ -34,7 +34,7 @@ export function LocalAdsTab() {
           <span className="w-10 h-10 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0"><Store className="w-5 h-5" /></span>
           <div>
             <h2 className="font-display text-xl font-bold">Local business ads · {formatAud(LOCAL_AD.priceCents)} per event</h2>
-            <p className="text-sm text-muted-foreground mt-1">Restaurants, bars, parking providers and experience operators can appear as a “Recommended” pick beneath any upcoming event — like a pre-show dinner near a theatre. It runs until the event ends and is labelled Sponsored.</p>
+            <p className="text-sm text-muted-foreground mt-1">Restaurants, bars, parking providers and experience operators can appear as a “Recommended” pick beneath any upcoming event — like a pre-show dinner near a theatre. It runs until the event ends and is labelled Sponsored. Paying asks you to tick the <Link href="/terms/promoters" className="underline">Promoter Terms</Link>. <Link href="/refunds" className="underline">Refunds</Link> include the Australian Consumer Law.</p>
             <ol className="mt-3 text-sm space-y-1 list-decimal list-inside text-muted-foreground">
               <li>Find the event your customers are heading to on the <Link href="/" className="text-primary underline">event board</Link>.</li>
               <li>Open it and choose <span className="font-medium text-foreground">Recommend your business here</span>.</li>

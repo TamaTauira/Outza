@@ -23,7 +23,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '2. What you can buy',
     body: [
-      'You can list events, and you can pay to feature them. Spotlight, Boost and Headliner are paid placements. They are one-off purchases, not monthly plans, and they are labelled Sponsored.',
+      'You can list events, and you can pay to feature them. Spotlight, Boost and Headliner are paid placements. A local business ad on /local-ads is also a paid placement: it sits beside an event and is labelled Sponsored. These are one-off purchases, not monthly plans.',
       'Local Pro, Growth and Venue Plus are monthly subscriptions. A new subscription can start with a 30-day trial. The trial is only on those monthly plans. Spotlight, Boost, Headliner and the 30-day Promoter Pro pass are paid up front and do not include that trial.',
       'A trial becomes a paid subscription when it ends, unless you cancel before then. We tell you that before you start the trial.',
     ],

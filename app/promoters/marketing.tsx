@@ -224,6 +224,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
             })}
           </ul>
           <p className="mt-4 text-sm text-muted-foreground">The ad runs until the event ends. Up to 6 businesses per event. Sign in as a promoter, open an upcoming event and choose “Recommend your business here”. Always labelled Sponsored.</p>
+          <p className="mt-3 text-sm text-muted-foreground">Payment asks you to tick the <Link href="/terms/promoters" className="underline underline-offset-2">Promoter &amp; Advertising Terms</Link>. Refunds, including under the Australian Consumer Law, are on the <Link href="/refunds" className="underline underline-offset-2">refunds page</Link>.</p>
           <Link href={href} className={`${ctaClass} mt-6`}>{label}</Link>
         </div>
       </div>
