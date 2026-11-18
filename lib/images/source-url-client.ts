@@ -40,3 +40,36 @@ export function bestSourceUrl(url?: string | null): string | null {
   }
 }
 
+const PRESIGNED = /X-Amz-Signature|X-Amz-Algorithm|X-Amz-Credential/i
+
+/** A smaller rendition for on-screen use. The stored URL stays the original. */
+export function displaySourceUrl(url: string | null | undefined, width: number): string | null {
+  const best = bestSourceUrl(url) ?? (url && /^https?:\/\//i.test(url) ? url.trim() : null)
+  if (!best) return null
+  try {
+    const host = new URL(best).hostname
+    if (host === 'images.humanitix.com') {
+      const w = width <= 160 ? 200 : width <= 480 ? 500 : width <= 900 ? 800 : 1200
+      return best.replace(/@[\w.-]+$/, `@seo-${w}.jpg`)
+    }
+    if (/(^|\.)ticketm\.net$/.test(host)) {
+      const token = width <= 200 ? 'RETINA_PORTRAIT_16_9' : width <= 800 ? 'TABLET_LANDSCAPE_16_9' : 'TABLET_LANDSCAPE_LARGE_16_9'
+      return best.replace(/_TABLET_LANDSCAPE_LARGE_16_9(\.\w+)$/i, `_${token}$1`)
+    }
+    return best
+  } catch {
+    return best
+  }
+}
+
+/** next/image can resize these. Presigned object-store links expire, so they stay direct. */
+export function canOptimizeImage(url: string | null | undefined): boolean {
+  if (!url || PRESIGNED.test(url)) return false
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    return /images\.humanitix\.com$|(^|\.)ticketm\.net$|(^|\.)evbuc\.com$|(^|\.)cloudinary\.com$|(^|\.)moshtix\.com\.au$|(^|\.)squarespace\.com$|(^|\.)wixstatic\.com$|(^|\.)framerusercontent\.com$|(^|\.)wsimg\.com$/.test(host)
+  } catch {
+    return false
+  }
+}
+

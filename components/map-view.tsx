@@ -21,6 +21,7 @@ import { ReachBeacon } from '@/components/reach-beacon'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { eventPictureSrc, type PlaceholderSlot } from '@/lib/placeholders'
 import { variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
+import { displaySourceUrl } from '@/lib/images/source-url-client'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -46,8 +47,9 @@ function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | nu
   const kind: VariantKind = slot === 'marker' || slot === 'square' ? 'square' : 'card'
   const m = e.imageAsset?.variants
   const widths = m?.sizes?.[kind]
-  if (m && widths?.length) return variantUrl(m, kind, widths[widths.length - 1], 'webp')
-  return eventPictureSrc(e.imageUrl, e.category, slot)
+  if (m && widths?.length) return variantUrl(m, kind, slot === 'marker' ? widths[0] : widths[widths.length - 1], 'webp')
+  const sized = displaySourceUrl(e.imageUrl, slot === 'marker' ? 96 : slot === 'popup' ? 480 : 640)
+  return sized || eventPictureSrc(e.imageUrl, e.category, slot)
 }
 
 function holdingPicture(e: { imageUrl?: string | null; imageAsset?: ClientImage | null }, slot: PlaceholderSlot) {

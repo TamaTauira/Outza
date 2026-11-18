@@ -15,6 +15,18 @@ const nextConfig = {
   serverExternalPackages: ['nodemailer'],
   images: {
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.humanitix.com' },
+      { protocol: 'https', hostname: '**.ticketm.net' },
+      { protocol: 'https', hostname: 'cdn.evbuc.com' },
+      { protocol: 'https', hostname: 'img.evbuc.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: '**.moshtix.com.au' },
+      { protocol: 'https', hostname: '**.squarespace.com' },
+      { protocol: 'https', hostname: '**.wixstatic.com' },
+      { protocol: 'https', hostname: '**.framerusercontent.com' },
+      { protocol: 'https', hostname: '**.wsimg.com' },
+    ],
   },
   // 308 the legacy production alias onto the canonical host. Vercel serves this
   // same deployment on outza-sepia.vercel.app (that name is

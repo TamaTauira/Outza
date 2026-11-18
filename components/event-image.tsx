@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { srcSet, variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import { cn } from '@/lib/utils'
-import { bestSourceUrl } from '@/lib/images/source-url-client'
+import { bestSourceUrl, canOptimizeImage, displaySourceUrl } from '@/lib/images/source-url-client'
 import { placeholderPath, type PlaceholderSlot } from '@/lib/placeholders'
 
 interface Props {
@@ -36,7 +37,9 @@ interface Props {
  */
 export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, crop, accent, category, slot, wideSlot, className }: Props) {
   // Until variants exist, show the platform's full-resolution original rather than a cropped thumbnail
-  const src = bestSourceUrl(rawSrc) ?? rawSrc ?? null
+  const stored = bestSourceUrl(rawSrc) ?? rawSrc ?? null
+  const displayWidth = kind === 'hero' ? 1200 : kind === 'featured' ? 800 : kind === 'square' ? 200 : 640
+  const src = displaySourceUrl(stored, displayWidth) ?? stored
   const m = image?.variants ?? null
   const hasVariants = !!m?.sizes?.[kind]?.length
   const [stage, setStage] = useState<'variant' | 'source' | 'none'>(hasVariants ? 'variant' : src ? 'source' : 'none')
@@ -71,6 +74,19 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
   }
 
   if (stage === 'source' && src) {
+    if (canOptimizeImage(src)) {
+      return (
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes={sizes}
+          priority={!!priority}
+          className={frame}
+          onError={() => setStage('none')}
+        />
+      )
+    }
     return (
       <>
         {!crop && <img src={src} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}

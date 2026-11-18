@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
@@ -8,7 +9,7 @@ import { AddToPlanButton } from '@/components/add-to-plan'
 import { EventImage } from '@/components/event-image'
 import { EventReactions } from '@/components/event-reactions'
 import { ItineraryButton } from '@/components/itinerary-button'
-import { VenueMap } from '@/components/venue-map'
+const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mod.VenueMap), { ssr: false })
 import { CATEGORIES, categoryInk } from '@/lib/categories'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { descriptionParagraphs } from '@/lib/description-text'
