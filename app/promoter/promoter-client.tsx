@@ -119,31 +119,33 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">Promoter dashboard</p>
+          <p className="text-[13px] font-semibold text-primary">Promoter dashboard</p>
           <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1 flex items-center gap-2">
             {account.displayName ? account.displayName : 'Promoter dashboard'}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Your events, your campaigns, your results. No spreadsheet required.</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/account" className="h-10 px-4 rounded-md border border-border text-sm font-medium flex items-center hover:bg-muted">Profile</Link>
-          <button type="button" onClick={() => signOut({ redirectTo: '/' })} className="h-10 px-4 rounded-md border border-border text-sm font-medium flex items-center gap-1.5 hover:bg-muted"><LogOut className="w-4 h-4" />Sign out</button>
-          <Link href="/promoters" className="h-10 px-4 rounded-md border border-border text-sm font-medium flex items-center hover:bg-muted">View Pricing</Link>
-          <button onClick={() => startPromote()} className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-2"><Rocket className="w-4 h-4" />Promote an Event</button>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/account" className="flex h-11 items-center rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted">Profile</Link>
+          <button type="button" onClick={() => signOut({ redirectTo: '/' })} className="flex h-11 items-center gap-1.5 rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted"><LogOut className="w-4 h-4" />Sign out</button>
+          <Link href="/promoters" className="flex h-11 items-center rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted">View pricing</Link>
+          <button type="button" onClick={() => startPromote()} className="flex h-11 items-center gap-2 rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted"><Rocket className="w-4 h-4" />Promote an event</button>
+          <button type="button" onClick={() => { setTab('events'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="flex h-11 items-center gap-2 rounded-[var(--vp-radius-md)] bg-primary px-4 text-sm font-semibold text-primary-foreground"><CalendarPlus className="w-4 h-4" />Create event</button>
         </div>
       </div>
       {!stripeEnabled && <div className="mt-5 rounded-lg border border-primary/60 px-4 py-3 text-sm text-primary">Payments are in test mode — campaigns and Pro activate instantly without charging a card.</div>}
 
-      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]" aria-label="Dashboard sections">
+      <div className="mt-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
+      <nav className="flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] lg:sticky lg:top-20 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-[var(--vp-radius-lg)] lg:border lg:bg-card lg:p-2" aria-label="Dashboard sections">
         {TABS.map(({ key, label, Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={cn('relative shrink-0 flex items-center gap-2 px-4 h-11 text-sm transition-colors', tab === key ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground')}>
+          <button key={key} onClick={() => setTab(key)} className={cn('relative flex h-11 shrink-0 items-center gap-2 px-4 text-sm transition-colors lg:rounded-[var(--vp-radius-md)] lg:px-3', tab === key ? 'font-semibold text-foreground lg:bg-muted' : 'text-muted-foreground hover:text-foreground')}>
             <Icon className="w-4 h-4" />{label}
-            {tab === key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
+            {tab === key && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary lg:hidden" />}
           </button>
         ))}
       </nav>
 
-      <div className="mt-6">
+      <div className="mt-6 lg:mt-0">
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
             {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => setTab('events')} goInsights={() => setTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
@@ -167,16 +169,18 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
           </>
         )}
       </div>
+      </div>
     </main>
   )
 }
 
-function Kpi({ Icon, label, value, hint }: { Icon: typeof Eye; label: string; value: string; hint?: string }) {
+function Kpi({ Icon, label, value, window, definition }: { Icon: typeof Eye; label: string; value: string; window: string; definition: string }) {
   return (
     <div className={card}>
-      <div className="flex items-center gap-2 text-muted-foreground text-xs"><Icon className="w-4 h-4 text-primary" />{label}</div>
-      <p className="mt-2 text-2xl font-bold tabular-nums">{value}</p>
-      {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
+      <div className="flex items-center gap-2 text-[13px] text-muted-foreground"><Icon className="h-4 w-4 text-primary" />{label}</div>
+      <p className="mt-2 font-display text-2xl font-bold tabular-nums">{value}</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">{window}</p>
+      <p className="mt-1 text-[13px] text-muted-foreground">{definition}</p>
     </div>
   )
 }
@@ -319,12 +323,12 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
   ]
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Kpi Icon={Rocket} label="Live campaigns" value={String(stats.live)} />
-        <Kpi Icon={Eye} label="Listing views" value={stats.views.toLocaleString('en-AU')} hint="Event page visits" />
-        <Kpi Icon={MousePointerClick} label="Ticket clicks" value={stats.clicks.toLocaleString('en-AU')} hint={stats.views ? `${((stats.clicks / stats.views) * 100).toFixed(1)}% click-through` : 'Taps on “Get Tickets”'} />
-        <Kpi Icon={Users} label="Saves + going" value={stats.fans.toLocaleString('en-AU')} />
-        <Kpi Icon={Wallet} label="Total invested" value={formatAud(stats.spend)} hint="AUD, all time" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <Kpi Icon={Rocket} label="Live campaigns" value={String(stats.live)} window="Right now" definition="Campaigns still active, whose end time has not passed." />
+        <Kpi Icon={Eye} label="Listing views" value={stats.views.toLocaleString('en-AU')} window="All time" definition="Event page visits stored on your events." />
+        <Kpi Icon={MousePointerClick} label="Ticket clicks" value={stats.clicks.toLocaleString('en-AU')} window="All time" definition={stats.views ? `Taps on the ticket link. ${((stats.clicks / stats.views) * 100).toFixed(1)}% of listing views.` : 'Taps on the ticket link stored on your events.'} />
+        <Kpi Icon={Users} label="Saves and going" value={stats.fans.toLocaleString('en-AU')} window="All time" definition="Saves plus people marked going, from the counts on your events." />
+        <Kpi Icon={Wallet} label="Total invested" value={formatAud(stats.spend)} window="All time" definition="Active and expired campaigns, plus active and cancelled passes and local ads. AUD." />
       </div>
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">

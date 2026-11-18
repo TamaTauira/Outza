@@ -1,20 +1,21 @@
-/* This page is a light marketing canvas even when the rest of the site is in dark mode,
-   so the black bands, white sections and dark package cards match the design. */
+/* Light commercial canvas, using the same brand tokens as the rest of the site.
+   Dark hero bands stay dark on purpose. The body stays light so the package cards
+   and the pale sections keep their contrast. */
 .vp-promoters {
-  --background: 50 20% 95%;
-  --foreground: 105 17% 9%;
+  --background: 45 31% 95%;
+  --foreground: 150 10% 9%;
   --card: 0 0% 100%;
-  --card-foreground: 105 17% 9%;
+  --card-foreground: 150 10% 9%;
   --popover: 0 0% 100%;
-  --popover-foreground: 105 17% 9%;
-  --muted: 50 14% 92%;
-  --muted-foreground: 140 5% 34%;
-  --border: 50 10% 85%;
-  --input: 50 10% 85%;
-  --primary: 16 84% 42%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 50 12% 91%;
-  --secondary-foreground: 105 17% 9%;
+  --popover-foreground: 150 10% 9%;
+  --muted: 42 18% 92%;
+  --muted-foreground: 150 6% 32%;
+  --border: 40 14% 82%;
+  --input: 40 14% 82%;
+  --primary: 20 100% 60%;
+  --primary-foreground: 160 20% 8%;
+  --secondary: 42 22% 90%;
+  --secondary-foreground: 150 10% 9%;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
 }

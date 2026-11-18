@@ -70,7 +70,7 @@ export function FaqSection() {
           <div className="mt-6 grid items-start gap-3 md:grid-cols-2">
             {items.map((item) => (
               <details key={item.q} className="group min-w-0 rounded-2xl border border-border bg-card px-4 shadow-sm">
-                <summary className="cursor-pointer list-none text-left text-sm font-semibold [&::-webkit-details-marker]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9F1239]">
+                <summary className="cursor-pointer list-none text-left text-sm font-semibold [&::-webkit-details-marker]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--vp-brand-orange-ink)]">
                   <span className="flex min-h-12 items-center justify-between gap-3 py-4">
                     {item.q}
                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
@@ -82,7 +82,7 @@ export function FaqSection() {
           </div>
         </div>
         <aside className="rounded-3xl bg-[#0c0c0e] p-6 text-white lg:sticky lg:top-24">
-          <Headphones className="h-8 w-8 text-[#FF8A1A]" aria-hidden />
+          <Headphones className="h-8 w-8 text-[var(--vp-brand-orange)]" aria-hidden />
           <h3 className="mt-4 font-display text-2xl font-bold">Still have questions?</h3>
           <p className="mt-2 text-sm text-white/80">Write to us about a listing, a purchase or your account. The contact page says where that note goes.</p>
           <Link href="/contact" className={`${ctaClass} mt-6 w-full`}>Contact</Link>

@@ -38,7 +38,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
     <>
       <section id="packages" className="scroll-mt-24 border-y border-border bg-card/40 py-12 sm:py-16">
         <div className={sectionPad}>
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#9F1239]">One-off · per event · AUD incl. GST</p>
+          <p className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">One-off · per event · AUD incl. GST</p>
           <h2 className="mt-2 max-w-3xl font-display text-3xl font-bold tracking-tight sm:text-4xl">Give your event the spotlight.</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">Three ways to get noticed. One easy way to get started.</p>
 
@@ -55,7 +55,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
                     data-testid={`package-${tier.key}`}
                     data-days={days}
                     data-price={tier.prices[days]}
-                    className="flex min-w-0 flex-col overflow-hidden rounded-3xl bg-[#141418] text-white shadow-[0_16px_40px_rgba(0,0,0,0.12)] ring-1 ring-black/10"
+                    className="flex min-w-0 flex-col overflow-hidden rounded-[var(--vp-radius-xl)] bg-[#141418] text-white ring-1 ring-white/10"
                   >
                     <header className="px-5 py-4 text-white" style={{ background: HEADER[tier.key] }}>
                       <h3 className="font-display text-xl font-bold">{tier.name}</h3>
@@ -70,7 +70,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
                       <ul className="mt-4 flex-1 space-y-2">
                         {tier.perks.map((perk) => (
                           <li key={perk} className="flex gap-2 text-sm text-white/90">
-                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8A1A]" aria-hidden />
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--vp-brand-orange)]" aria-hidden />
                             {perk}
                           </li>
                         ))}
@@ -101,9 +101,9 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
 function DurationPanel({ days, onChange }: { days: Duration; onChange: (days: number) => void }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-24">
-      <h3 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Choose your duration</h3>
+      <h3 className="text-[13px] font-semibold text-muted-foreground">Choose your duration</h3>
       <p className="mt-1 text-xs text-muted-foreground" id="duration-hint">Sets the length on all three packages. Default is 7 days.</p>
-      <div role="radiogroup" aria-label="Campaign length" aria-describedby="duration-hint" className="mt-3 grid grid-cols-3 gap-2 xl:grid-cols-1">
+      <div role="radiogroup" aria-label="Campaign length" aria-describedby="duration-hint" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
         {DURATIONS.map((d) => {
           const on = days === d.days
           return (
@@ -113,7 +113,7 @@ function DurationPanel({ days, onChange }: { days: Duration; onChange: (days: nu
               role="radio"
               aria-checked={on}
               onClick={() => onChange(d.days)}
-              className={`min-h-12 rounded-2xl border px-3 py-2 text-left text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9F1239] ${on ? 'border-[#9A3412] bg-[#9A3412] text-white' : 'border-border bg-background hover:border-[#9A3412]/50'}`}
+              className={`min-h-12 rounded-2xl border px-3 py-2 text-left text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--vp-brand-orange-ink)] ${on ? 'border-[var(--vp-brand-orange-ink)] bg-[var(--vp-brand-orange-ink)] text-white' : 'border-border bg-background hover:border-[var(--vp-brand-orange-ink)]/50'}`}
             >
               {d.label}
             </button>
