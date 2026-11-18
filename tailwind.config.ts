@@ -12,7 +12,17 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         display: ['var(--font-display)', 'var(--font-sans)', 'sans-serif'],
-        mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
+        mono: ['var(--font-sans)', 'ui-monospace', 'monospace'],
+      },
+      fontSize: {
+        caption: ['12px', { lineHeight: '16px' }],
+        small: ['14px', { lineHeight: '20px' }],
+        body: ['16px', { lineHeight: '24px' }],
+        lead: ['18px', { lineHeight: '28px' }],
+        h3: ['clamp(18px, 1rem + 0.4vw, 20px)', { lineHeight: '1.3', fontWeight: '600' }],
+        h2: ['clamp(24px, 1.2rem + 1.2vw, 32px)', { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '700' }],
+        h1: ['clamp(32px, 1.4rem + 2.6vw, 52px)', { lineHeight: '1.05', letterSpacing: '-0.025em', fontWeight: '700' }],
+        display: ['clamp(40px, 1.5rem + 4.5vw, 64px)', { lineHeight: '1', letterSpacing: '-0.03em', fontWeight: '800' }],
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -39,6 +49,7 @@ const config: Config = {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+          ink: 'hsl(var(--primary-ink))',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',

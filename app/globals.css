@@ -14,6 +14,7 @@
     --popover-foreground: 150 10% 9%;
     --primary: 20 100% 60%;
     --primary-foreground: 160 20% 8%;
+    --primary-ink: 17 91% 40%;
     --secondary: 42 22% 90%;
     --secondary-foreground: 150 10% 9%;
     --muted: 42 18% 92%;
@@ -23,8 +24,8 @@
     --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
     --border: 40 14% 82%;
-    --input: 40 14% 82%;
-    --ring: 20 80% 40%;
+    --input: 36 6% 51%;
+    --ring: 17 91% 40%;
     --free: 160 78% 24%;
     --shadow-sm: var(--vp-shadow-sm);
     --shadow-md: var(--vp-shadow-md);
@@ -43,6 +44,7 @@
     --popover-foreground: 60 13% 96%;
     --primary: 20 100% 60%;
     --primary-foreground: 160 20% 8%;
+    --primary-ink: 20 100% 60%;
     --secondary: 157 10% 16%;
     --secondary-foreground: 60 13% 96%;
     --muted: 163 11% 13%;
@@ -52,8 +54,8 @@
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
     --border: 156 12% 17%;
-    --input: 160 9% 21%;
-    --ring: 333 83% 65%;
+    --input: 152 6% 38%;
+    --ring: 20 100% 60%;
     --free: 158 34% 70%;
   }
 }
@@ -70,6 +72,16 @@
   }
   h1, h2 {
     text-wrap: balance;
+  }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-primary {
+    color: hsl(var(--primary-ink));
   }
 }
 
