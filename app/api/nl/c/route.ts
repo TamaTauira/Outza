@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const s = sp.get('s') ?? '', p = sp.get('p') ?? '', t = sp.get('t') ?? '', e = sp.get('e') ?? ''
   if (!verify(sp.get('k'), s, p, t, e)) return NextResponse.redirect(siteUrl())
 
-  const send = s && s !== 'preview' ? await prisma.newsletterSend.findUnique({ where: { id: s }, select: { id: true, city: true, edition: true, sentAt: true } }).catch(() => null) : null
+  const send = s && s !== 'preview' ? await prisma.newsletterSend.findUnique({ where: { id: s }, select: { id: true, userId: true, city: true, edition: true, sentAt: true } }).catch(() => null) : null
   const ev = e ? await prisma.event.findUnique({ where: { id: e }, select: { id: true, category: true, ticketUrl: true } }).catch(() => null) : null
   const ctx = { sendId: s, edition: send?.edition ?? 'weekly', issueDate: (send?.sentAt ?? new Date()).toISOString().slice(0, 10), city: send?.city ?? 'Sydney' }
 
@@ -24,8 +24,16 @@ export async function GET(req: NextRequest) {
   // Affiliate tracking links must reach the seller untouched, so no UTM tags on them
   if (t !== 'prefs' && !(t === 'ticket' && ev && isTicketekUrl(ev.ticketUrl) && dest !== ev.ticketUrl)) dest = utm(dest, ctx, p)
 
-  if (send) {
+  if (send && t !== 'unsubscribe') {
+    const person = await prisma.user.findUnique({ where: { id: send.userId }, select: { emailActivityPersonalisation: true } }).catch(() => null)
+    if (person?.emailActivityPersonalisation === true) {
+      await prisma.newsletterClick.create({ data: { sendId: send.id, eventId: ev?.id ?? null, placement: p, target: t, category: ev?.category ?? null } }).catch(() => {})
+    }
+  }
+  if (send && t === 'unsubscribe') {
     await prisma.newsletterClick.create({ data: { sendId: send.id, eventId: ev?.id ?? null, placement: p, target: t, category: ev?.category ?? null } }).catch(() => {})
+  }
+  if (send) {
     if (ev && t === 'ticket') {
       await prisma.event.update({ where: { id: ev.id }, data: { ticketClicks: { increment: 1 } } }).catch(() => {})
       const { bumpEngagement } = await import('@/lib/engagement-store')

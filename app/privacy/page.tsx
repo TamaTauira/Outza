@@ -13,7 +13,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
     'Your vibe (optional): if you choose to answer them, your usual vibe, a one-line vibe bio, who you go out with, when you go out, typical spend, how far you travel, how you get there, how far ahead you plan and how often you go out. You can change or clear these at any time in your account.',
     'What you do on VibePeep: events you save or mark as going, and, when you’re signed in, the events you view, share, add to your itinerary or tap through to tickets. Also the promoters you follow and friend connections you create.',
     'A random id in a first-party cookie, so we can count monthly visitors and whether a search led to an event. It is not your name or email, and we don’t use a third-party tracker for it.',
-    'Newsletter interactions: which links in our emails you click, and whether an email appears to have been opened (via a small image). Open data is approximate because many email apps block or pre-load images.',
+    'Newsletter interactions, if you leave “Personalise using my email activity” on: which links in our emails you click, and whether an email appears to have been opened (via a small image). Open data is approximate because many email apps block or pre-load images. When that setting is off, the email has no open image and the links are not logged for personalisation. Campaign tags on a link can still show an organiser that the visit came from VibePeep. Unsubscribe clicks are still recorded so we can turn the mail off.',
     'Promoters: business details and the events and promotions you create and purchase.',
     'Reports and claims: if you report incorrect event details we store your report and, if you give it, your email so we can reply. If you claim a listing we store your organisation, role and the evidence you provide so we can check the claim.',
   ] },
@@ -52,6 +52,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
   { title: 'Your choices', body: [
     'You can update your year of birth and home postcode (or remove your postcode) in your account settings.',
     'You can change your city, interests and email frequency, or turn the newsletter off, at any time in your account settings.',
+    'You can turn off “Personalise using my email activity” in the Email section of your account. Australia password signups start with it on. Signups from the EU, the EEA, the UK, or where the country is unknown, start with it off. A Google signup starts off, because that path does not see the country header. Accounts that already existed before this choice was stored stay on, because no country was saved for them.',
     'Every newsletter includes a one-click unsubscribe link. The optional weekly promoter recap has its own unsubscribe link, which does not turn the newsletter off.',
     'You can remove saved events, going status and follows at any time.',
   ] },

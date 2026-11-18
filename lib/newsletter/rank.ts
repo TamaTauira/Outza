@@ -102,6 +102,8 @@ export async function pickEvents(userId: string, opts: { city?: string; edition?
   const [hh, mm] = nowParts.time.split(':').map(Number)
   const nowMin = hh * 60 + mm
 
+  const personalise = await prisma.user.findUnique({ where: { id: userId }, select: { emailActivityPersonalisation: true } })
+  const useEmailClicks = personalise?.emailActivityPersonalisation === true
   const [pool, savedRows, attended, clicks, recent, signals, venueFollows, togetherItems, promos] = await Promise.all([
     loadPool(city, from, to),
     prisma.savedEvent.findMany({
@@ -115,12 +117,14 @@ export async function pickEvents(userId: string, opts: { city?: string; edition?
       take: 80,
       select: { event: { select: { id: true, title: true, category: true, suburb: true, venueName: true, subTags: true, isFree: true, priceMin: true, time: true } } },
     }),
-    prisma.newsletterClick.findMany({
-      where: { send: { userId }, target: { not: 'unsubscribe' } },
-      take: 200,
-      orderBy: { createdAt: 'desc' },
-      select: { category: true },
-    }),
+    useEmailClicks
+      ? prisma.newsletterClick.findMany({
+        where: { send: { userId }, target: { not: 'unsubscribe' } },
+        take: 200,
+        orderBy: { createdAt: 'desc' },
+        select: { category: true },
+      })
+      : Promise.resolve([]),
     prisma.newsletterSend.findMany({ where: { userId, status: 'SENT' }, orderBy: { sentAt: 'desc' }, take: 2, select: { eventIds: true } }),
     prisma.eventSignal.findMany({
       where: { userId, kind: { in: ['VIEW', 'TICKET', 'SHARE', 'ITINERARY'] } },

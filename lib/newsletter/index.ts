@@ -7,6 +7,7 @@ import { emailImageSrc, type EmailKind } from './images'
 import { renderHtml, renderText, type CtaVariant, type Slot } from './render'
 import { runQa, type QaReport } from './qa'
 import { isQaAccountEmail } from '@/lib/qa-account'
+import { emailActivityAllowed } from '@/lib/email-activity'
 
 export type Mode = 'send' | 'test' | 'preview'
 
@@ -89,7 +90,9 @@ export async function buildNewsletter(userId: string, opts: { mode: Mode; city?:
     ctx: { sendId, edition, issueDate, city: picked.city }, userId, email: user.email, editionKey: edition, city: picked.city,
     from: picked.from, to: picked.to, greeting: picked.greeting, intro: picked.intro, preview, subject: chosen.subject,
     cta, nearTitle: picked.nearTitle, becauseTitle: picked.becauseTitle, reminderOptIn: picked.reminderOptIn,
-    hero, weekend, because, saved, free, popular, sponsored, sponsoredPos, trackOpens: opts.mode === 'send',
+    hero, weekend, because, saved, free, popular, sponsored, sponsoredPos,
+    trackOpens: opts.mode === 'send' && emailActivityAllowed(user.emailActivityPersonalisation),
+    trackClicks: emailActivityAllowed(user.emailActivityPersonalisation),
   } as const
   const html = renderHtml(input)
   const text = renderText(input)

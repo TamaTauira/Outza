@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 const SELECT = {
   id: true, name: true, email: true, image: true, role: true, orgName: true, bio: true, website: true, homeCity: true,
-  preferredCategories: true, preferredCities: true, emailOptIn: true, emailFrequency: true, lastDigestAt: true,
+  preferredCategories: true, preferredCities: true, emailOptIn: true, emailFrequency: true, emailActivityPersonalisation: true, lastDigestAt: true,
   reminderOptIn: true, lastWatchDigestAt: true,
   birthYear: true, homePostcode: true, vibeProfile: true,
 } as const
@@ -50,6 +50,7 @@ export async function PATCH(req: Request) {
   if (Array.isArray(b.preferredCategories)) data.preferredCategories = b.preferredCategories.filter((c: unknown) => typeof c === 'string' && catNames.has(c))
   if (Array.isArray(b.preferredCities)) data.preferredCities = b.preferredCities.filter((c: unknown) => typeof c === 'string' && CITY_NAMES.includes(c))
   if (typeof b.emailOptIn === 'boolean') data.emailOptIn = b.emailOptIn
+  if (typeof b.emailActivityPersonalisation === 'boolean') data.emailActivityPersonalisation = b.emailActivityPersonalisation
   if (typeof b.reminderOptIn === 'boolean') data.reminderOptIn = b.reminderOptIn
   if (isQaAccountEmail(me.email)) {
     data.emailOptIn = false
