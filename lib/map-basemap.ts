@@ -1,5 +1,6 @@
 /** MapLibre vector basemap inside Leaflet, so the Map page can keep its clusters. */
 import { setWorkerUrl } from 'maplibre-gl'
+import { guardGlLayer } from '@/lib/leaflet-map'
 import { MAP_MAX_ZOOM, vibeMapStyle } from '@/lib/map-style'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -13,10 +14,12 @@ export async function createBasemap(L: any, dark: boolean) {
     ?? (mod as { maplibreGL?: (options: object) => any }).maplibreGL
     ?? (L.maplibreGL as ((options: object) => any) | undefined)
   if (!maplibreGL) throw new Error('MapLibre layer failed to load')
-  return maplibreGL({
+  const layer = maplibreGL({
     style: vibeMapStyle(dark),
     maxZoom: MAP_MAX_ZOOM + 1,
     interactive: false,
     attributionControl: false,
   })
+  guardGlLayer(layer)
+  return layer
 }

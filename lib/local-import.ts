@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
+import { imageFromListingPage, imageWillExpire, usableSourceImage } from '@/lib/local-images'
 import { yieldIfBudget } from '@/lib/source-budget'
 import { prisma } from '@/lib/db'
 import { readJobCursor, writeJobCursor } from '@/lib/job-watermark'
@@ -54,16 +55,22 @@ interface Row {
   id: string; title: string; description: string | null; date: Date; endDate: Date | null; time: string | null; endTime: string | null
   venueName: string; venueAddress: string | null; suburb: string | null; city: string; isFree: boolean; price: string | null
   ticketUrl: string | null; organiserName: string | null; organiserUrl: string | null; source: string; latitude: number | null; longitude: number | null
+  imageUrl: string | null
   updatedAt: Date
 }
+
+/** Page lookups per import run. The rest are filled by the image backfill. */
+const IMAGE_LOOKUPS = 15
+let imageLookups = 0
 
 type Draft = Omit<RecurringShape, 'endDate' | 'recurUntil'> & { endDate: string | null; recurUntil: string | null; row: Row; sourceKey: string }
 
 export async function importLocalFromBoard(): Promise<{ upserted: number; skipped: number; rowsRead: number }> {
+  imageLookups = 0
   const started = new Date()
   const cursor = await readJobCursor('localImport').catch(() => null)
   const since = new Date(Date.now() - 86400000)
-  const narrow = { id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true, city: true, isFree: true, price: true, ticketUrl: true, organiserName: true, organiserUrl: true, source: true, latitude: true, longitude: true, updatedAt: true } as const
+  const narrow = { id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true, city: true, isFree: true, price: true, ticketUrl: true, organiserName: true, organiserUrl: true, source: true, latitude: true, longitude: true, imageUrl: true, updatedAt: true } as const
   const loaded = await prisma.event.findMany({
     where: {
       source: { in: Object.keys(LOCAL_IMPORT_SOURCES) },
@@ -77,7 +84,7 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
     orderBy: cursor ? { updatedAt: 'asc' } : { date: 'asc' },
     take: cursor ? 2000 : 20000,
   })
-  const rows: Row[] = loaded.map((row) => ({ ...row, description: null }))
+  const rows: Row[] = loaded.map((row) => ({ ...row, description: null, imageUrl: row.imageUrl ?? null }))
 
   let skipped = 0
   const groups = new Map<string, Row[]>()
@@ -132,6 +139,7 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
     const r = d.row
     if (lastDate(d) < todayIn(cityDef(r.city).tz)) { skipped++; continue }
     const place = splitAddress(r.venueName, r.venueAddress, r.suburb ?? r.city)
+    const picture = await sourcePicture(r)
     const data = {
       title: sanitizeDbText(r.title, 120), category: categoryFor(r.title),
       description: sanitizeDbText(r.description?.trim() || r.title, 2000),
@@ -144,6 +152,7 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
       contactEmail: '', websiteUrl: sanitizeDbUrl(r.ticketUrl || r.organiserUrl, 500),
       sourceName: LOCAL_IMPORT_SOURCES[r.source], sourceKey: d.sourceKey,
       expiresAt: new Date(`${addDaysStr(lastDate(d), 1)}T14:00:00Z`),
+      ...(picture ? { sourceImageUrl: picture } : {}),
     }
     try {
       const existing = await prisma.localListing.findFirst({ where: { sourceKey: d.sourceKey }, select: { id: true, status: true } })
@@ -172,6 +181,17 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
   }
   console.log('[local-import] rows read', loaded.length, 'described', kept.length, 'cursor', cursor?.toISOString() ?? 'full')
   return { upserted, skipped, rowsRead: loaded.length + kept.length }
+}
+
+/** The event's own picture, or the one on its public page when that picture is missing. */
+async function sourcePicture(row: Row): Promise<string | null> {
+  const direct = usableSourceImage(row.imageUrl)
+  if (direct && !imageWillExpire(direct)) return direct
+  const page = row.ticketUrl || row.organiserUrl
+  if (!page || imageLookups >= IMAGE_LOOKUPS || yieldIfBudget('local image')) return direct
+  imageLookups += 1
+  const found = usableSourceImage(await imageFromListingPage(page).catch(() => null))
+  return found ?? direct
 }
 
 const windowFor = (city: string) => { const t = todayIn(cityDef(city).tz); return [t, addDaysStr(t, 180)] as const }

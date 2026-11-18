@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { createBasemap } from '@/lib/map-basemap'
+import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { coordsFitCity, fmtMin, planLeg } from '@/lib/travel'
 import { eventPath } from '@/lib/seo'
@@ -60,7 +61,8 @@ export function ItineraryMap({
     })()
     return () => {
       cancelled = true
-      if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null }
+      destroyLeafletMap(mapInstance.current)
+      mapInstance.current = null
       setReady(false)
     }
   }, [])
@@ -73,7 +75,7 @@ export function ItineraryMap({
     ;(async () => {
       try {
         const layer = await createBasemap(L, dark)
-        if (cancelled) return
+        if (cancelled || !mapIsLive(map)) return
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
       } catch (err) {

@@ -14,6 +14,7 @@ import {
   humanitixCarouselUrls,
   humanitixEventUrlFromHref,
   humanitixEventUrlsFromShard,
+  humanitixImageUrl,
   humanitixListingsFromJson,
   humanitixOriginalImage,
   humanitixPlainText,
@@ -159,6 +160,19 @@ test('a Humanitix event page keeps the full description, image, price, and Sydne
   assert.equal(event.passed, false)
   assert.equal(event.listed, true)
   assert.ok((event.description ?? '').length > 600)
+})
+
+test('a Humanitix banner handle is kept as the original asset', () => {
+  assert.equal(
+    humanitixImageUrl({ bannerImage: { handle: 'pace-run.png' } }, null),
+    'https://images.humanitix.com/i/pace-run.png@original',
+  )
+  assert.equal(
+    humanitixImageUrl({ images: { banner: { src: 'https://images.humanitix.com/i/abc.png@seo-500.jpg' } } }, null),
+    'https://images.humanitix.com/i/abc.png@original',
+  )
+  assert.equal(humanitixImageUrl({}, { image: 'https://images.humanitix.com/i/schema.png@original' }), 'https://images.humanitix.com/i/schema.png@original')
+  assert.equal(humanitixImageUrl({}, null), null)
 })
 
 test('plain text and original images drop the markup and the seo rendition', () => {

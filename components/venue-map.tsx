@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Loader2, MapPinOff } from 'lucide-react'
 import { createBasemap } from '@/lib/map-basemap'
+import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
 import { EVENT_PIN_ANCHOR, EVENT_PIN_SIZE, eventPinHtml, MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -58,7 +59,7 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â
         if (!cancelled) setFailed(true)
       }
     })()
-    return () => { cancelled = true; if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; setReady(false) } }
+    return () => { cancelled = true; destroyLeafletMap(mapRef.current); mapRef.current = null; setReady(false) }
   }, [geo])
 
   useEffect(() => {
@@ -69,7 +70,7 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â
     ;(async () => {
       try {
         const layer = await createBasemap(L, dark)
-        if (cancelled) return
+        if (cancelled || !mapIsLive(map)) return
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
       } catch (err) {

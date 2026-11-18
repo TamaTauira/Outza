@@ -176,7 +176,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
             )}
 
             <div className="border-t border-border pt-6 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground max-w-2xl">{l.sourceName ? `This listing was imported from ${l.sourceName}; no images were copied.` : 'Community listings come from their organisers.'} Details can change, so confirm with the organiser before you go. VibePeep doesn&apos;t sell or guarantee anything at this listing. See our <Link href="/disclaimer" className="underline">disclaimer</Link>.</p>
+              <p className="text-xs text-muted-foreground max-w-2xl">{l.sourceName ? (l.imageUrl ? `This listing was imported from ${l.sourceName}. The picture is the one on that listing.` : `This listing was imported from ${l.sourceName}. That page didn’t include a picture.`) : 'Community listings come from their organisers.'} Details can change, so confirm with the organiser before you go. VibePeep doesn&apos;t sell or guarantee anything at this listing. See our <Link href="/disclaimer" className="underline">disclaimer</Link>.</p>
               <button onClick={report} className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-border text-sm hover:bg-muted"><Flag className="w-4 h-4" />Report this listing</button>
             </div>
           </div>

@@ -332,14 +332,35 @@ function pricesOf(schema: Record<string, unknown> | null): number[] {
   return nums
 }
 
-function imageOf(event: Record<string, unknown>, schema: Record<string, unknown> | null): string | null {
+function imageCandidate(value: unknown): string | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = imageCandidate(item)
+      if (found) return found
+    }
+    return null
+  }
+  const direct = text(value)
+  if (direct) return humanitixOriginalImage(direct)
+  if (!value || typeof value !== 'object') return null
+  const row = value as Record<string, unknown>
+  const handle = text(row.handle)
+  if (handle) return humanitixOriginalImage(handle.startsWith('http') ? handle : `https://images.humanitix.com/i/${handle}@original`)
+  return humanitixOriginalImage(text(row.src) || text(row.url) || text(row.secure_url))
+}
+
+/** Banner first, then thumbnail, then the share image. Handles and URLs both count. */
+export function humanitixImageUrl(event: Record<string, unknown>, schema: Record<string, unknown> | null): string | null {
   const images = event.images
-  const banner = images && typeof images === 'object' ? (images as { banner?: unknown }).banner : null
-  const thumb = images && typeof images === 'object' ? (images as { thumbnail?: unknown }).thumbnail : null
-  const bannerSrc = banner && typeof banner === 'object' ? text((banner as { src?: unknown }).src) : null
-  const thumbSrc = thumb && typeof thumb === 'object' ? text((thumb as { src?: unknown }).src) : null
-  const schemaImage = schema ? text(schema.image) : null
-  return humanitixOriginalImage(bannerSrc) || humanitixOriginalImage(thumbSrc) || humanitixOriginalImage(schemaImage)
+  const imageRow = images && typeof images === 'object' && !Array.isArray(images) ? images as Record<string, unknown> : null
+  return (imageRow ? imageCandidate(imageRow.banner) || imageCandidate(imageRow.bannerImage) || imageCandidate(imageRow.thumbnail) || imageCandidate(imageRow.image) : null)
+    || imageCandidate(event.bannerImage)
+    || imageCandidate(event.banner)
+    || imageCandidate(schema?.image)
+}
+
+function imageOf(event: Record<string, unknown>, schema: Record<string, unknown> | null): string | null {
+  return humanitixImageUrl(event, schema)
 }
 
 function pinOf(latLng: string | null): { lat: number | null; lng: number | null } {

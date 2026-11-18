@@ -335,7 +335,7 @@ export function LocalBrowse({
         })}
 
         {mode === 'list' && (
-          <div className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+          <div className="mt-4 rounded-xl border border-border bg-card shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
             <BoardHeadings />
             {ordered.map(([day, rows]) => {
               const open = !closed[day]
@@ -343,7 +343,7 @@ export function LocalBrowse({
               const hidden = rows.length - shown.length
               return (
                 <div key={day}>
-                  <GroupBar label={dayLabel(day, today)} count={rows.length} open={open} onToggle={() => setClosed((current) => ({ ...current, [day]: open }))} />
+                  <GroupBar pin="page" label={dayLabel(day, today)} count={rows.length} open={open} onToggle={() => setClosed((current) => ({ ...current, [day]: open }))} />
                   {open && shown.map((ev) => {
                     const key = rowKey(ev)
                     const board = toBoardEvent(ev)

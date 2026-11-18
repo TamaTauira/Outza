@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { cityDef, CITY_NAMES } from '@/lib/cities'
 import { createBasemap } from '@/lib/map-basemap'
+import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
 import { EVENT_PIN_ANCHOR, EVENT_PIN_SIZE, eventPinHtml, MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { cn } from '@/lib/utils'
@@ -99,7 +100,7 @@ export function LocalNeighbourhoodMap({ pins, city, hotKey, focusKey, onHot, onF
     })()
     return () => {
       cancelled = true
-      mapRef.current?.remove()
+      destroyLeafletMap(mapRef.current)
       mapRef.current = null
       markersRef.current = new Map()
       setReady(false)
@@ -114,7 +115,7 @@ export function LocalNeighbourhoodMap({ pins, city, hotKey, focusKey, onHot, onF
     ;(async () => {
       try {
         const layer = await createBasemap(L, dark)
-        if (cancelled) return
+        if (cancelled || !mapIsLive(map)) return
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
       } catch (err) {
