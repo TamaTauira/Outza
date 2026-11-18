@@ -3,7 +3,7 @@ import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 
 const ASIDE_LINKS = [
-  { href: '/', label: 'Peep' },
+  { href: '/', label: 'Explore' },
   { href: '/map', label: 'Map' },
   { href: '/local', label: 'Local' },
   { href: '/promoters', label: 'For promoters' },

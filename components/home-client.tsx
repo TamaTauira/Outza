@@ -23,6 +23,8 @@ import { ViewToggle } from '@/components/view-toggle';
 import { SuggestionButton } from '@/components/suggestion-button';
 import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
+import { FeaturedTurnstile } from '@/components/featured-turnstile';
+import { displayTitle } from '@/lib/display-public';
 import { useBackState } from '@/lib/scroll-memory';
 import { lineupView } from '@/lib/lineup-view';
 import { readCity, readUserCity, resolveBoardCity, writeCity, writeUserCity } from '@/lib/city-pref';
@@ -67,6 +69,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [boardOpen, setBoardOpen] = useState(false);
   const [railIds, setRailIds] = useState<string[]>([]);
   const [browseCount, setBrowseCount] = useState(0);
+  const [searchHints, setSearchHints] = useState<string[]>([]);
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState<Date | undefined>(undefined);
   const { saved } = useSaved();
@@ -148,8 +151,16 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       if (signedIn && userId) writeUserCity(userId, next);
     };
     const urlChosen = url === '' || (!!url && CITIES.some((c) => c.name === url));
+    const guestBefore = readCity();
     if (!signedIn || userCity !== null || urlChosen) {
       apply(null);
+      if (!signedIn && guestBefore === null && !url) {
+        fetch('/api/edge-city').then((r) => r.json()).then((d) => {
+          if (cancelled || cityTouched.current || typeof d?.city !== 'string' || !d.city) return
+          setCityState(d.city)
+          writeCity(d.city)
+        }).catch(() => {})
+      }
       return () => { cancelled = true; };
     }
     const retry = createReconnectRetry();
@@ -235,11 +246,30 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     return () => { live = false; retry.stop(); };
   }, [city]);
 
+  useEffect(() => {
+    const place = city || DEFAULT_CITY
+    document.title = `What’s on in ${place}: events, gigs and things to do | VibePeep`
+  }, [city]);
+
   // Debounce the search box
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
+
+  useEffect(() => {
+    const q = searchInput.trim()
+    if (q.length < 2) { setSearchHints([]); return }
+    const t = setTimeout(() => {
+      const params = new URLSearchParams({ search: q, limit: '6' })
+      if (city) params.set('city', city)
+      fetch(`/api/events?${params}`).then((r) => r.json()).then((data) => {
+        const titles = Array.isArray(data?.events) ? data.events.map((event: { title?: string }) => displayTitle(event.title ?? '')).filter(Boolean) : []
+        setSearchHints([...new Set<string>(titles)].slice(0, 6))
+      }).catch(() => setSearchHints([]))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [searchInput, city]);
 
   const today = now?.date ?? null;
 
@@ -379,10 +409,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <div className="relative flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-                  <span className="block">Your city’s calling.</span>
-                  <span className="block text-brand-gradient">Answer it.</span>
+                  <span className="block">What’s on in {city || DEFAULT_CITY} tonight.</span>
                 </h1>
-                <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Good gigs. Hidden gems. Things you didn’t know were happening. Go on, have a peep.</p>
+                <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p>
+                <p className="mt-2 text-sm font-semibold text-white/80">Your city’s calling. Answer it.</p>
               </div>
               <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
             </div>
@@ -390,12 +420,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
                 <MapPin className="h-4 w-4 shrink-0 text-primary" />
                 <span className="sr-only">Choose a city</span>
-                <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="Choose a city">
-                  <option value="" className="bg-popover text-popover-foreground">All of Australia</option>
+                <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="Choose a city">
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Ask for a vibe…" queryRequest={askRequest} chips={false} />
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Find me something fun this Saturday night under $50" queryRequest={askRequest} chips={false} />
             </div>
             <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
@@ -406,7 +435,21 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 { label: 'Live music', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Date night', run: () => ask('Date night') },
                 { label: 'Family', run: () => { setFilters((f) => withCategories(f, ['Family'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
-                { label: 'Near me', run: () => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+                { label: 'Suburbs near me', run: () => {
+                  const ok = window.confirm('Use this device’s location to pick suburbs near you? We only ask when you tap this, and we don’t save the point.')
+                  if (!ok) return
+                  if (!navigator.geolocation) { document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+                  navigator.geolocation.getCurrentPosition((pos) => {
+                    let best = CITIES[0]
+                    let score = Number.POSITIVE_INFINITY
+                    for (const item of CITIES) {
+                      const next = (item.lat - pos.coords.latitude) ** 2 + (item.lng - pos.coords.longitude) ** 2
+                      if (next < score) { best = item; score = next }
+                    }
+                    setCity(best.name)
+                    requestAnimationFrame(() => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+                  }, () => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })
+                } },
               ].map((chip) => (
                 <button key={chip.label} type="button" onClick={chip.run} className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20">{chip.label}</button>
               ))}
@@ -414,6 +457,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </section>
         ) : null}
 
+        {view === 'board' && <FeaturedTurnstile city={city} />}
         {view === 'board' && (
           <HomeRails
             city={city}
@@ -430,12 +474,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
                   <MapPin className="h-4 w-4 shrink-0 text-primary" />
                   <span className="sr-only">Choose a city</span>
-                  <select value={city} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium focus:outline-none" aria-label="Choose a city">
-                    <option value="">All of Australia</option>
+                  <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium focus:outline-none" aria-label="Choose a city">
                     {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                   </select>
                 </label>
               </div>
+              <ViewToggle compact value="map" label="Board, list or map" options={[{ key: 'board', text: 'Board', Icon: LayoutGrid }, { key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapPin }]} onChange={(next) => { if (next === 'map') return; rememberLineup(next) }} />
               <div className="min-w-0 flex-1 lg:px-4">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
@@ -480,7 +524,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           {view === 'board' && (
             <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
               <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
-              <ViewToggle compact value={resultsView} label="Line-up view" options={[{ key: 'list', text: 'List', Icon: LayoutList }, { key: 'board', text: 'Board', Icon: LayoutGrid }]} onChange={rememberLineup} />
+              <ViewToggle compact value={resultsView} label="Board, list or map" options={[{ key: 'board', text: 'Board', Icon: LayoutGrid }, { key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapPin }]} onChange={(next) => { if (next === 'map') { goView('map'); return } rememberLineup(next) }} />
             </div>
           )}
           {view === 'board' &&
@@ -495,10 +539,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                     enterKeyHint="search"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder={`Search ${city ? city : 'Australian'} gigs, venues, suburbs — jazz, trivia, whatever…`}
-                    aria-label="Search events"
+                    placeholder="Quick search: event, artist, venue or keyword"
+                    aria-label="Quick search by event, artist, venue or keyword"
+                    list="quick-search-hints"
                     className="h-12 w-full rounded-xl border-2 border-border bg-background pl-12 pr-12 text-base placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 sm:h-14"
                   />
+                  <datalist id="quick-search-hints">
+                    {searchHints.map((title) => <option key={title} value={title} />)}
+                  </datalist>
                   {searchInput && (
                     <button type="button" onClick={() => setSearchInput('')} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search">
                       <X className="h-4 w-4" />
@@ -569,6 +617,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
           {view === 'board' &&
           <>
+          <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground sm:px-4">
+            {lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}
+            {city || DEFAULT_CITY} · Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix
+          </p>
           <EventList
             layout={resultsView}
             filters={filters}
@@ -585,11 +637,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             excludeIds={boardOpen || searchQuery ? [] : railIds}
             previewLimit={boardOpen ? undefined : 8}
             onListedCount={setBrowseCount} />
-          <div className="flex justify-center border-t border-border px-4 py-3">
+          {(boardOpen || browseCount >= 4) && <div className="flex justify-center border-t border-border px-4 py-3">
             <button type="button" onClick={() => setBoardOpen((open) => !open)} className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">
               {boardOpen ? 'Show the short list' : `See all ${browseCount} events`}
             </button>
-          </div>
+          </div>}
           </>
           }
         </div>}

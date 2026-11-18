@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright'
 
 test('home board renders and has no serious accessibility violations', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /what’s on/i }).or(page.getByText('VibePeep').first())).toBeVisible()
+  await expect(page.getByRole('heading', { name: /what’s on in .+ tonight/i })).toBeVisible()
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
   const serious = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
   expect(serious, JSON.stringify(serious.map((v) => v.id))).toEqual([])

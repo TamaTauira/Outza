@@ -17,6 +17,7 @@ import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeList
 import { listDepthToLoad } from '@/lib/scroll-restore'
 import { ReachBeacon } from '@/components/reach-beacon'
 import { displaySuburb } from '@/lib/cities'
+import { displayPriceValue, displayTitle } from '@/lib/display-public'
 import { fmtTime } from '@/lib/local-shared'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
@@ -287,13 +288,29 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     })).filter((g) => g.rows.length)
     : []
   const nowSections = windowRank && effectiveWindow === 'now'
-    ? [
-      { key: 'on', label: 'On now', rows: windowRank.lead.map(rowFor), possibly: false },
-      { key: 'next', label: 'Starting soon', rows: windowRank.soon.map(rowFor), possibly: false },
-      { key: 'still', label: 'Still on', rows: windowRank.still.map(rowFor), possibly: false },
-      { key: 'allday', label: 'All day', rows: windowRank.allday.map(rowFor), possibly: false },
-      { key: 'possibly', label: 'Time not listed', rows: windowRank.possibly.map(rowFor), possibly: true },
-    ].filter((section) => section.rows.length)
+    ? (() => {
+      const horizon = nowMinutes + 12 * 60
+      const dayKey = day ?? ''
+      const upcoming = listed.filter((ev) => {
+        if (!dayKey || String(ev.date).slice(0, 10) !== dayKey) return false
+        const start = toMinutes(ev.time)
+        if (start == null) return false
+        return start >= nowMinutes && start <= horizon
+      })
+      const seen = new Set<string>()
+      const coming = [...windowRank.soon, ...upcoming].filter((ev) => {
+        if (seen.has(ev.id)) return false
+        seen.add(ev.id)
+        return true
+      }).sort((a, b) => (toMinutes(a.time) ?? 0) - (toMinutes(b.time) ?? 0))
+      const happening = [...windowRank.lead, ...windowRank.still].filter((ev) => !seen.has(ev.id))
+      return [
+        { key: 'next', label: 'Coming up', rows: coming.map(rowFor), possibly: false },
+        { key: 'on', label: 'Happening now', rows: happening.map(rowFor), possibly: false },
+        { key: 'allday', label: 'All day', rows: windowRank.allday.map(rowFor), possibly: false },
+        { key: 'possibly', label: 'Time not listed', rows: windowRank.possibly.map(rowFor), possibly: true },
+      ].filter((section) => section.rows.length)
+    })()
     : []
 
   const listedCount = windowRank
@@ -342,14 +359,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           return (
             <ListingBoardCard
               key={ev.id}
-              title={ev.title}
+              media
+              title={displayTitle(ev.title)}
               href={ev.href ?? eventPath(ev)}
               imageUrl={ev.imageUrl}
               imageCategory={ev.category}
               meta={[displaySuburb(ev.suburb, ev.venueAddress, ev.city), clockLabel(ev.time)].filter(Boolean).join(' · ')}
               tag={ev.subTags?.[0] || ev.category}
               accent={cat?.color ?? '#FF7A1A'}
-              price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span> : price.value !== 'Price TBA' ? <span className="font-mono text-xs text-foreground">{price.value}</span> : null}
+              price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span> : <span className="font-mono text-xs text-foreground">{displayPriceValue(price.value, price.kind)}</span>}
               actions={(
                 <>
                   <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 place-items-center rounded-full', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
@@ -378,7 +396,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{firstLoad ? '…' : (windowRank ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length : timed.length)}</span> with a start time
+        <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> events in {city || 'Australia'}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
         {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
@@ -431,7 +449,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           {(effectiveWindow === 'now' ? nowSections.length === 0 : eveningGroups.length === 0 && windowRank.possibly.length === 0) ? (
             <PeepEmpty
               title="Crickets. I checked twice."
-              body="Nothing with a set time in this window. All-day and untimed bits sit in their own section."
+              body="Nothing listed tonight yet. Try this weekend."
               action={onWindowChange ? (
                 <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
               ) : null}

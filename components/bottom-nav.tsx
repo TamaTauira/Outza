@@ -13,7 +13,7 @@ import { navShouldHide, shouldPopSaved } from '@/lib/bottom-nav'
 import './bottom-nav.css'
 
 const LEFT = [
-  { key: 'board', label: 'Peep', href: '/', Icon: PeepIcon },
+  { key: 'board', label: 'Explore', href: '/', Icon: PeepIcon },
   { key: 'map', label: 'Map', href: '/map', Icon: MapPin },
   { key: 'local', label: 'Local', href: '/local', Icon: House },
 ] as const
@@ -101,6 +101,12 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
   }, [ready, savedCount])
 
   useEffect(() => {
+    const open = () => setAskOpen(true)
+    window.addEventListener('vp-open-ask', open)
+    return () => window.removeEventListener('vp-open-ask', open)
+  }, [])
+
+  useEffect(() => {
     document.documentElement.classList.toggle('vp-ask-open', askOpen)
     document.documentElement.classList.toggle('vp-menu-open', menuOpen)
     return () => {
@@ -161,7 +167,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
 
   const tab = (item: (typeof LEFT)[number] | (typeof RIGHT)[number]) => {
     const current = tabCurrent(item.key, pathname)
-    const name = item.key === 'saved' ? `Saved, ${savedCount}` : item.key === 'local' ? 'VibePeep Local' : item.label === 'Itinerary' ? 'Itinerary' : item.label
+    const name = item.key === 'saved' ? (savedCount > 0 ? `Saved, ${savedCount}` : 'Saved') : item.key === 'local' ? 'VibePeep Local' : item.label === 'Itinerary' ? 'Itinerary' : item.label
     const { Icon } = item
     return (
       <Link
@@ -177,7 +183,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
       >
         <span className="vp-bottom-ico">
           <Icon className="h-5 w-5" aria-hidden />
-          {item.key === 'saved' && (
+          {item.key === 'saved' && savedCount > 0 && (
             <span className={pop ? 'vp-bottom-count is-pop' : 'vp-bottom-count'} aria-hidden="true">{savedCount}</span>
           )}
         </span>
@@ -194,7 +200,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
           <button
             type="button"
             className="vp-ask"
-            aria-label="Ask VibePeep"
+            aria-label="Ask: search in your own words"
             aria-expanded={askOpen}
             aria-controls="vp-ask-sheet"
             onPointerDown={(event) => {

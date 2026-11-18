@@ -48,9 +48,9 @@ export function AskSheet({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <SheetHeader className="space-y-1 pr-8 text-left">
-          <SheetTitle className="font-display">Ask VibePeep</SheetTitle>
-          <SheetDescription>
-            Ask for a vibe, or flip to Plan and I’ll build the whole night.{' '}
+          <SheetTitle className="font-display">Ask</SheetTitle>
+          <SheetDescription className="text-sm text-muted-foreground">
+            Search in your own words. Optional, so you can browse without it. Or flip to Plan and I’ll build the whole night.{' '}
             <Link href="/itinerary" className="font-semibold text-primary underline underline-offset-2" onClick={() => onOpenChange(false)}>
               Itinerary
             </Link>
