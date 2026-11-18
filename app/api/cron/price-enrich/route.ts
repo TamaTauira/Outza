@@ -5,7 +5,7 @@ import { runWithJobPrisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
+export const maxDuration = 120
 
 /**
  * One chunk of price lookups. Separate from /api/cron/refresh so it cannot

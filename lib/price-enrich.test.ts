@@ -39,8 +39,7 @@ test('price lookup stays outside the listings refresh', () => {
   assert.equal(REFRESH_CHUNKS.some((chunk) => chunk.id === 'price-enrich'), false)
   assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.id === 'finalize')?.budgetMs, 150_000)
   assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.id === 'finalize')?.minute, 23)
-  assert.ok(PRICE_ENRICH_BUDGET_MS < 300_000)
-  assert.ok(PRICE_ENRICH_BUDGET_MS <= 180_000)
+  assert.ok(PRICE_ENRICH_BUDGET_MS <= 90_000)
 })
 
 test('price enrich does not build an index on the request path', () => {

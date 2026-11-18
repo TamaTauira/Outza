@@ -31,7 +31,7 @@ import {
 } from '@/lib/price-read'
 import { readPrice, type PriceRead } from '@/lib/price'
 
-export const PRICE_ENRICH_BUDGET_MS = 180_000
+export const PRICE_ENRICH_BUDGET_MS = 90_000
 
 export type PriceRequest = { url: string; method?: 'GET' | 'POST'; body?: string; accept?: string }
 export type PriceResponse = { status: number; body: string | null; blocked?: boolean; timedOut?: boolean }
