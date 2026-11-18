@@ -80,9 +80,10 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     if (t && TABS.some((x) => x.key === t)) setTab(t)
     const ev = p.get('event')
     if (ev) { setPromoteId(ev); if (!t) setTab('promote') }
-    const tier = p.get('tier')
+    const packageTier = { boost: 'SILVER', spotlight: 'BRONZE', headliner: 'GOLD' }[p.get('package') ?? '']
+    const tier = packageTier || p.get('tier')
     if (tier === 'SILVER' || tier === 'BRONZE' || tier === 'GOLD') { setPromoteTier(tier); if (!t && !ev) setTab('promote') }
-    const days = Number(p.get('days'))
+    const days = Number(p.get('duration') || p.get('days'))
     if (isDuration(days)) setPromoteDays(days)
   }, [load])
 
@@ -450,7 +451,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
       <section className={card}>
         <h2 className="font-semibold mb-1">My events</h2>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <p className="text-xs text-muted-foreground">{pro ? 'Pro analytics are on for all your events.' : 'Views and ticket clicks unlock for promoted events, or for every event with Promoter Pro.'}</p>
+          <p className="text-xs text-muted-foreground">{pro ? 'Pro analytics are on for all your events.' : 'Views, saves and ticket clicks are on every listing. The deeper reads open with a promotion or Promoter Pro.'}</p>
           <a href="/api/promoter/events/export" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><Download className="w-3.5 h-3.5" />Download CSV</a>
         </div>
         {!!pendingClaims.length && (
@@ -473,7 +474,6 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                 {events.map((ev) => {
                   const liveTier = ev.promotions?.filter((p) => isLive(p) && tierDef(p.tier)).sort((a, b) => (tierDef(b.tier)!.priceCents - tierDef(a.tier)!.priceCents))[0]
                   const liveAddons = ev.promotions?.filter((p) => isLive(p) && !tierDef(p.tier)) ?? []
-                  const unlocked = pro || !!ev.promotions?.some((p) => p.status === 'ACTIVE' || p.status === 'EXPIRED')
                   const past = new Date(ev.date).getTime() < Date.now() - 86400000
                   return (
                     <Fragment key={ev.id}>
@@ -492,13 +492,11 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                           </div>
                         ) : <span className="text-xs text-muted-foreground">Not promoted</span>}
                       </td>
-                      <td className="px-3 py-3 text-right tabular-nums">{unlocked ? (
-                        <>
-                          {(ev.views ?? 0).toLocaleString('en-AU')}
-                          {(ev.views ?? 0) > 0 && <span className="block text-[11px] text-muted-foreground">{((((ev._count?.savedBy ?? 0) + (ev._count?.attendees ?? 0) + (ev.reactionCount ?? 0) + (ev.ticketClicks ?? 0)) / (ev.views || 1)) * 100).toFixed(1)}% engagement</span>}
-                        </>
-                      ) : <Lock className="w-3.5 h-3.5 inline text-muted-foreground" aria-label="Locked" />}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">{unlocked ? (ev.ticketClicks ?? 0).toLocaleString('en-AU') : <Lock className="w-3.5 h-3.5 inline text-muted-foreground" aria-label="Locked" />}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">
+                        {(ev.views ?? 0).toLocaleString('en-AU')}
+                        {(ev.views ?? 0) > 0 && <span className="block text-[11px] text-muted-foreground">{((((ev._count?.savedBy ?? 0) + (ev._count?.attendees ?? 0) + (ev.reactionCount ?? 0) + (ev.ticketClicks ?? 0)) / (ev.views || 1)) * 100).toFixed(1)}% engagement</span>}
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums">{(ev.ticketClicks ?? 0).toLocaleString('en-AU')}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{ev._count?.savedBy ?? 0} / {ev._count?.attendees ?? 0}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{ev.reactionCount ?? 0}</td>
                       <td className="px-5 py-3">

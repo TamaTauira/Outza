@@ -7,8 +7,6 @@ import { HeroStage } from './hero-stage'
 import { PlanInterest } from './plan-interest'
 import { ctaClass, ghostOnDark, sectionPad } from './styles'
 
-const proPayback = formatAud(Math.ceil(PRO_PLAN.priceCents / (PRO_PLAN.discountPct / 100) / 100) * 100)
-
 const PATHS = [
   {
     href: '#packages',
@@ -46,7 +44,8 @@ const PLAN_POINTS: Record<string, string[]> = {
   VENUE_PLUS: ['Forty short boosts', 'Pause the lot', 'A 7-day refund window when a boost has not been shown'],
 }
 
-export function Hero({ primaryHref, primaryLabel, showSignIn }: { primaryHref: string; primaryLabel: string; showSignIn: boolean }) {
+export function Hero({ primaryHref, primaryLabel, showSignIn, supply }: { primaryHref: string; primaryLabel: string; showSignIn: boolean; supply?: { events: number; cities: number; sources: number; updated: string | null } | null }) {
+  const updated = supply?.updated ? new Date(supply.updated).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null
   return (
     <section className="overflow-x-clip bg-[#0c0c0e] text-white">
       <div className={`${sectionPad} grid items-center gap-10 py-8 sm:py-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:py-14`}>
@@ -54,12 +53,12 @@ export function Hero({ primaryHref, primaryLabel, showSignIn }: { primaryHref: s
           <BackToEventsLink className="inline-flex items-center text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             Back to events
           </BackToEventsLink>
-          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-[#FF8A1A]">VibePeep for promoters</p>
+          <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.2em] text-[#FF8A1A]">For promoters</p>
           <h1 className="mt-3 font-display text-[2.6rem] font-bold leading-[0.95] tracking-tight sm:text-6xl">
-            More eyes. <span className="text-brand-gradient">More vibes.</span>
+            Put your event in front of people planning their weekend.
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-white/90">Get your event in front of the people who want to go.</p>
-          <p className="mt-2 max-w-xl text-white/75">List for free. Promote when you’re ready. See what works.</p>
+          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. Boost from $9 for an evening or $19 for a week. We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
+          <p className="mt-3"><Link href="/local-ads" className="text-sm font-semibold text-[#FF8A1A] underline underline-offset-4">Running a restaurant, bar or local business? See local ads.</Link></p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href={primaryHref} className={ctaClass}>{primaryLabel}</Link>
             <a href="#how" className={ghostOnDark}>See how it works</a>
@@ -84,6 +83,12 @@ export function Hero({ primaryHref, primaryLabel, showSignIn }: { primaryHref: s
               )
             })}
           </ul>
+          {supply && (
+            <p className="mt-6 text-sm text-white/75">
+              {supply.events.toLocaleString('en-AU')} events listed · {supply.cities.toLocaleString('en-AU')} cities · {supply.sources.toLocaleString('en-AU')} sources
+              {updated ? ` · updated ${updated}` : ''}
+            </p>
+          )}
         </div>
         <HeroStage />
       </div>
@@ -252,8 +257,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
         <div className="min-w-0 rounded-3xl border border-white/10 bg-[#16161a] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
           <p className="font-display text-5xl font-bold tabular-nums" data-testid="pro-price">{formatAud(PRO_PLAN.priceCents)}</p>
           <p className="mt-1 text-white/75">for {PRO_PLAN.days} days · extend any time</p>
-          <p className="mt-4 text-sm text-white/80">Pays for itself once you spend about {proPayback} on promotions in a month.</p>
-          <p className="mt-3 text-sm text-white/75">While Promoter Pro is on, views, Get tickets, More info, where a listing was seen, search terms and Spotlight spend unlock for every event you run. A promotion unlocks the same reads for that event. Reactions, saves and going stay visible either way.</p>
+          <p className="mt-4 text-sm text-white/80">A volume discount and the advanced tools, for people running more than one event. Views, saves and ticket clicks stay on the free account. The break-even figure is in the questions below.</p>
           <Link href={href} className={`${ctaClass} mt-6 w-full`}>{label}</Link>
         </div>
       </div>

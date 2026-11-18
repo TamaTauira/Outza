@@ -1,0 +1,24 @@
+import Link from 'next/link'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
+
+/** Sales header for promoters. Consumer navigation stays on the event pages. */
+export function PromoterSalesHeader({ accountHref }: { accountHref: string }) {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+      <div className="vp-wrap flex h-16 items-center gap-3 px-4 sm:px-6">
+        <Link href="/" className="flex min-w-0 items-center gap-2" aria-label="VibePeep home">
+          <VibePeepLogo size="sm" />
+        </Link>
+        <p className="hidden text-sm font-semibold sm:block">for Promoters</p>
+        <nav className="ml-auto flex items-center gap-3 text-sm" aria-label="Promoters">
+          <Link href="/promoters#packages" className="hidden font-medium text-muted-foreground hover:text-foreground sm:inline">Pricing</Link>
+          <Link href="/promoters#faq" className="hidden font-medium text-muted-foreground hover:text-foreground md:inline">FAQ</Link>
+          <Link href="/local-ads" className="font-medium text-muted-foreground hover:text-foreground">Local business ads</Link>
+          <Link href="/" className="hidden font-medium text-muted-foreground hover:text-foreground lg:inline">Back to events</Link>
+          <Link href="/login?next=/promoter" className="font-medium text-muted-foreground hover:text-foreground">Log in</Link>
+          <Link href={accountHref} className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Create free account</Link>
+        </nav>
+      </div>
+    </header>
+  )
+}
