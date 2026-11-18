@@ -138,7 +138,7 @@ export function AccountClient() {
           <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} yearRequired={yearRequired} yearError={shown.yearError} postcodeError={shown.postcodeError} onBirthYearBlur={() => setYearTouched(true)} onEnter={() => { void saveAbout() }} yearRef={yearRef} postcodeRef={pcRef} />
           {/* pointer-events-none while disabled lets the same tap read the inputs. iOS can commit the last digit on blur after the button has already ignored the click. */}
           <span className="inline-flex" onClick={() => { void saveAbout() }}>
-            <button type="button" disabled={!about.canSave} className="mt-3 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 disabled:pointer-events-none touch-manipulation">{saving ? 'Saving…' : 'Save Details'}</button>
+            <button type="button" disabled={!about.canSave} className="mt-3 h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-70 disabled:pointer-events-none touch-manipulation">{saving ? 'Saving…' : 'Save details'}</button>
           </span>
         </form>
       </section>

@@ -360,7 +360,7 @@ export default function ItineraryPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={share} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Share2 className="h-4 w-4" /> Share</button>
-                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename Plan</button>
+                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename plan</button>
                   <details className="relative">
                     <summary className="flex h-11 cursor-pointer list-none items-center rounded-full border border-border px-4 text-sm font-semibold">More options</summary>
                     <button type="button" onClick={() => { if (confirm('Clear the whole plan?')) clear() }} className="absolute right-0 z-10 mt-2 whitespace-nowrap rounded-xl border border-border bg-popover px-4 py-3 text-sm shadow-lg">Clear all</button>
@@ -402,7 +402,7 @@ export default function ItineraryPage() {
                                         {i.kind === 'event' ? <Link href={i.href ?? eventPath(i)} className="font-semibold hover:text-primary">{i.title}</Link> : <p className="font-semibold">{i.title}</p>}
                                         {i.venueName && <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{i.venueName}{i.suburb ? ` · ${i.suburb}` : ''}</p>}
                                         {(i.place && i.place !== i.venueName) && <p className="text-sm text-muted-foreground">{i.place}</p>}
-                                        <p className="mt-1 flex flex-wrap gap-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                        <p className="mt-1 flex flex-wrap gap-1 text-[13px] font-semibold text-muted-foreground">
                                           {i.kind === 'custom' && <span className="rounded bg-muted px-1.5 py-0.5">My stop</span>}
                                           {i.stopCategory && <span className="rounded bg-muted px-1.5 py-0.5">{i.stopCategory}</span>}
                                           {i.adId && <span>Sponsored</span>}
@@ -410,8 +410,8 @@ export default function ItineraryPage() {
                                         </p>
                                       </button>
                                       <div className="flex shrink-0">
-                                        <button type="button" onClick={() => move(i.id, -1)} disabled={idx === 0} aria-label={`Move ${i.title} earlier in the list`} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
-                                        <button type="button" onClick={() => move(i.id, 1)} disabled={idx === dayItems.length - 1} aria-label={`Move ${i.title} later in the list`} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+                                        <button type="button" onClick={() => move(i.id, -1)} disabled={idx === 0} aria-label={`Move ${i.title} earlier in the list`} className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+                                        <button type="button" onClick={() => move(i.id, 1)} disabled={idx === dayItems.length - 1} aria-label={`Move ${i.title} later in the list`} className="grid h-11 w-11 place-items-center rounded-full text-muted-foreground hover:bg-muted disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
                                         <button type="button" onClick={() => downloadIcs([i], i.title)} aria-label={`Add ${i.title} to your calendar`} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted"><CalendarPlus className="h-4 w-4" /></button>
                                         {i.kind === 'custom' && <button type="button" onClick={() => setEditing(i.id)} aria-label={`Edit ${i.title}`} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted"><Pencil className="h-4 w-4" /></button>}
                                         <button type="button" onClick={() => remove(i.id)} aria-label={`Remove ${i.title}`} className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground hover:bg-muted"><Trash2 className="h-4 w-4" /></button>

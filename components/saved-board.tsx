@@ -77,13 +77,14 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
   return (
     <div className="mb-10">
       <PageMasthead variant="saved" />
+      <p className="mt-3 text-sm tabular-nums text-muted-foreground">{signedIn ? `${saved.length} saved` : 'Sign in and we’ll keep the count.'}</p>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
           {tabs.map((item) => (
                 <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
                   {item.label}{item.count != null ? ` (${item.count})` : ''}
-                  {item.key === 'past' && <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">Coming soon</span>}
+                  {item.key === 'past' && <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[13px] font-semibold text-primary">Coming soon</span>}
                 </button>
           ))}
         </div>
@@ -126,7 +127,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               </div>
             </div>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4 grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))]">
               {visible.map((ev) => (
                 <SavedCard
                   key={ev.id}
@@ -156,7 +157,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               {['Date night ideas', 'Gigs I want to see', 'Weekend adventures'].map((name) => (
                 <div key={name} className="rounded-2xl border border-dashed border-border bg-card p-4">
                   <p className="font-semibold">{name}</p>
-                  <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-primary">Coming soon</p>
+                  <p className="mt-2 text-[13px] font-semibold text-primary">Coming soon</p>
                 </div>
               ))}
             </div>

@@ -30,7 +30,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
           </div>
         </div>
         <div>
-          <div className="rounded-2xl border border-border/60 bg-card p-6 text-card-foreground shadow-xl sm:p-8">
+          <div className="rounded-[var(--vp-radius-xl)] border border-border bg-card p-6 text-card-foreground sm:p-8">
             <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
             <p className="mb-6 mt-1 text-sm text-muted-foreground">{subtitle}</p>
             {children}

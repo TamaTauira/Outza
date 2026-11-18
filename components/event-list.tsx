@@ -352,7 +352,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       ))
     }
     return (
-      <div className="grid w-full grid-cols-1 gap-2 p-2 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))] gap-3 p-3">
         {rows.map(({ ev }) => {
           const cat = CATEGORIES.find((item) => item.name === ev.category)
           const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)

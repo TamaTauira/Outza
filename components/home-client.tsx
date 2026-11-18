@@ -401,14 +401,15 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
       <Navbar savedCount={saved.length} />
 
-      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : 'vp-wrap px-4 sm:px-6 pt-5'}>
+      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : ''}>
         {view === 'board' ? (
-          <section className="vp-peep-hero relative mb-6 overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
+          <section className="vp-peep-hero relative mb-2 overflow-hidden bg-[#0c0f0e] text-white">
             {heroPhoto && <img src={heroPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />}
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
+            <div className="vp-wrap relative px-4 py-6 sm:px-6 sm:py-8">
             <div className="relative flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+              <div className="min-w-0 max-w-[var(--vp-measure)]">
+                <h1 className="font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
                   <span className="block">What’s on in {city || DEFAULT_CITY} tonight.</span>
                 </h1>
                 <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p>
@@ -424,8 +425,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Find me something fun this Saturday night under $50" queryRequest={askRequest} chips={false} />
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Tell us what you’re in the mood for…" queryRequest={askRequest} chips={false} />
             </div>
+            <p className="relative mt-2 max-w-[var(--vp-measure)] text-[13px] text-white/70">Describe a vibe, a date, a place or a budget. Or just browse.</p>
             <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
                 { label: 'Tonight', run: () => applyPlan('tonight') },
@@ -451,12 +453,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   }, () => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })
                 } },
               ].map((chip) => (
-                <button key={chip.label} type="button" onClick={chip.run} className="h-10 shrink-0 rounded-full bg-white/10 px-3 text-sm font-medium text-white hover:bg-white/20">{chip.label}</button>
+                <button key={chip.label} type="button" onClick={chip.run} className="h-11 shrink-0 rounded-full bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20">{chip.label}</button>
               ))}
+            </div>
             </div>
           </section>
         ) : null}
 
+        <div className={view === 'map' ? 'contents' : 'vp-wrap px-4 pt-5 sm:px-6'}>
         {view === 'board' && <FeaturedTurnstile city={city} />}
         {view === 'board' && (
           <HomeRails
@@ -529,7 +533,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           )}
           {view === 'board' &&
           <>
-              <div className="border-b border-border px-3 pb-3 pt-4 sm:px-4">
+              <div className="vp-quick-search border-b border-border px-3 pb-3 pt-4 sm:px-4">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
                   <input
@@ -539,7 +543,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                     enterKeyHint="search"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Quick search: event, artist, venue or keyword"
+                    placeholder="Search events, artists, performers or venues"
                     aria-label="Quick search by event, artist, venue or keyword"
                     list="quick-search-hints"
                     className="h-12 w-full rounded-xl border-2 border-border bg-background pl-12 pr-12 text-base placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 sm:h-14"
@@ -645,6 +649,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </>
           }
         </div>}
+        </div>
       </main>
 
       {/* Filters drawer */}
@@ -652,7 +657,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       {showFilters &&
       <div className="fixed inset-0 z-[60]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowFilters(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-full max-w-[380px] overflow-auto bg-background border-l border-border p-4">
+          <div className="absolute inset-x-0 bottom-0 max-h-[min(85dvh,40rem)] overflow-auto rounded-t-[var(--vp-radius-xl)] border-t border-border bg-background p-4 pb-[calc(var(--vp-bottom-nav-offset)+1rem)] md:inset-y-0 md:bottom-auto md:left-auto md:right-0 md:max-h-none md:w-full md:max-w-[380px] md:rounded-none md:border-l md:border-t-0 md:pb-4">
             <FilterPanel
               filters={filters}
               onChange={setFilters}

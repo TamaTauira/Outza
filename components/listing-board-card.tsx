@@ -50,7 +50,7 @@ export function ListingBoardCard({
           if ((event.target as HTMLElement).closest('a,button,input,select,label')) return
           onOpen()
         } : undefined}
-        className={cn('flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card', hot && 'bg-primary/10', onOpen && 'cursor-pointer')}
+        className={cn('flex min-w-0 flex-col overflow-hidden rounded-[var(--vp-radius-lg)] border border-border bg-card', hot && 'bg-primary/10', onOpen && 'cursor-pointer')}
       >
         <span className="relative block aspect-[16/10] overflow-hidden" style={{ background: accent }}>
           <EventImage src={photo} category={imageCategory} slot="featured" kind="featured" crop={!!photo} alt="" sizes="(min-width: 1280px) 30vw, 100vw" />

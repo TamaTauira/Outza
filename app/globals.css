@@ -210,6 +210,20 @@
 .vp-nums { font-variant-numeric: tabular-nums; }
 .vp-measure { max-width: var(--vp-measure); }
 
+.vp-quick-search {
+  position: sticky;
+  top: 3.5rem;
+  z-index: 30;
+  background: hsl(var(--card));
+}
+@media (min-width: 640px) {
+  .vp-quick-search { top: 4rem; }
+}
+.vp-day-head { top: calc(3.5rem + 4.75rem); }
+@media (min-width: 640px) {
+  .vp-day-head { top: calc(4rem + 5.25rem); }
+}
+
 /* Fluid shell. Full width up to the spec cap (about 1760px). Gutters stay on the pages. */
 .vp-wrap {
   width: 100%;

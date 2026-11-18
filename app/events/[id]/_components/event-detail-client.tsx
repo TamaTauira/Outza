@@ -53,7 +53,7 @@ function Lowdown({ text }: { text: string }) {
   return (
     <section>
       <h2 className="font-display font-semibold text-base mb-1.5">The lowdown</h2>
-      <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+      <div className="vp-measure space-y-3 text-sm leading-relaxed text-muted-foreground">
         {paragraphs.map((paragraph, index) => (
           <p key={`${index}-${paragraph.slice(0, 24)}`} className="whitespace-pre-line">{paragraph}</p>
         ))}
@@ -269,8 +269,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   </div>
                 )}
                 {event?.isFree && (
-                  <div className="absolute z-10 top-3 left-3 bg-emerald-700 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-lg">
-                    FREE EVENT
+                  <div className="absolute left-3 top-3 z-10 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-[13px] font-semibold text-white">
+                    Free
                   </div>
                 )}
               </div>
