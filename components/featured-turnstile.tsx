@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { holdScrollRestore } from '@/lib/scroll-memory'
 import Link from 'next/link'
-import { Flame, Heart, Megaphone, Star } from 'lucide-react'
+import { Heart, Megaphone } from 'lucide-react'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
@@ -44,15 +44,11 @@ export function FeaturedTurnstile({ city }: { city: string }) {
   const spotlightIds = items.filter((item) => item.sponsored || (item.tier && item.tier !== 'HOT')).map((item) => item.id)
   return (
     // Full-bleed band: breaks out of the 1280px page container to span the whole viewport
-    <section className="relative mb-8" aria-label="Hot right now">
+    <section className="relative mb-8" aria-label="Coming up next">
       <ReachBeacon surface="hot" ids={items.map((item) => item.id)} spotlightIds={spotlightIds} />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 fill-current text-[#F5B700]" />
-            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Hot right now.</h2>
-          </div>
-          <p className="mt-1 text-muted-foreground">Everyone’s talking about it.</p>
+          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Coming up next</h2>
         </div>
         <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Put your gig up here</Link>
       </div>
@@ -69,7 +65,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const color = CATEGORIES.find((c) => c.name === category)?.color ?? '#FF7A1A'
   const title = displayTitle(it.title)
   const t = tierDef(it.tier)
-  const badge = it.tier === 'HOT' ? { label: 'HOT', bg: '#c2410c', fg: '#ffffff' } : { label: 'SPONSORED', bg: t?.color ?? '#C0C7D1', fg: '#000000' }
+  const badge = it.sponsored ? { label: 'SPONSORED', bg: t?.color ?? '#C0C7D1', fg: '#000000' } : null
   const price = formatPrice(it.isFree, it.price, it.priceMin, it.priceMax)
   const priceText = [price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')
   const time = formatTime(it.time)
@@ -86,9 +82,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
         <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[4/3]" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
           <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={title} sizes="(min-width: 1024px) 25vw, 80vw" crop accent={color} category={category} slot="featured" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-          <span title={it.tier === 'HOT' ? 'On the hot list' : `${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>
-            {it.tier === 'HOT' && <Flame className="h-2.5 w-2.5" />}{badge.label}
-          </span>
+          {badge && <span title={`${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>{badge.label}</span>}
           <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">{category}</span>
           <span className="absolute bottom-3 right-3 z-10 rounded bg-black/70 px-2 py-0.5 font-mono text-xs text-white">{priceText}</span>
         </div>

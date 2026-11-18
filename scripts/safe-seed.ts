@@ -2,6 +2,11 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 
+if (process.env.VERCEL_ENV === 'production') {
+  console.error('Seed refused: this script does not run when VERCEL_ENV is production.')
+  process.exit(1)
+}
+
 try {
   const seedFile = path.resolve(process.cwd(), "scripts/seed.ts");
   const content = fs.readFileSync(seedFile, "utf-8");

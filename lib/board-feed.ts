@@ -152,7 +152,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v7'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v8'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 

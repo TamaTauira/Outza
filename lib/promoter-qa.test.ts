@@ -35,14 +35,14 @@ test('suburb addresses pin on the suburb, not the CBD', () => {
 test('promoter listing keeps price, rejects bad dates and treats free text as free', () => {
   const paid = parsePromoterListing({
     title: 'Jazz', date: '2026-12-12', venueName: 'The Tote', venueAddress: 'Fitzroy VIC 3065', city: 'Melbourne',
-    category: 'Music', price: '$25', ticketUrl: 'https://tickets.example/jazz', imageUrl: 'https://cdn.example.com/jazz.jpg', isLGBTI: true,
+    category: 'Music', price: '$25', ticketUrl: 'https://tickets.example/jazz', imageUrl: 'https://images.humanitix.com/i/jazz.jpg@original', isLGBTI: true,
   }, NOW)
   assert.equal(paid.ok, true)
   if (paid.ok) {
     assert.equal(paid.listing.price, '$25')
     assert.equal(paid.listing.isFree, false)
     assert.equal(paid.listing.ticketUrl, 'https://tickets.example/jazz')
-    assert.equal(paid.listing.imageUrl, 'https://cdn.example.com/jazz.jpg')
+    assert.equal(paid.listing.imageUrl, 'https://images.humanitix.com/i/jazz.jpg@original')
     assert.equal(paid.listing.isLGBTI, true)
   }
   const free = parsePromoterListing({ title: 'Market', date: '2026-12-01', venueName: 'Hall', city: 'Sydney', price: 'Free entry', category: 'Community', subTags: ['Markets'] }, NOW)

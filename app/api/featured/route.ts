@@ -12,6 +12,7 @@ import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS, PUBLIC_S_MAXAGE_SECONDS, P
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 import { buildFeaturedRail, type CrowdCard } from '@/lib/featured-rail'
 import { heatForEvents } from '@/lib/engagement-store'
+import { fakePublicUrl, isRally } from '@/lib/listing-moderation'
 
 export const revalidate = 600
 
@@ -19,7 +20,7 @@ const evSelect = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, suburb: true, city: true,
   category: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, latitude: true, longitude: true,
   status: true, duplicateOfId: true, allDay: true, startsAt: true, endsAt: true, seriesKey: true,
-  promoter: { select: { id: true, orgName: true, name: true } },
+  promoter: { select: { id: true, orgName: true } },
   imageAsset: { select: imageAssetSelect },
 } as const
 
@@ -72,6 +73,14 @@ function presentCard(row: Record<string, unknown>) {
   delete rest.heat
   delete rest._count
   delete rest.seriesKey
+  const promoter = rest.promoter
+  if (promoter && typeof promoter === 'object') {
+    const org = promoter as { id?: string; orgName?: string; name?: string; email?: string }
+    rest.promoter = { id: org.id, orgName: org.orgName }
+  }
+  if (fakePublicUrl(typeof rest.ticketUrl === 'string' ? rest.ticketUrl : null) || fakePublicUrl(typeof rest.imageUrl === 'string' ? rest.imageUrl : null)) return null
+  if (isRally(String(rest.title ?? ''), typeof rest.description === 'string' ? rest.description : null)) return null
+  if (!rest.sponsored) delete rest.tier
   return rest
 }
 
@@ -199,10 +208,9 @@ async function queryFeatured(validCity: string, day: string) {
       }),
     ])
     const todayPool = new Map<string, (typeof nowRows)[number]>()
-    for (const row of nowRows) todayPool.set(row.id, row)
     for (const row of todayRows) todayPool.set(row.id, row)
     const todayCards = crowdCards([...todayPool.values()])
-    const upcomingCards = crowdCards([...weekRows, ...fortnightRows])
+    const upcomingCards = crowdCards(weekRows)
     const imageCards = crowdCards(imageRows)
     const heat = await heatForEvents([...todayCards, ...upcomingCards, ...imageCards].map((row) => row.id))
     const withHeat = <T extends { id: string }>(rows: T[]) => rows.map((row) => ({ ...row, heat: heat.get(row.id) ?? 0 }))
@@ -215,11 +223,11 @@ async function queryFeatured(validCity: string, day: string) {
       city: validCity || 'Sydney',
       placeCity: validCity,
       nowMinutes: minutesNow(validCity || 'Sydney', now),
-    }).map((row) => presentCard(row as Record<string, unknown>))
+    }).map((row) => presentCard(row as Record<string, unknown>)).filter((row): row is Record<string, unknown> => !!row)
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v8'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v9'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export async function GET(req: NextRequest) {
   try {
