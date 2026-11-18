@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
 /** A query gave up because the pool was full or the statement was cancelled. */
@@ -11,30 +11,26 @@ export function isDbSaturation(err: unknown, depth = 0): boolean {
   return 'cause' in err && isDbSaturation((err as { cause?: unknown }).cause, depth + 1)
 }
 
-type Tx = Prisma.TransactionClient
-
 /**
- * Run one unit of work on a single connection and cancel it if it overruns.
- * PgBouncer does not keep a session `statement_timeout`, so it is set inside
- * the transaction that holds the query. `maxWait` fails fast when the Prisma
- * pool is already full instead of sitting until `pool_timeout`.
+ * Stop waiting for a query after `timeoutMs`. An interactive transaction cannot
+ * be used here: through the Neon pooler it can stay open until the platform
+ * kills the function, which is what held /api/cron/price-enrich for 300s.
+ * The caller gets the timeout. A query that already has a connection still
+ * ends when the invocation does.
  */
-export async function withStatementTimeout<T>(timeoutMs: number, run: (tx: Tx) => Promise<T>): Promise<T> {
-  const ms = String(Math.max(1, Math.floor(timeoutMs)))
+export async function withStatementTimeout<T>(timeoutMs: number, run: (db: PrismaClient) => Promise<T>): Promise<T> {
   const budget = Math.max(1, Math.floor(timeoutMs))
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error('statement timeout')
+      err.name = 'DbSaturationError'
+      reject(err)
+    }, budget)
+  })
   try {
-    return await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT set_config('statement_timeout', ${ms}, true)`
-      return run(tx)
-    }, { maxWait: 2_000, timeout: budget + 1_000 })
-  } catch (err) {
-    if (isDbSaturation(err)) throw err
-    const message = err instanceof Error ? err.message : String(err)
-    if (/timeout|Transaction already closed|expired transaction/i.test(message)) {
-      const wrapped = new Error(message)
-      wrapped.name = 'DbSaturationError'
-      throw wrapped
-    }
-    throw err
+    return await Promise.race([run(prisma), deadline])
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }

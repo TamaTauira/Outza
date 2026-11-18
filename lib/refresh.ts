@@ -234,9 +234,17 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
     },
   })
   if (hard.length) await reportFullRunFaults(log.id, selected.length, sourceFailed, hard)
-  if (runPost) void runImagePass({ trigger: 'refresh' })
+  if (runPost) await boundedImagePass()
   await invalidatePublicListings()
   return { eventsAdded: total, errors, sourcesRun }
+}
+
+/** Artwork follow-up stays inside the cron that started it. The old fire-and-forget pass ran for minutes on the same instance as the next cron. */
+async function boundedImagePass() {
+  await Promise.race([
+    runImagePass({ trigger: 'refresh', budgetMs: 20_000 }),
+    new Promise((resolve) => setTimeout(resolve, 25_000)),
+  ]).catch((err) => console.error('[images] pass failed', err instanceof Error ? err.message : err))
 }
 
 async function invalidatePublicListings() {
@@ -367,7 +375,7 @@ async function finalizeCycle(): Promise<RefreshResult> {
       data: { errors: [...postErrors, ...sourceErrors].join('; ') },
     }).catch((err) => console.error('[refresh] cycle error update failed', (err as { message?: string })?.message))
   }
-  if (cycle.ok) void runImagePass({ trigger: 'refresh' })
+  if (cycle.ok) await boundedImagePass()
   await invalidatePublicListings()
   return {
     eventsAdded: cycle.eventsAdded,

@@ -150,7 +150,11 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
       const worker = async () => {
         while (next < ids.length && Date.now() < deadline) {
           const id = ids[next++]
-          const r = await processAsset(id).catch((e: any) => ({ outcome: 'failed' as Outcome, note: e?.message }))
+          const left = Math.max(1_000, deadline - Date.now())
+          const r = await Promise.race([
+            processAsset(id).catch((e: any) => ({ outcome: 'failed' as Outcome, note: e?.message })),
+            new Promise<{ outcome: Outcome; note: string }>((resolve) => setTimeout(() => resolve({ outcome: 'failed', note: 'image budget' }), left)),
+          ])
           counts[r.outcome]++
           if (r.outcome === 'failed' && r.note && errors.length < 20) errors.push(`${id.slice(0, 8)}: ${r.note}`)
         }
