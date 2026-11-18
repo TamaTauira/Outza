@@ -11,6 +11,7 @@ import { cityDef } from '@/lib/cities'
 import { formatPrice } from '@/lib/board'
 import { boardClockLine } from '@/lib/listing-window'
 import { createBasemap } from '@/lib/map-basemap'
+import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
@@ -198,7 +199,8 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     })()
     return () => {
       cancelled = true
-      if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null }
+      destroyLeafletMap(mapInstanceRef.current)
+      mapInstanceRef.current = null
     }
   }, [])
 
@@ -210,7 +212,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     ;(async () => {
       try {
         const layer = await createBasemap(L, dark)
-        if (cancelled) return
+        if (cancelled || !mapIsLive(map)) return
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
       } catch (err) {

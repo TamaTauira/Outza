@@ -668,6 +668,7 @@ model LocalListing {
   sourceName      String?   // set when imported from a public event feed (null = organiser submission)
   sourceKey       String?
   imagePath       String?   // cloud_storage_path of the lister's own image (public, re-encoded WebP)
+  sourceImageUrl  String?   // picture from the original public listing, when the organiser didn't upload one
   imageAssetId    String?   // processed variants of imagePath via the shared image pipeline
   imageAsset      ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
   expiresAt       DateTime

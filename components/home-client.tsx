@@ -57,7 +57,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [resultsView, setResultsViewState] = useState<'list' | 'board'>('list');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [askRequest, setAskRequest] = useState<{ id: number; text: string } | null>(null);
-  const [heroPhoto, setHeroPhoto] = useState<string | null>(null);
   const askSeq = useRef(0);
   const [now, setNow] = useState<SydneyNow | null>(initialNow);
   const [day, setDay] = useBackState<string | null>('home:day', initialNow.date);
@@ -210,24 +209,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (q) setSearchInput(q);
     return () => clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    let live = true;
-    const retry = createReconnectRetry();
-    const load = () => {
-      readJson<{ items?: { imageUrl?: string | null }[] }>(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`).then((result) => {
-        if (!live) return;
-        if (!result.ok) {
-          if (result.reason === 'network') armReconnect(retry, () => { if (live) load(); });
-          return;
-        }
-        const photo = (result.data?.items ?? []).find((item) => item.imageUrl && /^https?:\/\//i.test(item.imageUrl) && !/picsum\.photos/i.test(item.imageUrl))?.imageUrl ?? null;
-        setHeroPhoto(photo);
-      });
-    };
-    load();
-    return () => { live = false; retry.stop(); };
-  }, [city]);
 
   useEffect(() => {
     let live = true;
@@ -404,13 +385,13 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : ''}>
         {view === 'board' ? (
           <section className="vp-peep-hero relative mb-2 overflow-hidden bg-[#0c0f0e] text-white">
-            {heroPhoto && <img src={heroPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />}
-            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
+            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_80%_0%,hsl(var(--primary)/0.18),transparent)]" />
             <div className="vp-wrap relative px-4 py-6 sm:px-6 sm:py-8">
             <div className="relative flex items-start justify-between gap-4">
               <div className="min-w-0 max-w-[var(--vp-measure)]">
                 <h1 className="font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-                  <span className="block">What’s on in {city || DEFAULT_CITY} tonight.</span>
+                  <span className="block">What’s on in</span>
+                  <span className="block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span>
                 </h1>
                 <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p>
                 <p className="mt-2 text-sm font-semibold text-white/80">Your city’s calling. Answer it.</p>
@@ -483,7 +464,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   </select>
                 </label>
               </div>
-              <ViewToggle compact value="map" label="Board, list or map" options={[{ key: 'board', text: 'Board', Icon: LayoutGrid }, { key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapPin }]} onChange={(next) => { if (next === 'map') return; rememberLineup(next) }} />
               <div className="min-w-0 flex-1 lg:px-4">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />

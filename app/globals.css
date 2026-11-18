@@ -231,6 +231,11 @@
 @media (min-width: 640px) {
   .vp-day-head { top: calc(4rem + 5.25rem); }
 }
+/* Local list has no sticky search bar, so the day head sits under the site header. */
+.vp-day-head-page { top: 3.5rem; }
+@media (min-width: 640px) {
+  .vp-day-head-page { top: 4rem; }
+}
 
 /* Fluid shell. Full width up to the spec cap (about 1760px). Gutters stay on the pages. */
 .vp-wrap {

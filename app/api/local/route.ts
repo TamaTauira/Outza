@@ -9,6 +9,7 @@ import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, 
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
 import { eventPath } from '@/lib/seo'
 import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, refineStoredSection, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { listingPicture } from '@/lib/local-images'
 import { publicUrl } from '@/lib/s3'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { placeFromText } from '@/lib/venue-place'
@@ -89,7 +90,7 @@ export async function GET(req: Request) {
   try {
   const rows = await prisma.localListing.findMany({
     where: { status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(validCity ? { city } : {}) },
-    select: { ...PUBLIC, imagePath: true, imageAsset: { select: imageAssetSelect } }, take: 600,
+    select: { ...PUBLIC, imagePath: true, sourceImageUrl: true, imageAsset: { select: imageAssetSelect } }, take: 600,
   })
   const seen = new Set<string>()
   const localItems: FeedItem[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
@@ -113,7 +114,7 @@ export async function GET(req: Request) {
         lat: pin?.lat ?? null,
         lng: pin?.lng ?? null,
         blurb: feedBlurb(l.description),
-        imageUrl: feedPhoto([assetUrl(l.imageAsset), l.imagePath ? publicUrl(l.imagePath) : null]),
+        imageUrl: feedPhoto([assetUrl(l.imageAsset), listingPicture(l.imagePath, l.sourceImageUrl, publicUrl)]),
       }
     })
   const events = await prisma.event.findMany({
