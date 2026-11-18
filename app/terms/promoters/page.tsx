@@ -16,7 +16,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '1. Who these terms are for',
     body: [
-      'These terms are between you and Outza, which runs VibePeep, an events guide based in Australia. They cover promoter accounts, listings you submit, paid placements and subscriptions. The general terms of use, disclaimer and privacy policy still apply. If they conflict on a promoter or advertising point, these terms win.',
+      'These terms are between you and the operator of VibePeep, an events guide based in Australia. They cover promoter accounts, listings you submit, paid placements and subscriptions. The general terms of use, disclaimer and privacy policy still apply. If they conflict on a promoter or advertising point, these terms win.',
       'This page is a draft for a lawyer to review. It is written in plain English so a promoter can see the deal. It is not a substitute for advice on your own campaign.',
     ],
   },
@@ -39,7 +39,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     title: '4. Your content',
     body: [
       'You confirm that the event details you give us are accurate, that you have the rights to the words and images, and that the listing is not unlawful, misleading or unsuitable for the audience you describe. That includes the Australian Consumer Law: do not claim a price, a date or an inclusion you cannot stand behind.',
-      'You keep ownership of your content. You give Outza a licence to host, show and adapt it as needed to run the listing and the placement (for example, cropping an image for a card).',
+      'You keep ownership of your content. You give VibePeep a licence to host, show and adapt it as needed to run the listing and the placement (for example, cropping an image for a card).',
     ],
   },
   {
@@ -79,7 +79,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '9. Liability and indemnity',
     body: [
-      'To the extent the law allows, each side’s liability to the other for a claim about these terms is limited to the fees you paid Outza for the affected service in the 12 months before the claim. This limit does not apply to liability that cannot legally be limited, including a breach of a consumer guarantee that cannot be excluded, or to liability for fraud.',
+      'To the extent the law allows, each side’s liability to the other for a claim about these terms is limited to the fees you paid VibePeep for the affected service in the 12 months before the claim. This limit does not apply to liability that cannot legally be limited, including a breach of a consumer guarantee that cannot be excluded, or to liability for fraud.',
       'Each side indemnifies the other against claims by a third party that arise from that side’s own content or that side’s own breach of these terms. The indemnity is reduced to the extent the other side caused or contributed to the loss. It is not an open-ended promise to cover every claim connected with VibePeep.',
     ],
   },

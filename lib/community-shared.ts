@@ -42,10 +42,21 @@ export const COMMUNITY_MAX_RECUR_DAYS = 182
 export const COMMUNITY_MAX_SPAN_DAYS = 14
 export const COMMUNITY_HOLD_REPORTS = 3
 
-/** AND-clauses for public event queries. Ingested rows have a null approval state and stay visible. */
-export const PUBLIC_EVENT_AND: Array<{ deletedAt: null } | { OR: Array<{ approvalState: null | string }> }> = [
+/** AND-clauses for public event queries. Ingested rows have a null approval state and stay visible. Hidden and unmoderated rows stay out. */
+export const PUBLIC_EVENT_AND = [
   { deletedAt: null },
   { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] },
+  { hidden: false },
+  { OR: [{ moderationStatus: null }, { moderationStatus: { not: 'review' } }] },
+  { NOT: { OR: [
+    { title: { startsWith: 'test ', mode: 'insensitive' as const } },
+    { title: { equals: 'test', mode: 'insensitive' as const } },
+    { title: { startsWith: '[test', mode: 'insensitive' as const } },
+    { title: { contains: 'test test', mode: 'insensitive' as const } },
+    { title: { contains: 'private event', mode: 'insensitive' as const } },
+    { title: { contains: '[model pending', mode: 'insensitive' as const } },
+    { title: { contains: '[model unconfirmed', mode: 'insensitive' as const } },
+  ] } },
 ]
 
 const TICKET_HOST = /ticketmaster|ticketek|eventbrite|humanitix|moshtix|oztix|trybooking|stickytickets|universe\.com|dice\.fm/i

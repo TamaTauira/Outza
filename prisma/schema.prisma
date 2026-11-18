@@ -40,6 +40,8 @@ model Event {
   itineraryAdds Int    @default(0)
   // Data quality
   status         String    @default("SCHEDULED") // SCHEDULED | CANCELLED | POSTPONED | RESCHEDULED | SOLD_OUT
+  hidden         Boolean   @default(false)
+  moderationStatus String? // review | hidden | approved. Null is an older row that stays public.
   statusSource   String?
   lastVerifiedAt DateTime?
   sources        String[]  @default([])

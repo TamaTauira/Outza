@@ -21,7 +21,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: 'If we remove a listing or placement',
     body: [
-      'If Outza removes a listing or a paid placement, and the reason is not a breach by you, we refund the unused part of the fee you already paid for that item. The refund is pro rata for the days that were left.',
+      'If VibePeep removes a listing or a paid placement, and the reason is not a breach by you, we refund the unused part of the fee you already paid for that item. The refund is pro rata for the days that were left.',
       'If we remove it because the content was misleading, unlawful, or otherwise your breach, this clause does not refund the days already used. The Australian Consumer Law still applies.',
     ],
   },

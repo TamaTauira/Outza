@@ -17,6 +17,7 @@ import { normalizeListingUrls, usableUrl } from '@/lib/listing-link'
 import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/source-budget'
 import { applyProtectedRefresh } from '@/lib/event-overrides'
 import { updateIsVerificationOnly } from '@/lib/listing-touch'
+import { listingModeration, statusFromTitle } from '@/lib/listing-moderation'
 
 export const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -121,7 +122,9 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const endDate = ev.endDate && ev.endDate !== ev.date ? new Date(`${ev.endDate}T00:00:00.000Z`) : null
   const dedupeHash = makeDedupeHash(title, ev.date, venueName)
   const legacyHash = makeDedupeHash(title, ev.date, rawVenue)
-  const status = ev.status && STATUS_UPDATABLE.has(ev.status) ? ev.status : 'SCHEDULED'
+  const titled = statusFromTitle(title)
+  const status = titled ?? (ev.status && STATUS_UPDATABLE.has(ev.status) ? ev.status : 'SCHEDULED')
+  const moderation = listingModeration(title, description)
   const range = { min: parsedPrice.min, max: parsedPrice.max }
   const now = new Date()
   const imageUrl = bestSourceUrl(sanitizeDbUrl(ev.imageUrl, 2000))
@@ -163,6 +166,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     imageUrl,
     priceMin: range.min, priceMax: range.max, feesIncluded: ev.feesIncluded ?? null,
     status, statusSource: status === 'SCHEDULED' ? null : ev.source, lastVerifiedAt: now,
+    hidden: moderation.hidden, moderationStatus: moderation.moderationStatus,
     timezone: sched.timezone, allDay: sched.allDay, startsAt: sched.startsAt, endsAt: sched.endsAt,
     confidenceScore: sched.confidenceScore,
     // A refresh that omits a link must not wipe one we already stored.

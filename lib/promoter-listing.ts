@@ -7,6 +7,7 @@ import { CITY_NAMES, cityDef } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
 import { cityToday } from '@/lib/seo'
 import { bestSourceUrl } from '@/lib/images/source-url-client'
+import { fakePublicUrl } from '@/lib/listing-moderation'
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 const TIME = /^\d{2}:\d{2}$/
@@ -100,6 +101,7 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
 
   const ticket = httpsUrl(b.ticketUrl, 'Ticket link')
   if ('error' in ticket) return { ok: false, error: ticket.error }
+  if (ticket.url && fakePublicUrl(ticket.url)) return { ok: false, error: 'Ticket link needs a real website' }
   const imageRaw = String(b.imageUrl ?? '').trim()
   let imageUrl: string | null = null
   if (imageRaw) {
@@ -108,6 +110,7 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
     if (image.url && !IMAGE_EXT.test(image.url) && !IMAGE_HOST.test(image.url)) {
       return { ok: false, error: 'Image link should be a direct picture (jpg, png or webp) or a link from your ticket site' }
     }
+    if (image.url && fakePublicUrl(image.url)) return { ok: false, error: 'Image link needs a real picture' }
     imageUrl = image.url ? bestSourceUrl(image.url) : null
   }
   let capacity: number | null = null
