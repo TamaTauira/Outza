@@ -16,8 +16,9 @@ import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND
 import { siteUrl } from '@/lib/site-url'
 import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans', weight: ['400', '500', '600'] })
-const manrope = Manrope({ subsets: ['latin'], variable: '--font-display', weight: ['700', '800'] })
+// Variable files: one download each. Weights still come from the spec (400–800).
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
+const manrope = Manrope({ subsets: ['latin'], variable: '--font-display' })
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 const theme = '#0c0f0e'
