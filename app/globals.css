@@ -283,6 +283,10 @@
   width: auto;
 }
 
+@media (max-width: 1279px) {
+  .vp-header-lockup .vp-lockup-tag { display: none; }
+}
+
 .vp-header-lockup .vp-lockup-tag {
   margin-top: clamp(0.15rem, 0.6cqi, 0.25rem);
   max-width: none;
