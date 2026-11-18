@@ -66,6 +66,8 @@ test('the duplicate scan stops on the quality budget instead of copying groups',
   assert.equal(merge.includes('[...(groups.get'), false)
   assert.match(src, /readOpenListings/)
   assert.match(src, /take: DUP_PAGE/)
+  assert.match(src, /DUP_SCAN_CAP/)
+  assert.match(src, /WRITE_CONCURRENCY = Math\.min\(3, JOB_CONNECTION_LIMIT\)/)
 })
 
 test('an abort is a real failure and a budget stop is not', () => {

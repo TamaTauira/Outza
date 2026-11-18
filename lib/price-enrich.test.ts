@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { cosListedPrice } from './cos-event'
 import { PRICE_ENRICH_BUDGET_MS, groupTargets, resolveEventPrice, type PriceFetch, type PriceResponse } from './price-lookup'
@@ -39,6 +40,14 @@ test('price lookup stays outside the listings refresh', () => {
   assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.id === 'finalize')?.budgetMs, 150_000)
   assert.equal(REFRESH_CHUNKS.find((chunk) => chunk.id === 'finalize')?.minute, 23)
   assert.ok(PRICE_ENRICH_BUDGET_MS < 300_000)
+  assert.ok(PRICE_ENRICH_BUDGET_MS <= 180_000)
+})
+
+test('price enrich does not build an index on the request path', () => {
+  const src = readFileSync(new URL('./price-enrich.ts', import.meta.url), 'utf8')
+  assert.equal(src.includes('CREATE INDEX'), false)
+  assert.match(src, /CONCURRENCY = 1/)
+  assert.match(src, /withStatementTimeout/)
 })
 
 test('humanitix payload prices are a range, and a class fee in prose is kept', () => {

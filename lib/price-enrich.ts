@@ -3,15 +3,16 @@
  * This is its own cron, with its own time budget, so it cannot push the
  * listings refresh or finalize past the 300s function limit.
  */
+import { withStatementTimeout } from '@/lib/db-guard'
 import { BROWSER_UA, sydneyToday } from '@/lib/event-store'
-import { prisma } from '@/lib/prisma'
 import { PRICE_ENRICH_BUDGET_MS, groupTargets, resolveEventPrice, type PriceFetch, type PriceGroup, type PriceRequest, type PriceResponse, type PriceTarget } from '@/lib/price-lookup'
 import { PRICE_REASON, TRANSIENT_PRICE_REASONS } from '@/lib/price-read'
 
 export { PRICE_ENRICH_BUDGET_MS }
 
 const WAVE = 60
-const CONCURRENCY = 2
+const CONCURRENCY = 1
+const QUERY_TIMEOUT_MS = 8_000
 
 export type PriceEnrichReport = {
   checked: number
@@ -64,9 +65,13 @@ let columnsReady: Promise<void> | null = null
 export function ensurePriceColumns(): Promise<void> {
   if (!columnsReady) {
     columnsReady = (async () => {
-      await prisma.$executeRaw`ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "priceCheckedAt" TIMESTAMP(3)`
-      await prisma.$executeRaw`ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "priceUnknownReason" TEXT`
-      await prisma.$executeRaw`CREATE INDEX IF NOT EXISTS "Event_priceCheckedAt_idx" ON "Event" ("priceCheckedAt")`
+      // Nullable adds are metadata-only. Building the priceCheckedAt index here
+      // has no statement timeout, so the first production run held the table
+      // until the platform killed the function.
+      await withStatementTimeout(5_000, async (tx) => {
+        await tx.$executeRaw`ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "priceCheckedAt" TIMESTAMP(3)`
+        await tx.$executeRaw`ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "priceUnknownReason" TEXT`
+      })
     })().catch((err) => {
       columnsReady = null
       throw err
@@ -150,24 +155,24 @@ async function nextTargets(take: number, now: Date, extra: Record<string, unknow
   const today = sydneyToday()
   const select = { id: true, source: true, title: true, ticketUrl: true, sourceUrl: true, date: true } as const
   const where = { ...dueWhere(now), ...extra }
-  const upcoming = await prisma.event.findMany({
+  const upcoming = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
     where: { ...where, date: { gte: today } },
     orderBy: [{ date: 'asc' }, { id: 'asc' }],
     take,
     select,
-  })
+  }))
   if (upcoming.length) return upcoming
-  return prisma.event.findMany({
+  return withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
     where: { ...where, date: { lt: today } },
     orderBy: [{ date: 'desc' }, { id: 'asc' }],
     take,
     select,
-  })
+  }))
 }
 
 async function idsForGroup(group: PriceGroup): Promise<string[]> {
   if (!group.urls.length) return group.ids
-  const more = await prisma.event.findMany({
+  const more = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
     where: {
       organiserEditedAt: null,
       duplicateOfId: null,
@@ -178,8 +183,8 @@ async function idsForGroup(group: PriceGroup): Promise<string[]> {
       ],
     },
     select: { id: true },
-    take: 2000,
-  })
+    take: 200,
+  }))
   return [...new Set([...group.ids, ...more.map((row) => row.id)])]
 }
 
@@ -192,7 +197,7 @@ async function persist(group: PriceGroup, outcome: { price: string | null; isFre
   }
   if (!ids.length) return
   if (outcome.price) {
-    await prisma.event.updateMany({
+    await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.updateMany({
       where: { id: { in: ids }, organiserEditedAt: null, duplicateOfId: null, AND: [blankPrice] },
       data: {
         price: outcome.price,
@@ -202,13 +207,13 @@ async function persist(group: PriceGroup, outcome: { price: string | null; isFre
         priceCheckedAt: now,
         priceUnknownReason: null,
       },
-    })
+    }))
     return
   }
-  await prisma.event.updateMany({
+  await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.updateMany({
     where: { id: { in: ids }, organiserEditedAt: null, duplicateOfId: null, AND: [blankPrice] },
     data: { priceCheckedAt: now, priceUnknownReason: outcome.reason ?? PRICE_REASON.unpublished },
-  })
+  }))
 }
 
 async function pool<T>(items: T[], size: number, run: (item: T) => Promise<void>) {
@@ -227,10 +232,10 @@ export async function countUnknownPrices(): Promise<{ upcoming: number; total: n
   await ensurePriceColumns()
   const today = sydneyToday()
   const base = { duplicateOfId: null, deletedAt: null, AND: [blankPrice] }
-  const [upcoming, total] = await Promise.all([
-    prisma.event.count({ where: { ...base, date: { gte: today } } }),
-    prisma.event.count({ where: base }),
-  ])
+  const [upcoming, total] = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => Promise.all([
+    tx.event.count({ where: { ...base, date: { gte: today } } }),
+    tx.event.count({ where: base }),
+  ]))
   return { upcoming, total }
 }
 
@@ -250,13 +255,20 @@ export async function runPriceEnrich(opts?: { budgetMs?: number; fetch?: PriceFe
   const examples: PriceEnrichReport['examples'] = []
   let more = false
 
-  while (Date.now() - started < budgetMs - 4_000) {
-    const rows = await nextTargets(WAVE, now, sourceFilter)
+  while (Date.now() - started < budgetMs - 20_000) {
+    let rows: PriceTarget[]
+    try {
+      rows = await nextTargets(WAVE, now, sourceFilter)
+    } catch (err) {
+      console.error('[price-enrich] target read failed', err instanceof Error ? err.message : err)
+      more = true
+      break
+    }
     if (!rows.length) { more = false; break }
     const groups = groupTargets(rows)
     let stopped = false
     await pool(groups, CONCURRENCY, async (group) => {
-      if (stopped || Date.now() - started >= budgetMs - 2_000) { stopped = true; return }
+      if (stopped || Date.now() - started >= budgetMs - 15_000) { stopped = true; return }
       try {
         const outcome = await Promise.race([
           resolveEventPrice(group.sample, fetch, { ticketmasterKey: apiKey }),
@@ -286,7 +298,9 @@ export async function runPriceEnrich(opts?: { budgetMs?: number; fetch?: PriceFe
     if (stopped) break
   }
 
-  const unknown = await countUnknownPrices().catch(() => ({ upcoming: -1, total: -1 }))
+  const unknown = Date.now() - started > budgetMs - 10_000
+    ? { upcoming: -1, total: -1 }
+    : await countUnknownPrices().catch(() => ({ upcoming: -1, total: -1 }))
   const elapsedMs = Date.now() - started
   console.log(`[price-enrich] checked ${checked}, priced ${priced}, free ${free}, ${elapsedMs}ms`)
   return { checked, priced, free, stillUnknown: checked - priced, reasons, examples, elapsedMs, more, upcomingUnknown: unknown.upcoming, totalUnknown: unknown.total }

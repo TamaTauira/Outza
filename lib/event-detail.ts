@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { after } from 'next/server'
+import { isDbSaturation } from '@/lib/db-guard'
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { activeTierMap } from '@/lib/promotions'
@@ -151,9 +152,15 @@ export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>
 
 /** Shared by the event page and its metadata. Null when the listing is missing or already over. */
 export async function getPublicEvent(idOrParam: string): Promise<PublicEvent | null> {
-  const id = await cachedResolve(idOrParam)
-  if (!id) return null
-  return cachedCore(id)
+  try {
+    const id = await cachedResolve(idOrParam)
+    if (!id) return null
+    return await cachedCore(id)
+  } catch (err) {
+    if (!isDbSaturation(err)) throw err
+    console.error('event read skipped, database saturated', err instanceof Error ? err.message : err)
+    return null
+  }
 }
 
 function reviveEvent<T extends { date: string | Date; endDate?: string | Date | null; lastVerifiedAt?: string | Date | null; updatedAt?: string | Date | null }>(event: T) {

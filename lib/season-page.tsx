@@ -5,7 +5,7 @@ import { CITIES } from '@/lib/cities'
 import { INDEX_MIN_LISTINGS } from '@/lib/indexability'
 import { seasonFacts, seasonCopy, seasonDef, seasonPath, seasonWindow, type SeasonDecision, type SeasonDef } from '@/lib/seasons'
 import { cityFromSlug, cityPath } from '@/lib/seo'
-import { cityGuideModel, landingData, lastRefreshAt } from '@/lib/seo-server'
+import { cityGuideModel, landingData, lastRefreshAt, loadCityGuideModels } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
@@ -30,10 +30,10 @@ async function loadSeason(citySlug: string, seasonSlug: string): Promise<Loaded 
   if (model.ok && (!decision || decision.total <= 0)) return null
   const window = decision ? { from: decision.from, to: decision.to } : seasonWindow(season.key, city)
   const data = await landingData(city, null, undefined, 60, undefined, window)
-  if (data.total === 0) return null
-  const index = model.ok
+  if (data.total === 0 && !data.degraded) return null
+  const index = !data.degraded && (model.ok
     ? !!(decision?.index && data.total >= INDEX_MIN_LISTINGS)
-    : data.total >= INDEX_MIN_LISTINGS
+    : data.total >= INDEX_MIN_LISTINGS)
   const copy = seasonCopy({ city: city.name, season, from: window.from, to: window.to, total: data.total })
   return { city, season, path: seasonPath(city, season.key), window, decision, index, data, copy }
 }
@@ -56,12 +56,12 @@ export async function SeasonPage({ citySlug, seasonSlug }: { citySlug: string; s
   const loaded = await loadSeason(citySlug, seasonSlug)
   if (!loaded) notFound()
   const { city, season, path, window, data, copy } = loaded
-  const [refreshed, models] = await Promise.all([lastRefreshAt(), Promise.all(CITIES.map(async (c) => ({ c, model: await cityGuideModel(c) })))])
+  const [refreshed, models] = await Promise.all([lastRefreshAt(), loadCityGuideModels()])
   const origin = siteUrl()
   const facts = seasonFacts({ city: city.name, season, from: window.from, to: window.to, total: data.total })
   const otherCities = models
-    .filter(({ c, model }) => c.name !== city.name && model.seasons.some((s) => s.key === season.key && s.index))
-    .map(({ c }) => ({ href: seasonPath(c, season.key), label: season.h1(c.name) }))
+    .filter(({ city: other, model }) => other.name !== city.name && model.seasons.some((s) => s.key === season.key && s.index))
+    .map(({ city: other }) => ({ href: seasonPath(other, season.key), label: season.h1(other.name) }))
   return (
     <GuideLanding
       city={city}
@@ -89,7 +89,7 @@ export async function SeasonPage({ citySlug, seasonSlug }: { citySlug: string; s
         { name: city.name, url: `${origin}${cityPath(city)}` },
         { name: season.label, url: `${origin}${path}` },
       ]}
-      seasons={models.find((m) => m.c.name === city.name)?.model.seasons.filter((s) => s.index && s.path !== path).map((s) => ({ href: s.path, title: seasonDef(s.key)?.h1(city.name) ?? s.key })) ?? []}
+      seasons={models.find((m) => m.city.name === city.name)?.model.seasons.filter((s) => s.index && s.path !== path).map((s) => ({ href: s.path, title: seasonDef(s.key)?.h1(city.name) ?? s.key })) ?? []}
     />
   )
 }

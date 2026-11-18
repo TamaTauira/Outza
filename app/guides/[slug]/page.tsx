@@ -4,10 +4,9 @@ import { notFound } from 'next/navigation'
 import { PageShell } from '@/components/page-shell'
 import { LandingViewBeacon } from '@/components/landing-beacon'
 import { EventCard, GuideEventRow } from '@/components/event-card'
-import { CITIES } from '@/lib/cities'
 import { assessEditorial, editorialFacts, editorialGuide, editorialPath, EDITORIAL_GUIDES } from '@/lib/editorial'
 import { cityPath, topicDef } from '@/lib/seo'
-import { cityGuideModel, eventJsonLd, jsonLdString, landingData, lastRefreshAt } from '@/lib/seo-server'
+import { eventJsonLd, jsonLdString, landingData, lastRefreshAt, loadCityGuideModels } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
@@ -18,7 +17,7 @@ type Props = { params: Promise<{ slug: string }> }
 async function load(slug: string) {
   const guide = editorialGuide(slug)
   if (!guide) return null
-  const models = await Promise.all(CITIES.map(async (city) => ({ city, model: await cityGuideModel(city) })))
+  const models = await loadCityGuideModels()
   const rows = models.map(({ city, model }) => {
     const decision = model.ok ? model.decisions.find((d) => d.path === cityPath(city, guide.topic)) : undefined
     return { city, total: decision?.total ?? 0, index: !!decision?.index }
