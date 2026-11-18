@@ -693,7 +693,7 @@ function CategoryChip({ active, onClick, label, Icon, color }: {active: boolean;
       onClick={onClick}
       className={cn(
         'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors',
-        active ? 'bg-muted text-foreground ring-1 ring-border' : 'text-muted-foreground hover:text-foreground'
+        active ? 'bg-muted text-foreground ring-1 ring-border' : 'text-foreground'
       )}>
       
       {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" style={color ? { color } : undefined} /> : null}

@@ -9,7 +9,7 @@ import { EventImage } from '@/components/event-image'
 import { EventReactions } from '@/components/event-reactions'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { VenueMap } from '@/components/venue-map'
-import { CATEGORIES } from '@/lib/categories'
+import { CATEGORIES, categoryInk } from '@/lib/categories'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { descriptionParagraphs } from '@/lib/description-text'
 import { ticketHref } from '@/lib/affiliate'
@@ -186,7 +186,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 image={event.imageAsset as never}
                 src={event.imageUrl}
                 kind="hero"
-                alt=""
+                alt={event.title}
                 sizes="(max-width: 640px) 100vw, 900px"
                 crop
                 accent={cat?.color}
@@ -199,7 +199,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
             <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
               <div className="flex flex-wrap gap-1.5">
                 {event.category && (
-                  <span className="rounded-md px-2.5 py-0.5 text-xs font-semibold text-white" style={{ backgroundColor: cat?.color ?? '#c2410c' }}>{event.category}</span>
+                  <span className="rounded-md px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: cat?.color ?? '#c2410c', color: categoryInk(cat?.color ?? '#c2410c') }}>{event.category}</span>
                 )}
                 {tags.map((tag) => (
                   <span key={tag} className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><Tag className="mr-1 inline h-3 w-3" />{tag}</span>
@@ -216,7 +216,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                     <span>
                       <span className="font-medium">{event.venueName}</span>
                       {suburb ? <span className="text-muted-foreground"> · {suburb}</span> : null}
-                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" className="mt-0.5 block text-primary underline underline-offset-2">Directions</a> : null}
+                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${event.venueName || event.title}`} className="mt-0.5 block text-primary underline underline-offset-2">Directions</a> : null}
                     </span>
                   </li>
                 )}

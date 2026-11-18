@@ -130,7 +130,7 @@
 .se-map .leaflet-control-zoom { border: 0 !important; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.18) !important; }
 .se-map .leaflet-control-zoom a { width: 36px; height: 36px; line-height: 36px; background: rgba(255,255,255,.88); color: #111; border: 0 !important; backdrop-filter: blur(12px); }
 .dark .se-map .leaflet-control-zoom a { background: rgba(30,30,32,.88); color: #fff; }
-.se-map .leaflet-control-attribution { background: rgba(255,255,255,.6); border-radius: 8px 0 0 0; font-size: 10px; }
+.se-map .leaflet-control-attribution { background: rgba(255,255,255,.88); border-radius: 8px 0 0 0; font-size: 10px; line-height: 1.35; white-space: normal; max-width: min(100% - 8px, 22rem); pointer-events: auto; }
 .vp-local-map .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; font-size: 18px; }
 .vp-local-pin .se-pin { transform-origin: 18px 44px; transition: transform 150ms ease; }
 .vp-local-pin.is-hot .se-pin { transform: scale(1.22); filter: drop-shadow(0 4px 8px rgba(255, 122, 26, .55)); }
@@ -147,15 +147,23 @@
 .vp-map-stage .leaflet-bottom.leaflet-left {
   max-width: calc(100% - 4.75rem);
 }
-.vp-map-stage .leaflet-control-attribution {
-  display: block;
-  max-width: 100%;
-  margin-bottom: 6px !important;
-  margin-left: 6px !important;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.vp-map-stage .leaflet-control-attribution { display: none; }
+.vp-map-credit {
+  position: absolute;
+  left: 6px;
+  bottom: calc(var(--vp-map-dock, 0px) + 6px);
+  z-index: 40;
+  max-width: min(100% - 12px, 22rem);
+  border-radius: 8px 8px 0 0;
+  background: rgba(255,255,255,.92);
+  color: #1c1916;
+  font-size: 10px;
+  line-height: 1.35;
+  padding: 3px 6px;
+  pointer-events: auto;
 }
+.vp-map-credit a { color: inherit; text-decoration: underline; }
+.dark .vp-map-credit { background: rgba(0,0,0,.72); color: #eee; }
 @media (max-height: 520px) {
   .vp-map-toolbar { padding-top: 0.35rem; padding-bottom: 0.35rem; }
   .vp-map-chips { padding-top: 0.25rem; padding-bottom: 0.25rem; }

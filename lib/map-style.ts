@@ -4,8 +4,8 @@
 export const MAP_STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/positron'
 export const MAP_STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark'
 
-/** Keyless OpenFreeMap vector tiles (OpenMapTiles schema). Commercial use is allowed. Attribution is required. */
-export const MAP_ATTRIBUTION = 'OpenFreeMap © OpenMapTiles, data © OpenStreetMap'
+/** Keyless OpenFreeMap vector tiles (OpenMapTiles schema, OpenStreetMap data). Commercial use is allowed. Attribution is required and must stay visible. */
+export const MAP_ATTRIBUTION = '© <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
 export const MAP_MAX_ZOOM = 18
 
 /** Style URL for the current site theme. MapLibre loads it inside the Leaflet map. */

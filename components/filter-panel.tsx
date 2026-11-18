@@ -99,7 +99,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
             <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-foreground underline">Clear all</button>
           )}
           {onClose && (
-            <button onClick={onClose} className="p-1 hover:bg-muted rounded"><X className="w-4 h-4" /></button>
+            <button type="button" onClick={onClose} className="p-1 hover:bg-muted rounded" aria-label="Close filters"><X className="w-4 h-4" /></button>
           )}
         </div>
       </div>
@@ -114,7 +114,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
               onClick={() => onWhen(p.key)}
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                when === p.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                when === p.key ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-muted/80'
               )}
             >
               {p.label}
@@ -128,7 +128,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
                 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
                 filters.datePreset === p.key
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
               )}
             >
               {p.label}
@@ -157,7 +157,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
           onClick={() => update({ isFree: !filters.isFree })}
           className={cn(
             'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all',
-            filters.isFree ? 'bg-free/15 text-free border border-free/30' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            filters.isFree ? 'bg-free/15 text-free border border-free/30' : 'bg-muted text-foreground hover:bg-muted/80'
           )}
         >
           <span>Free only</span>
@@ -170,7 +170,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
             'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all',
             filters.isLGBTI
               ? 'rainbow-bg text-white border-0'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              : 'bg-muted text-foreground hover:bg-muted/80'
           )}
         >
           <span>LGBTIQ+ events</span>
@@ -217,7 +217,7 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
                         'px-2.5 py-1 rounded-md text-xs font-medium transition-all',
                         filters.subTag === tag
                           ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                          : 'bg-muted/60 text-foreground hover:bg-muted'
                       )}
                     >
                       {tag}
