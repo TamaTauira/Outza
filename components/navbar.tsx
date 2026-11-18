@@ -60,7 +60,7 @@ export function Navbar({ savedCount }: NavbarProps) {
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
-                <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
+                <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
                   <House className="w-4 h-4" /><span>Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
@@ -74,7 +74,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 aria-current={view === key ? 'page' : undefined}
                 aria-label={key === 'saved' ? (mounted && savedCount > 0 ? `Saved, ${savedCount}` : 'Saved') : label}
                 className={cn(
-                  'relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm transition-colors',
+                  'relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm transition-colors',
                   view === key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -87,11 +87,11 @@ export function Navbar({ savedCount }: NavbarProps) {
               </Link>
             )
           })}
-          <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[11px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
+          <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
             <CalendarPlusIcon className="w-4 h-4" /><span>Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
-          <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-[11px] text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
+          <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-[13px] text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
             Ask
           </button>
         </nav>
@@ -137,7 +137,7 @@ export function Navbar({ savedCount }: NavbarProps) {
             <div className="vp-header-account contents">
               <Link href="/promoters" className="hidden lg:inline-flex h-10 items-center gap-1.5 px-3 text-sm text-muted-foreground hover:text-foreground"><Megaphone className="w-4 h-4" />For promoters</Link>
               <Link href="/login" className="inline-flex md:hidden h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:text-foreground" aria-label="Sign in"><User className="w-4 h-4" /></Link>
-              <Link href="/login" className="hidden md:inline-flex h-10 items-center px-3 text-sm text-muted-foreground hover:text-foreground">Sign In</Link>
+              <Link href="/login" className="hidden md:inline-flex h-11 items-center px-3 text-sm text-muted-foreground hover:text-foreground">Sign in</Link>
               <Link href="/signup" aria-label="Sign up" className="inline-flex h-10 w-10 sm:w-auto shrink-0 items-center justify-center gap-1.5 sm:px-4 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">
                 <User className="w-4 h-4" /><span className="hidden sm:inline">Sign Up</span>
               </Link>

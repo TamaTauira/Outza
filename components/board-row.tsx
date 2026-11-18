@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { EventImage } from '@/components/event-image'
 import { useRouter } from 'next/navigation'
 import { Bookmark, ChevronRight } from 'lucide-react'
 import { ItineraryButton } from '@/components/itinerary-button'
@@ -93,7 +94,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
     <div
       onClick={openRow}
       className={cn(
-        'xl:hidden group relative cursor-pointer grid grid-cols-[4.75rem_40px_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-2.5 border-b border-border hover:bg-muted/60',
+        'xl:hidden group relative cursor-pointer grid min-h-[88px] grid-cols-[4.75rem_72px_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-border px-3 py-2 hover:bg-muted/60',
         done && 'opacity-75',
         active && 'bg-primary/10',
       )}
@@ -104,15 +105,21 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{when.ampm}</span>
         <Finish when={when} compact />
       </div>
-      <span className="flex h-10 w-10 items-center justify-center rounded-md" style={{ backgroundColor: `${color}26`, color }}>
-        <Icon className="w-4 h-4" />
-      </span>
+      {ev.imageUrl ? (
+        <span className="relative h-[72px] w-[72px] overflow-hidden rounded-[var(--vp-radius-sm)] bg-muted">
+          <EventImage src={ev.imageUrl} kind="square" alt="" sizes="72px" crop category={ev.category} slot="square" />
+        </span>
+      ) : (
+        <span className="flex h-[72px] w-[72px] items-center justify-center rounded-[var(--vp-radius-sm)]" style={{ backgroundColor: `${color}26`, color }}>
+          <Icon className="h-4 w-4" />
+        </span>
+      )}
       <div className="min-w-0">
         <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{shownTitle}</Link>
         <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}{until ? ` · ${until}` : ''}</p>
       </div>
       <div className="relative z-20 flex items-center">
-        <button onClick={() => onToggleSave(ev)} className={cn('p-1.5 rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+        <button onClick={() => onToggleSave(ev)} className={cn('grid h-11 w-11 place-items-center rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
           <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
         </button>
         <ItineraryButton lineup event={ev} />
@@ -121,7 +128,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
     <div
       onClick={openRow}
       className={cn(
-        'hidden xl:grid group relative cursor-pointer gap-x-3 gap-y-1 items-center px-5 py-2 min-h-[60px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
+        'hidden xl:grid group relative cursor-pointer gap-x-3 gap-y-1 items-center px-5 py-2 min-h-[96px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
         BOARD_COLS,
         done && 'opacity-75',
         active && 'bg-primary/10',
@@ -200,7 +207,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
         <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
         <button
           onClick={() => onToggleSave(ev)}
-          className={cn('relative z-20 shrink-0 p-1.5 rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
+          className={cn('relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
           aria-label={saved ? 'Remove from saved' : 'Save event'}
           title={saved ? 'Saved' : 'Save'}
         >
@@ -215,7 +222,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
 
 export function BoardHeadings() {
   return (
-    <div className={cn('hidden xl:grid gap-x-3 px-5 py-2 bg-muted/70 border-b border-border font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground', BOARD_COLS)}>
+    <div className={cn('sticky top-14 z-10 hidden border-b border-border bg-muted/90 px-5 py-2 font-mono text-[13px] text-muted-foreground backdrop-blur xl:grid xl:gap-x-3 sm:top-16', BOARD_COLS)}>
       <span>Start</span>
       <span>Event</span>
       <span>Venue / Suburb</span>
@@ -229,7 +236,7 @@ export function BoardHeadings() {
 
 export function GroupBar({ label, count, open, onToggle }: { label: string; count: number; open: boolean; onToggle: () => void }) {
   return (
-    <button onClick={onToggle} className="sticky top-14 z-20 flex w-full items-center gap-3 border-y border-primary/20 bg-background px-3 py-2.5 text-left sm:top-16 sm:px-5" aria-expanded={open}>
+    <button onClick={onToggle} className="vp-day-head sticky z-20 flex h-11 w-full items-center gap-3 border-y border-border bg-background px-3 text-left sm:px-5" aria-expanded={open}>
       <span className="font-semibold text-sm">{label}</span>
       <span className="font-mono text-xs text-muted-foreground">{count} {count === 1 ? 'event' : 'events'}</span>
       <span className="flex-1 h-px bg-primary/25" />

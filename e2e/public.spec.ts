@@ -13,7 +13,7 @@ test('a wrong password shows an error and stays on the login page', async ({ pag
   await page.goto('/login')
   await page.getByLabel('Email', { exact: true }).fill('qa-nobody@example.com')
   await page.getByLabel('Password', { exact: true }).fill('not-the-password')
-  await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByText(/didn’t match/i)).toBeVisible()
   await expect(page).toHaveURL(/\/login/)
 })

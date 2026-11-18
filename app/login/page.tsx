@@ -70,7 +70,7 @@ function LoginForm() {
       {params.get('reset') === '1' && !error && <p className="text-sm text-foreground" role="status">Password updated. Sign in with the new one.</p>}
       {error && <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
-        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{mode === 'PROMOTER' ? 'Promoter Sign In' : 'Sign In'}
+        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{mode === 'PROMOTER' ? 'Promoter sign in' : 'Sign in'}
       </Button>
 
       {mode === 'PROMOTER' ? (

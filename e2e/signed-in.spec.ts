@@ -10,7 +10,7 @@ async function signIn(page: import('@playwright/test').Page, key: string) {
   await page.goto('/login')
   await page.getByLabel('Email', { exact: true }).fill(account.email)
   await page.getByLabel('Password', { exact: true }).fill(account.password)
-  await page.getByRole('button', { name: 'Sign In', exact: true }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 })
 }
 

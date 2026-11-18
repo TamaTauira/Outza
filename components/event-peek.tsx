@@ -177,7 +177,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
             <span className="h-1.5 w-12 rounded-full bg-muted-foreground/40" aria-hidden />
             <span className="sr-only">Drag down to close</span>
           </div>
-          <Dialog.Close className="absolute right-3 top-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-black/70 text-white hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:right-4 sm:top-4" aria-label="Close">
+          <Dialog.Close className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/70 text-white hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:right-4 sm:top-4" aria-label="Close">
             <X className="h-5 w-5" />
           </Dialog.Close>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

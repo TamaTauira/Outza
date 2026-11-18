@@ -41,8 +41,8 @@ export function ViewToggle<T extends string = 'list' | 'map'>({
             onClick={() => onChange(key)}
             className={cn(
               'inline-flex min-w-0 items-center justify-center rounded-full font-semibold transition-colors',
-              compact ? 'h-8 gap-1 px-2 text-xs sm:h-11 sm:gap-1.5 sm:px-4 sm:text-sm' : 'h-11 gap-1.5 px-3 text-sm sm:px-4',
-              on ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              compact ? 'h-11 gap-1 px-2 text-[13px] sm:gap-1.5 sm:px-4 sm:text-sm' : 'h-11 gap-1.5 px-3 text-sm sm:px-4',
+              on ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             <Icon className="h-4 w-4 shrink-0" aria-hidden />

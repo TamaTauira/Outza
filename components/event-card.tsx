@@ -54,7 +54,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
       transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.5) }}
     >
       <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="block group">
-        <div className="bg-card rounded-xl overflow-hidden shadow-[var(--shadow-md)] hover:shadow-[var(--shadow-lg)] transition-all duration-300 group-hover:-translate-y-1">
+        <div className="overflow-hidden rounded-[var(--vp-radius-lg)] border border-border bg-card transition-colors duration-300 group-hover:border-[var(--vp-border-default)]">
           {/* Image */}
           <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A1A'}, #1a120c)` }}>
             <EventImage
@@ -77,8 +77,8 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
 
             {/* Free badge */}
             {event.isFree && (
-              <div className="absolute z-10 top-3 right-3 bg-emerald-700 text-white text-xs font-bold px-2.5 py-1 rounded-md shadow-md">
-                FREE
+              <div className="absolute z-10 top-3 right-3 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-[13px] font-semibold text-white">
+                Free
               </div>
             )}
 
@@ -97,7 +97,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
             {/* Category + sub-tags */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span
-                className="px-2 py-0.5 rounded-md text-[11px] font-semibold text-white"
+                className="rounded-md px-2 py-0.5 text-[13px] font-semibold text-white"
                 style={{ backgroundColor: catDef?.color ?? '#FF7A1A' }}
               >
                 {event.category}
@@ -133,11 +133,11 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
 
             {/* Price + CTA */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold tabular-nums text-foreground">
                 {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
               </span>
-              <span className="flex items-center gap-1 text-xs font-medium text-primary group-hover:gap-2 transition-all">
-                Get Tickets <ExternalLink className="w-3 h-3" />
+              <span className="flex items-center gap-1 text-[13px] font-semibold text-primary transition-all group-hover:gap-2">
+                Get tickets <ExternalLink className="w-3 h-3" />
               </span>
             </div>
           </div>
