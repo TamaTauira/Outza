@@ -90,20 +90,13 @@ function gapFor(host: string): number {
 
 class HostGate {
   private next = new Map<string, number>()
-  private chain = new Map<string, Promise<void>>()
 
-  wait(host: string, gapMs: number): Promise<void> {
-    const prev = this.chain.get(host) ?? Promise.resolve()
-    let release: () => void = () => {}
-    const current = new Promise<void>((resolve) => { release = resolve })
-    this.chain.set(host, current)
-    return prev.then(async () => {
-      const now = Date.now()
-      const at = this.next.get(host) ?? 0
-      const delay = Math.max(0, at - now)
-      this.next.set(host, Math.max(at, now) + gapMs)
-      if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
-    }).finally(release)
+  async wait(host: string, gapMs: number): Promise<void> {
+    const now = Date.now()
+    const at = Math.max(this.next.get(host) ?? 0, now)
+    this.next.set(host, at + gapMs)
+    const delay = at - now
+    if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
   }
 }
 
@@ -265,7 +258,12 @@ export async function runPriceEnrich(opts?: { budgetMs?: number; fetch?: PriceFe
     await pool(groups, CONCURRENCY, async (group) => {
       if (stopped || Date.now() - started >= budgetMs - 2_000) { stopped = true; return }
       try {
-        const outcome = await resolveEventPrice(group.sample, fetch, { ticketmasterKey: apiKey })
+        const outcome = await Promise.race([
+          resolveEventPrice(group.sample, fetch, { ticketmasterKey: apiKey }),
+          new Promise<Awaited<ReturnType<typeof resolveEventPrice>>>((resolve) => {
+            setTimeout(() => resolve({ price: null, isFree: false, min: null, max: null, reason: PRICE_REASON.timedOut, ticketPage: group.key }), 25_000)
+          }),
+        ])
         await persist(group, outcome, new Date())
         checked += 1
         if (outcome.price) {
