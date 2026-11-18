@@ -44,7 +44,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
   const spotlightIds = items.filter((item) => item.sponsored || (item.tier && item.tier !== 'HOT')).map((item) => item.id)
   return (
     // Full-bleed band: breaks out of the 1280px page container to span the whole viewport
-    <section className="relative mb-8" aria-label="Coming up next">
+    <section className="relative mb-8" aria-label="Coming up next" data-peep-rail>
       <ReachBeacon surface="hot" ids={items.map((item) => item.id)} spotlightIds={spotlightIds} />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div>
