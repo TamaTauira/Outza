@@ -37,7 +37,7 @@ export function DashboardPreview() {
         <ul className="mt-4 space-y-2">
           {BENEFITS.map((line) => (
             <li key={line} className="flex items-start gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm">
-              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#9A3412]" aria-hidden />
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--vp-brand-orange-ink)]" aria-hidden />
               <span>{line}</span>
             </li>
           ))}
