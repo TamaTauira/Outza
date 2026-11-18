@@ -118,7 +118,9 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />Your account & inbox</Link></DropdownMenuItem>
                 {hasListings && <DropdownMenuItem asChild><Link href="/local?tab=mine"><List className="w-4 h-4 mr-2" />Your listings</Link></DropdownMenuItem>}
-                {isPromoter
+                {user.role === 'PARTNER'
+                  ? <DropdownMenuItem asChild><Link href="/partners"><Megaphone className="w-4 h-4 mr-2" />Source partner overview</Link></DropdownMenuItem>
+                  : isPromoter
                   ? <DropdownMenuItem asChild><Link href="/promoter"><Megaphone className="w-4 h-4 mr-2" />Promoter dashboard</Link></DropdownMenuItem>
                   : <DropdownMenuItem asChild><Link href="/promoters"><Megaphone className="w-4 h-4 mr-2" />For promoters</Link></DropdownMenuItem>}
                 {process.env.NEXT_PUBLIC_OWNERSHIP_UI !== '0' && (

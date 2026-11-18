@@ -57,6 +57,9 @@ export async function PATCH(req: Request) {
     data.reminderOptIn = false
   }
   if (['daily', 'weekly', 'monthly'].includes(b.emailFrequency)) data.emailFrequency = b.emailFrequency
+  if (typeof b.role === 'string' && b.role !== me.role && me.role === 'PARTNER') {
+    return NextResponse.json({ error: 'Source partner accounts stay read-only.' }, { status: 403 })
+  }
   if (b.role === 'PROMOTER' && me.role === 'CONSUMER') data.role = 'PROMOTER'
   if ('birthYear' in b) {
     const p = parseBirthYear(b.birthYear)

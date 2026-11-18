@@ -142,6 +142,7 @@ model Event {
   @@index([isLGBTI])
   @@index([suburb])
   @@index([city, date])
+  @@index([source])
   @@index([city, date, status])
   @@index([city, category, date])
   @@index([promoterId])
@@ -240,7 +241,7 @@ model User {
   emailVerified       DateTime?
   image               String?
   password            String?
-  role                String    @default("CONSUMER") // CONSUMER | PROMOTER | ADMIN
+  role                String    @default("CONSUMER") // CONSUMER | PROMOTER | ADMIN | PARTNER
   orgName             String?
   bio                 String?   @db.Text
   website             String?
@@ -300,6 +301,7 @@ model User {
   sponsorshipLeads SponsorshipLead[]
   shareLinks      ShareLink[]
   termsAcceptances TermsAcceptance[]
+  partnerAccount  PartnerAccount?
 
   @@index([emailOptIn])
   @@index([role])
@@ -1326,6 +1328,7 @@ model SourceRecord {
   @@unique([source, externalId])
   @@index([missing, changed])
   @@index([canonicalUrl, sessionKey])
+  @@index([source])
 }
 
 /// Rule-based check. Outcomes are ok, due, flag, or skipped. Never a guarantee.
@@ -1726,4 +1729,28 @@ model MarketingSpend {
 model EmailWebhookEvent {
   id        String   @id
   createdAt DateTime @default(now())
+}
+
+/// A ticketing platform or other source. Read-only. One login, one or more sources.
+model PartnerAccount {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  displayName String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sources     PartnerSource[]
+}
+
+/// Source key (ticketmaster) and optional link hosts that also count as that source.
+model PartnerSource {
+  id           String         @id @default(cuid())
+  partnerId    String
+  sourceKey    String
+  hostPatterns String[]       @default([])
+  createdAt    DateTime       @default(now())
+  partner      PartnerAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, sourceKey])
+  @@index([sourceKey])
 }
