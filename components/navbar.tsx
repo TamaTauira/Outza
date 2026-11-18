@@ -56,12 +56,12 @@ export function Navbar({ savedCount }: NavbarProps) {
           <VibePeepLogo size="md" className="vp-header-lockup max-w-full" labelClassName="flex" />
         </a>
 
-        <nav className="vp-top-links flex items-stretch h-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Primary">
+        <nav className="vp-top-links flex items-stretch h-full min-w-0" aria-label="Primary">
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
                 <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
-                  <House className="w-4 h-4" /><span>Local</span>
+                  <House className="w-4 h-4" /><span className="hidden xl:inline">Local</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
               )
@@ -79,7 +79,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 )}
               >
                 <Icon className="w-4 h-4" />
-                <span>{label}</span>
+                <span className="hidden xl:inline">{label}</span>
                 {key === 'saved' && mounted && savedCount > 0 && (
                   <span className="min-w-[18px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{savedCount}</span>
                 )}
@@ -88,7 +88,7 @@ export function Navbar({ savedCount }: NavbarProps) {
             )
           })}
           <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
-            <CalendarPlusIcon className="w-4 h-4" /><span>Itinerary</span>
+            <CalendarPlusIcon className="w-4 h-4" /><span className="hidden xl:inline">Itinerary</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
           <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-[13px] text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
