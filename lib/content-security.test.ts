@@ -15,6 +15,13 @@ test('production scripts drop unsafe-eval and keep inline scripts and styles', (
   assert.match(csp, /upgrade-insecure-requests/)
 })
 
+test('preview allows the Vercel toolbar script and still drops unsafe-eval', () => {
+  const csp = contentSecurityPolicy('production', 'preview')
+  assert.match(csp, /script-src 'self' 'unsafe-inline' https:\/\/vercel\.live/)
+  assert.equal(csp.includes("'unsafe-eval'"), false)
+  assert.equal(contentSecurityPolicy('production', 'production').includes('vercel.live'), false)
+})
+
 test('development keeps unsafe-eval for the Next dev runtime', () => {
   const csp = contentSecurityPolicy('development')
   assert.match(csp, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/)

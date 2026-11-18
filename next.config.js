@@ -55,7 +55,7 @@ const nextConfig = {
   },
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
-    const csp = contentSecurityPolicy(process.env.NODE_ENV);
+    const csp = contentSecurityPolicy(process.env.NODE_ENV, process.env.VERCEL_ENV);
     const security = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
