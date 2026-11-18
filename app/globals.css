@@ -1,58 +1,59 @@
+@import "./design-tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 50 20% 95%;
-    --foreground: 105 17% 9%;
+    --background: 45 31% 95%;
+    --foreground: 150 10% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 105 17% 9%;
+    --card-foreground: 150 10% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 105 17% 9%;
-    --primary: 16 84% 42%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 50 12% 91%;
-    --secondary-foreground: 105 17% 9%;
-    --muted: 50 14% 92%;
-    --muted-foreground: 140 5% 34%;
-    --accent: 348 72% 46%;
+    --popover-foreground: 150 10% 9%;
+    --primary: 20 100% 60%;
+    --primary-foreground: 160 20% 8%;
+    --secondary: 42 22% 90%;
+    --secondary-foreground: 150 10% 9%;
+    --muted: 42 18% 92%;
+    --muted-foreground: 150 6% 32%;
+    --accent: 333 70% 42%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 45%;
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 50 10% 85%;
-    --input: 50 10% 85%;
-    --ring: 348 78% 48%;
+    --border: 40 14% 82%;
+    --input: 40 14% 82%;
+    --ring: 20 80% 40%;
     --free: 160 78% 24%;
-    --radius: 0.625rem;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-    --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
-    --duration-fast: 150ms;
-    --duration-normal: 250ms;
-    --duration-slow: 350ms;
+    --shadow-sm: var(--vp-shadow-sm);
+    --shadow-md: var(--vp-shadow-md);
+    --shadow-lg: var(--vp-shadow-lg);
+    --duration-fast: var(--vp-duration-fast);
+    --duration-normal: var(--vp-duration-normal);
+    --duration-slow: var(--vp-duration-slow);
   }
 
   .dark {
     --background: 160 11% 5%;
-    --foreground: 60 29% 93%;
-    --card: 150 10% 7.5%;
-    --card-foreground: 60 29% 93%;
-    --popover: 150 10% 9%;
-    --popover-foreground: 60 29% 93%;
-    --primary: 18 100% 62%;
-    --primary-foreground: 20 70% 6%;
-    --secondary: 150 9% 12%;
-    --secondary-foreground: 60 29% 93%;
-    --muted: 150 9% 11%;
-    --muted-foreground: 138 6% 65%;
-    --accent: 348 92% 68%;
+    --foreground: 60 13% 96%;
+    --card: 168 11% 9%;
+    --card-foreground: 60 13% 96%;
+    --popover: 163 11% 13%;
+    --popover-foreground: 60 13% 96%;
+    --primary: 20 100% 60%;
+    --primary-foreground: 160 20% 8%;
+    --secondary: 157 10% 16%;
+    --secondary-foreground: 60 13% 96%;
+    --muted: 163 11% 13%;
+    --muted-foreground: 150 6% 74%;
+    --accent: 333 83% 65%;
     --accent-foreground: 340 40% 8%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 150 8% 15%;
-    --input: 150 8% 18%;
-    --ring: 348 90% 66%;
+    --border: 156 12% 17%;
+    --input: 160 9% 21%;
+    --ring: 333 83% 65%;
     --free: 158 34% 70%;
   }
 }
@@ -64,6 +65,11 @@
   html, body {
     @apply bg-background text-foreground;
     overflow-x: clip;
+    background-color: var(--vp-bg-canvas);
+    color: var(--vp-text-primary);
+  }
+  h1, h2 {
+    text-wrap: balance;
   }
 }
 
@@ -74,7 +80,7 @@
   font-family: inherit;
   background: #f2f3f0;
 }
-.dark .leaflet-container { background: #0c0c0c; }
+.dark .leaflet-container { background: var(--vp-bg-canvas); }
 .leaflet-gl-layer, .maplibregl-map { background: transparent; }
 .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none; }
 
@@ -191,26 +197,24 @@
 }
 
 .text-brand-gradient {
-  background-image: linear-gradient(90deg, #FF8A1A 0%, #FF6A3C 42%, #FF4E6A 100%);
+  background-image: linear-gradient(90deg, var(--vp-brand-orange) 0%, var(--vp-brand-pink) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .bg-brand-gradient {
-  background-image: linear-gradient(105deg, #FF8A1A 0%, #FF4E6A 100%);
+  background-image: linear-gradient(105deg, var(--vp-brand-orange) 0%, var(--vp-brand-pink) 100%);
 }
 
-/* One content width for the header, footer and page bodies.
-   Below 1600px the page is full width (phones are unchanged; 1280 and 1440
-   fill the screen with the same gutters). Wider monitors cap together so a
-   column does not float in the middle of the viewport. */
+.vp-nums { font-variant-numeric: tabular-nums; }
+.vp-measure { max-width: var(--vp-measure); }
+
+/* Fluid shell. Full width up to the spec cap (about 1760px). Gutters stay on the pages. */
 .vp-wrap {
   width: 100%;
+  max-width: var(--vp-container-max);
   margin-inline: auto;
-}
-@media (min-width: 1600px) {
-  .vp-wrap { max-width: 96rem; }
 }
 
 /* Shared header lockup: icon, wordmark, grey tagline underneath.
@@ -292,7 +296,17 @@
   .vp-hero-clock .text-sm { font-size: 0.7rem; }
 }
 
-/* Default theme is dark: primary fills carry the orange-to-pink mark. */
-.dark .bg-primary {
-  background-image: linear-gradient(105deg, #FF8A1A 0%, #FF4E6A 100%);
+/* Primary actions are a solid brand orange. Near-black label text keeps contrast. */
+.bg-primary {
+  background-color: var(--vp-brand-orange);
+  color: #1a1408;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

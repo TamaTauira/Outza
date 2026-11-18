@@ -6,12 +6,12 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0",
+  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--vp-radius-md)] text-sm font-semibold transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-70 motion-reduce:transform-none [&_svg]:pointer-events-none [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md",
+          "bg-primary text-primary-foreground shadow-sm hover:brightness-95",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md",
         outline:
@@ -28,12 +28,12 @@ const buttonVariants = cva(
           "text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:ring-0 focus-visible:ring-offset-0",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        xs: "h-7 rounded-md px-2 text-xs",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-lg px-6 text-base",
-        icon: "h-10 w-10",
-        "icon-sm": "h-8 w-8 rounded-md",
+        default: "h-11 px-4 py-2",
+        xs: "h-8 rounded-[var(--vp-radius-sm)] px-2 text-[13px]",
+        sm: "h-11 rounded-[var(--vp-radius-sm)] px-3",
+        lg: "h-12 rounded-[var(--vp-radius-md)] px-6 text-base",
+        icon: "h-11 w-11",
+        "icon-sm": "h-11 w-11 rounded-[var(--vp-radius-sm)]",
       },
     },
     defaultVariants: {
@@ -61,8 +61,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading || undefined}
         {...props}
       >
-        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-        <Slottable>{loading && asChild ? null : children}</Slottable>
+        {loading && !asChild && <Loader2 className="absolute h-4 w-4 animate-spin" />}
+        {asChild ? <Slottable>{children}</Slottable> : <span className={cn("inline-flex items-center gap-2", loading && "invisible")}>{children}</span>}
       </Comp>
     )
   }
