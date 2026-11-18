@@ -6,6 +6,8 @@ import type { Insight, VenueIntel } from '@/lib/intel/analytics'
 import { CONFIDENCE_LABEL, INSIGHT_SOURCE_LABEL } from '@/lib/intel/sources'
 import { intelOwnerVoice } from '@/lib/intel/voice'
 import { cn } from '@/lib/utils'
+import { AbsCredit } from '@/components/abs-credit'
+import { CC_BY_4 } from '@/lib/attributions'
 
 type Ev = { id: string; title: string; date: string; venueName: string; source?: string | null }
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
@@ -24,12 +26,13 @@ const big = (v: number | null, money = false) => (v == null ? '—' : `${money ?
 const KIND: Record<string, string> = { observed: 'Published figure', derived: 'Worked out from published figures', modelled: 'Modelled', hypothesis: 'Idea to test' }
 const CONF_STYLE: Record<string, string> = { high: 'bg-primary/15 text-primary', medium: 'bg-muted text-foreground', low: 'bg-muted text-muted-foreground', insufficient: 'bg-muted text-muted-foreground' }
 
-function Section({ title, Icon, sub, children }: { title: string; Icon: typeof Brain; sub?: string; children: React.ReactNode }) {
+function Section({ title, Icon, sub, credit, children }: { title: string; Icon: typeof Brain; sub?: string; credit?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className={card}>
       <h3 className="font-semibold flex items-center gap-2"><Icon className="w-4 h-4 text-primary" />{title}</h3>
       {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
       <div className="mt-4">{children}</div>
+      {credit}
     </section>
   )
 }
@@ -140,7 +143,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           )}
 
           {data.area.length > 0 && (
-            <Section title={`Who lives around ${data.voice?.venue ?? venueWord}`} Icon={Building2} sub="ABS Data by Region. Venue area = ABS SA2 containing the venue. Census figures are from 2021.">
+            <Section title={`Who lives around ${data.voice?.venue ?? venueWord}`} Icon={Building2} sub="ABS Data by Region. Venue area = ABS SA2 containing the venue. Census figures are from 2021." credit={<><AbsCredit dataset="Data by Region" /><AbsCredit dataset="Data by Region (2021 Census characteristics)" /></>}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[560px]">
                   <thead><tr className="text-xs text-muted-foreground text-left"><th className="py-2 pr-3 font-medium">Measure</th><th className="py-2 px-3 font-medium text-right">Venue area</th><th className="py-2 px-3 font-medium text-right">Council</th><th className="py-2 px-3 font-medium text-right">{data.benchLabel}</th><th className="py-2 pl-3 font-medium text-right">Year</th></tr></thead>
@@ -162,7 +165,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {data.ages.length > 0 && (
-              <Section title="Age mix of residents" Icon={Users} sub={`Share of residents, venue area vs ${data.benchLabel} (ABS, ${data.agePeriod}).`}>
+              <Section title="Age mix of residents" Icon={Users} sub={`Share of residents, venue area vs ${data.benchLabel} (ABS, ${data.agePeriod}).`} credit={<AbsCredit dataset="Data by Region" />}>
                 <ul className="space-y-3">
                   {data.ages.map((a) => (
                     <li key={a.band} className="text-xs">
@@ -176,7 +179,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
               </Section>
             )}
             {data.seifa.length > 0 && (
-              <Section title="Area socio-economic ranking" Icon={MapPin} sub={`ABS SEIFA 2021 for ${data.seifa[0].area}. Each index is its own ranking. A high advantage decile and a low economic-resources decile can both be true. Deciles rank the area, never a person.`}>
+              <Section title="Area socio-economic ranking" Icon={MapPin} sub={`ABS SEIFA 2021 for ${data.seifa[0].area}. Each index is its own ranking. A high advantage decile and a low economic-resources decile can both be true. Deciles rank the area, never a person.`} credit={<AbsCredit dataset="SEIFA 2021" />}>
                 <ul className="space-y-3">
                   {data.seifa.map((s) => (
                     <li key={s.index} className="text-sm">
@@ -190,7 +193,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           </div>
 
           {data.status !== 'no_location' && data.status !== 'outside_au' && (
-            <Section title="Getting there" Icon={TrainFront} sub={data.transportCovered ? 'Transport for NSW stations, wharves and stops within 2 km (straight line). Tap-ons are monthly Opal totals, not attendance.' : 'Opal tap-on counts are published for New South Wales only.'}>
+            <Section title="Getting there" Icon={TrainFront} sub={data.transportCovered ? 'Transport for NSW stations, wharves and stops within 2 km (straight line). Tap-ons are monthly Opal totals, not attendance.' : 'Opal tap-on counts are published for New South Wales only.'} credit={<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Source: <a href="https://opendata.transport.nsw.gov.au/" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Transport for NSW Open Data</a>, <a href={CC_BY_4} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>}>
               {!data.transportCovered ? <p className="text-sm text-muted-foreground">This city is outside the Transport for NSW dataset, so station patronage is not shown. We don&apos;t substitute another city&apos;s taps.</p> : data.stations.length ? (
                 <ul className="divide-y divide-border">
                   {data.stations.map((s) => (
@@ -224,7 +227,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {data.spending.length > 0 && (
-              <Section title={`${data.spendLabel} household spending`} Icon={ShoppingBag} sub={`ABS Monthly Household Spending Indicator, ${period(data.spending[0].month)}. Statewide, current prices.`}>
+              <Section title={`${data.spendLabel} household spending`} Icon={ShoppingBag} sub={`ABS Monthly Household Spending Indicator, ${period(data.spending[0].month)}. Statewide, current prices.`} credit={<AbsCredit dataset="Monthly Household Spending Indicator" />}>
                 <table className="w-full text-sm">
                   <thead><tr className="text-xs text-muted-foreground text-left"><th className="py-1.5 font-medium">Category</th><th className="py-1.5 font-medium text-right">$m</th><th className="py-1.5 font-medium text-right">vs last year</th></tr></thead>
                   <tbody>{data.spending.map((s) => <tr key={s.category} className="border-t border-border"><td className="py-2">{s.label}</td><td className="py-2 text-right tabular-nums">{num(s.valueM)}</td><td className="py-2 text-right tabular-nums font-semibold">{signed(s.yoyPct)}</td></tr>)}</tbody>
@@ -240,11 +243,11 @@ export function IntelTab({ events }: { events: Ev[] }) {
                   <div><dt className="text-xs text-muted-foreground">International trips</dt><dd className="text-xl font-bold tabular-nums">{big(data.visitor.intlTrips)}{data.visitor.intlYoyPct != null && <span className="text-xs font-medium text-muted-foreground ml-1">{signed(data.visitor.intlYoyPct)} on {period(data.visitor.intlPeriod)}</span>}</dd></div>
                 </dl>
                 {data.visitor.statePeakPeriod && <p className="text-xs text-muted-foreground mt-3">Busiest recent {data.visitor.stateName} quarter: {period(data.visitor.statePeakPeriod)} ({big(data.visitor.statePeakTrips)} overnight trips). {data.visitor.useStateTiming ? 'Used as the state season, and labelled as the whole state.' : 'Shown as the state total only. It is not this city’s peak.'}</p>}
-                <p className="text-[11px] text-muted-foreground mt-2">Source: Tourism Research Australia. Licence: CC BY 4.0.</p>
+                <p className="text-[11px] text-muted-foreground mt-2">Source: <a href="https://www.tra.gov.au/" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Tourism Research Australia</a>. Licence: <a href={CC_BY_4} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
               </Section>
             )}
             {data.tourism.period && (
-              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW headline, ${period(data.tourism.period)}, including day trips. Not the overnight-only series. Not this venue.`}>
+              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW headline, ${period(data.tourism.period)}, including day trips. Not the overnight-only series. Not this venue.`} credit={<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Source: <a href="https://www.destinationnsw.com.au/insights" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Destination NSW</a>, based on Tourism Research Australia visitor surveys.</p>}>
                 <dl className="grid grid-cols-2 gap-4 text-sm">
                   <div><dt className="text-xs text-muted-foreground">All visitors</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.visitors)}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Visitor nights</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.nights)}</dd></div>

@@ -49,6 +49,7 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = 'â
         Lref.current = Leaflet
         const map = Leaflet.map(elRef.current, { zoomControl: false, scrollWheelZoom: false, maxZoom: MAP_MAX_ZOOM }).setView([geo.lat, geo.lng], 16)
         Leaflet.control.zoom({ position: 'bottomright' }).addTo(map)
+        map.attributionControl?.setPrefix('')
         map.attributionControl?.addAttribution(MAP_ATTRIBUTION)
         mapRef.current = map
         setReady(true)

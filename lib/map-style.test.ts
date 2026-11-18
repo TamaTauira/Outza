@@ -7,9 +7,10 @@ test('the basemap uses OpenFreeMap stock styles and keeps attribution', () => {
   assert.equal(vibeMapStyle(true), MAP_STYLE_DARK)
   assert.equal(MAP_STYLE_LIGHT, 'https://tiles.openfreemap.org/styles/positron')
   assert.equal(MAP_STYLE_DARK, 'https://tiles.openfreemap.org/styles/dark')
-  assert.match(MAP_ATTRIBUTION, /OpenFreeMap/)
-  assert.match(MAP_ATTRIBUTION, /OpenMapTiles/)
-  assert.match(MAP_ATTRIBUTION, /OpenStreetMap/)
+  assert.match(MAP_ATTRIBUTION, /href="https:\/\/openfreemap.org"/)
+  assert.match(MAP_ATTRIBUTION, /href="https:\/\/www\.openmaptiles\.org\/"/)
+  assert.match(MAP_ATTRIBUTION, /href="https:\/\/www\.openstreetmap\.org\/copyright"/)
+  assert.match(MAP_ATTRIBUTION, /OpenStreetMap<\/a> contributors/)
 })
 
 test('the event pin is an orange teardrop', () => {
