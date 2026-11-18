@@ -11,6 +11,7 @@ import {
   planBoost,
   planPricesMatchPublicCatalogue,
   refundEligible,
+  stripeRefundBlocked,
   repeatPurchase90d,
 } from './sponsorship'
 
@@ -112,6 +113,13 @@ test('serving stops at the end and at the impression cap', () => {
   assert.equal(expireReason(row, 10, new Date('2026-10-30T07:00:00.000Z')), 'ended')
   assert.equal(expireReason({ ...row, status: 'EXPIRED' }, 10, new Date('2026-10-30T09:00:00.000Z')), null)
   assert.equal(expireReason({ ...row, status: 'EXPIRED' }, 500, new Date('2026-10-30T09:00:00.000Z')), null)
+})
+
+test('a dashboard card refund refuses a live Stripe secret', () => {
+  assert.equal(stripeRefundBlocked('sk_test_example'), null)
+  assert.match(stripeRefundBlocked('sk_live_example') ?? '', /test mode only/)
+  assert.match(stripeRefundBlocked('') ?? '', /no card charge/)
+  assert.match(stripeRefundBlocked(undefined) ?? '', /no card charge/)
 })
 
 test('a shown boost cannot be refunded, and an unshown one can inside the window', () => {

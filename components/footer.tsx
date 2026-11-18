@@ -116,8 +116,10 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
             <Link href="/local" className="hover:text-foreground underline underline-offset-2">Local</Link>
             <Link href="/how-listings-work" className="hover:text-foreground underline underline-offset-2">How listings work</Link>
             <Link href="/terms" className="hover:text-foreground underline underline-offset-2">Terms</Link>
+            <Link href="/terms/promoters" className="hover:text-foreground underline underline-offset-2">Promoter terms</Link>
             <Link href="/privacy" className="hover:text-foreground underline underline-offset-2">Privacy</Link>
             <Link href="/disclaimer" className="hover:text-foreground underline underline-offset-2">Disclaimer</Link>
+            <Link href="/legal/archive" className="hover:text-foreground underline underline-offset-2">Earlier versions</Link>
             <Link href="/accessibility" className="hover:text-foreground underline underline-offset-2">Accessibility</Link>
             <Link href="/attributions" className="hover:text-foreground underline underline-offset-2">Data sources</Link>
           </span>

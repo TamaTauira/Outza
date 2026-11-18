@@ -30,7 +30,7 @@ export function FaqSection() {
     },
     {
       q: 'What happens when my promotion ends?',
-      a: <>The sponsored placement stops when the days you paid for run out. A campaign is not refunded because it finishes before the event date, or because fewer people opened the listing than you hoped. If we take payment and the campaign never goes live because of a fault on our side, write to us with the invoice number. The <Link href="/refunds" className="font-semibold underline underline-offset-2">refunds page</Link> has the full rules.</>,
+      a: <>The sponsored placement stops when the days you paid for run out. A campaign that ran as described is not refunded only because it finishes before the event date, or because fewer people opened the listing than you hoped. If we remove it, the event is cancelled, or it does not appear as described, the <Link href="/refunds" className="font-semibold underline underline-offset-2">refunds page</Link> says what you get, including under the Australian Consumer Law.</>,
     },
     {
       q: 'How does pricing for different durations work?',
@@ -38,7 +38,7 @@ export function FaqSection() {
     },
     {
       q: 'What’s included in Promoter Pro?',
-      a: `${PRO_PLAN.name} is ${formatAud(PRO_PLAN.priceCents)} for ${PRO_PLAN.days} days, and you can extend it any time. It includes ${PRO_PLAN.perks.join('; ')}. It pays for itself once you spend about ${proPayback} on promotions in a month. Ending it from billing stops the discount and the unlocked analytics. It does not refund the days already paid.`,
+      a: `${PRO_PLAN.name} is ${formatAud(PRO_PLAN.priceCents)} for ${PRO_PLAN.days} days, and you can extend it any time. It includes ${PRO_PLAN.perks.join('; ')}. It pays for itself once you spend about ${proPayback} on promotions in a month. Ending it from billing stops the discount and the unlocked analytics. Days already used are not automatically refunded. The refunds page and the Australian Consumer Law still apply.`,
     },
     {
       q: 'Can I upgrade or downgrade?',
@@ -54,7 +54,7 @@ export function FaqSection() {
     },
     {
       q: 'How do local recommendations work?',
-      a: <>The price and the placement are on the <Link href="/local-ads" className="font-semibold underline underline-offset-2">local business ads</Link> page. The ad runs until that event ends, always labelled Sponsored. Cancelling removes it from the event page. The fee is not refunded, because the spot was reserved for that event.</>,
+      a: <>The price and the placement are on the <Link href="/local-ads" className="font-semibold underline underline-offset-2">local business ads</Link> page. The ad runs until that event ends, always labelled Sponsored. Cancelling it yourself removes it from the event page and does not automatically refund a spot that ran. If we remove it, the event is cancelled, or it did not appear as described, the <Link href="/refunds" className="font-semibold underline underline-offset-2">refunds page</Link> applies.</>,
     },
     {
       q: 'Do you guarantee views or clicks?',

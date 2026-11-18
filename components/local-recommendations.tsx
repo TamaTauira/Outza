@@ -8,6 +8,7 @@ import { Car, Compass, ExternalLink, Loader2, MapPin, Store, Utensils, Wine, X }
 import { LOCAL_AD, formatAud } from '@/lib/tiers'
 import { LIMITS, LOCAL_AD_KINDS, kindLabel, type LocalAdKind } from '@/lib/local-ads-shared'
 import { cn } from '@/lib/utils'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 type Ad = { id: string; kind: string; businessName: string; blurb: string; address: string | null; host: string; mine: boolean }
 const ICONS: Record<string, typeof Store> = { DINING: Utensils, BAR: Wine, PARKING: Car, EXPERIENCE: Compass, SERVICE: Store }
@@ -24,6 +25,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({ kind: 'DINING' as LocalAdKind, businessName: '', blurb: '', address: '', url: '' })
+  const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
 
   const load = useCallback(() => {
     fetch(`/api/local-ads?eventId=${encodeURIComponent(eventId)}`)
@@ -42,9 +44,10 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    if (!agreePromoterTerms) { toast.error('Tick that you agree to the Promoter Terms.'); return }
     setBusy(true)
     try {
-      const res = await fetch('/api/local-ads/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, eventId }) })
+      const res = await fetch('/api/local-ads/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, eventId, agreePromoterTerms: true }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Checkout failed')
       if (d.url) { window.location.href = d.url; return }
@@ -126,6 +129,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
           </label>
           <label className="text-sm block">Address <span className="text-muted-foreground">(optional)</span><input maxLength={LIMITS.address} className={field} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="12 Example St, Sydney" /></label>
           <p className="text-xs text-muted-foreground">Only describe what you actually offer. Listings that are misleading or unrelated to the event may be removed. See our <Link href="/disclaimer" className="underline">disclaimer</Link>.</p>
+          <PromoterTermsCheck id="local-ad-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} />
           <button disabled={busy} className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-60">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}Pay {formatAud(LOCAL_AD.priceCents)} &amp; go live
           </button>

@@ -297,6 +297,7 @@ model User {
   organiserSubscriptions OrganiserSubscription[]
   sponsorshipLeads SponsorshipLead[]
   shareLinks      ShareLink[]
+  termsAcceptances TermsAcceptance[]
 
   @@index([emailOptIn])
   @@index([role])
@@ -314,6 +315,19 @@ model AuthToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, purpose, createdAt])
+}
+
+/// Which legal document and version an account holder accepted, and in what situation.
+model TermsAcceptance {
+  id        String   @id @default(cuid())
+  userId    String
+  doc       String
+  version   String
+  context   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, doc, version])
 }
 
 model Account {

@@ -1,6 +1,6 @@
 import Stripe from 'stripe'
 import { prisma } from '@/lib/db'
-import { planDef, priceEnvForBoost, type BoostId, type PlanId, ORGANISER_PLANS, PLAN_RANK } from '@/lib/sponsorship'
+import { planDef, priceEnvForBoost, stripeRefundBlocked, type BoostId, type PlanId, ORGANISER_PLANS, PLAN_RANK } from '@/lib/sponsorship'
 import { ensureCatalog, missingTable } from '@/lib/sponsorship-store'
 import { activateVenueOrder } from '@/lib/venue-access'
 import { trialEligible, trialPeriodDays } from '@/lib/account-trust'
@@ -433,6 +433,8 @@ export async function cancelPlan(userId: string) {
 }
 
 export async function refundCampaign(userId: string, campaignId: string) {
+  const blocked = stripeRefundBlocked(process.env.STRIPE_SECRET_KEY)
+  if (blocked) return { error: blocked }
   const stripe = stripeClient()
   const row = await prisma.campaign.findFirst({ where: { id: campaignId, promoterId: userId } })
   if (!row || !stripe || !row.stripePaymentIntentId) return { error: 'There is no card charge to refund.' }
@@ -442,6 +444,8 @@ export async function refundCampaign(userId: string, campaignId: string) {
 }
 
 export async function refundSubscription(userId: string) {
+  const blocked = stripeRefundBlocked(process.env.STRIPE_SECRET_KEY)
+  if (blocked) return { error: blocked }
   const stripe = stripeClient()
   const current = await prisma.organiserSubscription.findFirst({
     where: { userId, status: 'ACTIVE' },

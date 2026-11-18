@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { ORGANISER_PLANS, type PlanId } from '@/lib/sponsorship'
 import { formatAud } from '@/lib/tiers'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 type Plan = (typeof ORGANISER_PLANS)[number] & { priceConfigured?: boolean }
 type Current = {
@@ -29,6 +30,7 @@ export function OrganiserPlans() {
   const [subsOn, setSubsOn] = useState<boolean | null>(null)
   const [refund, setRefund] = useState({ eligible: false, reason: '' })
   const [consent, setConsent] = useState(false)
+  const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [note, setNote] = useState('')
@@ -62,13 +64,14 @@ export function OrganiserPlans() {
 
   const choose = async (planId: PlanId) => {
     if (subsOn === false) { setQuotePlan(planId); toast('Payments coming soon. Use the quote box. Nothing is charged.'); return }
+    if (!agreePromoterTerms) { toast.error('Tick that you agree to the Promoter Terms.'); return }
     if (!consent) { toast.error('Tick the box first.'); return }
     setBusy(planId)
     try {
       const res = await fetch('/api/promoter/subscription', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: current ? 'change' : 'checkout', planId, consent: true }),
+        body: JSON.stringify({ action: current ? 'change' : 'checkout', planId, consent: true, agreePromoterTerms: true }),
       })
       const data = await res.json().catch(() => ({}))
       if (data?.payments === 'soon') { setSubsOn(false); toast('Payments coming soon. Nothing was charged.'); return }
@@ -123,7 +126,7 @@ export function OrganiserPlans() {
   return (
     <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <h2 className="font-display text-xl font-bold">Monthly organiser plans</h2>
-      <p className="mt-1 text-sm text-muted-foreground">These are working tools, not just a louder listing. Promoter Pro and Spotlight stay one-off charges. A monthly plan can start with one free month, and nothing is charged until you tick the box.</p>
+      <p className="mt-1 text-sm text-muted-foreground">These are working tools, not just a louder listing. Promoter Pro and Spotlight stay one-off charges. A monthly plan can start with one free month, and nothing is charged until you tick the box. <Link href="/refunds" className="underline">Refunds</Link> include the Australian Consumer Law.</p>
       {current && (
         <p className="mt-3 text-sm">You are on <strong>{current.name}</strong>{current.status === 'TRIALING' ? ' · free month' : ''}{until ? ` until ${until}` : ''}{current.cancelAtPeriodEnd ? ' · renewal cancelled' : ''}{current.pendingPlanId ? ` · switches to ${current.pendingPlanId.replace('_', ' ')} next period` : ''}.</p>
       )}
@@ -155,10 +158,13 @@ export function OrganiserPlans() {
           <button type="button" onClick={quote} disabled={busy === 'quote'} className="h-11 rounded-md border border-border px-4 text-sm font-semibold">Request a quote</button>
         </div>
       ) : (
-        <label className="mt-4 flex items-start gap-2 text-sm">
-          <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
-          <span>{trialConsent}</span>
-        </label>
+        <div className="mt-4 space-y-3">
+          <PromoterTermsCheck id="plan-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} />
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
+            <span>{trialConsent}</span>
+          </label>
+        </div>
       )}
       {current && (
         <div className="mt-4 flex flex-wrap gap-3 text-sm">

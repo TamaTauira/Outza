@@ -44,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ ok: true })
 }
 
-/** Stop a live recommendation. This does not refund the purchase. */
+/** Stop a live recommendation. Cancelling it yourself does not automatically refund the fee. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const me = await getSessionUser()
   if (!me) return unauthorized()

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
+import { LegalStamp } from '@/components/legal-stamp'
 
 export const metadata = {
   title: 'Terms of use — VibePeep',
@@ -13,7 +14,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     title: '1. Using VibePeep',
     body: [
       'VibePeep is an independent events guide. These terms cover the website, accounts, saved events, itineraries and community listings. Our disclaimer explains the limits of the listings themselves, and our privacy policy explains what we collect.',
-      'By creating an account or continuing to use VibePeep you agree to these terms, the disclaimer and the privacy policy. If you do not agree, please don’t use the site.',
+      'These terms apply to people who hold an account, from the moment that account is created and the acceptance is recorded. Browsing without an account does not, by itself, make you a party to them. If you do not agree, do not create an account.',
     ],
   },
   {
@@ -50,7 +51,8 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '6. Changes and contact',
     body: [
-      'We may update these terms as the product changes. The page you are reading is the current version. Questions can go through the suggestions link on the site.',
+      'We may update these terms as the product changes. This page shows the version and the date it took effect. A material change is notified to account holders in the product. It applies to an account when that person accepts the new version. We do not treat “they kept using the site” as acceptance.',
+      'If a change affects promoters, we email the account address at least 14 days before it takes effect. A promoter who rejects the change may cancel and receive a pro-rata refund of prepaid fees for the unused period. The separate Promoter & Advertising Terms cover listings, paid placements and subscriptions in more detail.',
       'These terms are governed by the laws of New South Wales, Australia.',
     ],
   },
@@ -65,6 +67,8 @@ export default function TermsPage() {
         </BackToEventsLink>
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Terms of use</h1>
+        <LegalStamp doc="terms" />
+        <p className="mt-2 text-sm text-muted-foreground">Paid listings and subscriptions are also covered by the <Link href="/terms/promoters" className="underline underline-offset-2 hover:text-foreground">Promoter & Advertising Terms</Link>.</p>
         <p className="mt-4 text-muted-foreground leading-relaxed">
           The short version: VibePeep helps you find what’s on. Accounts and saves are yours. Listings are information, not a promise. Read the <Link href="/disclaimer" className="underline underline-offset-2 hover:text-foreground">disclaimer</Link> and <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">privacy policy</Link> as well.
         </p>

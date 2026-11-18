@@ -224,6 +224,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
             })}
           </ul>
           <p className="mt-4 text-sm text-muted-foreground">The ad runs until the event ends. Up to 6 businesses per event. Sign in as a promoter, open an upcoming event and choose “Recommend your business here”. Always labelled Sponsored.</p>
+          <p className="mt-3 text-sm text-muted-foreground">Payment asks you to tick the <Link href="/terms/promoters" className="underline underline-offset-2">Promoter &amp; Advertising Terms</Link>. Refunds, including under the Australian Consumer Law, are on the <Link href="/refunds" className="underline underline-offset-2">refunds page</Link>.</p>
           <Link href={href} className={`${ctaClass} mt-6`}>{label}</Link>
         </div>
       </div>
@@ -250,7 +251,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
             ))}
             <li className="flex gap-2 text-sm text-white/90">
               <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--vp-brand-orange)]" aria-hidden />
-              Extend any time. Ending it does not refund the days already paid.
+              Extend any time. Ending it yourself does not automatically refund days already used. The refunds page has the rest.
             </li>
           </ul>
         </div>
@@ -286,7 +287,7 @@ export function FinalCta({ href, label }: { href: string; label: string }) {
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">Ready to get on the radar?</h2>
         <p className="mx-auto mt-3 max-w-xl text-lg text-white/80">Your event deserves an audience. Let’s get it out there.</p>
         <Link href={href} className={`${ctaClass} mt-6`}>{label}</Link>
-        <p className="mt-4 text-sm text-white/70">Free to list. Flexible promotion. No lock-in.</p>
+        <p className="mt-4 text-sm text-white/70">Free to list. Flexible promotion. No lock-in. Paid accounts agree to the <Link href="/terms/promoters" className="underline underline-offset-4">Promoter & Advertising Terms</Link>.</p>
       </div>
     </section>
   )

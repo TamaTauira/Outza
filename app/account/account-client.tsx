@@ -368,7 +368,7 @@ function SecurityCard({ email }: { email: string }) {
         <button disabled={busy} className="h-9 px-4 rounded-md border border-border text-sm font-semibold hover:bg-muted disabled:opacity-60">Change password</button>
       </form>
       <h2 className="font-semibold mt-6 mb-1">Close account</h2>
-      <p className="text-xs text-muted-foreground mb-2">Type {email} to permanently delete this login. This does not refund purchases.</p>
+      <p className="text-xs text-muted-foreground mb-2">Type {email} to permanently delete this login. Closing the account does not by itself refund a purchase. Refund rights are on the <Link href="/refunds" className="underline">refunds page</Link>, including under the Australian Consumer Law.</p>
       <form onSubmit={close} className="flex flex-col sm:flex-row gap-2">
         <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={email} aria-label="Confirm email to close account" className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
         <button disabled={busy || confirm.trim().toLowerCase() !== email.toLowerCase()} className="h-10 px-4 rounded-md border border-destructive text-destructive text-sm font-semibold disabled:opacity-40">Close account</button>

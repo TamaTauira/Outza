@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
+import { LegalStamp } from '@/components/legal-stamp'
 
 export const metadata = { title: 'Privacy policy — VibePeep', description: 'What VibePeep collects, why, and the choices you have.' }
 
@@ -55,6 +56,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
     'You can turn off “Personalise using my email activity” in the Email section of your account. Australia password signups start with it on. Signups from the EU, the EEA, the UK, or where the country is unknown, start with it off. A Google signup starts off, because that path does not see the country header. Accounts that already existed before this choice was stored stay on, because no country was saved for them.',
     'Every newsletter includes a one-click unsubscribe link. The optional weekly promoter recap has its own unsubscribe link, which does not turn the newsletter off.',
     'You can remove saved events, going status and follows at any time.',
+    'Creating an account records that you have seen the current terms, this privacy policy and the disclaimer. A later material change is shown in the product. We record the new version when you accept it. We do not treat continued browsing as a fresh agreement.',
   ] },
   { title: 'Your rights under Australian privacy law', body: [
     'We aim to handle personal information in line with the Australian Privacy Principles in the Privacy Act 1988 (Cth).',
@@ -70,6 +72,7 @@ export default function PrivacyPage() {
     <main className="vp-wrap px-4 py-12 sm:px-6">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">Privacy policy</h1>
+      <LegalStamp doc="privacy" />
       <p className="mt-3 text-muted-foreground">VibePeep is an independent events guide. This page explains, in plain English, what we collect and why.</p>
       <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
         {SECTIONS.map((s) => (
