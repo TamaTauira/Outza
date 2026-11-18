@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { isPostcode, parseBirthYear, under16GeoBlock } from '@/lib/profile-shared'
 import { sendVerification } from '@/lib/account-flow'
+import { emailActivityDefault } from '@/lib/email-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
 
     const user = await prisma.user.create({
-      data: { email, name, role, orgName, homeCity, birthYear, homePostcode: pc || null, password: await bcrypt.hash(password, 10) },
+      data: { email, name, role, orgName, homeCity, birthYear, homePostcode: pc || null, password: await bcrypt.hash(password, 10), emailActivityPersonalisation: emailActivityDefault(req.headers.get('x-vercel-ip-country')) },
       select: { id: true, email: true, role: true },
     })
     const verification = await sendVerification(user.id, user.email).catch((err) => {

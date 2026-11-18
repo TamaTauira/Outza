@@ -5,7 +5,7 @@ import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
 import { EMAIL_FONT, emailLockup } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
-import { openPixelUrl, trackUrl, unsubscribeUrl, type Placement, type UtmCtx } from './links'
+import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
 
 const C = {
@@ -58,6 +58,13 @@ export interface RenderInput {
   sponsored: Slot[]
   sponsoredPos: 'mid' | 'end'
   trackOpens: boolean
+  /** False skips the click logger. Omitted means the existing tracked links. */
+  trackClicks?: boolean
+}
+
+function go(r: RenderInput, placement: Placement, target: Target, eventId = '', ticketUrl?: string | null) {
+  if (r.trackClicks === false) return plainEmailUrl(r.ctx, placement, target, eventId, ticketUrl)
+  return trackUrl(r.ctx, placement, target, eventId)
 }
 
 const day = (d: Date, o: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric', month: 'short' }) => d.toLocaleDateString('en-AU', { ...o, timeZone: 'UTC' })
@@ -164,7 +171,7 @@ ${sub ? `<div class="mu" style="font-family:${FONT};font-size:14px;line-height:1
 }
 
 function compactCard(r: RenderInput, s: Slot, placement: Placement, ctaLabel: string, bg = C.card) {
-  const href = trackUrl(r.ctx, placement, 'detail', s.ev.id)
+  const href = go(r, placement, 'detail', s.ev.id)
   const alt = `${s.ev.title} at ${s.ev.venueName}`
   const thumb = art(s.img, alt, THUMB, THUMB, href, s.ev.category, 'thumb')
   const nudge = placement === 'saved'
@@ -185,11 +192,11 @@ ${nudge}
 }
 
 function bigCard(r: RenderInput, s: Slot, placement: Placement, ctaLabel: string) {
-  const href = trackUrl(r.ctx, placement, 'detail', s.ev.id)
+  const href = go(r, placement, 'detail', s.ev.id)
   const alt = `${s.ev.title} at ${s.ev.venueName}`
   const picture = art(s.img, alt, HERO_W, HERO_H, href, s.ev.category, 'hero')
   const tix = s.ev.ticketUrl
-    ? `<td style="padding-left:16px;"><a href="${x(trackUrl(r.ctx, placement, 'ticket', s.ev.id))}" class="tx" style="font-family:${FONT};font-size:14px;font-weight:700;color:${C.ink};text-decoration:underline;">Tickets &amp; info</a></td>`
+    ? `<td style="padding-left:16px;"><a href="${x(go(r, placement, 'ticket', s.ev.id, s.ev.ticketUrl))}" class="tx" style="font-family:${FONT};font-size:14px;font-weight:700;color:${C.ink};text-decoration:underline;">Tickets &amp; info</a></td>`
     : ''
   return `<tr><td class="px" style="padding:0 24px 8px;">
 <table ${T} width="100%" class="card" bgcolor="${C.card}" style="background:${C.card};border:1px solid ${C.line};border-radius:18px;">
@@ -221,7 +228,7 @@ export function renderHtml(r: RenderInput): string {
   const ed = EDITION_NAME[r.editionKey] ?? 'The Weekender'
   const last = new Date(r.to.getTime() - 86400e3)
   const range = `${day(r.from, { weekday: 'short', day: 'numeric', month: 'short' })} – ${day(last, { weekday: 'short', day: 'numeric', month: 'short' })}`
-  const prefs = trackUrl(r.ctx, 'footer', 'prefs')
+  const prefs = go(r, 'footer', 'prefs')
   const unsub = unsubscribeUrl(r.userId, r.ctx.sendId)
   const cta = CTA_VARIANTS[r.cta]
   const link = (href: string, label: string) => `<a class="flink" href="${x(href)}" style="color:#e4e4e4;text-decoration:underline;">${label}</a>`
@@ -290,7 +297,7 @@ ${r.sponsoredPos === 'end' ? sponsoredBlock(r) : ''}
 <tr><td class="px" style="padding:20px 24px 8px;"><table ${T} width="100%" bgcolor="${C.head}" style="background:${C.head};border-radius:18px;"><tr><td align="center" style="padding:28px 22px;">
 <div style="font-family:${FONT};font-size:22px;line-height:1.25;font-weight:800;color:#ffffff;">Still got room in your calendar?</div>
 <div style="font-family:${FONT};font-size:15px;line-height:1.5;color:#d0d0d0;padding:8px 0 18px;">There’s plenty more happening. Go on, make some plans.</div>
-${button(trackUrl(r.ctx, 'explore', 'explore'), `Explore what’s on in ${r.city}`)}
+${button(go(r, 'explore', 'explore'), `Explore what’s on in ${r.city}`)}
 </td></tr></table></td></tr>
 
 <tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:0 0 20px 20px;padding:28px 24px 32px;">
@@ -311,7 +318,7 @@ export function renderText(r: RenderInput): string {
     const trust = trustLine(s.ev.source, s.ev.lastVerifiedAt ?? s.ev.updatedAt)
     const reminder = p === 'saved' ? (r.reminderOptIn ? 'You asked for a nudge. This one\'s coming up.' : 'Don\'t forget this one.') : ''
     const why = s.ev.whyLine ? `Why you're seeing this: ${s.ev.whyLine}` : ''
-    return [s.ev.title, why, s.ev.travel, reminder, `${s.ev.category} | ${whenLine(s.ev)}`, whereLine(s.ev), priceLine(s.ev), trust, statusNote(s.ev), s.blurb, trackUrl(r.ctx, p, 'detail', s.ev.id)].filter(Boolean).join('\n')
+    return [s.ev.title, why, s.ev.travel, reminder, `${s.ev.category} | ${whenLine(s.ev)}`, whereLine(s.ev), priceLine(s.ev), trust, statusNote(s.ev), s.blurb, go(r, p, 'detail', s.ev.id)].filter(Boolean).join('\n')
   }
   const chunk = (title: string, slots: Slot[], p: Placement) => slots.length ? `${title}\n\n${slots.map((s) => block(s, p)).join('\n\n')}` : ''
   const parts = [
@@ -326,8 +333,8 @@ export function renderText(r: RenderInput): string {
     chunk('FREE OR CHEAP', r.free, 'free'),
     chunk(`HOT PICKS IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
     r.sponsoredPos === 'end' && r.sponsored.length && `FROM A PROMOTER - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
-    `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${trackUrl(r.ctx, 'explore', 'explore')}`,
-    `---\nVibePeep. Take a peep at what's happening.\nSee you out there.\nManage preferences / change frequency: ${trackUrl(r.ctx, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
+    `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${go(r, 'explore', 'explore')}`,
+    `---\nVibePeep. Take a peep at what's happening.\nSee you out there.\nManage preferences / change frequency: ${go(r, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
   ]
   return parts.filter(Boolean).join('\n\n')
 }

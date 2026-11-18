@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { siteUrl } from '@/lib/email'
+import { isTicketekUrl, ticketHref } from '@/lib/affiliate'
 
 const secret = () => process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || 'outza'
 
@@ -30,6 +31,18 @@ export function utm(url: string, ctx: UtmCtx, placement: string) {
   } catch {
     return url
   }
+}
+
+/** Direct link for someone who opted out of email-activity personalisation. UTM may remain. No click log. */
+export function plainEmailUrl(ctx: UtmCtx, placement: Placement, target: Target, eventId = '', ticketUrl?: string | null) {
+  let dest = siteUrl()
+  if (target === 'explore') dest = exploreUrl(ctx.city)
+  else if (target === 'prefs') dest = `${siteUrl()}/account`
+  else if (target === 'ticket' && ticketUrl && /^https?:\/\//.test(ticketUrl)) dest = ticketHref(ticketUrl) ?? ticketUrl
+  else if (eventId) dest = `${siteUrl()}/events/${eventId}`
+  if (target === 'prefs') return dest
+  if (target === 'ticket' && ticketUrl && isTicketekUrl(ticketUrl) && dest !== ticketUrl) return dest
+  return utm(dest, ctx, placement)
 }
 
 /** Signed click-tracking URL. The redirect route logs the click then forwards with UTM tags. */

@@ -16,7 +16,7 @@ import { eventPath } from '@/lib/seo'
 import { useSaved } from '@/lib/saved'
 import { PasswordField } from '@/components/password-field'
 
-type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; reminderOptIn?: boolean }
+type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; emailActivityPersonalisation?: boolean; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
@@ -174,6 +174,10 @@ export function AccountClient() {
         <label className="mt-4 flex items-start gap-3 text-sm cursor-pointer">
           <input type="checkbox" checked={!!me.reminderOptIn} onChange={(e) => save({ reminderOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
           <span>Nudge me the day before a saved event. Off until you tick it, and only when the note is switched on.</span>
+        </label>
+        <label className="mt-4 flex items-start gap-3 text-sm cursor-pointer">
+          <input type="checkbox" checked={me.emailActivityPersonalisation !== false} onChange={(e) => save({ emailActivityPersonalisation: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
+          <span>Personalise using my email activity. When this is off, newsletter opens and link clicks are not stored and are not used to rank later picks.</span>
         </label>
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={() => { void watchPreview() }} className="h-9 rounded-md border border-border px-4 text-sm hover:bg-muted">Send me a preview</button>

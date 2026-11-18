@@ -246,6 +246,8 @@ model User {
   preferredCategories String[]  @default([])
   preferredCities     String[]  @default([])
   emailOptIn          Boolean   @default(false)
+  /// Newsletter opens and link clicks may be stored to rank later picks. Existing rows default on (see prisma/sql). New password signups set this from the country header. New Google signups stay off until the person turns it on.
+  emailActivityPersonalisation Boolean @default(false)
   emailFrequency      String    @default("weekly") // daily | weekly | monthly
   lastDigestAt        DateTime?
   /// Separate from the newsletter. Upcoming saved-event reminders only.
