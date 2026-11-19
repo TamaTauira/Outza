@@ -12,7 +12,9 @@ import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
-import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, Search, SlidersHorizontal, Ticket, X } from 'lucide-react';
+import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, SlidersHorizontal, Ticket } from 'lucide-react';
+import { Chip } from '@/components/ui/chip';
+import { SearchField } from '@/components/ui/search-field';
 import { cn } from '@/lib/utils';
 import { CITIES, DEFAULT_CITY } from '@/lib/cities';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -465,10 +467,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 </label>
               </div>
               <div className="min-w-0 flex-1 lg:px-4">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
-                  <input value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search the map" aria-label="Search events" className="h-11 w-full rounded-full border border-border bg-background pl-9 pr-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                </div>
+                <SearchField id="map-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search the map" label="Search events" />
               </div>
             </div>
             <div className="relative min-h-0 flex-1">
@@ -514,34 +513,15 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           {view === 'board' &&
           <>
               <div className="vp-quick-search border-b border-border px-3 pb-3 pt-4 sm:px-4">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" />
-                  <input
-                    type="text"
-                    role="searchbox"
-                    inputMode="search"
-                    enterKeyHint="search"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search events, artists, performers or venues"
-                    aria-label="Quick search by event, artist, venue or keyword"
-                    list="quick-search-hints"
-                    className="h-12 w-full rounded-xl border-2 border-border bg-background pl-12 pr-12 text-base placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 sm:h-14"
-                  />
-                  <datalist id="quick-search-hints">
-                    {searchHints.map((title) => <option key={title} value={title} />)}
-                  </datalist>
-                  {searchInput && (
-                    <button type="button" onClick={() => setSearchInput('')} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Clear search">
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                <SearchField id="board-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search events or venues" label="Quick search by event, artist, venue or keyword" list="quick-search-hints" />
+                <datalist id="quick-search-hints">
+                  {searchHints.map((title) => <option key={title} value={title} />)}
+                </datalist>
               </div>
               <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-3 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
-                <button type="button" aria-pressed={planKey === 'today'} onClick={() => applyPlan('today')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'today' ? 'bg-foreground text-background' : 'bg-muted')}>Today</button>
-                <button type="button" aria-pressed={planKey === 'tonight'} onClick={() => applyPlan('tonight')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'tonight' ? 'bg-foreground text-background' : 'bg-muted')}>Tonight</button>
-                <button type="button" aria-pressed={planKey === 'weekend'} onClick={() => applyPlan('weekend')} className={cn('h-9 shrink-0 rounded-full px-3 text-sm font-medium', planKey === 'weekend' ? 'bg-foreground text-background' : 'bg-muted')}>This weekend</button>
+                <Chip pressed={planKey === 'today'} onClick={() => applyPlan('today')}>Today</Chip>
+                <Chip pressed={planKey === 'tonight'} onClick={() => applyPlan('tonight')}>Tonight</Chip>
+                <Chip pressed={planKey === 'weekend'} onClick={() => applyPlan('weekend')}>This weekend</Chip>
                 <Popover open={calOpen} onOpenChange={(open) => {
                   setCalOpen(open);
                   if (open) {
