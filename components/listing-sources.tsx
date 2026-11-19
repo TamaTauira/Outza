@@ -13,6 +13,7 @@ export function ListingSources({ provenance }: { provenance: ListingProvenance }
       : null,
     provenance.filledNote,
     provenance.organiserNote,
+    provenance.venueNote,
     provenance.statusNote,
   ].filter((line): line is string => !!line)
 

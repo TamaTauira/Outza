@@ -294,6 +294,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             <StatusBanner status={event.quality?.status ?? null} />
             <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{event?.title}</h1>
             {event?.provenance && <ListingSources provenance={event.provenance} />}
+            {event?.venueUpdate && <OrganiserUpdateNotice notice={event.venueUpdate} kind="venue" />}
             {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}
             {event?.listingCaution && <p className="text-xs text-muted-foreground">{event.listingCaution}</p>}
             <p className="flex items-start gap-1.5 text-xs leading-snug text-muted-foreground">

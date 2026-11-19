@@ -26,7 +26,7 @@ export default async function VenueHome() {
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">No venue yet. Open a venue page and choose Manage this Venue. It’s free, and it doesn’t give you the events.</p>
+        <p className="mt-3 text-sm text-muted-foreground">No venue yet. Open a venue page and choose Manage this Venue. It’s free. Once the claim is approved, past and future listings at that venue stay linked to this account.</p>
       )}
     </main>
   )

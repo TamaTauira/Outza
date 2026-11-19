@@ -8,6 +8,7 @@ import { scheduleFields } from '@/lib/listing-window'
 import { parsePriceRange } from '@/lib/quality'
 import {
   OVERRIDE_FIELDS,
+  VENUE_CORRECTION_FIELDS,
   applyOverride,
   authorizeEventMutation,
   claimedOrganiserVisible,
@@ -17,6 +18,7 @@ import {
   materialCaution,
   planSourceRefresh,
   publicOrganiserNotice,
+  publicVenueNotice,
   registrableDomain,
   restoreField,
   type OverrideField,
@@ -134,6 +136,7 @@ function columnPatch(event: AccessEvent, field: string, value: string | null): R
     const range = parsePriceRange(free, free ? 'Free' : value)
     return { price: free ? 'Free' : value, isFree: free, priceMin: range.min, priceMax: range.max }
   }
+  if (field === 'imageUrl') return { imageUrl: value }
   return { [field]: value }
 }
 
@@ -290,6 +293,94 @@ export async function restoreOverride(userId: string, eventId: string, field: st
   return { status: 200 as const, ok: true }
 }
 
+function httpsImage(value: string): string | null {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:') return null
+    return url.toString().slice(0, 2000)
+  } catch {
+    return null
+  }
+}
+
+/** Venue-owner corrections. They publish immediately and the next ingest keeps them. */
+export async function saveVenueCorrections(userId: string, eventId: string, body: Record<string, unknown>, organisationId: string | null) {
+  const event = await prisma.event.findUnique({ where: { id: eventId }, select: { ...eventSelect, imageUrl: true } })
+  if (!event) return { status: 404 as const, error: 'Event not found' }
+  const proposed: Record<string, string> = {}
+  if (typeof body.price === 'string' && body.price.trim()) proposed.price = body.price.trim().slice(0, 80)
+  if (typeof body.time === 'string' && body.time.trim()) {
+    const time = body.time.trim()
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { status: 400 as const, error: 'Time looks like 19:30.' }
+    proposed.time = time
+  }
+  if (typeof body.imageUrl === 'string' && body.imageUrl.trim()) {
+    const image = httpsImage(body.imageUrl.trim())
+    if (!image) return { status: 400 as const, error: 'The image needs an https link.' }
+    proposed.imageUrl = image
+  }
+  if (body.status === 'CANCELLED' || body.status === 'SCHEDULED') proposed.status = body.status
+  if (!Object.keys(proposed).length) return { status: 400 as const, error: 'Change a price, time, image or cancellation first.' }
+
+  const current: Record<string, string | null> = { ...currentMap(event), imageUrl: event.imageUrl }
+  const existing = await prisma.eventFieldOverride.findMany({ where: { eventId, fieldName: { in: Object.keys(proposed) } } })
+  const ready: { field: string; value: string; eventValue: string; original: string | null }[] = []
+  for (const [field, value] of Object.entries(proposed)) {
+    if (!VENUE_CORRECTION_FIELDS.includes(field as (typeof VENUE_CORRECTION_FIELDS)[number])) continue
+    const row = existing.find((item) => item.fieldName === field)
+    const result = applyOverride({
+      current,
+      field,
+      value,
+      confirmed: body.confirmed === true,
+      existing: row ? { fieldName: row.fieldName, overrideValue: row.overrideValue, originalSourceValue: row.originalSourceValue, active: row.active, verificationContext: row.verificationContext } : null,
+    })
+    if (!result.ok) {
+      if (result.error === 'That already matches the listing.') continue
+      return { status: 400 as const, error: result.error }
+    }
+    ready.push({ field, value, eventValue: result.eventValue, original: result.row.originalSourceValue })
+  }
+  if (!ready.length) return { status: 400 as const, error: 'That already matches the listing.' }
+  const applied: string[] = []
+  for (const change of ready) {
+    const { field, eventValue, original } = change
+    await prisma.eventFieldOverride.upsert({
+      where: { eventId_fieldName: { eventId, fieldName: field } },
+      create: {
+        eventId,
+        fieldName: field,
+        overrideValue: eventValue,
+        originalSourceValue: original,
+        updatedBy: userId,
+        authorisedOrganisationId: organisationId,
+        verificationContext: 'venue',
+        active: true,
+      },
+      update: {
+        overrideValue: eventValue,
+        active: true,
+        updatedBy: userId,
+        authorisedOrganisationId: organisationId,
+        verificationContext: 'venue',
+      },
+    })
+    const patch = columnPatch(event, field, eventValue)
+    if (field === 'status') patch.statusSource = 'venue'
+    await prisma.event.update({ where: { id: eventId }, data: patch })
+    await prisma.eventOverrideHistory.create({
+      data: { eventId, fieldName: field, action: 'SET', previousValue: current[field] ?? null, updatedValue: eventValue, actorId: userId },
+    })
+    current[field] = eventValue
+    Object.assign(event, patch)
+    applied.push(field)
+  }
+  if (!applied.length) return { status: 400 as const, error: 'That already matches the listing.' }
+  const { invalidatePublicEvents } = await import('@/lib/public-cache')
+  await invalidatePublicEvents()
+  return { status: 200 as const, ok: true as const, fields: applied, label: 'from the venue' as const }
+}
+
 /**
  * Called from source refresh. Returns true when active overrides absorbed the update.
  * Missing tables fall through so a deploy before the migration does not stop refresh.
@@ -308,7 +399,7 @@ export async function applyProtectedRefresh(eventId: string, incoming: Record<st
   if (!rows.length) return false
   const current = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { title: true, description: true, time: true, endTime: true, venueName: true, venueAddress: true, status: true, price: true, category: true, date: true },
+    select: { title: true, description: true, time: true, endTime: true, venueName: true, venueAddress: true, status: true, price: true, category: true, date: true, imageUrl: true },
   })
   if (!current) return false
   const plan = planSourceRefresh({
@@ -323,6 +414,7 @@ export async function applyProtectedRefresh(eventId: string, incoming: Record<st
       status: current.status,
       price: current.price,
       category: current.category,
+      imageUrl: current.imageUrl,
     },
     incoming,
     overrides: rows,
@@ -344,6 +436,7 @@ export async function applyProtectedRefresh(eventId: string, incoming: Record<st
       delete data.priceMax
       delete data.isFree
     }
+    if (field === 'imageUrl') delete data.imageAssetId
     if (field === 'date') delete data.endDate
     if (field === 'category') delete data.subTags
   }
@@ -401,7 +494,7 @@ export async function ensureOrganiserGrant(userId: string, eventId: string, orgN
 export async function ownershipPresentation(eventId: string, materialConflict: string | null) {
   try {
     const [overrides, report, event, grants] = await Promise.all([
-      prisma.eventFieldOverride.findMany({ where: { eventId, active: true }, select: { fieldName: true, overrideValue: true, originalSourceValue: true, active: true, updatedAt: true } }),
+      prisma.eventFieldOverride.findMany({ where: { eventId, active: true }, select: { fieldName: true, overrideValue: true, originalSourceValue: true, active: true, updatedAt: true, verificationContext: true } }),
       prisma.venueEventReport.findFirst({ where: { eventId, caution: true, status: { in: ['OPEN', 'IN_REVIEW'] } }, select: { id: true } }),
       prisma.event.findUnique({ where: { id: eventId }, select: { promoterId: true, venue: { select: { claimStatus: true } } } }),
       prisma.eventManagementGrant.findMany({
@@ -419,10 +512,12 @@ export async function ownershipPresentation(eventId: string, materialConflict: s
         },
       }),
     ])
-    const latest = overrides.reduce<string | null>((best, row) => {
+    const latestOf = (rows: typeof overrides) => rows.reduce<string | null>((best, row) => {
       const iso = row.updatedAt.toISOString()
       return !best || iso > best ? iso : best
     }, null)
+    const venueRows = overrides.filter((row) => row.verificationContext === 'venue')
+    const organiserRows = overrides.filter((row) => row.verificationContext !== 'venue')
     const caution = materialCaution(materialConflict) || (report ? 'A venue representative asked us to check this listing. The event itself is unchanged while we look.' : null)
     const organiserClaimed = claimedOrganiserVisible(event?.promoterId, grants.map((grant) => ({
       grantStatus: grant.status,
@@ -431,10 +526,16 @@ export async function ownershipPresentation(eventId: string, materialConflict: s
       verificationStatus: grant.organisation.verificationStatus,
       memberships: grant.organisation.memberships,
     })))
-    return { notice: publicOrganiserNotice(overrides, latest), caution, venueManaged: event?.venue?.claimStatus === 'CLAIMED', organiserClaimed }
+    return {
+      notice: publicOrganiserNotice(organiserRows, latestOf(organiserRows)),
+      venueNotice: publicVenueNotice(venueRows, latestOf(venueRows)),
+      caution,
+      venueManaged: event?.venue?.claimStatus === 'CLAIMED',
+      organiserClaimed,
+    }
   } catch (err) {
     if (!missingRelation(err)) console.error('ownership presentation failed', (err as { message?: string })?.message)
-    return { notice: null, caution: materialCaution(materialConflict), venueManaged: false, organiserClaimed: false }
+    return { notice: null, venueNotice: null, caution: materialCaution(materialConflict), venueManaged: false, organiserClaimed: false }
   }
 }
 

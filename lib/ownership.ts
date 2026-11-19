@@ -12,8 +12,11 @@ export const VERIFICATION_METHODS = ['BUSINESS_EMAIL', 'EXISTING_ORG', 'MANUAL',
 export type VerificationMethod = (typeof VERIFICATION_METHODS)[number]
 
 export const OVERRIDE_FIELDS = [
-  'title', 'description', 'date', 'time', 'endTime', 'venueName', 'venueAddress', 'status', 'price', 'category',
+  'title', 'description', 'date', 'time', 'endTime', 'venueName', 'venueAddress', 'status', 'price', 'category', 'imageUrl',
 ] as const
+
+/** Fields a venue owner can correct on a listing at their venue. */
+export const VENUE_CORRECTION_FIELDS = ['price', 'time', 'endTime', 'imageUrl', 'status'] as const
 export type OverrideField = (typeof OVERRIDE_FIELDS)[number]
 
 export const MATERIAL_FIELDS = ['date', 'time', 'endTime', 'venueName', 'venueAddress', 'status'] as const
@@ -23,6 +26,9 @@ export const ORGANISER_UPDATE_BODY =
   'This event information has been updated directly by the event organiser on VibePeep and may differ from the original listing.'
 
 export const VENUE_MANAGED_LABEL = 'Managed by the venue'
+export const VENUE_UPDATE_TITLE = 'from the venue'
+export const VENUE_UPDATE_BODY =
+  'The venue corrected this on VibePeep. It may differ from the original listing.'
 
 /** Plain-language copy for the claimed tick. No accuracy promise, and no “verified” wording. */
 export const CLAIMED_TICK_COPY = {
@@ -162,9 +168,9 @@ export function evaluateVenueAccess(input: {
   return { allowed: !!best, role: best?.role ?? null, organisationId: best?.organisationId ?? null }
 }
 
-export type VenueAction = 'editProfile' | 'editSensitive' | 'viewAnalytics' | 'viewEvents' | 'reportEvent' | 'manageTeam' | 'grantAdmin' | 'transferOwnership' | 'configureAds'
+export type VenueAction = 'editProfile' | 'editSensitive' | 'viewAnalytics' | 'viewEvents' | 'reportEvent' | 'correctEvent' | 'manageTeam' | 'grantAdmin' | 'transferOwnership' | 'configureAds'
 
-const MANAGER_ACTIONS: VenueAction[] = ['editProfile', 'viewAnalytics', 'viewEvents', 'reportEvent']
+const MANAGER_ACTIONS: VenueAction[] = ['editProfile', 'viewAnalytics', 'viewEvents', 'reportEvent', 'correctEvent']
 
 export function venueRoleAllows(role: VenueRole | null, action: VenueAction): boolean {
   if (!role) return false
@@ -313,6 +319,7 @@ export type OverrideRow = {
   overrideValue: string
   originalSourceValue: string | null
   active?: boolean
+  verificationContext?: string | null
 }
 
 export type RefreshPlan = {
@@ -410,11 +417,28 @@ export function publicOrganiserNotice(overrides: OverrideRow[], updatedAt?: stri
   updatedAt: string | null
   fields: string[]
 } | null {
-  const active = overrides.filter((row) => row.active !== false)
+  const active = overrides.filter((row) => row.active !== false && row.verificationContext !== 'venue')
   if (!active.length) return null
   return {
     title: ORGANISER_UPDATE_TITLE,
     body: ORGANISER_UPDATE_BODY,
+    updatedAt: updatedAt ?? null,
+    fields: active.map((row) => row.fieldName),
+  }
+}
+
+/** Shown on the public listing as soon as the venue saves a correction. */
+export function publicVenueNotice(overrides: OverrideRow[], updatedAt?: string | null): {
+  title: string
+  body: string
+  updatedAt: string | null
+  fields: string[]
+} | null {
+  const active = overrides.filter((row) => row.active !== false && row.verificationContext === 'venue')
+  if (!active.length) return null
+  return {
+    title: VENUE_UPDATE_TITLE,
+    body: VENUE_UPDATE_BODY,
     updatedAt: updatedAt ?? null,
     fields: active.map((row) => row.fieldName),
   }
