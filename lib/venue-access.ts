@@ -21,6 +21,7 @@ import {
   codeRateLimited,
   domainAloneInsufficient,
   evaluateVenueAccess,
+  parsePhotoList,
   profileCompleteness,
   reportRateLimited,
   splitVenuePatch,
@@ -88,15 +89,22 @@ async function requireAction(userId: string, venueId: string, action: VenueActio
 
 const publicSelect = {
   id: true, name: true, city: true, address: true, website: true, description: true, contactEmail: true, contactPhone: true,
-  instagram: true, facebook: true, categories: true, facilities: true, accessibilityInfo: true, logoUrl: true, photos: true,
-  announcement: true, claimStatus: true, openTime: true, closeTime: true, latitude: true, longitude: true, officialDomain: true,
+  instagram: true, facebook: true, categories: true, facilities: true, accessibilityInfo: true, gettingThere: true, hoursNote: true,
+  logoUrl: true, photos: true, announcement: true, claimStatus: true, openTime: true, closeTime: true,
+  latitude: true, longitude: true, officialDomain: true, key: true,
 } as const
 
 export async function publicVenue(id: string) {
   const venue = await prisma.venue.findUnique({ where: { id }, select: publicSelect })
   if (!venue) return null
-  const { officialDomain: _domain, ...rest } = venue
+  const { officialDomain: _domain, key: _key, ...rest } = venue
   return { ...rest, completeness: profileCompleteness(venue), managed: venue.claimStatus === 'CLAIMED' }
+}
+
+export async function venueFollowerCount(venueId: string): Promise<number | null> {
+  const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { key: true, name: true, city: true } })
+  if (!venue) return null
+  return prisma.venueFollow.count({ where: { venueKey: { in: [venue.key, followKey(venue.name, venue.city)] } } })
 }
 
 export async function submitVenueClaim(user: { id: string; email: string; name: string; role: string }, venueId: string, body: Record<string, unknown>) {
@@ -320,6 +328,12 @@ export async function updateVenue(userId: string, venueId: string, body: Record<
   if (gate.error || !gate.access.role) return { status: gate.access.allowed ? 403 : 403, error: gate.error ?? 'Not allowed' }
   const parsed = validateVenueFields(body)
   if (!parsed.ok) return { status: 400 as const, error: parsed.error }
+  let photos: string[] | undefined
+  if ('photos' in body) {
+    const parsedPhotos = parsePhotoList(body.photos)
+    if (!parsedPhotos.ok) return { status: 400 as const, error: parsedPhotos.error }
+    photos = parsedPhotos.photos
+  }
   const venue = await prisma.venue.findUnique({ where: { id: venueId } })
   if (!venue) return { status: 404 as const, error: 'Venue not found' }
   const split = splitVenuePatch(parsed.fields)
@@ -331,16 +345,24 @@ export async function updateVenue(userId: string, venueId: string, body: Record<
   if ('instagram' in split.immediate) data.instagram = split.immediate.instagram
   if ('facebook' in split.immediate) data.facebook = split.immediate.facebook
   if ('accessibilityInfo' in split.immediate) data.accessibilityInfo = split.immediate.accessibilityInfo
+  if ('gettingThere' in split.immediate) data.gettingThere = split.immediate.gettingThere
+  if ('hoursNote' in split.immediate) data.hoursNote = split.immediate.hoursNote
   if ('announcement' in split.immediate) data.announcement = split.immediate.announcement
   if ('logoUrl' in split.immediate) data.logoUrl = split.immediate.logoUrl
   if ('categories' in split.immediate && split.immediate.categories) data.categories = split.immediate.categories.split(',').map((item) => item.trim()).filter(Boolean).slice(0, 8)
   if ('facilities' in split.immediate && split.immediate.facilities) data.facilities = split.immediate.facilities.split(',').map((item) => item.trim()).filter(Boolean).slice(0, 12)
-  if ('openingHours' in split.immediate && split.immediate.openingHours) {
-    const match = split.immediate.openingHours.match(/(\d{2}:\d{2})\s*[-–to]+\s*(\d{2}:\d{2})/)
-    if (!match) return { status: 400 as const, error: 'Hours look like 17:00-23:00.' }
-    data.openTime = match[1]
-    data.closeTime = match[2]
+  if ('openingHours' in split.immediate) {
+    if (!split.immediate.openingHours) {
+      data.openTime = null
+      data.closeTime = null
+    } else {
+      const match = split.immediate.openingHours.match(/(\d{2}:\d{2})\s*[-–to]+\s*(\d{2}:\d{2})/)
+      if (!match) return { status: 400 as const, error: 'Hours look like 17:00-23:00.' }
+      data.openTime = match[1]
+      data.closeTime = match[2]
+    }
   }
+  if (photos) data.photos = photos
   if (Object.keys(data).length) {
     await prisma.venue.update({ where: { id: venueId }, data })
     await audit(venueId, userId, 'profile-edit', null, Object.keys(data).join(', '))

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { ownershipUiEnabled } from '@/lib/ownership'
-import { canManageVenue, publicVenue, updateVenue } from '@/lib/venue-access'
+import { canManageVenue, publicVenue, updateVenue, venueFollowerCount } from '@/lib/venue-access'
 import { unverifiedGate } from '@/lib/account-flow'
 import { prisma } from '@/lib/db'
 import { profileCompleteness } from '@/lib/ownership'
@@ -25,10 +25,12 @@ export async function GET(_req: Request, { params }: Ctx) {
     }).catch(() => null)
   }
   const row = access.allowed ? await prisma.venue.findUnique({ where: { id } }) : null
+  const followers = access.allowed ? await venueFollowerCount(id).catch(() => null) : null
   return NextResponse.json({
     venue,
     access: { allowed: access.allowed, role: access.role },
     claim,
+    followers,
     completeness: row ? profileCompleteness(row) : venue.completeness,
     tools: ownershipUiEnabled(),
   })

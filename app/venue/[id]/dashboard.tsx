@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { boardClockLine } from '@/lib/listing-window'
 import { VENUE_PRODUCTS, VENUE_REPORT_REASONS, SPONSORED_LABEL } from '@/lib/ownership'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { VenueReachPanel } from './reach-panel'
 
 const tabs = ['Overview', 'My Venue', 'Upcoming Events', 'Analytics', 'Promotions', 'Team & Access', 'Settings'] as const
@@ -33,10 +37,36 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
   const [trendNote, setTrendNote] = useState<string | null>(null)
   const [range, setRange] = useState('30')
   const [members, setMembers] = useState<Array<{ id: string; name: string | null; email: string; role: string; status: string }>>([])
-  const [profile, setProfile] = useState({ description: '', announcement: '', contactEmail: '', openingHours: '', categories: '', facilities: '', accessibilityInfo: '', website: '', address: '' })
+  const [profileReady, setProfileReady] = useState(false)
+  const [followers, setFollowers] = useState<number | null>(null)
+  const [profile, setProfile] = useState({ description: '', announcement: '', contactEmail: '', contactPhone: '', openingHours: '', hoursNote: '', categories: '', facilities: '', accessibilityInfo: '', gettingThere: '', website: '', instagram: '', facebook: '', address: '', photos: '' })
 
   useEffect(() => {
     fetch(`/api/venues/${venueId}/events`).then((r) => r.json()).then((d) => setEvents(d.events || [])).catch(() => {})
+    fetch(`/api/venues/${venueId}`).then((r) => r.json()).then((d) => {
+      const venue = d.venue
+      if (!venue) return
+      if (typeof d.followers === 'number') setFollowers(d.followers)
+      const hours = venue.openTime && venue.closeTime ? `${venue.openTime}-${venue.closeTime}` : ''
+      setProfile({
+        description: venue.description || '',
+        announcement: venue.announcement || '',
+        contactEmail: venue.contactEmail || '',
+        contactPhone: venue.contactPhone || '',
+        openingHours: hours,
+        hoursNote: venue.hoursNote || '',
+        categories: (venue.categories || []).join(', '),
+        facilities: (venue.facilities || []).join(', '),
+        accessibilityInfo: venue.accessibilityInfo || '',
+        gettingThere: venue.gettingThere || '',
+        website: venue.website || '',
+        instagram: venue.instagram || '',
+        facebook: venue.facebook || '',
+        address: venue.address || '',
+        photos: (venue.photos || []).join('\n'),
+      })
+      setProfileReady(true)
+    }).catch(() => {})
   }, [venueId])
 
   useEffect(() => {
@@ -81,6 +111,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
       {tab === 'Overview' && (
         <section className="mt-5 space-y-3">
           <p className="text-sm text-muted-foreground">{events.length} upcoming listing{events.length === 1 ? '' : 's'} at this venue. Editing an event needs a separate organiser grant.</p>
+          {followers != null && <p className="text-sm">{followers === 1 ? '1 person follows this venue.' : `${followers} people follow this venue.`} New listings can show up in their email when they’ve asked for it.</p>}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setTab('My Venue')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Edit Profile</button>
             <button type="button" onClick={() => setTab('Upcoming Events')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">What’s On</button>
@@ -92,16 +123,22 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
 
       {tab === 'My Venue' && (
         <form className="mt-5 space-y-3" onSubmit={(e) => { e.preventDefault(); save() }}>
-          <textarea className={field} rows={4} placeholder="Description" aria-label="Description" value={profile.description} onChange={(e) => setProfile({ ...profile, description: e.target.value })} />
-          <textarea className={field} rows={2} placeholder="A public note, such as a renovation or a new door" aria-label="Announcement" value={profile.announcement} onChange={(e) => setProfile({ ...profile, announcement: e.target.value })} />
-          <input className={field} placeholder="Public contact email" aria-label="Contact email" value={profile.contactEmail} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
-          <input className={field} placeholder="Hours, like 17:00-23:00" aria-label="Opening hours" value={profile.openingHours} onChange={(e) => setProfile({ ...profile, openingHours: e.target.value })} />
-          <input className={field} placeholder="Categories, comma separated" aria-label="Categories" value={profile.categories} onChange={(e) => setProfile({ ...profile, categories: e.target.value })} />
-          <input className={field} placeholder="Facilities, comma separated" aria-label="Facilities" value={profile.facilities} onChange={(e) => setProfile({ ...profile, facilities: e.target.value })} />
-          <textarea className={field} rows={2} placeholder="Accessibility" aria-label="Accessibility" value={profile.accessibilityInfo} onChange={(e) => setProfile({ ...profile, accessibilityInfo: e.target.value })} />
-          <input className={field} placeholder="Official website (reviewed before it goes live)" aria-label="Website" value={profile.website} onChange={(e) => setProfile({ ...profile, website: e.target.value })} />
-          <input className={field} placeholder="Address (reviewed before it goes live)" aria-label="Address" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} />
-          <button className="h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold">Save venue</button>
+          <Textarea rows={4} placeholder="Description" aria-label="Description" value={profile.description} onChange={(e) => setProfile({ ...profile, description: e.target.value })} />
+          <Textarea rows={2} placeholder="A public note, such as a renovation or a new door" aria-label="Announcement" value={profile.announcement} onChange={(e) => setProfile({ ...profile, announcement: e.target.value })} />
+          <Input placeholder="Public contact email" aria-label="Contact email" value={profile.contactEmail} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
+          <Input placeholder="Public phone" aria-label="Phone" value={profile.contactPhone} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} />
+          <Input placeholder="Typical hours, like 17:00-23:00" aria-label="Opening hours" value={profile.openingHours} onChange={(e) => setProfile({ ...profile, openingHours: e.target.value })} />
+          <Textarea rows={2} placeholder="Hours in your own words, like Wed–Sun, kitchen closes at 9pm" aria-label="Hours note" value={profile.hoursNote} onChange={(e) => setProfile({ ...profile, hoursNote: e.target.value })} />
+          <Input placeholder="Categories, comma separated" aria-label="Categories" value={profile.categories} onChange={(e) => setProfile({ ...profile, categories: e.target.value })} />
+          <Input placeholder="Facilities, comma separated" aria-label="Facilities" value={profile.facilities} onChange={(e) => setProfile({ ...profile, facilities: e.target.value })} />
+          <Textarea rows={3} placeholder="Accessibility" aria-label="Accessibility" value={profile.accessibilityInfo} onChange={(e) => setProfile({ ...profile, accessibilityInfo: e.target.value })} />
+          <Textarea rows={3} placeholder="Getting there" aria-label="Getting there" value={profile.gettingThere} onChange={(e) => setProfile({ ...profile, gettingThere: e.target.value })} />
+          <Textarea rows={3} placeholder="Photo links, one https address per line (up to 8)" aria-label="Photos" value={profile.photos} onChange={(e) => setProfile({ ...profile, photos: e.target.value })} />
+          <Input placeholder="Instagram" aria-label="Instagram" value={profile.instagram} onChange={(e) => setProfile({ ...profile, instagram: e.target.value })} />
+          <Input placeholder="Facebook" aria-label="Facebook" value={profile.facebook} onChange={(e) => setProfile({ ...profile, facebook: e.target.value })} />
+          <Input placeholder="Official website (reviewed before it goes live)" aria-label="Website" value={profile.website} onChange={(e) => setProfile({ ...profile, website: e.target.value })} />
+          <Input placeholder="Address (reviewed before it goes live)" aria-label="Address" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} />
+          <Button type="submit" disabled={!profileReady}>Save venue</Button>
         </form>
       )}
 
@@ -111,7 +148,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
             <button type="button" onClick={() => setMineOnly(false)} className={`rounded-full px-3 py-1 ${!mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>All Upcoming Events</button>
             <button type="button" onClick={() => setMineOnly(true)} className={`rounded-full px-3 py-1 ${mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>Events I Manage</button>
           </div>
-          {!shown.length && <p className="text-sm text-muted-foreground">{mineOnly ? 'None of these listings are yours to edit. Venue access doesn’t include them.' : 'Nothing upcoming is tied to this venue yet.'}</p>}
+          {!shown.length && <EmptyState title={mineOnly ? 'Nothing you edit' : 'Nothing upcoming'} body={mineOnly ? 'None of these listings are yours to edit. Venue access doesn’t include them.' : 'Nothing upcoming is tied to this venue yet.'} />}
           {shown.map((event) => {
             const clock = boardClockLine({ ...event, city })
             return (
