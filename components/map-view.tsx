@@ -107,6 +107,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const [loc, setLoc] = useState<LocState>('idle')
   const cardsRef = useRef<HTMLDivElement>(null)
   const [dock, setDock] = useState(0)
+  const [box, setBox] = useState<{ south: number; north: number; west: number; east: number } | null>(null)
   const { resolvedTheme } = useTheme()
   const dark = resolvedTheme !== 'light'
   const locked = Array.isArray(eventsOverride)
@@ -233,6 +234,19 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     else map.setView([-27.5, 134], 4)
   }, [ready, city, locked])
 
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!ready || !map) return
+    const read = () => {
+      if (!mapIsLive(map) || typeof map.getBounds !== 'function') return
+      const bounds = map.getBounds()
+      setBox({ south: bounds.getSouth(), north: bounds.getNorth(), west: bounds.getWest(), east: bounds.getEast() })
+    }
+    read()
+    map.on('moveend', read)
+    return () => map.off('moveend', read)
+  }, [ready, city])
+
   // Zoom to the visitor's own location (only after they've opted in; used in the browser only)
   const locate = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) { setLoc('unavailable'); return }
@@ -328,8 +342,14 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     }
   }, [events, featured, ready, locked])
 
-  const count = events.filter((e: any) => e?.latitude && e?.longitude).length
-  const pinned = events.filter((e: any) => e?.latitude && e?.longitude).slice(0, 40)
+  const inView = (e: any) => {
+    if (e?.latitude == null || e?.longitude == null) return false
+    if (!box) return true
+    return e.latitude >= box.south && e.latitude <= box.north && e.longitude >= box.west && e.longitude <= box.east
+  }
+  const visiblePins = events.filter(inView)
+  const count = visiblePins.length
+  const pinned = visiblePins.slice(0, 40)
   const showCards = bleed && pinned.length > 0
   useEffect(() => {
     const el = cardsRef.current
@@ -375,7 +395,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         <aside className="vp-map-rail hidden h-full w-80 shrink-0 flex-col overflow-hidden border-r border-border bg-background lg:flex">
           <div className="shrink-0 border-b border-border px-4 py-3">
             <p className="font-display text-lg font-bold">In view</p>
-            <p className="text-xs text-muted-foreground">{loading ? 'Loading pins…' : `${count} events with a pin`}</p>
+            <p className="text-xs text-muted-foreground">{loading ? 'Loading pins…' : `${count} ${countNoun} in view`}</p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {pinned.map((e) => {

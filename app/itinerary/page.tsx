@@ -76,7 +76,7 @@ function downloadIcs(list: ItineraryItem[], name: string) {
     endTime: item.endTime,
     venueName: [item.venueName, item.place].filter(Boolean).join(', ') || null,
     city: item.city,
-    url: item.kind === 'event' ? (item.href ?? eventPath(item)) : null,
+    url: item.kind === 'event' && typeof window !== 'undefined' ? new URL(item.href ?? eventPath(item), window.location.origin).toString() : null,
   })), { calendarName: name || 'VibePeep itinerary' })
   const blob = new Blob([body], { type: 'text/calendar' })
   const url = URL.createObjectURL(blob)
@@ -145,6 +145,24 @@ export default function ItineraryPage() {
   const [nearbyBusy, setNearbyBusy] = useState(false)
   const inFlight = useRef(false)
   const agendaRef = useRef<HTMLElement>(null)
+  const [shared, setShared] = useState<Array<{ id: string; title: string; href: string }>>([])
+
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get('shared')
+    const ids = (raw ?? '').split(',').map((id) => id.trim()).filter(Boolean).slice(0, 12)
+    if (!ids.length) return
+    let cancel = false
+    Promise.all(ids.map((id) => fetch(`/api/events/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null)))
+      .then((rows) => {
+        if (cancel) return
+        setShared(rows.flatMap((row) => {
+          const event = row?.event
+          if (!event?.id || !event.title) return []
+          return [{ id: event.id, title: event.title, href: eventPath(event) }]
+        }))
+      })
+    return () => { cancel = true }
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -294,11 +312,13 @@ export default function ItineraryPage() {
   }
 
   const share = async () => {
-    const text = [title, ...arranged.map((item) => `${clock(item.time) ?? 'Time not set'} · ${item.title}${item.venueName ? ` · ${item.venueName}` : ''}`)].join('\n')
+    const ids = arranged.filter((item) => item.kind === 'event').map((item) => item.id).slice(0, 12)
+    const link = `${window.location.origin}/itinerary?shared=${ids.join(',')}`
+    const text = [title, link, ...arranged.map((item) => `${clock(item.time) ?? 'Time not set'} · ${item.title}${item.venueName ? ` · ${item.venueName}` : ''}`)].join('\n')
     try {
-      if (navigator.share) { await navigator.share({ title, text }); return }
+      if (navigator.share) { await navigator.share({ title, text, url: link }); return }
       await navigator.clipboard.writeText(text)
-      toast.success('Plan’s copied. Send it.')
+      toast.success('Plan’s copied, link and all.')
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return
       toast('Couldn’t share that just now')
@@ -316,6 +336,18 @@ export default function ItineraryPage() {
       <Navbar savedCount={saved.length} />
       <main className="vp-wrap px-4 py-6 sm:px-6 lg:py-8">
         <PageMasthead variant="itinerary" />
+
+        {shared.length > 0 && (
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4" aria-label="Shared plan">
+            <h2 className="font-display text-xl font-bold">Shared plan</h2>
+            <p className="mt-1 text-sm text-muted-foreground">A read-only look at the stops in this link. It does not change the plan on this device.</p>
+            <ul className="mt-3 divide-y divide-border">
+              {shared.map((event) => (
+                <li key={event.id} className="py-2"><Link href={event.href} className="font-semibold hover:text-primary">{event.title}</Link></li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {!arranged.length ? (
           <div className="mt-8">

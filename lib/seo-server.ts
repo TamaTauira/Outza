@@ -275,7 +275,10 @@ type JsonLdEvent = {
 export function eventJsonLd(ev: JsonLdEvent, origin: string) {
   const city = cityDef(ev.city)
   const startKey = ev.date.toISOString().slice(0, 10)
-  const endKey = (ev.endDate ?? ev.date).toISOString().slice(0, 10)
+  let endKey = (ev.endDate ?? ev.date).toISOString().slice(0, 10)
+  if (ev.time && ev.endTime && endKey === startKey && ev.endTime.slice(0, 5) < ev.time.slice(0, 5)) {
+    endKey = addDaysKey(endKey, 1)
+  }
   const image = eventImageUrl(ev, origin)
   const organiser = ev.organiserName || ev.promoter?.orgName || ev.promoter?.name
   const ld: Record<string, unknown> = {

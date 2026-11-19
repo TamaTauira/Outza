@@ -54,7 +54,7 @@ const pickClass = (on: boolean) => cn(
 )
 
 /** Hero search. A plan-shaped ask shows a ready-made outing. Everything else stays a listing search. */
-export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true, inputId = 'ai-search' }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean; inputId?: string }) {
+export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean; inputId?: string; goToPage?: boolean }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -272,11 +272,12 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
   return (
     <div className="flex-1 min-w-0">
       <div ref={rootRef} className="rounded-xl bg-white text-neutral-900 ring-2 ring-primary/50 focus-within:ring-primary shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] overflow-hidden">
-        <form role="search" onSubmit={(e) => { e.preventDefault(); void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
+        <form role="search" action={goToPage ? '/search' : undefined} method={goToPage ? 'get' : undefined} onSubmit={(e) => { if (goToPage) return; e.preventDefault(); void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
           <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />
+          {goToPage && <input type="hidden" name="city" value={city} />}
           <label htmlFor={inputId} className="sr-only">Tell us your vibe</label>
           <input
-            id={inputId} ref={inputRef} type="text" value={q} maxLength={200} autoComplete="off" enterKeyHint="search"
+            id={inputId} ref={inputRef} name={goToPage ? 'q' : undefined} type="search" value={q} maxLength={200} autoComplete="off" enterKeyHint="search" inputMode="search"
             aria-describedby={`${inputId}-help`}
             onFocus={reveal}
             onClick={reveal}

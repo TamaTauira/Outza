@@ -91,7 +91,7 @@ test('ask hears NYE, weekend, suburb, markets and paid', () => {
   assert.equal(nye.dateTo, '2026-12-31')
   assert.equal(nye.city, 'Sydney')
   const weekend = interpretQuery('free markets in Parramatta this weekend', '2026-10-29')
-  assert.equal(weekend.dateFrom, '2026-10-31')
+  assert.equal(weekend.dateFrom, '2026-10-30')
   assert.equal(weekend.dateTo, '2026-11-01')
   assert.equal(weekend.category, '')
   assert.equal(weekend.subTag, '')

@@ -22,6 +22,12 @@ test('a status word in the title becomes the stored status', () => {
   assert.equal(statusFromTitle('Friday gig'), null)
 })
 
+test('training and networking titles stay off the public board on the next ingest', () => {
+  assert.equal(listingModeration('BNI CBD breakfast', 'A long enough networking breakfast for the room.').hidden, true)
+  assert.equal(listingModeration('Regus 1-day training', 'A full day course with a workbook and lunch included.').hidden, true)
+  assert.equal(listingModeration('Jazz at the Enmore', 'Doors at 7. A full band, two sets, and the bar stays open after.').hidden, false)
+})
+
 test('example and picsum hosts are not public listing links', () => {
   assert.equal(fakePublicUrl('https://example.com/tickets/pride-nights'), true)
   assert.equal(fakePublicUrl('https://picsum.photos/seed/x/800'), true)
