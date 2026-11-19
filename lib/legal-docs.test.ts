@@ -9,6 +9,7 @@ import {
   missingAcceptance,
   promoterAcceptance,
   requiredAcceptance,
+  promoterUpgradeError,
   signupTermsError,
 } from './legal-docs'
 import { PREVIOUS_LEGAL } from './legal-previous'
@@ -34,6 +35,10 @@ test('checkout and promoter signup reject a missing tick', () => {
   assert.match(signupTermsError('PROMOTER', false) ?? '', /Promoter Terms/)
   assert.equal(signupTermsError('PROMOTER', true), null)
   assert.equal(checkoutTermsError('true'), 'Tick that you agree to the Promoter Terms before paying.')
+  assert.match(promoterUpgradeError({ agreePromoterTerms: false, orgName: 'Harbour Nights' }) ?? '', /Promoter Terms/)
+  assert.match(promoterUpgradeError({ agreePromoterTerms: true, orgName: '  ' }) ?? '', /organisation name/)
+  assert.equal(promoterUpgradeError({ agreePromoterTerms: 'true', orgName: 'Harbour Nights' }), 'Tick that you agree to the Promoter Terms.')
+  assert.equal(promoterUpgradeError({ agreePromoterTerms: true, orgName: 'Harbour Nights' }), null)
 })
 
 test('the archive is the full text from before this version', () => {

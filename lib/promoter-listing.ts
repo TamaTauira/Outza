@@ -92,7 +92,7 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
     .filter((t): t is string => typeof t === 'string' && allowed.has(t))
     .slice(0, 6)
 
-  const priceText = String(b.price ?? '').trim()
+  const priceText = listingPayloadPrice(b.isFree === true || b.isFree === 'true', String(b.price ?? '').trim())
   if (priceText && /[-−]\s*\$?\s*\d/.test(priceText)) return { ok: false, error: 'Price can’t be negative' }
   const wantFree = b.isFree === true || b.isFree === 'true'
   const read = readPrice(wantFree ? null : priceText, wantFree)
@@ -161,10 +161,51 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
   }
 }
 
+/** Checking Free clears a typed price before it is saved. */
+export function listingPayloadPrice(isFree: boolean, price: string): string {
+  return isFree ? '' : price
+}
+
+/** Apply one create/edit field. Free clears the price in state. */
+export function applyListingField<T extends { isFree: boolean; price: string }>(form: T, key: string, value: string | boolean): T {
+  if (key === 'isFree') {
+    const isFree = value === true
+    return { ...form, isFree, price: isFree ? '' : form.price }
+  }
+  const next = { ...form, [key]: value } as T
+  if (key === 'category' && 'subTag' in next) return { ...next, subTag: '' }
+  return next
+}
+
+/**
+ * New organiser listings stay off the public board until Publish.
+ * `hidden` is the existing public-board flag (a hidden event 404s). No new column.
+ */
+export function listingHiddenOnCreate(publish: unknown): boolean {
+  return publish !== true
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** UTC day the campaign clock stops. Same sum the early-finish check uses. */
+export function campaignFinishIso(days: number, now = Date.now()): string {
+  return new Date(now + days * 86400000).toISOString().slice(0, 10)
+}
+
+function labelIso(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${Number(day)} ${MONTHS[Number(month) - 1]} ${year}`
+}
+
 /** A campaign that finishes before the event date will not be on the board for the show. */
 export function campaignEndsBeforeEvent(eventDate: string, days: number, now = Date.now()): boolean {
   if (!DAY.test(eventDate.slice(0, 10)) || !Number.isFinite(days)) return false
-  const ends = new Date(now + days * 86400000)
-  const endsKey = ends.toISOString().slice(0, 10)
-  return endsKey < eventDate.slice(0, 10)
+  return campaignFinishIso(days, now) < eventDate.slice(0, 10)
+}
+
+/** Soft note when a short buy finishes before a later gig. Null when the boost still covers the event day. */
+export function campaignScheduleNote(eventDate: string, days: number, now = Date.now()): string | null {
+  if (!campaignEndsBeforeEvent(eventDate, days, now)) return null
+  const finish = campaignFinishIso(days, now)
+  return `This boost starts now and finishes on ${labelIso(finish)}. The event is later, on ${labelIso(eventDate.slice(0, 10))}.`
 }

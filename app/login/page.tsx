@@ -4,7 +4,7 @@ import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { establishSession } from '@/lib/establish-session'
-import { safeNextPath } from '@/lib/safe-next'
+import { requestedNext, safeNextPath } from '@/lib/safe-next'
 import { Building2, Loader2, Megaphone, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
@@ -18,10 +18,10 @@ import { GoogleButton } from '@/components/google-button'
 function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
-  const nextParam = params.get('next')
-  const partnerEntry = params.get('as') === 'partner' || nextParam?.startsWith('/partners')
-  const [mode, setMode] = useState<'CONSUMER' | 'PROMOTER' | 'PARTNER'>(partnerEntry ? 'PARTNER' : params.get('as') === 'promoter' || nextParam?.startsWith('/promoter') ? 'PROMOTER' : 'CONSUMER')
-  const next = safeNextPath(nextParam, mode === 'PARTNER' ? '/partners' : mode === 'PROMOTER' ? '/promoter' : '/')
+  const requested = requestedNext(params.get('next'), params.get('callbackUrl'))
+  const partnerEntry = params.get('as') === 'partner' || requested?.startsWith('/partners')
+  const [mode, setMode] = useState<'CONSUMER' | 'PROMOTER' | 'PARTNER'>(partnerEntry ? 'PARTNER' : params.get('as') === 'promoter' || requested?.startsWith('/promoter') ? 'PROMOTER' : 'CONSUMER')
+  const next = safeNextPath(requested, mode === 'PARTNER' ? '/partners' : mode === 'PROMOTER' ? '/promoter' : '/')
   const [email, setEmail] = useState(() => params.get('email') ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -65,9 +65,9 @@ function LoginForm() {
         </div>
       )}
       {mode === 'PROMOTER'
-        ? <GoogleButton redirectTo="/promoter" label="Promoter sign in with Google" />
+        ? <GoogleButton redirectTo={next} label="Promoter sign in with Google" />
         : mode === 'CONSUMER'
-          ? <GoogleButton redirectTo="/" />
+          ? <GoogleButton redirectTo={next} />
           : null}
       <div className="space-y-1.5">
         <Label htmlFor="email">{mode === 'PROMOTER' ? 'Promoter email' : mode === 'PARTNER' ? 'Partner email' : 'Email'}</Label>

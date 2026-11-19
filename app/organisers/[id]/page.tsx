@@ -34,7 +34,7 @@ export default async function OrganiserPage({ params }: Props) {
   const name = user.orgName || user.name || 'Organiser'
   const claimed = await organiserNameClaimed(user.id)
   const events = await prisma.event.findMany({
-    where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },
+    where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, hidden: false, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },
     orderBy: { date: 'asc' },
     take: 24,
     select: { id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, city: true, category: true },

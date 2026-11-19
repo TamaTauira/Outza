@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Check, Loader2, Lock, Sparkles } from 'lucide-react'
-import { campaignEndsBeforeEvent } from '@/lib/promoter-listing'
+import { campaignScheduleNote } from '@/lib/promoter-listing'
 import { ADDONS, DURATIONS, PRO_PLAN, TIERS, formatAud, quote, tierDef, type Addon, type Duration, type Tier } from '@/lib/tiers'
 import { cn } from '@/lib/utils'
 import { PlacementPreview } from './placement-preview'
@@ -46,7 +46,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
   const selected = upcoming.find((e) => e.id === eventId)
   const toggleAddon = (a: Addon) => setAddons((cur) => (cur.includes(a) ? cur.filter((x) => x !== a) : [...cur, a]))
 
-  const early = selected ? campaignEndsBeforeEvent(selected.date, days, now || Date.now()) : false
+  const scheduleNote = selected && now ? campaignScheduleNote(selected.date, days, now) : null
   const checkout = async () => {
     if (!selected) { toast.error('Choose an event to promote'); return }
     if (!review) { setReview(true); return }
@@ -86,13 +86,14 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
             {TIERS.map((t) => {
               const on = tier === t.key
               return (
-                <button key={t.key} type="button" onClick={() => { setTier(t.key); setDays(t.headlineDays); setReview(false) }} aria-pressed={on}
+                <button key={t.key} type="button" onClick={() => { setTier(t.key); setReview(false) }} aria-pressed={on}
                   className={cn('relative text-left rounded-xl border p-4 transition-all bg-background', on ? 'border-primary ring-2 ring-primary/40 shadow-md' : 'border-border hover:border-muted-foreground/40')}>
                   {t.key === 'BRONZE' && <span className="absolute -top-2 right-3 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">POPULAR</span>}
                   <span className="block h-1.5 w-10 rounded-full mb-3" style={{ backgroundColor: t.color }} />
                   <p className="font-semibold">{t.name}</p>
                   <p className="text-xs text-muted-foreground">{t.tagline}</p>
-                  <p className="mt-2 text-xl font-bold">{formatAud(t.prices[days])}<span className="text-xs font-normal text-muted-foreground"> / {days} days</span></p>
+                  <p className="mt-2 text-xl font-bold">{formatAud(t.prices[days])}</p>
+                  <p className="text-xs text-muted-foreground">{days} days</p>
                   <ul className="mt-2 space-y-1">{t.perks.map((p) => <li key={p} className="flex gap-1.5 text-xs text-muted-foreground"><Check className="w-3.5 h-3.5 shrink-0 text-primary mt-px" />{p}</li>)}</ul>
                 </button>
               )
@@ -140,7 +141,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
           {q.lines.map((l) => (
             <div key={l.key} className="flex justify-between gap-2">
               <span>{l.name}</span>
-              <span className="tabular-nums">{pro && l.cents !== l.listCents && <s className="text-muted-foreground mr-1.5">{formatAud(l.listCents)}</s>}{formatAud(l.cents)}</span>
+              <span className="inline-flex items-baseline gap-2 tabular-nums">{pro && l.cents !== l.listCents && <s className="text-muted-foreground">{formatAud(l.listCents)}</s>}<span className={pro && l.cents !== l.listCents ? 'ml-2' : undefined}>{formatAud(l.cents)}</span></span>
             </div>
           ))}
           {pro && q.saving > 0 && <div className="flex justify-between text-free text-xs"><span>Pro saving ({PRO_PLAN.discountPct}%)</span><span>−{formatAud(q.saving)}</span></div>}
@@ -150,7 +151,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
           <span className="text-2xl font-bold tabular-nums">{formatAud(q.total)}</span>
         </div>
         <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment. Placements are labelled Sponsored. <Link href="/refunds" className="underline">Refunds</Link>, including under the Australian Consumer Law, are on the refunds page.</p>
-        {early && <p className="mt-3 text-xs text-amber-700 dark:text-amber-400" role="status">This campaign ends before the event date, so it will not still be running on the day.</p>}
+        {scheduleNote && <p className="mt-3 text-xs text-muted-foreground" role="status">{scheduleNote}</p>}
         <div className="mt-3"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}
         <button onClick={checkout} disabled={busy || !selected} className="mt-4 w-full h-11 rounded-md bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">

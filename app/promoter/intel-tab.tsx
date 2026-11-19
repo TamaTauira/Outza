@@ -66,17 +66,27 @@ export function IntelTab({ events }: { events: Ev[] }) {
   const [data, setData] = useState<VenueIntel | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => { if (!eventId && events[0]) setEventId(events[0].id) }, [events, eventId])
   useEffect(() => {
     if (!eventId) return
+    let live = true
+    const ctrl = new AbortController()
+    const timer = window.setTimeout(() => ctrl.abort(), 8000)
     setLoading(true); setError(''); setData(null)
-    fetch(`/api/promoter/intel?eventId=${encodeURIComponent(eventId)}`)
+    fetch(`/api/promoter/intel?eventId=${encodeURIComponent(eventId)}`, { signal: ctrl.signal })
       .then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d?.error ?? `HTTP ${r.status}`); return d })
-      .then(setData)
-      .catch((e) => { console.error('[intel]', e); setError(e instanceof Error ? e.message : 'Could not load the report') })
-      .finally(() => setLoading(false))
-  }, [eventId])
+      .then((d) => { if (live) setData(d) })
+      .catch((e) => {
+        if (!live) return
+        console.error('[intel]', e)
+        const timedOut = e instanceof Error && e.name === 'AbortError'
+        setError(timedOut ? 'That took too long. Try again.' : e instanceof Error ? e.message : 'Could not load the report')
+      })
+      .finally(() => { window.clearTimeout(timer); if (live) setLoading(false) })
+    return () => { live = false; window.clearTimeout(timer); ctrl.abort() }
+  }, [eventId, attempt])
 
   if (!events.length) {
     return (
@@ -115,7 +125,12 @@ export function IntelTab({ events }: { events: Ev[] }) {
           {Array.from({ length: 3 }, (_, i) => <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />)}
         </div>
       )}
-      {error && <p className="text-sm rounded-lg bg-muted/60 px-4 py-3">{error}</p>}
+      {error && (
+        <div className="rounded-lg bg-muted/60 px-4 py-3 text-sm">
+          <p>{error}</p>
+          <button type="button" onClick={() => setAttempt((n) => n + 1)} className="mt-2 inline-flex min-h-11 items-center rounded-md border border-border bg-background px-4 text-sm font-semibold">Retry</button>
+        </div>
+      )}
 
       {data && (
         <>

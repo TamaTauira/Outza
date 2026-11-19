@@ -4,7 +4,31 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { ReachDashboard } from '@/components/reach-dashboard'
+import { auToIso, isoToAu } from '@/lib/au-date'
 import type { ReachPayload } from '@/lib/organiser-reach-load'
+
+const LOAD_MS = 8000
+
+function DateText({ label, value, onChange }: { label: string; value: string; onChange: (iso: string) => void }) {
+  const [text, setText] = useState(() => isoToAu(value))
+  return (
+    <input
+      aria-label={label}
+      placeholder="dd/mm/yyyy"
+      inputMode="numeric"
+      autoComplete="off"
+      value={text}
+      onChange={(event) => {
+        const next = event.target.value
+        setText(next)
+        if (!next.trim()) { onChange(''); return }
+        const iso = auToIso(next)
+        if (iso) onChange(iso)
+      }}
+      className="h-10 w-36 rounded-md border border-border bg-background px-3 text-sm"
+    />
+  )
+}
 
 export function InsightsPanel() {
   const [range, setRange] = useState('28')
@@ -12,7 +36,8 @@ export function InsightsPanel() {
   const [to, setTo] = useState('')
   const [eventId, setEventId] = useState('')
   const [payload, setPayload] = useState<ReachPayload | null>(null)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   const query = useCallback(() => {
@@ -24,12 +49,20 @@ export function InsightsPanel() {
 
   useEffect(() => {
     let live = true
+    const ctrl = new AbortController()
+    const timer = window.setTimeout(() => ctrl.abort(), LOAD_MS)
     const params = query()
-    fetch(`/api/promoter/reach?${params}`)
+    fetch(`/api/promoter/reach?${params}`, { signal: ctrl.signal })
       .then((res) => { if (!res.ok) throw new Error('Could not load results'); return res.json() })
-      .then((data) => { if (live) { setPayload(data); setError(false) } })
-      .catch((err) => { console.error(err); if (live) setError(true) })
-    return () => { live = false }
+      .then((data) => { if (live) { setPayload(data); setError('') } })
+      .catch((err) => {
+        if (!live) return
+        console.error(err)
+        const timedOut = err instanceof Error && err.name === 'AbortError'
+        setError(timedOut ? 'Results didn’t load in time.' : 'Results didn’t load. Try again.')
+      })
+      .finally(() => { window.clearTimeout(timer); if (live) setLoading(false) })
+    return () => { live = false; window.clearTimeout(timer); ctrl.abort() }
   }, [query, tick])
 
   const csv = `/api/promoter/reach/export?${query()}`
@@ -43,26 +76,31 @@ export function InsightsPanel() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {['7', '28', '90'].map((item) => (
-            <button key={item} type="button" onClick={() => setRange(item)} className={`rounded-full px-3 py-1 text-sm ${range === item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Last {item} days</button>
+            <button key={item} type="button" onClick={() => { setError(''); setLoading(true); setRange(item) }} className={`rounded-full px-3 py-1 text-sm ${range === item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Last {item} days</button>
           ))}
-          <button type="button" onClick={() => setRange('custom')} className={`rounded-full px-3 py-1 text-sm ${range === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Dates</button>
+          <button type="button" onClick={() => { setError(''); setLoading(true); setRange('custom') }} className={`rounded-full px-3 py-1 text-sm ${range === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Dates</button>
         </div>
       </div>
       {range === 'custom' && (
         <div className="flex flex-wrap gap-2">
-          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} aria-label="From" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
-          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} aria-label="To" className="h-10 rounded-md border border-border bg-background px-3 text-sm" />
+          <DateText label="From" value={from} onChange={(iso) => { setError(''); setLoading(true); setFrom(iso) }} />
+          <DateText label="To" value={to} onChange={(iso) => { setError(''); setLoading(true); setTo(iso) }} />
         </div>
       )}
       {payload && payload.events.length > 1 && (
-        <select value={eventId} onChange={(event) => setEventId(event.target.value)} aria-label="Which event" className="h-10 max-w-md rounded-md border border-border bg-background px-3 text-sm">
+        <select value={eventId} onChange={(event) => { setError(''); setLoading(true); setEventId(event.target.value) }} aria-label="Which event" className="h-10 max-w-md rounded-md border border-border bg-background px-3 text-sm">
           <option value="">All my events</option>
           {payload.events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
         </select>
       )}
-      {!payload && !error && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Crunching the room…</p>}
-      {error && <p className="text-sm text-muted-foreground">Results are having a lie-down. Try again in a minute.</p>}
-      {payload && (
+      {loading && !error && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Crunching the room…</p>}
+      {error && (
+        <div className="rounded-lg border border-border px-4 py-3 text-sm">
+          <p>{error}</p>
+          <button type="button" onClick={() => { setPayload(null); setError(''); setLoading(true); setTick((value) => value + 1) }} className="mt-2 inline-flex min-h-11 items-center rounded-md border border-border px-4 text-sm font-semibold">Retry</button>
+        </div>
+      )}
+      {payload && !error && (
         <ReachDashboard
           payload={payload}
           csvHref={csv}

@@ -3,7 +3,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { Footer } from '@/components/footer'
+import { PromoterAppShell } from '@/components/promoter-shell'
 import { SiteHeader } from '@/components/site-header'
+import { promoterLoginHref } from '@/lib/promoter-nav'
 import { PromoterClient } from './promoter-client'
 import { BecomePromoter } from './become-promoter'
 
@@ -14,9 +16,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default async function PromoterPage() {
+export default async function PromoterPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const session = await auth()
-  if (!session?.user) redirect('/login?next=/promoter')
+  if (!session?.user) redirect(promoterLoginHref(searchParams ? await searchParams : {}))
   const role = (session.user as { role?: string }).role
   if (role === 'PARTNER') redirect('/partners')
   if (role !== 'PROMOTER' && role !== 'ADMIN') {
@@ -40,10 +42,8 @@ export default async function PromoterPage() {
     )
   }
   return (
-    <div className="min-h-screen bg-background">
-      <SiteHeader />
+    <PromoterAppShell>
       <PromoterClient stripeEnabled={!!process.env.STRIPE_SECRET_KEY} />
-      <Footer lastRefresh={null} />
-    </div>
+    </PromoterAppShell>
   )
 }

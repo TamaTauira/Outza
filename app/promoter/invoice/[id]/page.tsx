@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { PRO_PLAN, formatAudCents, productName } from '@/lib/tiers'
 import { formatInvoiceNumber, invoiceNumberFor, proDiscountLine } from '@/lib/invoice'
 import { sponsorshipInvoice } from '@/lib/sponsorship-store'
+import { PromoterAppShell } from '@/components/promoter-shell'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { PrintButton } from './print-button'
 
@@ -19,7 +20,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const session = await auth()
   const me = session?.user
-  if (!me?.id) redirect(`/login?as=promoter&callbackUrl=/promoter/invoice/${encodeURIComponent(id)}`)
+  if (!me?.id) redirect(`/login?as=promoter&next=${encodeURIComponent(`/promoter/invoice/${encodeURIComponent(id)}`)}`)
   const isAdmin = me.role === 'ADMIN'
 
   const buyer = { name: '', email: '' }
@@ -85,6 +86,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const number = seq != null ? formatInvoiceNumber(seq) : `VIBEPEEP-${(issued ?? new Date()).toISOString().slice(0, 10).replace(/-/g, '')}-${id.slice(-6).toUpperCase()}`
 
   return (
+    <PromoterAppShell>
     <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 print:py-0">
       <div className="flex items-center justify-between gap-3 print:hidden">
         <Link href="/promoter?tab=billing" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to billing</Link>
@@ -127,5 +129,6 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <p className="mt-10 text-xs text-neutral-500">Sponsored placements are shown as labelled sponsored content. Placement and reach depend on available inventory; no specific number of impressions or clicks is guaranteed.</p>
       </article>
     </main>
+    </PromoterAppShell>
   )
 }

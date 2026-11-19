@@ -61,3 +61,10 @@ export function signupTermsError(role: string, agreePromoter: unknown): string |
   if (agreePromoter === true) return null
   return 'Tick that you agree to the Promoter Terms.'
 }
+
+/** A consumer switching themselves to promoter must tick the terms and name an organisation. */
+export function promoterUpgradeError(input: { agreePromoterTerms: unknown; orgName: unknown }): string | null {
+  if (input.agreePromoterTerms !== true) return 'Tick that you agree to the Promoter Terms.'
+  if (typeof input.orgName !== 'string' || !input.orgName.trim()) return 'Enter an organisation name.'
+  return null
+}
