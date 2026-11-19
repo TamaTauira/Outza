@@ -530,43 +530,34 @@ export async function venueAnalytics(userId: string, venueId: string, preset: st
   const end = to ? new Date(`${to.slice(0, 10)}T23:59:59.000Z`) : new Date()
   const startKey = start.toISOString().slice(0, 10)
   const endKey = end.toISOString().slice(0, 10)
-  const [rows, saves, events] = await Promise.all([
+  const { loadVenueActivity } = await import('@/lib/venue-activity-load')
+  const [rows, followers, upcoming, activity] = await Promise.all([
     prisma.venueAnalyticsAggregate.findMany({ where: { venueId, period: { gte: startKey, lte: endKey } } }),
     prisma.venueFollow.count({ where: { venueKey: { in: [venue.key, followKey(venue.name, venue.city)] } } }),
-    prisma.event.findMany({ where: { venueId, duplicateOfId: null }, select: { views: true, date: true, title: true, id: true, category: true } }),
+    prisma.event.count({ where: { venueId, duplicateOfId: null, date: { gte: sydneyToday() } } }),
+    loadVenueActivity(venueId, start, startKey, endKey),
   ])
-  let publicReactions = 0
-  try {
-    publicReactions = await prisma.eventReaction.count({ where: { eventId: { in: events.map((event) => event.id) } } })
-  } catch (err) {
-    const code = (err as { code?: string })?.code
-    if (code !== 'P2021' && code !== 'P2022') console.error('venue reaction total failed', (err as Error)?.message)
-  }
-  const { actionWindows } = await import('@/lib/engagement-store')
-  const { trendSentence, trendLabel } = await import('@/lib/organiser-analytics')
-  const windows = await actionWindows(events.map((event) => event.id))
-  const trendNote = trendSentence(trendLabel(windows.recent, windows.previous))
-  const categories = new Map<string, number>()
-  for (const event of events) {
-    if (event.date < sydneyToday() || !event.category) continue
-    categories.set(event.category, (categories.get(event.category) ?? 0) + 1)
-  }
-  const categoryLead = [...categories.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null
   const sum = (metric: string) => rows.filter((row) => row.metricType === metric).reduce((total, row) => total + row.value, 0)
-  const upcoming = events.filter((event) => event.date >= sydneyToday()).length
   const view = venueAnalyticsView({
     profileViews: sum('PROFILE_VIEWS'),
     websiteClicks: sum('WEBSITE_CLICKS'),
     directionsClicks: sum('DIRECTIONS_CLICKS'),
     shares: sum('SHARES'),
-    saves,
+    saves: activity?.saves ?? 0,
     upcomingEvents: upcoming,
-    eventViews: events.reduce((total, event) => total + event.views, 0),
-    publicReactions,
-    categoryLead,
+    eventViews: activity?.views ?? 0,
+    categoryLead: activity?.categories[0]?.category ?? null,
   })
-  const mostViewed = [...events].sort((a, b) => b.views - a.views).slice(0, 5).map((event) => ({ id: event.id, title: event.title, views: event.views }))
-  return { status: 200 as const, analytics: view, mostViewed, caveat: ANALYTICS_CAVEAT, trendNote, range: { from: startKey, to: endKey } }
+  const { publicReactions: _reactions, ...rest } = view
+  const analytics = activity ? rest : { ...rest, saves: null, eventViews: null, categoryLead: null }
+  return {
+    status: 200 as const,
+    analytics,
+    activity,
+    followers,
+    caveat: ANALYTICS_CAVEAT,
+    range: { from: startKey, to: endKey },
+  }
 }
 
 export async function bumpVenueMetric(venueId: string, metricType: string) {
