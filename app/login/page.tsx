@@ -32,7 +32,10 @@ function LoginForm() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const ok = await establishSession(email.trim().toLowerCase(), password)
+    const ok = await Promise.race([
+      establishSession(email.trim().toLowerCase(), password),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 12000)),
+    ])
     setLoading(false)
     if (!ok) { setError('That email or password didn’t match. If you don’t have an account yet, create one first.'); return }
     router.replace(next)
