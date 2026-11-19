@@ -6,7 +6,7 @@ import { getSessionUser } from '@/lib/session'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-/** Monthly venue stats. Scheduled away from the hourly refresh minutes. */
+/** Monthly venue stats. Minute 31, after the refresh writes, once a month. */
 async function run(req: Request) {
   const me = await getSessionUser().catch(() => null)
   if (!cronAuthorized(req, me?.role)) {
