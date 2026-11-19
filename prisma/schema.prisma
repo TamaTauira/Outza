@@ -259,6 +259,9 @@ model User {
   proUntil            DateTime?
   weeklyReport        Boolean   @default(false) // promoter opted in to a weekly emailed performance report
   lastReportAt        DateTime?
+  /// Venue owners receive a monthly stats note until they turn it off. Separate from the newsletter.
+  venueMonthlyOptOut  Boolean   @default(false)
+  lastVenueReportAt   DateTime?
   birthYear           Int? // event-goers: year only. Age checks use the youngest age that year could be. Full dates are not stored.
   homePostcode        String?   // optional 4-digit AU postcode; only ever shown to promoters as grouped home areas
   vibeProfile         Json?     // optional vibe answers (lib/vibe-shared.ts); own recommendations + grouped stats only
@@ -1269,6 +1272,10 @@ model Venue {
   categories    String[] @default([])
   facilities    String[] @default([])
   accessibilityInfo String? @db.Text
+  /// How to get in, written by the venue. Not inferred from the map.
+  gettingThere  String?  @db.Text
+  /// Weekly hours in the venue’s own words, alongside openTime and closeTime.
+  hoursNote     String?  @db.Text
   logoUrl       String?
   photos        String[] @default([])
   announcement  String?  @db.Text

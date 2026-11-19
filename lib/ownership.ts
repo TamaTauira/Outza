@@ -490,7 +490,7 @@ export function splitVenuePatch(fields: Record<string, string | null>): { immedi
 
 const OPEN_FIELDS = new Set([
   'name', 'description', 'contactEmail', 'contactPhone', 'website', 'instagram', 'facebook', 'openingHours',
-  'categories', 'facilities', 'accessibilityInfo', 'announcement', 'logoUrl', 'address', 'legalName',
+  'categories', 'facilities', 'accessibilityInfo', 'gettingThere', 'hoursNote', 'announcement', 'logoUrl', 'address', 'legalName',
 ])
 
 export function validateVenueFields(input: Record<string, unknown>): { ok: true; fields: Record<string, string | null> } | { ok: false; error: string } {
@@ -507,7 +507,7 @@ export function validateVenueFields(input: Record<string, unknown>): { ok: true;
       continue
     }
     if (text.length > 4000) return { ok: false, error: `${key} is too long.` }
-    if (/[<>]/.test(text) && key !== 'description' && key !== 'accessibilityInfo' && key !== 'announcement') {
+    if (/[<>]/.test(text) && key !== 'description' && key !== 'accessibilityInfo' && key !== 'gettingThere' && key !== 'hoursNote' && key !== 'announcement') {
       return { ok: false, error: 'Leave out angle brackets.' }
     }
     if (['website', 'instagram', 'facebook', 'logoUrl'].includes(key)) {
@@ -517,9 +517,24 @@ export function validateVenueFields(input: Record<string, unknown>): { ok: true;
       continue
     }
     if (key === 'contactEmail' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return { ok: false, error: 'That email doesn’t look right.' }
-    fields[key] = text.slice(0, key === 'description' || key === 'announcement' || key === 'accessibilityInfo' ? 4000 : 300)
+    fields[key] = text.slice(0, key === 'description' || key === 'announcement' || key === 'accessibilityInfo' || key === 'gettingThere' || key === 'hoursNote' ? 4000 : 300)
   }
   return { ok: true, fields }
+}
+
+/** https photo links a venue owner pasted. Eight at most. Empty clears the gallery. */
+export function parsePhotoList(raw: unknown): { ok: true; photos: string[] } | { ok: false; error: string } {
+  if (raw == null || raw === '') return { ok: true, photos: [] }
+  const text = Array.isArray(raw) ? raw.map((item) => String(item)).join('\n') : String(raw)
+  const parts = text.split(/[\s,]+/).map((item) => item.trim()).filter(Boolean)
+  if (parts.length > 8) return { ok: false, error: 'Add up to 8 photos.' }
+  const photos: string[] = []
+  for (const part of parts) {
+    const url = usableHttp(part.startsWith('http') ? part : `https://${part}`)
+    if (!url || !url.startsWith('https:')) return { ok: false, error: 'Each photo needs an https link.' }
+    if (!photos.includes(url)) photos.push(url)
+  }
+  return { ok: true, photos }
 }
 
 export function profileCompleteness(venue: Record<string, unknown>): number {
