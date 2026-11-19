@@ -1,9 +1,6 @@
 import { Inter, Manrope } from 'next/font/google'
 import './globals.css'
 import '@/components/vibepeep-mascot.css'
-import '@/components/vibepeep-roam.css'
-import '@/components/vibepeep-rig.css'
-import '@/components/vibepeep-dances.css'
 import '@/components/bottom-nav.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
@@ -11,7 +8,6 @@ import { AudienceTracker } from '@/components/audience-tracker'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { DeploymentFetchPin } from '@/components/deployment-fetch-pin'
 import { Providers } from '@/components/providers'
-import { VibePeepBuddySlot } from '@/components/vibepeep-buddy-slot'
 import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_OG_IMAGE, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
@@ -102,7 +98,6 @@ export default function RootLayout({
               {modal}
             </div>
           </Providers>
-          <VibePeepBuddySlot />
           <Toaster />
           <ChunkLoadErrorHandler />
           <AudienceTracker />
