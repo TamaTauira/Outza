@@ -73,13 +73,13 @@ function popupHtml(e: any, tier?: string) {
     <a data-event-peek="1" href="${esc(eventPath({ id: String(e?.id ?? ''), title: e?.title }))}">Details →</a></div></div>`
 }
 
-function markerIcon(L: any, e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, color: string, tier?: string) {
-  const size = tier === 'GOLD' ? 44 : tier === 'BRONZE' ? 36 : 26
+function markerIcon(L: any, e: { category?: string | null }, color: string, tier?: string) {
+  const size = tier === 'GOLD' ? 28 : 18
   const ring = tier === 'GOLD' ? '#F5B700' : '#fff'
-  const src = pictureSrc(e, 'marker')
+  const mark = tier === 'GOLD' ? '★' : (e.category || '?').trim().charAt(0).toUpperCase() || '?'
   return L.divIcon({
     className: 'se-marker-wrap',
-    html: `<div class="se-marker ${tier ? `se-marker-${tier.toLowerCase()}` : ''}" style="width:${size}px;height:${size}px;background-color:${color};border-color:${ring};background-image:url('${esc(src)}')"></div>`,
+    html: `<div class="se-marker ${tier ? `se-marker-${tier.toLowerCase()}` : ''}" style="width:${size}px;height:${size}px;background-color:${color};border-color:${ring}">${esc(mark)}</div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   })
