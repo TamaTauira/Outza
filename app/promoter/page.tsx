@@ -12,6 +12,7 @@ export default async function PromoterPage() {
   const session = await auth()
   if (!session?.user) redirect('/login?next=/promoter')
   const role = (session.user as { role?: string }).role
+  if (role === 'PARTNER') redirect('/partners')
   if (role !== 'PROMOTER' && role !== 'ADMIN') {
     return (
       <div className="min-h-screen bg-background">

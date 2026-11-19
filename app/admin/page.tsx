@@ -16,6 +16,7 @@ const CARDS = [
   { href: '/admin/images', title: 'Images', body: 'Artwork pipeline.' },
   { href: '/admin/intel', title: 'Intelligence', body: 'Official data sources.' },
   { href: '/admin/sources', title: 'Event sources', body: 'Source register, duplicate reviews, and ingestion alerts.' },
+  { href: '/admin/partners', title: 'Source partners', body: 'Create a read-only login for a ticketing platform or other source.' },
   { href: '/admin/sponsorship', title: 'Sponsorship', body: 'Paying organisers, repeat purchase, MRR and margin.' },
   { href: '/admin/metrics', title: 'Metrics', body: 'Who’s coming back, whether listings hold up, and what each paying business is worth.' },
 ]

@@ -18,6 +18,7 @@ const LINKS = [
   { href: '/admin/images', label: 'Images' },
   { href: '/admin/intel', label: 'Intelligence' },
   { href: '/admin/sources', label: 'Sources' },
+  { href: '/admin/partners', label: 'Partners' },
   { href: '/admin/sponsorship', label: 'Sponsorship' },
 ]
 

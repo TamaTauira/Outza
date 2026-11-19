@@ -13,7 +13,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: ['/promoters', '/'],
-      disallow: ['/api/', '/admin', '/account', '/promoter', '/itinerary', '/unsubscribe', '/login', '/signup', '/saved'],
+      disallow: ['/api/', '/admin', '/account', '/promoter', '/partners', '/itinerary', '/unsubscribe', '/login', '/signup', '/saved'],
     },
     sitemap: `${origin}/sitemap.xml`,
   }
