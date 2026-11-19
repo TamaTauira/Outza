@@ -51,7 +51,7 @@ function EventRow({ ev, onChange }: { ev: AdminEvent; onChange: (e: AdminEvent) 
           {ev.date.slice(0, 10)} · {ev.source} · {a ? `${a.status}${a.width ? ` · ${a.width}×${a.height}` : ''}${a.enhanced ? ' · enhanced' : ''}` : 'not imported'}{ev.imageLocked ? ' · manually set' : ''}
         </p>
         {a?.note && <p className="text-xs text-amber-600 dark:text-amber-400">{a.note}</p>}
-        {a?.score && <p className="text-[11px] font-mono text-muted-foreground">sharpness {a.score.sharpness ?? '-'} · blockiness {a.score.blockiness ?? '-'} · score {a.score.overall ?? '-'}{a.score.integrity ? ` · PSNR ${a.score.integrity.psnr}` : ''}</p>}
+        {a?.score && <p className="text-xs font-mono text-muted-foreground">sharpness {a.score.sharpness ?? '-'} · blockiness {a.score.blockiness ?? '-'} · score {a.score.overall ?? '-'}{a.score.integrity ? ` · PSNR ${a.score.integrity.psnr}` : ''}</p>}
         <div className="flex flex-wrap gap-2 pt-1">
           <button className={btnGhost} disabled={busy} onClick={() => act('regenerate')}>Re-import &amp; process</button>
           {ev.imageLocked && <button className={btnGhost} disabled={busy} onClick={() => act('unlock')}>Let source manage</button>}

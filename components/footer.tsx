@@ -52,7 +52,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
       <div className="vp-wrap px-4 sm:px-6 py-10 grid gap-8 md:grid-cols-[auto_1fr_auto] md:items-center">
         <div className="flex flex-col gap-2">
           <VibePeepLogo size="sm" />
-          <span className="text-[11px] text-muted-foreground">Events · Experiences · Local discoveries.</span>
+          <span className="text-xs text-muted-foreground">Events · Experiences · Local discoveries.</span>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed md:px-8">
           Listings refreshed {refreshed} ({zoneName}) from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring and City of Sydney.
@@ -104,7 +104,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
             <span className="font-semibold text-foreground">Acknowledgement of Country. </span>{ACKNOWLEDGEMENT_OF_COUNTRY}
           </p>
         </div>
-        <div className="mt-4 flex flex-col gap-3 text-[11px] text-muted-foreground sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <span>VibePeep is an independent listings guide — information only, no warranties.</span>
           <span className="flex max-w-full flex-wrap gap-x-3 gap-y-2">
             <Link href="/together" className="hover:text-foreground underline underline-offset-2">Together</Link>

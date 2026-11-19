@@ -77,7 +77,7 @@ export function AudienceCard() {
             <Top title="Most shared" Icon={Share2} items={data.topShared} unit="shares" />
             <Top title="Most added to itineraries" Icon={Route} items={data.topItinerary} unit="adds" />
           </div>
-          {data.enough && data.hidden > 0 && <p className="text-[11px] text-muted-foreground">{data.hidden} small group{data.hidden === 1 ? '' : 's'} hidden to protect privacy.</p>}
+          {data.enough && data.hidden > 0 && <p className="text-xs text-muted-foreground">{data.hidden} small group{data.hidden === 1 ? '' : 's'} hidden to protect privacy.</p>}
         </div>
       )}
     </section>

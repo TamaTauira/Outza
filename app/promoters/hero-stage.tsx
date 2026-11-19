@@ -17,7 +17,7 @@ export function HeroStage() {
               <span className="block font-semibold">{row.name}</span>
               <span className="block text-xs text-white/70">{row.note}</span>
             </span>
-            <span className="rounded bg-black px-1.5 py-0.5 text-[10px] font-bold">SPONSORED</span>
+            <span className="rounded bg-black px-1.5 py-0.5 text-xs font-bold">SPONSORED</span>
           </li>
         ))}
       </ol>

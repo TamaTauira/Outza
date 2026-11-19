@@ -274,7 +274,7 @@ function ReportsCard({ account, onAccount }: { account: Account; onAccount: (a: 
       <button onClick={sendNow} disabled={sending} className="mt-3 w-full h-9 rounded-md border border-border text-sm font-medium flex items-center justify-center gap-2 hover:bg-muted disabled:opacity-60">
         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}Email me a report now
       </button>
-      {account.lastReportAt && <p className="text-[11px] text-muted-foreground mt-2">Last sent {fmt(account.lastReportAt)}</p>}
+      {account.lastReportAt && <p className="text-xs text-muted-foreground mt-2">Last sent {fmt(account.lastReportAt)}</p>}
     </div>
   )
 }
@@ -403,7 +403,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
 
 function TierBadge({ tier }: { tier: string }) {
   const t = tierDef(tier)
-  return <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ backgroundColor: t?.color ?? '#FF7A1A' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
+  return <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-black" style={{ backgroundColor: t?.color ?? '#FF7A1A' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
 }
 
 const blankListing = (city: string) => ({
@@ -517,20 +517,20 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                       <td className="px-5 py-3 min-w-0">
                         {ev.hidden ? <span className="font-medium">{ev.title}</span> : <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>}
                         <p className="text-xs text-muted-foreground">{fmt(ev.date)} · {ev.venueName}{ev.city ? ` · ${ev.city}` : ''}</p>
-                        {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
-                        {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">Details stay as published until you add an organiser update</p>}
+                        {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-xs text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
+                        {!promoterCanEditEvent(ev.source) && <p className="text-xs text-muted-foreground mt-0.5">Details stay as published until you add an organiser update</p>}
                       </td>
                       <td className="px-3 py-3">
                         {ev.status === 'CANCELLED' ? <span className="text-xs text-muted-foreground">Unpublished</span> : ev.hidden ? <span className="text-xs font-semibold">Draft</span> : past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (
                           <div className="space-y-1">
-                            <div className="flex flex-wrap gap-1"><TierBadge tier={liveTier.tier} />{liveAddons.map((a) => <span key={a.id} className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-primary/15 text-primary">{productName(a.tier).toUpperCase()}</span>)}</div>
-                            <p className="text-[11px] text-muted-foreground">until {fmt(liveTier.endsAt)}</p>
+                            <div className="flex flex-wrap gap-1"><TierBadge tier={liveTier.tier} />{liveAddons.map((a) => <span key={a.id} className="rounded px-1.5 py-0.5 text-xs font-bold bg-primary/15 text-primary">{productName(a.tier).toUpperCase()}</span>)}</div>
+                            <p className="text-xs text-muted-foreground">until {fmt(liveTier.endsAt)}</p>
                           </div>
                         ) : <span className="text-xs text-muted-foreground">Not promoted</span>}
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">
                         {(ev.views ?? 0).toLocaleString('en-AU')}
-                        {(ev.views ?? 0) > 0 && <span className="block text-[11px] text-muted-foreground">{((((ev._count?.savedBy ?? 0) + (ev._count?.attendees ?? 0) + (ev.reactionCount ?? 0) + (ev.ticketClicks ?? 0)) / (ev.views || 1)) * 100).toFixed(1)}% engagement</span>}
+                        {(ev.views ?? 0) > 0 && <span className="block text-xs text-muted-foreground">{((((ev._count?.savedBy ?? 0) + (ev._count?.attendees ?? 0) + (ev.reactionCount ?? 0) + (ev.ticketClicks ?? 0)) / (ev.views || 1)) * 100).toFixed(1)}% engagement</span>}
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">{(ev.ticketClicks ?? 0).toLocaleString('en-AU')}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{ev._count?.savedBy ?? 0} / {ev._count?.attendees ?? 0}</td>
@@ -611,7 +611,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                 <textarea value={form.transportInfo} onChange={set('transportInfo')} placeholder="Getting there e.g. nearest station, parking, drop-off" rows={2} className="sm:col-span-2 rounded-md border border-border bg-background px-3 py-2 text-sm" />
               </div>
             </details>
-            <p className="sm:col-span-2 text-[11px] text-muted-foreground">Include the suburb and postcode in the address so the map pin and Intelligence use that suburb, not the city centre. A finish time earlier than the start is treated as the next day.</p>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">Include the suburb and postcode in the address so the map pin and Intelligence use that suburb, not the city centre. A finish time earlier than the start is treated as the next day.</p>
             <div className="sm:col-span-2 flex flex-wrap gap-2">
               <button type="submit" value="draft" disabled={creating} className="h-10 rounded-md border border-border px-4 text-sm font-semibold disabled:opacity-60">{creating ? 'Saving…' : 'Save draft'}</button>
               <button type="submit" value="publish" disabled={creating} className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{creating ? 'Saving…' : 'Publish'}</button>
@@ -655,7 +655,7 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
                   <tr key={r.id} className="align-top">
                     <td className="px-5 py-3 whitespace-nowrap">{fmt(r.date)}</td>
                     <td className="px-3 py-3"><p className="font-medium">{r.title}</p><p className="text-xs text-muted-foreground">{r.items.join(' + ')}</p></td>
-                    <td className="px-3 py-3"><span className={cn('rounded-full px-2 py-0.5 text-[11px] font-semibold', statusLabel(r) === 'Active' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>{statusLabel(r)}</span>{r.test && <span className="ml-1.5 text-[10px] text-muted-foreground">test</span>}</td>
+                    <td className="px-3 py-3"><span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', statusLabel(r) === 'Active' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>{statusLabel(r)}</span>{r.test && <span className="ml-1.5 text-xs text-muted-foreground">test</span>}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-medium">{formatAud(r.cents)}</td>
                     <td className="px-5 py-3 text-right"><Link href={`/promoter/invoice/${encodeURIComponent(r.id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><FileText className="w-3.5 h-3.5" />View</Link></td>
                   </tr>
@@ -664,7 +664,7 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
             </table>
           </div>
         )}
-        <p className="text-[11px] text-muted-foreground mt-4">Prices in AUD, GST inclusive. Open any invoice to print it or save it as a PDF. A purchase is not refunded automatically just because a campaign ends. See the <Link href="/refunds" className="underline">refund policy</Link>, including your rights under the Australian Consumer Law.</p>
+        <p className="text-xs text-muted-foreground mt-4">Prices in AUD, GST inclusive. Open any invoice to print it or save it as a PDF. A purchase is not refunded automatically just because a campaign ends. See the <Link href="/refunds" className="underline">refund policy</Link>, including your rights under the Australian Consumer Law.</p>
         {account.pro && <button type="button" onClick={async () => { if (!window.confirm('End Promoter Pro now? Days already used are not automatically refunded. The refunds page still applies.')) return; const res = await fetch('/api/promoter/pro/cancel', { method: 'POST' }); if (res.ok) { toast.success('Pro ended'); onEnded() } else toast.error('Could not end Pro') }} className="mt-3 text-xs text-muted-foreground underline">End Pro</button>}
       </section>
       <ProCard account={account} onPro={onPro} proBusy={proBusy} />

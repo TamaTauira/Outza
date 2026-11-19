@@ -22,7 +22,7 @@ export default function PricingPage() {
         <div className="mt-8 grid gap-5 md:grid-cols-3">
           {TIERS.map((t) => (
             <div key={t.key} className={`relative flex flex-col rounded-2xl border bg-card p-6 shadow-sm ${t.key === 'BRONZE' ? 'border-primary ring-2 ring-primary/30' : 'border-border'}`}>
-              {t.key === 'BRONZE' && <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-primary-foreground">Start here</span>}
+              {t.key === 'BRONZE' && <span className="absolute -top-3 left-6 rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">Start here</span>}
               <span className="h-1.5 w-12 rounded-full" style={{ backgroundColor: t.color }} />
               <p className="mt-4 font-display text-xl font-bold">{t.name}</p>
               <p className="text-sm text-muted-foreground">{t.tagline}</p>
@@ -64,7 +64,7 @@ export default function PricingPage() {
         </div>
         <div className="mt-4 hidden overflow-x-auto rounded-xl border border-border md:block">
           <table className="w-full min-w-[32rem] text-left text-sm">
-            <thead className="bg-muted/60 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+            <thead className="bg-muted/60 font-mono text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 font-medium">Package</th>
                 {DURATIONS.map((d) => <th key={d.days} className="px-4 py-3 font-medium">{d.label}</th>)}

@@ -40,11 +40,11 @@ export function MetricTrend({ points, caption, seriesLabel, compareLabel }: { po
         {compare.map((d) => <path key={d} d={d} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-muted-foreground" />)}
         {main.map((d) => <path key={d} d={d} fill="none" stroke="currentColor" strokeWidth="2" className="text-primary" />)}
       </svg>
-      <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+      <div className="mt-1 flex justify-between text-xs uppercase tracking-wide text-muted-foreground">
         {labels.map((point, i) => <span key={`${point.label}-${i}`}>{point.label}</span>)}
       </div>
       {compareLabel && (
-        <p className="mt-1 flex gap-3 text-[11px] text-muted-foreground">
+        <p className="mt-1 flex gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1"><span className="h-0.5 w-4 bg-primary" /> {seriesLabel ?? 'This reading'}</span>
           <span className="inline-flex items-center gap-1"><span className="h-0.5 w-4 bg-muted-foreground" /> {compareLabel}</span>
         </p>

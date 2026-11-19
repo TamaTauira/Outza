@@ -64,7 +64,7 @@ export function LocalAdsTab() {
                         <td className="px-3 py-3">{live ? <span className="text-emerald-700 dark:text-emerald-400 font-medium">Live until {fmt(a.endsAt)}</span> : a.status === 'PENDING' ? <span className="text-amber-700 dark:text-amber-400">Awaiting payment</span> : <span className="text-muted-foreground">Ended</span>}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{a.views.toLocaleString('en-AU')}</td>
                         <td className="px-3 py-3 text-right tabular-nums">{a.clicks.toLocaleString('en-AU')}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">{formatAud(a.amountCents)}{a.paymentMode === 'test' && <span className="block text-[11px] text-muted-foreground">test mode</span>}{live && <button type="button" onClick={() => cancel(a)} className="block ml-auto mt-1 text-[11px] text-muted-foreground underline">Cancel</button>}</td>
+                        <td className="px-5 py-3 text-right tabular-nums">{formatAud(a.amountCents)}{a.paymentMode === 'test' && <span className="block text-xs text-muted-foreground">test mode</span>}{live && <button type="button" onClick={() => cancel(a)} className="block ml-auto mt-1 text-xs text-muted-foreground underline">Cancel</button>}</td>
                       </tr>
                     )
                   })}

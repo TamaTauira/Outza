@@ -264,11 +264,58 @@
   .vp-day-head-page { top: 4rem; }
 }
 
-/* Fluid shell. Full width up to the spec cap (about 1760px). Gutters stay on the pages. */
+/* Fluid shell. Full width up to the spec cap. Prose can sit inside --vp-container-prose. */
 .vp-wrap {
   width: 100%;
   max-width: var(--vp-container-max);
   margin-inline: auto;
+}
+
+.vp-display {
+  font-family: var(--font-display), Manrope, sans-serif;
+  font-size: clamp(2rem, 6vw, var(--vp-display));
+  line-height: var(--vp-display-lh);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.vp-h2 {
+  font-family: var(--font-display), Manrope, sans-serif;
+  font-size: var(--vp-h2);
+  line-height: var(--vp-h2-lh);
+  font-weight: 700;
+}
+
+/* Reserve the hero and the chip row so fonts and the clock do not shift the page. */
+.vp-peep-hero {
+  min-height: 22.5rem;
+}
+@media (min-width: 640px) {
+  .vp-peep-hero { min-height: 20rem; }
+}
+.vp-hero-clock {
+  width: 7.25rem;
+  min-height: 4.25rem;
+}
+.vp-chip-row {
+  min-height: 2.75rem;
+}
+
+/* Every chip and button is a 44px target. Text links in prose are left alone. */
+button,
+[role="button"],
+[role="tab"],
+summary,
+a.rounded-full {
+  min-height: 44px;
+}
+button[class*="w-8"],
+button[class*="w-9"],
+button[class*="h-8"],
+button[class*="h-9"],
+a[class*="w-8"],
+a[class*="w-9"] {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* Shared header lockup: icon, wordmark, grey tagline underneath.

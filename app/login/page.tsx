@@ -32,7 +32,10 @@ function LoginForm() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const ok = await establishSession(email.trim().toLowerCase(), password)
+    const ok = await Promise.race([
+      establishSession(email.trim().toLowerCase(), password),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 12000)),
+    ])
     setLoading(false)
     if (!ok) { setError('That email or password didn’t match. If you don’t have an account yet, create one first.'); return }
     router.replace(next)
@@ -95,7 +98,7 @@ function LoginForm() {
               <div key={t.key} className="rounded-lg bg-background border border-border p-2 text-center">
                 <span className="block h-1 w-6 mx-auto rounded-full mb-1.5" style={{ backgroundColor: t.color }} />
                 <p className="text-xs font-semibold">{t.name}</p>
-                <p className="text-[11px] text-muted-foreground">from {formatAud(t.prices[7])}</p>
+                <p className="text-xs text-muted-foreground">from {formatAud(t.prices[7])}</p>
               </div>
             ))}
           </div>

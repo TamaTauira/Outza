@@ -197,7 +197,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
               </span>
             ) : null}
             {showAddress ? <AddressLink href={mapsHref}>{addressText}</AddressLink> : null}
-            {event?.venueManagedLabel && <span className="block text-[11px] text-muted-foreground">{event.venueManagedLabel}</span>}
+            {event?.venueManagedLabel && <span className="block text-xs text-muted-foreground">{event.venueManagedLabel}</span>}
           </Fact>
         )}
         {event?.capacity > 0 && (
@@ -219,7 +219,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           type="button"
           onClick={() => toggle(event)}
           aria-label={savedNow ? 'Saved' : 'Save'}
-          className={cn('flex h-10 flex-col items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors', savedNow ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
+          className={cn('flex h-10 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition-colors', savedNow ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
         >
           <Bookmark className={cn('w-4 h-4', savedNow && 'fill-current')} />
           Save
@@ -230,7 +230,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           type="button"
           onClick={() => shareEvent(event)}
           aria-label="Share"
-          className="flex h-10 flex-col items-center justify-center rounded-lg border border-border text-[10px] font-semibold hover:bg-muted"
+          className="flex h-10 flex-col items-center justify-center rounded-lg border border-border text-xs font-semibold hover:bg-muted"
         >
           <Share2 className="w-4 h-4" />Share
         </button>

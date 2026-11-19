@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { getBoardFeed } from '@/lib/board-feed'
 import { CITY_NAMES, cityDef, DEFAULT_CITY } from '@/lib/cities'
-import { cityToday, eventPath } from '@/lib/seo'
-import { boardClockLine } from '@/lib/listing-window'
+import { cityToday } from '@/lib/seo'
+import { EventCardRow } from '@/components/event-card'
 import { relaxedSearchArgs, searchFeedArgs } from '@/lib/search-feed'
 
 export const dynamic = 'force-dynamic'
@@ -81,19 +81,11 @@ export default async function SearchPage({ searchParams }: Props) {
           </div>
         )}
         <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-          {events.map((event) => {
-            const when = boardClockLine(event) || 'Time not listed'
-            const place = [event.venueName, event.suburb].filter(Boolean).join(' · ')
-            return (
-              <li key={event.id} className="grid grid-cols-[4.75rem_minmax(0,1fr)] items-center gap-2 px-3 py-3">
-                <span className="text-sm tabular-nums text-muted-foreground">{when}</span>
-                <Link href={eventPath(event)} className="min-w-0">
-                  <span className="line-clamp-2 font-semibold">{event.title}</span>
-                  {place && <span className="block truncate text-sm text-muted-foreground">{place}</span>}
-                </Link>
-              </li>
-            )
-          })}
+          {events.map((event) => (
+            <li key={event.id}>
+              <EventCardRow event={event} />
+            </li>
+          ))}
         </ul>
       </main>
     </PageShell>

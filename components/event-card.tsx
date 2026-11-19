@@ -75,7 +75,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
             {/* Date badge */}
             <div className="absolute z-10 top-3 left-3 bg-white/95 dark:bg-card/95 backdrop-blur-sm rounded-lg px-2.5 py-1.5 text-center shadow-md">
               <div className="text-lg font-bold text-primary leading-none">{day}</div>
-              <div className="text-[10px] font-medium text-muted-foreground uppercase">{month}</div>
+              <div className="text-xs font-medium text-muted-foreground uppercase">{month}</div>
             </div>
 
             {/* Free badge */}
@@ -100,13 +100,13 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
             {/* Category + sub-tags */}
             <div className="flex flex-wrap items-center gap-1.5">
               <span
-                className="rounded-md px-2 py-0.5 text-[13px] font-semibold text-white"
-                style={{ backgroundColor: catDef?.color ?? '#FF7A1A' }}
+                className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A1A'} 28%, #151a19)`, color: '#F5F5F2' }}
               >
                 {event.category}
               </span>
               {(event.subTags ?? []).slice(0, 2).map((tag: string) => (
-                <span key={tag} className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted text-muted-foreground">
+                <span key={tag} className="px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-muted-foreground">
                   {tag}
                 </span>
               ))}
@@ -147,6 +147,32 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
         </div>
       </Link>
     </motion.div>
+  )
+}
+
+/** Compact row: date, category, title, place, price. No poster. Search and other lists use this. */
+export function EventCardRow({ event, listingQuery }: { event: EventData; listingQuery?: string }) {
+  const catDef = CATEGORIES.find((c) => c.name === event.category)
+  const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
+  const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
+  const clock = boardClockLine(event)
+  const dateObj = new Date(event.date)
+  const when = Number.isNaN(dateObj.getTime())
+    ? null
+    : dateObj.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const priceText = price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')
+  return (
+    <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="grid min-h-11 grid-cols-[5.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 hover:bg-muted/60">
+      <span className="text-xs font-medium text-muted-foreground">{when ?? 'Date TBC'}</span>
+      <span className="min-w-0">
+        <span className="line-clamp-2 font-semibold leading-snug">{displayTitle(event.title)}</span>
+        <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="shrink-0 rounded-md px-1.5 py-0.5 font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A1A'} 28%, #151a19)`, color: '#F5F5F2' }}>{event.category}</span>
+          <span className="truncate">{[clock, tidyVenueName(event.venueName, event.venueAddress, event.city), suburb].filter(Boolean).join(' · ')}</span>
+        </span>
+      </span>
+      <span className={cn('shrink-0 text-sm font-semibold tabular-nums', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{priceText}</span>
+    </Link>
   )
 }
 

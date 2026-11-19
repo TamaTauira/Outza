@@ -82,13 +82,13 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
         <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[4/3]" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
           <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={title} sizes="(min-width: 1024px) 25vw, 80vw" crop accent={color} category={category} slot="featured" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-          {badge && <span title={`${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>{badge.label}</span>}
-          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white">{category}</span>
+          {badge && <span title={`${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>{badge.label}</span>}
+          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white">{category}</span>
           <span className="absolute bottom-3 right-3 z-10 rounded bg-black/70 px-2 py-0.5 font-mono text-xs text-white">{priceText}</span>
         </div>
         <div className="p-3">
           <p className="truncate font-semibold" title={title}>{title}</p>
-          {it.tier !== 'HOT' && it.creative && <p className="truncate text-[11px] text-primary">{it.creative}</p>}
+          {it.tier !== 'HOT' && it.creative && <p className="truncate text-xs text-primary">{it.creative}</p>}
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{date} · {time.hm}{time.ampm ? ` ${time.ampm}` : ''}</p>
           <p className="truncate text-xs text-muted-foreground">{it.venueName}{it.city ? ` · ${it.city}` : ''}</p>
         </div>

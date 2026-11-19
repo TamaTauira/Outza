@@ -231,19 +231,19 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
               <div className="rounded-xl border border-border bg-background p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview</p>
                 <div className="mt-3 max-w-sm rounded-xl border border-border p-3 shadow-sm">
-                  <span className="rounded bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">Sponsored</span>
+                  <span className="rounded bg-black px-1.5 py-0.5 text-xs font-bold text-white">Sponsored</span>
                   <p className="mt-2 text-sm font-semibold">{headline || 'Your headline'}</p>
                   <p className="text-sm">{selected.title}</p>
                   <p className="text-xs text-muted-foreground">{selected.venueName}{selected.city ? ` · ${selected.city}` : ''} · {selected.category}</p>
                   {blurb && <p className="mt-1 text-xs">{blurb}</p>}
-                  <p className="mt-2 text-[11px] text-muted-foreground">{when || 'Pick a start and an end'}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{when || 'Pick a start and an end'}</p>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">The event title stays the real one. The headline is the sponsored line. Get tickets on the event page is unchanged.</p>
               </div>
             )}
           </div>
           <aside className="h-fit rounded-xl border border-border bg-background p-5 lg:sticky lg:top-24">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">This boost</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">This boost</p>
             <p className="mt-2 font-semibold">{product.name}</p>
             <p className="text-2xl font-bold tabular-nums">{formatAud(price)}</p>
             <p className="text-xs text-muted-foreground">Spend cap {formatAud(price)}. One charge. It does not renew.</p>
@@ -308,7 +308,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
                   {canPause && row.status === 'ACTIVE' && <button type="button" onClick={() => act('pause', row.id)} className="h-9 rounded-md border border-border px-3 text-xs font-semibold">Pause</button>}
                   {canPause && row.status === 'PAUSED' && <button type="button" onClick={() => act('resume', row.id)} className="h-9 rounded-md border border-border px-3 text-xs font-semibold">Resume</button>}
                 </div>
-                {!row.refundable && row.refundReason && row.status === 'ACTIVE' && <p className="mt-2 text-[11px] text-muted-foreground">{row.refundReason}</p>}
+                {!row.refundable && row.refundReason && row.status === 'ACTIVE' && <p className="mt-2 text-xs text-muted-foreground">{row.refundReason}</p>}
               </li>
             ))}
           </ul>

@@ -28,7 +28,7 @@ export default async function ArchivedLegalPage({ params }: Props) {
         <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Archive · not the current version</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Archive · not the current version</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">{text.title}</h1>
         <p className="mt-3 text-sm text-muted-foreground">Version {meta.version}. {meta.updated}.</p>
         <p className="mt-4 text-muted-foreground leading-relaxed">{text.intro}</p>

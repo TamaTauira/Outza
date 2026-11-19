@@ -15,6 +15,7 @@ const config: Config = {
         mono: ['var(--font-sans)', 'ui-monospace', 'monospace'],
       },
       fontSize: {
+        xs: ['13px', { lineHeight: '16px' }],
         caption: ['12px', { lineHeight: '16px' }],
         small: ['14px', { lineHeight: '20px' }],
         body: ['16px', { lineHeight: '24px' }],

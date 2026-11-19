@@ -26,7 +26,7 @@ function Trend({ series, showPrivate }: { series: ReachPayload['series']; showPr
         {showPrivate && <path d={path((point) => point.ticket)} fill="none" stroke="currentColor" strokeWidth="2.5" className="text-emerald-600" />}
         {showPrivate && <path d={path((point) => point.seen)} fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4" className="text-muted-foreground" />}
       </svg>
-      <div className="flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
         {showPrivate && <span>Dashed · seen</span>}
         {showPrivate && <span>Grey · opened</span>}
         <span className="text-primary">Colour · saved</span>
@@ -253,7 +253,7 @@ export function ReachDashboard({
         </section>
       )}
 
-      <p className="text-[11px] text-muted-foreground">{payload.historyNote}</p>
+      <p className="text-xs text-muted-foreground">{payload.historyNote}</p>
     </div>
   )
 }

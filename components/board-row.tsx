@@ -37,10 +37,10 @@ export const BOARD_COLS = 'xl:grid-cols-[92px_minmax(0,1fr)_minmax(0,250px)_130p
 function Finish({ when, compact }: { when: BoardRange; compact?: boolean }) {
   if (!when.endLine && !when.endNote) return null
   const time = compact
-    ? 'whitespace-nowrap font-mono text-[10px] leading-tight tabular-nums text-muted-foreground'
+    ? 'whitespace-nowrap font-mono text-xs leading-tight tabular-nums text-muted-foreground'
     : 'whitespace-nowrap font-mono text-xs leading-tight tabular-nums text-muted-foreground'
   const note = compact
-    ? 'whitespace-nowrap font-mono text-[10px] leading-tight text-muted-foreground'
+    ? 'whitespace-nowrap font-mono text-xs leading-tight text-muted-foreground'
     : 'whitespace-nowrap font-mono text-xs leading-tight text-muted-foreground'
   return (
     <>
@@ -101,7 +101,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
     >
       <div className="min-w-0 overflow-hidden" title={when.label}>
         <span className="whitespace-nowrap font-mono text-sm tabular-nums">{when.hm}</span>
-        <span className="ml-0.5 font-mono text-[10px] text-muted-foreground">{when.ampm}</span>
+        <span className="ml-0.5 font-mono text-xs text-muted-foreground">{when.ampm}</span>
         <Finish when={when} compact />
       </div>
       <div className="min-w-0">
@@ -142,8 +142,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
           {shownTitle}
         </Link>
         {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}
-        {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-[10px] font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
-        {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
+        {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-xs font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
+        {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-xs font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
         {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-[9px] font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
       </div>
 

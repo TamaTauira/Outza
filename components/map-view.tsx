@@ -101,6 +101,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [ready, setReady] = useState(false)
+  const [basemapReady, setBasemapReady] = useState(false)
   const youRef = useRef<any>(null)
   const Lref = useRef<any>(null)
   const fetchSeq = useRef(0)
@@ -218,6 +219,12 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         if (cancelled || !mapIsLive(map)) return
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
+        const paint = () => { if (!cancelled) setBasemapReady(true) }
+        window.setTimeout(paint, 2500)
+        try {
+          if (typeof layer.once === 'function') layer.once('load', paint)
+          else if (typeof layer.on === 'function') layer.on('load', paint)
+        } catch { /* the timeout still clears the loader */ }
       } catch (err) {
         if (!isBareNetworkFault(err)) console.error('Map style failed to load:', err)
       }
@@ -419,9 +426,10 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         </div>
       ) : null}
       <div className={bleed ? 'vp-map-stage relative min-h-0 w-full flex-1' : 'vp-map-stage relative h-full min-h-0 w-full'} style={stageStyle}>
-      {loading && events.length === 0 && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/40">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      {!basemapReady && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-[#151a19] text-[#f5f5f2]" role="status">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-semibold">Pulling the map into place…</p>
         </div>
       )}
       <div ref={mapRef} className={bleed ? 'se-map absolute inset-0 overflow-hidden' : 'se-map absolute inset-0 overflow-hidden rounded-2xl'} />

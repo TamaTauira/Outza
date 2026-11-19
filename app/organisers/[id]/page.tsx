@@ -58,7 +58,7 @@ export default async function OrganiserPage({ params }: Props) {
         <div className="mt-6 flex items-start gap-4">
           {user.image && <img src={user.image} alt="" className="w-16 h-16 rounded-full object-cover bg-muted" />}
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">Organiser</p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Organiser</p>
             <h1 className="font-display text-3xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
               {name}
               {claimed && <ClaimedTick kind="organiser" className="h-5 w-5" />}

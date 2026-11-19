@@ -87,7 +87,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <Icon className="w-4 h-4" />
                 <span className="hidden xl:inline">{label}</span>
                 {key === 'saved' && mounted && savedCount > 0 && (
-                  <span className="min-w-[18px] px-1 py-0.5 rounded border border-border font-mono text-[10px] text-center">{savedCount}</span>
+                  <span className="min-w-[18px] px-1 py-0.5 rounded border border-border font-mono text-xs text-center">{savedCount}</span>
                 )}
                 {view === key && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
               </Link>
@@ -122,7 +122,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild><Link href="/itinerary"><CalendarPlusIcon className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />Your account & inbox</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />Your account</Link></DropdownMenuItem>
                 {hasListings && <DropdownMenuItem asChild><Link href="/local?tab=mine"><List className="w-4 h-4 mr-2" />Your listings</Link></DropdownMenuItem>}
                 {user.role === 'PARTNER'
                   ? <DropdownMenuItem asChild><Link href="/partners"><Megaphone className="w-4 h-4 mr-2" />Source partner overview</Link></DropdownMenuItem>

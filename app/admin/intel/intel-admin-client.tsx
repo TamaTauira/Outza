@@ -42,8 +42,8 @@ export function IntelAdminClient() {
               const s = byKey.get(k), d = INTEL_SOURCES[k]
               return (
                 <tr key={k} className="border-t border-border align-top">
-                  <td className="py-3 pr-3"><b>{d.name}</b><span className="block text-[11px] text-muted-foreground">{d.scheduleLabel}</span></td>
-                  <td className="py-3 px-3">{s?.status ?? 'never_run'}{s?.lastError && <span className="block text-[11px] text-muted-foreground max-w-xs">{s.lastError}</span>}</td>
+                  <td className="py-3 pr-3"><b>{d.name}</b><span className="block text-xs text-muted-foreground">{d.scheduleLabel}</span></td>
+                  <td className="py-3 px-3">{s?.status ?? 'never_run'}{s?.lastError && <span className="block text-xs text-muted-foreground max-w-xs">{s.lastError}</span>}</td>
                   <td className="py-3 px-3">{when(s?.lastSuccessAt ?? null)}</td>
                   <td className="py-3 px-3">{s?.latestPeriod ?? '—'}</td>
                   <td className="py-3 px-3 text-right tabular-nums">{(s?.obsCount ?? 0).toLocaleString('en-AU')}</td>

@@ -241,12 +241,12 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
               </div>
               <EventReactions eventId={event.id} signedIn={signedIn} />
               <div className="grid grid-cols-4 gap-1.5">
-                <button type="button" onClick={() => toggle(savedEvent, surface)} aria-label={saved ? 'Saved' : 'Save'} className={cn('flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border px-1 text-[10px] font-semibold sm:text-xs', saved ? 'border-primary text-primary' : 'border-border')}>
+                <button type="button" onClick={() => toggle(savedEvent, surface)} aria-label={saved ? 'Saved' : 'Save'} className={cn('flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border px-1 text-xs font-semibold sm:text-xs', saved ? 'border-primary text-primary' : 'border-border')}>
                   <Bookmark className={cn('h-4 w-4 shrink-0', saved && 'fill-current')} /> {saved ? 'Saved' : 'Save'}
                 </button>
                 <ItineraryButton event={savedEvent} compact surface={surface} className="h-11 w-full rounded-xl" />
                 <AddToPlanButton eventId={event.id} city={event.city} icon surface={surface} className="h-11 w-full min-w-0 rounded-xl" />
-                <button type="button" onClick={() => shareEvent(event, surface)} aria-label="Share" className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border px-1 text-[10px] font-semibold sm:text-xs">
+                <button type="button" onClick={() => shareEvent(event, surface)} aria-label="Share" className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border px-1 text-xs font-semibold sm:text-xs">
                   <Share2 className="h-4 w-4 shrink-0" /> Share
                 </button>
               </div>
