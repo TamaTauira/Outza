@@ -105,15 +105,18 @@ function priceLine(ev: LocalItem) {
 }
 
 export function LocalBrowse({
-  city, setCity, suburb, setSuburb, applySuburb, category, setCategory, when, setWhen,
+  city, setCity, query, setQuery, applyQuery, appliedQuery, suburb, setSuburb, category, setCategory, when, setWhen,
   items, error, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
   closed, setClosed, more, setMore, isSaved, save, onList, onMine, onHow, hasListings, nowMinutes,
 }: {
   city: string
   setCity: (city: string) => void
+  query: string
+  setQuery: (query: string) => void
+  applyQuery: (query: string) => void
+  appliedQuery: string
   suburb: string
   setSuburb: (suburb: string) => void
-  applySuburb: (suburb: string) => void
   category: string
   setCategory: (category: string) => void
   when: string
@@ -143,7 +146,10 @@ export function LocalBrowse({
   const [mode, setMode] = useState<'board' | 'map' | 'list'>('list')
   const [sort, setSort] = useState<'soon' | 'name'>('soon')
   const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
-  const filtered = category || suburb || when !== 'weekend'
+  const searching = appliedQuery.trim()
+  const filtered = category || suburb || query.trim() || searching || when !== 'weekend'
+  const clearQuery = () => { setQuery(''); applyQuery('') }
+  const reset = () => { setCategory(''); clearQuery(); setSuburb(''); setWhen('weekend') }
   const featured = useMemo(() => {
     const pool = items ?? []
     const picks: LocalItem[] = []
@@ -185,7 +191,7 @@ export function LocalBrowse({
           </div>
           <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
         </div>
-        <form className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start" onSubmit={(event) => { event.preventDefault(); applySuburb(suburb) }}>
+        <form className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start" onSubmit={(event) => { event.preventDefault(); applyQuery(query) }}>
           <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
             <MapPin className="h-4 w-4 shrink-0 text-primary" />
             <span className="sr-only">Choose a city</span>
@@ -195,7 +201,7 @@ export function LocalBrowse({
           </label>
           <div className="flex min-w-0 items-center gap-2 rounded-xl bg-white p-1.5 text-neutral-900 shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] ring-2 ring-primary/50">
             <Search className="ml-2 h-4 w-4 shrink-0 text-primary" />
-            <input value={suburb} onChange={(event) => setSuburb(event.target.value)} placeholder="Suburb" aria-label="Suburb" className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
+            <input value={query} onChange={(event) => setQuery(event.target.value.slice(0, 200))} placeholder='Try "jazz tonight"' aria-label="Search local events" type="search" enterKeyHint="search" autoComplete="off" maxLength={200} className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
             <button type="submit" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
               <Search className="h-4 w-4" />Search
             </button>
@@ -226,7 +232,8 @@ export function LocalBrowse({
         <p className="mt-1 text-muted-foreground">Four picks. Swipe across, then the full list is below.</p>
         {!items && !error && <div className="mt-4 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="h-64 w-[78vw] max-w-[280px] shrink-0 animate-pulse rounded-2xl bg-muted" />)}</div>}
         {error && <p className="mt-4 rounded-2xl bg-card p-6 text-sm text-muted-foreground">{error}</p>}
-        {items && !items.length && !error && (
+        {items && !items.length && !error && searching && <SearchEmpty query={searching} city={city} onClear={clearQuery} onList={onList} />}
+        {items && !items.length && !error && !searching && (
           <div className="mt-4 rounded-2xl border border-border bg-card p-6">
             <p className="font-display text-lg font-bold">Nothing listed{category ? ` under ${localTileFor(category)?.label ?? 'that'}` : ''} for {city} {whenLabel} yet.</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a wider window, or be the neighbour who puts the first thing on the noticeboard.</p>
@@ -289,11 +296,11 @@ export function LocalBrowse({
                 <option value="name">Name</option>
               </select>
             )}
-            {filtered && <button type="button" onClick={() => { setCategory(''); setSuburb(''); applySuburb(''); setWhen('weekend') }} className="h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-primary">Reset</button>}
+            {filtered && <button type="button" onClick={reset} className="h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-primary">Reset</button>}
             </div>
           </div>
         </div>
-        <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}</p>
+        <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}{searching ? ` · “${searching}”` : ''}</p>
 
         {mode === 'map' && (
           <div className="mt-3 h-[28rem] sm:h-[36rem]">
@@ -303,7 +310,8 @@ export function LocalBrowse({
 
         {mode !== 'map' && error && <p className="mt-4 rounded-2xl bg-card p-6 text-sm">{error}</p>}
         {mode !== 'map' && !items && !error && <div className="mt-4 space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div>}
-        {mode !== 'map' && items && !items.length && !error && (
+        {mode !== 'map' && items && !items.length && !error && searching && <SearchEmpty query={searching} city={city} onClear={clearQuery} onList={onList} centered />}
+        {mode !== 'map' && items && !items.length && !error && !searching && (
           <div className="mt-4 rounded-2xl border border-border bg-card p-8 text-center">
             <p className="font-display text-lg font-bold">The noticeboard’s quiet for {city} {whenLabel}.</p>
             <p className="mt-1 text-sm text-muted-foreground">Clear a filter, open Peep, or list the thing you already know about.</p>
@@ -374,6 +382,19 @@ export function LocalBrowse({
           <Plus className="h-4 w-4" />List your thing free
         </button>
       </section>
+    </div>
+  )
+}
+
+function SearchEmpty({ query, city, onClear, onList, centered }: { query: string; city: string; onClear: () => void; onList: () => void; centered?: boolean }) {
+  return (
+    <div className={cn('mt-4 rounded-2xl border border-border bg-card p-6', centered && 'p-8 text-center')}>
+      <p className="font-display text-lg font-bold">Nothing on the local board matches “{query}” in {city}.</p>
+      <p className="mt-1 text-sm text-muted-foreground">Clear the search to see what’s listed here.</p>
+      <div className={cn('mt-4 flex flex-wrap gap-2', centered && 'justify-center')}>
+        <button type="button" onClick={onClear} className="h-11 rounded-full bg-muted px-4 text-sm font-semibold">Clear search</button>
+        <button type="button" onClick={onList} className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
+      </div>
     </div>
   )
 }
