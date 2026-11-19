@@ -197,11 +197,14 @@ export function cityInQuery(q: string): string {
   return ''
 }
 
+/** Friday–Sunday, or from today through Sunday once the weekend has started. Same span as weekendRange. */
 function weekend(today: string): [string, string] {
   const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
   if (dow === 0) return [today, today]
   if (dow === 6) return [today, addDays(today, 1)]
-  return [addDays(today, 6 - dow), addDays(today, 7 - dow)]
+  if (dow === 5) return [today, addDays(today, 2)]
+  const fri = addDays(today, 5 - dow)
+  return [fri, addDays(fri, 2)]
 }
 
 function escapeRe(s: string) {
@@ -331,9 +334,14 @@ export function fallbackParse(q: string, today: string) {
   if (/\b(lgbt\w*|queers?|gays?|prides?|lesbians?)\b/.test(s)) out.lgbtiq = true
   const money = s.match(/(?:under|below|less than)\s*\$?(\d+)/)
   if (money) out.maxPrice = Number(money[1])
+  const dateNight = /\bdate night\b/.test(s)
+  if (dateNight) {
+    out.timeOfDay = 'evening'
+    if (out.maxPrice == null) out.maxPrice = 80
+  }
   const cat = categoryFromQuery(s)
-  if (cat.category) out.category = cat.category
-  if (cat.subTag) out.subTag = cat.subTag
+  if (!dateNight && cat.category) out.category = cat.category
+  if (!dateNight && cat.subTag) out.subTag = cat.subTag
   const namedCity = cityInQuery(q)
   const place = suburbHit(q)
   if (namedCity) out.city = namedCity
@@ -343,6 +351,7 @@ export function fallbackParse(q: string, today: string) {
   const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'free', 'paid', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music', 'nye', 'new', 'year', 'eve', 'bar', ...DATE_WORDS, ...SOFT, ...Object.keys(MONTH_FULL), ...Object.keys(MONTH_ABBR), 'may'])
   if (city) city.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
   if (place?.suburb) place.suburb.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
+  if (/\bdate night\b/.test(s)) { stop.add('date'); stop.add('night') }
   const words = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w)).map(stemKeyword)
   out.keywords = [...new Set(words)].slice(0, 4)
   return out

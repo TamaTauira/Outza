@@ -39,7 +39,7 @@ const FRIDAY = '2026-10-30'
 
 test('markets stay a keyword and are not a hard Community filter', () => {
   const markets = interpretQuery('Markets this weekend', FRIDAY)
-  assert.equal(markets.dateFrom, '2026-10-31')
+  assert.equal(markets.dateFrom, '2026-10-30')
   assert.equal(markets.dateTo, '2026-11-01')
   assert.equal(markets.category, '')
   assert.equal(markets.subTag, '')
@@ -56,7 +56,7 @@ test('markets stay a keyword and are not a hard Community filter', () => {
 
   const bondi = interpretQuery('markets in Bondi this weekend', FRIDAY)
   assert.equal(bondi.suburb, 'Bondi')
-  assert.equal(bondi.dateFrom, '2026-10-31')
+  assert.equal(bondi.dateFrom, '2026-10-30')
   assert.deepEqual(bondi.keywords, ['market'])
 
   const rocks = interpretQuery('the rocks markets', FRIDAY)
@@ -72,7 +72,7 @@ test('markets stay a keyword and are not a hard Community filter', () => {
 
 test('dates use the Sydney calendar and do not leak into keywords', () => {
   const nextWeekend = interpretQuery('next weekend', FRIDAY)
-  assert.equal(nextWeekend.dateFrom, '2026-11-07')
+  assert.equal(nextWeekend.dateFrom, '2026-11-06')
   assert.equal(nextWeekend.dateTo, '2026-11-08')
   assert.equal(nextWeekend.keywords.includes('next'), false)
   assert.equal(nextWeekend.keywords.includes('weekend'), false)
@@ -153,7 +153,7 @@ test('topic words survive category guesses, and typos fold in', () => {
 
   const theatre = interpretQuery('theatre this weekend', FRIDAY)
   assert.deepEqual(theatre.keywords, ['theatre'])
-  assert.equal(theatre.dateFrom, '2026-10-31')
+  assert.equal(theatre.dateFrom, '2026-10-30')
 
   assert.deepEqual(interpretQuery('markts', FRIDAY).keywords, ['market'])
   assert.deepEqual(interpretQuery('comdey', FRIDAY).keywords, ['comedy'])
@@ -168,7 +168,7 @@ test('topic words survive category guesses, and typos fold in', () => {
 
   const free = interpretQuery('free events this weekend', FRIDAY)
   assert.equal(free.isFree, true)
-  assert.equal(free.dateFrom, '2026-10-31')
+  assert.equal(free.dateFrom, '2026-10-30')
   assert.deepEqual(free.keywords, [])
 })
 

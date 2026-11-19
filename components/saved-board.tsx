@@ -74,10 +74,29 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
     { key: 'past', label: 'Past events' },
   ]
 
+  if (!signedIn) {
+    return (
+      <div className="mb-10">
+        <PageMasthead variant="saved" />
+        <div className="mt-6 grid items-center gap-6 rounded-3xl border border-border bg-card px-5 py-8 sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
+          <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
+          <div className="text-center lg:text-left">
+            <h2 className="font-display text-3xl font-bold sm:text-4xl">Sign in to save events</h2>
+            <p className="mt-2 max-w-xl text-muted-foreground">Keepers live on your account. Browse what’s on, then save the ones you want.</p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+              <Link href="/login?next=/saved" className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Sign in</Link>
+              <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Browse what’s on</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mb-10">
       <PageMasthead variant="saved" />
-      <p className="mt-3 text-sm tabular-nums text-muted-foreground">{signedIn ? `${saved.length} saved` : 'Sign in and we’ll keep the count.'}</p>
+      <p className="mt-3 text-sm tabular-nums text-muted-foreground">{`${saved.length} saved`}</p>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">

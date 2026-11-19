@@ -50,7 +50,13 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
     const end = hhmm(ev.endTime)
     const dtStart = start ? `DTSTART;TZID=${tz}:${startKey}T${start.replace(':', '')}00` : `DTSTART;VALUE=DATE:${startKey}`
     let dtEnd: string
-    if (start && end) dtEnd = `DTEND;TZID=${tz}:${endKey}T${end.replace(':', '')}00`
+    let endDay = endKey
+    if (start && end && endDay === startKey && end < start) {
+      const next = new Date(`${endDay.slice(0, 4)}-${endDay.slice(4, 6)}-${endDay.slice(6, 8)}T00:00:00Z`)
+      next.setUTCDate(next.getUTCDate() + 1)
+      endDay = next.toISOString().slice(0, 10).replace(/-/g, '')
+    }
+    if (start && end) dtEnd = `DTEND;TZID=${tz}:${endDay}T${end.replace(':', '')}00`
     else if (start) dtEnd = 'DURATION:PT2H'
     else {
       const next = new Date(`${endKey.slice(0, 4)}-${endKey.slice(4, 6)}-${endKey.slice(6, 8)}T00:00:00Z`)

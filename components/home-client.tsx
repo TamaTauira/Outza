@@ -16,7 +16,9 @@ import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, SlidersHorizontal,
 import { Chip } from '@/components/ui/chip';
 import { SearchField } from '@/components/ui/search-field';
 import { cn } from '@/lib/utils';
-import { CITIES, DEFAULT_CITY } from '@/lib/cities';
+import { CITIES, cityDef, DEFAULT_CITY } from '@/lib/cities';
+import { weekendRange } from '@/lib/seo';
+import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { HomeRails } from '@/components/home-rails';
@@ -316,10 +318,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (key === 'tonight') { setDay(today); setTimeWindow('evening'); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }
     if (key === 'tomorrow') { setDay(addDays(today, 1)); setTimeWindow('all'); setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' })); }
     if (key === 'weekend') {
-      const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6);
-      if (sat) setDay(sat);
+      const range = weekendRange(cityDef(city || DEFAULT_CITY));
+      setDay(range.from);
       setTimeWindow('all');
-      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+      setFilters((f) => ({ ...f, dateFrom: range.from, dateTo: range.to, datePreset: '' }));
     }
     if (key === 'next' && nextWeek) {
       setDay(nextWeek.from);
@@ -349,6 +351,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   };
   const span = listSpan(day, filters.dateFrom, filters.dateTo);
   const mapFilters: FilterState = span ? { ...filters, dateFrom: span.from, dateTo: span.to } : filters;
+  const weekend = today ? weekendRange(cityDef(city || DEFAULT_CITY)) : null;
   const planKey = filters.dateFrom && nextWeek && filters.dateFrom === nextWeek.from && filters.dateTo === nextWeek.to
     ? 'next'
     : day === today && timeWindow === 'evening' && !filters.dateFrom
@@ -357,16 +360,15 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         ? 'today'
         : today && day === addDays(today, 1) && timeWindow === 'all' && !filters.dateFrom
           ? 'tomorrow'
-          : !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.dateFrom
+          : weekend && filters.dateFrom === weekend.from && filters.dateTo === weekend.to && timeWindow === 'all'
             ? 'weekend'
             : '';
   const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const weekendSat = today ? days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6) : null;
   const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string; detail: string }[] = today ? [
     { key: 'today', label: 'Today', detail: shortDate(today) },
     { key: 'tonight', label: 'Tonight', detail: 'From 5pm' },
     { key: 'tomorrow', label: 'Tomorrow', detail: shortDate(addDays(today, 1)) },
-    { key: 'weekend', label: 'This weekend', detail: weekendSat ? `${shortDate(weekendSat)} – ${shortDate(addDays(weekendSat, 1))}` : 'Sat – Sun' },
+    { key: 'weekend', label: 'This weekend', detail: weekend ? `${shortDate(weekend.from)} – ${shortDate(weekend.to)}` : 'Fri – Sun' },
     { key: 'next', label: 'Next week', detail: nextWeek ? `${shortDate(nextWeek.from)} – ${shortDate(nextWeek.to)}` : 'Next week' },
   ] : [];
   const boardPicked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
@@ -374,7 +376,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const quickLinks = [
   { label: 'Today', active: day === today && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
   { label: 'Tonight', active: day === today && timeWindow === 'evening' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setFilters(EMPTY_FILTERS); }) },
-  { label: 'This weekend', active: !!day && new Date(`${day}T00:00:00Z`).getUTCDay() === 6 && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { const sat = days.find((d) => new Date(`${d}T00:00:00Z`).getUTCDay() === 6); if (sat) setDay(sat); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
+  { label: 'This weekend', active: !!weekend && filters.dateFrom === weekend.from && filters.dateTo === weekend.to && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { if (!weekend) return; setDay(weekend.from); pinWindow('all'); setFilters({ ...EMPTY_FILTERS, dateFrom: weekend.from, dateTo: weekend.to }); }) },
   { label: 'Free events', active: filters.isFree, onClick: goBoard(() => setFilters((f) => ({ ...f, isFree: !f.isFree }))) },
   { label: 'LGBTIQ+ events', active: filters.isLGBTI, onClick: goBoard(() => setFilters((f) => ({ ...f, isLGBTI: !f.isLGBTI }))) },
   { label: 'Live music', active: boardPicked.length === 1 && boardPicked[0] === 'Music', onClick: goBoard(() => setFilters((f) => withCategories(f, boardPicked.length === 1 && boardPicked[0] === 'Music' ? [] : ['Music']))) }];
@@ -408,7 +410,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Tell us what you’re in the mood for…" queryRequest={askRequest} chips={false} />
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder={'Try "jazz this Friday"'} queryRequest={askRequest} chips={false} goToPage />
             </div>
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-[13px] text-white/70">Describe a vibe, a date, a place or a budget. Or just browse.</p>
             <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -418,12 +420,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 { label: 'Next week', run: () => applyPlan('next') },
                 { label: 'Free', run: () => { update({ isFree: true }); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Live music', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
-                { label: 'Date night', run: () => ask('Date night') },
+                { label: 'Date night', run: () => { if (!today) return; setDay(today); pinWindow('evening'); setFilters((f) => ({ ...withCategories(f, ['Food & Drink', 'Music', 'Arts & Culture', 'Nightlife']), dateFrom: '', dateTo: '' })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Family', run: () => { setFilters((f) => withCategories(f, ['Family'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Suburbs near me', run: () => {
-                  const ok = window.confirm('Use this device’s location to pick suburbs near you? We only ask when you tap this, and we don’t save the point.')
-                  if (!ok) return
-                  if (!navigator.geolocation) { document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return }
+                  if (!navigator.geolocation) { toast('This browser won’t share a location.'); return }
                   navigator.geolocation.getCurrentPosition((pos) => {
                     let best = CITIES[0]
                     let score = Number.POSITIVE_INFINITY
@@ -432,8 +432,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                       if (next < score) { best = item; score = next }
                     }
                     setCity(best.name)
+                    toast(`Showing neighbourhoods in ${best.name}.`)
                     requestAnimationFrame(() => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-                  }, () => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })
+                  }, () => toast('Location is off. Pick a city instead.'), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })
                 } },
               ].map((chip) => (
                 <button key={chip.label} type="button" onClick={chip.run} className="h-11 shrink-0 rounded-full bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20">{chip.label}</button>

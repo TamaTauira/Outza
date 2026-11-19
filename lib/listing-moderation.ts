@@ -9,6 +9,7 @@ const RALLY = /\b(protest|rally|demonstration)\b/i
 const REVIEW = /\b(nylon cable ties|restrain and arrest|incite violence|firearm|self-harm|suicide bomb)\b/i
 const FAKE_PAGE = /(^|\.)example\.(com|org|net)$|localhost|\.test$/i
 const FAKE_IMAGE = /picsum\.photos|placehold\.co|via\.placeholder\.com|source\.unsplash\.com/i
+const OFF_BOARD = /\b(bni|regus|\d-day training|one-day training)\b/i
 
 export function junkTitle(title: string): boolean {
   return JUNK_TITLE.test(title) || JUNK_REPEAT.test(title) || PRIVATE_EVENT.test(title) || MODEL_PENDING.test(title)
@@ -41,7 +42,7 @@ export function statusFromTitle(title: string): 'CANCELLED' | 'POSTPONED' | 'SOL
 
 export function listingModeration(title: string, description?: string | null): { hidden: boolean; moderationStatus: 'review' | 'hidden' | 'approved' } {
   if (needsModeration(title, description) || isRally(title, description)) return { hidden: true, moderationStatus: 'review' }
-  if (junkTitle(title) || junkDescription(description)) return { hidden: true, moderationStatus: 'hidden' }
+  if (junkTitle(title) || junkDescription(description) || OFF_BOARD.test(title)) return { hidden: true, moderationStatus: 'hidden' }
   return { hidden: false, moderationStatus: 'approved' }
 }
 

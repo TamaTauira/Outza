@@ -81,6 +81,11 @@ test('calendar export names the saved event and does not invent a timezone conve
   assert.match(ics, /DTSTART;TZID=Australia\/Sydney:20261102T193000/)
   assert.match(ics, /URL:https:\/\/outza-outza\.vercel\.app\/events\/jazz-evt1/)
   assert.equal(ics.includes('abacus'), false)
+  const overnight = eventsToIcs([{
+    id: 'late', title: 'Late set', date: '2026-11-02', time: '22:00', endTime: '03:00', city: 'Sydney',
+  }])
+  assert.match(overnight, /DTSTART;TZID=Australia\/Sydney:20261102T220000/)
+  assert.match(overnight, /DTEND;TZID=Australia\/Sydney:20261103T030000/)
 })
 
 test('watchlist mail is opt-in shaped: empty plans send nothing, reminders use a real window', () => {
