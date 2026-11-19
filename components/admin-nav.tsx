@@ -33,7 +33,7 @@ export function TrustCount({ className }: { className?: string }) {
   }, [])
   if (pending == null) return null
   return (
-    <span className={cn('inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-semibold tabular-nums', className)} aria-label={`${pending} items need approval`}>
+    <span className={cn('inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-semibold tabular-nums', className)} aria-label={`${pending} items need approval`}>
       {pending}
     </span>
   )

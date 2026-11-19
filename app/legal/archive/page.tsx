@@ -13,7 +13,7 @@ export default function LegalArchivePage() {
         <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Earlier versions</h1>
         <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">
           These are the legal pages as they stood before 18 November 2026. The current versions are the ones linked from the footer.

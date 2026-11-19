@@ -22,13 +22,13 @@ export function PlacementPreview({ event, tier, addons }: { event?: Ev; tier: Ti
         <div className="rounded-xl overflow-hidden bg-card shadow-md border border-border">
           <div className="relative aspect-[4/3] bg-muted">
             <img src={event.imageUrl && imgOk ? event.imageUrl : eventPictureSrc(null, event.category, 'card')} alt={`Artwork for ${event.title}`} className={`absolute inset-0 h-full w-full ${event.imageUrl && imgOk ? 'object-cover' : 'object-contain'}`} style={event.imageUrl && imgOk ? undefined : { background: '#110e16' }} onError={() => setImgOk(false)} />
-            <span className="absolute z-10 top-2 left-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ backgroundColor: t.color }}>{t.name.toUpperCase()}</span>
-            <span className="absolute z-10 top-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">Sponsored</span>
+            <span className="absolute z-10 top-2 left-2 rounded px-1.5 py-0.5 text-xs font-bold text-black" style={{ backgroundColor: t.color }}>{t.name.toUpperCase()}</span>
+            <span className="absolute z-10 top-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">Sponsored</span>
           </div>
           <div className="p-3">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-primary">{fmt(event.date)}</p>
+            <p className="font-mono text-xs uppercase tracking-wider text-primary">{fmt(event.date)}</p>
             <p className="font-semibold text-sm leading-snug line-clamp-2 mt-0.5">{event.title}</p>
-            <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" />{event.venueName}{event.city ? `, ${event.city}` : ''}</p>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" />{event.venueName}{event.city ? `, ${event.city}` : ''}</p>
           </div>
         </div>
         <div className="text-sm">
@@ -37,7 +37,7 @@ export function PlacementPreview({ event, tier, addons }: { event?: Ev; tier: Ti
             {t.perks.map((p) => <li key={p} className="flex gap-2 text-xs text-muted-foreground"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />{p}</li>)}
             {extras.map((a) => <li key={a.key} className="flex gap-2 text-xs text-muted-foreground"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 bg-primary" /><span><strong className="text-foreground">{a.name}:</strong> {a.desc}</span></li>)}
           </ul>
-          <p className="mt-3 text-[11px] text-muted-foreground">Illustrative preview. Placements are labelled sponsored, and their position depends on available inventory. We don&apos;t guarantee a number of impressions or clicks.</p>
+          <p className="mt-3 text-xs text-muted-foreground">Illustrative preview. Placements are labelled sponsored, and their position depends on available inventory. We don&apos;t guarantee a number of impressions or clicks.</p>
         </div>
       </div>
     </div>

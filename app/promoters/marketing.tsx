@@ -157,7 +157,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
             <article key={plan.key} data-testid={`plan-${plan.key}`} className="flex min-w-0 flex-col rounded-3xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-display text-xl font-bold">{plan.name}</h3>
-                {!plan.live && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">Coming soon</span>}
+                {!plan.live && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Coming soon</span>}
               </div>
               <p className="mt-3 font-display text-4xl font-bold tabular-nums">
                 {formatAud(plan.monthlyCents)}
@@ -192,16 +192,16 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
         <figure className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Event listing</p>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold">Illustrative</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">Illustrative</span>
           </div>
           <div className="mt-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#1c1917,#9A3412)] p-4 text-white">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/80">Live music</p>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/80">Live music</p>
             <p className="mt-2 font-display text-2xl font-bold">Boogie Nights</p>
             <p className="mt-1 text-sm text-white/80">Sat · 9:00 pm · The Roundhouse · Sydney</p>
           </div>
           <div className="mt-3 rounded-2xl border border-dashed border-[var(--vp-brand-pink)]/40 bg-[var(--vp-brand-pink)]/5 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-black px-1.5 py-0.5 text-[10px] font-bold text-white">SPONSORED</span>
+              <span className="rounded bg-black px-1.5 py-0.5 text-xs font-bold text-white">SPONSORED</span>
               <span className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">Recommended</span>
             </div>
             <p className="mt-2 font-semibold">The Late Kitchen</p>

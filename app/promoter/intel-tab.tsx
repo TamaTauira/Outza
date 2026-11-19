@@ -40,10 +40,10 @@ function Section({ title, Icon, sub, credit, children }: { title: string; Icon: 
 function InsightCard({ i }: { i: Insight }) {
   return (
     <li className={cn('rounded-lg bg-background border border-border p-4', i.highlight && 'md:col-span-2 border-primary/40 bg-primary/5')}>
-      {i.highlight && <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1">LGBTIQ+</p>}
+      {i.highlight && <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">LGBTIQ+</p>}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="font-semibold text-sm">{i.title}</p>
-        <span className={cn('text-[11px] font-medium rounded-full px-2 py-0.5 shrink-0', CONF_STYLE[i.confidence])}>How sure: {CONFIDENCE_LABEL[i.confidence]}</span>
+        <span className={cn('text-xs font-medium rounded-full px-2 py-0.5 shrink-0', CONF_STYLE[i.confidence])}>How sure: {CONFIDENCE_LABEL[i.confidence]}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-1.5">{i.detail}</p>
       {!!i.links?.length && (
@@ -56,7 +56,7 @@ function InsightCard({ i }: { i: Insight }) {
           ))}
         </ul>
       )}
-      <p className="text-[11px] text-muted-foreground mt-2">{KIND[i.kind]} · {i.sources.map((s) => INSIGHT_SOURCE_LABEL[s] ?? s).join(', ')}</p>
+      <p className="text-xs text-muted-foreground mt-2">{KIND[i.kind]} · {i.sources.map((s) => INSIGHT_SOURCE_LABEL[s] ?? s).join(', ')}</p>
     </li>
   )
 }
@@ -165,7 +165,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
                   <tbody>
                     {data.area.map((a) => (
                       <tr key={a.code} className="border-t border-border">
-                        <td className="py-2 pr-3" title={[a.meaning, a.limitation].filter(Boolean).join(' ')}>{a.label}<span className="block text-[11px] text-muted-foreground">{a.unit}</span></td>
+                        <td className="py-2 pr-3" title={[a.meaning, a.limitation].filter(Boolean).join(' ')}>{a.label}<span className="block text-xs text-muted-foreground">{a.unit}</span></td>
                         <td className="py-2 px-3 text-right tabular-nums font-semibold">{unitFmt(a.venue, a.unit, a.decimals)}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{unitFmt(a.council, a.unit, a.decimals)}</td>
                         <td className="py-2 px-3 text-right tabular-nums">{unitFmt(a.bench, a.unit, a.decimals)}</td>
@@ -190,7 +190,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
                     </li>
                   ))}
                 </ul>
-                <p className="text-[11px] text-muted-foreground mt-3">Thick bar: venue area. Thin bar: {data.benchLabel}.</p>
+                <p className="text-xs text-muted-foreground mt-3">Thick bar: venue area. Thin bar: {data.benchLabel}.</p>
               </Section>
             )}
             {data.seifa.length > 0 && (
@@ -199,7 +199,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
                   {data.seifa.map((s) => (
                     <li key={s.index} className="text-sm">
                       <div className="flex justify-between gap-3"><span>{s.index} · {s.label}</span><span className="tabular-nums font-semibold shrink-0 text-right">State {s.nswDecile ?? '—'} · Australia {s.ausDecile ?? '—'}</span></div>
-                      <p className="text-[11px] text-muted-foreground">{s.meaning}</p>
+                      <p className="text-xs text-muted-foreground">{s.meaning}</p>
                     </li>
                   ))}
                 </ul>
@@ -208,7 +208,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
           </div>
 
           {data.status !== 'no_location' && data.status !== 'outside_au' && (
-            <Section title="Getting there" Icon={TrainFront} sub={data.transportCovered ? 'Transport for NSW stations, wharves and stops within 2 km (straight line). Tap-ons are monthly Opal totals, not attendance.' : 'Opal tap-on counts are published for New South Wales only.'} credit={<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Source: <a href="https://opendata.transport.nsw.gov.au/" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Transport for NSW Open Data</a>, <a href={CC_BY_4} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>}>
+            <Section title="Getting there" Icon={TrainFront} sub={data.transportCovered ? 'Transport for NSW stations, wharves and stops within 2 km (straight line). Tap-ons are monthly Opal totals, not attendance.' : 'Opal tap-on counts are published for New South Wales only.'} credit={<p className="mt-3 text-xs leading-relaxed text-muted-foreground">Source: <a href="https://opendata.transport.nsw.gov.au/" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Transport for NSW Open Data</a>, <a href={CC_BY_4} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>}>
               {!data.transportCovered ? <p className="text-sm text-muted-foreground">This city is outside the Transport for NSW dataset, so station patronage is not shown. We don&apos;t substitute another city&apos;s taps.</p> : data.stations.length ? (
                 <ul className="divide-y divide-border">
                   {data.stations.map((s) => (
@@ -236,7 +236,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
                   </li>
                 ))}
               </ul>
-              <p className="text-[11px] text-muted-foreground mt-3">{data.weekend.caveat} <a href={data.weekend.url} target="_blank" rel="noopener noreferrer" className="underline">Source</a>. Licence: {data.weekend.licence}.</p>
+              <p className="text-xs text-muted-foreground mt-3">{data.weekend.caveat} <a href={data.weekend.url} target="_blank" rel="noopener noreferrer" className="underline">Source</a>. Licence: {data.weekend.licence}.</p>
             </Section>
           )}
 
@@ -258,11 +258,11 @@ export function IntelTab({ events }: { events: Ev[] }) {
                   <div><dt className="text-xs text-muted-foreground">International trips</dt><dd className="text-xl font-bold tabular-nums">{big(data.visitor.intlTrips)}{data.visitor.intlYoyPct != null && <span className="text-xs font-medium text-muted-foreground ml-1">{signed(data.visitor.intlYoyPct)} on {period(data.visitor.intlPeriod)}</span>}</dd></div>
                 </dl>
                 {data.visitor.statePeakPeriod && <p className="text-xs text-muted-foreground mt-3">Busiest recent {data.visitor.stateName} quarter: {period(data.visitor.statePeakPeriod)} ({big(data.visitor.statePeakTrips)} overnight trips). {data.visitor.useStateTiming ? 'Used as the state season, and labelled as the whole state.' : 'Shown as the state total only. It is not this city’s peak.'}</p>}
-                <p className="text-[11px] text-muted-foreground mt-2">Source: <a href="https://www.tra.gov.au/" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Tourism Research Australia</a>. Licence: <a href={CC_BY_4} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
+                <p className="text-xs text-muted-foreground mt-2">Source: <a href="https://www.tra.gov.au/" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Tourism Research Australia</a>. Licence: <a href={CC_BY_4} className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>.</p>
               </Section>
             )}
             {data.tourism.period && (
-              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW headline, ${period(data.tourism.period)}, including day trips. Not the overnight-only series. Not this venue.`} credit={<p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Source: <a href="https://www.destinationnsw.com.au/insights" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Destination NSW</a>, based on Tourism Research Australia visitor surveys.</p>}>
+              <Section title={data.tourismTitle ?? 'Visitors'} Icon={Plane} sub={`Destination NSW headline, ${period(data.tourism.period)}, including day trips. Not the overnight-only series. Not this venue.`} credit={<p className="mt-3 text-xs leading-relaxed text-muted-foreground">Source: <a href="https://www.destinationnsw.com.au/insights" className="underline underline-offset-2" target="_blank" rel="noopener noreferrer">Destination NSW</a>, based on Tourism Research Australia visitor surveys.</p>}>
                 <dl className="grid grid-cols-2 gap-4 text-sm">
                   <div><dt className="text-xs text-muted-foreground">All visitors</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.visitors)}</dd></div>
                   <div><dt className="text-xs text-muted-foreground">Visitor nights</dt><dd className="text-xl font-bold tabular-nums">{big(data.tourism.nights)}</dd></div>

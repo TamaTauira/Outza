@@ -225,8 +225,8 @@ function RailCard({ ev }: { ev: RailEvent }) {
     <Link href={eventPath(ev)} scroll={false} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
       <div className="relative aspect-[4/3]" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
         <EventImage image={ev.imageAsset} src={ev.imageUrl} kind="card" alt="" sizes="200px" compact crop accent={color} category={ev.category} slot="card" />
-        {ev.sponsored && <span className="absolute left-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">Sponsored</span>}
-        <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-[11px] text-white">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
+        {ev.sponsored && <span className="absolute left-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">Sponsored</span>}
+        <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-xs text-white">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
       </div>
       <div className="p-2.5">
         <p className="truncate text-sm font-semibold">{ev.title}</p>

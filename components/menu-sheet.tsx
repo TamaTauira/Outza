@@ -38,7 +38,7 @@ export function MenuSheet({
   const items: Item[] = signedIn
     ? [
         { href: '/together', label: 'Plan with your crew', Icon: Users },
-        { href: '/account', label: 'Your account & inbox', Icon: Settings },
+        { href: '/account', label: 'Your account', Icon: Settings },
         ...(hasListings ? [{ href: '/local?tab=mine', label: 'Your listings', Icon: List }] : []),
         isPromoter
           ? { href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }

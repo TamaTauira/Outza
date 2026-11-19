@@ -51,13 +51,13 @@ export function InfoPage({
         </div>
         <aside className="mt-10 hidden lg:block">
           <nav aria-label="On this page" className="sticky top-24 rounded-xl border border-border bg-card p-5 text-sm shadow-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">On this page</p>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">On this page</p>
             <ul className="mt-3 space-y-2 xl:columns-2 xl:gap-x-8">
               {sections.map((s) => (
                 <li key={s.title} className="break-inside-avoid"><a href={`#${slug(s.title)}`} className="text-muted-foreground hover:text-foreground">{s.title}</a></li>
               ))}
             </ul>
-            <p className="mt-6 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Also</p>
+            <p className="mt-6 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">Also</p>
             <ul className="mt-3 space-y-2">
               <li><Link href="/contact" className="text-muted-foreground hover:text-foreground">Contact</Link></li>
               <li><Link href="/faq" className="text-muted-foreground hover:text-foreground">FAQ</Link></li>

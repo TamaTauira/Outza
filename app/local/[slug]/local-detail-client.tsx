@@ -115,7 +115,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                     type="button"
                     onClick={() => toggle(ev, 'local')}
                     aria-label={isSaved(ev.id) ? 'Saved' : 'Save'}
-                    className={cn('flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border text-[10px] font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
+                    className={cn('flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
                   >
                     <Bookmark className={cn('w-4 h-4', isSaved(ev.id) && 'fill-current')} />
                     Save
@@ -126,7 +126,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
                     type="button"
                     onClick={() => shareEvent({ id: ev.id, title: l.title }, 'local')}
                     aria-label="Share"
-                    className="flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border border-border text-[10px] font-semibold hover:bg-muted"
+                    className="flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border border-border text-xs font-semibold hover:bg-muted"
                   >
                     <Share2 className="w-4 h-4" />Share
                   </button>

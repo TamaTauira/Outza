@@ -101,7 +101,7 @@ export default function RefundsPage() {
   return (
     <PageShell>
       <main className="vp-wrap px-4 py-12 sm:px-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Refunds</h1>
         <LegalStamp doc="refunds" />
         <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">

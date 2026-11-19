@@ -186,10 +186,10 @@ export function PartnerView({ overview, list, filters }: { overview: PartnerOver
                   <p className="mt-1 text-sm text-muted-foreground">{when(row.date)} · {row.city}{row.suburb ? ` · ${row.suburb}` : ''} · {row.category}</p>
                   <p className="text-sm text-muted-foreground">{row.venueName} · {row.price} · {row.claimed ? 'Claimed' : 'Not claimed'}</p>
                   <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
-                    <div><dt className="text-[11px] text-muted-foreground">Views</dt><dd className="font-semibold tabular-nums">{n(row.views)}</dd></div>
-                    <div><dt className="text-[11px] text-muted-foreground">Saves</dt><dd className="font-semibold tabular-nums">{n(row.saves)}</dd></div>
-                    <div><dt className="text-[11px] text-muted-foreground">Itinerary</dt><dd className="font-semibold tabular-nums">{n(row.itineraryAdds)}</dd></div>
-                    <div><dt className="text-[11px] text-muted-foreground">Tickets</dt><dd className="font-semibold tabular-nums">{n(row.ticketClicks)}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Views</dt><dd className="font-semibold tabular-nums">{n(row.views)}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Saves</dt><dd className="font-semibold tabular-nums">{n(row.saves)}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Itinerary</dt><dd className="font-semibold tabular-nums">{n(row.itineraryAdds)}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Tickets</dt><dd className="font-semibold tabular-nums">{n(row.ticketClicks)}</dd></div>
                   </dl>
                   <p className="mt-2 text-xs text-muted-foreground">Click-through {row.ctr ?? '—'} · {row.sourceLabel}</p>
                   <p className="mt-2 flex flex-wrap gap-3 text-sm">
@@ -236,7 +236,7 @@ export function PartnerView({ overview, list, filters }: { overview: PartnerOver
                       <td className="px-3 py-3 text-right tabular-nums">{n(row.itineraryAdds)}</td>
                       <td className="px-3 py-3 text-right tabular-nums">
                         {n(row.ticketClicks)}
-                        <span className="block text-[11px] text-muted-foreground">{row.ctr ?? '—'}</span>
+                        <span className="block text-xs text-muted-foreground">{row.ctr ?? '—'}</span>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap">
                         <Link href={row.path} className="font-semibold text-primary hover:underline">VibePeep</Link>

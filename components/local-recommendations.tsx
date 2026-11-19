@@ -83,7 +83,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
               <a key={a.id} href={`/api/local-ads/${a.id}/go`} target="_blank" rel="sponsored noopener noreferrer" className="group rounded-xl bg-card border border-border p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-2.5 py-1 text-xs font-semibold"><Icon className="w-3.5 h-3.5" />Recommended · {kindLabel(a.kind)}</span>
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{a.mine ? 'Your ad' : 'Sponsored'}</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">{a.mine ? 'Your ad' : 'Sponsored'}</span>
                 </div>
                 <p className="mt-3 font-semibold text-foreground group-hover:text-primary transition-colors">{a.businessName}</p>
                 <p className="mt-1 text-sm text-muted-foreground flex-1">{a.blurb}</p>

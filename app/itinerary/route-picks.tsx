@@ -41,8 +41,8 @@ export function RoutePicks({ picks, isAdded, onAdd, onOpen }: { picks: RoutePick
             return (
               <div key={p.id} className="rounded-lg bg-card border border-border p-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-semibold"><Icon className="w-3 h-3" />Recommended · {kindLabel(p.kind)}</span>
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Sponsored</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 text-primary px-2 py-0.5 text-xs font-semibold"><Icon className="w-3 h-3" />Recommended · {kindLabel(p.kind)}</span>
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">Sponsored</span>
                 </div>
                 <p className="mt-2 text-sm font-semibold">{p.businessName}</p>
                 <p className="text-xs text-muted-foreground">{p.blurb}</p>
@@ -58,7 +58,7 @@ export function RoutePicks({ picks, isAdded, onAdd, onOpen }: { picks: RoutePick
               </div>
             )
           })}
-          <p className="text-[11px] text-muted-foreground">Sponsored locals near your route. Double-check they’re open before you duck in.</p>
+          <p className="text-xs text-muted-foreground">Sponsored locals near your route. Double-check they’re open before you duck in.</p>
         </div>
       )}
     </div>

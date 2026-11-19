@@ -58,7 +58,7 @@ export function AddToPlanButton({ eventId, city, className, icon = false, surfac
 
   return (
     <div className={cn(icon && 'relative', className)}>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Add to a plan" className={icon ? 'flex h-10 w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-border text-[10px] font-semibold hover:bg-muted' : 'flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-border font-semibold hover:bg-muted'}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Add to a plan" className={icon ? 'flex h-10 w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted' : 'flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-border font-semibold hover:bg-muted'}>
         <Users className="w-4 h-4" />{icon ? 'Plan' : (open ? 'Close Plan' : 'Add to a Plan')}
       </button>
       {open && (

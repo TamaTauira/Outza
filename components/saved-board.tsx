@@ -214,7 +214,7 @@ function SavedCard({
     <article id={`saved-${ev.id}`} className={cn('overflow-hidden rounded-2xl border bg-card', active ? 'border-primary ring-2 ring-primary/40' : 'border-border')}>
       <Link href={href} scroll={false} className="relative block aspect-[4/3]">
         <EventImage src={ev.imageUrl} kind="card" alt="" sizes="(min-width: 1280px) 30vw, 100vw" crop category={ev.category} slot="card" />
-        <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white">{weekend ? 'This weekend' : today && ev.date.slice(0, 10) < today ? 'Past' : 'Coming up'}</span>
+        <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-2 py-0.5 text-xs font-semibold text-white">{weekend ? 'This weekend' : today && ev.date.slice(0, 10) < today ? 'Past' : 'Coming up'}</span>
       </Link>
       <div className="space-y-2 p-4">
         <div className="flex items-start justify-between gap-3">

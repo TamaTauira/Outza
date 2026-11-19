@@ -303,7 +303,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
           >
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
             {hintCount > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground" aria-hidden>{hintCount}</span>
+              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-xs font-bold leading-none text-primary-foreground" aria-hidden>{hintCount}</span>
             )}
           </button>
           <button

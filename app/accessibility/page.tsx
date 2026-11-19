@@ -12,7 +12,7 @@ export default function AccessibilityPage() {
   return (
     <PageShell>
       <main className="vp-wrap px-4 py-12 sm:px-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Accessibility</h1>
         <p className="mt-3 text-sm text-muted-foreground">Last updated {ACCESSIBILITY_UPDATED}.</p>
         <div className="mt-8 max-w-2xl space-y-8 text-sm leading-relaxed text-muted-foreground">

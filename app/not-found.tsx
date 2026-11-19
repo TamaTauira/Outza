@@ -21,7 +21,7 @@ export default function NotFound() {
           <Button asChild className="mt-6"><Link href="/">Back to what&apos;s on</Link></Button>
         </div>
         <nav aria-label="Popular pages" className="mt-10 hidden w-full lg:mt-0 lg:block">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Keep looking</p>
+          <p className="font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">Keep looking</p>
           <ul className="mt-3 grid grid-cols-2 gap-3 text-sm">
             {[
               ['/', 'Peep'],

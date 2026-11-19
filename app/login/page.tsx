@@ -95,7 +95,7 @@ function LoginForm() {
               <div key={t.key} className="rounded-lg bg-background border border-border p-2 text-center">
                 <span className="block h-1 w-6 mx-auto rounded-full mb-1.5" style={{ backgroundColor: t.color }} />
                 <p className="text-xs font-semibold">{t.name}</p>
-                <p className="text-[11px] text-muted-foreground">from {formatAud(t.prices[7])}</p>
+                <p className="text-xs text-muted-foreground">from {formatAud(t.prices[7])}</p>
               </div>
             ))}
           </div>

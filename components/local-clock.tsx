@@ -24,7 +24,7 @@ export function LocalClock({ city, className }: { city?: string; className?: str
   }, [city])
   return (
     <div className={className} aria-live="off">
-      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/60">
+      <div className="font-mono text-xs uppercase tracking-[0.2em] text-white/60">
         {t && t.zone !== t.place ? t.zone : t ? '' : 'Local'} <span className={t && t.zone === t.place ? 'text-primary' : 'text-primary ml-2'}>{t ? `${t.place} time` : 'your time'}</span>
       </div>
       <div className="font-mono font-bold tabular-nums leading-none mt-1.5 text-white">

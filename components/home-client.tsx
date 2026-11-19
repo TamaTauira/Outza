@@ -393,7 +393,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <div className="vp-wrap relative px-4 py-6 sm:px-6 sm:py-8">
             <div className="relative flex items-start justify-between gap-4">
               <div className="min-w-0 max-w-[var(--vp-measure)]">
-                <h1 className="font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+                <h1 className="vp-display">
                   <span className="block">What’s on in</span>
                   <span className="block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span>
                 </h1>
@@ -413,7 +413,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder={'Try "jazz this Friday"'} queryRequest={askRequest} chips={false} goToPage />
             </div>
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-[13px] text-white/70">Describe a vibe, a date, a place or a budget. Or just browse.</p>
-            <div className="relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="vp-chip-row relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
                 { label: 'Tonight', run: () => applyPlan('tonight') },
                 { label: 'This weekend', run: () => applyPlan('weekend') },
@@ -457,6 +457,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         )}
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
+            <h1 className="sr-only">Map</h1>
             <div className="vp-map-toolbar flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2 sm:flex-row sm:items-center sm:px-4 lg:gap-0 lg:px-0">
               <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none lg:px-4">
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
@@ -484,7 +485,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   <>
                     <button type="button" onClick={() => setShowFilters(true)} aria-label="Filters" className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold', advancedCount ? 'border-primary text-primary' : 'border-border')}>
                       <SlidersHorizontal className="h-4 w-4" /> Filters
-                      {advancedCount > 0 && <span className="font-mono text-[11px]">{advancedCount}</span>}
+                      {advancedCount > 0 && <span className="font-mono text-xs">{advancedCount}</span>}
                     </button>
                     {planChips.map((chip) => (
                       <button key={chip.key} type="button" aria-pressed={planKey === chip.key} onClick={() => applyPlan(chip.key)} className={cn('inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-sm font-semibold', planKey === chip.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>{chip.label}</button>
@@ -560,7 +561,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
                 <button type="button" onClick={() => setShowFilters(true)} aria-label="Filters" className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm', advancedCount ? 'border-primary text-primary' : 'border-border')}>
                   <SlidersHorizontal className="h-4 w-4" /> Filters
-                  {advancedCount > 0 && <span className="font-mono text-[11px]">{advancedCount}</span>}
+                  {advancedCount > 0 && <span className="font-mono text-xs">{advancedCount}</span>}
                 </button>
               </div>
 

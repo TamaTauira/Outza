@@ -126,7 +126,7 @@ export function AccountClient() {
     <main className="vp-wrap px-4 pb-6 pt-3 sm:px-6 sm:pb-8 lg:pt-5">
       <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <div className="mt-4">
-        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">Your account &amp; inbox {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">Your account {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
       <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
@@ -153,7 +153,7 @@ export function AccountClient() {
           {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
         </select>
         <h2 className="font-semibold mt-5 mb-1">What’s your thing?</h2>
-        <p className="text-xs text-muted-foreground mb-3">We’ll use this to fill your inbox with good stuff.</p>
+        <p className="text-xs text-muted-foreground mb-3">We’ll use this when we write to you.</p>
         <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <button key={c.name} onClick={() => save({ preferredCategories: toggleIn(me.preferredCategories ?? [], c.name) })} className={chip((me.preferredCategories ?? []).includes(c.name))}>{c.name}</button>)}</div>
         <h2 className="font-semibold mt-5 mb-3">Cities to include</h2>
         <div className="flex flex-wrap gap-2">{CITIES.map((c) => <button key={c.name} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })} className={chip((me.preferredCities ?? []).includes(c.name))}>{c.name}</button>)}</div>

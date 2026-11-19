@@ -88,7 +88,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
               return (
                 <button key={t.key} type="button" onClick={() => { setTier(t.key); setReview(false) }} aria-pressed={on}
                   className={cn('relative text-left rounded-xl border p-4 transition-all bg-background', on ? 'border-primary ring-2 ring-primary/40 shadow-md' : 'border-border hover:border-muted-foreground/40')}>
-                  {t.key === 'BRONZE' && <span className="absolute -top-2 right-3 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5">POPULAR</span>}
+                  {t.key === 'BRONZE' && <span className="absolute -top-2 right-3 rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">POPULAR</span>}
                   <span className="block h-1.5 w-10 rounded-full mb-3" style={{ backgroundColor: t.color }} />
                   <p className="font-semibold">{t.name}</p>
                   <p className="text-xs text-muted-foreground">{t.tagline}</p>
@@ -106,7 +106,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
             {DURATIONS.map((d) => (
               <button key={d.days} type="button" role="radio" aria-checked={days === d.days} onClick={() => setDays(d.days)}
                 className={cn('px-4 h-9 rounded-md text-sm font-medium transition-colors', days === d.days ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
-                {d.label}{d.note && <span className="hidden sm:inline text-[10px] opacity-80"> · {d.note}</span>}
+                {d.label}{d.note && <span className="hidden sm:inline text-xs opacity-80"> · {d.note}</span>}
               </button>
             ))}
           </div>
@@ -134,7 +134,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
       </div>
 
       <aside className="lg:sticky lg:top-24 h-fit rounded-xl border border-border bg-background p-5 shadow-sm">
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Order summary</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Order summary</p>
         <p className="mt-2 font-semibold truncate" title={selected?.title}>{selected?.title ?? 'No event selected'}</p>
         <p className="text-xs text-muted-foreground">{days}-day campaign · starts immediately</p>
         <div className="my-4 space-y-2 text-sm">
@@ -150,7 +150,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
           <span className="font-semibold">Total</span>
           <span className="text-2xl font-bold tabular-nums">{formatAud(q.total)}</span>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1">AUD, GST inclusive. One-off payment. Placements are labelled Sponsored. <Link href="/refunds" className="underline">Refunds</Link>, including under the Australian Consumer Law, are on the refunds page.</p>
+        <p className="text-xs text-muted-foreground mt-1">AUD, GST inclusive. One-off payment. Placements are labelled Sponsored. <Link href="/refunds" className="underline">Refunds</Link>, including under the Australian Consumer Law, are on the refunds page.</p>
         {scheduleNote && <p className="mt-3 text-xs text-muted-foreground" role="status">{scheduleNote}</p>}
         <div className="mt-3"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}

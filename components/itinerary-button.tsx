@@ -59,7 +59,7 @@ export function ItineraryButton({ event, compact = false, lineup = false, outlin
         type="button"
         onClick={onClick}
         className={cn(
-          'flex h-11 w-full items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-1.5 text-[11px] font-semibold sm:px-2 sm:text-xs',
+          'flex h-11 w-full items-center justify-center gap-1 whitespace-nowrap rounded-xl border px-1.5 text-xs font-semibold sm:px-2 sm:text-xs',
           inIt ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-transparent text-foreground hover:bg-muted',
           className,
         )}

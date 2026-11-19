@@ -87,7 +87,7 @@ export default function DisclaimerPage() {
         <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Disclaimer</h1>
         <LegalStamp doc="disclaimer" />
         <p className="mt-4 text-muted-foreground leading-relaxed">

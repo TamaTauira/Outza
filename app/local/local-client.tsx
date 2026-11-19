@@ -82,6 +82,7 @@ export function LocalClient() {
   const sentQuery = queryText.replace(/\s+/g, ' ').trim().slice(0, 200)
   const requestKey = `${city}|${category}|${when}|${suburb}|${sentQuery}`
   const requestRef = useRef(0)
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (tab === 'submit' || tab === 'mine') return
     const key = requestKey
@@ -110,7 +111,7 @@ export function LocalClient() {
       })
       .finally(() => { clearTimeout(timer); release() })
     return () => { clearTimeout(timer); ac.abort(); release() }
-  }, [tab, city, category, when, suburb, sentQuery, requestKey])
+  }, [tab, city, category, when, suburb, sentQuery, requestKey, attempt])
 
   const loadMine = useCallback(() => {
     fetch('/api/local?mine=1').then((r) => (r.ok ? r.json() : { listings: [] })).then((j) => { setMine(j.listings ?? []); setMineCommunity(j.community ?? []) }).catch((e) => { console.error(e); setMine([]); setMineCommunity([]) })
@@ -205,6 +206,7 @@ export function LocalClient() {
             setWhen={setWhen}
             items={view ? view.items : null}
             error={error}
+            onRetry={() => setAttempt((n) => n + 1)}
             days={days}
             pins={pins}
             today={now?.date ?? null}

@@ -31,8 +31,8 @@ export function VibePeepWordmark({ className = 'h-7 w-auto', tone = 'auto', deco
 }
 
 const SIZES = {
-  sm: { mark: 'w-8 h-8', word: 'h-[22px] w-auto', tag: 'text-[10px]' },
-  md: { mark: 'w-10 h-10', word: 'h-7 w-auto', tag: 'text-[11px]' },
+  sm: { mark: 'w-8 h-8', word: 'h-[22px] w-auto', tag: 'text-xs' },
+  md: { mark: 'w-10 h-10', word: 'h-7 w-auto', tag: 'text-xs' },
   lg: { mark: 'w-11 h-11', word: 'h-8 w-auto', tag: 'text-xs' },
 } as const
 

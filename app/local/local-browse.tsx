@@ -99,14 +99,14 @@ function dayHeading(day: string, today: string | null, count: number) {
 }
 
 function priceLine(ev: LocalItem) {
-  if (ev.isFree) return <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-bold text-white">Free</span>
+  if (ev.isFree) return <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-bold text-white">Free</span>
   if (ev.price) return <span className="font-mono text-xs text-foreground">{ev.price}</span>
   return null
 }
 
 export function LocalBrowse({
   city, setCity, query, setQuery, applyQuery, appliedQuery, suburb, setSuburb, category, setCategory, when, setWhen,
-  items, error, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
+  items, error, onRetry, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
   closed, setClosed, more, setMore, isSaved, save, onList, onMine, onHow, hasListings, nowMinutes,
 }: {
   city: string
@@ -123,6 +123,7 @@ export function LocalBrowse({
   setWhen: (when: string) => void
   items: LocalItem[] | null
   error: string | null
+  onRetry?: () => void
   days: [string, LocalItem[]][]
   pins: LocalMapPin[]
   today: string | null
@@ -231,7 +232,12 @@ export function LocalBrowse({
         <h2 id="local-finds" className="font-display text-2xl font-bold">Little local finds.</h2>
         <p className="mt-1 text-muted-foreground">Four picks. Swipe across, then the full list is below.</p>
         {!items && !error && <div className="mt-4 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="h-64 w-[78vw] max-w-[280px] shrink-0 animate-pulse rounded-2xl bg-muted" />)}</div>}
-        {error && <p className="mt-4 rounded-2xl bg-card p-6 text-sm text-muted-foreground">{error}</p>}
+        {error && (
+          <div className="mt-4 rounded-2xl bg-card p-6 text-sm text-muted-foreground">
+            <p>{error}</p>
+            {onRetry && <button type="button" onClick={onRetry} className="mt-3 inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Try again</button>}
+          </div>
+        )}
         {items && !items.length && !error && searching && <SearchEmpty query={searching} city={city} onClear={clearQuery} onList={onList} />}
         {items && !items.length && !error && !searching && (
           <div className="mt-4 rounded-2xl border border-border bg-card p-6">
@@ -308,7 +314,12 @@ export function LocalBrowse({
           </div>
         )}
 
-        {mode !== 'map' && error && <p className="mt-4 rounded-2xl bg-card p-6 text-sm">{error}</p>}
+        {mode !== 'map' && error && (
+          <div className="mt-4 rounded-2xl bg-card p-6 text-sm">
+            <p>{error}</p>
+            {onRetry && <button type="button" onClick={onRetry} className="mt-3 inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Try again</button>}
+          </div>
+        )}
         {mode !== 'map' && !items && !error && <div className="mt-4 space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div>}
         {mode !== 'map' && items && !items.length && !error && searching && <SearchEmpty query={searching} city={city} onClear={clearQuery} onList={onList} centered />}
         {mode !== 'map' && items && !items.length && !error && !searching && (

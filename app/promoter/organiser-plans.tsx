@@ -172,7 +172,7 @@ export function OrganiserPlans() {
           {refund.eligible && <button type="button" onClick={refundNow} disabled={busy === 'refund'} className="underline text-muted-foreground">Refund this period</button>}
         </div>
       )}
-      {refund.reason && <p className="mt-2 text-[11px] text-muted-foreground">{refund.reason}</p>}
+      {refund.reason && <p className="mt-2 text-xs text-muted-foreground">{refund.reason}</p>}
       {!!charges.length && (
         <ul className="mt-4 divide-y divide-border text-sm">
           {charges.map((charge) => (
