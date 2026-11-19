@@ -39,7 +39,18 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
   const [events, setEvents] = useState<EventRow[]>([])
   const [mineOnly, setMineOnly] = useState(false)
   const [analytics, setAnalytics] = useState<Record<string, number | string | null> | null>(null)
-  const [trendNote, setTrendNote] = useState<string | null>(null)
+  const [activity, setActivity] = useState<{
+    views: number
+    saves: number
+    itineraryAdds: number
+    ticketClicks: number
+    bestNights: { label: string; views: number }[]
+    categories: { category: string; views: number }[]
+    areas: { label: string; people: number }[]
+    hiddenAreas: number
+    note: string
+  } | null | undefined>(undefined)
+  const [nearby, setNearby] = useState<{ basis: string; nights: { date: string; gap: boolean; events: { id: string; title: string; time: string | null; venueName: string; category: string }[] }[] } | null>(null)
   const [range, setRange] = useState('30')
   const [members, setMembers] = useState<Array<{ id: string; name: string | null; email: string; role: string; status: string }>>([])
   const [profileReady, setProfileReady] = useState(false)
@@ -78,8 +89,9 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
     if (tab !== 'Analytics') return
     fetch(`/api/venues/${venueId}/analytics?range=${range}`).then((r) => r.json()).then((d) => {
       setAnalytics(d.analytics || null)
-      setTrendNote(typeof d.trendNote === 'string' ? d.trendNote : null)
-    }).catch(() => {})
+      setActivity(d.activity ?? null)
+    }).catch(() => setActivity(null))
+    fetch(`/api/venues/${venueId}/nearby`).then((r) => r.json()).then((d) => setNearby(d.nights ? d : null)).catch(() => setNearby(null))
   }, [tab, range, venueId])
 
   useEffect(() => {
@@ -201,16 +213,51 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
                   websiteClicks: 'Website clicks',
                   directionsClicks: 'Direction clicks',
                   shares: 'Shares',
-                  saves: 'Saves',
                   upcomingEvents: 'Upcoming events',
-                  eventViews: 'Event page views',
+                  eventViews: 'Event page views this period',
+                  saves: 'Saves this period',
                   publicReactions: 'Reactions',
                   categoryLead: 'Busiest public category',
                 } as Record<string, string>)[key] ?? key}</span><span className="font-semibold">{String(value)}</span></li>
               ))}
             </ul>
           )}
-          {trendNote && <p className="text-sm">{trendNote} This uses public saves, reactions and ticket clicks, not another organiser’s campaign.</p>}
+          {activity === null && <p className="text-sm text-muted-foreground">Event counts didn’t load. Nothing here is filled in.</p>}
+          {activity && (
+            <div className="space-y-3 text-sm">
+              <ul className="grid grid-cols-2 gap-2">
+                <li className="rounded-xl border border-border p-3"><span className="block text-xs text-muted-foreground">Itinerary adds</span><span className="font-semibold">{activity.itineraryAdds}</span></li>
+                <li className="rounded-xl border border-border p-3"><span className="block text-xs text-muted-foreground">Ticket clicks</span><span className="font-semibold">{activity.ticketClicks}</span></li>
+              </ul>
+              <div>
+                <h2 className="font-semibold">Best nights</h2>
+                {activity.bestNights.length ? <ul className="mt-1">{activity.bestNights.map((night) => <li key={night.label}>{night.label}: {night.views} page views</li>)}</ul> : <p className="text-muted-foreground">No page views stored for this period.</p>}
+              </div>
+              <div>
+                <h2 className="font-semibold">Categories</h2>
+                {activity.categories.length ? <ul className="mt-1">{activity.categories.map((row) => <li key={row.category}>{row.category}: {row.views} page views</li>)}</ul> : <p className="text-muted-foreground">No category views stored for this period.</p>}
+              </div>
+              <div>
+                <h2 className="font-semibold">Home areas</h2>
+                {activity.areas.length ? <ul className="mt-1">{activity.areas.map((row) => <li key={row.label}>{row.label}: {row.people} people</li>)}</ul> : <p className="text-muted-foreground">No home area has 10 or more people in this period.</p>}
+                {activity.hiddenAreas > 0 && <p className="text-xs text-muted-foreground">{activity.hiddenAreas} smaller group{activity.hiddenAreas === 1 ? '' : 's'} hidden.</p>}
+              </div>
+              <p className="text-xs text-muted-foreground">{activity.note}</p>
+            </div>
+          )}
+          {nearby && (
+            <div className="space-y-2 text-sm">
+              <h2 className="font-semibold">Same nights nearby</h2>
+              <p className="text-xs text-muted-foreground">{nearby.basis}</p>
+              {!nearby.nights.length && <p className="text-muted-foreground">No upcoming nights are tied to this venue yet.</p>}
+              {nearby.nights.map((night) => (
+                <div key={night.date}>
+                  <p className="font-medium">{night.date.slice(0, 10)}{night.gap ? ' · nothing else in range' : ` · ${night.events.length} other listing${night.events.length === 1 ? '' : 's'}`}</p>
+                  <ul>{night.events.map((event) => <li key={event.id}>{event.time ? `${event.time} · ` : ''}{event.title} · {event.venueName}</li>)}</ul>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground">{typeof analytics?.caveat === 'string' ? analytics.caveat : 'Digital views and clicks do not prove physical attendance.'} This view never includes another organiser’s spend.</p>
           <VenueReachPanel venueId={venueId} />
         </section>
