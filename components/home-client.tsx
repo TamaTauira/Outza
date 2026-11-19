@@ -456,17 +456,17 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         )}
         {view === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="vp-map-toolbar flex shrink-0 items-center gap-2 border-b border-border bg-background px-3 py-2 sm:px-4 lg:gap-0 lg:px-0">
-              <div className="w-[46%] max-w-[220px] shrink-0 lg:w-80 lg:max-w-none lg:px-4">
+            <div className="vp-map-toolbar flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2 sm:flex-row sm:items-center sm:px-4 lg:gap-0 lg:px-0">
+              <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none lg:px-4">
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
                   <MapPin className="h-4 w-4 shrink-0 text-primary" />
                   <span className="sr-only">Choose a city</span>
-                  <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 truncate bg-transparent text-sm font-medium focus:outline-none" aria-label="Choose a city">
+                  <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 truncate bg-transparent text-base font-medium focus:outline-none md:text-sm" aria-label="Choose a city">
                     {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                   </select>
                 </label>
               </div>
-              <div className="min-w-0 flex-1 lg:px-4">
+              <div className="min-w-0 w-full sm:flex-1 lg:px-4">
                 <SearchField id="map-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search the map" label="Search events" />
               </div>
             </div>
