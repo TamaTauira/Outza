@@ -74,6 +74,10 @@
       "schedule": "22 21 * * 0"
     },
     {
+      "path": "/api/cron/venue-monthly",
+      "schedule": "31 17 1 * *"
+    },
+    {
       "path": "/api/cron/owner-alerts",
       "schedule": "24 * * * *"
     },
