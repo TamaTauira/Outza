@@ -118,7 +118,7 @@ export const ANALYTICS_DATA = [
   { metric: 'Promotion impressions and clicks', detail: 'Totals per sponsored placement, used to report campaign results.' },
   { metric: 'Newsletter clicks', detail: 'Totals per event and section. Individual subscribers are never shared with organisers.' },
   { metric: 'More info clicks', detail: 'A counter per event when someone taps “More info” instead of “Get tickets”. Counted separately from this launch. Earlier Get tickets totals include those taps.' },
-  { metric: 'Appearances', detail: 'How often a listing was shown on the board, the map, search results, Hot right now, Local, or a Spotlight placement. Counted once per browser session per surface, from this launch.' },
+  { metric: 'Appearances', detail: 'How often a listing was shown on the board, the map, search results, Coming up next, Local, or a Spotlight placement. Counted once per browser session per surface, from this launch.' },
   { metric: 'Search terms', detail: 'The words someone typed before the listing appeared. Terms used by fewer than 5 people are hidden.' },
   { metric: 'Viewer area', detail: 'A city, or a broad home area for a signed-in adult. Groups under 10 are hidden. No exact address, postcode or IP is stored for organisers.' },
   { metric: 'Hour and day', detail: 'When people opened the listing, in Sydney time, so an organiser can see a busy hour. Shown once at least 10 opens are in the bucket.' },

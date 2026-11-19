@@ -1,7 +1,13 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { Button } from '@/components/ui/button'
+
+export const metadata: Metadata = {
+  title: 'Page not found · VibePeep',
+  description: 'This page isn’t on. Head back to what’s happening.',
+}
 
 export default function NotFound() {
   return (

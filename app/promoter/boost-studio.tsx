@@ -184,7 +184,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
     <div className="space-y-8">
       <div>
         <h2 className="font-display text-xl font-bold">Short boosts</h2>
-        <p className="mt-1 text-sm text-muted-foreground">An evening or a day in the Hot right now band, on top of the 7, 14 and 30 day packages. You pick the event, the window and the words. We show you the card before anyone pays.</p>
+        <p className="mt-1 text-sm text-muted-foreground">An evening or a day in the Coming up next band, on top of the 7, 14 and 30 day packages. You pick the event, the window and the words. We show you the card before anyone pays.</p>
       </div>
 
       {!events.length ? (

@@ -118,7 +118,7 @@ export function ReachDashboard({
                 <li key={row.label} className="flex items-center justify-between text-sm"><span>{row.label}</span><span className="font-semibold tabular-nums">{row.count.toLocaleString('en-AU')}</span></li>
               ))}
             </ul>
-          ) : <p className="mt-3 text-sm text-muted-foreground">Appearances on the board, map, search, Hot right now and Local start from this launch. Nothing has been counted in this range yet.</p>}
+          ) : <p className="mt-3 text-sm text-muted-foreground">Appearances on the board, map, search, Coming up next and Local start from this launch. Nothing has been counted in this range yet.</p>}
         </section>
       </div>
 

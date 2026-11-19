@@ -33,7 +33,7 @@ export const BOOSTS: Record<BoostId, BoostDef> = {
     maxMinutes: 6 * 60,
     priceCents: 900,
     impressionCap: 2500,
-    guaranteed: 'A Sponsored card in your city’s Hot right now band, from the start you pick until the end or the impression cap, whichever comes first. Sponsored cards stay a minority whenever other events match.',
+    guaranteed: 'A Sponsored card in your city’s Coming up next band, from the start you pick until the end or the impression cap, whichever comes first. Sponsored cards stay a minority whenever other events match.',
     estimated: 'Up to 2,500 serves. Detail views and Get tickets clicks are not promised. Ticket sales happen on your own site and are not visible here.',
   },
   DAY_PASS: {
@@ -45,7 +45,7 @@ export const BOOSTS: Record<BoostId, BoostDef> = {
     maxMinutes: 24 * 60,
     priceCents: 1500,
     impressionCap: 8000,
-    guaranteed: 'A Sponsored card in your city’s Hot right now band for the window you pick, until the end or the impression cap, whichever comes first. Sponsored cards stay a minority whenever other events match.',
+    guaranteed: 'A Sponsored card in your city’s Coming up next band for the window you pick, until the end or the impression cap, whichever comes first. Sponsored cards stay a minority whenever other events match.',
     estimated: 'Up to 8,000 serves. Detail views and Get tickets clicks are not promised. Ticket sales happen on your own site and are not visible here.',
   },
 }

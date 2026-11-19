@@ -50,7 +50,7 @@ export function FaqSection() {
     },
     {
       q: 'What is a short boost?',
-      a: 'The evening and day passes are priced in the row under the packages. Each is a Sponsored card in Hot right now for your event’s city, bought from the promoter dashboard. A boost that has not been shown can be refunded from the dashboard within 48 hours of the start you picked.',
+      a: 'The evening and day passes are priced in the row under the packages. Each is a Sponsored card in Coming up next for your event’s city, bought from the promoter dashboard. A boost that has not been shown can be refunded from the dashboard within 48 hours of the start you picked.',
     },
     {
       q: 'How do local recommendations work?',
