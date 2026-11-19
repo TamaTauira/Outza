@@ -593,6 +593,7 @@ export async function venueTeam(userId: string, venueId: string) {
       name: member.user.name,
       email: member.user.email,
       role: member.role,
+      label: member.role === 'ADMINISTRATOR' ? 'Owner' : member.role === 'MANAGER' ? 'Staff' : member.role,
       status: member.status,
       revokedAt: member.revokedAt?.toISOString() ?? null,
     })),
@@ -604,9 +605,7 @@ export async function inviteVenueManager(actorId: string, venueId: string, email
   if (gate.error || !gate.access.organisationId) return { status: 403 as const, error: 'Only a venue administrator can add people.' }
   const person = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true, email: true } })
   if (!person) return { status: 404 as const, error: 'They need a VibePeep account first. Claiming stays free.' }
-  const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { officialDomain: true } })
-  const domainOk = !!venue?.officialDomain && person.email.toLowerCase().endsWith(`@${venue.officialDomain.toLowerCase()}`)
-  const status = domainOk ? 'ACTIVE' : 'PENDING'
+  const status = 'ACTIVE'
   const member = await prisma.organisationMembership.upsert({
     where: { userId_organisationId: { userId: person.id, organisationId: gate.access.organisationId } },
     create: { userId: person.id, organisationId: gate.access.organisationId, role: 'MANAGER', status },

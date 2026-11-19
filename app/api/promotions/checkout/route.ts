@@ -9,6 +9,8 @@ import { notifyPromotionPurchased, notifyProPurchased } from '@/lib/promotion-em
 import { unverifiedGate } from '@/lib/account-flow'
 import { unpaidTestCheckoutAllowed } from '@/lib/checkout-gate'
 import { enforcePromoterCheckout } from '@/lib/terms-accept'
+import { venueRoleAllows } from '@/lib/ownership'
+import { canManageVenue } from '@/lib/venue-access'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,9 +68,20 @@ export async function POST(req: Request) {
   const days = isDuration(Number(body?.days)) ? (Number(body.days) as 7 | 14 | 30) : 30
   const addons: Addon[] = Array.isArray(body?.addons) ? [...new Set<Addon>(body.addons.filter(isAddon))] : []
   if (!isTier(tier)) return NextResponse.json({ error: 'Choose a package' }, { status: 400 })
-  const event = typeof eventId === 'string' ? await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, title: true, promoterId: true } }) : null
+  const event = typeof eventId === 'string' ? await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, title: true, promoterId: true, venueId: true } }) : null
   if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
-  if (event.promoterId !== me.id && me.role !== 'ADMIN') return NextResponse.json({ error: 'Add this event to your dashboard first' }, { status: 403 })
+  const venueId = typeof body?.venueId === 'string' ? body.venueId : ''
+  let venueReturn = ''
+  if (event.promoterId !== me.id && me.role !== 'ADMIN') {
+    if (tier !== 'BRONZE' || !venueId || event.venueId !== venueId) {
+      return NextResponse.json({ error: 'Add this event to your dashboard first' }, { status: 403 })
+    }
+    const access = await canManageVenue(me.id, venueId)
+    if (!access.allowed || !venueRoleAllows(access.role, 'configureAds')) {
+      return NextResponse.json({ error: 'Only the venue owner can buy a Spotlight.' }, { status: 403 })
+    }
+    venueReturn = venueId
+  }
 
   const user = await prisma.user.findUnique({ where: { id: me.id }, select: { proUntil: true } })
   const recentOrder = await prisma.promotion.findFirst({
@@ -99,8 +112,8 @@ export async function POST(req: Request) {
         price_data: { currency: 'aud', unit_amount: l.cents, product_data: { name: `${l.name} — ${days} days`, description: event.title.slice(0, 200) } },
       })),
       metadata: { orderId, eventId: event.id, tier, userId: me.id },
-      success_url: `${origin}/promoter?paid=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/promoter?cancelled=1`,
+      success_url: venueReturn ? `${origin}/venue/${venueReturn}?paid=1&session_id={CHECKOUT_SESSION_ID}` : `${origin}/promoter?paid=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: venueReturn ? `${origin}/venue/${venueReturn}?cancelled=1` : `${origin}/promoter?cancelled=1`,
     })
     // stripeSessionId is unique, so store it on the package line only
     const main = await prisma.promotion.findFirst({ where: { orderId, tier }, select: { id: true } })

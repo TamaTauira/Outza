@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { boardClockLine } from '@/lib/listing-window'
 import { VENUE_PRODUCTS, VENUE_REPORT_REASONS, SPONSORED_LABEL } from '@/lib/ownership'
+import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
@@ -52,13 +53,21 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
   } | null | undefined>(undefined)
   const [nearby, setNearby] = useState<{ basis: string; nights: { date: string; gap: boolean; events: { id: string; title: string; time: string | null; venueName: string; category: string }[] }[] } | null>(null)
   const [range, setRange] = useState('30')
-  const [members, setMembers] = useState<Array<{ id: string; name: string | null; email: string; role: string; status: string }>>([])
+  const [members, setMembers] = useState<Array<{ id: string; name: string | null; email: string; role: string; label?: string; status: string }>>([])
+  const [spotlights, setSpotlights] = useState<Array<{ id: string; eventId: string; name: string; status: string; views: number | null; ticketClicks: number | null }>>([])
+  const [agreeSpotlight, setAgreeSpotlight] = useState(false)
+  const [monthlyOff, setMonthlyOff] = useState(false)
   const [profileReady, setProfileReady] = useState(false)
   const [followers, setFollowers] = useState<number | null>(null)
   const [profile, setProfile] = useState({ description: '', announcement: '', contactEmail: '', contactPhone: '', openingHours: '', hoursNote: '', categories: '', facilities: '', accessibilityInfo: '', gettingThere: '', website: '', instagram: '', facebook: '', address: '', photos: '' })
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('paid')) toast.success('Payment received. The Spotlight is booked.')
+    if (params.get('cancelled')) toast('Checkout cancelled. Nothing was charged.')
     fetch(`/api/venues/${venueId}/events`).then((r) => r.json()).then((d) => setEvents(d.events || [])).catch(() => {})
+    fetch(`/api/venues/${venueId}/spotlight`).then((r) => r.json()).then((d) => setSpotlights(d.results || [])).catch(() => {})
+    fetch('/api/venues/report').then((r) => r.json()).then((d) => setMonthlyOff(!!d.venueMonthlyOptOut)).catch(() => {})
     fetch(`/api/venues/${venueId}`).then((r) => r.json()).then((d) => {
       const venue = d.venue
       if (!venue) return
@@ -161,6 +170,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
 
       {tab === 'Upcoming Events' && (
         <section className="mt-5 space-y-3">
+          {role === 'ADMINISTRATOR' && <PromoterTermsCheck id="venue-spotlight-terms" checked={agreeSpotlight} onChange={setAgreeSpotlight} />}
           <div className="flex gap-2 text-sm">
             <button type="button" onClick={() => setMineOnly(false)} className={`rounded-full px-3 py-1 ${!mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>All Upcoming Events</button>
             <button type="button" onClick={() => setMineOnly(true)} className={`rounded-full px-3 py-1 ${mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>Events I Manage</button>
@@ -184,7 +194,21 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
                   </select>
                 </label>
                 {event.canEdit && <Link href={`/events/${event.id}/manage`} className="underline">Edit Event</Link>}
+                {role === 'ADMINISTRATOR' && (
+                  <Button type="button" size="sm" variant="outline" disabled={!agreeSpotlight} onClick={async () => {
+                    const res = await fetch('/api/promotions/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: event.id, tier: 'BRONZE', days: 14, venueId, agreePromoterTerms: true }) })
+                    const data = await res.json().catch(() => ({}))
+                    if (!res.ok) { toast.error(data.error || 'Could not start Spotlight'); return }
+                    if (data.url) { location.href = data.url; return }
+                    toast.success(data.testMode ? 'Spotlight is booked in test mode. No card was charged.' : 'Spotlight is booked.')
+                    const again = await fetch(`/api/venues/${venueId}/spotlight`).then((r) => r.json()).catch(() => null)
+                    if (again?.results) setSpotlights(again.results)
+                  }}>Spotlight</Button>
+                )}
               </div>
+              {spotlights.filter((row) => row.eventId === event.id).map((row) => (
+                <p key={row.id} className="mt-2 text-xs text-muted-foreground">{row.name} · {row.status}{row.views == null ? '' : ` · ${row.views} page views · ${row.ticketClicks ?? 0} ticket clicks`}</p>
+              ))}
               {event.canCorrect && (
                 <VenueCorrectionForm
                   venueId={venueId}
@@ -286,7 +310,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
           <ul className="space-y-2 text-sm">
             {members.map((member) => (
               <li key={member.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
-                <span>{member.name || member.email}<span className="block text-xs text-muted-foreground">{member.role} · {member.status}</span></span>
+                <span>{member.name || member.email}<span className="block text-xs text-muted-foreground">{member.label || member.role} · {member.status === 'ACTIVE' ? 'Can sign in' : member.status}</span></span>
                 {role === 'ADMINISTRATOR' && member.role !== 'ADMINISTRATOR' && member.status !== 'REVOKED' && (
                   <button type="button" className="text-xs underline" onClick={async () => {
                     const res = await fetch(`/api/venues/${venueId}/team`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'revoke', membershipId: member.id }) })
@@ -306,19 +330,28 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
               const res = await fetch(`/api/venues/${venueId}/team`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
               const data = await res.json().catch(() => ({}))
               if (!res.ok) { toast.error(data.error || 'Could not add them'); return }
-              toast.success(data.memberStatus === 'ACTIVE' ? 'They’re in.' : 'Invite saved. Their email still needs to match the venue domain, or a review.')
+              toast.success('They’re in. They sign in with their own account and can work on this venue.')
             }}>
               <input name="email" type="email" required placeholder="Teammate’s account email" aria-label="Teammate email" className={field} />
-              <button className="h-10 px-3 rounded-md bg-primary text-primary-foreground text-sm font-semibold shrink-0">Add manager</button>
+              <Button type="submit" className="shrink-0">Add staff</Button>
             </form>
           )}
-          <p className="text-xs text-muted-foreground">Managers can’t transfer the venue or grant administrator access. That stays a reviewed step.</p>
+          <p className="text-xs text-muted-foreground">Staff can update the profile and correct listings. They can’t buy a Spotlight or add other people. They need their own account before you add them.</p>
         </section>
       )}
 
       {tab === 'Settings' && (
         <section className="mt-5 text-sm text-muted-foreground space-y-2">
           <p>Claims are free. There is no subscription in this dashboard.</p>
+          <label className="flex items-start gap-2 text-foreground">
+            <input type="checkbox" checked={monthlyOff} onChange={async (e) => {
+              const next = e.target.checked
+              setMonthlyOff(next)
+              const res = await fetch('/api/venues/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ venueMonthlyOptOut: next }) })
+              if (!res.ok) { setMonthlyOff(!next); toast.error('Could not update the monthly note') }
+            }} />
+            <span>Turn off the monthly stats email. Your newsletter choice stays as it is.</span>
+          </label>
           <p>Removing someone takes effect immediately. Past edits stay in the venue audit log.</p>
           <Link href={`/venues/${venueId}`} className="underline">View the public profile</Link>
         </section>
