@@ -16,7 +16,7 @@ import { recordSignal } from '@/lib/event-signals'
 import { canManageEvent, ownershipPresentation } from '@/lib/event-overrides'
 import { VENUE_MANAGED_LABEL } from '@/lib/ownership'
 import { recordCampaignConversion } from '@/lib/sponsorship-store'
-import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
+import { isHiddenFromPublic, PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 import { listingProvenance } from '@/lib/listing-provenance'
 import { contributedFieldSources } from '@/lib/source-record'
 import { areaForPostcode, includeInAudience } from '@/lib/profile-shared'
@@ -69,6 +69,7 @@ async function queryEventCore(id: string) {
   })
   if (!event || isPastEvent(event) || event.deletedAt) return null
   if (event.approvalState && event.approvalState !== 'APPROVED') return null
+  if (isHiddenFromPublic(event)) return null
   const redacted = redactCommunityPublic(event)
   if (!redacted.imageUrl) redacted.imageAsset = null
 
@@ -149,7 +150,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v8'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v9'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 

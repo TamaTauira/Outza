@@ -43,11 +43,17 @@ export const COMMUNITY_MAX_SPAN_DAYS = 14
 export const COMMUNITY_HOLD_REPORTS = 3
 
 /** AND-clauses for public event queries. Ingested rows have a null approval state and stay visible. Hidden and unmoderated rows stay out. */
+/** Hidden, in review, or marked moderation-hidden. The same rule as public listings. */
+export function isHiddenFromPublic(event: { hidden?: boolean | null; moderationStatus?: string | null }): boolean {
+  if (event.hidden) return true
+  return event.moderationStatus === 'review' || event.moderationStatus === 'hidden'
+}
+
 export const PUBLIC_EVENT_AND = [
   { deletedAt: null },
   { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] },
   { hidden: false },
-  { OR: [{ moderationStatus: null }, { moderationStatus: { not: 'review' } }] },
+  { OR: [{ moderationStatus: null }, { moderationStatus: { notIn: ['review', 'hidden'] } }] },
   { NOT: { OR: [
     { title: { startsWith: 'test ', mode: 'insensitive' as const } },
     { title: { equals: 'test', mode: 'insensitive' as const } },
