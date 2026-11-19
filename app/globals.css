@@ -264,7 +264,7 @@
   .vp-day-head-page { top: 4rem; }
 }
 
-/* Fluid shell. Boards and the map stop at 1440. Prose pages can sit inside --vp-container-prose. */
+/* Fluid shell. Full width up to the spec cap. Prose can sit inside --vp-container-prose. */
 .vp-wrap {
   width: 100%;
   max-width: var(--vp-container-max);
