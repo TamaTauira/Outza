@@ -5,7 +5,7 @@ import { formatPrice, readPrice } from './price'
 test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice('$25').price, '$25')
   assert.equal(readPrice('From $40').price, 'From $40')
-  assert.equal(formatPrice(false, 'From $40').prefix, 'from')
+  assert.equal(formatPrice(false, 'From $40').prefix, 'From')
   assert.equal(formatPrice(false, 'From $40').value, '$40')
   assert.equal(readPrice('Free').isFree, true)
   assert.equal(readPrice('$25', true).isFree, false)

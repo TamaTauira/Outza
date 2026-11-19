@@ -6,6 +6,8 @@ const EMOJI = /[\p{Extended_Pictographic}\uFE0F\u200D]/gu
 export function displayTitle(raw: string | null | undefined): string {
   const original = (raw ?? '').replace(/\s+/g, ' ').trim()
   let title = original.replace(EMOJI, ' ').replace(/\s+/g, ' ').trim()
+  title = title.replace(/\[model (?:pending|unconfirmed)\]/gi, ' ').replace(/\s+/g, ' ').trim()
+  title = title.replace(/\s*\|\s*[^|]+$/u, '').trim()
   title = title.replace(/\s*[|–—-]\s*(?:\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?|\d{1,2}\s+[A-Za-z]{3,9}(?:\s+\d{4})?)\s*$/u, '').trim()
   const letters = title.replace(/[^A-Za-z]/g, '')
   if (letters.length >= 8 && letters === letters.toUpperCase()) {
