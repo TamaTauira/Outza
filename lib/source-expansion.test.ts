@@ -234,6 +234,7 @@ test('Brisbane open-data rows keep the published address and local time', () => 
   assert.equal(parsed?.latitude, -27.5664)
   assert.equal(parsed?.source, 'brisbanecouncil')
   assert.equal(parsed?.city, 'Brisbane')
+  assert.equal(parsed?.sourceUrl, 'https://www.trumba.com/calendars/brisbane-city-council?eventid=212118402')
   const shed = parseBccRecord(noAddress)
   assert.equal(shed?.venueAddress, null)
   assert.equal(shed?.venueName, 'Wynnum Manly & Districts Mens Shed, 59 Granada St, Wynnum')

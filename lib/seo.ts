@@ -193,14 +193,22 @@ export function isLandingSuburb(suburb: string | null | undefined, city: CityDef
   return !CITIES.some((c) => citySlug(c) === s)
 }
 
-const STATE_RE = /\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Tasmania|Victoria|Queensland|New South Wales|Western Australia|South Australia|Northern Territory)\b/i
+const STATE_RE = /\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Tasmania|Victoria|Queensland|New South Wales|Western Australia|South Australia|Northern Territory)\b|austl\.?\s*cap\.?\s*terr|australian capital territory/i
 const STATE_NAMES: Record<string, string> = {
   tasmania: 'TAS', victoria: 'VIC', queensland: 'QLD', 'new south wales': 'NSW', 'western australia': 'WA', 'south australia': 'SA', 'northern territory': 'NT',
 }
+/** Ticketmaster writes the ACT as "Austl. Cap. Terr." rather than ACT. */
+export function textMarksAct(text: string | null | undefined): boolean {
+  return !!text && /austl\.?\s*cap\.?\s*terr|australian capital territory/i.test(text)
+}
 /** True when an address clearly names a different state (mis-filed listing). */
 export function addressInOtherState(address: string | null | undefined, city: CityDef): boolean {
+  if (textMarksAct(address)) {
+    const ok = city.state === 'ACT' ? ['ACT', 'NSW'] : [city.state]
+    return !ok.includes('ACT')
+  }
   const m = address?.match(STATE_RE)
-  if (!m) return false
+  if (!m || !m[1]) return false
   const st = STATE_NAMES[m[1].toLowerCase()] ?? m[1].toUpperCase()
   const ok = city.state === 'ACT' ? ['ACT', 'NSW'] : [city.state]
   return !ok.includes(st)

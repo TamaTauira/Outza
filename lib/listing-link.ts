@@ -9,6 +9,47 @@ import { eventPath } from '@/lib/seo'
 
 const TICKET_HOST = /(^|\.)(ticketmaster|ticketek|eventbrite|humanitix|moshtix|oztix|tixr|trybooking|stickytickets|eventfinda|tixel|dice)\./i
 
+/** Brisbane City Council's old /trumba links 301 to the generic What's on page and drop the event. */
+const BCC_EVENT_PAGE = 'https://www.trumba.com/calendars/brisbane-city-council'
+
+export function bccEventIdFromUrl(raw?: string | null): string | null {
+  if (!raw) return null
+  let text = String(raw)
+  try { text = decodeURIComponent(text) } catch { /* the raw link still gets a chance */ }
+  const match = text.match(/eventid=(\d+)/i)
+  return match?.[1] ?? null
+}
+
+/** Event-specific Trumba page. The council host no longer keeps the event id. */
+export function bccEventPageUrl(eventId: string): string {
+  return `${BCC_EVENT_PAGE}?eventid=${eventId}`
+}
+
+export function isGenericCouncilLanding(raw?: string | null): boolean {
+  const url = usableUrl(raw)
+  if (!url || bccEventIdFromUrl(url)) return false
+  try {
+    const parsed = new URL(url)
+    if (!/(^|\.)brisbane\.qld\.gov\.au$/i.test(parsed.hostname)) return false
+    return /\/trumba\/?$/i.test(parsed.pathname) || /what-s-on-in-brisbane\/?$/i.test(parsed.pathname)
+  } catch {
+    return false
+  }
+}
+
+/** Point a stored council link at the event, when the id is still in the URL. */
+export function rewriteCouncilListingUrl(raw?: string | null): string | null {
+  const url = usableUrl(raw)
+  if (!url) return null
+  const id = bccEventIdFromUrl(url)
+  if (!id) return url
+  try {
+    const host = new URL(url).hostname
+    if (/(^|\.)brisbane\.qld\.gov\.au$/i.test(host) || /(^|\.)trumba\.com$/i.test(host)) return bccEventPageUrl(id)
+  } catch { /* keep the original */ }
+  return url
+}
+
 export function usableUrl(raw?: string | null): string | null {
   if (!raw) return null
   const trimmed = String(raw).trim()
@@ -110,7 +151,7 @@ export function sourceSearchUrl(source?: string | null, title?: string | null): 
     case 'cityofsydney':
       return `https://whatson.cityofsydney.nsw.gov.au/search?q=${q(name)}`
     case 'brisbanecouncil':
-      return 'https://www.brisbane.qld.gov.au/events-arts-and-culture/what-s-on-in-brisbane'
+      return `https://www.brisbane.qld.gov.au/events-arts-and-culture/what-s-on-in-brisbane/event-search?q=${q(name)}`
     case 'frontier':
       return `https://www.frontiertouring.com/?s=${q(name)}`
     case 'curated':
@@ -137,16 +178,17 @@ export function eventOutbound(ev: {
   organiserUrl?: string | null
   source?: string | null
 }): OutboundLink {
-  const ticket = usableUrl(repairKnownListingUrl(ev.ticketUrl, ev.source))
-  const source = usableUrl(repairKnownListingUrl(ev.sourceUrl, ev.source))
+  const ticket = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(ev.ticketUrl, ev.source)))
+  const source = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(ev.sourceUrl, ev.source)))
   const org = usableUrl(ev.organiserUrl)
-  const chosen = ticket
+  let chosen = ticket
     ? { href: ticket, field: 'ticket' as const, kind: 'source' as const }
     : source
       ? { href: source, field: 'source' as const, kind: 'source' as const }
       : org
         ? { href: org, field: 'organiser' as const, kind: 'organiser' as const }
         : null
+  if (chosen && isGenericCouncilLanding(chosen.href)) chosen = null
   if (!chosen) {
     if (ev.source === 'community' && ev.id) return { href: eventPath({ id: ev.id, title: ev.title }), label: 'More info', kind: 'source' }
     return { href: sourceSearchUrl(ev.source, ev.title), label: 'More info', kind: 'search' }
@@ -164,8 +206,8 @@ export function normalizeListingUrls(input: {
   sourceUrl?: string | null
   organiserUrl?: string | null
 }): { ticketUrl: string | null; sourceUrl: string | null; organiserUrl: string | null } {
-  let ticket = usableUrl(repairKnownListingUrl(input.ticketUrl, input.source))
-  let source = usableUrl(repairKnownListingUrl(input.sourceUrl, input.source))
+  let ticket = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(input.ticketUrl, input.source)))
+  let source = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(input.sourceUrl, input.source)))
   const organiserUrl = usableUrl(input.organiserUrl)
   if (ticket && !isTicketLink(ticket, input.source, 'ticket')) {
     if (!source) source = ticket

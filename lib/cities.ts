@@ -20,7 +20,7 @@ export const CITIES: CityDef[] = [
   { name: 'Gold Coast', state: 'QLD', lat: -28.0167, lng: 153.4, tz: 'Australia/Brisbane', radiusKm: 35, eventbrite: 'australia--gold-coast', humanitix: 'au--qld--gold-coast', match: /gold coast|surfers paradise|southport|broadbeach/i, custodians: 'Yugambeh language peoples, including the Kombumerri' },
   { name: 'Perth', state: 'WA', lat: -31.9523, lng: 115.8613, tz: 'Australia/Perth', radiusKm: 50, eventbrite: 'australia--perth', humanitix: 'au--wa--perth', match: /perth|boorloo|fremantle/i, custodians: 'Whadjuk Noongar people' },
   { name: 'Adelaide', state: 'SA', lat: -34.9285, lng: 138.6007, tz: 'Australia/Adelaide', radiusKm: 40, eventbrite: 'australia--adelaide', humanitix: 'au--sa--adelaide', match: /adelaide|tarntanya/i, custodians: 'Kaurna people' },
-  { name: 'Canberra', state: 'ACT', lat: -35.2809, lng: 149.13, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--canberra', humanitix: 'au--act--canberra', match: /canberra/i, custodians: 'Ngunnawal and Ngambri peoples' },
+  { name: 'Canberra', state: 'ACT', lat: -35.2809, lng: 149.13, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--canberra', humanitix: 'au--act--canberra', match: /canberra|austl\.?\s*cap\.?\s*terr|australian capital territory/i, custodians: 'Ngunnawal and Ngambri peoples' },
   { name: 'Newcastle', state: 'NSW', lat: -32.9283, lng: 151.7817, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--newcastle', humanitix: 'au--nsw--newcastle', match: /newcastle/i, custodians: 'Awabakal and Worimi peoples' },
   { name: 'Hobart', state: 'TAS', lat: -42.8821, lng: 147.3272, tz: 'Australia/Hobart', radiusKm: 35, eventbrite: 'australia--hobart', humanitix: 'au--tas--hobart', match: /hobart|nipaluna/i, custodians: 'muwinina people of lutruwita (Tasmania)' },
   { name: 'Darwin', state: 'NT', lat: -12.4634, lng: 130.8456, tz: 'Australia/Darwin', radiusKm: 35, eventbrite: 'australia--darwin', humanitix: 'au--nt--darwin', match: /darwin|garramilla/i, custodians: 'Larrakia people' },
@@ -70,7 +70,8 @@ export function suburbFromAddress(address: string | null | undefined): string | 
  */
 export function displaySuburb(suburb: string | null | undefined, address: string | null | undefined, city?: string | null): string | null {
   const parsed = suburbFromAddress(address)
-  const stored = suburb?.trim() || ''
+  const storedRaw = suburb?.trim() || ''
+  const stored = /austl\.?\s*cap\.?\s*terr|australian capital territory/i.test(storedRaw) ? 'Canberra' : storedRaw
   const generic = !stored || GENERIC_PLACE.test(stored) || (!!city && stored.toLowerCase() === city.trim().toLowerCase())
   if (parsed && (generic || /^cbd$/i.test(stored))) return parsed
   // Stored "CBD" with a non-CBD address (Cronulla, Coogee, Bankstown, …) is a bad default.
