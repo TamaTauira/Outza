@@ -8,6 +8,7 @@ import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
 import { Navbar } from '@/components/navbar'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Footer } from '@/components/footer'
 import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
@@ -137,6 +138,7 @@ export default function ItineraryPage() {
   const [wide, setWide] = useState(false)
   const [mapFull, setMapFull] = useState(false)
   const [panel, setPanel] = useState<'event' | 'custom' | 'nearby' | null>(null)
+  const [clearOpen, setClearOpen] = useState(false)
   const [eventQuery, setEventQuery] = useState('')
   const [eventHits, setEventHits] = useState<Hit[]>([])
   const [eventBusy, setEventBusy] = useState(false)
@@ -395,7 +397,7 @@ export default function ItineraryPage() {
                   <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename plan</button>
                   <details className="relative">
                     <summary className="flex h-11 cursor-pointer list-none items-center rounded-full border border-border px-4 text-sm font-semibold">More options</summary>
-                    <button type="button" onClick={() => { if (confirm('Clear the whole plan?')) clear() }} className="absolute right-0 z-10 mt-2 whitespace-nowrap rounded-xl border border-border bg-popover px-4 py-3 text-sm shadow-lg">Clear all</button>
+                    <button type="button" onClick={() => setClearOpen(true)} className="absolute right-0 z-10 mt-2 whitespace-nowrap rounded-xl border border-border bg-popover px-4 py-3 text-sm shadow-lg">Clear all</button>
                   </details>
                 </div>
               </div>
@@ -549,6 +551,18 @@ export default function ItineraryPage() {
         </section>
       </main>
       <Footer lastRefresh={null} />
+      <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear the whole plan?</AlertDialogTitle>
+            <AlertDialogDescription>Every stop on this device goes. Saved events stay saved.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep the plan</AlertDialogCancel>
+            <AlertDialogAction onClick={() => clear()}>Clear all</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
