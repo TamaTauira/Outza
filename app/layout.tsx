@@ -94,10 +94,13 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <a href="#content" className="vp-skip">Skip to content</a>
           <div className="vp-hinge" aria-hidden="true" />
           <Providers>
-            {children}
-            {modal}
+            <div id="content">
+              {children}
+              {modal}
+            </div>
           </Providers>
           <VibePeepBuddySlot />
           <Toaster />

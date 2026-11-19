@@ -54,7 +54,7 @@ const pickClass = (on: boolean) => cn(
 )
 
 /** Hero search. A plan-shaped ask shows a ready-made outing. Everything else stays a listing search. */
-export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean }) {
+export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true, inputId = 'ai-search' }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean; inputId?: string }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -274,10 +274,10 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
       <div ref={rootRef} className="rounded-xl bg-white text-neutral-900 ring-2 ring-primary/50 focus-within:ring-primary shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] overflow-hidden">
         <form role="search" onSubmit={(e) => { e.preventDefault(); void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
           <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />
-          <label htmlFor="ai-search" className="sr-only">Tell us your vibe</label>
+          <label htmlFor={inputId} className="sr-only">Tell us your vibe</label>
           <input
-            id="ai-search" ref={inputRef} type="text" value={q} maxLength={200} autoComplete="off" enterKeyHint="search"
-            aria-describedby="ai-search-help"
+            id={inputId} ref={inputRef} type="text" value={q} maxLength={200} autoComplete="off" enterKeyHint="search"
+            aria-describedby={`${inputId}-help`}
             onFocus={reveal}
             onClick={reveal}
             onKeyDown={(e) => {
@@ -288,14 +288,14 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
             onChange={(e) => setQ(e.target.value)}
             placeholder={placeholder ?? 'Ask for a vibe…'}
             className="flex-1 min-w-0 bg-transparent text-base sm:text-lg text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
-          <p id="ai-search-help" className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
+          <p id={`${inputId}-help`} className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
           {q && !working && (
             <button type="button" aria-label="Clear search" onClick={clearBar} className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"><X className="w-4 h-4" /></button>
           )}
           <button
             type="button"
             aria-expanded={open}
-            aria-controls="ai-search-panel"
+            aria-controls={`${inputId}-panel`}
             aria-label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
             onClick={() => setOpen((v) => !v)}
             className="relative grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
@@ -329,7 +329,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
 
         {open && (
           <div
-            id="ai-search-panel"
+            id={`${inputId}-panel`}
             ref={panelRef}
             role="region"
             aria-label="Filters"

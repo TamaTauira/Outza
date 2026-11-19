@@ -28,7 +28,7 @@ export function AskSheet({
     let tries = 0
     const tick = () => {
       if (stopped) return
-      const input = document.getElementById('ai-search')
+      const input = document.getElementById('ask-search')
       if (input instanceof HTMLInputElement) {
         input.focus()
         return
@@ -60,6 +60,7 @@ export function AskSheet({
           <AiSearchBar
             city={city}
             today={today}
+            inputId="ask-search"
             onShowAll={() => onOpenChange(false)}
           />
         )}
