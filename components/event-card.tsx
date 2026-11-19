@@ -120,7 +120,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               <span className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
                 {tidyVenueName(event.venueName, event.venueAddress, event.city)}
-                {suburb && <span className="text-muted-foreground/60">· {suburb}</span>}
+                {suburb && <span className="text-muted-foreground">· {suburb}</span>}
               </span>
             </div>
 
