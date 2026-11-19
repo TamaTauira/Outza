@@ -137,17 +137,20 @@ export function GuideLanding(props: {
           </div>
         ) : (
           <div className="mt-10 space-y-10">
-            {[...byDay].map(([key, evs]) => (
-              <section key={key} aria-labelledby={`d-${key}`} className="scroll-mt-32">
-                <h2 id={`d-${key}`} className="font-display text-xl font-bold mb-4">{formatGuideDay(key)}</h2>
-                <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
-                  {evs.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
-                </div>
-                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {evs.map((e, i) => <EventCard key={e.id} index={i} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
-                </div>
-              </section>
-            ))}
+            {events.length > 0 && <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
+              {events.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
+            </div>}
+            {events.length > 0 && <div className="hidden md:grid md:grid-cols-2 md:items-stretch lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {events.map((e, i) => {
+                const key = e.date.toISOString().slice(0, 10)
+                const first = i === 0 || events[i - 1].date.toISOString().slice(0, 10) !== key
+                return (
+                  <div key={e.id} id={first ? `d-${key}` : undefined} className="h-full scroll-mt-32">
+                    <EventCard index={i} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />
+                  </div>
+                )
+              })}
+            </div>}
             {local.length > 0 && (
               <section aria-labelledby="local-listings">
                 <h2 id="local-listings" className="font-display text-xl font-bold mb-1">From VibePeep Local</h2>
