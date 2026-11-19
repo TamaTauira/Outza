@@ -16,6 +16,7 @@ import {
   peakHour,
   peakWeekday,
   reachTips,
+  csvWithBom,
   recapFragment,
   returnEstimate,
   shiftDay,
@@ -127,4 +128,8 @@ test('the weekly recap has an unsubscribe link and stays on the VibePeep name', 
   const csv = toCsv(['event', 'note'], [['Jazz, late', 'say "hi"']])
   assert.match(csv, /"Jazz, late"/)
   assert.match(csv, /"say ""hi"""/)
+  const bom = csvWithBom(csv)
+  assert.equal(bom.charCodeAt(0), 0xfeff)
+  assert.equal(csvWithBom(bom), bom)
+  assert.match(bom, /"Jazz, late"/)
 })

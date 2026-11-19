@@ -85,13 +85,13 @@ function button(href: string, label: string) {
   const url = x(href)
   const width = Math.min(340, Math.max(168, label.length * 8 + 56))
   return `<!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:46px;v-text-anchor:middle;width:${width}px;" arcsize="50%" strokecolor="${C.accent}" fillcolor="${C.accent}">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:46px;v-text-anchor:middle;width:${width}px;" arcsize="50%" strokecolor="${C.deep}" fillcolor="${C.deep}">
 <w:anchorlock/>
 <center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;">${safe} &#8594;</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<table ${T}><tr><td bgcolor="${C.accent}" style="border-radius:999px;background:${C.accent};">
+<table ${T}><tr><td bgcolor="${C.deep}" style="border-radius:999px;background:${C.deep};">
 <a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${FONT};font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${safe} &rarr;</a>
 </td></tr></table>
 <!--<![endif]-->`
@@ -237,7 +237,6 @@ export function renderHtml(r: RenderInput): string {
 
   return `<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta name="color-scheme" content="light dark"/><meta name="supported-color-schemes" content="light dark"/><title>${x(r.subject)}</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,600;0,700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" type="text/css"/>
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
 body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
@@ -250,6 +249,11 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
   .heroPh{height:200px!important}
   .flink{display:block!important;padding:3px 0!important}
   .fdot{display:none!important}
+}
+@media (max-width:400px){
+  .shell{padding:8px 0!important}
+  .px{padding-left:12px!important;padding-right:12px!important}
+  .w100{width:100%!important;max-width:100%!important}
 }
 @media (prefers-color-scheme: dark){
   .bg{background-color:#121212!important}
@@ -267,7 +271,7 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 </style></head>
 <body class="bg" style="margin:0;padding:0;background:${C.page};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${x(r.preview)}${'&#8204;&nbsp;'.repeat(40)}</div>
-<table ${T} width="100%" class="bg" bgcolor="${C.page}" style="background:${C.page};"><tr><td align="center" style="padding:16px 8px;">
+<table ${T} width="100%" class="bg" bgcolor="${C.page}" style="background:${C.page};"><tr><td align="center" class="shell" style="padding:16px 8px;">
 <table ${T} width="600" class="w100 bg" bgcolor="${C.page}" style="width:600px;max-width:600px;background:${C.page};">
 
 <tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:20px 20px 0 0;padding:26px 24px 28px;">

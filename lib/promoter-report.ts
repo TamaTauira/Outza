@@ -1,12 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl, DEFAULT_FROM_EMAIL, activeMailTransport } from '@/lib/email'
 import { REFERRAL_LABELS, REFERRAL_SOURCES, type ReferralSource } from '@/lib/referrals'
-import { eventPath } from '@/lib/seo'
+import { eventPath, isPastEvent } from '@/lib/seo'
+import { isHiddenFromPublic } from '@/lib/community-shared'
 import { sign } from '@/lib/newsletter/links'
 import { metricDay, peakWeekday, reachTips, recapFragment, shiftDay } from '@/lib/organiser-reach'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
 import { AUDIENCE_DISCLAIMER, MIN_GROUP } from '@/lib/profile-shared'
-import { emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
 import { isQaAccountEmail } from '@/lib/qa-account'
 
 const n = (v: number) => v.toLocaleString('en-AU')
@@ -14,6 +15,25 @@ const n = (v: number) => v.toLocaleString('en-AU')
 export function reportUnsubscribeUrl(userId: string) {
   const q = new URLSearchParams({ u: userId, k: sign(userId, 'report-unsub') })
   return `${siteUrl()}/unsubscribe/report?${q}`
+}
+
+/** Link target for a promoter-report event. Hidden, unapproved, removed, and past listings 404, so they are not linked. */
+export function publicReportHref(event: {
+  id: string
+  title?: string | null
+  date: Date | string
+  endDate?: Date | string | null
+  city?: string | null
+  hidden?: boolean | null
+  moderationStatus?: string | null
+  deletedAt?: Date | string | null
+  approvalState?: string | null
+}, origin: string): string | null {
+  if (event.deletedAt) return null
+  if (event.approvalState && event.approvalState !== 'APPROVED') return null
+  if (isHiddenFromPublic(event)) return null
+  if (isPastEvent(event)) return null
+  return `${origin}${eventPath(event)}`
 }
 
 /** Builds and emails a performance report for one promoter. Figures are all-time counters from our own tracking. */
@@ -36,7 +56,8 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     orderBy: { date: 'asc' },
     take: 25,
     select: {
-      id: true, title: true, date: true, views: true, ticketClicks: true,
+      id: true, title: true, date: true, endDate: true, city: true, views: true, ticketClicks: true,
+      hidden: true, moderationStatus: true, deletedAt: true, approvalState: true,
       promotions: { where: { status: { in: ['ACTIVE', 'EXPIRED'] } }, select: { id: true } },
       referrals: { select: { source: true, count: true } },
       _count: { select: { savedBy: true, attendees: true } },
@@ -45,26 +66,40 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
   if (!events.length) return { ok: false, error: 'No recent or upcoming events to report on yet' }
 
   const base = siteUrl()
+  const hrefFor = new Map<string, string>()
+  for (const event of events) {
+    const href = publicReportHref(event, base)
+    if (href) hrefFor.set(event.id, href)
+  }
   const totals: Record<string, number> = {}
+  const titleLink = (id: string, title: string, weight = false) => {
+    const label = escapeHtml(title)
+    const href = hrefFor.get(id)
+    const style = `color:${EMAIL_C.ink};text-decoration:none;${weight ? 'font-weight:600;' : ''}`
+    return href
+      ? `<a href="${escapeHtml(href)}" class="tx" style="${style}">${label}</a>`
+      : `<span class="tx" style="${style}">${label}</span>`
+  }
   const rows = events.map((e) => {
     const unlocked = pro || e.promotions.length > 0
     if (unlocked) for (const r of e.referrals) totals[r.source] = (totals[r.source] ?? 0) + r.count
     const ctr = unlocked && e.views ? `${((e.ticketClicks / e.views) * 100).toFixed(1)}%` : '-'
-    const cell = (v: string) => `<td style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums">${v}</td>`
-    return `<tr style="border-top:1px solid #eee"><td style="padding:8px 6px"><a href="${base}${eventPath(e)}" style="color:#111;font-weight:600;text-decoration:none">${escapeHtml(e.title)}</a><br><span style="color:#777;font-size:12px">${e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</span></td>${cell(unlocked ? n(e.views) : 'Locked')}${cell(unlocked ? n(e.ticketClicks) : 'Locked')}${cell(ctr)}${cell(`${e._count.savedBy} / ${e._count.attendees}`)}</tr>`
+    const cell = (v: string) => `<td class="tx" style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums;color:${EMAIL_C.ink}">${v}</td>`
+    return `<tr style="border-top:1px solid #eee"><td style="padding:8px 6px">${titleLink(e.id, e.title, true)}<br><span class="mu" style="color:${EMAIL_C.muted};font-size:12px">${e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</span></td>${cell(unlocked ? n(e.views) : 'Locked')}${cell(unlocked ? n(e.ticketClicks) : 'Locked')}${cell(ctr)}${cell(`${e._count.savedBy} / ${e._count.attendees}`)}</tr>`
   }).join('')
   const refTotal = Object.values(totals).reduce((s, v) => s + v, 0)
-  const refRows = refTotal
-    ? REFERRAL_SOURCES.filter((s) => totals[s]).map((s) => `<tr><td style="padding:4px 6px">${REFERRAL_LABELS[s as ReferralSource]}</td><td style="padding:4px 6px;text-align:right">${n(totals[s])} (${Math.round((totals[s] / refTotal) * 100)}%)</td></tr>`).join('')
-    : '<tr><td style="padding:4px 6px;color:#777">No tracked visits yet.</td></tr>'
+  const refRows = REFERRAL_SOURCES.filter((s) => totals[s]).map((s) => `<tr><td class="tx" style="padding:4px 6px;color:${EMAIL_C.ink}">${REFERRAL_LABELS[s as ReferralSource]}</td><td class="tx" style="padding:4px 6px;text-align:right;color:${EMAIL_C.ink}">${n(totals[s])} (${Math.round((totals[s] / refTotal) * 100)}%)</td></tr>`).join('')
+  const referralBlock = refTotal
+    ? `<h2 class="tx" style="font-size:15px;margin:24px 0 6px;color:${EMAIL_C.ink}">Where visitors came from</h2><table style="width:100%;border-collapse:collapse;font-size:13px">${refRows}</table>`
+    : `<p class="mu" style="font-size:13px;margin:24px 0 0;color:${EMAIL_C.muted}">No tracked visits yet.</p>`
 
   // Grouped, anonymised audience insights (groups under MIN_GROUP hidden). Never blocks the report if it fails.
   const ins = await getAudienceInsights(userId).catch((e) => { console.error('[promoter-report] insights', e); return null })
-  const shareRows = (title: string, list: Share[]) => `<p style="font-size:13px;font-weight:700;margin:12px 0 4px">${title}</p>` + (list.length
-    ? `<table style="width:100%;border-collapse:collapse;font-size:13px">${list.map((s) => `<tr><td style="padding:3px 6px">${escapeHtml(s.label)}</td><td style="padding:3px 6px;text-align:right;width:60px">${s.pct}%</td></tr>`).join('')}</table>`
-    : `<p style="font-size:12px;color:#777;margin:0">Hidden: fewer than ${MIN_GROUP} people.</p>`)
+  const shareRows = (title: string, list: Share[]) => `<p class="tx" style="font-size:13px;font-weight:700;margin:12px 0 4px;color:${EMAIL_C.ink}">${title}</p>` + (list.length
+    ? `<table style="width:100%;border-collapse:collapse;font-size:13px">${list.map((s) => `<tr><td class="tx" style="padding:3px 6px;color:${EMAIL_C.ink}">${escapeHtml(s.label)}</td><td class="tx" style="padding:3px 6px;text-align:right;width:60px;color:${EMAIL_C.ink}">${s.pct}%</td></tr>`).join('')}</table>`
+    : `<p class="mu" style="font-size:12px;color:${EMAIL_C.muted};margin:0">Hidden: fewer than ${MIN_GROUP} people.</p>`)
   const topRows = (title: string, list: TopEvent[], unit: string) => list.length
-    ? `<p style="font-size:13px;font-weight:700;margin:12px 0 4px">${title}</p><table style="width:100%;border-collapse:collapse;font-size:13px">${list.map((e) => `<tr><td style="padding:3px 6px"><a href="${base}${eventPath(e)}" style="color:#111;text-decoration:none">${escapeHtml(e.title)}</a></td><td style="padding:3px 6px;text-align:right;width:90px">${n(e.count)} ${unit}</td></tr>`).join('')}</table>`
+    ? `<p class="tx" style="font-size:13px;font-weight:700;margin:12px 0 4px;color:${EMAIL_C.ink}">${title}</p><table style="width:100%;border-collapse:collapse;font-size:13px">${list.map((e) => `<tr><td style="padding:3px 6px">${titleLink(e.id, e.title)}</td><td class="tx" style="padding:3px 6px;text-align:right;width:90px;color:${EMAIL_C.ink}">${n(e.count)} ${unit}</td></tr>`).join('')}</table>`
     : ''
   const fromDay = shiftDay(metricDay(), -6)
   const unlockedIds = new Set(events.filter((event) => pro || event.promotions.length > 0).map((event) => event.id))
@@ -108,12 +143,27 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     unsubUrl: reportUnsubscribeUrl(userId),
   })
 
-  const audience = !ins ? '' : `<h2 style="font-size:15px;margin:24px 0 6px">Who's into your events</h2>
+  if (ins) {
+    const known = new Set(events.map((event) => event.id))
+    const extra = [...new Set([...ins.topSaved, ...ins.topShared, ...ins.topItinerary].map((event) => event.id))].filter((id) => !known.has(id))
+    if (extra.length) {
+      const linked = await prisma.event.findMany({
+        where: { id: { in: extra } },
+        select: { id: true, title: true, date: true, endDate: true, city: true, hidden: true, moderationStatus: true, deletedAt: true, approvalState: true },
+      }).catch(() => [])
+      for (const row of linked) {
+        const href = publicReportHref(row, base)
+        if (href) hrefFor.set(row.id, href)
+      }
+    }
+  }
+
+  const audience = !ins ? '' : `<h2 class="tx" style="font-size:15px;margin:24px 0 6px;color:${EMAIL_C.ink}">Who's into your events</h2>
   ${ins.enough
-    ? `<p style="font-size:13px;color:#444;margin:0">About ${n(ins.audienceApprox)}+ interested people.</p>${shareRows('Age bands', ins.ageBands)}${shareRows('Home areas', ins.areas)}${shareRows('Also into', ins.interests)}${shareRows('How far ahead they plan', ins.planAhead)}`
-    : `<p style="font-size:13px;color:#444;margin:0">The crowd's still gathering! Age bands, home areas and more appear once ${MIN_GROUP}+ signed-in people engage with your events.</p>`}
+    ? `<p class="tx" style="font-size:13px;color:${EMAIL_C.ink};margin:0">About ${n(ins.audienceApprox)}+ interested people.</p>${shareRows('Age bands', ins.ageBands)}${shareRows('Home areas', ins.areas)}${shareRows('Also into', ins.interests)}${shareRows('How far ahead they plan', ins.planAhead)}`
+    : `<p class="tx" style="font-size:13px;color:${EMAIL_C.ink};margin:0">The crowd's still gathering! Age bands, home areas and more appear once ${MIN_GROUP}+ signed-in people engage with your events.</p>`}
   ${topRows('Most saved', ins.topSaved, 'saves')}${topRows('Most shared', ins.topShared, 'shares')}${topRows('Most added to itineraries', ins.topItinerary, 'adds')}
-  <p style="font-size:11px;color:#777;margin-top:10px">${escapeHtml(AUDIENCE_DISCLAIMER)}</p>`
+  <p class="mu" style="font-size:11px;color:${EMAIL_C.muted};margin-top:10px">${escapeHtml(AUDIENCE_DISCLAIMER)}</p>`
 
   const html = emailDocument({
     title: 'Your VibePeep event performance report',
@@ -121,19 +171,25 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     manageHref: `${base}/account`,
     homeHref: base,
     reason: 'You turned on weekly recaps in the Promoter dashboard. The unsubscribe link in this email turns them off straight away and leaves your newsletter choice alone.',
-    rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 6px">Your event performance report</h1>
-  <p style="font-size:14px;color:#444;margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's the read on your listings. Figures are totals since each one went live.</p>
-  <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#777;font-size:12px;text-align:left"><th style="padding:6px">Event</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">CTR</th><th style="padding:6px;text-align:right">Saves / going</th></tr></thead><tbody>${rows}</tbody></table>
-  <h2 style="font-size:15px;margin:24px 0 6px">Where visitors came from</h2>
-  <table style="width:100%;border-collapse:collapse;font-size:13px">${refRows}</table>
+    rows: emailBodyCell(`<h1 class="tx" style="font-size:20px;margin:0 0 6px;color:${EMAIL_C.ink}">Your event performance report</h1>
+  <p class="tx" style="font-size:14px;color:${EMAIL_C.ink};margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's the read on your listings. Figures are totals since each one went live.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr class="mu" style="color:${EMAIL_C.muted};font-size:12px;text-align:left"><th style="padding:6px">Event</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">CTR</th><th style="padding:6px;text-align:right">Saves / going</th></tr></thead><tbody>${rows}</tbody></table>
+  ${referralBlock}
   ${recap.html}
   ${audience}
-  ${pro ? '' : '<p style="font-size:12px;color:#777;margin-top:12px">"Locked" figures unlock when an event is promoted, or for every event with Promoter Pro.</p>'}
-  <p style="margin:24px 0"><a href="${base}/promoter" style="background:#E24B2A;color:#fff;padding:10px 16px;border-radius:999px;text-decoration:none;font-weight:700;font-size:14px">Open Promoter Dashboard</a></p>
+  ${pro ? '' : `<p class="mu" style="font-size:12px;color:${EMAIL_C.muted};margin-top:12px">"Locked" figures unlock when an event is promoted, or for every event with Promoter Pro.</p>`}
+  <div style="margin:24px 0">${emailButton(`${base}/promoter`, 'Open Promoter Dashboard')}</div>
   `),
   })
 
-  const res = await sendEmail({ to: user.email, subject: 'Your VibePeep week, in one note', html, text: recap.text })
+  const res = await sendEmail({
+    to: user.email,
+    subject: 'Your VibePeep week, in one note',
+    html,
+    text: recap.text,
+    kind: 'report',
+    unsubscribeUrl: reportUnsubscribeUrl(userId),
+  })
   if (!res.ok) return { ok: false, error: res.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastReportAt: new Date() } })
   return { ok: true, events: events.length }

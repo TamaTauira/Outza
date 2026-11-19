@@ -43,6 +43,28 @@ export type SendEmailResult = {
 
 export type MailTag = { name: string; value: string }
 
+/** Marketing and promoter/venue reports can carry a one-click unsubscribe. Verify and reset stay transactional. */
+export type MailKind = 'marketing' | 'report' | 'transactional'
+
+/**
+ * RFC 8058 one-click headers.
+ * Added when an https unsubscribe URL is already available.
+ * Marketing and promoter reports pass that URL. Pure transactional mail does not, unless a caller already has one.
+ */
+export function listUnsubscribeHeaders(opts: {
+  kind?: MailKind | null
+  unsubscribeUrl?: string | null
+}): Record<string, string> {
+  const url = opts.unsubscribeUrl?.trim() ?? ''
+  if (!/^https:\/\/[^\s>]+$/i.test(url)) return {}
+  const kind = opts.kind ?? 'transactional'
+  if (kind !== 'marketing' && kind !== 'report' && kind !== 'transactional') return {}
+  return {
+    'List-Unsubscribe': `<${url}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  }
+}
+
 type OutboundMessage = {
   from: string
   to: string
@@ -50,6 +72,7 @@ type OutboundMessage = {
   subject: string
   html: string
   text?: string
+  headers?: Record<string, string>
   envelope: { from: string; to: string }
 }
 
@@ -265,7 +288,7 @@ function getTransport(): Transporter {
   return transport
 }
 
-async function deliverSmtp(opts: { to: string; subject: string; html: string; text?: string }): Promise<SmtpJob> {
+async function deliverSmtp(opts: { to: string; subject: string; html: string; text?: string; headers?: Record<string, string> }): Promise<SmtpJob> {
   const day = utcDay()
   if (heldUntilDay === day || (await sendsToday()) >= YAHOO_DAILY_CAP) {
     noteCap(day)
@@ -280,6 +303,7 @@ async function deliverSmtp(opts: { to: string; subject: string; html: string; te
     html: opts.html,
     envelope: { from: envTrim('SMTP_USER'), to: opts.to },
     ...(opts.text ? { text: opts.text } : {}),
+    ...(opts.headers && Object.keys(opts.headers).length ? { headers: opts.headers } : {}),
   }
   try {
     const sender = senderOverride ?? getTransport()
@@ -320,7 +344,7 @@ function cleanTags(tags?: MailTag[]): MailTag[] | undefined {
   return out.length ? out : undefined
 }
 
-async function deliverResend(opts: { to: string; subject: string; html: string; text?: string; tags?: MailTag[] }): Promise<SendEmailResult> {
+async function deliverResend(opts: { to: string; subject: string; html: string; text?: string; tags?: MailTag[]; headers?: Record<string, string> }): Promise<SendEmailResult> {
   const apiKey = envTrim('RESEND_API_KEY')
   const from = resendFromAddress()
   const tags = cleanTags(opts.tags)
@@ -338,6 +362,7 @@ async function deliverResend(opts: { to: string; subject: string; html: string; 
         html: opts.html,
         ...(opts.text ? { text: opts.text } : {}),
         ...(tags ? { tags } : {}),
+        ...(opts.headers && Object.keys(opts.headers).length ? { headers: opts.headers } : {}),
       }),
       signal: AbortSignal.timeout(20_000),
     })
@@ -370,6 +395,9 @@ export async function sendEmail(opts: {
   text?: string
   senderAlias?: string
   tags?: MailTag[]
+  /** Marketing and report mail pass an unsubscribe URL. Verify and reset stay transactional and omit it. */
+  kind?: MailKind
+  unsubscribeUrl?: string
 }): Promise<SendEmailResult> {
   const to = opts.to?.trim()
   if (!to) return { ok: false, error: 'Missing recipient' }
@@ -378,7 +406,14 @@ export async function sendEmail(opts: {
     console.error('[email] skipped: SMTP is not configured and RESEND_API_KEY is not set')
     return { ok: false, disabled: true, error: 'Email sending is turned off' }
   }
-  const message = { to, subject: opts.subject, html: opts.html, text: opts.text }
+  const headers = listUnsubscribeHeaders({ kind: opts.kind, unsubscribeUrl: opts.unsubscribeUrl })
+  const message = {
+    to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+    ...(Object.keys(headers).length ? { headers } : {}),
+  }
   if (transportName === 'smtp') return enqueueSmtp(() => deliverSmtp(message))
   return deliverResend({ ...message, tags: opts.tags })
 }

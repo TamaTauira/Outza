@@ -9,7 +9,8 @@ import { AudienceTracker } from '@/components/audience-tracker'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { DeploymentFetchPin } from '@/components/deployment-fetch-pin'
 import { Providers } from '@/components/providers'
-import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_OG_IMAGE, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { DEFAULT_OG_ALT, openGraphImage } from '@/lib/share-image'
 import { siteUrl } from '@/lib/site-url'
 import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
 
@@ -18,11 +19,14 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-display' })
 
 const theme = '#0c0f0e'
+const defaultTitle = `${BRAND_NAME} — ${BRAND_TAGLINE}`
+const defaultDescription = `${BRAND_SUBLINE} The friend who knows what's on: gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save what looks good, follow venues, and get a nudge when it’s on.`
+const defaultOgImage = openGraphImage(undefined, DEFAULT_OG_ALT)
 
 export const metadata = {
   metadataBase: new URL(siteUrl()),
-  title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
-  description: `${BRAND_SUBLINE} The friend who knows what's on: gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save what looks good, follow venues, and get a nudge when it’s on.`,
+  title: defaultTitle,
+  description: defaultDescription,
   applicationName: BRAND_NAME,
   manifest: '/manifest.webmanifest',
   robots: { index: true, follow: true },
@@ -36,18 +40,19 @@ export const metadata = {
     apple: [{ url: BRAND_APPLE_TOUCH, sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
+    title: defaultTitle,
     description: BRAND_SUBLINE,
-    images: [BRAND_OG_IMAGE],
+    url: '/',
+    images: [defaultOgImage],
     siteName: BRAND_NAME,
     locale: 'en_AU',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${BRAND_NAME} — ${BRAND_TAGLINE}`,
+    title: defaultTitle,
     description: BRAND_SUBLINE,
-    images: [BRAND_OG_IMAGE],
+    images: [defaultOgImage],
   },
   // Search Console / Bing Webmaster ownership tags — only rendered once the codes are set in the environment.
   verification: {

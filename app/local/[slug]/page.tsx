@@ -4,6 +4,7 @@ import { cityDef } from '@/lib/cities'
 import { localCategoryLabel, localPath } from '@/lib/local-shared'
 import { jsonLdString } from '@/lib/seo-server'
 import { tzOffset } from '@/lib/seo'
+import { openGraphImage } from '@/lib/share-image'
 import { canonicalLocalListing, loadLocalListing } from '../listing-load'
 import { LocalDetailClient } from './local-detail-client'
 
@@ -15,11 +16,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const l = await loadLocalListing((await params).slug)
   if (!l) return { title: 'Listing not found | VibePeep', robots: { index: false } }
   const desc = `${localCategoryLabel(l.category)} in ${l.suburb}, ${l.city} · ${l.schedule}. ${l.description.replace(/\s+/g, ' ').slice(0, 120)}…`
+  const image = openGraphImage(l.imageUrl, l.title)
   return {
     title: `${l.title} · ${l.suburb} | VibePeep Local`,
     description: desc,
     alternates: { canonical: localPath(l) },
-    openGraph: { title: l.title, description: desc.slice(0, 200), type: 'website', url: localPath(l), ...(l.imageUrl ? { images: [l.imageUrl] } : {}) },
+    openGraph: { title: l.title, description: desc.slice(0, 200), type: 'website', url: localPath(l), images: [image] },
+    twitter: { card: 'summary_large_image', title: l.title, description: desc.slice(0, 200), images: [image] },
   }
 }
 

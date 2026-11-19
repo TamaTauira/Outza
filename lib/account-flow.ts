@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
-import { emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
 import { siteUrl } from '@/lib/site-url'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import {
@@ -25,10 +25,10 @@ function linkMail(to: string, subject: string, title: string, body: string, href
     manageHref: `${home}/account`,
     homeHref: home,
     reason: 'This message is about your VibePeep account.',
-    rows: emailBodyCell(`<p style="margin:0 0 12px;">${body}</p><p style="margin:0;"><a href="${href}">${label}</a></p>`),
+    rows: emailBodyCell(`<p style="margin:0 0 16px;">${body}</p>${emailButton(href, label)}`),
   })
   const text = `${title}\n\n${body}\n${href}\n`
-  return sendEmail({ to, subject, html, text })
+  return sendEmail({ to, subject, html, text, kind: 'transactional' })
 }
 
 async function recentCount(userId: string, purpose: AuthPurpose): Promise<number> {

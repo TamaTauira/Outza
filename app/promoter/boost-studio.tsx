@@ -45,7 +45,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
   const [boosts, setBoosts] = useState<CatalogBoost[]>(Object.values(BOOSTS))
   const [paymentsOn, setPaymentsOn] = useState<boolean | null>(null)
   const [rows, setRows] = useState<CampaignRow[]>([])
-  const [canExport, setCanExport] = useState(false)
+  const [exportGate, setExportGate] = useState<'loading' | 'on' | 'off'>('loading')
   const [canPause, setCanPause] = useState(false)
   const [attribution, setAttribution] = useState(ATTRIBUTION_NOTE)
   const [eventId, setEventId] = useState(events[0]?.id ?? '')
@@ -71,7 +71,8 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
     if (catalog?.boosts?.length) setBoosts(catalog.boosts)
     if (typeof catalog?.paymentsEnabled === 'boolean') setPaymentsOn(catalog.paymentsEnabled)
     if (mine?.campaigns) setRows(mine.campaigns)
-    setCanExport(!!mine?.canExport)
+    if (typeof mine?.canExport === 'boolean') setExportGate(mine.canExport ? 'on' : 'off')
+    else if (mine) setExportGate('off')
     setCanPause(!!mine?.canPause)
     if (mine?.attribution) setAttribution(mine.attribution)
   }
@@ -275,7 +276,8 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
       <section>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-semibold">Your boost results</h3>
-          {canExport && <a href="/api/promoter/campaigns/export" className="text-sm font-semibold text-primary hover:underline">Download CSV</a>}
+          {exportGate === 'on' && <a href="/api/promoter/campaigns/export" className="text-sm font-semibold text-primary hover:underline">Download CSV</a>}
+          {exportGate === 'off' && <span className="text-sm text-muted-foreground">The CSV export comes with Growth or Venue Plus.</span>}
         </div>
         <p className="mb-4 text-xs text-muted-foreground">{attribution}</p>
         {!rows.length ? <p className="text-sm text-muted-foreground">No short boosts yet. The multi-day packages still live under Promote an event.</p> : (

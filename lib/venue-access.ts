@@ -5,7 +5,7 @@
 import { randomBytes, randomInt } from 'crypto'
 import { prisma } from '@/lib/db'
 import { sendEmail, escapeHtml } from '@/lib/email'
-import { emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
 import { notifyTrustTeam } from '@/lib/trust'
 import { siteUrl } from '@/lib/site-url'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
@@ -612,6 +612,30 @@ export async function inviteVenueManager(actorId: string, venueId: string, email
     update: { role: 'MANAGER', status, revokedAt: null },
   })
   await audit(venueId, actorId, 'team-invite', null, `${person.email} ${status}`)
+  const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { name: true } })
+  const venueName = venue?.name?.trim() || 'the venue'
+  const roleLabel = 'Staff'
+  const home = siteUrl()
+  const dashboard = `${home}/venue/${venueId}`
+  try {
+    const sent = await sendEmail({
+      to: person.email,
+      subject: `You’re invited to manage ${venueName} on VibePeep`.slice(0, 120),
+      kind: 'transactional',
+      html: emailDocument({
+        title: `Manage ${venueName}`,
+        preheader: `You’ve been added as ${roleLabel} at ${venueName}.`,
+        manageHref: `${home}/account`,
+        homeHref: home,
+        reason: 'A venue administrator added you on VibePeep. This note does not change your newsletter.',
+        rows: emailBodyCell(`<p style="margin:0 0 16px;">You’ve been added as <strong>${escapeHtml(roleLabel)}</strong> at <strong>${escapeHtml(venueName)}</strong>.</p>${emailButton(dashboard, 'Open the venue dashboard')}`),
+      }),
+      text: `You’ve been added as ${roleLabel} at ${venueName}.\nOpen the venue dashboard: ${dashboard}\n`,
+    })
+    if (!sent.ok) console.error('[venue] invite email failed', sent.error)
+  } catch (err) {
+    console.error('[venue] invite email failed', err instanceof Error ? err.message : err)
+  }
   return { status: 200 as const, memberId: member.id, memberStatus: status }
 }
 

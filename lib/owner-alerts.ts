@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
-import { emailLockup } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
 import { TRANSIENT_WINDOW_MS, foldTransientSessions } from '@/lib/network-fault'
 
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
@@ -106,6 +106,37 @@ export function faultMachineBlock(facts: {
   return `VIBEPEEP_FAULT\n${JSON.stringify(payload)}`
 }
 
+/** Human fault time in Australia/Sydney. The machine block keeps ISO UTC. */
+export function faultTimestamp(date: Date): string {
+  const formatted = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Sydney',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date)
+  return `${formatted} ${sydneyZoneName(date)}`
+}
+
+function sydneyZoneName(date: Date): 'AEST' | 'AEDT' {
+  const fmt = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Sydney',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  })
+  const parts = Object.fromEntries(fmt.formatToParts(date).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]))
+  const asUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second))
+  const offsetMin = Math.round((asUtc - date.getTime()) / 60000)
+  return offsetMin >= 660 ? 'AEDT' : 'AEST'
+}
+
 const TRANSIENT_KEY = 'fault:transient-network'
 
 /**
@@ -177,22 +208,28 @@ export async function reportFault(opts: FaultReport) {
       error: parts.error,
       stack: parts.stack,
     })
-    const html = `
-  <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;">
-    ${emailLockup()}
-    <h2 style="color:#d92d20;margin-bottom:4px;">VibePeep fault detected</h2>
-    <p style="color:#444;margin-top:0;">${escapeHtml(title)}</p>
-    <div style="background:#fff4f2;border-left:4px solid #d92d20;padding:14px 16px;border-radius:6px;">
+    const seen = faultTimestamp(row.firstSeen)
+    const latest = faultTimestamp(now)
+    const home = siteUrl()
+    const html = emailDocument({
+      title: 'VibePeep fault detected',
+      preheader: title,
+      manageHref: `${home}/admin`,
+      homeHref: home,
+      reason: 'Repeats of this same fault are bundled: at most one email every 6 hours.',
+      rows: emailBodyCell(`<h2 style="color:#d92d20;margin:0 0 8px;font-size:20px;">VibePeep fault detected</h2>
+    <p style="margin:0 0 12px;">${escapeHtml(title)}</p>
+    <div class="card" style="background:#fff4f2;border-left:4px solid #d92d20;padding:14px 16px;border-radius:6px;">
       <p style="margin:0 0 6px;"><strong>Area:</strong> ${escapeHtml(opts.area)}</p>
-      <p style="margin:0 0 6px;"><strong>Seen:</strong> ${row.count} time${row.count === 1 ? '' : 's'} since ${row.firstSeen.toISOString()}</p>
-      <p style="margin:0 0 6px;"><strong>Latest:</strong> ${now.toISOString()}</p>
+      <p style="margin:0 0 6px;"><strong>Seen:</strong> ${row.count} time${row.count === 1 ? '' : 's'} since ${escapeHtml(seen)}</p>
+      <p style="margin:0 0 6px;"><strong>Latest:</strong> ${escapeHtml(latest)}</p>
       ${route ? `<p style="margin:0;"><strong>Route:</strong> ${escapeHtml(route)}</p>` : ''}
     </div>
-    ${detail ? `<pre style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(detail)}</pre>` : ''}
-    <pre data-vibepeep-fault="1" style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(block)}</pre>
-    <p style="color:#666;font-size:12px;">Site: ${escapeHtml(siteUrl())}. Repeats of this same fault are bundled: you'll get at most one email about it every 6 hours.</p>
-  </div>`
-    const text = `${title}\n\nArea: ${opts.area}\nSeen: ${row.count} since ${row.firstSeen.toISOString()}\nLatest: ${now.toISOString()}${route ? `\nRoute: ${route}` : ''}${detail ? `\n\n${detail}` : ''}\n\n${block}`
+    ${detail ? `<pre class="card" style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(detail)}</pre>` : ''}
+    <pre data-vibepeep-fault="1" class="card" style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(block)}</pre>
+    <p class="mu" style="color:${EMAIL_C.muted};font-size:12px;">Site: ${escapeHtml(home)}.</p>`),
+    })
+    const text = `${title}\n\nArea: ${opts.area}\nSeen: ${row.count} since ${seen}\nLatest: ${latest}${route ? `\nRoute: ${route}` : ''}${detail ? `\n\n${detail}` : ''}\n\n${block}`
     const subject = `[VibePeep fault] ${title.slice(0, 90)}`
     const res = await sendEmail({ to: OWNER_EMAIL, subject, html, text })
     if (!res.ok) {
@@ -249,17 +286,21 @@ export async function runIdeasDigest(opts: { force?: boolean } = {}) {
 
   const promoters = ideas.filter((s) => s.role === 'PROMOTER').length
   const rows = ideas.map((s) => `
-      <div style="background:#f6f6f6;padding:12px 14px;border-radius:8px;margin-bottom:10px;">
-        <p style="margin:0 0 6px;font-size:12px;color:#666;">${s.createdAt.toISOString().slice(0, 10)} · ${s.role === 'PROMOTER' ? 'Promoter' : 'Event-goer'} · ${escapeHtml(s.name) || 'Anonymous'}${s.email ? ` (${escapeHtml(s.email)})` : ''}</p>
-        <p style="margin:0;white-space:pre-wrap;">${escapeHtml(s.message)}</p>
+      <div class="card" style="background:#f6f6f6;padding:12px 14px;border-radius:8px;margin-bottom:10px;">
+        <p class="mu" style="margin:0 0 6px;font-size:12px;color:${EMAIL_C.muted};">${s.createdAt.toISOString().slice(0, 10)} · ${s.role === 'PROMOTER' ? 'Promoter' : 'Event-goer'} · ${escapeHtml(s.name) || 'Anonymous'}${s.email ? ` (${escapeHtml(s.email)})` : ''}</p>
+        <p class="tx" style="margin:0;white-space:pre-wrap;color:${EMAIL_C.ink};">${escapeHtml(s.message)}</p>
       </div>`).join('')
-  const html = `
-  <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;">
-    ${emailLockup()}
-    <h2 style="color:#FF7A1A;margin-bottom:4px;">Your fortnightly ideas summary</h2>
-    <p style="color:#444;margin-top:0;">${ideas.length} new idea${ideas.length === 1 ? '' : 's'} (${promoters} from promoters, ${ideas.length - promoters} from event-goers) since the last summary.</p>
-    ${rows}
-  </div>`
+  const home = siteUrl()
+  const html = emailDocument({
+    title: 'Your fortnightly ideas summary',
+    preheader: `${ideas.length} new idea${ideas.length === 1 ? '' : 's'}`,
+    manageHref: `${home}/admin`,
+    homeHref: home,
+    reason: 'This note goes to the VibePeep owner when new suggestions are waiting.',
+    rows: emailBodyCell(`<h2 style="color:${EMAIL_C.orange};margin:0 0 8px;font-size:20px;">Your fortnightly ideas summary</h2>
+    <p style="margin:0 0 16px;">${ideas.length} new idea${ideas.length === 1 ? '' : 's'} (${promoters} from promoters, ${ideas.length - promoters} from event-goers) since the last summary.</p>
+    ${rows}`),
+  })
   const res = await sendEmail({ to: OWNER_EMAIL, subject: `VibePeep ideas: ${ideas.length} new suggestion${ideas.length === 1 ? '' : 's'} this fortnight`, html })
   if (!res.ok) {
     await reportFault({ area: 'Owner emails', key: 'ideas-digest-failed', route: '/api/cron/owner-alerts', title: 'Fortnightly ideas summary failed to send', detail: res.error })

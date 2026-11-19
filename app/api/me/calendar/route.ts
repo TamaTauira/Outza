@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized } from '@/lib/session'
-import { eventsToIcs } from '@/lib/ics'
+import { eventsToIcs, SAVED_ICS_FILENAME } from '@/lib/ics'
 import { isPastEvent, eventPath } from '@/lib/seo'
 import { siteUrl } from '@/lib/site-url'
 
@@ -30,7 +30,7 @@ export async function GET() {
   return new NextResponse(body, {
     headers: {
       'Content-Type': 'text/calendar; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="my-vibepeep.ics"',
+      'Content-Disposition': `attachment; filename="${SAVED_ICS_FILENAME}"`,
     },
   })
 }

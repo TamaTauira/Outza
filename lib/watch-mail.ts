@@ -145,7 +145,14 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
     await recordMailDelivery({ kind: 'watchlist', userId: user.id, status: 'disabled', error: 'Email sending is turned off' })
     return { ok: false as const, disabled: true as const, error: 'Email sending is turned off' }
   }
-  const sent = await sendEmail({ to: user.email, subject: opts.test ? `[Preview] ${mail.subject}` : mail.subject, html: mail.html, text: mail.text })
+  const sent = await sendEmail({
+    to: user.email,
+    subject: opts.test ? `[Preview] ${mail.subject}` : mail.subject,
+    html: mail.html,
+    text: mail.text,
+    kind: 'marketing',
+    unsubscribeUrl: unsubscribeUrl(user.id),
+  })
   if (!sent.ok) {
     const status = sent.restricted ? 'restricted' : 'failed'
     const safe = redactEmails(sent.error)
@@ -189,7 +196,14 @@ export async function sendDueReminders() {
       homeHref: home,
     })
     if (!mail) { skipped++; continue }
-    const result = await sendEmail({ to: user.email, subject: mail.subject, html: mail.html, text: mail.text })
+    const result = await sendEmail({
+      to: user.email,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      kind: 'marketing',
+      unsubscribeUrl: unsubscribeUrl(user.id),
+    })
     if (!result.ok) {
       failed++
       const status = result.restricted ? 'restricted' : 'failed'

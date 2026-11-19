@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
 import { listPromoterCampaigns, missingTable } from '@/lib/sponsorship-store'
 import { prisma } from '@/lib/db'
+import { csvWithBom } from '@/lib/organiser-reach'
 import { isProActive } from '@/lib/promotions'
 
 export const dynamic = 'force-dynamic'
@@ -26,7 +27,7 @@ export async function GET() {
       row.startsAt.toISOString(), row.endsAt.toISOString(), row.impressions, row.impressionCap,
       row.detailViews, row.ticketClicks, row.repeatInterest, row.spendCapCents, row.amountCents,
     ].map(cell).join(','))
-    const csv = [header.join(','), ...lines].join('\n')
+    const csv = csvWithBom([header.join(','), ...lines].join('\n'))
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',

@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl, DEFAULT_FROM_EMAIL, activeMailTransport } from '@/lib/email'
-import { emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
 import { sign } from '@/lib/newsletter/links'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { loadVenueActivity } from '@/lib/venue-activity-load'
@@ -48,8 +48,8 @@ export function venueMonthlyLetter(input: { greeting: string; venues: VenueMonth
     reason: 'You manage a venue. This monthly note can be turned off without changing your newsletter.',
     rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 8px">Your venue month</h1>
       <p style="font-size:14px;margin:0 0 12px">Hi ${escapeHtml(input.greeting)}, here is the last 30 days. A blank count means it didn’t load. We don’t fill one in.</p>
-      <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#777;text-align:left"><th style="padding:6px">Venue</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Saves</th><th style="padding:6px;text-align:right">Itinerary</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">Followers</th></tr></thead><tbody>${rows}</tbody></table>
-      <p style="font-size:12px;color:#777">Views and clicks are not attendance.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr class="mu" style="color:${EMAIL_C.muted};text-align:left"><th style="padding:6px">Venue</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Saves</th><th style="padding:6px;text-align:right">Itinerary</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">Followers</th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="mu" style="font-size:12px;color:${EMAIL_C.muted}">Views and clicks are not attendance.</p>
       <p style="font-size:12px"><a href="${escapeHtml(input.unsubUrl)}">Turn off this monthly note</a>. Your newsletter choice stays as it is.</p>`),
   })
   return { subject: 'Your venue month', html, text }
@@ -96,7 +96,14 @@ export async function sendVenueMonthly(userId: string) {
     })
   }
   const letter = venueMonthlyLetter({ greeting: user.name?.trim() || 'there', venues, unsubUrl: venueReportUnsubscribeUrl(userId) })
-  const sent = await sendEmail({ to: user.email, subject: letter.subject, html: letter.html, text: letter.text })
+  const sent = await sendEmail({
+    to: user.email,
+    subject: letter.subject,
+    html: letter.html,
+    text: letter.text,
+    kind: 'report',
+    unsubscribeUrl: venueReportUnsubscribeUrl(userId),
+  })
   if (!sent.ok) return { ok: false as const, error: sent.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastVenueReportAt: new Date() } })
   return { ok: true as const, venues: venues.length }

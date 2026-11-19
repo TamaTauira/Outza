@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { csvWithBom } from '@/lib/organiser-reach'
 import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -25,7 +26,7 @@ export async function GET() {
     e.city, e.suburb ?? '', e.venueName, e.category, e.subTags.join('|'), e.isLGBTI ? 'yes' : 'no', e.isFree ? 'yes' : 'no',
     e.price ?? '', e.capacity ?? '', e.status, e.views, e.ticketClicks, e.ticketUrl ?? '',
   ].map(cell).join(','))
-  const csv = [header.join(','), ...lines].join('\n')
+  const csv = csvWithBom([header.join(','), ...lines].join('\n'))
   return new NextResponse(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',

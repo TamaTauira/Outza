@@ -5,6 +5,7 @@ import { pickEvents, MAX_SPONSORED, type NlEvent } from './rank'
 import { issueCopy, SUBJECT_STYLES, type SubjectLine, type SubjectStyle } from './copy'
 import { emailImageSrc, type EmailKind } from './images'
 import { renderHtml, renderText, type CtaVariant, type Slot } from './render'
+import { unsubscribeUrl } from './links'
 import { runQa, type QaReport } from './qa'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { emailActivityAllowed } from '@/lib/email-activity'
@@ -152,6 +153,8 @@ export async function sendNewsletter(userId: string, opts: { mode: 'send' | 'tes
     subject: built.subject,
     html: built.html,
     text: built.text,
+    kind: 'marketing',
+    unsubscribeUrl: unsubscribeUrl(userId, built.sendId),
     ...(opts.mode === 'send' ? { tags: [{ name: 'send_id', value: built.sendId }] } : {}),
   })
   if (res.disabled) {
