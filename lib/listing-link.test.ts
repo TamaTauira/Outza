@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { eventOutbound, humanitixEventUrl, normalizeListingUrls, repairKnownListingUrl, sourceSearchUrl, usableUrl } from './listing-link'
+import { bccEventPageUrl, eventOutbound, humanitixEventUrl, isGenericCouncilLanding, normalizeListingUrls, repairKnownListingUrl, rewriteCouncilListingUrl, sourceSearchUrl, usableUrl } from './listing-link'
 
 test('ticket link wins, then source, organiser, then a search on the source site', () => {
   const tickets = eventOutbound({ title: 'Late show', source: 'ticketmaster', ticketUrl: 'https://www.ticketmaster.com.au/event/abc', sourceUrl: 'https://example.com/listing', organiserUrl: 'https://venue.example' })
@@ -30,6 +30,20 @@ test('an info-page URL stored in ticketUrl is More info, and junk URLs are dropp
   assert.match(info.href, /cityofsydney/)
   assert.equal(usableUrl('https://whatson.cityofsydney.nsw.gov.au/events/undefined'), null)
   assert.equal(usableUrl('not a url'), null)
+})
+
+test('Brisbane council links open the event, not the generic what\'s on page', () => {
+  const stored = 'https://www.brisbane.qld.gov.au/trumba?trumbaEmbed=view%3Devent%26eventid%3D212118402'
+  const page = bccEventPageUrl('212118402')
+  assert.equal(rewriteCouncilListingUrl(stored), page)
+  assert.equal(isGenericCouncilLanding('https://www.brisbane.qld.gov.au/events-arts-and-culture/what-s-on-in-brisbane'), true)
+  const info = eventOutbound({ title: 'parkrun', source: 'brisbanecouncil', sourceUrl: stored })
+  assert.equal(info.href, page)
+  assert.equal(info.label, 'More info')
+  const generic = eventOutbound({ title: 'parkrun', source: 'brisbanecouncil', sourceUrl: 'https://www.brisbane.qld.gov.au/events-arts-and-culture/what-s-on-in-brisbane' })
+  assert.match(generic.href, /event-search\?q=/)
+  assert.match(generic.href, /parkrun/)
+  assert.equal(normalizeListingUrls({ source: 'brisbanecouncil', sourceUrl: stored }).sourceUrl, page)
 })
 
 test('humanitix joins host and slug, and repairs a glued hostname', () => {

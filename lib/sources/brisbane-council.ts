@@ -7,7 +7,7 @@
 import { saveEvent, sleep } from '@/lib/event-store'
 import { paragraphsFromHtml } from '@/lib/description-text'
 import { readPrice } from '@/lib/price'
-import { usableUrl } from '@/lib/listing-link'
+import { bccEventPageUrl, usableUrl } from '@/lib/listing-link'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
 import { emptyFeedAlert, parseFailureAlert, recordQualityAlert, retireOnEmpty, venueGapAlert } from '@/lib/source-health'
 
@@ -137,7 +137,7 @@ export function parseBccRecord(row: BccRecord): ParsedBcc | null {
     price: offer.price,
     isFree: offer.isFree,
     ticketUrl: firstHref(row.bookings),
-    sourceUrl: usableUrl(row.web_link),
+    sourceUrl: bccEventPageUrl(externalId),
     externalId,
     latitude: pin ? lat : null,
     longitude: pin ? lon : null,

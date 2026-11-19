@@ -137,7 +137,9 @@ export function resolveSchedule(ev: SlotInput, day: string): ResolvedSchedule {
 
   const multiDay = !!(endDateKey && startKey && endDateKey > startKey)
   const openDay = start === 0 && endClock != null && endClock >= OPEN_DAY_END && endClock < 1440
-  const dropIn = start == null || openDay
+  // A lone 00:00 (or 00:00–00:00) is an all-day placeholder, not a midnight show.
+  const midnightPlaceholder = start === 0 && (endClock == null || endClock === 0)
+  const dropIn = start == null || openDay || midnightPlaceholder
 
   if (dropIn) {
     const end = start == null

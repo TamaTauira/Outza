@@ -293,6 +293,9 @@ test('health rates and repeated source failures stay numeric and skip budget sto
 test('a midnight-to-midnight listing reads as all day', () => {
   const open = formatBoardRange({ ...base, time: '00:00', endTime: '23:59' })
   assert.equal(open.label, 'All day')
+  assert.equal(formatBoardRange({ ...base, time: '00:00', endTime: null }).label, 'All day')
+  assert.equal(formatBoardRange({ ...base, time: '00:00', endTime: '00:00' }).label, 'All day')
+  assert.match(formatBoardRange({ ...base, time: '00:00', endTime: '03:00' }).label, /12:00 am/)
   const flagged = formatBoardRange({ ...base, allDay: true, time: '00:00', endTime: '23:59' })
   assert.equal(flagged.label, 'All day')
   const timed = formatBoardRange({ ...base, time: '19:30', endTime: null })

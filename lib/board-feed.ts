@@ -6,7 +6,7 @@ import { sydneyToday } from '@/lib/event-store'
 import { activeTierMap } from '@/lib/promotions'
 import { CITY_NAMES, cityDef } from '@/lib/cities'
 import { knownCategories, presentListing } from '@/lib/categories'
-import { addressInOtherState } from '@/lib/seo'
+import { addressInOtherState, isPastEvent } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
 import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
@@ -45,9 +45,23 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   const where: Prisma.EventWhereInput = {
     date: { gte: sydneyToday() },
     duplicateOfId: null,
-    NOT: { status: 'CANCELLED', statusSource: 'promoter' },
+    status: { not: 'CANCELLED' },
   }
-  if (a.city && CITY_NAMES.includes(a.city)) where.city = a.city
+  const actMisfile: Prisma.EventWhereInput = {
+    OR: [
+      { suburb: { contains: 'Austl', mode: 'insensitive' } },
+      { venueName: { contains: 'Austl', mode: 'insensitive' } },
+      { venueAddress: { contains: 'Austl', mode: 'insensitive' } },
+      { suburb: { contains: 'Australian Capital Territory', mode: 'insensitive' } },
+      { venueAddress: { contains: 'Australian Capital Territory', mode: 'insensitive' } },
+    ],
+  }
+  if (a.city === 'Canberra') {
+    where.OR = [{ city: 'Canberra' }, { AND: [{ city: 'Sydney' }, actMisfile] }]
+  } else if (a.city && CITY_NAMES.includes(a.city)) {
+    where.city = a.city
+    if (a.city === 'Sydney') where.NOT = actMisfile
+  }
   if (a.promoterId) where.promoterId = a.promoterId
   const and: Prisma.EventWhereInput[] = []
   if (a.search) {
@@ -107,12 +121,21 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
   if (city && CITY_NAMES.includes(city)) {
     const def = cityDef(city)
     shown = shown.filter((e) => {
+      if (isPastEvent(e)) return false
       const blob = [e.venueAddress, e.venueName, e.suburb].filter(Boolean).join(' ')
       if (addressInOtherState(blob, def)) return false
       if (e.latitude != null && e.longitude != null && !coordsFitCity(e.latitude, e.longitude, city)) return false
       return true
     })
   }
+  const seenTitle = new Set<string>()
+  shown = shown.filter((e) => {
+    const day = (typeof e.date === 'string' ? e.date : e.date.toISOString()).slice(0, 10)
+    const key = `${e.title.trim().toLowerCase()}|${day}|${(e.venueName ?? '').trim().toLowerCase()}`
+    if (seenTitle.has(key)) return false
+    seenTitle.add(key)
+    return true
+  })
   if (categories.length) shown = shown.filter((e) => categories.includes(e.category))
   if (suburb) {
     const want = suburb.toLowerCase()
@@ -152,7 +175,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v8'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v9'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 
