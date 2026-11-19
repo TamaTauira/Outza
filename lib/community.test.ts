@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { cityDef } from './cities'
 import {
-  communityPageIndexable, datesForListing, filterCommunityListings, listingCta, moderationResult,
+  communityPageIndexable, datesForListing, filterCommunityListings, isHiddenFromPublic, listingCta, moderationResult,
   overRateLimit, parseCommunity, redactCommunityPublic,
 } from './community-shared'
 
@@ -144,6 +144,14 @@ test('thin community pages stay out of the index', () => {
   assert.equal(communityPageIndexable(5, 'suburb', 2), true)
   assert.equal(communityPageIndexable(4, 'date'), false)
   assert.equal(communityPageIndexable(5, 'date'), true)
+})
+
+test('a hidden or moderation-hidden listing is not public', () => {
+  assert.equal(isHiddenFromPublic({ hidden: false, moderationStatus: 'approved' }), false)
+  assert.equal(isHiddenFromPublic({ hidden: false, moderationStatus: null }), false)
+  assert.equal(isHiddenFromPublic({ hidden: true, moderationStatus: 'hidden' }), true)
+  assert.equal(isHiddenFromPublic({ hidden: false, moderationStatus: 'hidden' }), true)
+  assert.equal(isHiddenFromPublic({ hidden: false, moderationStatus: 'review' }), true)
 })
 
 test('community pages keep a More Info link and ticket hosts stay Get Tickets', () => {

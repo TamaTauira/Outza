@@ -159,7 +159,7 @@ export default function ItineraryPage() {
         if (cancel) return
         setShared(rows.flatMap((row) => {
           const event = row?.event
-          if (!event?.id || !event.title) return []
+          if (!event?.id || !event.title || event.hidden || event.moderationStatus === 'hidden' || event.moderationStatus === 'review') return []
           return [{ id: event.id, title: event.title, href: eventPath(event) }]
         }))
       })
