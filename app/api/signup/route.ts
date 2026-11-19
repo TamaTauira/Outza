@@ -21,9 +21,8 @@ export async function POST(req: Request) {
     const homeCity = typeof body.homeCity === 'string' && body.homeCity ? body.homeCity : 'Sydney'
 
     if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email' }, { status: 400 })
-    const weak = passwordError(password)
-    if (weak) return NextResponse.json({ error: weak }, { status: 400 })
     // Event-goers give a birth year (anyone without one is asked for it after signing in).
+    // The age block runs before the password rules so an under-16 visitor is not asked to invent a stronger password.
     let birthYear: number | undefined
     if (body.birthYear != null && body.birthYear !== '') {
       const p = parseBirthYear(body.birthYear)
@@ -32,6 +31,8 @@ export async function POST(req: Request) {
       if (geo) return NextResponse.json({ error: geo }, { status: 403 })
       birthYear = p.year
     }
+    const weak = passwordError(password)
+    if (weak) return NextResponse.json({ error: weak }, { status: 400 })
     const pc = typeof body.homePostcode === 'string' ? body.homePostcode.trim() : ''
     if (pc && !isPostcode(pc)) return NextResponse.json({ error: 'Postcodes are 4 digits' }, { status: 400 })
 
