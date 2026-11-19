@@ -17,7 +17,7 @@ import { ViewToggle } from '@/components/view-toggle'
 import { useItinerary, useItineraryLabel, sortItinerary, clashMap, eventToItem, type ItineraryItem } from '@/lib/itinerary'
 import { boardClockLine } from '@/lib/listing-window'
 import { coordsFitCity, directionsUrl, distanceKm, fmtKm, fmtMin, planLeg } from '@/lib/travel'
-import { eventsToIcs } from '@/lib/ics'
+import { eventsToIcs, ITINERARY_ICS_FILENAME } from '@/lib/ics'
 import { StopForm, emptyStop, type StopFormValues } from './stop-form'
 import { RoutePicks, pickStopId, slotBetween, type RoutePick } from './route-picks'
 
@@ -83,7 +83,7 @@ function downloadIcs(list: ItineraryItem[], name: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'vibepeep-itinerary.ics'
+  a.download = ITINERARY_ICS_FILENAME
   a.click()
   URL.revokeObjectURL(url)
 }

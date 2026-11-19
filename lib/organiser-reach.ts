@@ -242,6 +242,11 @@ export function csvEscape(value: string | number | null | undefined): string {
   return text
 }
 
+/** Excel on Windows reads a UTF-8 CSV when the file starts with a BOM. */
+export function csvWithBom(csv: string): string {
+  return csv.charCodeAt(0) === 0xfeff ? csv : `\uFEFF${csv}`
+}
+
 export function toCsv(header: string[], rows: (string | number | null)[][]): string {
   return [header.map(csvEscape).join(','), ...rows.map((row) => row.map(csvEscape).join(','))].join('\n') + '\n'
 }

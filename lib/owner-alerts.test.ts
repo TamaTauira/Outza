@@ -8,6 +8,7 @@ import {
   faultErrorParts,
   faultMachineBlock,
   faultRouteFor,
+  faultTimestamp,
 } from './owner-alerts'
 
 const ENV = 'FAULT_ALERT_EXTRA_RECIPIENTS'
@@ -92,4 +93,17 @@ test('fault machine block is one stable JSON object', () => {
     error: 'Ticketmaster: HTTP 500',
     stack: null,
   })
+})
+
+test('fault timestamps use Australia/Sydney and name AEST or AEDT', () => {
+  const summer = faultTimestamp(new Date('2026-01-15T02:00:00.000Z'))
+  const winter = faultTimestamp(new Date('2026-07-01T02:00:00.000Z'))
+  assert.match(summer, /15 Jan 2026/)
+  assert.match(summer, /1:00\s*pm/i)
+  assert.match(summer, /AEDT/)
+  assert.doesNotMatch(summer, /2026-01-15T02:00/)
+  assert.match(winter, /1 July 2026/)
+  assert.match(winter, /12:00\s*pm/i)
+  assert.match(winter, /AEST/)
+  assert.equal(summer.includes('http'), false)
 })

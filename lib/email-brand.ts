@@ -9,7 +9,8 @@ import { CANONICAL_SITE_URL } from '@/lib/site-url'
  * The app icon is not repeated here. It was showing up as a second, tiny wordmark.
  */
 
-export const EMAIL_FONT = "'Plus Jakarta Sans','DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif"
+/** System stack. Mail clients must not fetch a webfont. */
+export const EMAIL_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
 export const EMAIL_C = {
   page: '#f6f4ee',
@@ -107,8 +108,6 @@ export function emailBodyCell(html: string): string {
   return `<tr><td class="px tx" style="padding:22px 24px 8px;font-family:${EMAIL_FONT};font-size:16px;line-height:1.55;color:${EMAIL_C.ink};">${html}</td></tr>`
 }
 
-const FONT_LINK = 'https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,600;0,700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap'
-
 /**
  * Table shell shared by user-facing mail: dark header band, 600px column, footer links.
  * `rows` are the <tr> elements that sit between the header and the footer.
@@ -140,7 +139,6 @@ export function emailDocument(opts: {
 
   return `<!DOCTYPE html><html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta name="color-scheme" content="light dark"/><meta name="supported-color-schemes" content="light dark"/><title>${emailEscape(opts.title)}</title>
-<link href="${FONT_LINK}" rel="stylesheet" type="text/css"/>
 <!--[if gte mso 9]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
 body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}

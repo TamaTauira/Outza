@@ -135,6 +135,9 @@ test('the digest html is personal, table-based, and Gmail-safe', () => {
   }
   assert.match(html, /<table/)
   assert.match(html, /max-width:620px/)
+  assert.match(html, /max-width:\s*400px/)
+  assert.match(html, /fillcolor="#E24B2A"/)
+  assert.equal(html.includes('fonts.googleapis.com'), false)
   assert.match(text, /Hey Sam,/)
   assert.match(text, /Unsubscribe:/)
   assert.match(text, /About 18 min walk/)

@@ -6,6 +6,7 @@ import { boardClockLine } from '@/lib/listing-window'
 import { eventPath, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
+import { openGraphImage } from '@/lib/share-image'
 import { displayTitle } from '@/lib/display-public'
 import { LandingDetailBeacon } from '@/components/landing-beacon'
 import { EventDetailClient } from './_components/event-detail-client'
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const name = displayTitle(ev.title)
   const desc = `${status}${name} on ${dateLabel}${clock ? ` at ${clock}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
   const origin = siteUrl()
-  const image = eventImageUrl(ev, origin)
+  const image = openGraphImage(eventImageUrl(ev, origin), name)
   return {
     title: `${status}${name} · ${dateLabel} · ${ev.city} · VibePeep`,
     description: desc.slice(0, 300),

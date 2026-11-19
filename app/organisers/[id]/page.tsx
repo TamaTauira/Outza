@@ -11,6 +11,7 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { ClaimedTick } from '@/components/ClaimedTick'
 import { organiserNameClaimed } from '@/lib/event-overrides'
 import { boardClockLine } from '@/lib/listing-window'
+import { openGraphImage } from '@/lib/share-image'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +19,20 @@ type Props = { params: Promise<{ id: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
-  const user = await prisma.user.findUnique({ where: { id }, select: { orgName: true, name: true, role: true } })
+  const user = await prisma.user.findUnique({ where: { id }, select: { orgName: true, name: true, role: true, image: true } })
   if (!user || (user.role !== 'PROMOTER' && user.role !== 'ADMIN')) return { title: 'Organiser not found | VibePeep', robots: { index: false } }
   const name = user.orgName || user.name || 'Organiser'
-  return { title: `${name} | VibePeep`, description: `Events presented by ${name} on VibePeep.` }
+  const title = `${name} | VibePeep`
+  const description = `Events presented by ${name} on VibePeep.`
+  const url = `/organisers/${id}`
+  const image = openGraphImage(user.image, `${name} on VibePeep`)
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, type: 'profile', images: [image] },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
+  }
 }
 
 export default async function OrganiserPage({ params }: Props) {
@@ -34,7 +45,7 @@ export default async function OrganiserPage({ params }: Props) {
   const name = user.orgName || user.name || 'Organiser'
   const claimed = await organiserNameClaimed(user.id)
   const events = await prisma.event.findMany({
-    where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },
+    where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, hidden: false, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },
     orderBy: { date: 'asc' },
     take: 24,
     select: { id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, city: true, category: true },

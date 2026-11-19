@@ -5,6 +5,7 @@ import {
   YAHOO_DAILY_CAP,
   activeMailTransport,
   emailSendingEnabled,
+  listUnsubscribeHeaders,
   publicEmailError,
   resetEmailTransportForTests,
   sendEmail,
@@ -384,6 +385,70 @@ describe('email', { concurrency: 1 }, () => {
       assert.equal(results.every((result) => result.ok), true)
       assert.equal(maxActive, 1)
       assert.deepEqual(order, ['one@example.com', 'two@example.com'])
+    } finally {
+      resetEmailTransportForTests()
+      restoreEnv(saved)
+    }
+  })
+
+  test('one-click unsubscribe headers are built only when an https URL is already available', () => {
+    const headers = {
+      'List-Unsubscribe': '<https://vibepeep.example/unsubscribe?u=1&k=abc>',
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    }
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'marketing', unsubscribeUrl: 'https://vibepeep.example/unsubscribe?u=1&k=abc' }), headers)
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'report', unsubscribeUrl: ' https://vibepeep.example/unsubscribe?u=1&k=abc ' }), headers)
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'transactional', unsubscribeUrl: 'https://vibepeep.example/unsubscribe?u=1&k=abc' }), headers)
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'marketing' }), {})
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'report', unsubscribeUrl: '' }), {})
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'transactional' }), {})
+    assert.deepEqual(listUnsubscribeHeaders({ kind: 'transactional', unsubscribeUrl: 'http://vibepeep.example/unsubscribe' }), {})
+    assert.equal(JSON.stringify(listUnsubscribeHeaders({ kind: 'transactional' })).includes('List-Unsubscribe'), false)
+  })
+
+  test('SMTP marketing mail carries the unsubscribe headers and a verify-style send does not', async () => {
+    const saved = saveEnv()
+    clearMailEnv()
+    process.env.SMTP_HOST = 'smtp.mail.yahoo.com'
+    process.env.SMTP_USER = 'outza.promoter@yahoo.com'
+    process.env.SMTP_PASS = 'app-password'
+    const sent: { headers?: Record<string, string>; from?: string }[] = []
+    setEmailTestAdapters({
+      gapMs: 0,
+      sentToday: async () => 0,
+      sender: { sendMail: async (message) => { sent.push(message) } },
+    })
+    try {
+      const marketing = await sendEmail({
+        to: 'person@example.com',
+        subject: 'This week',
+        html: '<p>Hi</p>',
+        kind: 'marketing',
+        unsubscribeUrl: 'https://vibepeep.example/unsubscribe?u=1',
+      })
+      const report = await sendEmail({
+        to: 'person@example.com',
+        subject: 'Your week',
+        html: '<p>Hi</p>',
+        kind: 'report',
+        unsubscribeUrl: 'https://vibepeep.example/unsubscribe/report?u=1',
+      })
+      const verify = await sendEmail({
+        to: 'person@example.com',
+        subject: 'Verify your email',
+        html: '<p>Hi</p>',
+        kind: 'transactional',
+      })
+      assert.equal(marketing.ok, true)
+      assert.equal(report.ok, true)
+      assert.equal(verify.ok, true)
+      assert.equal(sent[0].from, 'VibePeep <outza.promoter@yahoo.com>')
+      assert.deepEqual(sent[0].headers, {
+        'List-Unsubscribe': '<https://vibepeep.example/unsubscribe?u=1>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      })
+      assert.equal(sent[1].headers?.['List-Unsubscribe'], '<https://vibepeep.example/unsubscribe/report?u=1>')
+      assert.equal(sent[2].headers, undefined)
     } finally {
       resetEmailTransportForTests()
       restoreEnv(saved)

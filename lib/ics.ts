@@ -21,13 +21,30 @@ function icsEscape(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
 }
 
-function fold(line: string): string {
-  if (line.length <= 73) return line
-  const parts = [line.slice(0, 73)]
-  let rest = line.slice(73)
-  while (rest.length) {
-    parts.push(` ${rest.slice(0, 72)}`)
-    rest = rest.slice(72)
+/**
+ * RFC 5545 folding: each physical line is at most 75 UTF-8 octets.
+ * Continuation lines start with one space, which counts toward that 75.
+ * A multibyte character, including a surrogate pair encoded as one code point, stays on one line.
+ */
+export function foldIcsLine(line: string): string {
+  const bytes = Buffer.from(line, 'utf8')
+  if (bytes.length <= 75) return line
+  const parts: string[] = []
+  let offset = 0
+  let budget = 75
+  while (offset < bytes.length) {
+    let end = Math.min(bytes.length, offset + budget)
+    if (end < bytes.length) {
+      while (end > offset && (bytes[end] & 0xc0) === 0x80) end -= 1
+      if (end === offset) {
+        end = offset + 1
+        while (end < bytes.length && (bytes[end] & 0xc0) === 0x80) end += 1
+      }
+    }
+    const chunk = bytes.subarray(offset, end).toString('utf8')
+    parts.push(parts.length ? ` ${chunk}` : chunk)
+    offset = end
+    budget = 74
   }
   return parts.join('\r\n')
 }
@@ -77,5 +94,8 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
     )
   }
   lines.push('END:VCALENDAR')
-  return lines.map(fold).join('\r\n') + '\r\n'
+  return lines.map(foldIcsLine).join('\r\n') + '\r\n'
 }
+
+export const ITINERARY_ICS_FILENAME = 'vibepeep-itinerary.ics'
+export const SAVED_ICS_FILENAME = 'vibepeep-saved.ics'

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { ProfileFields } from '@/components/profile-fields'
 import { aboutYouStatus, profileDigits, visibleAboutErrors } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
-import { eventsToIcs } from '@/lib/ics'
+import { eventsToIcs, SAVED_ICS_FILENAME } from '@/lib/ics'
 import { eventPath } from '@/lib/seo'
 import { useSaved } from '@/lib/saved'
 import { PasswordField } from '@/components/password-field'
@@ -287,7 +287,7 @@ function FollowsCard() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'vibepeep.ics'
+    a.download = SAVED_ICS_FILENAME
     a.click()
     URL.revokeObjectURL(url)
   }

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { after } from 'next/server'
 import { notFound } from 'next/navigation'
@@ -14,14 +15,28 @@ import { PageShell } from '@/components/page-shell'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FollowVenueButton } from './follow-button'
+import { firstHttpsShareUrl, openGraphImage } from '@/lib/share-image'
 import { VenueLinks } from './venue-links'
 
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const venue = await publicVenue(id)
-  return { title: venue ? `${venue.name} — VibePeep` : 'Venue — VibePeep' }
+  if (!venue) return { title: 'Venue — VibePeep' }
+  const title = `${venue.name} — VibePeep`
+  const description = venue.description?.replace(/\s+/g, ' ').trim()
+    ? venue.description.replace(/\s+/g, ' ').trim().slice(0, 200)
+    : `What’s on at ${venue.name} in ${venue.city}.`
+  const url = `/venues/${venue.id}`
+  const image = openGraphImage(firstHttpsShareUrl([venue.photos?.[0], venue.logoUrl]), `${venue.name} on VibePeep`)
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, type: 'website', images: [image] },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
+  }
 }
 
 export default async function VenueProfilePage({ params }: { params: Promise<{ id: string }> }) {

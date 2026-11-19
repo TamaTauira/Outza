@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, OWNER_EMAIL, escapeHtml } from '@/lib/email'
-import { emailLockup } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { siteUrl } from '@/lib/site-url'
 import { ensureOrganiserGrant } from '@/lib/event-overrides'
 
 const FREE_MAIL = /^(gmail|googlemail|outlook|hotmail|live|yahoo|icloud|me|aol|proton|protonmail|bigpond|optusnet|tpg|iinet|internode)\./
@@ -46,15 +47,18 @@ export async function approveClaim(claimId: string, note?: string) {
 }
 
 export async function notifyTrustTeam(subject: string, rows: [string, string | null | undefined][]) {
-  const html = `
-  <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-    ${emailLockup()}
-    <h2 style="color:#FF4E6A;">${escapeHtml(subject)}</h2>
-    <div style="background:#f6f6f6;padding:16px;border-radius:8px;">
-      ${rows.filter(([, v]) => v).map(([k, v]) => `<p style="white-space:pre-wrap;"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</p>`).join('')}
-    </div>
-    <p style="color:#666;font-size:12px;">Review it in Admin → Trust & listings (/admin/trust).</p>
-  </div>`
-  const sent = await sendEmail({ to: OWNER_EMAIL, subject, html })
+  const home = siteUrl()
+  const html = emailDocument({
+    title: subject,
+    preheader: subject,
+    manageHref: `${home}/admin/trust`,
+    homeHref: home,
+    reason: 'Review it in Admin → Trust & listings (/admin/trust).',
+    rows: emailBodyCell(`<h2 style="color:${EMAIL_C.accent};margin:0 0 12px;font-size:20px;">${escapeHtml(subject)}</h2>
+    <div class="card" style="background:#f6f6f6;padding:16px;border-radius:8px;">
+      ${rows.filter(([, v]) => v).map(([k, v]) => `<p style="white-space:pre-wrap;margin:0 0 8px;"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</p>`).join('')}
+    </div>`),
+  })
+  const sent = await sendEmail({ to: OWNER_EMAIL, subject, html, kind: 'transactional' })
   if (!sent.ok) console.error('Trust notification failed:', sent.error)
 }

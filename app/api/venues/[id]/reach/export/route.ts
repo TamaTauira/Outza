@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser, unauthorized } from '@/lib/session'
 import { ownershipUiEnabled } from '@/lib/ownership'
 import { guardVenueAnalytics } from '@/lib/venue-access'
+import { csvWithBom } from '@/lib/organiser-reach'
 import { loadVenueReach, reachCsv } from '@/lib/organiser-reach-load'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     to: url.searchParams.get('to'),
     eventId: url.searchParams.get('eventId'),
   })
-  return new NextResponse(reachCsv(payload), {
+  return new NextResponse(csvWithBom(reachCsv(payload)), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
       'content-disposition': 'attachment; filename="vibepeep-venue-results.csv"',
