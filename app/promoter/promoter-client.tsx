@@ -2,11 +2,12 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
-import { ArrowLeft, BadgeCheck, BarChart3, Brain, CalendarPlus, Download, Eye, FileText, LineChart, Loader2, Lock, LogOut, Mail, Megaphone, MousePointerClick, Pencil, Receipt, Rocket, Search, Share2, Sparkles, Store, Trash2, Users, Wallet } from 'lucide-react'
-import { BackToEventsLink } from '@/components/back-to-events-link'
+import { BadgeCheck, BarChart3, Brain, CalendarPlus, Download, Eye, FileText, LineChart, Loader2, Lock, Mail, Megaphone, MousePointerClick, Pencil, Receipt, Rocket, Search, Share2, Sparkles, Store, Trash2, Users, Wallet } from 'lucide-react'
 import { REFERRAL_LABELS, REFERRAL_SOURCES } from '@/lib/referral-labels'
+import { auToIso } from '@/lib/au-date'
+import { applyListingField, listingPayloadPrice } from '@/lib/promoter-listing'
+import { PROMOTER_NAV_EVENT, promoterTabHref } from '@/lib/promoter-nav'
 import { PRO_PLAN, TIER_KEYS, formatAud, isDuration, productName, tierDef, type Duration } from '@/lib/tiers'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
@@ -26,7 +27,7 @@ type Promo = { id: string; tier: string; days?: number | null; orderId?: string 
 type MyEvent = {
   id: string; title: string; date: string; endDate?: string | null; city?: string; venueName: string; suburb?: string | null; views?: number; ticketClicks?: number; reactionCount?: number; promotions?: Promo[]; _count?: { savedBy: number; attendees: number }
   time?: string | null; endTime?: string | null; venueAddress?: string | null; price?: string | null; isFree?: boolean; isLGBTI?: boolean; category?: string; subTags?: string[]; ticketUrl?: string | null; imageUrl?: string | null; description?: string | null
-  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null; organiserEditedAt?: string | null; source?: string | null; status?: string | null
+  organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null; organiserEditedAt?: string | null; source?: string | null; status?: string | null; hidden?: boolean
   referrals?: { source: string; count: number }[]
 }
 type Pass = { id: string; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
@@ -87,6 +88,32 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     const days = Number(p.get('duration') || p.get('days'))
     if (isDuration(days)) setPromoteDays(days)
   }, [load])
+  useEffect(() => {
+    const sync = () => {
+      const p = new URLSearchParams(window.location.search)
+      const t = p.get('tab') as Tab | null
+      const ev = p.get('event')
+      if (ev) setPromoteId(ev)
+      if (t && TABS.some((x) => x.key === t)) setTab(t)
+      else if (ev) setTab('promote')
+      else setTab('overview')
+    }
+    window.addEventListener('popstate', sync)
+    window.addEventListener(PROMOTER_NAV_EVENT, sync)
+    return () => {
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener(PROMOTER_NAV_EVENT, sync)
+    }
+  }, [])
+
+  const selectTab = useCallback((next: Tab) => {
+    setTab(next)
+    const href = promoterTabHref(window.location.search, next)
+    if (href !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(window.history.state, '', href)
+      window.dispatchEvent(new Event(PROMOTER_NAV_EVENT))
+    }
+  }, [])
 
   const stats = useMemo(() => {
     const all = events.flatMap((e) => e.promotions ?? [])
@@ -101,7 +128,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     }
   }, [events, passes, ads])
 
-  const startPromote = (id?: string) => { if (id) setPromoteId(id); setTab('promote'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const startPromote = (id?: string) => { if (id) setPromoteId(id); selectTab('promote'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const buyPro = async () => {
     const label = account.pro ? `Extend Promoter Pro for ${formatAud(PRO_PLAN.priceCents)}? This is charged now.` : `Go Pro for ${formatAud(PRO_PLAN.priceCents)}? This is charged now.`
     if (!window.confirm(label)) return
@@ -117,29 +144,19 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
 
   return (
     <main className="vp-wrap px-4 pb-8 pt-3 sm:px-6 lg:pt-5">
-      <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[13px] font-semibold text-primary">Promoter dashboard</p>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1 flex items-center gap-2">
-            {account.displayName ? account.displayName : 'Promoter dashboard'}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Your events, your campaigns, your results. No spreadsheet required.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/account" className="flex h-11 items-center rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted">Profile</Link>
-          <button type="button" onClick={() => signOut({ redirectTo: '/' })} className="flex h-11 items-center gap-1.5 rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted"><LogOut className="w-4 h-4" />Sign out</button>
-          <Link href="/promoters" className="flex h-11 items-center rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted">View pricing</Link>
-          <button type="button" onClick={() => startPromote()} className="flex h-11 items-center gap-2 rounded-[var(--vp-radius-md)] border border-border px-4 text-sm font-semibold hover:bg-muted"><Rocket className="w-4 h-4" />Promote an event</button>
-          <button type="button" onClick={() => { setTab('events'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="flex h-11 items-center gap-2 rounded-[var(--vp-radius-md)] bg-primary px-4 text-sm font-semibold text-primary-foreground"><CalendarPlus className="w-4 h-4" />Create event</button>
-        </div>
+      <div>
+        <p className="text-[13px] font-semibold text-primary">Promoter dashboard</p>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1">
+          {account.displayName ? account.displayName : 'Promoter dashboard'}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Your events, your campaigns, your results.</p>
       </div>
       {!stripeEnabled && <div className="mt-5 rounded-lg border border-primary/60 px-4 py-3 text-sm text-primary">Payments are in test mode — campaigns and Pro activate instantly without charging a card.</div>}
 
       <div className="mt-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
       <nav className="flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] lg:sticky lg:top-20 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-[var(--vp-radius-lg)] lg:border lg:bg-card lg:p-2" aria-label="Dashboard sections">
         {TABS.map(({ key, label, Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={cn('relative flex h-11 shrink-0 items-center gap-2 px-4 text-sm transition-colors lg:rounded-[var(--vp-radius-md)] lg:px-3', tab === key ? 'font-semibold text-foreground lg:bg-muted' : 'text-muted-foreground hover:text-foreground')}>
+          <button key={key} onClick={() => selectTab(key)} className={cn('relative flex h-11 shrink-0 items-center gap-2 px-4 text-sm transition-colors lg:rounded-[var(--vp-radius-md)] lg:px-3', tab === key ? 'font-semibold text-foreground lg:bg-muted' : 'text-muted-foreground hover:text-foreground')}>
             <Icon className="w-4 h-4" />{label}
             {tab === key && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary lg:hidden" />}
           </button>
@@ -149,7 +166,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
       <div className="mt-6 lg:mt-0">
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
-            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => setTab('events')} goInsights={() => setTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
+            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => selectTab('events')} goInsights={() => selectTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
             {tab === 'insights' && <InsightsPanel />}
             {tab === 'boosts' && (
               <section className={card}>
@@ -160,7 +177,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
               <section className={card}>
                 <h2 className="font-display text-xl font-bold mb-1">Build a campaign</h2>
                 <p className="text-sm text-muted-foreground mb-6">Four steps. Live as soon as payment lands.</p>
-                <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} initialDays={promoteDays ?? undefined} onEventChange={setPromoteId} onDone={() => { load(); setTab('events') }} />
+                <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} initialDays={promoteDays ?? undefined} onEventChange={setPromoteId} onDone={() => { load(); selectTab('events') }} />
               </section>
             )}
             {tab === 'events' && <EventsTab events={events} claims={claims} pro={account.pro} homeCity={account.homeCity || 'Sydney'} onPromote={startPromote} reload={load} />}
@@ -362,7 +379,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
                   const live = e.promotions?.find((p) => isLive(p) && tierDef(p.tier))
                   return (
                     <div key={e.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
-                      <span className="min-w-0 truncate"><Link href={`/events/${e.id}`} className="font-medium hover:text-primary">{e.title}</Link> <span className="text-muted-foreground text-xs">· {fmt(e.date)}</span></span>
+                      <span className="min-w-0 truncate">{e.hidden ? <span className="font-medium">{e.title}</span> : <Link href={`/events/${e.id}`} className="font-medium hover:text-primary">{e.title}</Link>} <span className="text-muted-foreground text-xs">· {fmt(e.date)}{e.hidden ? ' · Draft' : ''}</span></span>
                       {live ? <TierBadge tier={live.tier} /> : <button onClick={() => onPromote(e.id)} className="shrink-0 text-xs font-semibold text-primary hover:underline">Promote</button>}
                     </div>
                   )
@@ -410,7 +427,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     if (k === 'city') cityTouched.current = true
     const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value
-    setForm((f) => ({ ...f, [k]: value, ...(k === 'category' ? { subTag: '' } : {}) }))
+    setForm((f) => applyListingField(f, k, value))
   }
 
   const search = async (e: React.FormEvent) => {
@@ -436,14 +453,26 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
       toast.error(message)
     }
   }
+  const publishListing = async (eventId: string) => {
+    const res = await fetch(`/api/promoter/events/${eventId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ publish: true }) })
+    const d = await res.json().catch(() => ({}))
+    if (res.ok) { toast.success('Published. It’s on the public board.'); reload() }
+    else toast.error(d?.error ?? 'Could not publish')
+  }
   const create = async (e: React.FormEvent) => {
     e.preventDefault()
+    const submitter = (e.nativeEvent as SubmitEvent).submitter
+    const publish = submitter instanceof HTMLButtonElement && submitter.value === 'publish'
+    const date = auToIso(form.date)
+    const endDate = form.endDate.trim() ? auToIso(form.endDate) : ''
+    if (!date) { toast.error('Enter the start date as dd/mm/yyyy'); return }
+    if (form.endDate.trim() && !endDate) { toast.error('Enter the end date as dd/mm/yyyy'); return }
     setCreating(true)
     try {
-      const res = await fetch('/api/promoter/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, subTags: form.subTag ? [form.subTag] : [] }) })
+      const res = await fetch('/api/promoter/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, date, endDate: endDate || '', price: listingPayloadPrice(form.isFree, form.price), subTags: form.subTag ? [form.subTag] : [], publish }) })
       const d = await res.json().catch(() => ({}))
       if (res.ok) {
-        toast.success('Event created — you can promote it now')
+        toast.success(publish ? 'Published. It’s on the public board.' : 'Draft saved. It stays off the public board until you publish it.')
         setForm(blankListing(form.city))
         reload()
       } else toast.error(d?.error ?? 'Could not create event')
@@ -486,13 +515,13 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                     <Fragment key={ev.id}>
                     <tr className="align-top">
                       <td className="px-5 py-3 min-w-0">
-                        <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>
+                        {ev.hidden ? <span className="font-medium">{ev.title}</span> : <Link href={`/events/${ev.id}`} className="font-medium hover:text-primary">{ev.title}</Link>}
                         <p className="text-xs text-muted-foreground">{fmt(ev.date)} · {ev.venueName}{ev.city ? ` · ${ev.city}` : ''}</p>
                         {promoterCanEditEvent(ev.source) && ev.organiserEditedAt && <p className="text-[11px] text-muted-foreground mt-0.5">Edited by you {fmt(ev.organiserEditedAt)}</p>}
                         {!promoterCanEditEvent(ev.source) && <p className="text-[11px] text-muted-foreground mt-0.5">Details stay as published until you add an organiser update</p>}
                       </td>
                       <td className="px-3 py-3">
-                        {ev.status === 'CANCELLED' ? <span className="text-xs text-muted-foreground">Unpublished</span> : past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (
+                        {ev.status === 'CANCELLED' ? <span className="text-xs text-muted-foreground">Unpublished</span> : ev.hidden ? <span className="text-xs font-semibold">Draft</span> : past ? <span className="text-xs text-muted-foreground">Finished</span> : liveTier ? (
                           <div className="space-y-1">
                             <div className="flex flex-wrap gap-1"><TierBadge tier={liveTier.tier} />{liveAddons.map((a) => <span key={a.id} className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-primary/15 text-primary">{productName(a.tier).toUpperCase()}</span>)}</div>
                             <p className="text-[11px] text-muted-foreground">until {fmt(liveTier.endsAt)}</p>
@@ -508,6 +537,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                       <td className="px-3 py-3 text-right tabular-nums">{ev.reactionCount ?? 0}</td>
                       <td className="px-5 py-3">
                         <div className="flex justify-end gap-2">
+                          {ev.hidden && ev.status !== 'CANCELLED' && promoterCanEditEvent(ev.source) && <button type="button" onClick={() => publishListing(ev.id)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold">Publish</button>}
                           {promoterCanEditEvent(ev.source) ? <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button> : <Link href={`/events/${ev.id}/manage`} className="h-8 px-3 rounded-md border border-border text-xs font-medium inline-flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</Link>}
                           {promoterCanEditEvent(ev.source) && ev.status !== 'CANCELLED' && <button onClick={async () => { if (!window.confirm(`Unpublish “${ev.title}”? It leaves the public board. Purchases stay in billing.`)) return; const res = await fetch(`/api/promoter/events/${ev.id}`, { method: 'DELETE' }); if (res.ok) { toast.success('Listing unpublished'); reload() } else toast.error('Could not unpublish') }} className="h-8 px-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted" aria-label={`Unpublish ${ev.title}`}><Trash2 className="w-3.5 h-3.5" /></button>}
                           {!past && ev.status !== 'CANCELLED' && <button onClick={() => onPromote(ev.id)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold">{liveTier ? productName(liveTier.tier) : 'Promote'}</button>}
@@ -549,11 +579,11 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
 
         <section className={card}>
           <h2 className="font-semibold mb-1">Create a new event</h2>
-          <p className="text-xs text-muted-foreground mb-3">Your event goes live on the board straight away.</p>
+          <p className="text-xs text-muted-foreground mb-3">This saves a draft. It stays off the public board until you press Publish.</p>
           <form onSubmit={create} className="grid sm:grid-cols-2 gap-3">
             <input required value={form.title} onChange={set('title')} placeholder="Event title" className={`${field} sm:col-span-2`} />
-            <input required type="date" value={form.date} onChange={set('date')} className={field} aria-label="Start date" />
-            <input type="date" value={form.endDate} onChange={set('endDate')} className={field} aria-label="End date" title="End date, if it runs more than one day" />
+            <input required inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.date} onChange={set('date')} className={field} aria-label="Start date" />
+            <input inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.endDate} onChange={set('endDate')} className={field} aria-label="End date" title="End date, if it runs more than one day" />
             <div className="grid grid-cols-2 gap-2">
               <input type="time" value={form.time} onChange={set('time')} className={field} aria-label="Start time" title="Start time" />
               <input type="time" value={form.endTime} onChange={set('endTime')} className={field} aria-label="Finish time" title="Finish time" />
@@ -582,7 +612,10 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
               </div>
             </details>
             <p className="sm:col-span-2 text-[11px] text-muted-foreground">Include the suburb and postcode in the address so the map pin and Intelligence use that suburb, not the city centre. A finish time earlier than the start is treated as the next day.</p>
-            <button disabled={creating} className="sm:col-span-2 h-10 rounded-md bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-60">{creating ? 'Creating…' : 'Create event'}</button>
+            <div className="sm:col-span-2 flex flex-wrap gap-2">
+              <button type="submit" value="draft" disabled={creating} className="h-10 rounded-md border border-border px-4 text-sm font-semibold disabled:opacity-60">{creating ? 'Saving…' : 'Save draft'}</button>
+              <button type="submit" value="publish" disabled={creating} className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{creating ? 'Saving…' : 'Publish'}</button>
+            </div>
           </form>
         </section>
       </div>

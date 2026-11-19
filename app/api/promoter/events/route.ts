@@ -5,7 +5,7 @@ import { getSessionUser, unauthorized, forbidden, isPromoter } from '@/lib/sessi
 import { makeSeriesKey } from '@/lib/event-store'
 import { isSameEvent } from '@/lib/quality'
 import { queueEventImage } from '@/lib/images/runner'
-import { parsePromoterListing } from '@/lib/promoter-listing'
+import { listingHiddenOnCreate, parsePromoterListing } from '@/lib/promoter-listing'
 import { resolveListingPlace } from '@/lib/venue-place'
 import { unverifiedGate } from '@/lib/account-flow'
 
@@ -15,7 +15,7 @@ const eventSelect = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true,
   suburb: true, city: true, price: true, isFree: true, category: true, subTags: true, isLGBTI: true, source: true,
   views: true, ticketClicks: true, ticketUrl: true, imageUrl: true, description: true, organiserName: true, organiserUrl: true,
-        accessibilityInfo: true, ageRestriction: true, transportInfo: true, capacity: true, organiserEditedAt: true, status: true,
+        accessibilityInfo: true, ageRestriction: true, transportInfo: true, capacity: true, organiserEditedAt: true, status: true, hidden: true,
   referrals: { select: { source: true, count: true } },
   promotions: { orderBy: { createdAt: 'desc' as const }, select: { id: true, tier: true, days: true, orderId: true, status: true, amountCents: true, paymentMode: true, startsAt: true, endsAt: true, createdAt: true } },
   _count: { select: { savedBy: true, attendees: true } },
@@ -135,6 +135,7 @@ export async function POST(req: Request) {
       longitude: place.lng,
       source: 'promoter',
       sources: ['promoter'],
+      hidden: listingHiddenOnCreate(b.publish),
       promoterId: me.id,
       lastVerifiedAt: new Date(),
       seriesKey: makeSeriesKey(listing.title, listing.venueName, listing.city),

@@ -6,6 +6,8 @@ import { CITY_NAMES } from '@/lib/cities'
 import { isPostcode, parseBirthYear, under16GeoBlock } from '@/lib/profile-shared'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { cleanVibe } from '@/lib/vibe-shared'
+import { promoterAcceptance, promoterUpgradeError } from '@/lib/legal-docs'
+import { recordAcceptance } from '@/lib/terms-accept'
 import { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -60,7 +62,14 @@ export async function PATCH(req: Request) {
   if (typeof b.role === 'string' && b.role !== me.role && me.role === 'PARTNER') {
     return NextResponse.json({ error: 'Source partner accounts stay read-only.' }, { status: 403 })
   }
-  if (b.role === 'PROMOTER' && me.role === 'CONSUMER') data.role = 'PROMOTER'
+  let upgraded = false
+  if (b.role === 'PROMOTER' && me.role === 'CONSUMER') {
+    const upgradeError = promoterUpgradeError({ agreePromoterTerms: b.agreePromoterTerms, orgName: b.orgName })
+    if (upgradeError) return NextResponse.json({ error: upgradeError }, { status: 400 })
+    data.role = 'PROMOTER'
+    data.orgName = String(b.orgName).trim().slice(0, 120)
+    upgraded = true
+  }
   if ('birthYear' in b) {
     const p = parseBirthYear(b.birthYear)
     if (p.error || p.year == null) return NextResponse.json({ error: p.error ?? 'Enter the year you were born' }, { status: 400 })
@@ -75,5 +84,10 @@ export async function PATCH(req: Request) {
   }
   if ('vibeProfile' in b) data.vibeProfile = cleanVibe(b.vibeProfile) ?? Prisma.DbNull
   const user = await prisma.user.update({ where: { id: me.id }, data, select: SELECT })
+  if (upgraded) {
+    await recordAcceptance(me.id, [promoterAcceptance()], 'upgrade').catch((err) => {
+      console.error('[legal] could not record promoter upgrade', err instanceof Error ? err.message : err)
+    })
+  }
   return NextResponse.json({ user: out(user) })
 }

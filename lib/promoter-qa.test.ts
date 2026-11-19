@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { interpretQuery } from './ai-search-parse'
 import { publicEmailError } from './email'
-import { campaignEndsBeforeEvent, parsePromoterListing } from './promoter-listing'
+import { isHiddenFromPublic } from './community-shared'
+import { applyListingField, campaignEndsBeforeEvent, campaignScheduleNote, listingHiddenOnCreate, listingPayloadPrice, parsePromoterListing } from './promoter-listing'
 import { outzaVerified, priceSummary, scheduleCue } from './quality'
 import { extractPostcode, pinIsCityDump, placeFromText } from './venue-place'
 
@@ -109,4 +110,22 @@ test('ask hears NYE, weekend, suburb, markets and paid', () => {
   assert.equal(paid.city, 'Melbourne')
   assert.equal(campaignEndsBeforeEvent('2026-12-12', 30, Date.parse('2026-10-29T00:00:00Z')), true)
   assert.equal(campaignEndsBeforeEvent('2026-11-20', 30, Date.parse('2026-10-29T00:00:00Z')), false)
+  const note = campaignScheduleNote('2026-12-12', 30, Date.parse('2026-10-29T00:00:00Z'))
+  assert.match(note ?? '', /starts now and finishes on 28 Nov 2026/)
+  assert.match(note ?? '', /event is later, on 12 Dec 2026/)
+  assert.equal(campaignScheduleNote('2026-11-20', 30, Date.parse('2026-10-29T00:00:00Z')), null)
+})
+
+test('a new organiser listing is a hidden draft until publish, and Free clears the price', () => {
+  assert.equal(listingHiddenOnCreate(undefined), true)
+  assert.equal(listingHiddenOnCreate(false), true)
+  assert.equal(listingHiddenOnCreate('true'), true)
+  assert.equal(listingHiddenOnCreate(true), false)
+  assert.equal(isHiddenFromPublic({ hidden: listingHiddenOnCreate(undefined) }), true)
+  assert.equal(isHiddenFromPublic({ hidden: listingHiddenOnCreate(true) }), false)
+  const cleared = applyListingField({ price: '$25', isFree: false, subTag: 'Jazz' }, 'isFree', true)
+  assert.equal(cleared.isFree, true)
+  assert.equal(cleared.price, '')
+  assert.equal(listingPayloadPrice(true, '$25'), '')
+  assert.equal(listingPayloadPrice(false, '$40'), '$40')
 })

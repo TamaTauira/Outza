@@ -18,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const gate = await unverifiedGate(me.id)
   if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
-  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, city: true, imageUrl: true, source: true } })
+  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, city: true, imageUrl: true, source: true, hidden: true, moderationStatus: true, status: true, deletedAt: true } })
   if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   if (ev.promoterId !== me.id && me.role !== 'ADMIN') return forbidden()
   if (!promoterCanEditEvent(ev.source)) {
@@ -26,6 +26,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const b = await req.json().catch(() => ({}))
+  if (b.publish === true && b.title == null) {
+    if (ev.deletedAt || ev.status === 'CANCELLED') return NextResponse.json({ error: 'This listing is unpublished.' }, { status: 400 })
+    if (ev.moderationStatus === 'review' || ev.moderationStatus === 'hidden') {
+      return NextResponse.json({ error: 'This listing is held for review and can’t be published from here.' }, { status: 403 })
+    }
+    await prisma.event.update({ where: { id }, data: { hidden: false, organiserEditedAt: new Date() } })
+    return NextResponse.json({ ok: true, hidden: false })
+  }
   const parsed = parsePromoterListing({ ...b, city: b.city ?? ev.city })
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const listing = parsed.listing

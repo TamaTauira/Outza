@@ -5,11 +5,14 @@ import { toast } from 'sonner'
 import { Loader2, X } from 'lucide-react'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
+import { auToIso, isoToAu } from '@/lib/au-date'
+import { applyListingField, listingPayloadPrice } from '@/lib/promoter-listing'
 
 export type EditableEvent = {
   id: string; title: string; date: string; endDate?: string | null; venueName: string; city?: string
   category?: string; subTags?: string[]; isLGBTI?: boolean
   time?: string | null; endTime?: string | null; venueAddress?: string | null; price?: string | null; isFree?: boolean; ticketUrl?: string | null; imageUrl?: string | null; description?: string | null
+  hidden?: boolean
   organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null
 }
 
@@ -19,19 +22,26 @@ const area = 'rounded-md border border-border bg-background px-3 py-2 text-sm w-
 /** Inline editor for a listing the promoter owns. Saved edits are protected from automatic source refreshes. */
 export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEvent; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({
-    title: event.title, date: event.date.slice(0, 10), endDate: event.endDate?.slice(0, 10) ?? '', time: event.time ?? '', endTime: event.endTime ?? '',
+    title: event.title, date: isoToAu(event.date.slice(0, 10)), endDate: event.endDate ? isoToAu(event.endDate.slice(0, 10)) : '', time: event.time ?? '', endTime: event.endTime ?? '',
     venueName: event.venueName, venueAddress: event.venueAddress ?? '', city: event.city || 'Sydney', category: event.category || 'Community', subTag: event.subTags?.[0] ?? '',
     price: event.isFree ? '' : event.price ?? '', isFree: !!event.isFree, isLGBTI: !!event.isLGBTI, ticketUrl: event.ticketUrl ?? '', imageUrl: event.imageUrl ?? '', description: event.description ?? '',
     organiserName: event.organiserName ?? '', organiserUrl: event.organiserUrl ?? '', accessibilityInfo: event.accessibilityInfo ?? '', ageRestriction: event.ageRestriction ?? '', transportInfo: event.transportInfo ?? '', capacity: event.capacity ? String(event.capacity) : '',
   })
   const [busy, setBusy] = useState(false)
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setF((cur) => ({ ...cur, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value, ...(k === 'category' ? { subTag: '' } : {}) }))
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value
+    setF((cur) => applyListingField(cur, k, value))
+  }
 
   const save = async (e: React.FormEvent) => {
-    e.preventDefault(); setBusy(true)
+    e.preventDefault()
+    const date = auToIso(f.date)
+    const endDate = f.endDate.trim() ? auToIso(f.endDate) : ''
+    if (!date) { toast.error('Enter the start date as dd/mm/yyyy'); return }
+    if (f.endDate.trim() && !endDate) { toast.error('Enter the end date as dd/mm/yyyy'); return }
+    setBusy(true)
     try {
-      const res = await fetch(`/api/promoter/events/${event.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, subTags: f.subTag ? [f.subTag] : [] }) })
+      const res = await fetch(`/api/promoter/events/${event.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, date, endDate: endDate || '', price: listingPayloadPrice(f.isFree, f.price), subTags: f.subTag ? [f.subTag] : [] }) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Could not save changes')
       toast.success('Listing updated'); onSaved()
@@ -42,12 +52,12 @@ export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEve
   return (
     <form onSubmit={save} className="rounded-lg border border-primary/40 bg-background p-4 grid sm:grid-cols-2 gap-3">
       <div className="sm:col-span-2 flex items-start justify-between gap-3">
-        <div><p className="font-semibold text-sm">Edit listing</p><p className="text-xs text-muted-foreground">Your changes go live straight away, and automatic source updates won&apos;t overwrite them.</p></div>
+        <div><p className="font-semibold text-sm">Edit listing</p><p className="text-xs text-muted-foreground">{event.hidden ? 'This is a draft. It stays off the public board until you publish it. Automatic source updates won’t overwrite your edits.' : 'Your changes go live straight away, and automatic source updates won’t overwrite them.'}</p></div>
         <button type="button" onClick={onClose} aria-label="Close editor" className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
       </div>
       <input required value={f.title} onChange={set('title')} placeholder="Event title" aria-label="Event title" className={`${field} sm:col-span-2`} />
-      <input required type="date" value={f.date} onChange={set('date')} className={field} aria-label="Start date" />
-      <input type="date" value={f.endDate} onChange={set('endDate')} className={field} aria-label="End date" />
+      <input required inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={f.date} onChange={set('date')} className={field} aria-label="Start date" />
+      <input inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={f.endDate} onChange={set('endDate')} className={field} aria-label="End date" />
       <div className="grid grid-cols-2 gap-2">
         <input type="time" value={f.time} onChange={set('time')} className={field} aria-label="Start time" title="Start time" />
         <input type="time" value={f.endTime} onChange={set('endTime')} className={field} aria-label="Finish time" title="Finish time" />
