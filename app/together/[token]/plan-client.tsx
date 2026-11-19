@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Car, Check, Copy, Loader2, MapPin, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
@@ -42,6 +43,7 @@ type Plan = {
 }
 
 export function PlanClient({ token }: { token: string }) {
+  const router = useRouter()
   const [plan, setPlan] = useState<Plan | null>(null)
   const [missing, setMissing] = useState(false)
   const [name, setName] = useState('')
@@ -146,9 +148,32 @@ export function PlanClient({ token }: { token: string }) {
       <Link href="/together" className="text-sm text-muted-foreground hover:text-foreground">All plans</Link>
       <h1 className="font-display text-3xl font-bold mt-2">{plan.name}</h1>
       <p className="mt-2 text-muted-foreground">{[plan.city, plan.planDate].filter(Boolean).join(' · ') || 'City and date are optional.'} One vote each. Private stops stay on this plan. They are not listed on the board.</p>
-      <button type="button" onClick={copy} className="mt-4 inline-flex items-center gap-2 h-10 px-4 rounded-md border border-border text-sm font-semibold hover:bg-muted">
-        <Copy className="w-4 h-4" />Copy Invite Link
-      </button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="button" onClick={copy} className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-semibold hover:bg-muted">
+          <Copy className="w-4 h-4" />Copy Invite Link
+        </button>
+        {plan.isCreator && (
+          <button
+            type="button"
+            className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-semibold text-destructive hover:bg-muted"
+            onClick={async () => {
+              if (!window.confirm(`Delete “${plan.name}”? This cannot be undone.`)) return
+              setBusy(true)
+              const res = await fetch(`/api/together/${token}`, { method: 'DELETE' })
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                toast.error(typeof data.error === 'string' ? data.error : 'Could not delete that plan.')
+                setBusy(false)
+                return
+              }
+              toast.success('Plan deleted.')
+              router.push('/together')
+            }}
+          >
+            <Trash2 className="w-4 h-4" />Delete plan
+          </button>
+        )}
+      </div>
 
       <label className="block mt-6 text-sm font-semibold" htmlFor="voter-name">Your name on this plan</label>
       <input id="voter-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="What should we call you?" className="mt-1 w-full sm:max-w-xs h-11 rounded-md border border-border bg-background px-3 text-sm" />

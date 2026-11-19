@@ -346,3 +346,15 @@ export async function castVote(token: string, who: Actor, itemId: string, name?:
   else await prisma.togetherVote.create({ data: { planId: plan.id, itemId, userId: who.userId, guestKey: who.userId ? null : who.guestKey } })
   return { ok: true as const }
 }
+
+/** The person who created the plan can remove it. Members and guests cannot. */
+export async function deletePlan(token: string, who: Actor) {
+  const plan = await prisma.togetherPlan.findUnique({
+    where: { token },
+    select: { id: true, creatorId: true, creatorGuest: true },
+  })
+  if (!plan) return { error: 'Plan not found', status: 404 as const }
+  if (!isCreator(plan, who)) return { error: 'Only the person who made this plan can delete it', status: 403 as const }
+  await prisma.togetherPlan.delete({ where: { id: plan.id } })
+  return { ok: true as const }
+}

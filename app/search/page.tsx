@@ -30,7 +30,8 @@ export default async function SearchPage({ searchParams }: Props) {
       let feed = await getBoardFeed(args)
       if (feed.events.length === 0) {
         const relaxed = relaxedSearchArgs(args)
-        if (relaxed) {
+        // A nonsense query stays empty. Widening by dropping the words hid the miss.
+        if (relaxed && !/wider list/i.test(relaxed.note)) {
           args = relaxed.args
           note = relaxed.note
           feed = await getBoardFeed(args)
@@ -46,7 +47,7 @@ export default async function SearchPage({ searchParams }: Props) {
     <PageShell>
       <main className="vp-wrap px-4 py-8 sm:px-6">
         <h1 className="font-display text-3xl font-bold tracking-tight">Search</h1>
-        <p className="mt-2 max-w-xl text-muted-foreground">This page keeps the search in the link, so you can send it.</p>
+        <p className="mt-2 max-w-xl text-muted-foreground">Search what’s on. The link keeps your words, so you can send it.</p>
         <form role="search" action="/search" method="get" className="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
           <label className="sr-only" htmlFor="search-q">Search events</label>
           <input
@@ -68,6 +69,16 @@ export default async function SearchPage({ searchParams }: Props) {
             {events.length === 0 ? 'Nothing matched that yet.' : `${events.length} ${events.length === 1 ? 'event' : 'events'} in ${cityName}.`}
             {note ? ` ${note}` : ''}
           </p>
+        )}
+        {q && events.length === 0 && (
+          <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-6">
+            <p className="font-display text-lg font-bold">Nothing matched those words.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try a suburb, a kind of night, or a shorter phrase.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/" className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Browse what’s on</Link>
+              <Link href={`/search?city=${encodeURIComponent(cityName)}`} className="inline-flex h-11 items-center rounded-full border border-border px-4 text-sm font-semibold">Clear search</Link>
+            </div>
+          </div>
         )}
         <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
           {events.map((event) => {
