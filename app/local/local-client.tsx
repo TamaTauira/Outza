@@ -46,7 +46,8 @@ export function LocalClient() {
   const [loadError, setLoadError] = useState<{ key: string; message: string } | null>(null)
   const [category, setCategory] = useState(params.get('category') ?? '')
   const [suburb, setSuburb] = useState(params.get('suburb') ?? '')
-  const [suburbQuery, setSuburbQuery] = useState(params.get('suburb') ?? '')
+  const [query, setQuery] = useState(params.get('q') ?? '')
+  const [queryText, setQueryText] = useState(params.get('q') ?? '')
   const [when, setWhen] = useState(params.get('when') ?? 'weekend')
   const [data, setData] = useState<{ key: string; items: Item[]; counts: Record<string, number> } | null>(null)
   const [mine, setMine] = useState<Mine[] | null>(null)
@@ -74,11 +75,12 @@ export function LocalClient() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => setSuburbQuery(suburb), 250)
+    const t = setTimeout(() => setQueryText(query), 250)
     return () => clearTimeout(t)
-  }, [suburb])
+  }, [query])
 
-  const requestKey = `${city}|${category}|${when}|${suburbQuery}`
+  const sentQuery = queryText.replace(/\s+/g, ' ').trim().slice(0, 200)
+  const requestKey = `${city}|${category}|${when}|${suburb}|${sentQuery}`
   const requestRef = useRef(0)
   useEffect(() => {
     if (tab === 'submit' || tab === 'mine') return
@@ -88,7 +90,7 @@ export function LocalClient() {
     let timedOut = false
     const timer = setTimeout(() => { timedOut = true; ac.abort() }, 8000)
     const release = holdScrollRestore('local-list')
-    fetch(`/api/local?${new URLSearchParams({ city, category, when, suburb: suburbQuery })}`, { signal: ac.signal })
+    fetch(`/api/local?${new URLSearchParams({ city, category, when, suburb, q: sentQuery })}`, { signal: ac.signal })
       .then((r) => r.json())
       .then((d) => {
         if (requestRef.current !== ticket) return
@@ -108,7 +110,7 @@ export function LocalClient() {
       })
       .finally(() => { clearTimeout(timer); release() })
     return () => { clearTimeout(timer); ac.abort(); release() }
-  }, [tab, city, category, when, suburbQuery, requestKey])
+  }, [tab, city, category, when, suburb, sentQuery, requestKey])
 
   const loadMine = useCallback(() => {
     fetch('/api/local?mine=1').then((r) => (r.ok ? r.json() : { listings: [] })).then((j) => { setMine(j.listings ?? []); setMineCommunity(j.community ?? []) }).catch((e) => { console.error(e); setMine([]); setMineCommunity([]) })
@@ -191,9 +193,12 @@ export function LocalClient() {
           <LocalBrowse
             city={city}
             setCity={setCity}
+            query={query}
+            setQuery={setQuery}
+            applyQuery={(value) => { setQuery(value); setQueryText(value) }}
+            appliedQuery={sentQuery}
             suburb={suburb}
             setSuburb={setSuburb}
-            applySuburb={(value) => { setSuburb(value); setSuburbQuery(value) }}
             category={category}
             setCategory={setCategory}
             when={when}

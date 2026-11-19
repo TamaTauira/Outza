@@ -9,6 +9,8 @@ import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, 
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
 import { eventPath } from '@/lib/seo'
 import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, refineStoredSection, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
+import { interpretQuery } from '@/lib/ai-search-parse'
+import { filterLocalSearch, localDateBounds, localOccurrenceWindow, type LocalSearchItem } from '@/lib/local-search'
 import { listingPicture } from '@/lib/local-images'
 import { publicUrl } from '@/lib/s3'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
@@ -19,6 +21,30 @@ import { unverifiedGate } from '@/lib/account-flow'
 export const dynamic = 'force-dynamic'
 
 const PUBLIC = { id: true, title: true, category: true, description: true, address: true, suburb: true, postcode: true, city: true, lat: true, lng: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true, websiteUrl: true, userId: true, sourceName: true } as const
+
+type Listed = FeedItem & LocalSearchItem
+
+function publicItem(item: Listed): FeedItem {
+  return {
+    id: item.id,
+    title: item.title,
+    section: item.section,
+    suburb: item.suburb,
+    city: item.city,
+    date: item.date,
+    time: item.time,
+    endTime: item.endTime,
+    isFree: item.isFree,
+    price: item.price,
+    href: item.href,
+    kind: item.kind,
+    status: item.status,
+    lat: item.lat,
+    lng: item.lng,
+    blurb: item.blurb,
+    imageUrl: item.imageUrl,
+  }
+}
 
 function assetUrl(asset: { status: string; variants: unknown } | null | undefined): string | null {
   if (!asset || asset.status === 'FAILED' || !asset.variants || typeof asset.variants !== 'object') return null
@@ -61,7 +87,7 @@ function range(tz: string, when: string) {
   return { from, to: addDaysStr(from, when === '7' ? 6 : 29) }
 }
 
-/** GET ?city=&category=&when=today|weekend|7|30 · ?mine=1 for the signed-in user's own listings */
+/** GET ?city=&category=&when=today|weekend|7|30&suburb=&q= · ?mine=1 for the signed-in user's own listings */
 export async function GET(req: Request) {
   const u = new URL(req.url)
   if (u.searchParams.get('mine') === '1') {
@@ -83,17 +109,21 @@ export async function GET(req: Request) {
   const city = u.searchParams.get('city') ?? ''
   const section = u.searchParams.get('category') ?? ''
   const suburb = u.searchParams.get('suburb') ?? ''
+  const q = (u.searchParams.get('q') ?? '').replace(/\s+/g, ' ').trim().slice(0, 200)
   const when = u.searchParams.get('when') ?? '30'
   const validCity = CITIES.some((c) => c.name === city)
   const zone = cityDef(validCity ? city : 'Sydney')
-  const { from, to } = range(zone.tz, when)
+  const today = todayIn(zone.tz)
+  // The city picker wins. A city named in q does not switch the feed.
+  const parsed = q ? interpretQuery(q, today) : null
+  const { from, to } = localOccurrenceWindow(range(zone.tz, when), parsed ? localDateBounds(q, parsed, today) : null, today)
   try {
   const rows = await prisma.localListing.findMany({
     where: { status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(validCity ? { city } : {}) },
     select: { ...PUBLIC, imagePath: true, sourceImageUrl: true, imageAsset: { select: imageAssetSelect } }, take: 600,
   })
   const seen = new Set<string>()
-  const localItems: FeedItem[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
+  const localItems: Listed[] = rows.flatMap((l) => occurrences(l, from, to).map((date) => ({ l, date })))
     .filter(({ l, date }) => { const k = `${localDupKey(l)}|${date}|${l.startTime}`; if (seen.has(k)) return false; seen.add(k); return true })
     .map(({ l, date }) => {
       const section = refineStoredSection(sectionForLocal(l), l.title, l.description)
@@ -114,6 +144,9 @@ export async function GET(req: Request) {
         lat: pin?.lat ?? null,
         lng: pin?.lng ?? null,
         blurb: feedBlurb(l.description),
+        description: l.description,
+        address: l.address,
+        postcode: l.postcode,
         imageUrl: feedPhoto([assetUrl(l.imageAsset), listingPicture(l.imagePath, l.sourceImageUrl, publicUrl)]),
       }
     })
@@ -139,7 +172,7 @@ export async function GET(req: Request) {
     isFree: ev.isFree,
     status: ev.status,
   }))
-  const communityItems: FeedItem[] = filterCommunityListings(shaped, { city: validCity ? city : null, from, to }, zone).map((ev) => {
+  const communityItems: Listed[] = filterCommunityListings(shaped, { city: validCity ? city : null, from, to }, zone).map((ev) => {
     const section = refineStoredSection(ev.communityKey, ev.title, typeof ev.description === 'string' ? ev.description : null)
     const pin = feedPin(section, ev.city, ev.suburb || '', ev.latitude, ev.longitude)
     return {
@@ -159,16 +192,21 @@ export async function GET(req: Request) {
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
       blurb: feedBlurb(typeof ev.description === 'string' ? ev.description : null),
+      description: typeof ev.description === 'string' ? ev.description : null,
+      venueName: typeof ev.venueName === 'string' ? ev.venueName : null,
+      venueAddress: typeof ev.venueAddress === 'string' ? ev.venueAddress : null,
       imageUrl: communityPhoto(ev),
     }
   })
-  const items = filterFeed(dedupeFeed([...communityItems, ...localItems]), { section, suburb }).slice(0, 300)
+  const merged = dedupeFeed([...communityItems, ...localItems]) as Listed[]
+  const matched = parsed ? filterLocalSearch(merged, parsed, q, today) : merged
+  const items = filterFeed(matched, { section, suburb }).slice(0, 300).map(publicItem)
   const communityIds = items.filter((item) => item.kind === 'community').map((item) => item.id).slice(0, 12)
   if (communityIds.length) {
     const { recordSeen } = await import('@/lib/product-metrics')
     await recordSeen(communityIds, 'local')
   }
-  return NextResponse.json({ from, to, items, counts: sectionCounts(filterFeed(dedupeFeed([...communityItems, ...localItems]), { suburb })) })
+  return NextResponse.json({ from, to, items, counts: sectionCounts(filterFeed(matched, { suburb })) })
   } catch (err) {
     console.error('Local listings failed:', err)
     return NextResponse.json({ from, to, items: [], counts: {}, notice: 'Listings are unavailable right now.' })
