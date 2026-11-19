@@ -6,6 +6,7 @@ import { boardClockLine } from '@/lib/listing-window'
 import { eventPath, isPastEvent as isPast } from '@/lib/seo'
 import { eventImageUrl, eventJsonLd, jsonLdString } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
+import { displayTitle } from '@/lib/display-public'
 import { LandingDetailBeacon } from '@/components/landing-beacon'
 import { EventDetailClient } from './_components/event-detail-client'
 import { classifyReferral } from '@/lib/referrals'
@@ -22,18 +23,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const where = [ev.venueName, ev.suburb && ev.suburb !== ev.city ? ev.suburb : null, ev.city].filter(Boolean).join(', ')
   const status = ev.status === 'CANCELLED' ? 'Cancelled: ' : ev.status === 'POSTPONED' ? 'Postponed: ' : ''
   const clock = boardClockLine(ev)
-  const desc = `${status}${ev.title} on ${dateLabel}${clock ? ` at ${clock}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
+  const name = displayTitle(ev.title)
+  const desc = `${status}${name} on ${dateLabel}${clock ? ` at ${clock}` : ''}, ${where}.${ev.description ? ` ${ev.description.replace(/\s+/g, ' ').slice(0, 110)}…` : ''}`
   const origin = siteUrl()
   const image = eventImageUrl(ev, origin)
   return {
-    title: `${status}${ev.title} | ${dateLabel} | ${ev.city} | VibePeep`,
+    title: `${status}${name} · ${dateLabel} · ${ev.city} · VibePeep`,
     description: desc.slice(0, 300),
     alternates: { canonical: eventPath(canonicalTarget ?? ev) },
     robots: ev.duplicateOfId ? { index: false, follow: true } : undefined,
-    openGraph: { title: ev.title, description: desc.slice(0, 200), type: 'website', url: eventPath(ev), images: [image] },
+    openGraph: { title: name, description: desc.slice(0, 200), type: 'website', url: eventPath(ev), images: [image] },
     twitter: {
       card: 'summary_large_image',
-      title: ev.title,
+      title: name,
       description: desc.slice(0, 200),
       images: [image],
     },

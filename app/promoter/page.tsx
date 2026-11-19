@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
@@ -7,6 +8,11 @@ import { PromoterClient } from './promoter-client'
 import { BecomePromoter } from './become-promoter'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'Promoter dashboard · VibePeep',
+  robots: { index: false, follow: false },
+}
 
 export default async function PromoterPage() {
   const session = await auth()
