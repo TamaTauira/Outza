@@ -1,9 +1,10 @@
 /**
  * Fill prices the source feed left blank.
- * This is its own cron, with its own time budget, so it cannot push the
- * listings refresh or finalize past the 300s function limit.
+ * This is its own cron, after the listings burst, so it is not reading while
+ * finalize is still writing. A statement timeout skips the run.
  */
-import { withStatementTimeout } from '@/lib/db-guard'
+import { Prisma } from '@prisma/client'
+import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
 import { BROWSER_UA, sydneyToday } from '@/lib/event-store'
 import { PRICE_ENRICH_BUDGET_MS, groupTargets, resolveEventPrice, type PriceFetch, type PriceGroup, type PriceRequest, type PriceResponse, type PriceTarget } from '@/lib/price-lookup'
 import { PRICE_REASON, TRANSIENT_PRICE_REASONS } from '@/lib/price-read'
@@ -25,6 +26,8 @@ export type PriceEnrichReport = {
   more: boolean
   upcomingUnknown: number
   totalUnknown: number
+  /** The database was too busy. This run did not fail. */
+  skipped?: boolean
 }
 
 const blankPrice = {
@@ -40,44 +43,44 @@ const blankPrice = {
   ],
 }
 
-function dueWhere(now: Date) {
+/**
+ * Blank prices, at most `take` rows. Upcoming first, then past.
+ * Literals (not Prisma parameters) so Postgres can use the partial index
+ * in prisma/sql/20261119_price_due_index.sql. A parameterized `isFree = $1`
+ * cannot prove that predicate.
+ */
+async function selectCandidates(direction: 'upcoming' | 'past', take: number, now: Date, skipTicketmaster: boolean): Promise<PriceTarget[]> {
+  const today = sydneyToday()
   const transientBefore = new Date(now.getTime() - 6 * 60 * 60 * 1000)
   const stableBefore = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-  return {
-    duplicateOfId: null,
-    deletedAt: null,
-    organiserEditedAt: null,
-    AND: [
-      blankPrice,
-      {
-        OR: [
-          { priceCheckedAt: null },
-          { AND: [{ priceUnknownReason: { in: [...TRANSIENT_PRICE_REASONS] } }, { priceCheckedAt: { lt: transientBefore } }] },
-          { priceCheckedAt: { lt: stableBefore } },
-        ],
-      },
-    ],
-  }
-}
-
-let columnsReady: Promise<void> | null = null
-
-export function ensurePriceColumns(): Promise<void> {
-  if (!columnsReady) {
-    columnsReady = (async () => {
-      // Nullable adds are metadata-only. Building the priceCheckedAt index here
-      // has no statement timeout, so the first production run held the table
-      // until the platform killed the function.
-      await withStatementTimeout(5_000, async (tx) => {
-        await tx.$executeRaw`ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "priceCheckedAt" TIMESTAMP(3)`
-        await tx.$executeRaw`ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "priceUnknownReason" TEXT`
-      })
-    })().catch((err) => {
-      columnsReady = null
-      throw err
-    })
-  }
-  return columnsReady
+  const reasons = Prisma.join([...TRANSIENT_PRICE_REASONS])
+  const sourceClause = skipTicketmaster ? Prisma.sql`AND source <> 'ticketmaster'` : Prisma.empty
+  const dateClause = direction === 'upcoming' ? Prisma.sql`AND date >= ${today}` : Prisma.sql`AND date < ${today}`
+  const order = direction === 'upcoming' ? Prisma.sql`ORDER BY date ASC, id ASC` : Prisma.sql`ORDER BY date DESC, id ASC`
+  const rows = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.$queryRaw<PriceTarget[]>`
+    SELECT id, source, title, "ticketUrl", "sourceUrl", date
+    FROM "Event"
+    WHERE "duplicateOfId" IS NULL
+      AND "deletedAt" IS NULL
+      AND "organiserEditedAt" IS NULL
+      AND "isFree" = false
+      AND "priceMin" IS NULL
+      AND (
+        price IS NULL
+        OR price = ''
+        OR lower(price) IN ('tba', 'tbc', 'price tba', 'price tbc')
+      )
+      AND (
+        "priceCheckedAt" IS NULL
+        OR "priceCheckedAt" < ${stableBefore}
+        OR ("priceUnknownReason" IN (${reasons}) AND "priceCheckedAt" < ${transientBefore})
+      )
+      ${dateClause}
+      ${sourceClause}
+    ${order}
+    LIMIT ${take}
+  `)
+  return rows.map((row) => ({ ...row, date: new Date(row.date) }))
 }
 
 function gapFor(host: string): number {
@@ -151,23 +154,10 @@ function limitedFetch(gate: HostGate, cache: Map<string, Promise<PriceResponse>>
   }
 }
 
-async function nextTargets(take: number, now: Date, extra: Record<string, unknown>): Promise<PriceTarget[]> {
-  const today = sydneyToday()
-  const select = { id: true, source: true, title: true, ticketUrl: true, sourceUrl: true, date: true } as const
-  const where = { ...dueWhere(now), ...extra }
-  const upcoming = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
-    where: { ...where, date: { gte: today } },
-    orderBy: [{ date: 'asc' }, { id: 'asc' }],
-    take,
-    select,
-  }))
+async function nextTargets(take: number, now: Date, skipTicketmaster: boolean): Promise<PriceTarget[]> {
+  const upcoming = await selectCandidates('upcoming', take, now, skipTicketmaster)
   if (upcoming.length) return upcoming
-  return withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
-    where: { ...where, date: { lt: today } },
-    orderBy: [{ date: 'desc' }, { id: 'asc' }],
-    take,
-    select,
-  }))
+  return selectCandidates('past', take, now, skipTicketmaster)
 }
 
 async function idsForGroup(group: PriceGroup): Promise<string[]> {
@@ -229,7 +219,6 @@ async function pool<T>(items: T[], size: number, run: (item: T) => Promise<void>
 }
 
 export async function countUnknownPrices(): Promise<{ upcoming: number; total: number }> {
-  await ensurePriceColumns()
   const today = sydneyToday()
   const base = { duplicateOfId: null, deletedAt: null, AND: [blankPrice] }
   const [upcoming, total] = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => Promise.all([
@@ -243,11 +232,10 @@ export async function runPriceEnrich(opts?: { budgetMs?: number; fetch?: PriceFe
   const started = Date.now()
   const budgetMs = opts?.budgetMs ?? PRICE_ENRICH_BUDGET_MS
   const now = opts?.now ?? new Date()
-  await ensurePriceColumns()
   const fetch = opts?.fetch ?? limitedFetch(new HostGate(), new Map())
   const apiKey = process.env.TICKETMASTER_API_KEY?.trim() || null
   // Without the discovery key, leave Ticketmaster rows untouched so the hosted cron can price them.
-  const sourceFilter = apiKey ? {} : { NOT: { source: 'ticketmaster' } }
+  const skipTicketmaster = !apiKey
   let checked = 0
   let priced = 0
   let free = 0
@@ -258,8 +246,15 @@ export async function runPriceEnrich(opts?: { budgetMs?: number; fetch?: PriceFe
   while (Date.now() - started < budgetMs - 20_000) {
     let rows: PriceTarget[]
     try {
-      rows = await nextTargets(WAVE, now, sourceFilter)
+      rows = await nextTargets(WAVE, now, skipTicketmaster)
     } catch (err) {
+      if (isDbSaturation(err)) {
+        console.warn('[price-enrich] skipped this run, database saturated', err instanceof Error ? err.message : err)
+        return {
+          checked, priced, free, stillUnknown: checked - priced, reasons, examples,
+          elapsedMs: Date.now() - started, more: false, upcomingUnknown: -1, totalUnknown: -1, skipped: true,
+        }
+      }
       console.error('[price-enrich] target read failed', err instanceof Error ? err.message : err)
       more = true
       break

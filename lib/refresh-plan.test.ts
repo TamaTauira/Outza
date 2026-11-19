@@ -130,6 +130,9 @@ test('vercel.json runs each chunk hourly inside one burst with a long idle gap',
   assert.ok(REFRESH_CYCLE_WINDOW_MS > (REFRESH_CHUNKS.at(-1)!.minute - REFRESH_CHUNKS[0].minute) * 60 * 1000)
   const ownerMinute = Number(vercel.crons.find((c) => c.path === '/api/cron/owner-alerts')?.schedule.split(' ')[0])
   assert.ok(ownerMinute > REFRESH_CHUNKS.find((c) => c.finalize)!.minute)
+  const finalize = REFRESH_CHUNKS.find((c) => c.finalize)!
+  const priceMinute = Number(vercel.crons.find((c) => c.path === '/api/cron/price-enrich')?.schedule.split(' ')[0])
+  assert.ok(priceMinute * 60_000 >= finalize.minute * 60_000 + finalize.budgetMs, 'price lookup overlaps finalize')
   for (const cron of vercel.crons) {
     const minute = Number(cron.schedule.split(' ')[0].split(',')[0])
     assert.ok(minute >= REFRESH_CHUNKS[0].minute && minute <= Math.max(...HOURLY_SIDE_MINUTES))

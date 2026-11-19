@@ -23,7 +23,10 @@ function decision(i: number, index: boolean): GuideDecision {
 
 test('guide inventory is cached as the model, under the 2MB data-cache limit', () => {
   const src = read('./seo-server.ts')
-  assert.match(src, /guide-model-v3/)
+  assert.match(src, /guide-model-v4/)
+  const guideCache = src.slice(src.indexOf('const cachedGuideModel'), src.indexOf('export interface CityGuideModel'))
+  assert.equal(guideCache.includes('PUBLIC_EVENT_TAG'), false)
+  assert.match(guideCache, /isDbSaturation/)
   assert.equal(src.includes('guide-rows-v2'), false)
   assert.match(src, /loadCityGuideModels/)
   assert.equal(src.includes('Promise.all(CITIES.map'), false)

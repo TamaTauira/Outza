@@ -411,19 +411,37 @@ export function guideModelForCache(model: CachedGuide): CachedGuide {
   return packed(primary)
 }
 
+const guideMemory = new Map<string, CachedGuide>()
+
 const cachedGuideModel = unstable_cache(
   async (cityName: string, today: string): Promise<CachedGuide> => {
     const city = CITIES.find((c) => c.name === cityName)
     if (!city) return { decisions: [], suburbs: [], seasons: [] }
-    const rows = await queryGuideRows(city, today)
-    return guideModelForCache({
-      decisions: evaluateGuides(city, rows),
-      suburbs: suburbDirectory(city, rows),
-      seasons: evaluateSeasons(city, rows),
-    })
+    const memoryKey = `${cityName}|${today}`
+    try {
+      const rows = await queryGuideRows(city, today)
+      const model = guideModelForCache({
+        decisions: evaluateGuides(city, rows),
+        suburbs: suburbDirectory(city, rows),
+        seasons: evaluateSeasons(city, rows),
+      })
+      guideMemory.set(memoryKey, model)
+      return model
+    } catch (err) {
+      if (!isDbSaturation(err)) throw err
+      const kept = guideMemory.get(memoryKey)
+      console.warn('[seo] guide model revalidation skipped, database saturated', cityName, err instanceof Error ? err.message : err)
+      if (kept) return kept
+      // Nothing in this process. Throwing leaves the stored model alone, so the
+      // page keeps that copy instead of caching an empty guide.
+      throw err
+    }
   },
-  ['guide-model-v3'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] },
+  ['guide-model-v4'],
+  // Not on the public event tag. Refresh busts that tag while it is still
+  // writing, and rebuilding every city model in that window is what timed out.
+  // The model still refreshes on the same 10 minute window as the other public pages.
+  { revalidate: PUBLIC_REVALIDATE_SECONDS },
 )
 
 export interface CityGuideModel {
@@ -447,9 +465,18 @@ async function loadCityGuideModel(city: CityDef): Promise<CityGuideModel> {
     try {
       const cached = await cachedGuideModel(city.name, today)
       const model: CityGuideModel = { ok: true, decisions: cached.decisions, suburbs: cached.suburbs, seasons: cached.seasons }
+      guideMemory.set(key, cached)
       modelCache.set(key, { at: Date.now(), model })
       return model
     } catch (err) {
+      const stale = modelCache.get(key)?.model
+      if (isDbSaturation(err)) {
+        console.warn('guide inventory kept the previous model, database saturated', city.name, err instanceof Error ? err.message : err)
+        if (stale?.ok) return stale
+        const remembered = guideMemory.get(key)
+        if (remembered) return { ok: true, decisions: remembered.decisions, suburbs: remembered.suburbs, seasons: remembered.seasons }
+        return { ok: false, decisions: [], suburbs: [], seasons: [] }
+      }
       console.error('guide inventory failed', city.name, err)
       return { ok: false, decisions: [], suburbs: [], seasons: [] }
     }
