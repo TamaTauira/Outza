@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--vp-radius-md)] text-sm font-semibold transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-70 motion-reduce:transform-none [&_svg]:pointer-events-none [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0",
+  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-70 motion-reduce:transform-none [&_svg]:pointer-events-none [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -28,12 +28,12 @@ const buttonVariants = cva(
           "text-primary underline-offset-4 hover:underline focus-visible:underline focus-visible:ring-0 focus-visible:ring-offset-0",
       },
       size: {
-        default: "h-11 px-4 py-2",
-        xs: "h-8 rounded-[var(--vp-radius-sm)] px-2 text-[13px]",
-        sm: "h-11 rounded-[var(--vp-radius-sm)] px-3",
-        lg: "h-12 rounded-[var(--vp-radius-md)] px-6 text-base",
+        default: "h-11 px-5",
+        xs: "h-9 px-2.5 text-sm",
+        sm: "h-11 px-3",
+        lg: "h-12 px-6 text-base",
         icon: "h-11 w-11",
-        "icon-sm": "h-11 w-11 rounded-[var(--vp-radius-sm)]",
+        "icon-sm": "h-11 w-11",
       },
     },
     defaultVariants: {
