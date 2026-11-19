@@ -148,7 +148,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const savedNow = isSaved(event.id)
   const outbound = eventOutbound(event)
   const sponsored = outbound.kind === 'ticket' && !!event.ticketUrl && (ticketHref(event.ticketUrl) ?? event.ticketUrl) !== event.ticketUrl
-  const sourceLink = (
+  const sourceLink = (className: string) => (
     <a
       href={outbound.href}
       onClick={() => {
@@ -158,11 +158,12 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
       }}
       target="_blank"
       rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+      className={className}
     >
       {outbound.label} <ExternalLink className="h-4 w-4" />
     </a>
   )
+  const ticketClass = 'flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-4 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90'
 
   const card = (
     <aside className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
@@ -210,7 +211,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         </Fact>
       </ul>
 
-      {sourceLink}
+      {sourceLink(`${ticketClass} w-full`)}
       <EventReactions eventId={event.id} signedIn={signedIn} />
       <div className="grid grid-cols-4 gap-2">
         <button
@@ -240,7 +241,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
     <div className="min-h-screen bg-background">
       {nav}
 
-      <main className="vp-wrap px-4 py-4 pb-6 sm:px-6 sm:py-5 sm:pb-5">
+      <main className="vp-wrap px-4 py-4 pb-36 sm:px-6 sm:py-5 lg:pb-5">
         <BackToEventsLink className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to events
         </BackToEventsLink>
@@ -317,7 +318,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             <FollowListing category={event.category} venueName={event.venueName} city={event.city} />
           </header>
 
-          <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2">{card}</div>
+          <div className="lg:sticky lg:top-24 lg:col-start-2 lg:row-start-1 lg:row-span-2">{card}</div>
 
           <div className="min-w-0 space-y-4 lg:col-start-1">
             {event?.description ? <Lowdown text={event.description} /> : null}
@@ -341,6 +342,12 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
       </main>
 
       <Footer lastRefresh={null} />
+      <div className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden" style={{ bottom: 'var(--vp-bottom-nav-offset, 4.5rem)' }}>
+        <div className="mx-auto flex max-w-lg items-center gap-3 pb-[env(safe-area-inset-bottom)]">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold">{price}</p>
+          {sourceLink(`${ticketClass} shrink-0`)}
+        </div>
+      </div>
     </div>
   )
 }

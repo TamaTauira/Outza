@@ -34,7 +34,35 @@ export default function PricingPage() {
         </div>
 
         <h2 id="compare" className="mt-12 scroll-mt-24 font-display text-2xl font-bold">Compare campaign lengths</h2>
-        <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+        <div className="mt-4 grid gap-3 md:hidden">
+          {TIERS.map((t) => (
+            <article key={t.key} className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="font-semibold">{t.name}</h3>
+              <ul className="mt-2 space-y-1 text-sm">
+                {DURATIONS.map((d) => <li key={d.days} className="flex justify-between gap-3"><span className="text-muted-foreground">{d.label}</span><span className="font-medium tabular-nums">{formatAud(t.prices[d.days])}</span></li>)}
+              </ul>
+              <p className="mt-2 text-sm text-muted-foreground">{t.key === 'GOLD' ? 'Top of your city’s Featured band' : t.key === 'BRONZE' ? 'Featured band, above Boost' : 'Featured band in your city'}</p>
+            </article>
+          ))}
+          {Object.values(BOOSTS).map((boost) => (
+            <article key={boost.id} className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="font-semibold">{boost.name}</h3>
+              <p className="mt-2 text-sm font-medium tabular-nums">{formatAud(boost.priceCents)} · up to {boost.maxMinutes / 60} hours</p>
+              <p className="mt-2 text-sm text-muted-foreground">Coming up next in the event’s city, labelled Sponsored, until the end you pick or the impression cap.</p>
+            </article>
+          ))}
+          <article className="rounded-2xl border border-border bg-card p-4">
+            <h3 className="font-semibold">{PRO_PLAN.name}</h3>
+            <p className="mt-2 text-sm font-medium tabular-nums">{formatAud(PRO_PLAN.priceCents)} / {PRO_PLAN.days} days</p>
+            <p className="mt-2 text-sm text-muted-foreground">{PRO_PLAN.discountPct}% off campaigns bought while it is active. Ending it yourself does not automatically refund days already used. The refund policy still applies.</p>
+          </article>
+          <article className="rounded-2xl border border-border bg-card p-4">
+            <h3 className="font-semibold">Local recommendation</h3>
+            <p className="mt-2 text-sm font-medium tabular-nums">{formatAud(LOCAL_AD.priceCents)}</p>
+            <p className="mt-2 text-sm text-muted-foreground">Runs until the event ends. One per event. Cancelling it yourself takes it off the page and does not automatically refund a spot that ran. See the refund policy.</p>
+          </article>
+        </div>
+        <div className="mt-4 hidden overflow-x-auto rounded-xl border border-border md:block">
           <table className="w-full min-w-[32rem] text-left text-sm">
             <thead className="bg-muted/60 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -55,7 +83,7 @@ export default function PricingPage() {
                 <tr key={boost.id} className="border-t border-border">
                   <th className="px-4 py-3 font-semibold">{boost.name}</th>
                   <td className="px-4 py-3 font-mono" colSpan={3}>{formatAud(boost.priceCents)} · up to {boost.maxMinutes / 60} hours</td>
-                  <td className="px-4 py-3 text-muted-foreground">Hot right now in the event’s city, labelled Sponsored, until the end you pick or the impression cap.</td>
+                  <td className="px-4 py-3 text-muted-foreground">Coming up next in the event’s city, labelled Sponsored, until the end you pick or the impression cap.</td>
                 </tr>
               ))}
               <tr className="border-t border-border">
