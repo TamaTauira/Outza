@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { classifyCategory, checkLGBTI, reconcileSuburb } from '@/lib/categories'
 import { DEFAULT_CITY, tidyVenueName } from '@/lib/cities'
 import { normalizeTitle, normalizeVenue } from '@/lib/quality'
-import { fieldConflicts, scheduleFields } from '@/lib/listing-window'
+import { fieldConflicts, scheduleFields, venueKey } from '@/lib/listing-window'
 import { assertNoOwnershipTransfer, decideDuplicate, listingUrlAliases } from '@/lib/event-identity'
 import { guardAgainstWeakerSource, planLinkedFill } from '@/lib/linked-fill'
 import { findEventIdBySourceKey, recordContribution, rememberSource } from '@/lib/source-record'
@@ -18,6 +18,24 @@ import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/so
 import { applyProtectedRefresh } from '@/lib/event-overrides'
 import { updateIsVerificationOnly } from '@/lib/listing-touch'
 import { listingModeration, statusFromTitle } from '@/lib/listing-moderation'
+
+const venueIdCache = new Map<string, string | null>()
+
+/** Fills a missing venue link. Never moves an event that already has one. */
+async function fillVenueLink(eventId: string, city: string, venueName: string, current: string | null | undefined) {
+  if (current) return
+  const name = venueName.trim()
+  if (name.length < 2 || /^(tba|online|various|multiple venues)$/i.test(name)) return
+  const key = venueKey(city, name)
+  let venueId = venueIdCache.get(key)
+  if (venueId === undefined) {
+    const row = await prisma.venue.findUnique({ where: { key }, select: { id: true } }).catch(() => null)
+    venueId = row?.id ?? null
+    venueIdCache.set(key, venueId)
+  }
+  if (!venueId) return
+  await prisma.event.updateMany({ where: { id: eventId, venueId: null }, data: { venueId } }).catch(() => {})
+}
 
 export const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
@@ -189,7 +207,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     ticketUrl: true, sourceUrl: true, organiserUrl: true, organiserName: true,
     galleryUrls: true, accessibilityInfo: true, ageRestriction: true,
     timezone: true, allDay: true, startsAt: true, endsAt: true, confidenceScore: true,
-    duplicateOfId: true,
+    duplicateOfId: true, venueId: true,
   } as const
   const externalId = ev.externalId?.trim() || null
   const identityUrl = storedLinks.sourceUrl || storedLinks.ticketUrl
@@ -290,6 +308,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       status,
       price,
       category,
+      imageUrl,
     }
     const legacyLock = { sources, lastVerifiedAt: new Date(), ...(status === 'CANCELLED' ? { status } : {}) }
     if (existing.source === ev.source) {
@@ -306,20 +325,23 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
           if (identityHit) update.date = date
         }
       }
-      // Admin-replaced artwork is locked; a source that drops its image keeps the one we have
-      if (!existing.imageLocked && imageUrl && imageUrl !== existing.imageUrl) {
+      // Admin-replaced artwork is locked; a source that drops its image keeps the one we have.
+      // A venue image correction is an active override, so the protected refresh drops this write.
+      const imageChanging = !existing.imageLocked && !!imageUrl && imageUrl !== existing.imageUrl
+      if (imageChanging) {
         update.imageUrl = imageUrl
-        if (existing.imageAssetId && existing.imageAssetId !== assetIdFor(imageUrl)) {
-          update.imageAssetId = null // re-linked and processed by the async image pass
-          await prisma.imageHistory.create({
-            data: { eventId: existing.id, oldAssetId: existing.imageAssetId, oldUrl: existing.imageUrl, newUrl: imageUrl, reason: 'SOURCE_UPDATE' },
-          })
-        }
+        if (existing.imageAssetId && existing.imageAssetId !== assetIdFor(imageUrl)) update.imageAssetId = null
       }
-      // Per-field organiser overrides keep their values. Other fields, including artwork, still refresh.
+      // Per-field corrections keep their values. Other fields, including artwork, still refresh.
       if (await applyProtectedRefresh(existing.id, incomingFields, update)) {
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
+      }
+      if (imageChanging && update.imageUrl && existing.imageAssetId && existing.imageAssetId !== assetIdFor(imageUrl)) {
+        await prisma.imageHistory.create({
+          data: { eventId: existing.id, oldAssetId: existing.imageAssetId, oldUrl: existing.imageUrl, newUrl: imageUrl, reason: 'SOURCE_UPDATE' },
+        })
       }
       // Older organiser edits lock the whole listing. Cancellation from the source still lands.
       if (existing.organiserEditedAt) {
@@ -327,12 +349,14 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         assertNoOwnershipTransfer(locked)
         await prisma.event.update({ where: { id: existing.id }, data: locked })
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
       }
       const guarded = guardAgainstWeakerSource(existing, update)
       if (updateIsVerificationOnly(existing as unknown as Record<string, unknown>, guarded)) {
         await touchVerified(existing.id, now)
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
       }
       assertNoOwnershipTransfer(guarded)
@@ -341,6 +365,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     } else {
       if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) {
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
       }
       if (existing.organiserEditedAt) {
@@ -348,11 +373,13 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         assertNoOwnershipTransfer(locked)
         await prisma.event.update({ where: { id: existing.id }, data: locked })
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+        await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
       }
       await mergeInto(existing.id, ev.source, sources, crossFill)
       await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     }
+    await fillVenueLink(existing.id, city, venueName, existing.venueId)
     return true
   }
 
@@ -398,6 +425,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     },
   })
   await rememberSource({ eventId: created.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
+  await fillVenueLink(created.id, city, venueName, null)
   return true
 }
 

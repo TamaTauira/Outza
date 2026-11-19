@@ -17,6 +17,7 @@ const FIELD_LABEL: Record<string, string> = {
   status: 'the status',
   price: 'the price',
   category: 'the category',
+  imageUrl: 'the image',
 }
 
 export type ListingProvenance = {
@@ -29,6 +30,8 @@ export type ListingProvenance = {
   otherSources: string[]
   organiserFields: string[]
   organiserNote: string | null
+  venueFields: string[]
+  venueNote: string | null
   statusNote: string | null
   filledNote: string | null
 }
@@ -49,6 +52,7 @@ export function listingProvenance(input: {
   updatedAt?: Date | string | null
   sources?: string[] | null
   organiserFields?: string[] | null
+  venueFields?: string[] | null
   status?: string | null
   statusSource?: string | null
   fieldSources?: Record<string, string> | null
@@ -58,9 +62,14 @@ export function listingProvenance(input: {
   const checked = input.lastVerifiedAt ?? input.updatedAt
   const lastChecked = checked ? new Date(checked).toISOString() : null
   const others = [...new Set((input.sources ?? []).filter((item) => item && item !== input.source))].map((item) => sourceLabel(item))
-  const fields = (input.organiserFields ?? []).map((field) => FIELD_LABEL[field] ?? field.replace(/([A-Z])/g, ' $1').toLowerCase())
+  const labelOf = (field: string) => FIELD_LABEL[field] ?? field.replace(/([A-Z])/g, ' $1').toLowerCase()
+  const fields = (input.organiserFields ?? []).map(labelOf)
+  const venueFields = (input.venueFields ?? []).map(labelOf)
   const organiserNote = fields.length
     ? `Updated by organiser (${fields.join(', ')}). Some event details were updated directly in VibePeep and may differ from the original event source.`
+    : null
+  const venueNote = venueFields.length
+    ? `from the venue (${venueFields.join(', ')}). The venue corrected this on VibePeep. It may differ from the original listing.`
     : null
   return {
     sourceLabel: primary,
@@ -72,6 +81,8 @@ export function listingProvenance(input: {
     otherSources: others,
     organiserFields: fields,
     organiserNote,
+    venueFields,
+    venueNote,
     statusNote: reportedStatusNote(input.status, input.statusSource ? sourceLabel(input.statusSource) : null),
     filledNote: filledSourceNote(input.source, input.fieldSources),
   }

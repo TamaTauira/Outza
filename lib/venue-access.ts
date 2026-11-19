@@ -11,7 +11,6 @@ import { siteUrl } from '@/lib/site-url'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { sydneyToday } from '@/lib/event-store'
 import { venueKey as followKey } from '@/lib/together'
-import { canManageEvent } from '@/lib/event-overrides'
 import {
   ANALYTICS_CAVEAT,
   SPONSORED_LABEL,
@@ -309,7 +308,34 @@ export async function approveVenueClaim(claimId: string, actorId: string | null,
     prisma.user.updateMany({ where: { id: claim.claimantUserId, role: 'CONSUMER' }, data: { role: 'PROMOTER' } }),
   ])
   await audit(claim.venueId, actorId, 'claim-approved', null, claim.id)
+  await linkVenueEvents(claim.venueId).catch((err) => console.error('venue link failed', (err as Error)?.message))
   return claim
+}
+
+/** Points past and future listings at this venue. Does not change who promotes them. */
+export async function linkVenueEvents(venueId: string): Promise<number> {
+  const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { name: true, city: true } })
+  if (!venue) return 0
+  let linked = 0
+  for (let batch = 0; batch < 8; batch++) {
+    const rows = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL statement_timeout = '8s'`
+      return tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Event"
+        WHERE "venueId" IS NULL
+          AND "duplicateOfId" IS NULL
+          AND lower("city") = lower(${venue.city})
+          AND lower(btrim("venueName")) = lower(${venue.name.trim()})
+        LIMIT 200
+      `
+    }, { timeout: 12000, maxWait: 4000 })
+    if (!rows.length) break
+    const ids = rows.map((row) => row.id)
+    const result = await prisma.event.updateMany({ where: { id: { in: ids }, venueId: null }, data: { venueId } })
+    linked += result.count
+    if (rows.length < 200) break
+  }
+  return linked
 }
 
 export async function rejectVenueClaim(claimId: string, actorId: string, note: string) {
@@ -388,38 +414,62 @@ export async function venueEvents(userId: string, venueId: string, isAdmin = fal
   const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { id: true, name: true, city: true } })
   if (!venue) return { status: 404 as const, error: 'Venue not found' }
   const today = sydneyToday()
-  const rows = await prisma.event.findMany({
-    where: {
-      date: { gte: today },
-      duplicateOfId: null,
-      OR: [{ venueId }, { venueName: venue.name, city: venue.city }],
-    },
-    orderBy: { date: 'asc' },
-    take: 80,
-    select: {
-      id: true, title: true, date: true, time: true, endTime: true, imageUrl: true, category: true, status: true,
-      organiserName: true, source: true, sourceUrl: true, ticketUrl: true, promoterId: true, venueId: true,
-      promoter: { select: { id: true, name: true, orgName: true } },
-    },
-  })
-  const events = []
-  for (const row of rows) {
-    const manage = await canManageEvent(userId, row.id, isAdmin)
-    events.push({
-      id: row.id,
-      title: row.title,
-      date: row.date.toISOString(),
-      time: row.time,
-      endTime: row.endTime,
-      imageUrl: row.imageUrl,
-      category: row.category,
-      status: row.status,
-      organiserName: row.promoter?.orgName || row.promoter?.name || row.organiserName,
-      source: row.source,
-      publicPath: `/events/${row.id}`,
-      canEdit: manage.access.allowed,
-    })
+  const where = {
+    duplicateOfId: null,
+    OR: [{ venueId }, { venueName: venue.name, city: venue.city }],
   }
+  const select = {
+    id: true, title: true, date: true, time: true, endTime: true, imageUrl: true, price: true, category: true, status: true,
+    venueName: true, city: true,
+    organiserName: true, source: true, sourceUrl: true, ticketUrl: true, promoterId: true, venueId: true,
+    promoter: { select: { id: true, name: true, orgName: true } },
+  } as const
+  const [upcoming, past] = await Promise.all([
+    prisma.event.findMany({ where: { ...where, date: { gte: today } }, orderBy: { date: 'asc' }, take: 40, select }),
+    prisma.event.findMany({ where: { ...where, date: { lt: today } }, orderBy: { date: 'desc' }, take: 20, select }),
+  ])
+  const rows = [...upcoming.map((row) => ({ ...row, when: 'upcoming' as const })), ...past.map((row) => ({ ...row, when: 'past' as const }))]
+  const ids = rows.map((row) => row.id)
+  const canCorrect = venueRoleAllows(gate.access.role, 'correctEvent')
+  let grantIds = new Set<string>()
+  let corrected = new Set<string>()
+  if (ids.length) {
+    const [grants, marks] = await Promise.all([
+      prisma.eventManagementGrant.findMany({
+        where: {
+          eventId: { in: ids },
+          status: 'APPROVED',
+          revokedAt: null,
+          organisation: { memberships: { some: { userId, status: 'ACTIVE', revokedAt: null, role: { in: ['ORGANISER', 'ADMINISTRATOR'] } } } },
+        },
+        select: { eventId: true },
+      }).catch(() => []),
+      prisma.eventFieldOverride.findMany({
+        where: { eventId: { in: ids }, active: true, verificationContext: 'venue' },
+        select: { eventId: true },
+      }).catch(() => []),
+    ])
+    grantIds = new Set(grants.map((row) => row.eventId))
+    corrected = new Set(marks.map((row) => row.eventId))
+  }
+  const events = rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    date: row.date.toISOString(),
+    time: row.time,
+    endTime: row.endTime,
+    imageUrl: row.imageUrl,
+    price: row.price,
+    category: row.category,
+    status: row.status,
+    when: row.when,
+    organiserName: row.promoter?.orgName || row.promoter?.name || row.organiserName,
+    source: row.source,
+    publicPath: `/events/${row.id}`,
+    canEdit: isAdmin || row.promoterId === userId || grantIds.has(row.id),
+    canCorrect: canCorrect && (row.venueId === venueId || (row.venueName === venue.name && row.city === venue.city)),
+    fromVenue: corrected.has(row.id),
+  }))
   return { status: 200 as const, events }
 }
 

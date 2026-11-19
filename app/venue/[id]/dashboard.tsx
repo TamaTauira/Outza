@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { VenueCorrectionForm } from './correct-form'
 import { VenueReachPanel } from './reach-panel'
 
 const tabs = ['Overview', 'My Venue', 'Upcoming Events', 'Analytics', 'Promotions', 'Team & Access', 'Settings'] as const
@@ -27,6 +28,10 @@ type EventRow = {
   canEdit: boolean
   publicPath: string
   imageUrl: string | null
+  price?: string | null
+  when?: 'upcoming' | 'past'
+  canCorrect?: boolean
+  fromVenue?: boolean
 }
 
 export function VenueDashboard({ venueId, name, city, role }: { venueId: string; name: string; city: string; role: string }) {
@@ -110,7 +115,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
 
       {tab === 'Overview' && (
         <section className="mt-5 space-y-3">
-          <p className="text-sm text-muted-foreground">{events.length} upcoming listing{events.length === 1 ? '' : 's'} at this venue. Editing an event needs a separate organiser grant.</p>
+          <p className="text-sm text-muted-foreground">{events.filter((event) => event.when !== 'past').length} upcoming and {events.filter((event) => event.when === 'past').length} recent listings at this venue. You can correct price, time, image and cancellations. A full edit still needs an organiser grant.</p>
           {followers != null && <p className="text-sm">{followers === 1 ? '1 person follows this venue.' : `${followers} people follow this venue.`} New listings can show up in their email when they’ve asked for it.</p>}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setTab('My Venue')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Edit Profile</button>
@@ -154,7 +159,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
             return (
             <article key={event.id} className="rounded-xl border border-border p-3">
               <h2 className="font-semibold">{event.title}</h2>
-              <p className="text-xs text-muted-foreground mt-1">{event.date.slice(0, 10)}{clock ? ` · ${clock}` : ''} · {event.category} · {event.status}</p>
+              <p className="text-xs text-muted-foreground mt-1">{event.when === 'past' ? 'Past · ' : ''}{event.date.slice(0, 10)}{clock ? ` · ${clock}` : ''} · {event.category} · {event.status}{event.fromVenue ? ' · from the venue' : ''}</p>
               <p className="text-sm mt-1">Managed by: {event.organiserName || 'the organiser on the listing'}</p>
               <div className="mt-2 flex flex-wrap gap-2 text-sm">
                 <Link href={event.publicPath} className="underline">View Event</Link>
@@ -168,6 +173,13 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
                 </label>
                 {event.canEdit && <Link href={`/events/${event.id}/manage`} className="underline">Edit Event</Link>}
               </div>
+              {event.canCorrect && (
+                <VenueCorrectionForm
+                  venueId={venueId}
+                  event={event}
+                  onSaved={(patch) => setEvents((list) => list.map((item) => item.id === event.id ? { ...item, ...patch, fromVenue: true } : item))}
+                />
+              )}
             </article>
             )
           })}

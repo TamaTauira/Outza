@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache'
+import { PUBLIC_EVENT_TAG } from '@/lib/http-cache'
 import { after } from 'next/server'
 import { isDbSaturation } from '@/lib/db-guard'
 import { prisma } from '@/lib/prisma'
@@ -121,6 +122,7 @@ async function queryEventCore(id: string) {
         schedule: scheduleCue(event),
       },
       organiserUpdate: presentation.notice,
+      venueUpdate: 'venueNotice' in presentation ? presentation.venueNotice : null,
       organiserClaimed: presentation.organiserClaimed,
       listingCaution: presentation.caution,
       venueManagedLabel: presentation.venueManaged ? VENUE_MANAGED_LABEL : null,
@@ -135,6 +137,7 @@ async function queryEventCore(id: string) {
         updatedAt: event.updatedAt,
         sources: event.sources,
         organiserFields: presentation.notice?.fields ?? [],
+        venueFields: 'venueNotice' in presentation ? presentation.venueNotice?.fields ?? [] : [],
         status: event.status,
         statusSource: event.statusSource,
         fieldSources,
@@ -146,7 +149,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v7'], { revalidate: 900 })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v8'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 
