@@ -30,7 +30,7 @@ export function DashboardPreview() {
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-sm text-muted-foreground">An evening pass and a day pass sit in Hot right now for that city, still labelled Sponsored. They do not replace the row above.</p>
+        <p className="mt-4 text-sm text-muted-foreground">An evening pass and a day pass sit in Coming up next for that city, still labelled Sponsored. They do not replace the row above.</p>
       </div>
       <div className="min-w-0">
         <h3 className="font-display text-xl font-bold">What you can do</h3>

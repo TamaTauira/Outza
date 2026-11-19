@@ -11,7 +11,7 @@ export type Surface = (typeof SURFACES)[number]
 
 export const SURFACE_LABELS: Record<Surface, string> = {
   board: 'The board',
-  hot: 'Hot right now',
+  hot: 'Coming up next',
   search: 'Search results',
   map: 'The map',
   local: 'Local',
@@ -26,7 +26,7 @@ export const REACTION_LABELS: Record<string, string> = {
 }
 
 export const HISTORY_NOTE =
-  'Opens, saves, reactions and Get tickets clicks include the daily totals already on file. Get tickets clicks from before the More info split still include those taps. Appearances on the board, map, search, Hot right now and Local, More info clicks, viewer areas, search terms, hours, calendar exports and tracked-link visits start from this launch and are not backfilled. Spotlight serves and clicks use the boost records already stored. All-time counters sit beside the range.'
+  'Opens, saves, reactions and Get tickets clicks include the daily totals already on file. Get tickets clicks from before the More info split still include those taps. Appearances on the board, map, search, Coming up next and Local, More info clicks, viewer areas, search terms, hours, calendar exports and tracked-link visits start from this launch and are not backfilled. Spotlight serves and clicks use the boost records already stored. All-time counters sit beside the range.'
 
 export function metricDay(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)

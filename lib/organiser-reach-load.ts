@@ -463,7 +463,7 @@ async function radarFor(focus: EventRow, excludeIds: string[]) {
     when: row.date.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }),
     where: [row.suburb, row.venueName].filter(Boolean).join(' · '),
     category: row.category,
-    attention: (heat.get(row.id) ?? 0) > 0 ? 'Hot right now' : 'On the board',
+    attention: (heat.get(row.id) ?? 0) > 0 ? 'Coming up next' : 'On the board',
     href: eventPath(row),
   }))
 }

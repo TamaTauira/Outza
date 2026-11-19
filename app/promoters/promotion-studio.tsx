@@ -87,7 +87,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
 
           <div className="mt-6 rounded-2xl border border-border bg-background px-4 py-4">
             <p className="font-semibold">Last minute?</p>
-            <p className="mt-1 text-sm text-muted-foreground">Evening pass {formatAud(BOOSTS.EVENING.priceCents)}, day pass {formatAud(BOOSTS.DAY_PASS.priceCents)}. Each is a Sponsored card in Hot right now, bought from the promoter dashboard.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Evening pass {formatAud(BOOSTS.EVENING.priceCents)}, day pass {formatAud(BOOSTS.DAY_PASS.priceCents)}. Each is a Sponsored card in Coming up next, bought from the promoter dashboard.</p>
           </div>
           <p className="mt-5 text-sm">One-off payment. Guaranteed placement for the days you buy, subject to inventory. No guarantee of ticket sales.</p>
           <p className="mt-2 text-sm text-muted-foreground">Already listed your event? Open it while signed in and choose Promote this event. Add-ons are chosen in checkout, not on this page.</p>
