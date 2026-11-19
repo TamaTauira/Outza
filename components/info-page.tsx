@@ -24,7 +24,7 @@ export function InfoPage({
           <p className="mt-3 text-muted-foreground">{lede}</p>
           <div className={variant === 'faq' ? 'mt-8 divide-y divide-border border-y border-border' : 'mt-8 space-y-8'}>
             {sections.map((s) => variant === 'faq' ? (
-              <details key={s.title} id={slug(s.title)} className="group scroll-mt-24 py-1">
+              <details key={s.title} id={slug(s.title)} name="faq" className="group scroll-mt-24 py-1">
                 <summary className="cursor-pointer list-none py-3 font-semibold [&::-webkit-details-marker]:hidden">{s.title}</summary>
                 {s.body.map((p) => <p key={p} className="pb-3 text-sm leading-relaxed text-muted-foreground">{p}</p>)}
               </details>

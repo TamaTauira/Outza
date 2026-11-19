@@ -3,6 +3,7 @@ import './globals.css'
 import '@/components/vibepeep-mascot.css'
 import '@/components/bottom-nav.css'
 import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeColor } from '@/components/theme-color'
 import { Toaster } from '@/components/ui/sonner'
 import { AudienceTracker } from '@/components/audience-tracker'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
@@ -86,10 +87,11 @@ export default function RootLayout({
         <style>{`:root{--vp-size-phone:${MASCOT_PHONE_WIDTH};--vp-size-desktop:${MASCOT_DESKTOP_WIDTH}}`}</style>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
+          defaultTheme="system"
+          enableSystem
           disableTransitionOnChange
         >
+          <ThemeColor />
           <a href="#content" className="vp-skip">Skip to content</a>
           <div className="vp-hinge" aria-hidden="true" />
           <Providers>

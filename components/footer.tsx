@@ -78,7 +78,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
       <details className="vp-wrap px-4 sm:px-6 pb-6">
         <summary className="cursor-pointer select-none text-sm text-muted-foreground hover:text-foreground w-fit">
           City guides
-          <span className="text-muted-foreground/80"> — tonight, free, markets and the rest</span>
+          <span className="text-muted-foreground"> — tonight, free, markets and the rest</span>
         </summary>
         <nav aria-label="Popular guides by city" className="mt-3 space-y-2">
           {CITIES.map((c) => (

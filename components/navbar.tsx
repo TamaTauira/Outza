@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Bookmark, Sun, Moon, User, LogOut, Megaphone, Settings, House, Users, ShieldCheck, Building2, List } from 'lucide-react'
+import { MapPin, Bookmark, Sun, Moon, Monitor, User, LogOut, Megaphone, Settings, House, Users, ShieldCheck, Building2, List } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
@@ -39,7 +39,13 @@ export function viewForPath(pathname: string | null): AppView | null {
 }
 
 export function Navbar({ savedCount }: NavbarProps) {
-  const { resolvedTheme, setTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
+  const themeLabel = theme === 'system'
+    ? 'Using the system theme. Switch to light.'
+    : theme === 'light'
+      ? 'Using light. Switch to dark.'
+      : 'Using dark. Switch to the system theme.'
   const mounted = useMounted()
   const pathname = usePathname()
   const view = viewForPath(pathname)
@@ -98,11 +104,11 @@ export function Navbar({ savedCount }: NavbarProps) {
 
         <div className="vp-header-tools ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
           <button
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            onClick={() => setTheme(nextTheme)}
             className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Toggle light or dark mode"
+            aria-label={mounted ? themeLabel : 'Switch theme'}
           >
-            {mounted && resolvedTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            {mounted && theme === 'system' ? <Monitor className="w-4 h-4" /> : mounted && resolvedTheme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
           {mounted && status !== 'loading' && (user ? (
             <DropdownMenu>
