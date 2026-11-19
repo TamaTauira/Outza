@@ -16,6 +16,7 @@ import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
 import { safeNextPath } from '@/lib/safe-next'
 import { ProfileFields } from '@/components/profile-fields'
 import { PasswordField } from '@/components/password-field'
+import { PASSWORD_RULES } from '@/lib/passwords'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 function SignupForm() {
@@ -114,7 +115,8 @@ function SignupForm() {
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="password">Password</Label>
-        <PasswordField id="password" name="password" autoComplete="new-password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" />
+        <PasswordField id="password" name="password" autoComplete="new-password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="h-11" aria-describedby="password-rules" />
+        <p id="password-rules" className="text-xs text-muted-foreground">{PASSWORD_RULES}</p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="homeCity">Home city</Label>

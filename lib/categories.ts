@@ -11,16 +11,16 @@ export interface CategoryDef {
 }
 
 export const CATEGORIES: CategoryDef[] = [
-  { name: 'Music', icon: 'Music', color: '#E8724A', subTags: ['Jazz', 'Hip Hop', 'Rock', 'Electronic/EDM', 'Pop', 'Classical', 'R&B', 'Folk/Acoustic', 'Metal', 'Indie', 'Country', 'World Music', 'Gospel'] },
-  { name: 'Arts & Culture', icon: 'Palette', color: '#9B59B6', subTags: ['Theatre', 'Dance', 'Exhibition', 'Comedy', 'Opera', 'Circus', 'Spoken Word', 'Film', 'Photography', 'Visual Arts'] },
-  { name: 'Sports', icon: 'Trophy', color: '#27AE60', subTags: ['Football', 'Rugby', 'Cricket', 'Tennis', 'Basketball', 'Swimming', 'Cycling', 'Running', 'Martial Arts', 'Motorsport'] },
-  { name: 'Food & Drink', icon: 'UtensilsCrossed', color: '#F39C12', subTags: ['Wine Tasting', 'Beer Festival', 'Food Fair', 'Cocktail', 'Dining Experience', 'Market'] },
-  { name: 'Family', icon: 'Baby', color: '#E91E63', subTags: ['Kids Activities', 'School Holiday Events', 'Theme Park', 'Zoo', 'Interactive'] },
-  { name: 'Nightlife', icon: 'PartyPopper', color: '#8E44AD', subTags: ['Club Night', 'Bar Event', 'DJ Set', 'Party'] },
-  { name: 'Community', icon: 'Users', color: '#1B6CA8', subTags: ['Markets', 'Festival', 'Parade', 'Cultural', 'Fundraiser', 'Volunteering'] },
-  { name: 'Business', icon: 'Briefcase', color: '#34495E', subTags: ['Conference', 'Networking', 'Workshop', 'Seminar', 'Expo'] },
-  { name: 'Wellness', icon: 'Heart', color: '#1ABC9C', subTags: ['Yoga', 'Meditation', 'Fitness', 'Health', 'Mindfulness'] },
-  { name: 'Education', icon: 'GraduationCap', color: '#2980B9', subTags: ['Talk', 'Tour', 'Course', 'Workshop'] },
+  { name: 'Music', icon: 'Music', color: '#C2410C', subTags: ['Jazz', 'Hip Hop', 'Rock', 'Electronic/EDM', 'Pop', 'Classical', 'R&B', 'Folk/Acoustic', 'Metal', 'Indie', 'Country', 'World Music', 'Gospel'] },
+  { name: 'Arts & Culture', icon: 'Palette', color: '#6D28D9', subTags: ['Theatre', 'Dance', 'Exhibition', 'Comedy', 'Opera', 'Circus', 'Spoken Word', 'Film', 'Photography', 'Visual Arts'] },
+  { name: 'Sports', icon: 'Trophy', color: '#15803D', subTags: ['Football', 'Rugby', 'Cricket', 'Tennis', 'Basketball', 'Swimming', 'Cycling', 'Running', 'Martial Arts', 'Motorsport'] },
+  { name: 'Food & Drink', icon: 'UtensilsCrossed', color: '#B45309', subTags: ['Wine Tasting', 'Beer Festival', 'Food Fair', 'Cocktail', 'Dining Experience', 'Market'] },
+  { name: 'Family', icon: 'Baby', color: '#BE185D', subTags: ['Kids Activities', 'School Holiday Events', 'Theme Park', 'Zoo', 'Interactive'] },
+  { name: 'Nightlife', icon: 'PartyPopper', color: '#6B21A8', subTags: ['Club Night', 'Bar Event', 'DJ Set', 'Party'] },
+  { name: 'Community', icon: 'Users', color: '#1D4ED8', subTags: ['Markets', 'Festival', 'Parade', 'Cultural', 'Fundraiser', 'Volunteering'] },
+  { name: 'Business', icon: 'Briefcase', color: '#1F2937', subTags: ['Conference', 'Networking', 'Workshop', 'Seminar', 'Expo'] },
+  { name: 'Wellness', icon: 'Heart', color: '#0F766E', subTags: ['Yoga', 'Meditation', 'Fitness', 'Health', 'Mindfulness'] },
+  { name: 'Education', icon: 'GraduationCap', color: '#1E40AF', subTags: ['Talk', 'Tour', 'Course', 'Workshop'] },
 ]
 
 /** Solid fill for a category chip or email placeholder. Unknown names use the brand midpoint. */

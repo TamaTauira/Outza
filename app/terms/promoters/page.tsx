@@ -7,7 +7,7 @@ import { LEGAL_DOCS } from '@/lib/legal-docs'
 
 export const metadata = {
   title: 'Promoter & Advertising Terms — VibePeep',
-  description: 'Draft terms for listings, sponsored placements and promoter subscriptions on VibePeep.',
+  description: 'Terms for listings, sponsored placements and promoter subscriptions on VibePeep.',
 }
 
 const ABN = process.env.BUSINESS_ABN?.trim() || ''
@@ -17,7 +17,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     title: '1. Who these terms are for',
     body: [
       'These terms are between you and the operator of VibePeep, an events guide based in Australia. They cover promoter accounts, listings you submit, paid placements and subscriptions. The general terms of use, disclaimer and privacy policy still apply. If they conflict on a promoter or advertising point, these terms win.',
-      'This page is a draft for a lawyer to review. It is written in plain English so a promoter can see the deal. It is not a substitute for advice on your own campaign.',
+      'They are written in plain English so a promoter can see the deal. They are not a substitute for advice on your own campaign.',
     ],
   },
   {
@@ -62,7 +62,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
       'Promoter prices on VibePeep are in Australian dollars and include GST unless a price on the page says it is exclusive. That matches the checkout summary, which states that the total is GST inclusive.',
       ABN
         ? `Our ABN is ${ABN}. Stripe issues the tax invoice for a successful payment.`
-        : 'Our ABN is printed on tax invoices. It is read from the BUSINESS_ABN setting on the host and is not hardcoded in this page. Stripe issues the tax invoice for a successful payment.',
+        : 'Our ABN is printed on tax invoices when it is published for this site. Stripe issues the tax invoice for a successful payment.',
     ],
   },
   {
@@ -72,7 +72,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
       'If we remove a listing or placement and the reason is not your breach, we refund the unused part of the fee already paid, pro rata for the days left. That is the same rule as clause 5.',
       'If the event is cancelled, the unused part of a paid placement for that event is refunded or credited. Where it is practical, you choose the refund or the credit.',
       'If a placement does not appear as described — for example Spotlight is not shown, or it runs on the wrong dates or in the wrong area — we refund that fee or make it good. Claim it from the contact page with the invoice number and what was wrong.',
-      'An approved refund goes back to the original payment method through Stripe within 5 to 10 business days of approval. Your bank may take further days to show it. A dashboard refund button, where one is offered for an unshown boost, uses Stripe test mode only and does not send a live refund.',
+      'An approved refund goes back to the original payment method through Stripe within 5 to 10 business days of approval. Your bank may take further days to show it.',
       'Ending a pass yourself, or a campaign finishing because you chose a length that ends before the event, does not by itself refund days that already ran as described. Fewer views than you hoped is not, by itself, a failure of the placement.',
     ],
   },
@@ -101,12 +101,9 @@ export default function PromoterTermsPage() {
         <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary">Legal · draft for lawyer review</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Promoter &amp; Advertising Terms</h1>
         <LegalStamp doc="promoter" />
-        <p className="mt-4 rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm leading-relaxed">
-          Draft for lawyer review. This is the working text for promoters and advertisers. It is not a finished legal opinion.
-        </p>
         <p className="mt-4 text-muted-foreground leading-relaxed">
           Also read the <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">terms of use</Link>, <Link href="/disclaimer" className="underline underline-offset-2 hover:text-foreground">disclaimer</Link> and <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">privacy policy</Link>. Version {LEGAL_DOCS.promoter.version}.
         </p>

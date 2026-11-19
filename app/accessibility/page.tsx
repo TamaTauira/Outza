@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
-import { ACCESSIBILITY_STANDARD, ACCESSIBILITY_UPDATED, accessibilityEmail } from '@/lib/accessibility'
+import { ACCESSIBILITY_STANDARD, ACCESSIBILITY_UPDATED } from '@/lib/accessibility'
 
 export const metadata: Metadata = {
   title: 'Accessibility — VibePeep',
@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 }
 
 export default function AccessibilityPage() {
-  const email = accessibilityEmail()
   return (
     <PageShell>
       <main className="vp-wrap px-4 py-12 sm:px-6">
@@ -41,7 +40,7 @@ export default function AccessibilityPage() {
           </section>
           <section>
             <h2 className="font-semibold text-foreground">Tell us about a barrier</h2>
-            <p className="mt-2">Email <a href={`mailto:${email}`} className="text-foreground underline underline-offset-2">{email}</a> or use the <Link href="/contact" className="text-foreground underline underline-offset-2">contact page</Link>. Say the page, what you were trying to do, and the tool you were using (keyboard, screen reader, zoom). We aim to reply within 5 business days.</p>
+            <p className="mt-2">Use the <Link href="/contact" className="text-foreground underline underline-offset-2">contact page</Link> and choose Accessibility. Say the page, what you were trying to do, and the tool you were using (keyboard, screen reader, zoom). We aim to reply within 5 business days.</p>
           </section>
         </div>
       </main>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 
@@ -10,11 +11,13 @@ export function InfoPage({
   lede,
   sections,
   variant = 'prose',
+  extra,
 }: {
   title: string
   lede: string
   sections: { title: string; body: string[] }[]
   variant?: 'prose' | 'faq'
+  extra?: ReactNode
 }) {
   return (
     <PageShell>
@@ -22,6 +25,7 @@ export function InfoPage({
         <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
           <p className="mt-3 text-muted-foreground">{lede}</p>
+          {extra}
           <div className={variant === 'faq' ? 'mt-8 divide-y divide-border border-y border-border' : 'mt-8 space-y-8'}>
             {sections.map((s) => variant === 'faq' ? (
               <details key={s.title} id={slug(s.title)} name="faq" className="group scroll-mt-24 py-1">

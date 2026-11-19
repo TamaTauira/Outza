@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 export const metadata: Metadata = {
   title: 'Page not found · VibePeep',
   description: 'This page isn’t on. Head back to what’s happening.',
+  robots: { index: false, follow: false },
 }
 
 export default function NotFound() {
