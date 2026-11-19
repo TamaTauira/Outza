@@ -88,7 +88,9 @@ export async function requestPasswordReset(emailRaw: string) {
 }
 
 export async function resetPassword(rawToken: string, nextPassword: string) {
-  if (nextPassword.length < 6) return { ok: false as const, status: 400, error: 'Password must be at least 6 characters' }
+  const { passwordError } = await import('@/lib/passwords')
+  const weak = passwordError(nextPassword)
+  if (weak) return { ok: false as const, status: 400, error: weak }
   const tokenHash = hashAuthToken(rawToken)
   const row = await prisma.authToken.findUnique({ where: { tokenHash } })
   if (!row || row.purpose !== 'PASSWORD_RESET' || row.usedAt || row.expiresAt.getTime() <= Date.now()) {

@@ -56,7 +56,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: 'Monthly plans',
     body: [
-      'Local Pro, Growth and Venue Plus can start with one free month (30 days unless TRIAL_PERIOD_DAYS says otherwise). The card is charged when that month ends, then the same amount each month until you cancel. Cancel during the free month and you are not charged. One free month per account and per organisation.',
+      'Local Pro, Growth and Venue Plus can start with one free month (30 days). The card is charged when that month ends, then the same amount each month until you cancel. Cancel during the free month and you are not charged. One free month per account and per organisation.',
       'A paid period can also be refunded from billing when it is still inside the plan’s refund window and no short boost has been shown. Upgrades charge the difference then. Downgrades wait for the next renewal. Removing the service for a reason other than your breach refunds the unused part of the period you already paid.',
     ],
   },

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
+import { ContactForm } from '@/components/contact-form'
 import { InfoPage } from '@/components/info-page'
-import { supportEmail } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'Contact — VibePeep',
@@ -8,16 +8,16 @@ export const metadata: Metadata = {
 }
 
 export default function ContactPage() {
-  const email = supportEmail()
   return (
     <InfoPage
       title="Get in touch"
-      lede={email ? `Email ${email}. Fastest fix for a wrong listing: Report a problem on that event.` : 'Fastest fix for a wrong listing: Report a problem on that event.'}
+      lede="Send a note below. Fastest fix for a wrong listing: Report a problem on that event. We aim to reply within 5 business days."
       sections={[
         { title: 'A listing looks wrong', body: ['Open the event and use Report a problem. That is the fastest way to flag a wrong date, a duplicate, or a cancellation.'] },
-        { title: 'A purchase or invoice', body: ['Open Pro & billing in the promoter dashboard and open the invoice. Include the invoice number when you write. Test-mode purchases are not card charges.'] },
+        { title: 'A purchase or invoice', body: ['Open Pro & billing in the promoter dashboard and open the invoice. Include the invoice number when you write.'] },
         { title: 'Your account', body: ['Password changes and closing an account are on My account. Closing an account does not by itself refund a campaign. The refunds page covers removal, a cancelled event, a placement that did not appear as described, and the Australian Consumer Law.'] },
       ]}
+      extra={<ContactForm />}
     />
   )
 }

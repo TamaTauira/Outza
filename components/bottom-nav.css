@@ -75,10 +75,10 @@
     padding-right: env(safe-area-inset-right, 0px);
   }
 
-  /* Logo and theme switch only. Let the bar scroll away. Desktop stays sticky. */
+  /* Keep the header on screen while the bottom bar handles the destinations. */
   .vp-site-header.sticky {
-    position: static;
-    top: auto;
+    position: sticky;
+    top: 0;
   }
 
   body:has(.vp-bottom-nav) {
@@ -276,7 +276,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(8px, 2.35cqi, 11px);
+  font-size: 12px;
   letter-spacing: -0.04em;
 }
 
@@ -378,8 +378,8 @@ html.vp-ask-open [data-state='open'].fixed.inset-0 {
 
 @container (max-width: 20rem) {
   .vp-tab-label {
-    font-size: 8px;
-    letter-spacing: -0.06em;
+    font-size: 12px;
+    letter-spacing: -0.02em;
   }
 
   .vp-ask-face {

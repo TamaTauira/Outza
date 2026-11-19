@@ -1,6 +1,6 @@
 /** Versions of the public legal pages. The archive keeps the text from before 18 November 2026. */
 
-export const PROMOTER_TERMS_VERSION = '2026-11-18'
+export const PROMOTER_TERMS_VERSION = '2026-11-20'
 
 export type LegalDocId = 'terms' | 'privacy' | 'disclaimer' | 'promoter' | 'refunds'
 
@@ -16,7 +16,7 @@ export const LEGAL_DOCS: Record<LegalDocId, LegalDoc> = {
   terms: { id: 'terms', title: 'Terms of use', version: '2026-11-18', updated: '18 November 2026', path: '/terms' },
   privacy: { id: 'privacy', title: 'Privacy policy', version: '2026-11-18', updated: '18 November 2026', path: '/privacy' },
   disclaimer: { id: 'disclaimer', title: 'Disclaimer', version: '2026-11-18', updated: '18 November 2026', path: '/disclaimer' },
-  promoter: { id: 'promoter', title: 'Promoter & Advertising Terms', version: PROMOTER_TERMS_VERSION, updated: '18 November 2026', path: '/terms/promoters' },
+  promoter: { id: 'promoter', title: 'Promoter & Advertising Terms', version: PROMOTER_TERMS_VERSION, updated: '20 November 2026', path: '/terms/promoters' },
   refunds: { id: 'refunds', title: 'Refunds', version: '2026-11-18', updated: '18 November 2026', path: '/refunds' },
 }
 

@@ -58,7 +58,7 @@ export function Hero({ primaryHref, primaryLabel, showSignIn, supply }: { primar
           <h1 className="mt-3 font-display text-[2.6rem] font-bold leading-[0.95] tracking-tight sm:text-6xl">
             Put your event in front of people planning their weekend.
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. Boost from $9 for an evening or $19 for a week. We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
+          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. An evening pass is $9. Boost is $19 for a week. We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
           <p className="mt-3"><Link href="/local-ads" className="text-sm font-semibold text-[var(--vp-brand-orange)] underline underline-offset-4">Running a restaurant, bar or local business? See local ads.</Link></p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href={primaryHref} className={ctaClass}>{primaryLabel}</Link>

@@ -6,6 +6,7 @@ import { sendVerification } from '@/lib/account-flow'
 import { emailActivityDefault } from '@/lib/email-activity'
 import { consumerAcceptance, promoterAcceptance, signupTermsError } from '@/lib/legal-docs'
 import { recordAcceptance } from '@/lib/terms-accept'
+import { passwordError } from '@/lib/passwords'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,8 @@ export async function POST(req: Request) {
     const homeCity = typeof body.homeCity === 'string' && body.homeCity ? body.homeCity : 'Sydney'
 
     if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email' }, { status: 400 })
-    if (password.length < 6) return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+    const weak = passwordError(password)
+    if (weak) return NextResponse.json({ error: weak }, { status: 400 })
     // Event-goers give a birth year (anyone without one is asked for it after signing in).
     let birthYear: number | undefined
     if (body.birthYear != null && body.birthYear !== '') {

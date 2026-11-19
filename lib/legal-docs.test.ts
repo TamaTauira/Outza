@@ -51,6 +51,11 @@ test('the archive is the full text from before this version', () => {
   assert.match(previousRefunds.sections.map((s) => s.body.join(' ')).join(' '), /The fee is not refunded/)
   assert.equal(LEGAL_DOCS.refunds.path, '/refunds')
   for (const doc of Object.values(LEGAL_DOCS)) {
+    if (doc.id === 'promoter') {
+      assert.equal(doc.version, '2026-11-20')
+      assert.match(doc.updated, /20 November 2026/)
+      continue
+    }
     assert.equal(doc.version, '2026-11-18')
     assert.match(doc.updated, /18 November 2026/)
   }

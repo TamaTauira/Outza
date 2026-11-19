@@ -11,7 +11,7 @@ import { supplySnapshot } from './supply'
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'For promoters — VibePeep',
-  description: 'Put your event in front of people planning their weekend. List for free. Boost from $9 for an evening or $19 for a week.',
+  description: 'Put your event in front of people planning their weekend. List for free. An evening pass is $9. Boost is $19 for a week.',
 }
 
 export default async function PromotersPage() {

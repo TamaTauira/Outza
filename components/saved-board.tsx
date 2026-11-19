@@ -170,17 +170,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
         </>
       )}
 
-          <section className="mt-10">
-            <h2 className="font-display text-2xl font-bold">Your collections.</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              {['Date night ideas', 'Gigs I want to see', 'Weekend adventures'].map((name) => (
-                <div key={name} className="rounded-2xl border border-dashed border-border bg-card p-4">
-                  <p className="font-semibold">{name}</p>
-                  <p className="mt-2 text-[13px] font-semibold text-primary">Coming soon</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          <p className="mt-10 text-sm text-muted-foreground">Collections are on the way. For now, everything you save sits in the list above.</p>
 
           <section className="mt-6 flex flex-col gap-4 rounded-3xl bg-[#0c0f0e] px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
             <div>
