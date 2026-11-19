@@ -231,6 +231,9 @@ function shownFinish(ev: SlotInput, sched: ResolvedSchedule, endClockLabel: stri
 export function formatBoardRange(ev: SlotInput): BoardRange {
   const key = dateKeyOf(ev.date) || '1970-01-01'
   const sched = resolveSchedule(ev, key)
+  if (ev.allDay === true || (sched.dropIn && sched.start === 0)) {
+    return { hm: 'All day', ampm: '', endLine: null, endNote: null, label: 'All day' }
+  }
   if (sched.start == null) return { hm: '--:--', ampm: '', endLine: null, endNote: null, label: 'Time not listed' }
   const start = clockParts(sched.start)
   const startLabel = `${start.hm} ${start.ampm}`

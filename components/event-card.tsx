@@ -10,6 +10,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
+import { displayTitle } from '@/lib/display-public'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { boardClockLine } from '@/lib/listing-window'
 interface EventData {
@@ -46,6 +47,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
   const catDef = CATEGORIES.find((c) => c.name === event.category)
   const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
+  const title = displayTitle(event.title)
 
   return (
     <motion.div
@@ -62,7 +64,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               image={event.imageAsset}
               src={event.imageUrl}
               kind="card"
-              alt={event.title}
+              alt={title}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               crop
               accent={catDef?.color}
@@ -111,7 +113,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
             </div>
 
             <h3 className="font-display font-semibold text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-              {event.title}
+              {title}
             </h3>
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -161,7 +163,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
         <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} slot="square" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold leading-snug">{event.title}</p>
+        <p className="truncate font-semibold leading-snug">{displayTitle(event.title)}</p>
         <p className="truncate text-sm text-muted-foreground">
           {event.availabilityKind === 'possibly' ? 'Time not listed' : (clock ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
         </p>

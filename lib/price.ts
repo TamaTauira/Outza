@@ -151,7 +151,7 @@ export function formatPrice(
   }
   if (max == null || max === min) {
     if (min === 0) return { prefix: '', value: 'Free', kind: 'free' }
-    if (fromOnly) return { prefix: 'from', value: moneyText(min), kind: 'paid' }
+    if (fromOnly) return { prefix: 'From', value: moneyText(min), kind: 'paid' }
     return { prefix: '', value: moneyText(min), kind: 'paid' }
   }
   if (min === 0) return { prefix: 'free –', value: moneyText(max), kind: 'paid' }

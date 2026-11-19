@@ -24,6 +24,7 @@ import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { boardClockLine } from '@/lib/listing-window'
+import { displayTitle } from '@/lib/display-public'
 import { mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { descriptionParagraphs } from '@/lib/description-text'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
@@ -292,7 +293,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             )}
 
             <StatusBanner status={event.quality?.status ?? null} />
-            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{event?.title}</h1>
+            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{displayTitle(event?.title)}</h1>
             {event?.provenance && <ListingSources provenance={event.provenance} />}
             {event?.venueUpdate && <OrganiserUpdateNotice notice={event.venueUpdate} kind="venue" />}
             {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}

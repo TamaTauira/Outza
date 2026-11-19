@@ -289,3 +289,12 @@ test('health rates and repeated source failures stay numeric and skip budget sto
     { status: 'source:Moshtix', errors: 'Moshtix: HTTP 500 [sweep:continued+more]', startedAt: '2026-11-08T01:10:50.000Z' },
   ]), ['Moshtix'])
 })
+
+test('a midnight-to-midnight listing reads as all day', () => {
+  const open = formatBoardRange({ ...base, time: '00:00', endTime: '23:59' })
+  assert.equal(open.label, 'All day')
+  const flagged = formatBoardRange({ ...base, allDay: true, time: '00:00', endTime: '23:59' })
+  assert.equal(flagged.label, 'All day')
+  const timed = formatBoardRange({ ...base, time: '19:30', endTime: null })
+  assert.equal(timed.label, '7:30 pm')
+})
