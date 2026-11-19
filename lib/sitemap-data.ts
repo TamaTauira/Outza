@@ -71,9 +71,14 @@ export function guidesSitemapXml() {
     const now = new Date()
     const urls: { loc: string; lastmod?: Date | null }[] = [
       { loc: `${origin}/`, lastmod: now },
-      { loc: `${origin}/promoters` },
+      { loc: `${origin}/map`, lastmod: now },
+      { loc: `${origin}/pricing`, lastmod: now },
+      { loc: `${origin}/about`, lastmod: now },
+      { loc: `${origin}/faq`, lastmod: now },
+      { loc: `${origin}/contact`, lastmod: now },
+      { loc: `${origin}/promoters`, lastmod: now },
       { loc: `${origin}/local`, lastmod: now },
-      { loc: `${origin}/how-listings-work` },
+      { loc: `${origin}/how-listings-work`, lastmod: now },
     ]
     const [locals, models] = await Promise.all([
       prisma.localListing.findMany({

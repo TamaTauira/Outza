@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Reset password — VibePeep', robots: { index: false, follow: false } }
+export const metadata: Metadata = {
+  title: 'Choose a new password · VibePeep',
+  robots: { index: false, follow: false },
+}
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function ResetPasswordLayout({ children }: { children: React.ReactNode }) {
   return children
 }
