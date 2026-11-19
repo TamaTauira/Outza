@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cronAuthorized } from '@/lib/cron-auth'
+import { isDbSaturation } from '@/lib/db-guard'
 import { PRICE_ENRICH_BUDGET_MS, runPriceEnrich } from '@/lib/price-enrich'
 import { runWithJobPrisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
@@ -16,8 +17,14 @@ async function run(req: Request) {
   if (!cronAuthorized(req, me?.role)) return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
   const requested = Number(new URL(req.url).searchParams.get('budgetMs'))
   const budgetMs = Number.isFinite(requested) && requested > 5_000 ? Math.min(requested, PRICE_ENRICH_BUDGET_MS) : PRICE_ENRICH_BUDGET_MS
-  const report = await runWithJobPrisma(() => runPriceEnrich({ budgetMs }))
-  return NextResponse.json(report)
+  try {
+    const report = await runWithJobPrisma(() => runPriceEnrich({ budgetMs }))
+    return NextResponse.json(report)
+  } catch (err) {
+    if (!isDbSaturation(err)) throw err
+    console.warn('[price-enrich] skipped this run, database saturated', err instanceof Error ? err.message : err)
+    return NextResponse.json({ skipped: true })
+  }
 }
 
 export async function GET(req: Request) { return run(req) }

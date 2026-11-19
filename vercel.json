@@ -63,7 +63,7 @@
     },
     {
       "path": "/api/cron/price-enrich",
-      "schedule": "24 * * * *"
+      "schedule": "31 * * * *"
     },
     {
       "path": "/api/cron/digest",

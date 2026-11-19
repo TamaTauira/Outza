@@ -45,8 +45,16 @@ test('price lookup stays outside the listings refresh', () => {
 test('price enrich does not build an index on the request path', () => {
   const src = readFileSync(new URL('./price-enrich.ts', import.meta.url), 'utf8')
   assert.equal(src.includes('CREATE INDEX'), false)
+  assert.equal(src.includes('ALTER TABLE'), false)
   assert.match(src, /CONCURRENCY = 1/)
   assert.match(src, /withStatementTimeout/)
+  assert.match(src, /LIMIT \$\{take\}/)
+  assert.match(src, /skipped: true/)
+  const route = readFileSync(new URL('../app/api/cron/price-enrich/route.ts', import.meta.url), 'utf8')
+  assert.match(route, /isDbSaturation/)
+  assert.match(route, /skipped: true/)
+  const cron = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8')) as { crons: { path: string; schedule: string }[] }
+  assert.equal(cron.crons.find((row) => row.path === '/api/cron/price-enrich')?.schedule, '31 * * * *')
 })
 
 test('humanitix payload prices are a range, and a class fee in prose is kept', () => {

@@ -4,19 +4,21 @@
  * Popular regulars (minute 18) and Brisbane City Council (minute 20) each finish
  * their own invocation before the cycle is assessed. A slow regulars run must
  * not delay the council feed past that assessment.
- * The burst ends by minute 24. The rest of the hour is idle so Neon compute can
- * suspend (the default idle timeout is 5 minutes) before the next hour.
+ * The listings burst ends at minute 23. Finalize can keep writing for 150s,
+ * so minute 24 is still inside that write. Price lookup is not one of these
+ * chunks. It runs at minute 31, after that budget, and still leaves 30 minutes
+ * idle so Neon can suspend before the next hour.
  * Events are still refreshed at least once an hour.
  * Budgets stay at or under 220s so the log write still fits.
- * Price lookup is not one of these chunks. It has its own cron at minute 24,
- * the last minute of the burst, so a slow ticket-page pass cannot push
- * finalize past the 300s limit or wake the database during the idle gap.
  */
 import { isMoshtixPause } from '@/lib/moshtix-refresh'
 
 export const REFRESH_CYCLE_WINDOW_MS = 40 * 60 * 1000
-/** Housekeeping that shares the refresh burst instead of waking the database on its own. */
-export const HOURLY_SIDE_MINUTES = [22, 24] as const
+/**
+ * Other hourly jobs that stay inside the same awake window as the listings burst.
+ * 22 is sponsorships, 24 is owner alerts, 31 is price lookup (after finalize).
+ */
+export const HOURLY_SIDE_MINUTES = [22, 24, 31] as const
 /** Stop starting another source once an HTTP invocation has been running this long. */
 export const REFRESH_INVOCATION_BUDGET_MS = 240_000
 /** Headroom under the 300s limit for the status write. */

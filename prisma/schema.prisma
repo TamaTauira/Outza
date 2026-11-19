@@ -138,6 +138,8 @@ model Event {
   @@index([date])
   @@index([category])
   @@index([isFree])
+  // Partial index Event_unpriced_date_idx is prisma/sql/20261119_price_due_index.sql.
+  // Prisma cannot express its WHERE clause. Keep that index if a db push offers to drop it.
   @@index([priceCheckedAt])
   @@index([isLGBTI])
   @@index([suburb])
