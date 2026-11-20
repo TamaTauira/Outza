@@ -32,23 +32,36 @@ const STATUS_CLASS: Record<Status['tone'], string> = {
   tbc: 'text-muted-foreground',
 }
 
-export const BOARD_COLS = 'xl:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,250px)_8.5rem_6.5rem_6.5rem_5.5rem]'
+export const BOARD_COLS = 'xl:grid-cols-[5.25rem_minmax(0,1fr)_minmax(0,250px)_8.5rem_6.5rem_6.5rem_5.5rem]'
 
-/** Start and finish share one column so the minutes and am/pm line up. */
+function timeLabel(when: BoardRange, end: string): string {
+  if (!end) {
+    if (when.hm === 'All day' || when.hm === '--:--') return when.label
+    return `Starts ${when.hm}${when.ampm ? ` ${when.ampm}` : ''}`
+  }
+  const next = when.endNote === '+1' ? ' the next day' : when.endNote ? ` on ${when.endNote}` : ''
+  return `Starts ${when.hm} ${when.ampm}, ends ${end}${next}`
+}
+
+/** Gradient thread: filled start, hairline, hollow finish. Left aligned, no dash. */
 function TimeStack({ when }: { when: BoardRange }) {
   const end = when.endLine?.replace(/^–\s*/, '') ?? ''
   const [endHm, endAmpm = ''] = end ? end.split(' ') : ['', '']
+  const hasEnd = !!endHm
   return (
-    <div className="grid grid-cols-[0.75rem_minmax(0,1fr)_1.7rem] items-baseline gap-x-1 font-mono text-[13px] leading-tight tabular-nums xl:text-sm">
-      <span />
-      <span className="text-right text-foreground">{when.hm}</span>
-      <span className="text-xs text-muted-foreground">{when.ampm}</span>
-      {endHm ? (
-        <>
-          <span className="text-muted-foreground">–</span>
-          <span className="text-right text-muted-foreground">{endHm}</span>
-          <span className="text-xs text-muted-foreground">{endAmpm}</span>
-        </>
+    <div className={cn('vp-time', !hasEnd && 'is-one')} aria-label={timeLabel(when, end)}>
+      <span className="vp-time-rail" aria-hidden>
+        <span className="vp-time-dot" />
+        {hasEnd && <span className="vp-time-line" />}
+        {hasEnd && <span className="vp-time-ring" />}
+      </span>
+      <span className="vp-time-start"><b>{when.hm}</b>{when.ampm ? <i>{when.ampm}</i> : null}</span>
+      {hasEnd ? (
+        <span className="vp-time-end">
+          <b>{endHm}</b>{endAmpm ? <i>{endAmpm}</i> : null}
+          {when.endNote === '+1' ? <sup className="vp-time-next" title="Finishes the next day">+1</sup> : null}
+          {when.endNote && when.endNote !== '+1' ? <sup className="vp-time-next" title={when.endNote}>{when.endNote}</sup> : null}
+        </span>
       ) : null}
     </div>
   )
@@ -96,7 +109,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
     <div
       onClick={openRow}
       className={cn(
-        'xl:hidden group relative cursor-pointer grid min-h-[72px] grid-cols-[6.75rem_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-border px-3 py-2 hover:bg-muted/60',
+        'xl:hidden group relative cursor-pointer grid grid-cols-[4.875rem_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-border px-3 py-1.5 hover:bg-muted/60',
         done && 'opacity-75',
         active && 'bg-primary/10',
       )}
@@ -106,8 +119,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
         <TimeStack when={when} />
       </div>
       <div className="min-w-0">
-        <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{shownTitle}</Link>
-        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}</p>
+        <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-tight hover:text-primary after:absolute after:inset-0 after:content-['']">{shownTitle}</Link>
+        <p className="truncate text-xs leading-tight text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}</p>
       </div>
       <div className="relative z-20 flex items-center">
         <button onClick={() => onToggleSave(ev)} className={cn('grid h-11 w-11 place-items-center rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
@@ -119,7 +132,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
     <div
       onClick={openRow}
       className={cn(
-        'hidden xl:grid group relative cursor-pointer gap-x-3 gap-y-1 items-center px-5 py-2 min-h-[96px] border-b border-border last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
+        'hidden xl:grid group relative cursor-pointer items-center gap-x-3 border-b border-border px-5 py-2 last:border-b-0 hover:bg-muted/60 transition-colors focus-within:bg-muted/60',
         BOARD_COLS,
         done && 'opacity-75',
         active && 'bg-primary/10',
@@ -136,7 +149,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
         <span className="hidden sm:flex shrink-0 w-7 h-7 rounded-md items-center justify-center" style={{ backgroundColor: `${color}26`, color }}>
           <Icon className="w-3.5 h-3.5" />
         </span>
-        <Link href={href} scroll={false} onClick={noteSearch} className="min-w-0 flex-1 font-semibold text-base leading-snug line-clamp-2 break-words hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
+        <Link href={href} scroll={false} onClick={noteSearch} className="min-w-0 flex-1 truncate font-semibold text-base leading-tight hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {shownTitle}
         </Link>
         {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}
@@ -163,7 +176,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
           {venue}
           <span className="xl:hidden text-muted-foreground">{suburb ? ` · ${suburb}` : ''}</span>
         </div>
-        {suburb && <div className="hidden xl:block text-sm text-muted-foreground truncate mt-0.5">{suburb}</div>}
+        {suburb && <div className="hidden xl:block truncate text-sm leading-tight text-muted-foreground">{suburb}</div>}
       </div>
 
       {/* Type */}
