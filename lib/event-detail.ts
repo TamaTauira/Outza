@@ -22,6 +22,7 @@ import { contributedFieldSources } from '@/lib/source-record'
 import { areaForPostcode, includeInAudience } from '@/lib/profile-shared'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { presentListing } from '@/lib/categories'
+import { hiddenFromPublic } from '@/lib/listing-visibility'
 
 const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -68,7 +69,7 @@ async function queryEventCore(id: string) {
     where: { id },
     include: { promoter: { select: { id: true, name: true, orgName: true, proUntil: true } }, _count: { select: { attendees: true } }, imageAsset: { select: imageAssetSelect } },
   })
-  if (!event || isPastEvent(event) || event.deletedAt) return null
+  if (!event || isPastEvent(event) || hiddenFromPublic(event) || event.deletedAt) return null
   if (event.approvalState && event.approvalState !== 'APPROVED') return null
   if (isHiddenFromPublic(event)) return null
   const redacted = redactCommunityPublic(event)
@@ -97,7 +98,7 @@ async function queryEventCore(id: string) {
   ])
 
   const ownActivity = activityTitle(event.title)
-  const related = relatedRows.filter((r) => {
+  const related = relatedRows.filter((r) => !hiddenFromPublic(r) && !isPastEvent(r)).filter((r) => {
     const ts = similarity(normalizeTitle(event.title), normalizeTitle(r.title))
     const vs = similarity(normalizeVenue(event.venueName), normalizeVenue(r.venueName))
     if (ts >= 0.8 && vs >= 0.34) return false
@@ -151,7 +152,7 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v10'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v11'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 

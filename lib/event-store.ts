@@ -18,6 +18,7 @@ import { remainingBudgetMs, sourceFetchSignal, sourceOverBudget } from '@/lib/so
 import { applyProtectedRefresh } from '@/lib/event-overrides'
 import { updateIsVerificationOnly } from '@/lib/listing-touch'
 import { listingModeration, statusFromTitle } from '@/lib/listing-moderation'
+import { occurrenceEnded, sameShowing, titleAgreesWithSession } from '@/lib/listing-visibility'
 
 const venueIdCache = new Map<string, string | null>()
 
@@ -126,6 +127,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const description = sanitizeDescription(ev.description)
   const date = new Date(`${ev.date}T00:00:00.000Z`)
   if (date < sydneyToday()) return false
+  if (!titleAgreesWithSession(title, ev.date)) return false
   const city = ev.city ?? DEFAULT_CITY
   const rawVenue = cleanText(ev.venueName, 200) || 'TBA'
   let suburb = reconcileSuburb(null, rawVenue, ev.venueAddress, city)
@@ -137,6 +139,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
   const price = parsedPrice.price
   const time = normTime(ev.time)
   const endTime = normTime(ev.endTime)
+  if (occurrenceEnded({ title, date: ev.date, endDate: ev.endDate, time, endTime, city }, new Date())) return false
   const endDate = ev.endDate && ev.endDate !== ev.date ? new Date(`${ev.endDate}T00:00:00.000Z`) : null
   const dedupeHash = makeDedupeHash(title, ev.date, venueName)
   const legacyHash = makeDedupeHash(title, ev.date, rawVenue)
@@ -413,6 +416,12 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
     await rememberSource({ eventId: dup.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     return false
   }
+  const incomingShowing = { title, venueName, city, date: ev.date, time, ticketUrl: storedLinks.ticketUrl, source: ev.source }
+  const near = candidates.find((c) => titleAgreesWithSession(c.title, ev.date) && sameShowing(
+    { title: c.title, venueName: c.venueName, city, date: ev.date, time: c.time, ticketUrl: c.ticketUrl, source: c.source },
+    incomingShowing,
+  ))
+  if (near) return false
 
   assertNoOwnershipTransfer(data)
   const created = await prisma.event.create({

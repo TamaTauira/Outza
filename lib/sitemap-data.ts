@@ -1,11 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { CITIES, cityDef } from '@/lib/cities'
 import { assessEditorial, EDITORIAL_GUIDES, editorialPath } from '@/lib/editorial'
-import { addDaysKey, cityPath, cityToday, eventPath } from '@/lib/seo'
+import { addDaysKey, cityPath, cityToday, eventPath, isPastEvent } from '@/lib/seo'
 import { loadCityGuideModels } from '@/lib/seo-server'
 import { siteUrl } from '@/lib/site-url'
 import { addDaysStr, localPath, occurrences, todayIn, MAX_AHEAD_DAYS } from '@/lib/local-shared'
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
+import { hiddenFromPublic } from '@/lib/listing-visibility'
 import { communitySitemapPaths } from '@/lib/community'
 
 const PAGE = 2000
@@ -35,7 +36,7 @@ function eventWhere() {
   return {
     duplicateOfId: null,
     status: { not: 'CANCELLED' as const },
-    AND: [...PUBLIC_EVENT_AND],
+    AND: [...PUBLIC_EVENT_AND, { OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] }],
     OR: [{ date: { gte: day(earliest) } }, { endDate: { gte: day(earliest) } }],
     date: { lte: day(addDaysKey(earliest, 365)) },
   }
@@ -125,11 +126,12 @@ export function eventsSitemapXml(page: number) {
     const origin = siteUrl()
     const events = await prisma.event.findMany({
       where: eventWhere(),
-      select: { id: true, title: true, updatedAt: true, lastVerifiedAt: true },
+      select: { id: true, title: true, date: true, endDate: true, time: true, endTime: true, endsAt: true, city: true, updatedAt: true, lastVerifiedAt: true },
       orderBy: { id: 'asc' },
       skip: (safe - 1) * PAGE,
       take: PAGE,
     }).catch(() => [])
-    return urlset(events.map((e) => ({ loc: `${origin}${eventPath(e)}`, lastmod: e.lastVerifiedAt ?? e.updatedAt })))
+    const visible = events.filter((e) => !isPastEvent(e) && !hiddenFromPublic(e))
+    return urlset(visible.map((e) => ({ loc: `${origin}${eventPath(e)}`, lastmod: e.lastVerifiedAt ?? e.updatedAt })))
   })
 }
