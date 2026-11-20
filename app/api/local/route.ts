@@ -7,7 +7,7 @@ import { notifyTrustTeam } from '@/lib/trust'
 import { storagePath } from '@/lib/s3'
 import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
-import { eventPath } from '@/lib/seo'
+import { eventPath, isTonightSlot } from '@/lib/seo'
 import { chooseFeedPin, dedupeFeed, feedBlurb, feedPhoto, filterFeed, refineStoredSection, sectionCounts, sectionForLocal, type FeedItem } from '@/lib/local-feed'
 import { interpretQuery } from '@/lib/ai-search-parse'
 import { filterLocalSearch, localDateBounds, localOccurrenceWindow, type LocalSearchItem } from '@/lib/local-search'
@@ -79,11 +79,12 @@ function feedPin(section: string, city: string, suburb: string, lat?: number | n
 function range(tz: string, when: string) {
   const from = todayIn(tz)
   const dow = new Date(`${from}T00:00:00Z`).getUTCDay()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(when)) return { from: when, to: when }
   if (when === 'weekend') {
     const start = dow === 0 || dow === 6 ? from : addDaysStr(from, 6 - dow)
     return { from: start, to: dow === 0 ? from : addDaysStr(start, 1) }
   }
-  if (when === 'today') return { from, to: from }
+  if (when === 'today' || when === 'tonight') return { from, to: from }
   return { from, to: addDaysStr(from, when === '7' ? 6 : 29) }
 }
 
@@ -200,7 +201,8 @@ export async function GET(req: Request) {
   })
   const merged = dedupeFeed([...communityItems, ...localItems]) as Listed[]
   const matched = parsed ? filterLocalSearch(merged, parsed, q, today) : merged
-  const items = filterFeed(matched, { section, suburb }).slice(0, 300).map(publicItem)
+  const night = when === 'tonight' ? matched.filter((item) => isTonightSlot(item.time, item.endTime)) : matched
+  const items = filterFeed(night, { section, suburb }).slice(0, 300).map(publicItem)
   const communityIds = items.filter((item) => item.kind === 'community').map((item) => item.id).slice(0, 12)
   if (communityIds.length) {
     const { recordSeen } = await import('@/lib/product-metrics')

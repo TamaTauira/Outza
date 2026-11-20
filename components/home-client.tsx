@@ -13,8 +13,8 @@ import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib
 import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
 import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, SlidersHorizontal, Ticket } from 'lucide-react';
-import { Chip } from '@/components/ui/chip';
 import { SearchField } from '@/components/ui/search-field';
+import { FilterBar, filterChipClass } from '@/components/filter-bar';
 import { cn } from '@/lib/utils';
 import { CITIES, cityDef, DEFAULT_CITY } from '@/lib/cities';
 import { weekendRange } from '@/lib/seo';
@@ -369,6 +369,8 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           : weekend && filters.dateFrom === weekend.from && filters.dateTo === weekend.to && timeWindow === 'all'
             ? 'weekend'
             : '';
+  const customDate = !!day && planKey !== 'today' && planKey !== 'tonight' && planKey !== 'weekend';
+  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${city || DEFAULT_CITY} · Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix`;
   const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string; detail: string }[] = today ? [
     { key: 'today', label: 'Today', detail: shortDate(today) },
@@ -493,52 +495,68 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 overflow-hidden rounded-3xl bg-card shadow-[var(--vp-shadow-md)]">
           {view === 'board' && (
             <div className="flex items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
-              <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
+              <div className="flex min-w-0 flex-1 items-baseline gap-x-3 max-sm:flex-wrap">
+                <h2 className="shrink-0 font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
+                <p className="min-w-0 flex-1 truncate text-xs leading-tight text-muted-foreground max-sm:basis-full" title={freshLine}>
+                  {freshLine}
+                </p>
+              </div>
               <ViewToggle compact value={resultsView} label="Board, list or map" options={[{ key: 'board', text: 'Board', Icon: LayoutGrid }, { key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapPin }]} onChange={(next) => { if (next === 'map') { goView('map'); return } rememberLineup(next) }} />
             </div>
           )}
           {view === 'board' &&
           <>
-              <div className="vp-quick-search px-3 pb-2 pt-1 sm:px-4">
-                <SearchField id="board-search" soft value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search events or venues" label="Quick search by event, artist, venue or keyword" list="quick-search-hints" />
-                <datalist id="quick-search-hints">
-                  {searchHints.map((title) => <option key={title} value={title} />)}
-                </datalist>
-              </div>
-              <div className="flex gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
-                <Chip pressed={planKey === 'today'} onClick={() => applyPlan('today')}>Today</Chip>
-                <Chip pressed={planKey === 'tonight'} onClick={() => applyPlan('tonight')}>Tonight</Chip>
-                <Chip pressed={planKey === 'weekend'} onClick={() => applyPlan('weekend')}>This weekend</Chip>
-                <Popover open={calOpen} onOpenChange={(open) => {
-                  setCalOpen(open);
-                  if (open) {
-                    const iso = filters.dateFrom || day;
-                    if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
-                  }
-                }}>
-                  <PopoverTrigger asChild>
-                    <button type="button" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 text-sm font-semibold">
-                      <CalendarDays className="h-4 w-4" /> Pick a date
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      month={calMonth}
-                      onMonthChange={setCalMonth}
-                      selected={day ? new Date(`${day}T12:00:00`) : undefined}
-                      disabled={today ? { before: new Date(`${today}T00:00:00`) } : undefined}
-                      onSelect={(d) => {
-                        if (!d) return;
-                        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                        setDay(iso);
-                        pinWindow('all');
-                        setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
-                        setCalOpen(false);
-                      }}
-                      initialFocus />
-                  </PopoverContent>
-                </Popover>
+              <FilterBar
+                dates={[
+                  { key: 'today', label: 'Today', pressed: planKey === 'today', onClick: () => applyPlan('today') },
+                  { key: 'tonight', label: 'Tonight', pressed: planKey === 'tonight', onClick: () => applyPlan('tonight') },
+                  { key: 'weekend', label: 'This weekend', pressed: planKey === 'weekend', onClick: () => applyPlan('weekend') },
+                ]}
+                picker={(
+                  <Popover open={calOpen} onOpenChange={(open) => {
+                    setCalOpen(open);
+                    if (open) {
+                      const iso = filters.dateFrom || day;
+                      if (iso) setCalMonth(new Date(`${iso}T12:00:00`));
+                    }
+                  }}>
+                    <PopoverTrigger asChild>
+                      <button type="button" aria-pressed={customDate} className={filterChipClass(customDate)}>
+                        <CalendarDays className="h-4 w-4" /> {customDate && day ? shortDate(day) : 'Pick a date'}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        month={calMonth}
+                        onMonthChange={setCalMonth}
+                        selected={day ? new Date(`${day}T12:00:00`) : undefined}
+                        disabled={today ? { before: new Date(`${today}T00:00:00`) } : undefined}
+                        onSelect={(d) => {
+                          if (!d) return;
+                          const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          setDay(iso);
+                          pinWindow('all');
+                          setFilters((f) => ({ ...f, dateFrom: '', dateTo: '', datePreset: '' }));
+                          setCalOpen(false);
+                        }}
+                        initialFocus />
+                    </PopoverContent>
+                  </Popover>
+                )}
+                searchId="board-search"
+                searchValue={searchInput}
+                onSearch={setSearchInput}
+                onClear={() => setSearchInput('')}
+                searchPlaceholder="Search events or venues"
+                searchLabel="Quick search by event, artist, venue or keyword"
+                searchList="quick-search-hints"
+                searchExtra={(
+                  <datalist id="quick-search-hints">
+                    {searchHints.map((title) => <option key={title} value={title} />)}
+                  </datalist>
+                )}
+              >
                 <CategoryChip active={!picked.length} onClick={() => setFilters((f) => withCategories(f, []))} label="All" Icon={LayoutGrid} />
                 {CATEGORIES.map((c) => (
                   <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
@@ -548,7 +566,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   <SlidersHorizontal className="h-4 w-4" /> Filters
                   {advancedCount > 0 && <span className="font-mono text-xs">{advancedCount}</span>}
                 </button>
-              </div>
+              </FilterBar>
 
               {picked.length === 1 &&
             <div className="flex gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] sm:px-4">
@@ -568,10 +586,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
           {view === 'board' &&
           <>
-          <p className="px-3 pb-2 text-xs text-muted-foreground sm:px-4">
-            {lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}
-            {city || DEFAULT_CITY} · Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix
-          </p>
           <EventList
             layout={resultsView}
             filters={filters}
