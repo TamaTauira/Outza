@@ -352,7 +352,7 @@ export default function ItineraryPage() {
         )}
 
         {!arranged.length ? (
-          <div className="mt-8">
+          <div className="mt-[var(--vp-card-gap)]">
             <div className="rounded-3xl bg-card px-4 py-8 text-center shadow-[var(--vp-shadow-md)] sm:px-8">
               <CalendarPlusIcon className="mx-auto h-8 w-8 text-primary" aria-hidden />
               <h2 className="mt-3 font-display text-3xl font-bold">Nothing lined up yet.</h2>
