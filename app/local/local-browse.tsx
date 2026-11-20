@@ -84,7 +84,7 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
     <span className={cn('relative block overflow-hidden bg-white', className)}>
       <picture>
         <source srcSet={tile.srcSmall} media="(max-width: 640px)" />
-        <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center p-2" />
+        <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center" />
       </picture>
     </span>
   )
@@ -437,7 +437,7 @@ function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; on
   return (
     <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('flex w-[8.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition min-[1100px]:h-full min-[1100px]:w-auto min-[1100px]:min-w-0', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
       <MascotFrame tile={tile} className="aspect-[5/4] w-full shrink-0" />
-      <span className="flex min-h-11 items-center justify-center px-1 py-1.5 text-center text-[11px] font-semibold leading-tight min-[1100px]:text-xs">{tile.label}</span>
+      <span className="flex h-9 items-center justify-center px-1 text-center text-[11px] font-semibold leading-tight min-[1280px]:h-6 min-[1280px]:whitespace-nowrap min-[1280px]:px-0.5 min-[1280px]:text-[10px] min-[1280px]:tracking-tight">{tile.label}</span>
     </button>
   )
 }
