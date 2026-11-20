@@ -84,7 +84,7 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
     <span className={cn('relative block overflow-hidden bg-white', className)}>
       <picture>
         <source srcSet={tile.srcSmall} media="(max-width: 640px)" />
-        <img src={tile.src} alt={tile.alt} className={cn('absolute inset-0 h-full w-full object-center', tile.src.includes('-hq') ? 'object-cover' : 'object-contain')} />
+        <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center p-2" />
       </picture>
     </span>
   )
@@ -210,7 +210,7 @@ export function LocalBrowse({
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
         <div className="relative mt-4">
-          <div className="flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:none] max-lg:[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] lg:grid lg:grid-cols-5 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x snap-mandatory gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:none] [mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] min-[1100px]:grid min-[1100px]:snap-none min-[1100px]:grid-cols-10 min-[1100px]:overflow-visible min-[1100px]:[mask-image:none] [&::-webkit-scrollbar]:hidden">
             {LOCAL_TILES.map((tile) => (
               <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
             ))}
@@ -435,9 +435,9 @@ function SearchEmpty({ query, city, onClear, onList, centered }: { query: string
 
 function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; onPick: () => void }) {
   return (
-    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('w-[9.5rem] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
-      <MascotFrame tile={tile} className="h-32 w-full" />
-      <span className="block px-2 py-2 text-center text-sm font-semibold leading-tight">{tile.label}</span>
+    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('flex w-[8.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition min-[1100px]:h-full min-[1100px]:w-auto min-[1100px]:min-w-0', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
+      <MascotFrame tile={tile} className="aspect-[5/4] w-full shrink-0" />
+      <span className="flex min-h-11 items-center justify-center px-1 py-1.5 text-center text-[11px] font-semibold leading-tight min-[1100px]:text-xs">{tile.label}</span>
     </button>
   )
 }
