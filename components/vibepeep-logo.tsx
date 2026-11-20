@@ -24,15 +24,15 @@ function WordImg({ src, className, decorative }: { src: string; className: strin
 
 /** Wordmark. Light surfaces keep black Vibe; dark surfaces use white Vibe. No plate behind it. */
 export function VibePeepWordmark({ className = '', tone = 'auto', decorative = false }: { className?: string; tone?: Tone; decorative?: boolean }) {
-  const plate = (src: string, extra = '') => (
-    <WordImg src={src} className={`h-full w-auto ${extra}`} decorative={decorative} />
+  const plate = (src: string, extra: string) => (
+    <WordImg src={src} className={extra} decorative={decorative} />
   )
-  if (tone === 'on-dark') return <span className={className}>{plate(WORDMARK_SVG_DARK)}</span>
-  if (tone === 'on-light') return <span className={className}>{plate(WORDMARK_SVG)}</span>
+  if (tone === 'on-dark') return <span className={className}>{plate(WORDMARK_SVG_DARK, 'vp-word-dark')}</span>
+  if (tone === 'on-light') return <span className={className}>{plate(WORDMARK_SVG, 'vp-word-light')}</span>
   return (
     <span className={className}>
-      {plate(WORDMARK_SVG, 'dark:hidden')}
-      {plate(WORDMARK_SVG_DARK, 'hidden dark:block')}
+      {plate(WORDMARK_SVG, 'vp-word-light')}
+      {plate(WORDMARK_SVG_DARK, 'vp-word-dark')}
     </span>
   )
 }
@@ -58,7 +58,7 @@ export function VibePeepLogo({
 }) {
   return (
     <span className={`vp-lockup-slot ${className}`}>
-      <span className={`vp-lockup${showTagline ? '' : ' is-compact'}`} style={{ fontSize: MARK[size] }} role="img" aria-label={showTagline ? `VibePeep. ${BRAND_TAGLINE}` : 'VibePeep'}>
+      <span className={`vp-lockup${showTagline ? '' : ' is-compact'}${tone === 'on-dark' ? ' is-on-dark' : ''}${tone === 'on-light' ? ' is-on-light' : ''}`} style={{ fontSize: MARK[size] }} role="img" aria-label={showTagline ? `VibePeep. ${BRAND_TAGLINE}` : 'VibePeep'}>
         <VibePeepMark className="vp-lockup-mark" decorative />
         <span className="vp-lockup-copy" aria-hidden>
           <VibePeepWordmark className="vp-lockup-word" decorative tone={tone} />

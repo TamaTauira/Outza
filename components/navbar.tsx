@@ -63,8 +63,8 @@ export function Navbar({ savedCount }: NavbarProps) {
     <>
     <header className="vp-site-header sticky top-0 z-50 bg-background/90 backdrop-blur-md">
       <div className="vp-header-bar vp-wrap min-w-0 border-b border-border px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1">
-        <a href="/" className="vp-header-brand flex min-w-0 items-center">
-          <VibePeepLogo size="md" className="vp-header-lockup max-w-full" labelClassName="flex" />
+        <a href="/" className="vp-header-brand flex shrink-0 items-center">
+          <VibePeepLogo size="md" className="vp-header-lockup" />
         </a>
 
         <nav className="vp-top-links flex items-stretch h-full min-w-0" aria-label="Primary">
