@@ -90,7 +90,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         </Step>
 
         <Step n={2} title="Pick a package">
-          <div className="grid w-full items-stretch gap-[var(--vp-card-gap)] pt-3 sm:grid-cols-3">
+          <div className="grid w-full items-stretch gap-x-[var(--vp-card-gap)] gap-y-7 pt-3 sm:grid-cols-3 sm:gap-y-[var(--vp-card-gap)]">
             {TIERS.map((t) => {
               const on = tier === t.key
               return (
@@ -110,7 +110,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         </Step>
 
         <Step n={3} title="How long should it run?">
-          <div className="grid w-full grid-cols-3 gap-2" role="radiogroup" aria-label="Campaign length">
+          <div className="grid w-full grid-cols-3 gap-[var(--vp-card-gap)]" role="radiogroup" aria-label="Campaign length">
             {DURATIONS.map((d) => (
               <button key={d.days} type="button" role="radio" aria-checked={days === d.days} onClick={() => setDays(d.days)}
                 className={cn('flex min-h-14 w-full flex-col items-center justify-center rounded-xl border px-2 py-2 text-center', days === d.days ? 'border-primary bg-primary text-[#1a1408]' : 'border-border bg-background text-foreground')}>
