@@ -96,7 +96,7 @@ export default async function EditorialGuidePage({ params }: Props) {
     <PageShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />
       <LandingViewBeacon path={path} />
-      <main className="vp-wrap px-4 py-8 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
         <nav aria-label="Breadcrumb" className="mb-5 text-sm text-muted-foreground">
           <Link href="/" className="hover:text-foreground">VibePeep</Link>
           <span className="mx-1">/</span>

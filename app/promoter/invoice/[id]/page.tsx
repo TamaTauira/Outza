@@ -87,7 +87,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   return (
     <PromoterAppShell>
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 print:py-0">
+    <main className="vp-page-top max-w-3xl mx-auto px-4 pb-8 sm:px-6 print:py-0 print:pb-0">
       <div className="flex items-center justify-between gap-3 print:hidden">
         <Link href="/promoter?tab=billing" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to billing</Link>
         <PrintButton />

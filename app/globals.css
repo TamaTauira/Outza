@@ -287,6 +287,11 @@
   margin-inline: auto;
 }
 
+/* First block under the sticky nav. The Map toolbar’s py-2 is this same value. */
+.vp-page-top {
+  padding-top: var(--vp-page-top);
+}
+
 .vp-display {
   font-family: var(--font-display), Manrope, sans-serif;
   font-size: clamp(2rem, 6vw, var(--vp-display));

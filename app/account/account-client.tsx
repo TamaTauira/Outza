@@ -124,7 +124,7 @@ export function AccountClient() {
   const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
 
   return (
-    <main className="vp-wrap px-4 pb-6 pt-3 sm:px-6 sm:pb-8 lg:pt-5">
+    <main className="vp-wrap vp-page-top px-4 pb-6 sm:px-6 sm:pb-8">
       {promoter ? <Link href="/promoter" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Promoter dashboard</Link> : <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>}
       <div className="mt-4">
         <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>

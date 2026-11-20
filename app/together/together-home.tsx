@@ -41,7 +41,7 @@ export function TogetherHome() {
   }
 
   return (
-    <main className="vp-wrap px-4 py-8 sm:px-6">
+    <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">VibePeep Together</p>
       <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Plan it with your people.</h1>
       <p className="mt-3 text-muted-foreground text-base sm:text-lg">Shortlist a few events, send one link, and vote. Guests can join without making an account.</p>

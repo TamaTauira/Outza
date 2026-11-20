@@ -90,7 +90,7 @@ export async function CommunityBoard({
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={0} />
-      <main className="vp-wrap px-4 py-6 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-6 sm:px-6">
         <p className="text-sm"><Link href="/local" className="text-muted-foreground hover:text-foreground">Local</Link></p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{section.label}{city ? ` in ${city.name}` : ''}</h1>
         <p className="mt-2 text-base text-muted-foreground">{section.blurb}</p>

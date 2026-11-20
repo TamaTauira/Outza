@@ -17,7 +17,7 @@ export default async function AdminCommunityPage() {
     )
   }
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <main className="vp-page-top mx-auto max-w-3xl px-4 pb-8 sm:px-6">
       <h1 className="font-display text-3xl font-bold">Community queue</h1>
       <p className="mt-1 mb-6 text-sm text-muted-foreground">Removing a listing hides it and keeps the row, plus every audit note. Nothing here is hard-deleted.</p>
       <CommunityAdminClient />

@@ -29,7 +29,7 @@ export function IntelAdminClient() {
   const byKey = new Map(sources.map((s) => [s.key, s]))
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+    <main className="vp-page-top max-w-6xl mx-auto px-4 pb-10 sm:px-6 space-y-6">
       <header>
         <h1 className="font-display text-3xl font-bold">VibePeep Intelligence data sources</h1>
         <p className="text-muted-foreground mt-1">Official public data only. Each source runs on its own schedule (checked hourly). A failed import keeps the last good data.</p>

@@ -52,6 +52,8 @@
   --vp-caption-lh: 1.33;
   --vp-section: 4rem;
   --vp-gutter: 1rem;
+  /* Space under the sticky nav. Same as the Map toolbar’s padding-top (py-2). */
+  --vp-page-top: 0.5rem;
   --vp-container-max: 1760px;
   --vp-container-prose: 1280px;
   --vp-bp-phone: 600px;

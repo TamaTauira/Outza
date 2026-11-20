@@ -394,7 +394,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : ''}>
         {view === 'board' ? (
-          <div className="vp-wrap px-4 pt-5 sm:px-6">
+          <div className="vp-wrap vp-page-top px-4 sm:px-6">
           <HeroCard
             priority
             image={cityHeroSrc(city)}
@@ -429,7 +429,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </div>
         ) : null}
 
-        <div className={view === 'map' ? 'contents' : 'vp-wrap px-4 pt-5 sm:px-6'}>
+        <div className={view === 'map' ? 'contents' : view === 'board' ? 'vp-wrap px-4 pt-5 sm:px-6' : 'vp-wrap vp-page-top px-4 sm:px-6'}>
         {view === 'board' && <FeaturedTurnstile city={city} />}
         {view === 'board' && (
           <HomeRails

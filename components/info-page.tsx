@@ -21,7 +21,7 @@ export function InfoPage({
 }) {
   return (
     <PageShell>
-      <main className="vp-wrap px-4 py-10 sm:px-6 lg:grid lg:grid-cols-[minmax(0,42rem)_minmax(16rem,1fr)] lg:items-start lg:gap-10 xl:gap-16">
+      <main className="vp-wrap vp-page-top px-4 pb-10 sm:px-6 lg:grid lg:grid-cols-[minmax(0,42rem)_minmax(16rem,1fr)] lg:items-start lg:gap-10 xl:gap-16">
         <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
           <p className="mt-3 text-muted-foreground">{lede}</p>

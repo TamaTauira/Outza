@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function AttributionsPage() {
   return (
     <PageShell>
-      <main className="vp-wrap px-4 py-12 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Data sources</h1>
         <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">

@@ -85,7 +85,7 @@ export function PartnerView({ overview, list, filters }: { overview: PartnerOver
   const sourceLine = overview.sources.map((source) => source.label).join(', ') || 'No source assigned'
 
   return (
-    <main className="vp-wrap px-4 pb-24 pt-6 sm:px-6">
+    <main className="vp-wrap vp-page-top px-4 pb-24 sm:px-6">
       <p className="text-sm font-semibold text-primary">Source partner</p>
       <h1 className="mt-1 font-display text-3xl font-bold tracking-tight sm:text-4xl">{overview.displayName}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">

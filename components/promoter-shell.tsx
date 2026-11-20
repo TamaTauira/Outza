@@ -104,7 +104,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
     <div className="min-h-screen bg-[#0C0F0E] print:bg-white">
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-screen w-[240px] flex-col bg-[#151A19] text-white print:hidden lg:flex">
-          <div className="px-4 pb-2 pt-5">
+          <div className="vp-page-top px-4 pb-2">
             <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="Promoter dashboard">
               <VibePeepWordmark tone="on-dark" className="h-6 w-auto" />
             </Link>

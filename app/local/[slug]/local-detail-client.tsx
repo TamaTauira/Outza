@@ -59,7 +59,7 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap px-4 py-8 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
         <BackLink href="/local" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to VibePeep Local
         </BackLink>

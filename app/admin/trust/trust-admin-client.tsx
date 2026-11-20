@@ -70,7 +70,7 @@ export function TrustAdminClient() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <main className="vp-page-top max-w-5xl mx-auto px-4 pb-8 sm:px-6 space-y-10">
       <header>
         <h1 className="font-display text-3xl font-bold">Trust & listings</h1>
         <p className="text-muted-foreground mt-1">{pending} waiting on you. Check the original source before you approve a change. Nothing here is deleted. A flag is a heuristic, not a guarantee.</p>

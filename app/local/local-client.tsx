@@ -188,7 +188,7 @@ export function LocalClient() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap min-w-0 px-4 pt-5 pb-[calc(var(--vp-bottom-nav-offset)+2.5rem)] sm:px-6 lg:pb-8">
+      <main className="vp-wrap vp-page-top min-w-0 px-4 pb-[calc(var(--vp-bottom-nav-offset)+2.5rem)] sm:px-6 lg:pb-8">
         {(tab === 'browse' || tab === 'how') && (
           <>
           <LocalBrowse

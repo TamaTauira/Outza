@@ -125,7 +125,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
   }
 
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 py-5 pb-20">
+    <main className="vp-page-top mx-auto max-w-3xl px-4 pb-20 sm:px-6">
       <p className="text-xs text-muted-foreground">{city} · {role === 'ADMINISTRATOR' ? 'You manage this venue' : 'Venue manager'}</p>
       <h1 className="font-display text-2xl sm:text-3xl font-bold">{name}</h1>
       <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 text-sm" aria-label="Venue sections">

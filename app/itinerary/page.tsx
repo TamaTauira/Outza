@@ -336,7 +336,7 @@ export default function ItineraryPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap px-4 pb-8 pt-5 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
         <PageMasthead variant="itinerary" />
 
         {shared.length > 0 && (

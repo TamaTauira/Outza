@@ -143,7 +143,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
   }
 
   return (
-    <main className="vp-wrap px-4 pb-8 pt-3 sm:px-6 lg:pt-5">
+    <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <div>
         <p className="text-[13px] font-semibold text-primary">Promoter dashboard</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1">
