@@ -312,7 +312,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
             aria-label="Find events"
             className="inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:brightness-95 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30"
           >
-            {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Find events</>}
+            {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4 sm:hidden" aria-hidden /><span className="hidden sm:inline">Find events</span></>}
           </button>
         </form>
 
