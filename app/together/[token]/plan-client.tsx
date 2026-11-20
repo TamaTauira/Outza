@@ -179,7 +179,7 @@ export function PlanClient({ token }: { token: string }) {
       <input id="voter-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="What should we call you?" className="mt-1 w-full sm:max-w-xs h-11 rounded-md border border-border bg-background px-3 text-sm" />
       {plan.members.length > 0 && <p className="mt-2 text-sm text-muted-foreground">In the room: {plan.members.join(', ')}</p>}
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] items-start lg:grid-cols-[minmax(0,1fr)_22rem]">
       <ol className="space-y-3">
         {plan.items.map((item, index) => {
           const next = plan.items[index + 1]

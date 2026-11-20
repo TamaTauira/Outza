@@ -455,6 +455,39 @@ select {
   min-height: 44px;
 }
 
+/* One checkbox. A rounded brand square, not the browser’s dark box. */
+input[type="checkbox"] {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  margin: 0.15rem 0 0;
+  border: 1.5px solid hsl(var(--border));
+  border-radius: 0.375rem;
+  background: hsl(var(--background));
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+input[type="checkbox"]:checked {
+  background: var(--vp-brand-orange);
+  border-color: var(--vp-brand-orange);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 0.3rem;
+  height: 0.55rem;
+  border: solid #1a1408;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--vp-brand-orange);
+  outline-offset: 2px;
+}
+
 .vp-site-header a:focus-visible,
 .vp-site-header button:focus-visible {
   outline: 2px solid var(--vp-brand-orange);

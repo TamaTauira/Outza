@@ -130,7 +130,7 @@ export function AccountClient() {
         <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] items-stretch lg:grid-cols-2">
 
       {!promoter && <section className={`${card} lg:col-span-2`}>
         <h2 className="font-semibold mb-1">About you</h2>

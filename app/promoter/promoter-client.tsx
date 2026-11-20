@@ -166,8 +166,6 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
             )}
             {tab === 'promote' && (
               <section className={card}>
-                <h2 className="font-display text-xl font-bold mb-1">Build a campaign</h2>
-                <p className="text-sm text-muted-foreground mb-6">Four steps. Live as soon as payment lands.</p>
                 <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} initialDays={promoteDays ?? undefined} onEventChange={setPromoteId} onDone={() => { load(); selectTab('events') }} />
               </section>
             )}
