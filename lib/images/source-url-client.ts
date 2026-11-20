@@ -23,11 +23,18 @@ export function bestSourceUrl(url?: string | null): string | null {
       return u
     }
 
-    // Humanitix: bare handle 400s; the original lives at /i/<handle>@original
+    // Humanitix: bare handle 400s; the original lives at /i/<handle>@original.
+    // seo-200 and seo-1200 are rejected. Only seo-500, seo-800 and @original load.
     if (host === 'images.humanitix.com') {
       const m = parsed.pathname.match(/^\/(?:i\/)?([^/@]+)(?:@[\w.-]+)?$/)
       if (m) return `https://images.humanitix.com/i/${m[1]}@original`
       return u
+    }
+
+    // Oztix: the file without the width query is the full picture. A sized query is a downsample.
+    if (/(^|\.)oztix\.com\.au$/.test(host)) {
+      parsed.search = ''
+      return parsed.toString()
     }
 
     // Cloudinary: strip resize transforms between /upload/ and the version segment
@@ -42,19 +49,23 @@ export function bestSourceUrl(url?: string | null): string | null {
 
 const PRESIGNED = /X-Amz-Signature|X-Amz-Algorithm|X-Amz-Credential/i
 
-/** A smaller rendition for on-screen use. The stored URL stays the original. */
+/**
+ * The file the page should load. Optimised hosts stay at the largest original so
+ * next/image can resize it; a pre-shrunk thumbnail cannot be sharpened later.
+ * A tiny marker still asks Ticketmaster for the 640px retina file.
+ */
 export function displaySourceUrl(url: string | null | undefined, width: number): string | null {
   const best = bestSourceUrl(url) ?? (url && /^https?:\/\//i.test(url) ? url.trim() : null)
   if (!best) return null
   try {
     const host = new URL(best).hostname
     if (host === 'images.humanitix.com') {
-      const w = width <= 160 ? 200 : width <= 480 ? 500 : width <= 900 ? 800 : 1200
-      return best.replace(/@[\w.-]+$/, `@seo-${w}.jpg`)
+      // Heroes need the original. seo-1200 and seo-200 answer 400, so the page was falling back to the holding image.
+      if (width >= 480) return best.replace(/@[\w.-]+$/, '@original')
+      return best.replace(/@[\w.-]+$/, '@seo-500.jpg')
     }
-    if (/(^|\.)ticketm\.net$/.test(host)) {
-      const token = width <= 200 ? 'RETINA_PORTRAIT_16_9' : width <= 800 ? 'TABLET_LANDSCAPE_16_9' : 'TABLET_LANDSCAPE_LARGE_16_9'
-      return best.replace(/_TABLET_LANDSCAPE_LARGE_16_9(\.\w+)$/i, `_${token}$1`)
+    if (/(^|\.)ticketm\.net$/.test(host) && width <= 120) {
+      return best.replace(/_TABLET_LANDSCAPE_LARGE_16_9(\.\w+)$/i, '_RETINA_PORTRAIT_16_9$1')
     }
     return best
   } catch {

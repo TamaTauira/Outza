@@ -27,6 +27,18 @@ const UA = () => `VibePeepEventsBot/1.0 (+${siteUrl()})`
 const title = (s: string) => (s === s.toUpperCase() && /[A-Z]{3}/.test(s) ? s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : s)
 
 /** Includes $0 tickets. Complimentary-only lists are free. Hidden, donation and add-on tickets are ignored. */
+function largestMoshtixImage(items: { type?: string; url?: string }[] | null | undefined): string | null {
+  let best: { url: string; area: number } | null = null
+  for (const item of items ?? []) {
+    const url = item?.url ?? ''
+    const match = url.match(/x(\d+)x(\d+)$/)
+    if (!match) continue
+    const area = Number(match[1]) * Number(match[2])
+    if (!best || area > best.area) best = { url, area }
+  }
+  return best?.url ?? null
+}
+
 function moshtixPrice(tickets: { ticketPrice?: unknown; hidden?: boolean; complimentary?: boolean; donation?: boolean; addOn?: boolean }[]): PriceRead {
   const visible = tickets.filter((t) => !t.hidden && !t.donation && !t.addOn)
   const nums = visible.filter((t) => !t.complimentary).map((t) => moneyNumber(t.ticketPrice)).filter((n): n is number => n != null)
@@ -224,7 +236,6 @@ export async function fetchMoshtixEvents(): Promise<{ saved: number; continuatio
           const s = toSydneyParts(sd, city.tz)
           const en = ed && !isNaN(ed.getTime()) && ed > sd ? toSydneyParts(ed, city.tz) : null
           const priced = moshtixPrice(e?.ticketTypes?.items ?? [])
-          const main = (e?.images?.items ?? []).find((i: any) => i?.type === 'MAIN' && /x\d+x\d+$/.test(i.url ?? ''))
           const venueName = String(v.name ?? 'TBA').replace(new RegExp(`,\\s*${city.name}$`, 'i'), '')
           const locality = a.locality ? title(String(a.locality)) : null
           const ok = await saveEvent({
@@ -239,7 +250,7 @@ export async function fetchMoshtixEvents(): Promise<{ saved: number; continuatio
             genres: [e?.category?.name, e?.genre?.name].filter(Boolean),
             price: priced.price,
             isFree: priced.isFree,
-            imageUrl: main ? main.url.replace(/x\d+x\d+$/, 'x600x600') : null,
+            imageUrl: largestMoshtixImage(e?.images?.items),
             ticketUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
             sourceUrl: joinOriginPath('https://www.moshtix.com.au', e.eventUrl),
             latitude: v.location?.latitude ?? null,
@@ -358,7 +369,7 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
         genres: [...(e.Categories ?? []), ...(e.Bands?.length ? ['Music'] : [])],
         price: oztixPrice.price,
         isFree: oztixPrice.isFree,
-        imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=1200&height=600') : null,
+        imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=2400&height=1350') : null,
         ticketUrl: joinOriginPath('https://www.oztix.com.au', e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null),
         sourceUrl: joinOriginPath('https://www.oztix.com.au', e.EventUrl ? String(e.EventUrl).replace(/\?utm_[^#]*$/, '') : null),
         latitude: e._geoloc?.lat ?? null,

@@ -43,9 +43,13 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
   const m = image?.variants ?? null
   const hasVariants = !!m?.sizes?.[kind]?.length
   const [stage, setStage] = useState<'variant' | 'source' | 'none'>(hasVariants ? 'variant' : src ? 'source' : 'none')
+  const [soft, setSoft] = useState(false)
+  const noteSize = (img: HTMLImageElement) => {
+    if (img.naturalWidth > 0 && img.clientWidth > img.naturalWidth + 1) setSoft(true)
+  }
   const loading = priority ? 'eager' : 'lazy'
 
-  const frame = cn('absolute inset-0 w-full h-full', crop ? 'object-cover' : 'object-contain', className)
+  const frame = cn('absolute inset-0 w-full h-full', soft || !crop ? 'object-contain' : 'object-cover', className)
   const fallbackSlot: PlaceholderSlot = slot ?? (kind === 'square' ? 'square' : kind === 'featured' ? 'featured' : kind === 'hero' ? 'hero' : 'card')
   const fallbackSrc = placeholderPath(category, fallbackSlot)
   const wideSrc = wideSlot ? placeholderPath(category, wideSlot) : null
@@ -55,7 +59,7 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
     const full = variantUrl(m, kind, widths[widths.length - 1], 'webp')
     return (
       <>
-        {!crop && <img src={full} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}
+        {(soft || !crop) && <img src={full} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}
         <picture>
           <source type="image/avif" srcSet={srcSet(m, kind, 'avif') ?? undefined} sizes={sizes} />
           <source type="image/webp" srcSet={srcSet(m, kind, 'webp') ?? undefined} sizes={sizes} />
@@ -66,6 +70,7 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
             decoding="async"
             fetchPriority={priority ? 'high' : 'auto'}
             className={frame}
+            onLoad={(event) => noteSize(event.currentTarget)}
             onError={() => setStage(src ? 'source' : 'none')}
           />
         </picture>
@@ -81,15 +86,17 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
           alt={alt}
           fill
           sizes={sizes}
+          quality={85}
           priority={!!priority}
           className={frame}
+          onLoad={(event) => noteSize(event.currentTarget)}
           onError={() => setStage('none')}
         />
       )
     }
     return (
       <>
-        {!crop && <img src={src} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}
+        {(soft || !crop) && <img src={src} alt="" aria-hidden loading={loading} decoding="async" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl brightness-[0.6]" />}
         <img
           src={src}
           alt={alt}
@@ -97,6 +104,7 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
           decoding="async"
           fetchPriority={priority ? 'high' : 'auto'}
           className={frame}
+          onLoad={(event) => noteSize(event.currentTarget)}
           onError={() => setStage('none')}
         />
       </>
