@@ -2,10 +2,14 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { canOptimizeImage, displaySourceUrl } from './images/source-url-client'
 
-test('cards ask Humanitix and Ticketmaster for a smaller file', () => {
+test('cards keep the largest source, and only a tiny marker steps down', () => {
   assert.equal(
     displaySourceUrl('https://images.humanitix.com/i/abc.png@original', 480),
-    'https://images.humanitix.com/i/abc.png@seo-500.jpg',
+    'https://images.humanitix.com/i/abc.png@original',
+  )
+  assert.equal(
+    displaySourceUrl('https://s1.ticketm.net/dam/a_TABLET_LANDSCAPE_LARGE_16_9.jpg', 640),
+    'https://s1.ticketm.net/dam/a_TABLET_LANDSCAPE_LARGE_16_9.jpg',
   )
   assert.equal(
     displaySourceUrl('https://s1.ticketm.net/dam/a_TABLET_LANDSCAPE_LARGE_16_9.jpg', 96),

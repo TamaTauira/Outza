@@ -42,19 +42,18 @@ export function bestSourceUrl(url?: string | null): string | null {
 
 const PRESIGNED = /X-Amz-Signature|X-Amz-Algorithm|X-Amz-Credential/i
 
-/** A smaller rendition for on-screen use. The stored URL stays the original. */
+/**
+ * The file the page should load. Optimised hosts stay at the largest original so
+ * next/image can resize it; a pre-shrunk thumbnail cannot be sharpened later.
+ * A tiny marker still asks Ticketmaster for the 640px retina file.
+ */
 export function displaySourceUrl(url: string | null | undefined, width: number): string | null {
   const best = bestSourceUrl(url) ?? (url && /^https?:\/\//i.test(url) ? url.trim() : null)
   if (!best) return null
   try {
     const host = new URL(best).hostname
-    if (host === 'images.humanitix.com') {
-      const w = width <= 160 ? 200 : width <= 480 ? 500 : width <= 900 ? 800 : 1200
-      return best.replace(/@[\w.-]+$/, `@seo-${w}.jpg`)
-    }
-    if (/(^|\.)ticketm\.net$/.test(host)) {
-      const token = width <= 200 ? 'RETINA_PORTRAIT_16_9' : width <= 800 ? 'TABLET_LANDSCAPE_16_9' : 'TABLET_LANDSCAPE_LARGE_16_9'
-      return best.replace(/_TABLET_LANDSCAPE_LARGE_16_9(\.\w+)$/i, `_${token}$1`)
+    if (/(^|\.)ticketm\.net$/.test(host) && width <= 120) {
+      return best.replace(/_TABLET_LANDSCAPE_LARGE_16_9(\.\w+)$/i, '_RETINA_PORTRAIT_16_9$1')
     }
     return best
   } catch {
