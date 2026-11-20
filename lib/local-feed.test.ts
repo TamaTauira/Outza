@@ -40,6 +40,11 @@ test('local categories land in one neighbourhood section', () => {
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Gallery open studio' }), 'local-art')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Christmas Pop-Up Photo Studio' }), 'neighbourhood-popups')
   assert.equal(sectionForLocal({ category: 'COMMUNITY', title: 'Charity appeal night' }), 'charity-events')
+  assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Christmas Cookie Swap - Sydney' }), 'community-events')
+  assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Saturday garage sale, Glebe' }), 'garage-sales')
+  assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Clothes swap' }), 'community-events')
+  assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Sydney Super Swap meet' }), 'farmers-markets')
+  assert.equal(sectionForLocal({ category: 'GARAGE', title: 'Swap in the City drop-in' }), 'community-events')
 })
 
 test('a stored pop-up tag gives way when the title is a market or a nature group', () => {
@@ -49,6 +54,8 @@ test('a stored pop-up tag gives way when the title is a market or a nature group
   assert.equal(refineStoredSection('community-events', 'Carriageworks Farmers Market', ''), 'farmers-markets')
   assert.equal(refineStoredSection('neighbourhood-popups', 'Saturday garage sale', ''), 'garage-sales')
   assert.equal(refineStoredSection('dog-friendly', 'Sunday pup picnic', ''), 'dog-friendly')
+  assert.equal(refineStoredSection('garage-sales', 'Christmas Cookie Swap - Sydney', 'Bring a dozen biscuits'), 'community-events')
+  assert.equal(refineStoredSection('garage-sales', 'Saturday garage sale', ''), 'garage-sales')
 })
 
 test('card blurbs use the listing text and stay short', () => {

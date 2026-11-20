@@ -64,11 +64,24 @@ export function dedupeFeed(items: FeedItem[]): FeedItem[] {
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? '') || a.title.localeCompare(b.title))
 }
 
+const DRIVEWAY_SALE = /\b(garage|yard|moving|car[- ]?boot|boot)\s+sales?\b/i
+const SWAP_MEET = /\bswap\s*meets?\b/i
+
+/** A swap or neighbourhood gathering. A driveway sale, a market, or a swap meet is not one. */
+export function isCommunityGathering(text: string): boolean {
+  if (DRIVEWAY_SALE.test(text) || SWAP_MEET.test(text) || /\bmarkets?\b/i.test(text)) return false
+  return /\bswaps?\b/i.test(text)
+    || /\b(community (?:event|gathering|morning|afternoon|meetup)|street party|working bee)\b/i.test(text)
+}
+
 export function sectionForText(title: string, description?: string | null, category?: string | null): string {
+  const text = `${title} ${description ?? ''}`
+  if (DRIVEWAY_SALE.test(text)) return 'garage-sales'
+  if (isCommunityGathering(text)) return 'community-events'
+  if (SWAP_MEET.test(text) || (/\bswaps?\b/i.test(text) && /\bmarkets?\b/i.test(text))) return 'farmers-markets'
   if (category === 'GARAGE') return 'garage-sales'
   if (category === 'WAREHOUSE') return 'warehouse-sales'
   if (category === 'MARKET') return 'farmers-markets'
-  const text = `${title} ${description ?? ''}`
   if (/\b(garage|car-?boot)\b/i.test(text)) return 'garage-sales'
   if (/\b(warehouse|clearance)\b/i.test(text)) return 'warehouse-sales'
   if (/\b(school|fete|sausage sizzle)\b/i.test(text)) return 'school-fundraisers'
@@ -90,9 +103,12 @@ export function sectionForLocal(listing: { category: string; title: string; desc
 
 /** A stored Pop-up (or a generic community tag) loses to a clearer reading of the title. A deliberate other tag stays. */
 export function refineStoredSection(stored: string | null | undefined, title: string, description?: string | null): string {
+  const text = `${title} ${description ?? ''}`
+  if (isCommunityGathering(text)) return 'community-events'
   const guessed = sectionForText(title, description)
   if (!stored || stored === 'neighbourhood-popups') return guessed
   if (stored === 'community-events' && guessed !== 'community-events') return guessed
+  if (stored === 'garage-sales' && guessed !== 'garage-sales' && !/\b(garage|yard|moving|car[- ]?boot|boot)\s+sales?\b/i.test(text)) return guessed
   return stored
 }
 

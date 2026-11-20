@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { readJobCursor, writeJobCursor } from '@/lib/job-watermark'
 import { CITIES, cityDef } from '@/lib/cities'
 import { addDaysStr, diffDays, isTimeStr, lastDate, localDupKey, occurrences, todayIn, MAX_SPAN_DAYS, type RecurringShape } from '@/lib/local-shared'
+import { isCommunityGathering } from '@/lib/local-feed'
 
 /**
  * Fills VibePeep Local from public listings VibePeep already ingests for the main board
@@ -29,10 +30,11 @@ const STATE_RX = /\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b/
 
 /** Only genuine sales get a sale type; exhibitions, festivals, classes, trivia etc. are community events. */
 export function categoryFor(title: string): string {
+  if (isCommunityGathering(title)) return 'COMMUNITY'
   if (/\b(exhibition|sculpture|gallery|festival|class|workshop|tour|trivia|talk|screening|concert|run club|meetup|walk)\b/i.test(title) && !/\b(markets?|garage sale|clearance|warehouse sale|sample sale)\b/i.test(title)) return 'COMMUNITY'
-  if (/\b(garage sale|car boot|yard sale|moving sale|swap meet|clothes swap|swap)\b/i.test(title)) return 'GARAGE'
+  if (/\b(garage|yard|moving|car[- ]?boot|boot)\s+sales?\b/i.test(title)) return 'GARAGE'
   if (/\b(warehouse sale|clearance|sample sale|stock sale)\b/i.test(title)) return 'WAREHOUSE'
-  if (/\b(markets?|marketta|bazaar|farmers|makers|fete|craft fair|pop[- ]?up (shop|store|market|sale)|designer pop[- ]?up|mini-mart|(record|vinyl|book|comic|toy) fair)\b/i.test(title)) return 'MARKET'
+  if (/\b(markets?|marketta|bazaar|farmers|makers|fete|craft fair|swap\s*meets?|pop[- ]?up (shop|store|market|sale)|designer pop[- ]?up|mini-mart|(record|vinyl|book|comic|toy) fair)\b/i.test(title)) return 'MARKET'
   return 'COMMUNITY'
 }
 
