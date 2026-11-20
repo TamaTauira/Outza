@@ -25,8 +25,8 @@ import { HomeRails } from '@/components/home-rails';
 import { PageScrollLock } from '@/components/page-scroll-lock';
 import { ViewToggle } from '@/components/view-toggle';
 import { SuggestionButton } from '@/components/suggestion-button';
-import { LocalClock } from '@/components/local-clock';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
+import { HeroCard, cityHeroSrc } from '@/components/hero-card';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
 import { displayTitle } from '@/lib/display-public';
 import { useBackState } from '@/lib/scroll-memory';
@@ -55,6 +55,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [searchInput, setSearchInput] = useBackState('home:search', '');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  useEffect(() => {
+    if (!showFilters) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setShowFilters(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showFilters]);
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   // List and map share one filter set, one search and one date, so toggling views does not start again.
   const [filters, setFilters] = useBackState<FilterState>('home:filters', EMPTY_FILTERS);
@@ -388,29 +394,22 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : ''}>
         {view === 'board' ? (
-          <section className="vp-peep-hero relative mb-2 overflow-hidden bg-[#0c0f0e] text-white">
-            <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_80%_0%,hsl(var(--primary)/0.18),transparent)]" />
-            <div className="vp-wrap relative px-4 py-6 sm:px-6 sm:py-8">
-            <div className="relative flex items-start justify-between gap-4">
-              <div className="min-w-0 max-w-[var(--vp-measure)]">
-                <h1 className="vp-display">
-                  <span className="block">What’s on in</span>
-                  <span className="block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span>
-                </h1>
-                <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p>
-                <p className="mt-2 text-sm font-semibold text-white/80">Your city’s calling. Answer it.</p>
-              </div>
-              <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
-            </div>
-            <div className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-              <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
+          <div className="vp-wrap px-4 pt-5 sm:px-6">
+          <HeroCard
+            priority
+            image={cityHeroSrc(city)}
+            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span></>}
+            lede={<><p>Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p><p className="mt-2 text-sm font-semibold text-white/85">Your city’s calling. Answer it.</p></>}
+          >
+            <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+              <label className="inline-flex h-14 items-center gap-2 rounded-2xl bg-white/10 px-3">
                 <MapPin className="h-4 w-4 shrink-0 text-primary" />
                 <span className="sr-only">Choose a city</span>
                 <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="Choose a city">
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder={'Try "jazz this Friday"'} queryRequest={askRequest} chips={false} goToPage />
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz this Friday" queryRequest={askRequest} chips={false} goToPage />
             </div>
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-[13px] text-white/70">Describe a vibe, a date, a place or a budget. Or just browse.</p>
             <div className="vp-chip-row relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -422,26 +421,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 { label: 'Live music', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Date night', run: () => { if (!today) return; setDay(today); pinWindow('evening'); setFilters((f) => ({ ...withCategories(f, ['Food & Drink', 'Music', 'Arts & Culture', 'Nightlife']), dateFrom: '', dateTo: '' })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Family', run: () => { setFilters((f) => withCategories(f, ['Family'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
-                { label: 'Suburbs near me', run: () => {
-                  if (!navigator.geolocation) { toast('This browser won’t share a location.'); return }
-                  navigator.geolocation.getCurrentPosition((pos) => {
-                    let best = CITIES[0]
-                    let score = Number.POSITIVE_INFINITY
-                    for (const item of CITIES) {
-                      const next = (item.lat - pos.coords.latitude) ** 2 + (item.lng - pos.coords.longitude) ** 2
-                      if (next < score) { best = item; score = next }
-                    }
-                    setCity(best.name)
-                    toast(`Showing neighbourhoods in ${best.name}.`)
-                    requestAnimationFrame(() => document.getElementById('neighbourhoods')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-                  }, () => toast('Location is off. Pick a city instead.'), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })
-                } },
               ].map((chip) => (
                 <button key={chip.label} type="button" onClick={chip.run} className="h-11 shrink-0 rounded-full bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20">{chip.label}</button>
               ))}
             </div>
-            </div>
-          </section>
+          </HeroCard>
+          </div>
         ) : null}
 
         <div className={view === 'map' ? 'contents' : 'vp-wrap px-4 pt-5 sm:px-6'}>
@@ -505,22 +490,22 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         )}
 
         {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
-        {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 rounded-xl border border-border bg-card overflow-hidden shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)]">
+        {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 overflow-hidden rounded-3xl bg-card shadow-[var(--vp-shadow-md)]">
           {view === 'board' && (
-            <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+            <div className="flex items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
               <h2 className="min-w-0 font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
               <ViewToggle compact value={resultsView} label="Board, list or map" options={[{ key: 'board', text: 'Board', Icon: LayoutGrid }, { key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapPin }]} onChange={(next) => { if (next === 'map') { goView('map'); return } rememberLineup(next) }} />
             </div>
           )}
           {view === 'board' &&
           <>
-              <div className="vp-quick-search border-b border-border px-3 pb-3 pt-4 sm:px-4">
-                <SearchField id="board-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search events or venues" label="Quick search by event, artist, venue or keyword" list="quick-search-hints" />
+              <div className="vp-quick-search px-3 pb-2 pt-1 sm:px-4">
+                <SearchField id="board-search" soft value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search events or venues" label="Quick search by event, artist, venue or keyword" list="quick-search-hints" />
                 <datalist id="quick-search-hints">
                   {searchHints.map((title) => <option key={title} value={title} />)}
                 </datalist>
               </div>
-              <div className="flex gap-2 overflow-x-auto border-b border-border px-3 py-3 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
+              <div className="flex gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
                 <Chip pressed={planKey === 'today'} onClick={() => applyPlan('today')}>Today</Chip>
                 <Chip pressed={planKey === 'tonight'} onClick={() => applyPlan('tonight')}>Tonight</Chip>
                 <Chip pressed={planKey === 'weekend'} onClick={() => applyPlan('weekend')}>This weekend</Chip>
@@ -532,7 +517,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   }
                 }}>
                   <PopoverTrigger asChild>
-                    <button type="button" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-medium">
+                    <button type="button" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 text-sm font-semibold">
                       <CalendarDays className="h-4 w-4" /> Pick a date
                     </button>
                   </PopoverTrigger>
@@ -559,19 +544,19 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   <CategoryChip key={c.name} active={picked.includes(c.name)} onClick={() => setFilters((f) => withCategories(f, picked.includes(c.name) ? picked.filter((n) => n !== c.name) : [...picked, c.name]))} label={c.name} Icon={categoryIcon(c.name)} color={c.color} />
                 ))}
                 <ToggleChip active={filters.isFree} onClick={() => update({ isFree: !filters.isFree })} label="Free" />
-                <button type="button" onClick={() => setShowFilters(true)} aria-label="Filters" className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm', advancedCount ? 'border-primary text-primary' : 'border-border')}>
+                <button type="button" onClick={() => setShowFilters(true)} aria-label="Filters" className={cn('inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold', advancedCount ? 'bg-primary/15 text-primary' : 'bg-muted')}>
                   <SlidersHorizontal className="h-4 w-4" /> Filters
                   {advancedCount > 0 && <span className="font-mono text-xs">{advancedCount}</span>}
                 </button>
               </div>
 
               {picked.length === 1 &&
-            <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] px-3 sm:px-4 py-2 border-b border-border">
+            <div className="flex gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] sm:px-4">
                   {(CATEGORIES.find((c) => c.name === picked[0])?.subTags ?? []).map((t) =>
               <button
                 key={t}
                 onClick={() => update({ subTag: filters.subTag === t ? '' : t })}
-                className={cn('shrink-0 px-2.5 py-1 rounded-full text-xs border transition-colors', filters.subTag === t ? 'bg-foreground text-background border-foreground' : 'border-border text-muted-foreground hover:text-foreground')}>
+                className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs transition-colors', filters.subTag === t ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:text-foreground')}>
                 
                       {t}
                     </button>
@@ -583,7 +568,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
           {view === 'board' &&
           <>
-          <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground sm:px-4">
+          <p className="px-3 pb-2 text-xs text-muted-foreground sm:px-4">
             {lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}
             {city || DEFAULT_CITY} · Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix
           </p>
@@ -670,8 +655,8 @@ function ToggleChip({ active, onClick, label }: {active: boolean;onClick: () => 
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'h-9 px-3 inline-flex items-center gap-1.5 rounded-md border text-sm font-medium transition-colors',
-        active ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted'
+        'inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors',
+        active ? 'bg-foreground text-background' : 'bg-muted hover:bg-muted/80'
       )}>
       
       {active && <Check className="w-3.5 h-3.5" aria-hidden />}

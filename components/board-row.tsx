@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { tierDef } from '@/lib/tiers'
 import { statusInfo } from '@/lib/quality'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
-import { displayPriceValue, displayTitle, parentCategory, runsUntilLabel } from '@/lib/display-public'
+import { displayPriceValue, displayTitle, parentCategory } from '@/lib/display-public'
 
 export type BoardEvent = SavedEvent
 
@@ -32,21 +32,25 @@ const STATUS_CLASS: Record<Status['tone'], string> = {
   tbc: 'text-muted-foreground',
 }
 
-export const BOARD_COLS = 'xl:grid-cols-[92px_minmax(0,1fr)_minmax(0,250px)_130px_104px_104px_88px]'
+export const BOARD_COLS = 'xl:grid-cols-[7.5rem_minmax(0,1fr)_minmax(0,250px)_8.5rem_6.5rem_6.5rem_5.5rem]'
 
-function Finish({ when, compact }: { when: BoardRange; compact?: boolean }) {
-  if (!when.endLine && !when.endNote) return null
-  const time = compact
-    ? 'whitespace-nowrap font-mono text-xs leading-tight tabular-nums text-muted-foreground'
-    : 'whitespace-nowrap font-mono text-xs leading-tight tabular-nums text-muted-foreground'
-  const note = compact
-    ? 'whitespace-nowrap font-mono text-xs leading-tight text-muted-foreground'
-    : 'whitespace-nowrap font-mono text-xs leading-tight text-muted-foreground'
+/** Start and finish share one column so the minutes and am/pm line up. */
+function TimeStack({ when }: { when: BoardRange }) {
+  const end = when.endLine?.replace(/^–\s*/, '') ?? ''
+  const [endHm, endAmpm = ''] = end ? end.split(' ') : ['', '']
   return (
-    <>
-      {when.endLine && <div className={time}>{when.endLine}</div>}
-      {when.endNote && <div className={note}>{when.endNote}</div>}
-    </>
+    <div className="grid grid-cols-[0.75rem_minmax(0,1fr)_1.7rem] items-baseline gap-x-1 font-mono text-[13px] leading-tight tabular-nums xl:text-sm">
+      <span />
+      <span className="text-right text-foreground">{when.hm}</span>
+      <span className="text-xs text-muted-foreground">{when.ampm}</span>
+      {endHm ? (
+        <>
+          <span className="text-muted-foreground">–</span>
+          <span className="text-right text-muted-foreground">{endHm}</span>
+          <span className="text-xs text-muted-foreground">{endAmpm}</span>
+        </>
+      ) : null}
+    </div>
   )
 }
 
@@ -60,7 +64,7 @@ interface BoardRowProps {
   active?: boolean
 }
 
-export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearch, active }: BoardRowProps) {
+export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active }: BoardRowProps) {
   const shownTitle = displayTitle(ev.title)
   const catName = parentCategory(ev.category) || ev.category
   const cat = CATEGORIES.find((c) => c.name === catName)
@@ -69,7 +73,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
   const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const priceValue = [price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')
-  const until = runsUntilLabel(ev.date, ev.endDate)
   const checked = checkedAgo(latestIso(ev.lastVerifiedAt, ev.updatedAt))
   const done = status.tone === 'done'
   const type = ev.subTags?.[0] ?? catName
@@ -93,20 +96,18 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
     <div
       onClick={openRow}
       className={cn(
-        'xl:hidden group relative cursor-pointer grid min-h-[72px] grid-cols-[4.75rem_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-border px-3 py-2 hover:bg-muted/60',
+        'xl:hidden group relative cursor-pointer grid min-h-[72px] grid-cols-[6.75rem_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-border px-3 py-2 hover:bg-muted/60',
         done && 'opacity-75',
         active && 'bg-primary/10',
       )}
       data-event-id={ev.id}
     >
-      <div className="min-w-0 overflow-hidden" title={when.label}>
-        <span className="whitespace-nowrap font-mono text-sm tabular-nums">{when.hm}</span>
-        <span className="ml-0.5 font-mono text-xs text-muted-foreground">{when.ampm}</span>
-        <Finish when={when} compact />
+      <div className="min-w-0" title={when.label}>
+        <TimeStack when={when} />
       </div>
       <div className="min-w-0">
         <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-snug hover:text-primary after:absolute after:inset-0 after:content-['']">{shownTitle}</Link>
-        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}{until ? ` · ${until}` : ''}</p>
+        <p className="truncate text-xs text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}</p>
       </div>
       <div className="relative z-20 flex items-center">
         <button onClick={() => onToggleSave(ev)} className={cn('grid h-11 w-11 place-items-center rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
@@ -126,11 +127,8 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
       data-event-id={ev.id}
     >
       {/* Start */}
-      <div className="row-span-2 xl:row-span-1 self-start xl:self-center min-w-0 overflow-hidden pt-0.5 xl:pt-0" title={when.label}>
-        <span className="whitespace-nowrap font-mono text-[15px] xl:text-base tabular-nums text-foreground">{when.hm}</span>
-        <span className="ml-1 font-mono text-xs text-muted-foreground">{when.ampm}</span>
-        <Finish when={when} />
-        {showDate && <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">{showDate}</div>}
+      <div className="row-span-2 xl:row-span-1 self-start xl:self-center min-w-0 pt-0.5 xl:pt-0" title={when.label}>
+        <TimeStack when={when} />
       </div>
 
       {/* Event */}
@@ -169,7 +167,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
       </div>
 
       {/* Type */}
-      <div className="hidden xl:block text-sm text-muted-foreground truncate" title={[ev.category, ...(ev.subTags ?? [])].join(', ')}>{type}</div>
+      <div className="hidden xl:block truncate text-sm text-muted-foreground" title={[ev.category, ...(ev.subTags ?? [])].join(', ')}>{type}</div>
 
       {/* Price */}
       <div className="col-start-2 xl:col-start-auto flex items-center gap-3 xl:block">
@@ -194,7 +192,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
 
       {/* Actions */}
       <div className="hidden xl:flex items-center justify-end gap-1">
-        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
         <button
           onClick={() => onToggleSave(ev)}
           className={cn('relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
@@ -213,7 +210,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, showDate, trackSearc
 export function BoardHeadings() {
   return (
     <div className={cn('sticky top-14 z-10 hidden border-b border-border bg-muted/90 px-5 py-2 font-mono text-[13px] text-muted-foreground backdrop-blur xl:grid xl:gap-x-3 sm:top-16', BOARD_COLS)}>
-      <span>Start</span>
+      <span>Time</span>
       <span>Event</span>
       <span>Venue / Suburb</span>
       <span>Type</span>

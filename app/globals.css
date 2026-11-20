@@ -236,6 +236,22 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Gradient headlines need room under the baseline so a g or y is not clipped. */
+.vp-gradient-line {
+  padding-bottom: 0.14em;
+  line-height: 1.15;
+}
+
+.vp-hero-card {
+  min-height: 18rem;
+}
+.vp-hero-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.12;
 }
 
 .bg-brand-gradient {
@@ -300,13 +316,18 @@
   min-height: 2.75rem;
 }
 
-/* Every chip and button is a 44px target. Text links in prose are left alone. */
+/* Every chip and button is a 44px target. Text links in prose are left alone.
+   The date picker opts out: its day cells are a tight grid, not page actions. */
 button,
 [role="button"],
 [role="tab"],
 summary,
 a.rounded-full {
   min-height: 44px;
+}
+.vp-calendar button {
+  min-height: 2rem;
+  min-width: 2rem;
 }
 button[class*="w-8"],
 button[class*="w-9"],
@@ -410,4 +431,49 @@ a[class*="w-9"] {
 /* The mascot styles already honour reduced motion. A global kill stops it settling. */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+textarea,
+select {
+  min-height: 44px;
+}
+
+.vp-site-header a:focus-visible,
+.vp-site-header button:focus-visible {
+  outline: 2px solid var(--vp-brand-orange);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+.vp-print-logo { display: none; }
+
+@media print {
+  .vp-site-header,
+  .vp-bottom-nav,
+  footer,
+  .vp-ask,
+  .vp-menu,
+  [data-print-hide] {
+    display: none !important;
+  }
+  .vp-print-logo {
+    display: block;
+    padding: 0 0 16px;
+  }
+  html, body, .bg-background, .min-h-screen {
+    background: #fff !important;
+    color: #161a18 !important;
+  }
+  main {
+    padding-bottom: 0 !important;
+  }
+  .vp-hero-card,
+  .text-brand-gradient {
+    color: #9a3412 !important;
+    -webkit-text-fill-color: #9a3412;
+    background: none !important;
+  }
+  a { text-decoration: underline; }
+  .vp-wrap { max-width: none; }
 }

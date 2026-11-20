@@ -183,18 +183,11 @@ export function scheduleFinished(sched: ResolvedSchedule, nowMinutes: number): b
   return nowMinutes - sched.start > SOON_MINUTES
 }
 
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
 function clockParts(mins: number): { hm: string; ampm: string } {
   const m = ((mins % 1440) + 1440) % 1440
   const h = Math.floor(m / 60)
   const min = m % 60
   return { hm: `${h % 12 === 0 ? 12 : h % 12}:${String(min).padStart(2, '0')}`, ampm: h < 12 ? 'am' : 'pm' }
-}
-
-function shortDate(key: string): string {
-  const d = new Date(`${key}T00:00:00Z`)
-  return `${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`
 }
 
 export type BoardRange = {
@@ -207,26 +200,12 @@ export type BoardRange = {
   label: string
 }
 
-/** A finish before 6am the next morning is still that night. The board shows the clock only. */
-const SAME_NIGHT_BEFORE = 6 * 60
-
-function shownFinish(ev: SlotInput, sched: ResolvedSchedule, endClockLabel: string): { endLabel: string; endNote: string | null } {
-  const clockOnly = { endLabel: endClockLabel, endNote: null as string | null }
-  if (!sched.endKey || sched.end == null || sched.start == null) return clockOnly
-  const startKey = dateKeyOf(ev.date)
-  const span = startKey ? daySpan(startKey, sched.endKey) : 0
-  const endClock = ((sched.end % 1440) + 1440) % 1440
-  // Overnight windows already store the finish past midnight. A later calendar day with a later clock does not.
-  const duration = sched.overnight ? sched.end - sched.start : sched.end - sched.start + Math.max(0, span) * 1440
-  if (span <= 1 && endClock < SAME_NIGHT_BEFORE) return clockOnly
-  const longStay = span > 1 || duration >= 24 * 60 - 1
-  if (!longStay) return clockOnly
-  if (sched.overnight && span <= 1) {
-    const note = shortDate(sched.endKey)
-    return { endLabel: `${endClockLabel}, ${note}`, endNote: note }
-  }
-  const note = `until ${shortDate(sched.endKey)}`
-  return { endLabel: `${endClockLabel} · ${note}`, endNote: note }
+/**
+ * The public clock is start and finish only. Multi-day events keep their dates
+ * on the day heading, never inside the time column.
+ */
+function shownFinish(_ev: SlotInput, _sched: ResolvedSchedule, endClockLabel: string): { endLabel: string; endNote: string | null } {
+  return { endLabel: endClockLabel, endNote: null }
 }
 
 /** Start, and a finish that is never drawn earlier than the start. Same-night finishes omit the next date. */

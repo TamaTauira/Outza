@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Bookmark, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
 import { LocalNeighbourhoodMap, type LocalMapPin } from '@/components/local-neighbourhood-map'
 import { CITIES } from '@/lib/cities'
-import { LocalClock } from '@/components/local-clock'
+import { HeroCard } from '@/components/hero-card'
 import { sectionByKey } from '@/lib/community-shared'
 import { dayLabel } from '@/lib/board'
 import { fmtTime } from '@/lib/local-shared'
@@ -88,7 +88,7 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
     <span className={cn('relative block overflow-hidden bg-white', className)}>
       <picture>
         <source srcSet={tile.srcSmall} media="(max-width: 640px)" />
-        <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center" />
+        <img src={tile.src} alt={tile.alt} className={cn('absolute inset-0 h-full w-full object-center', tile.src.includes('-hq') ? 'object-cover' : 'object-contain')} />
       </picture>
     </span>
   )
@@ -179,21 +179,13 @@ export function LocalBrowse({
 
   return (
     <div className="min-w-0">
-      <header className="relative overflow-hidden rounded-3xl bg-[#0c0f0e] px-4 py-6 text-white shadow-[0_20px_50px_-30px_rgba(0,0,0,0.6)] sm:px-8 sm:py-8">
-        <img src="/local/market-hero.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/45" />
-        <div className="relative flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-              <span className="block">Good things are happening</span>
-              <span className="block text-brand-gradient">around the corner.</span>
-            </h1>
-            <p className="mt-3 max-w-xl text-sm text-white/80 sm:text-lg">From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you.</p>
-          </div>
-          <LocalClock city={city} className="vp-hero-clock shrink-0 text-right" />
-        </div>
-        <form className="relative mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start" onSubmit={(event) => { event.preventDefault(); applyQuery(query) }}>
-          <label className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-3">
+      <HeroCard
+        image="/local/market-hero.jpg"
+        title={<><span className="block">Good things are happening</span><span className="vp-gradient-line block text-brand-gradient">around the corner.</span></>}
+        lede="From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you."
+      >
+        <form className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start" onSubmit={(event) => { event.preventDefault(); applyQuery(query) }}>
+          <label className="inline-flex h-14 items-center gap-2 rounded-2xl bg-white/10 px-3">
             <MapPin className="h-4 w-4 shrink-0 text-primary" />
             <span className="sr-only">Choose a city</span>
             <select value={city} onChange={(event) => setCity(event.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="City">
@@ -202,7 +194,7 @@ export function LocalBrowse({
           </label>
           <div className="flex min-w-0 items-center gap-2 rounded-xl bg-white p-1.5 text-neutral-900 shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] ring-2 ring-primary/50">
             <Search className="ml-2 h-4 w-4 shrink-0 text-primary" />
-            <input value={query} onChange={(event) => setQuery(event.target.value.slice(0, 200))} placeholder='Try "jazz tonight"' aria-label="Search local events" type="search" enterKeyHint="search" autoComplete="off" maxLength={200} className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
+            <input value={query} onChange={(event) => setQuery(event.target.value.slice(0, 200))} placeholder="markets on this weekend" aria-label="Search local events" type="search" enterKeyHint="search" autoComplete="off" maxLength={200} className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
             <button type="submit" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
               <Search className="h-4 w-4" />Search
             </button>
@@ -213,14 +205,14 @@ export function LocalBrowse({
           {hasListings && <button type="button" onClick={onMine} className="inline-flex h-11 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">Your listings</button>}
           <button type="button" onClick={onHow} className="inline-flex h-11 items-center rounded-full bg-white/10 px-4 text-sm font-semibold text-white">How it works</button>
         </div>
-      </header>
+      </HeroCard>
 
       <section className="relative mt-8" aria-labelledby="local-categories">
         <div className="flex items-end justify-between gap-3">
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
         <div className="relative mt-4">
-          <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:px-0 [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x gap-3 overflow-x-auto pb-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {LOCAL_TILES.map((tile) => (
               <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
             ))}

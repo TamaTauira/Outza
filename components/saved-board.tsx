@@ -78,7 +78,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
     return (
       <div className="mb-10">
         <PageMasthead variant="saved" />
-        <div className="mt-6 grid items-center gap-6 rounded-3xl border border-border bg-card px-5 py-8 sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
+        <div className="mt-6 grid items-center gap-6 rounded-3xl bg-card px-5 py-8 shadow-[var(--vp-shadow-md)] sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
           <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
           <div className="text-center lg:text-left">
             <h2 className="font-display text-3xl font-bold sm:text-4xl">Sign in to save events</h2>
@@ -95,30 +95,29 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
   return (
     <div className="mb-10">
-      <PageMasthead variant="saved" />
+      <PageMasthead variant="saved">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
+            {tabs.map((item) => (
+              <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-white text-neutral-900' : 'bg-white/15 text-white')}>
+                {item.label}{item.count != null ? ` (${item.count})` : ''}
+              </button>
+            ))}
+          </div>
+          <ViewToggle value={resultsView} onChange={chooseView} className="bg-white/90 text-neutral-900" />
+        </div>
+      </PageMasthead>
       <p className="mt-3 text-sm tabular-nums text-muted-foreground">{`${saved.length} saved`}</p>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
-          {tabs.map((item) => (
-                <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-foreground text-background' : 'bg-muted text-foreground')}>
-                  {item.label}{item.count != null ? ` (${item.count})` : ''}
-                  {item.key === 'past' && <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[13px] font-semibold text-primary">Coming soon</span>}
-                </button>
-          ))}
-        </div>
-        <ViewToggle value={resultsView} onChange={chooseView} />
-      </div>
-
-      {!signedIn || saved.length === 0 ? (
+      {!signedIn || saved.length === 0 || visible.length === 0 ? (
         resultsView === 'map' ? (
-          <p className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">{signedIn ? 'Nothing with a pin yet. Save a night out and we’ll drop it on the map.' : 'Sign in and your keepers with a pin will land on the map.'}</p>
+          <p className="mt-6 rounded-3xl bg-card px-4 py-6 text-sm text-muted-foreground shadow-[var(--vp-shadow-md)]">{signedIn ? 'Nothing with a pin yet. Save a night out and we’ll drop it on the map.' : 'Sign in and your keepers with a pin will land on the map.'}</p>
         ) : (
-        <div className="mt-6 grid items-center gap-6 rounded-3xl border border-border bg-card px-5 py-8 sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
+        <div className="mt-6 grid items-center gap-6 rounded-3xl bg-card px-5 py-8 shadow-[var(--vp-shadow-md)] sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
           <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
           <div className="text-center lg:text-left">
-          <h2 className="font-display text-3xl font-bold sm:text-4xl">Nothing saved. Yet.</h2>
-          <p className="mt-2 max-w-xl text-muted-foreground">{signedIn ? 'Your future plans are out there. See something you love? Tap the heart and we’ll keep it here for you.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}</p>
+          <h2 className="font-display text-3xl font-bold sm:text-4xl">{saved.length && visible.length === 0 ? 'Nothing in this set.' : 'Nothing saved. Yet.'}</h2>
+          <p className="mt-2 max-w-xl text-muted-foreground">{saved.length && visible.length === 0 ? 'None of your keepers fall in this window. Try All saved, or come back when the weekend lands.' : signedIn ? 'Your future plans are out there. See something you love? Tap the heart and we’ll keep it here for you.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}</p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
             {signedIn ? (
               <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find something good.</button>

@@ -11,6 +11,7 @@ export function SearchField({
   onClear,
   list,
   trailing,
+  soft = false,
 }: {
   id?: string
   value: string
@@ -20,6 +21,7 @@ export function SearchField({
   onClear?: () => void
   list?: string
   trailing?: ReactNode
+  soft?: boolean
 }) {
   return (
     <form role="search" className="relative min-w-0" onSubmit={(event) => event.preventDefault()}>
@@ -38,7 +40,9 @@ export function SearchField({
           if (event.key === 'Escape' && onClear) onClear()
         }}
         placeholder={placeholder}
-        className="h-11 w-full rounded-full border border-input bg-card pl-12 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:text-sm"
+        className={soft
+          ? 'h-11 w-full min-w-0 rounded-full bg-muted pl-12 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:text-sm'
+          : 'h-11 w-full min-w-0 rounded-full border border-input bg-card pl-12 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:text-sm'}
       />
       {value && onClear && (
         <button type="button" onClick={onClear} aria-label="Clear search" className="absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
