@@ -286,6 +286,7 @@ export function composeWatchEmail(input: {
     homeHref: home,
     disclaimer: DISCLAIMER,
     reason: 'You asked for these notes. Turn them off any time from your account.',
+    banner: input.reminders ? 'reminder' : 'matches',
   })
   return { subject, html, text: text.join('\n') }
 }

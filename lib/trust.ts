@@ -52,6 +52,7 @@ export async function notifyTrustTeam(subject: string, rows: [string, string | n
     title: subject,
     preheader: subject,
     manageHref: `${home}/admin/trust`,
+    banner: 'trust',
     homeHref: home,
     reason: 'Review it in Admin → Trust & listings (/admin/trust).',
     rows: emailBodyCell(`<h2 style="color:${EMAIL_C.accent};margin:0 0 12px;font-size:20px;">${escapeHtml(subject)}</h2>

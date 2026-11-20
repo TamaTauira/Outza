@@ -20,6 +20,7 @@ export function GET(req: Request) {
     title: 'Your VibePeep week, in one note',
     preheader: 'How your listings are tracking on VibePeep.',
     manageHref: `${siteUrl()}/promoter`,
+    banner: 'promoter-report',
     homeHref: siteUrl(),
     reason: 'Sample only. A real recap uses the unsubscribe link to turn weekly reports off.',
     rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 8px">Your week on VibePeep</h1><p style="font-size:14px;margin:0 0 8px">Hi there, here’s a sample of the weekly recap. No account was read to draw this.</p>${recap.html}`),

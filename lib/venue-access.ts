@@ -226,6 +226,7 @@ async function issueCode(purpose: string, subjectId: string, email: string, labe
     title: `Your VibePeep code for ${label}`.slice(0, 120),
     preheader: `Confirm you can manage ${label}`,
     manageHref: `${home}/account`,
+    banner: 'venue-code',
     homeHref: home,
     reason: 'Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.',
     rows: emailBodyCell(`<p style="margin:0 0 12px;">Confirm you can manage <strong>${escapeHtml(label)}</strong>.</p>
@@ -503,6 +504,7 @@ export async function reportVenueEvent(userId: string, venueId: string, body: Re
         title: `A venue asked us to check ${event.title}`.slice(0, 120),
         preheader: 'The listing is unchanged while we check it.',
         manageHref: `${siteUrl()}/account`,
+        banner: 'venue-check',
         homeHref: siteUrl(),
         rows: emailBodyCell(`<p style="margin:0;">A venue representative reported “${escapeHtml(event.title)}”. The listing is unchanged while we check it.</p>`),
       }),
@@ -626,6 +628,7 @@ export async function inviteVenueManager(actorId: string, venueId: string, email
         title: `Manage ${venueName}`,
         preheader: `You’ve been added as ${roleLabel} at ${venueName}.`,
         manageHref: `${home}/account`,
+    banner: 'venue-code',
         homeHref: home,
         reason: 'A venue administrator added you on VibePeep. This note does not change your newsletter.',
         rows: emailBodyCell(`<p style="margin:0 0 16px;">You’ve been added as <strong>${escapeHtml(roleLabel)}</strong> at <strong>${escapeHtml(venueName)}</strong>.</p>${emailButton(dashboard, 'Open the venue dashboard')}`),

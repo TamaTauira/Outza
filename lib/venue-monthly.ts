@@ -44,6 +44,7 @@ export function venueMonthlyLetter(input: { greeting: string; venues: VenueMonth
     title: 'Your venue month',
     preheader: 'Views, saves, itinerary adds and ticket clicks for your venue.',
     manageHref: `${siteUrl()}/venue`,
+    banner: 'venue-monthly',
     homeHref: siteUrl(),
     reason: 'You manage a venue. This monthly note can be turned off without changing your newsletter.',
     rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 8px">Your venue month</h1>

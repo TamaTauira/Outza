@@ -23,6 +23,7 @@ function linkMail(to: string, subject: string, title: string, body: string, href
     title,
     preheader: title,
     manageHref: `${home}/account`,
+    banner: 'account',
     homeHref: home,
     reason: 'This message is about your VibePeep account.',
     rows: emailBodyCell(`<p style="margin:0 0 16px;">${body}</p>${emailButton(href, label)}`),

@@ -168,7 +168,8 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
   const html = emailDocument({
     title: 'Your VibePeep event performance report',
     preheader: 'How your listings are tracking on VibePeep.',
-    manageHref: `${base}/account`,
+    manageHref: `${base}/promoter`,
+    banner: 'promoter-report',
     homeHref: base,
     reason: 'You turned on weekly recaps in the Promoter dashboard. The unsubscribe link in this email turns them off straight away and leaves your newsletter choice alone.',
     rows: emailBodyCell(`<h1 class="tx" style="font-size:20px;margin:0 0 6px;color:${EMAIL_C.ink}">Your event performance report</h1>
