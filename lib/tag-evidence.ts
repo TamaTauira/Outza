@@ -35,6 +35,11 @@ export function proseEvidence(tag: string, text: string): TagEvidence {
     case 'Markets': return marketEvidence(body)
     case 'Party': return partyEvidence(body)
     case 'Talk': return talkEvidence(body)
+    case 'Course': return courseEvidence(body)
+    case 'Tour': return tourEvidence(body)
+    case 'Health': return healthEvidence(body)
+    case 'Dating': return datingEvidence(body)
+    case 'Social': return socialEvidence(body)
     case 'Electronic/EDM': return electronicEvidence(body)
     case 'Folk/Acoustic': return folkEvidence(body)
     case 'Hip Hop': return phrase(body, /\bhip[\s-]?hop\b/i)
@@ -88,10 +93,13 @@ function metalEvidence(text: string): TagEvidence {
 }
 
 function runningEvidence(text: string): TagEvidence {
-  const activity = /\b(fun runs?|parkruns?|trail runs?|night runs?|running clubs?|run clubs?|marathons?|running sessions?|running)\b/i
+  const activity = /\b(fun[\s-]?runs?|park[\s-]?runs?|trail runs?|night runs?|colou?r runs?|beach runs?|charity runs?|run(?:ning)? (?:clubs?|crews?|groups?|sessions?)|half[\s-]?marathons?|marathons?|ultra[\s-]?marathons?|\d+\s?k(?:m)?\s(?:run|race)|\d+k\b|jog(?:ging)?|runners|running (?:races?|events?|festivals?|track|coach(?:ing)?)|go(?:es|ing)? running|trail running|road running|run\/walk|walk(?:\s*(?:&|and|or)\s*)run)\b/i
+  const nounRun = /\brun\b/i
+  const verb = /\b(?:are|is|be|been|was|were|we're|currently|now|keep|kept)\s+running\b|\brunning (?:a|an|the|this|our|free|\d+|weekly|monthly|since|for|from|until|through(?:out)?|every|on|in|at|late|times|regularly|workshops?|sessions? on|programs?|events?\b(?! like))/i
   const boilerplate = /\brunning times\b|\brunning stitch(?:es)?\b|\bup and running\b|\brunning late\b|\brunning regularly\b/i
-  if (boilerplate.test(text)) {
+  if (verb.test(text) || boilerplate.test(text)) {
     const rest = text
+      .replace(verb, ' ')
       .replace(/\brunning times\b/gi, ' ')
       .replace(/\brunning stitch(?:es)?\b/gi, ' ')
       .replace(/\bup and running\b/gi, ' ')
@@ -100,7 +108,57 @@ function runningEvidence(text: string): TagEvidence {
     if (activity.test(rest)) return 'clear'
     return 'misleading'
   }
-  if (activity.test(text)) return 'clear'
+  if (activity.test(text) || nounRun.test(text)) return 'clear'
+  return 'absent'
+}
+
+function courseEvidence(text: string): TagEvidence {
+  const stripped = text
+    .replace(/\bof course\b/gi, ' ')
+    .replace(/\bgolf courses?\b/gi, ' ')
+    .replace(/\bmain courses?\b/gi, ' ')
+    .replace(/\brace ?courses?\b/gi, ' ')
+    .replace(/\bobstacle courses?\b/gi, ' ')
+    .replace(/\b\d+[\s-]?courses?\b/gi, ' ')
+    .replace(/\b(?:two|three|four|five|multi)[\s-]courses?\b/gi, ' ')
+    .replace(/\bcourses? (?:meal|menu|dinner|lunch)\b/gi, ' ')
+    .replace(/\bin due course\b/gi, ' ')
+    .replace(/\b(?:over|during) the course of\b/gi, ' ')
+    .replace(/\bcourses? of (?:action|treatment)\b/gi, ' ')
+  if (/\b(short courses?|\d+[\s-]?(?:week|day|session) courses?|courses?)\b/i.test(stripped)) return 'clear'
+  if (/\bcourse/i.test(text)) return 'misleading'
+  return 'absent'
+}
+
+function tourEvidence(text: string): TagEvidence {
+  if (/\b(?:world|australian|aus|national|album|farewell|reunion|anniversary|headline|debut|ep|nz|oz nz|20\d\d|comedy|stand-?up|summer|winter|spring|autumn|east coast) tour\b|\bon tour\b|\btour(?:ing)? (?:australia|nationally)\b/i.test(text)) return 'misleading'
+  if (/\b(?:walking|guided|garden|heritage|history|historic(?:al)?|ghost|food|wine|brewery|distillery|bus|boat|kayak|bike|museum|gallery|behind[\s-]the[\s-]scenes|architecture|art|bushwalk|nature|night|precinct|site|farm|campus|harbour|river|whale|eco|cultural|aboriginal|indigenous|self[\s-]guided|curator|stadium|house|tram|rail) tours?\b/i.test(text)) return 'clear'
+  return 'absent'
+}
+
+function healthEvidence(text: string): TagEvidence {
+  const stripped = text
+    .replace(/\bhealth and safety\b/gi, ' ')
+    .replace(/\b(?:NSW|Queensland) Health\b/gi, ' ')
+    .replace(/\bpublic health\b/gi, ' ')
+    .replace(/\bhealth (?:fund|insurance|department|care workers?|professionals? only)\b/gi, ' ')
+  const terms = ['yoga', 'meditation', 'wellbeing', 'mental health', 'fitness', 'nutrition', 'mindfulness']
+  const found = terms.filter((term) => new RegExp(`\\b${term}\\b`, 'i').test(text)).length
+  if (found >= 2) return 'clear'
+  if (/\bhealth\b/i.test(stripped) && text.length < 140) return 'clear'
+  if (/\bhealth\b/i.test(text)) return 'misleading'
+  return 'absent'
+}
+
+function datingEvidence(text: string): TagEvidence {
+  if (/\b(singles tour|dating apps? (?:talk|panel)|dating show)\b/i.test(text)) return 'misleading'
+  if (/\bsingles\b/i.test(text) && /\b(tennis|badminton|squash|pickleball|golf)\b/i.test(text)) return 'misleading'
+  if (/\b(speed[\s-]?dating|slow dating|weed dating|singles? (?:mixer|night|event|party|social|dinner|drinks|walk|mingle)s?|dating (?:night|event|club|experience)s?|matchmaking|for singles)\b/i.test(text)) return 'clear'
+  return 'absent'
+}
+
+function socialEvidence(text: string): TagEvidence {
+  if (/\b(social club|meet[\s-]?up|newcomers|make new friends|mates|social group)\b/i.test(text)) return 'clear'
   return 'absent'
 }
 
@@ -131,6 +189,9 @@ function partyEvidence(text: string): TagEvidence {
     .replace(/\bthird part(?:y|ies)\b/gi, ' ')
     .replace(/\bsearch part(?:y|ies)\b/gi, ' ')
     .replace(/\bparty of \d+\b/gi, ' ')
+    .replace(/\bhost your (?:party|event)\b/gi, ' ')
+    .replace(/\bparty hire\b/gi, ' ')
+    .replace(/\bbirthday part(?:y|ies) (?:packages?|bookings?)\b/gi, ' ')
   if (/\bpart(?:y|ies)\b/i.test(rest)) return 'clear'
   if (/\bpart(?:y|ies)\b/i.test(text)) return 'misleading'
   return 'absent'
