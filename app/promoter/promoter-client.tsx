@@ -153,17 +153,8 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
       </div>
       {!stripeEnabled && <div className="mt-5 rounded-lg border border-primary/60 px-4 py-3 text-sm text-primary">Payments are in test mode — campaigns and Pro activate instantly without charging a card.</div>}
 
-      <div className="mt-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-8">
-      <nav className="flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none] lg:sticky lg:top-20 lg:flex-col lg:gap-1 lg:overflow-visible lg:rounded-[var(--vp-radius-lg)] lg:border lg:bg-card lg:p-2" aria-label="Dashboard sections">
-        {TABS.map(({ key, label, Icon }) => (
-          <button key={key} onClick={() => selectTab(key)} className={cn('relative flex h-11 shrink-0 items-center gap-2 px-4 text-sm transition-colors lg:rounded-[var(--vp-radius-md)] lg:px-3', tab === key ? 'font-semibold text-foreground lg:bg-muted' : 'text-muted-foreground hover:text-foreground')}>
-            <Icon className="w-4 h-4" />{label}
-            {tab === key && <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary lg:hidden" />}
-          </button>
-        ))}
-      </nav>
-
-      <div className="mt-6 lg:mt-0">
+      <div className="mt-6">
+      <div>
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
             {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => selectTab('events')} goInsights={() => selectTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
@@ -267,8 +258,9 @@ function ReportsCard({ account, onAccount }: { account: Account; onAccount: (a: 
       <div className="mt-3 flex items-center justify-between gap-3 text-sm">
         <span id="weekly-report-label">Weekly report</span>
         <button type="button" role="switch" aria-labelledby="weekly-report-label" aria-checked={!!account.weeklyReport} onClick={toggle} disabled={saving}
-          className={cn('relative w-10 h-6 rounded-full transition-colors disabled:opacity-60', account.weeklyReport ? 'bg-primary' : 'bg-muted border border-border')}>
-          <span className={cn('absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all', account.weeklyReport ? 'left-[18px]' : 'left-0.5')} />
+          style={{ minHeight: 24, minWidth: 40, height: 24, width: 40 }}
+          className={cn('relative shrink-0 rounded-full transition-colors disabled:opacity-60', account.weeklyReport ? 'bg-primary' : 'bg-foreground/25')}>
+          <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-background shadow transition-all', account.weeklyReport ? 'left-[18px]' : 'left-0.5')} />
         </button>
       </div>
       <button onClick={sendNow} disabled={sending} className="mt-3 w-full h-9 rounded-md border border-border text-sm font-medium flex items-center justify-center gap-2 hover:bg-muted disabled:opacity-60">
@@ -343,7 +335,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
   ]
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <Kpi Icon={Rocket} label="Live campaigns" value={String(stats.live)} window="Right now" definition="Campaigns still active, whose end time has not passed." />
         <Kpi Icon={Eye} label="Listing views" value={stats.views.toLocaleString('en-AU')} window="All time" definition="Event page visits stored on your events." />
         <Kpi Icon={MousePointerClick} label="Ticket clicks" value={stats.clicks.toLocaleString('en-AU')} window="All time" definition={stats.views ? `Taps on the ticket link. ${((stats.clicks / stats.views) * 100).toFixed(1)}% of listing views.` : 'Taps on the ticket link stored on your events.'} />
@@ -351,19 +343,21 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
         <Kpi Icon={Wallet} label="Total invested" value={formatAud(stats.spend)} window="All time" definition="Active and expired campaigns, plus active and cancelled passes and local ads. AUD." />
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <section className={card}>
+        <h2 className="font-semibold mb-4">How it works</h2>
+        <ol className="grid gap-4 md:grid-cols-3">
+          {steps.map((s, i) => (
+            <li key={s.title} className="flex h-full flex-col rounded-lg border border-border bg-background p-4">
+              <div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{i + 1}</span><s.Icon className="h-4 w-4 text-primary" /></div>
+              <p className="mt-3 text-sm font-semibold">{s.title}</p>
+              <p className="mt-1 flex-1 text-sm text-muted-foreground">{s.body}</p>
+              <button onClick={s.action} className="mt-3 whitespace-nowrap text-left text-sm font-semibold text-primary hover:underline">{s.cta} →</button>
+            </li>
+          ))}
+        </ol>
+      </section>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <section className={card}>
-          <h2 className="font-semibold mb-4">How it works</h2>
-          <ol className="grid sm:grid-cols-3 gap-4">
-            {steps.map((s, i) => (
-              <li key={s.title} className="rounded-lg bg-background border border-border p-4 flex flex-col">
-                <div className="flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">{i + 1}</span><s.Icon className="w-4 h-4 text-primary" /></div>
-                <p className="font-semibold text-sm mt-3">{s.title}</p>
-                <p className="text-xs text-muted-foreground mt-1 flex-1">{s.body}</p>
-                <button onClick={s.action} className="mt-3 text-xs font-semibold text-primary text-left hover:underline">{s.cta} →</button>
-              </li>
-            ))}
-          </ol>
           {!events.length && (
             <div className="mt-6 rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
               <p className="font-medium text-foreground">Nothing on your board yet</p>
@@ -420,6 +414,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
   const [claimNote, setClaimNote] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [showAllClaims, setShowAllClaims] = useState(false)
   const [form, setForm] = useState(() => blankListing(homeCity || 'Sydney'))
   const cityTouched = useRef(false)
   useEffect(() => { if (!cityTouched.current && homeCity) setForm((f) => ({ ...f, city: homeCity })); setClaimCity((c) => cityTouched.current ? c : homeCity || c) }, [homeCity])
@@ -554,52 +549,55 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
         )}
       </section>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         <section className={card}>
           <h2 className="font-semibold mb-1">Already listed? Claim it</h2>
           <p className="text-xs text-muted-foreground mb-3">We list thousands of events automatically. Find yours and add it to your dashboard.</p>
-          <form onSubmit={search} className="flex flex-col sm:flex-row gap-2">
-            <select value={claimCity} onChange={(e) => setClaimCity(e.target.value)} className={field} aria-label="City to search">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Event name or venue" className={field} aria-label="Search listings" />
-            <button className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold flex items-center gap-2">{searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Search</button>
+          <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
+            <select value={claimCity} onChange={(e) => setClaimCity(e.target.value)} className={`${field} sm:w-40 sm:shrink-0`} aria-label="City to search">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Event name or venue" className={`${field} min-w-0 flex-1`} aria-label="Search listings" />
+            <button className="flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search</button>
           </form>
           {claimNote && <p className="mt-2 text-sm text-destructive" role="alert">{claimNote}</p>}
+          {!!results.length && <p className="mt-3 text-xs text-muted-foreground">{results.length} {results.length === 1 ? 'match' : 'matches'}</p>}
           <div className="mt-2">
-            {results.map((r) => {
+            {(showAllClaims ? results : results.slice(0, 10)).map((r) => {
               const pending = claims.some((c) => c.event.id === r.id && c.status === 'PENDING')
               return (
-                <div key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm border-b border-border last:border-0">
-                  <span className="truncate">{r.title} <span className="text-muted-foreground">· {fmt(r.date)} · {r.venueName}{r.city ? ` · ${r.city}` : ''}</span></span>
-                  {owned.has(r.id) ? <span className="text-xs text-muted-foreground">Yours</span> : pending ? <span className="text-xs font-medium">Pending</span> : <button onClick={() => claim(r.id)} className="shrink-0 h-8 px-3 rounded-md border border-border text-xs hover:bg-muted">Claim</button>}
+                <div key={r.id} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm last:border-0">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{r.title}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{fmt(r.date)}{r.time ? ` · ${r.time}` : ''} · {r.venueName}{r.city ? `, ${r.city}` : ''}</span>
+                  </span>
+                  {owned.has(r.id) ? <span className="text-xs text-muted-foreground">Yours</span> : pending ? <span className="text-xs font-medium">Pending</span> : <button onClick={() => claim(r.id)} className="h-8 shrink-0 rounded-md border border-border px-3 text-xs hover:bg-muted">Claim</button>}
                 </div>
               )
             })}
           </div>
+          {results.length > 10 && <button type="button" onClick={() => setShowAllClaims((on) => !on)} className="mt-2 text-sm font-semibold text-primary">{showAllClaims ? 'Show fewer' : `Show all ${results.length}`}</button>}
         </section>
 
-        <section className={card}>
+        <section id="create" className={`${card} scroll-mt-24`}>
           <h2 className="font-semibold mb-1">Create a new event</h2>
           <p className="text-xs text-muted-foreground mb-3">This saves a draft. It stays off the public board until you press Publish.</p>
-          <form onSubmit={create} className="grid sm:grid-cols-2 gap-3">
-            <input required value={form.title} onChange={set('title')} placeholder="Event title" className={`${field} sm:col-span-2`} />
-            <input required inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.date} onChange={set('date')} className={field} aria-label="Start date" />
-            <input inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.endDate} onChange={set('endDate')} className={field} aria-label="End date" title="End date, if it runs more than one day" />
-            <div className="grid grid-cols-2 gap-2">
-              <input type="time" value={form.time} onChange={set('time')} className={field} aria-label="Start time" title="Start time" />
-              <input type="time" value={form.endTime} onChange={set('endTime')} className={field} aria-label="Finish time" title="Finish time" />
-            </div>
-            <input required value={form.venueName} onChange={set('venueName')} placeholder="Venue" className={field} />
-            <input value={form.venueAddress} onChange={set('venueAddress')} placeholder="Street, suburb, postcode" className={field} />
-            <select value={form.city} onChange={set('city')} className={field} aria-label="City">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
-            <select value={form.category} onChange={set('category')} className={field} aria-label="Category">{CATEGORIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
-            <select value={form.subTag} onChange={set('subTag')} className={field} aria-label="Subtag"><option value="">Subtag (optional)</option>{subTags.map((t) => <option key={t}>{t}</option>)}</select>
-            <input value={form.price} onChange={set('price')} placeholder="Price e.g. $25 or Free" disabled={form.isFree} className={field} />
+          <form onSubmit={create} className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm font-medium sm:col-span-2">Title<input required value={form.title} onChange={set('title')} placeholder="Harbour nights" className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium">Start date<input required inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.date} onChange={set('date')} className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium">Start time<input type="time" value={form.time} onChange={set('time')} className={`${field} mt-1 min-w-[9rem] font-normal`} /></label>
+            <label className="block text-sm font-medium">End date<input inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.endDate} onChange={set('endDate')} className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium">Finish time<input type="time" value={form.endTime} onChange={set('endTime')} className={`${field} mt-1 min-w-[9rem] font-normal`} /></label>
+            <label className="block text-sm font-medium">Venue<input required value={form.venueName} onChange={set('venueName')} placeholder="Venue name" className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium">City<select value={form.city} onChange={set('city')} className={`${field} mt-1 font-normal`}>{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select></label>
+            <label className="block text-sm font-medium sm:col-span-2">Address<input value={form.venueAddress} onChange={set('venueAddress')} placeholder="Street, suburb, postcode" className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium">Category<select value={form.category} onChange={set('category')} className={`${field} mt-1 font-normal`}>{CATEGORIES.map((c) => <option key={c.name}>{c.name}</option>)}</select></label>
+            <label className="block text-sm font-medium">Subtag<select value={form.subTag} onChange={set('subTag')} className={`${field} mt-1 font-normal`}><option value="">Optional</option>{subTags.map((t) => <option key={t}>{t}</option>)}</select></label>
+            <label className="block text-sm font-medium sm:col-span-2">Price<input value={form.price} onChange={set('price')} placeholder="$25 or Free" disabled={form.isFree} className={`${field} mt-1 font-normal`} /></label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isFree} onChange={set('isFree')} /> Free event</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isLGBTI} onChange={set('isLGBTI')} /> LGBTIQ+ event</label>
-            <input value={form.capacity} onChange={set('capacity')} inputMode="numeric" placeholder="Capacity (optional)" aria-label="Capacity" className={field} />
-            <input value={form.ticketUrl} onChange={set('ticketUrl')} placeholder="Ticket link (https://...)" className={`${field} sm:col-span-2`} />
-            <input value={form.imageUrl} onChange={set('imageUrl')} placeholder="Image link (https://...) — optional" className={`${field} sm:col-span-2`} />
-            <textarea value={form.description} onChange={set('description')} placeholder="Description" rows={3} className="sm:col-span-2 rounded-md border border-border bg-background px-3 py-2 text-sm" />
+            <label className="block text-sm font-medium">Capacity<input value={form.capacity} onChange={set('capacity')} inputMode="numeric" placeholder="Optional" className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium sm:col-span-2">Ticket link<input value={form.ticketUrl} onChange={set('ticketUrl')} placeholder="https://" className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium sm:col-span-2">Image link<input value={form.imageUrl} onChange={set('imageUrl')} placeholder="https:// — optional" className={`${field} mt-1 font-normal`} /></label>
+            <label className="block text-sm font-medium sm:col-span-2">Description<textarea value={form.description} onChange={set('description')} placeholder="What happens, in your own words" rows={3} className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-normal" /></label>
             <details className="sm:col-span-2 rounded-md border border-border px-3 py-2">
               <summary className="cursor-pointer text-sm font-medium">Visitor details (optional) — shown on your event page</summary>
               <div className="grid sm:grid-cols-2 gap-3 mt-3">

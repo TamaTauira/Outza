@@ -118,20 +118,21 @@ export function AccountClient() {
 
   if (!me) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
 
+  const promoter = me.role === 'PROMOTER' || me.role === 'ADMIN'
   const yearRequired = me.role === 'CONSUMER'
   const about = aboutYouStatus(year, pc, { saving, yearRequired })
   const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
 
   return (
     <main className="vp-wrap px-4 pb-6 pt-3 sm:px-6 sm:pb-8 lg:pt-5">
-      <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
+      {promoter ? <Link href="/promoter" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Promoter dashboard</Link> : <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>}
       <div className="mt-4">
-        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">Your account {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
+        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
       <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
 
-      <section className={`${card} lg:col-span-2`}>
+      {!promoter && <section className={`${card} lg:col-span-2`}>
         <h2 className="font-semibold mb-1">About you</h2>
         <p className="text-xs text-muted-foreground mb-3">{yearRequired ? 'Year of birth keeps things fair for event-goers. We don’t store the day. Postcode is your call.' : 'Optional for promoter accounts.'}</p>
         <form noValidate onSubmit={(e) => { e.preventDefault(); void saveAbout() }}>
@@ -141,13 +142,13 @@ export function AccountClient() {
             <button type="button" disabled={!about.canSave} className="mt-3 h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-70 disabled:pointer-events-none touch-manipulation">{saving ? 'Saving…' : 'Save details'}</button>
           </span>
         </form>
-      </section>
+      </section>}
 
-      <div className="lg:col-span-2"><VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} /></div>
+      {!promoter && <div className="lg:col-span-2"><VibeCard initial={me.vibeProfile} onSaved={(v) => setMe((m) => (m ? { ...m, vibeProfile: v } : m))} /></div>}
 
-      {(me.role === 'PROMOTER' || me.role === 'ADMIN') && <div className="lg:col-span-2"><PromoterProfile me={me} onSaved={(patch) => setMe((m) => (m ? { ...m, ...patch } : m))} /></div>}
+      {promoter && <div className="lg:col-span-2"><PromoterProfile me={me} onSaved={(patch) => setMe((m) => (m ? { ...m, ...patch } : m))} /></div>}
 
-      <section className={`${card} lg:col-span-2`}>
+      {!promoter && <section className={`${card} lg:col-span-2`}>
         <label htmlFor="acct-city" className="font-semibold block mb-3">Home city</label>
         <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-11 w-full sm:w-auto rounded-md border border-border bg-background px-3 text-sm">
           {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
@@ -157,11 +158,11 @@ export function AccountClient() {
         <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <button key={c.name} onClick={() => save({ preferredCategories: toggleIn(me.preferredCategories ?? [], c.name) })} className={chip((me.preferredCategories ?? []).includes(c.name))}>{c.name}</button>)}</div>
         <h2 className="font-semibold mt-5 mb-3">Cities to include</h2>
         <div className="flex flex-wrap gap-2">{CITIES.map((c) => <button key={c.name} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })} className={chip((me.preferredCities ?? []).includes(c.name))}>{c.name}</button>)}</div>
-      </section>
+      </section>}
 
-      <FollowsCard />
+      {!promoter && <FollowsCard />}
 
-      <section id="inbox" className={card}>
+      {!promoter && <section id="inbox" className={card}>
         <h2 className="font-semibold mb-1">Email</h2>
         <p className="mb-3 text-sm text-muted-foreground">One place for the daily note, the day-before nudge, and a preview. Nothing is sent until you tick a box.</p>
         <label className="flex items-start gap-3 text-sm cursor-pointer">
@@ -183,9 +184,9 @@ export function AccountClient() {
           <button type="button" onClick={() => { void watchPreview() }} className="h-9 rounded-md border border-border px-4 text-sm hover:bg-muted">Send me a preview</button>
           <button type="button" onClick={preview} className="h-9 rounded-md border border-border px-4 text-sm hover:bg-muted">Preview the city digest</button>
         </div>
-      </section>
+      </section>}
 
-      <section className={card}>
+      {!promoter && <section className={card}>
         <h2 className="font-semibold mb-3">Friends</h2>
         <form onSubmit={(e) => { e.preventDefault(); if (friendEmail) { friendAction({ email: friendEmail }, 'POST'); setFriendEmail('') } }} className="flex gap-2">
           <input type="email" value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} placeholder="Friend's email" className="flex-1 min-w-0 h-10 rounded-md border border-border bg-background px-3 text-sm" />
@@ -208,7 +209,7 @@ export function AccountClient() {
           </div>
         ))}
         {!friends.friends.length && <p className="mt-3 text-xs text-muted-foreground">Add friends to see which events they&apos;re going to.</p>}
-      </section>
+      </section>}
 
       <div className="lg:col-span-2"><SecurityCard email={me.email} /></div>
       </div>

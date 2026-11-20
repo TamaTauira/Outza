@@ -6,16 +6,23 @@ import { signOut, useSession } from 'next-auth/react'
 
 type Missing = { doc: string; version: string; title: string; path: string }
 
+let remembered: Missing[] | null = null
+
 /** Asks a signed-in person to accept a material legal update. Does not record anything until they press accept. */
 export function LegalAcceptPrompt() {
   const { status } = useSession()
-  const [missing, setMissing] = useState<Missing[] | null>(null)
+  const [missing, setMissing] = useState<Missing[] | null>(remembered)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (status !== 'authenticated') {
+      remembered = null
       setMissing(null)
+      return
+    }
+    if (remembered) {
+      setMissing(remembered)
       return
     }
     let cancelled = false
@@ -23,7 +30,9 @@ export function LegalAcceptPrompt() {
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || data?.pendingMigration) return
-        setMissing(Array.isArray(data?.missing) ? data.missing : [])
+        const next = Array.isArray(data?.missing) ? data.missing : []
+        remembered = next
+        setMissing(next)
       })
       .catch(() => {
         if (!cancelled) setMissing([])
@@ -47,6 +56,7 @@ export function LegalAcceptPrompt() {
         setError(typeof data?.error === 'string' ? data.error : 'Could not record that.')
         return
       }
+      remembered = []
       setMissing([])
     } finally {
       setBusy(false)
@@ -54,9 +64,9 @@ export function LegalAcceptPrompt() {
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="legal-accept-title">
-      <div className="w-full max-w-lg rounded-xl bg-card p-5 shadow-lg">
-        <h2 id="legal-accept-title" className="font-display text-xl font-bold">Please accept the updated terms</h2>
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55 p-4 sm:items-center" role="dialog" aria-modal="true" aria-labelledby="legal-accept-title">
+      <div className="w-full max-w-lg rounded-3xl bg-card p-6 shadow-[var(--vp-shadow-lg)]">
+        <h2 id="legal-accept-title" className="font-display text-2xl font-bold">Please accept the updated terms</h2>
         <p className="mt-2 text-sm text-muted-foreground">These versions apply to your account when you accept them. Keeping the site open is not agreement. This notice stays in the product. We do not email it.</p>
         <ul className="mt-3 space-y-1 text-sm">
           {missing.map((item) => (
@@ -68,8 +78,8 @@ export function LegalAcceptPrompt() {
         </ul>
         {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={accept} disabled={busy} className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">I accept</button>
-          <button type="button" onClick={() => signOut({ callbackUrl: '/' })} className="h-10 rounded-md border border-border px-4 text-sm">Sign out</button>
+          <button type="button" onClick={accept} disabled={busy} className="h-11 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">I accept</button>
+          <button type="button" onClick={() => signOut({ callbackUrl: '/' })} className="h-11 rounded-full bg-muted px-5 text-sm font-semibold">Sign out</button>
         </div>
       </div>
     </div>

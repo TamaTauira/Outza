@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, CalendarDays, LayoutDashboard, Menu, Megaphone, Plus, Receipt } from 'lucide-react'
+import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Plus, Receipt, Rocket, Store } from 'lucide-react'
 import { VibePeepWordmark } from '@/components/vibepeep-logo'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PROMOTER_NAV_EVENT } from '@/lib/promoter-nav'
@@ -12,8 +12,11 @@ import { cn } from '@/lib/utils'
 const PRIMARY = [
   { href: '/promoter?tab=overview', label: 'Dashboard', icon: LayoutDashboard, tab: 'overview' },
   { href: '/promoter?tab=events', label: 'My events', icon: CalendarDays, tab: 'events' },
-  { href: '/promoter?tab=events', label: 'Create', icon: Plus, tab: 'create' },
-  { href: '/promoter?tab=promote', label: 'Boosts', icon: Megaphone, tab: 'promote' },
+  { href: '/promoter?tab=events#create', label: 'Create', icon: Plus, tab: 'create' },
+  { href: '/promoter?tab=promote', label: 'Promote an event', icon: Rocket, tab: 'promote' },
+  { href: '/promoter?tab=boosts', label: 'Short boosts', icon: Megaphone, tab: 'boosts' },
+  { href: '/promoter?tab=intel', label: 'Intelligence', icon: Brain, tab: 'intel' },
+  { href: '/promoter?tab=local', label: 'Local business ads', icon: Store, tab: 'local' },
   { href: '/promoter?tab=insights', label: 'Analytics', icon: BarChart3, tab: 'insights' },
   { href: '/promoter?tab=billing', label: 'Billing', icon: Receipt, tab: 'billing' },
 ] as const
@@ -27,11 +30,16 @@ const TEXT_LINKS = [
 const MOBILE = [
   { href: '/promoter?tab=overview', label: 'Dashboard', icon: LayoutDashboard, tab: 'overview' },
   { href: '/promoter?tab=events', label: 'Events', icon: CalendarDays, tab: 'events' },
-  { href: '/promoter?tab=promote', label: 'Boosts', icon: Megaphone, tab: 'promote' },
+  { href: '/promoter?tab=promote', label: 'Promote', icon: Rocket, tab: 'promote' },
   { href: '/promoter?tab=insights', label: 'Analytics', icon: BarChart3, tab: 'insights' },
 ] as const
 
 const MORE = [
+  { href: '/promoter?tab=boosts', label: 'Short boosts' },
+  { href: '/promoter?tab=intel', label: 'Intelligence' },
+  { href: '/promoter?tab=local', label: 'Local business ads' },
+  { href: '/promoter?tab=billing', label: 'Billing' },
+  { href: '/promoter?tab=events#create', label: 'Create' },
   { href: '/venue', label: 'Venue' },
   { href: '/account', label: 'Settings' },
   { href: '/contact', label: 'Help' },
@@ -86,7 +94,8 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
   const active = (key: string) => {
     if (!onDashboard) return false
     if (key === 'overview') return !tab || tab === 'overview'
-    if (key === 'promote') return tab === 'promote' || tab === 'boosts'
+    if (key === 'promote') return tab === 'promote'
+    if (key === 'create') return false
     if (key === 'create') return false
     return tab === key
   }

@@ -1,10 +1,11 @@
+import { cookies } from 'next/headers'
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { consumerAcceptance } from '@/lib/legal-docs'
+import { consumerAcceptance, promoterAcceptance } from '@/lib/legal-docs'
 import { recordAcceptance } from '@/lib/terms-accept'
 
 const secureCookies = process.env.NODE_ENV === 'production'
@@ -59,7 +60,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === 'google' && user.id) {
         const fresh = await prisma.user.findUnique({ where: { id: user.id }, select: { createdAt: true } }).catch(() => null)
         if (fresh && Date.now() - fresh.createdAt.getTime() < 120_000) {
-          await recordAcceptance(user.id, consumerAcceptance(), 'signup').catch((err) => {
+          const intent = (await cookies()).get('vp-auth-role')?.value
+          const promoter = intent === 'PROMOTER'
+          if (promoter) {
+            await prisma.user.update({ where: { id: user.id }, data: { role: 'PROMOTER' } }).catch((err) => {
+              console.error('[auth] promoter role', err instanceof Error ? err.message : err)
+            })
+          }
+          const needs = promoter ? [promoterAcceptance(), ...consumerAcceptance()] : consumerAcceptance()
+          await recordAcceptance(user.id, needs, 'signup').catch((err) => {
             console.error('[legal] could not record Google signup acceptance', err instanceof Error ? err.message : err)
           })
         }
@@ -69,9 +78,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string
-        token.role = (user as { role?: string }).role ?? 'CONSUMER'
-        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0
-        token.emailVerified = !!(user as { emailVerified?: Date | null }).emailVerified
+        const row = await prisma.user.findUnique({
+          where: { id: user.id as string },
+          select: { role: true, sessionVersion: true, emailVerified: true },
+        }).catch(() => null)
+        token.role = row?.role ?? (user as { role?: string }).role ?? 'CONSUMER'
+        token.sv = row?.sessionVersion ?? (user as { sessionVersion?: number }).sessionVersion ?? 0
+        token.emailVerified = row ? !!row.emailVerified : !!(user as { emailVerified?: Date | null }).emailVerified
         return token
       }
       if (!token.id) return token
