@@ -302,7 +302,9 @@
   --lh: 20px;
   --g: 4px;
   display: grid;
-  grid-template-columns: 10px max-content;
+  width: 100%;
+  max-width: 100%;
+  grid-template-columns: 10px minmax(0, 1fr);
   column-gap: 6px;
   grid-template-rows: var(--lh) var(--lh);
   row-gap: var(--g);
@@ -339,6 +341,13 @@
   font-weight: 700;
   line-height: 0;
   letter-spacing: 0.01em;
+  color: var(--vp-brand-pink);
+}
+.vp-time-day {
+  grid-column: 2;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.1;
   color: var(--vp-brand-pink);
 }
 

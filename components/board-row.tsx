@@ -60,9 +60,9 @@ function TimeStack({ when }: { when: BoardRange }) {
         <span className="vp-time-end">
           <b>{endHm}</b>{endAmpm ? <i>{endAmpm}</i> : null}
           {when.endNote === '+1' ? <sup className="vp-time-next" title="Finishes the next day">+1</sup> : null}
-          {when.endNote && when.endNote !== '+1' ? <sup className="vp-time-next" title={when.endNote}>{when.endNote}</sup> : null}
         </span>
       ) : null}
+      {when.endNote && when.endNote !== '+1' ? <span className="vp-time-day">{when.endNote}</span> : null}
     </div>
   )
 }
