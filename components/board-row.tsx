@@ -43,6 +43,22 @@ function timeLabel(when: BoardRange, end: string): string {
   return `Starts ${when.hm} ${when.ampm}, ends ${end}${next}`
 }
 
+/** Hour in a fixed right-aligned cell so 9:00 and 10:30 share one colon. */
+function ClockFace({ hm, ampm }: { hm: string; ampm: string }) {
+  const parts = /^(\d{1,2}):(\d{2})$/.exec(hm)
+  if (!parts) return <b>{hm}</b>
+  return (
+    <>
+      <b className="vp-time-hm">
+        <span className="vp-time-hour">{parts[1]}</span>
+        <span className="vp-time-colon">:</span>
+        <span className="vp-time-min">{parts[2]}</span>
+      </b>
+      {ampm ? <i>{ampm}</i> : null}
+    </>
+  )
+}
+
 /** Gradient thread: filled start, hairline, hollow finish. Left aligned, no dash. */
 function TimeStack({ when }: { when: BoardRange }) {
   const end = when.endLine?.replace(/^–\s*/, '') ?? ''
@@ -55,10 +71,10 @@ function TimeStack({ when }: { when: BoardRange }) {
         {hasEnd && <span className="vp-time-line" />}
         {hasEnd && <span className="vp-time-ring" />}
       </span>
-      <span className="vp-time-start"><b>{when.hm}</b>{when.ampm ? <i>{when.ampm}</i> : null}</span>
+      <span className="vp-time-start"><ClockFace hm={when.hm} ampm={when.ampm} /></span>
       {hasEnd ? (
         <span className="vp-time-end">
-          <b>{endHm}</b>{endAmpm ? <i>{endAmpm}</i> : null}
+          <ClockFace hm={endHm} ampm={endAmpm} />
           {when.endNote === '+1' ? <sup className="vp-time-next" title="Finishes the next day">+1</sup> : null}
         </span>
       ) : null}
