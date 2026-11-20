@@ -118,9 +118,8 @@ export function emailBanner(kind: string): string {
     return `<img src="${emailEscape(src)}" alt="" width="552" height="184" style="display:block;width:100%;max-width:552px;height:auto;border:0;border-radius:12px;"/>`
   }
   return `<table ${T} width="100%"><tr>
-<td bgcolor="#1a1408" style="background:linear-gradient(105deg,${EMAIL_C.orange} 0%,${EMAIL_C.accent} 100%);border-radius:12px;padding:18px 20px;">
-<div style="font-family:${EMAIL_FONT};font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#1a1408;font-weight:700;">VibePeep</div>
-</td></tr></table>`
+<td height="72" bgcolor="${EMAIL_C.orange}" style="height:72px;background:linear-gradient(105deg,${EMAIL_C.orange} 0%,${EMAIL_C.accent} 100%);border-radius:12px;font-size:0;line-height:0;">&nbsp;</td>
+</tr></table>`
 }
 
 export function emailBodyCell(html: string): string {
