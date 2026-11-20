@@ -8,7 +8,7 @@ import { CITY_NAMES, cityDef } from '@/lib/cities'
 import { knownCategories, presentListing } from '@/lib/categories'
 import { addressInOtherState, isPastEvent } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
-import { isSameEvent } from '@/lib/quality'
+import { collapseShowings, hiddenFromPublic, sameShowing } from '@/lib/listing-visibility'
 import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
@@ -101,6 +101,7 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
     and.push({ OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] })
   }
   and.push(...PUBLIC_EVENT_AND)
+  and.push({ OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] })
   if (a.isLGBTI) where.isLGBTI = true
   if (a.dateFrom) where.date = { ...(where.date as object), gte: new Date(a.dateFrom) }
   if (a.dateTo) where.date = { ...(where.date as object), lte: new Date(a.dateTo) }
@@ -122,23 +123,16 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
   if (city && CITY_NAMES.includes(city)) {
     const def = cityDef(city)
     shown = shown.filter((e) => {
-      if (isPastEvent(e)) return false
+      if (isPastEvent(e) || hiddenFromPublic(e)) return false
       const blob = [e.venueAddress, e.venueName, e.suburb].filter(Boolean).join(' ')
       if (addressInOtherState(blob, def)) return false
       if (e.latitude != null && e.longitude != null && !coordsFitCity(e.latitude, e.longitude, city)) return false
       return true
     })
+  } else {
+    shown = shown.filter((e) => !isPastEvent(e) && !hiddenFromPublic(e))
   }
-  const kept: typeof shown = []
-  for (const event of shown) {
-    const day = (typeof event.date === 'string' ? event.date : event.date.toISOString()).slice(0, 10)
-    const twin = kept.find((earlier) => {
-      const earlierDay = (typeof earlier.date === 'string' ? earlier.date : earlier.date.toISOString()).slice(0, 10)
-      return earlierDay === day && isSameEvent(earlier, event)
-    })
-    if (!twin) kept.push(event)
-  }
-  shown = kept
+  shown = collapseShowings(shown)
   if (categories.length) shown = shown.filter((e) => categories.includes(e.category))
   if (suburb) {
     const want = suburb.toLowerCase()
@@ -154,9 +148,21 @@ async function queryBoard(raw: string) {
     ? [{ date: 'asc' as const }, { time: { sort: 'asc' as const, nulls: 'last' as const } }, { title: 'asc' as const }]
     : [{ title: 'asc' as const }]
   const skip = (a.page - 1) * a.limit
-  const events = await prisma.event.findMany({ where, orderBy, skip, take: a.limit, select: BOARD_SELECT })
-  const shown = shapeBoard(events, a.city, a.categories, a.suburb)
-  const fullPage = events.length === a.limit
+  const gathered: ReturnType<typeof shapeBoard> = []
+  let scanned = 0
+  let fullPage = false
+  while (gathered.length < a.limit && scanned < a.limit * 5) {
+    const events = await prisma.event.findMany({ where, orderBy, skip: skip + scanned, take: a.limit, select: BOARD_SELECT })
+    scanned += events.length
+    fullPage = events.length === a.limit
+    for (const row of shapeBoard(events, a.city, a.categories, a.suburb)) {
+      if (gathered.some((earlier) => earlier.id === row.id || sameShowing(earlier, row))) continue
+      gathered.push(row)
+      if (gathered.length >= a.limit) break
+    }
+    if (!fullPage) break
+  }
+  const shown = gathered.slice(0, a.limit)
   const total = fullPage
     ? await prisma.event.count({ where })
     : skip + shown.length
@@ -178,7 +184,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v9'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v10'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 

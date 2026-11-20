@@ -8,11 +8,12 @@ import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images
 import { placeholderAbsolute } from '@/lib/placeholders'
 import { presentListing } from '@/lib/categories'
 import { evaluateSeasons, type SeasonDecision } from '@/lib/seasons'
-import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
+import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isPastEvent, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
 import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 import { listingBucket, minutesNow, orderedWindow } from '@/lib/listing-window'
+import { collapseShowings, hiddenFromPublic } from '@/lib/listing-visibility'
 
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
@@ -73,8 +74,7 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   const tonight = opts.when === 'tonight' || (!opts.when && opts.topic === 'tonight')
   try {
     const rows = await withStatementTimeout(8_000, (tx) => tx.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: post || tonight ? 500 : take * 2 }))
-    let clean = rows
-      .filter((e) => !addressInOtherState(e.venueAddress, city))
+    let clean = collapseShowings(rows.filter((e) => !addressInOtherState(e.venueAddress, city) && !isPastEvent(e) && !hiddenFromPublic(e)))
       .map((e) => presentListing(e))
     if (post && opts.topic) clean = clean.filter((e) => matchesTopic(e, opts.topic!))
     if (tonight) {
@@ -337,7 +337,7 @@ async function queryGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
     tx.event.findMany({
       where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) }, AND: [...PUBLIC_EVENT_AND] },
       select: {
-        id: true, title: true, date: true, time: true, endTime: true, venueName: true, venueAddress: true, suburb: true,
+        id: true, title: true, date: true, endDate: true, time: true, endTime: true, endsAt: true, venueName: true, venueAddress: true, suburb: true,
         category: true, subTags: true, isFree: true, isLGBTI: true,
       },
     }),
@@ -349,7 +349,7 @@ async function queryGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
   const eventRows: InvRow[] = []
   const titles = new Set<string>()
   for (const raw of events) {
-    if (addressInOtherState(raw.venueAddress, city)) continue
+    if (addressInOtherState(raw.venueAddress, city) || isPastEvent({ ...raw, city: city.name }) || hiddenFromPublic({ ...raw, city: city.name })) continue
     const shown = presentListing({ ...raw, city: city.name })
     const suburb = raw.suburb?.trim() || null
     titles.add(normTitle(shown.title))
