@@ -3,7 +3,10 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bookmark, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
+import { Bookmark, CalendarDays, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
+import { FilterBar, filterChipClass } from '@/components/filter-bar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import { LocalNeighbourhoodMap, type LocalMapPin } from '@/components/local-neighbourhood-map'
 import { CITIES } from '@/lib/cities'
 import { HeroCard } from '@/components/hero-card'
@@ -38,13 +41,6 @@ export type LocalItem = {
   blurb?: string | null
   imageUrl?: string | null
 }
-
-const WHEN = [
-  { key: 'today', label: 'Today' },
-  { key: 'weekend', label: 'This weekend' },
-  { key: '7', label: 'Next 7 days' },
-  { key: '30', label: 'Next 30 days' },
-] as const
 
 const PREVIEW = 4
 const ACCENT: Record<string, string> = {
@@ -88,7 +84,7 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
     <span className={cn('relative block overflow-hidden bg-white', className)}>
       <picture>
         <source srcSet={tile.srcSmall} media="(max-width: 640px)" />
-        <img src={tile.src} alt={tile.alt} className={cn('absolute inset-0 h-full w-full object-center', tile.src.includes('-hq') ? 'object-cover' : 'object-contain')} />
+        <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center p-2" />
       </picture>
     </span>
   )
@@ -146,7 +142,9 @@ export function LocalBrowse({
   const router = useRouter()
   const [mode, setMode] = useState<'board' | 'map' | 'list'>('list')
   const [sort, setSort] = useState<'soon' | 'name'>('soon')
-  const whenLabel = WHEN.find((item) => item.key === when)?.label.toLowerCase() ?? 'soon'
+  const [calOpen, setCalOpen] = useState(false)
+  const pickedDate = /^\d{4}-\d{2}-\d{2}$/.test(when)
+  const whenLabel = when === 'today' ? 'today' : when === 'tonight' ? 'tonight' : when === 'weekend' ? 'this weekend' : pickedDate ? new Date(`${when}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'soon'
   const searching = appliedQuery.trim()
   const filtered = category || suburb || query.trim() || searching || when !== 'weekend'
   const clearQuery = () => { setQuery(''); applyQuery('') }
@@ -212,7 +210,7 @@ export function LocalBrowse({
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
         <div className="relative mt-4">
-          <div className="flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:none] max-lg:[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] lg:grid lg:grid-cols-5 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x snap-mandatory gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:none] [mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] min-[1100px]:grid min-[1100px]:snap-none min-[1100px]:grid-cols-10 min-[1100px]:overflow-visible min-[1100px]:[mask-image:none] [&::-webkit-scrollbar]:hidden">
             {LOCAL_TILES.map((tile) => (
               <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
             ))}
@@ -275,7 +273,7 @@ export function LocalBrowse({
             <p className="mt-1 text-muted-foreground">Everything happening around you. All in one place.</p>
           </div>
         </div>
-        <div className="mt-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mt-4 flex flex-col gap-2 px-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="flex gap-1 rounded-full bg-muted p-1" role="tablist" aria-label="Local board view">
             {([['list', 'List', List], ['board', 'Board', LayoutGrid], ['map', 'Map', MapIcon]] as const).map(([key, label, Icon]) => (
               <button key={key} type="button" role="tab" aria-selected={mode === key} onClick={() => setMode(key)} className={cn('inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold lg:flex-none', mode === key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
@@ -283,11 +281,7 @@ export function LocalBrowse({
               </button>
             ))}
           </div>
-          <div className="relative min-w-0">
-            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {WHEN.map((item) => (
-              <button key={item.key} type="button" onClick={() => setWhen(item.key)} className={cn('h-11 shrink-0 rounded-full px-4 text-sm font-medium', when === item.key ? 'bg-foreground text-background' : 'border border-border bg-card')}>{item.label}</button>
-            ))}
+          <div className="flex gap-2">
             {mode === 'list' && (
               <select value={sort} onChange={(event) => setSort(event.target.value === 'name' ? 'name' : 'soon')} aria-label="Sort the list" className="h-11 rounded-full border border-border bg-card px-3 text-sm">
                 <option value="soon">Soonest</option>
@@ -295,8 +289,45 @@ export function LocalBrowse({
               </select>
             )}
             {filtered && <button type="button" onClick={reset} className="h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-primary">Reset</button>}
-            </div>
           </div>
+        </div>
+        <div className="mt-2">
+          <FilterBar
+            dates={[
+              { key: 'today', label: 'Today', pressed: when === 'today', onClick: () => setWhen('today') },
+              { key: 'tonight', label: 'Tonight', pressed: when === 'tonight', onClick: () => setWhen('tonight') },
+              { key: 'weekend', label: 'This weekend', pressed: when === 'weekend', onClick: () => setWhen('weekend') },
+            ]}
+            picker={(
+              <Popover open={calOpen} onOpenChange={setCalOpen}>
+                <PopoverTrigger asChild>
+                  <button type="button" aria-pressed={pickedDate} className={filterChipClass(pickedDate)}>
+                    <CalendarDays className="h-4 w-4" /> {pickedDate ? whenLabel : 'Pick a date'}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={pickedDate ? new Date(`${when}T12:00:00`) : undefined}
+                    disabled={today ? { before: new Date(`${today}T00:00:00`) } : undefined}
+                    onSelect={(d) => {
+                      if (!d) return
+                      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                      setWhen(iso)
+                      setCalOpen(false)
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+            searchId="local-board-search"
+            searchValue={query}
+            onSearch={setQuery}
+            onClear={clearQuery}
+            searchPlaceholder="Search listings"
+            searchLabel="Search local listings"
+          />
         </div>
         <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}{searching ? ` · “${searching}”` : ''}</p>
 
@@ -404,9 +435,9 @@ function SearchEmpty({ query, city, onClear, onList, centered }: { query: string
 
 function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; onPick: () => void }) {
   return (
-    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('w-[9.5rem] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
-      <MascotFrame tile={tile} className="h-32 w-full" />
-      <span className="block px-2 py-2 text-center text-sm font-semibold leading-tight">{tile.label}</span>
+    <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('flex w-[8.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition min-[1100px]:h-full min-[1100px]:w-auto min-[1100px]:min-w-0', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
+      <MascotFrame tile={tile} className="aspect-[5/4] w-full shrink-0" />
+      <span className="flex min-h-11 items-center justify-center px-1 py-1.5 text-center text-[11px] font-semibold leading-tight min-[1100px]:text-xs">{tile.label}</span>
     </button>
   )
 }
