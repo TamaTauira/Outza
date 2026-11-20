@@ -85,14 +85,18 @@ export function ReachDashboard({
         <p className="mt-1 text-xs text-muted-foreground">Seen, then opened, then saved, then a Get tickets tap. Saves can happen from the board before anyone opens the page.</p>
         <ol className="mt-4 space-y-3">
           {payload.funnel.map((stage) => {
-            const width = stage.value == null ? 8 : Math.max(8, stage.share ?? 0)
+            const locked = stage.value == null
+            const empty = !locked && stage.value === 0
+            const width = locked || empty ? 0 : Math.max(8, stage.share ?? 0)
             return (
               <li key={stage.label}>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="font-medium">{stage.label}</span>
-                  <span className="tabular-nums">{stage.value == null ? 'Locked' : stage.value.toLocaleString('en-AU')}{stage.share != null ? ` · ${stage.share}% of the first step` : ''}</span>
+                  <span className="tabular-nums">{locked ? 'Locked' : stage.value!.toLocaleString('en-AU')}{stage.share != null && !locked ? ` · ${stage.share}% of the first step` : ''}</span>
                 </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} /></div>
+                <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
+                  {!locked && !empty && <div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} />}
+                </div>
               </li>
             )
           })}

@@ -96,7 +96,7 @@ function SignupForm() {
       </div>
       {role === 'PROMOTER' ? (
         agreePromoterTerms
-          ? <GoogleButton redirectTo="/promoter?google=1" label="Sign up with Google" />
+          ? <GoogleButton redirectTo="/promoter" intent="PROMOTER" label="Sign up with Google" />
           : <p className="text-xs text-muted-foreground">Tick the Promoter Terms before signing up with Google.</p>
       ) : <GoogleButton redirectTo="/account" label="Sign up with Google" />}
       <div className="space-y-1.5">

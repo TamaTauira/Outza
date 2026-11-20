@@ -38,6 +38,10 @@ function LoginForm() {
     ])
     setLoading(false)
     if (!ok) { setError('That email or password didn’t match. If you don’t have an account yet, create one first.'); return }
+    const session = await fetch('/api/auth/session').then((res) => res.json()).catch(() => null)
+    const role = session?.user?.role
+    const promoterSafe = !!requested && (requested.startsWith('/promoter') || requested.startsWith('/venue') || requested.startsWith('/events/') || requested.startsWith('/contact'))
+    if (role === 'PROMOTER' || role === 'ADMIN') { router.replace(promoterSafe ? requested! : '/promoter'); return }
     router.replace(next)
   }
 
@@ -68,7 +72,7 @@ function LoginForm() {
         </div>
       )}
       {mode === 'PROMOTER'
-        ? <GoogleButton redirectTo={next} label="Promoter sign in with Google" />
+        ? <GoogleButton redirectTo={next} intent="PROMOTER" label="Promoter sign in with Google" />
         : mode === 'CONSUMER'
           ? <GoogleButton redirectTo={next} />
           : null}

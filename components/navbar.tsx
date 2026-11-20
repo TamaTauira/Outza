@@ -121,9 +121,9 @@ export function Navbar({ savedCount }: NavbarProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="truncate">{user.name || user.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild><Link href="/itinerary"><CalendarPlusIcon className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>
-                <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />Your account</Link></DropdownMenuItem>
+                {!isPromoter && <DropdownMenuItem asChild><Link href="/itinerary"><CalendarPlusIcon className="w-4 h-4 mr-2" />Itinerary</Link></DropdownMenuItem>}
+                {!isPromoter && <DropdownMenuItem asChild><Link href="/together"><Users className="w-4 h-4 mr-2" />Plan with your crew</Link></DropdownMenuItem>}
+                <DropdownMenuItem asChild><Link href="/account"><Settings className="w-4 h-4 mr-2" />{isPromoter ? 'Promoter settings' : 'Your account'}</Link></DropdownMenuItem>
                 {hasListings && <DropdownMenuItem asChild><Link href="/local?tab=mine"><List className="w-4 h-4 mr-2" />Your listings</Link></DropdownMenuItem>}
                 {user.role === 'PARTNER'
                   ? <DropdownMenuItem asChild><Link href="/partners"><Megaphone className="w-4 h-4 mr-2" />Source partner overview</Link></DropdownMenuItem>
