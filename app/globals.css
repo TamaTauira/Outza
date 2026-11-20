@@ -292,6 +292,11 @@
   padding-top: var(--vp-page-top);
 }
 
+/* Wins over the header sibling rule, which otherwise zeroes padding on main. */
+.vp-site-header ~ main.vp-page-top {
+  padding-top: var(--vp-page-top);
+}
+
 .vp-stack {
   display: flex;
   flex-direction: column;
