@@ -6,7 +6,7 @@ export function PromoterSalesHeader({ accountHref }: { accountHref: string }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="vp-wrap flex h-16 items-center gap-3 px-4 sm:px-6">
-        <Link href="/" className="flex min-w-0 items-center gap-2" aria-label="VibePeep home">
+        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="VibePeep home">
           <VibePeepLogo size="sm" />
         </Link>
         <p className="hidden text-sm font-semibold sm:block">for Promoters</p>

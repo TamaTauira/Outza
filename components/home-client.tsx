@@ -445,7 +445,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'map' && (
           <div className="vp-wrap flex min-h-0 w-full flex-1 flex-col px-4 pb-3 sm:px-6">
             <h1 className="sr-only">Map</h1>
-            <div className="vp-map-toolbar flex shrink-0 flex-col gap-[var(--vp-card-gap)] bg-background py-2 sm:flex-row sm:items-center">
+            <div className="vp-map-toolbar flex shrink-0 flex-col gap-[var(--vp-card-gap)] bg-background py-[var(--vp-page-top)] sm:flex-row sm:items-center">
               <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none">
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
                   <MapPin className="h-4 w-4 shrink-0 text-primary" />

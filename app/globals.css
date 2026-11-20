@@ -292,8 +292,10 @@
   padding-top: var(--vp-page-top);
 }
 
-/* Wins over the header sibling rule, which otherwise zeroes padding on main. */
-.vp-site-header ~ main.vp-page-top {
+/* Same token when the gap lives on main. The header sibling rule in
+   bottom-nav.css must not match main.vp-page-top, or this loses on cascade. */
+.vp-site-header ~ main.vp-page-top,
+html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   padding-top: var(--vp-page-top);
 }
 

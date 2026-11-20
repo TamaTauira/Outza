@@ -11,8 +11,10 @@
   display: none;
 }
 
-/* The first block’s .vp-page-top is the only gap under the header. */
-.vp-site-header ~ main:not(.vp-map-main) {
+/* An inner .vp-page-top is the only gap under the header.
+   main.vp-page-top is that gap itself (Local, Itinerary, promoter), so it keeps the token.
+   Zeroing it here used to win over globals.css because this file loads later. */
+.vp-site-header ~ main:not(.vp-map-main):not(.vp-page-top) {
   padding-top: 0;
 }
 
@@ -65,7 +67,7 @@
     display: none !important;
   }
 
-  .vp-site-header ~ main:not(.vp-map-main) {
+  .vp-site-header ~ main:not(.vp-map-main):not(.vp-page-top) {
     padding-top: 0;
   }
 
@@ -531,7 +533,7 @@ html[data-vp-fold='side'] .vp-site-header.sticky {
   top: auto;
 }
 
-html[data-vp-fold='side'] .vp-site-header ~ main:not(.vp-map-main) {
+html[data-vp-fold='side'] .vp-site-header ~ main:not(.vp-map-main):not(.vp-page-top) {
   padding-top: 0;
 }
 
