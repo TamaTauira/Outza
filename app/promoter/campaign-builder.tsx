@@ -73,7 +73,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
   }
 
   return (
-    <div className="grid lg:grid-cols-[1fr_340px] gap-8">
+    <div className="vp-card-grid lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="space-y-8">
         <Step n={1} title="Choose the event">
           <select value={eventId} onChange={(e) => onEventChange(e.target.value)} className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm" aria-label="Event to promote">

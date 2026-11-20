@@ -187,7 +187,7 @@ export function HomeRails({
             <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{rail.label}</h2>
             {rail.items.length >= 4 && <button type="button" onClick={() => onSeeAll(rail.key)} className="text-sm font-semibold text-primary hover:underline">See all</button>}
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
+          <div className="flex gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
             {rail.items.map((ev) => <RailCard key={`${rail.key}-${ev.id}`} ev={ev} />)}
           </div>
         </section>

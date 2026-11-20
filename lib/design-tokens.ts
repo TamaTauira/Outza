@@ -47,6 +47,9 @@ export const VP_CONTAINER_MAX = '1760px'
 /** Gap under the sticky nav. Matches the Map toolbar padding-top. */
 export const VP_PAGE_TOP = '0.5rem'
 
+/** One gap between cards, horizontal and vertical. */
+export const VP_CARD_GAP = '1rem'
+
 export const VP_TYPE = {
   display: 'Manrope',
   body: 'Inter',

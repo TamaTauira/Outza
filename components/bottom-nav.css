@@ -11,10 +11,9 @@
   display: none;
 }
 
-/* Page mains sit just under the header. Desktop keeps a short breath; phones,
-   tablets and folds pull content up so the first line is not stranded. */
+/* The first block’s .vp-page-top is the only gap under the header. */
 .vp-site-header ~ main:not(.vp-map-main) {
-  padding-top: 1.25rem;
+  padding-top: 0;
 }
 
 .vp-hinge {
@@ -67,7 +66,7 @@
   }
 
   .vp-site-header ~ main:not(.vp-map-main) {
-    padding-top: 0.625rem;
+    padding-top: 0;
   }
 
   .vp-site-header {
@@ -533,7 +532,7 @@ html[data-vp-fold='side'] .vp-site-header.sticky {
 }
 
 html[data-vp-fold='side'] .vp-site-header ~ main:not(.vp-map-main) {
-  padding-top: 0.625rem;
+  padding-top: 0;
 }
 
 html[data-vp-fold='side'] .vp-bottom-nav {

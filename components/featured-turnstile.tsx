@@ -52,7 +52,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
         </div>
         <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Put your gig up here</Link>
       </div>
-      <div className="flex gap-3 overflow-x-auto pb-1 snap-x [scrollbar-width:thin] lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-4">
+      <div className="flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-4">
         {cards}
       </div>
     </section>

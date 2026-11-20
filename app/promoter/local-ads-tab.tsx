@@ -28,7 +28,7 @@ export function LocalAdsTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="vp-stack">
       <section className="rounded-xl bg-card border border-border p-5 shadow-sm">
         <div className="flex items-start gap-4">
           <span className="w-10 h-10 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0"><Store className="w-5 h-5" /></span>

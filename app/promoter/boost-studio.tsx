@@ -191,7 +191,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
       {!events.length ? (
         <p className="text-sm text-muted-foreground">You need an upcoming event on the dashboard before a boost has somewhere to sit.</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="vp-card-grid lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="space-y-5">
             <label className="block text-sm font-medium">Event
               <select value={eventId} onChange={(e) => { setEventId(e.target.value); setPreview(false) }} className={`${field} mt-1`} aria-label="Event to boost">

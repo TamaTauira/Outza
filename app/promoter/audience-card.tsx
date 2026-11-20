@@ -65,14 +65,14 @@ export function AudienceCard() {
             <p className="text-sm rounded-lg bg-muted/60 px-4 py-3">The crowd's still gathering! Once {MIN_GROUP}+ signed-in people engage with your events, age bands, home areas and more show up here.</p>
           )}
           {data.enough && (
-            <div className="grid sm:grid-cols-2 gap-4">
+            <div className="vp-card-grid sm:grid-cols-2">
               <Bars title="Age bands" Icon={Users} items={data.ageBands} empty={hiddenNote} />
               <Bars title="Home areas" Icon={MapPin} items={data.areas} empty={hiddenNote} />
               <Bars title="Also into" Icon={Heart} items={data.interests} empty={hiddenNote} />
               <Bars title="How far ahead they plan" Icon={CalendarClock} items={data.planAhead} empty={hiddenNote} />
             </div>
           )}
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="vp-card-grid sm:grid-cols-3">
             <Top title="Most saved" Icon={Bookmark} items={data.topSaved} unit="saves" />
             <Top title="Most shared" Icon={Share2} items={data.topShared} unit="shares" />
             <Top title="Most added to itineraries" Icon={Route} items={data.topItinerary} unit="adds" />

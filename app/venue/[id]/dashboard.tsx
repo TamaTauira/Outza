@@ -138,7 +138,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
         <section className="mt-5 space-y-3">
           <p className="text-sm text-muted-foreground">{events.filter((event) => event.when !== 'past').length} upcoming and {events.filter((event) => event.when === 'past').length} recent listings at this venue. You can correct price, time, image and cancellations. A full edit still needs an organiser grant.</p>
           {followers != null && <p className="text-sm">{followers === 1 ? '1 person follows this venue.' : `${followers} people follow this venue.`} New listings can show up in their email when they’ve asked for it.</p>}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="vp-card-grid grid-cols-2">
             <button type="button" onClick={() => setTab('My Venue')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">Edit Profile</button>
             <button type="button" onClick={() => setTab('Upcoming Events')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">What’s On</button>
             <button type="button" onClick={() => setTab('Analytics')} className="rounded-xl border border-border p-3 text-left text-sm font-semibold">The Numbers</button>
