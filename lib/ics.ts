@@ -49,6 +49,29 @@ export function foldIcsLine(line: string): string {
   return parts.join('\r\n')
 }
 
+const AU_ZONES: Record<string, string> = {
+  'Australia/Sydney': `BEGIN:VTIMEZONE\r\nTZID:Australia/Sydney\r\nBEGIN:STANDARD\r\nDTSTART:19700405T030000\r\nRRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU\r\nTZOFFSETFROM:+1100\r\nTZOFFSETTO:+1000\r\nTZNAME:AEST\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:19701004T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=1SU\r\nTZOFFSETFROM:+1000\r\nTZOFFSETTO:+1100\r\nTZNAME:AEDT\r\nEND:DAYLIGHT\r\nEND:VTIMEZONE`,
+  'Australia/Melbourne': `BEGIN:VTIMEZONE\r\nTZID:Australia/Melbourne\r\nBEGIN:STANDARD\r\nDTSTART:19700405T030000\r\nRRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU\r\nTZOFFSETFROM:+1100\r\nTZOFFSETTO:+1000\r\nTZNAME:AEST\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:19701004T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=1SU\r\nTZOFFSETFROM:+1000\r\nTZOFFSETTO:+1100\r\nTZNAME:AEDT\r\nEND:DAYLIGHT\r\nEND:VTIMEZONE`,
+  'Australia/Hobart': `BEGIN:VTIMEZONE\r\nTZID:Australia/Hobart\r\nBEGIN:STANDARD\r\nDTSTART:19700405T030000\r\nRRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU\r\nTZOFFSETFROM:+1100\r\nTZOFFSETTO:+1000\r\nTZNAME:AEST\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:19701004T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=1SU\r\nTZOFFSETFROM:+1000\r\nTZOFFSETTO:+1100\r\nTZNAME:AEDT\r\nEND:DAYLIGHT\r\nEND:VTIMEZONE`,
+  'Australia/Adelaide': `BEGIN:VTIMEZONE\r\nTZID:Australia/Adelaide\r\nBEGIN:STANDARD\r\nDTSTART:19700405T030000\r\nRRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU\r\nTZOFFSETFROM:+1030\r\nTZOFFSETTO:+0930\r\nTZNAME:ACST\r\nEND:STANDARD\r\nBEGIN:DAYLIGHT\r\nDTSTART:19701004T020000\r\nRRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=1SU\r\nTZOFFSETFROM:+0930\r\nTZOFFSETTO:+1030\r\nTZNAME:ACDT\r\nEND:DAYLIGHT\r\nEND:VTIMEZONE`,
+  'Australia/Brisbane': `BEGIN:VTIMEZONE\r\nTZID:Australia/Brisbane\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+1000\r\nTZOFFSETTO:+1000\r\nTZNAME:AEST\r\nEND:STANDARD\r\nEND:VTIMEZONE`,
+  'Australia/Perth': `BEGIN:VTIMEZONE\r\nTZID:Australia/Perth\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0800\r\nTZOFFSETTO:+0800\r\nTZNAME:AWST\r\nEND:STANDARD\r\nEND:VTIMEZONE`,
+  'Australia/Darwin': `BEGIN:VTIMEZONE\r\nTZID:Australia/Darwin\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:+0930\r\nTZOFFSETTO:+0930\r\nTZNAME:ACST\r\nEND:STANDARD\r\nEND:VTIMEZONE`,
+}
+
+function vtimezoneBlocks(events: IcsEvent[]): string[] {
+  const seen = new Set<string>()
+  const blocks: string[] = []
+  for (const ev of events) {
+    const tz = cityDef(ev.city).tz
+    if (seen.has(tz)) continue
+    seen.add(tz)
+    const block = AU_ZONES[tz]
+    if (block) blocks.push(...block.split('\r\n'))
+  }
+  return blocks
+}
+
 /** Calendar file for saved events. Times stay in the event city's timezone. No live availability. */
 export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; stamp?: Date } = {}): string {
   const stamp = (opts.stamp ?? new Date()).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
@@ -58,6 +81,7 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
     'PRODID:-//VibePeep//My VibePeep//EN',
     'CALSCALE:GREGORIAN',
     `X-WR-CALNAME:${icsEscape(opts.calendarName ?? 'My VibePeep')}`,
+    ...vtimezoneBlocks(events),
   ]
   for (const ev of events) {
     const startKey = dateKey(ev.date)
@@ -73,8 +97,8 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
       next.setUTCDate(next.getUTCDate() + 1)
       endDay = next.toISOString().slice(0, 10).replace(/-/g, '')
     }
-    if (start && end) dtEnd = `DTEND;TZID=${tz}:${endDay}T${end.replace(':', '')}00`
-    else if (start) dtEnd = 'DURATION:PT2H'
+    if (start && end && end !== '23:59') dtEnd = `DTEND;TZID=${tz}:${endDay}T${end.replace(':', '')}00`
+    else if (start) dtEnd = ''
     else {
       const next = new Date(`${endKey.slice(0, 4)}-${endKey.slice(4, 6)}-${endKey.slice(6, 8)}T00:00:00Z`)
       next.setUTCDate(next.getUTCDate() + 1)
@@ -86,7 +110,7 @@ export function eventsToIcs(events: IcsEvent[], opts: { calendarName?: string; s
       `UID:${icsEscape(ev.id)}@vibepeep`,
       `DTSTAMP:${stamp}`,
       dtStart,
-      dtEnd,
+      ...(dtEnd ? [dtEnd] : []),
       `SUMMARY:${icsEscape(ev.title)}`,
       `LOCATION:${icsEscape([ev.venueName, ev.city].filter(Boolean).join(', '))}`,
       ...(ev.url ? [`URL:${icsEscape(ev.url)}`] : []),

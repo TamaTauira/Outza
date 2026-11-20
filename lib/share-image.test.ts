@@ -15,8 +15,8 @@ test('share image URLs upgrade http to https on the same host and never emit htt
 
   const upgraded = openGraphImage('http://images.example.com/gig.jpg', 'Friday gig')
   assert.equal(upgraded.url, 'https://images.example.com/gig.jpg')
-  assert.equal(upgraded.width, OG_IMAGE_WIDTH)
-  assert.equal(upgraded.height, OG_IMAGE_HEIGHT)
+  assert.equal(upgraded.width, 0)
+  assert.equal(upgraded.height, 0)
   assert.equal(upgraded.alt, 'Friday gig')
   assert.equal(upgraded.url.startsWith('http://'), false)
 

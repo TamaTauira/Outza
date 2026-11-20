@@ -82,19 +82,19 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         </Step>
 
         <Step n={2} title="Pick a package">
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid items-stretch gap-3 pt-3 sm:grid-cols-3">
             {TIERS.map((t) => {
               const on = tier === t.key
               return (
                 <button key={t.key} type="button" onClick={() => { setTier(t.key); setReview(false) }} aria-pressed={on}
-                  className={cn('relative text-left rounded-xl border p-4 transition-all bg-background', on ? 'border-primary ring-2 ring-primary/40 shadow-md' : 'border-border hover:border-muted-foreground/40')}>
-                  {t.key === 'BRONZE' && <span className="absolute -top-2 right-3 rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">POPULAR</span>}
-                  <span className="block h-1.5 w-10 rounded-full mb-3" style={{ backgroundColor: t.color }} />
+                  className={cn('relative flex h-full flex-col rounded-xl border bg-background p-4 text-left transition-all', on ? 'border-primary shadow-md ring-2 ring-primary/40' : 'border-border hover:border-muted-foreground/40')}>
+                  {t.key === 'BRONZE' && <span className="absolute -top-2 right-3 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">POPULAR</span>}
+                  <span className="mb-3 block h-1.5 w-10 rounded-full" style={{ backgroundColor: t.color }} />
                   <p className="font-semibold">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.tagline}</p>
-                  <p className="mt-2 text-xl font-bold">{formatAud(t.prices[days])}</p>
+                  <p className="min-h-[2.5rem] text-xs text-muted-foreground">{t.tagline}</p>
+                  <p className="mt-auto pt-3 text-xl font-bold tabular-nums">{formatAud(t.prices[days])}</p>
                   <p className="text-xs text-muted-foreground">{days} days</p>
-                  <ul className="mt-2 space-y-1">{t.perks.map((p) => <li key={p} className="flex gap-1.5 text-xs text-muted-foreground"><Check className="w-3.5 h-3.5 shrink-0 text-primary mt-px" />{p}</li>)}</ul>
+                  <ul className="mt-2 space-y-1">{t.perks.map((p) => <li key={p} className="flex gap-1.5 text-xs text-muted-foreground"><Check className="mt-px h-3.5 w-3.5 shrink-0 text-primary" />{p}</li>)}</ul>
                 </button>
               )
             })}
@@ -102,10 +102,10 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         </Step>
 
         <Step n={3} title="How long should it run?">
-          <div className="inline-flex rounded-lg border border-border p-1 bg-background" role="radiogroup" aria-label="Campaign length">
+          <div className="grid w-full grid-cols-3 rounded-lg border border-border bg-background p-1" role="radiogroup" aria-label="Campaign length">
             {DURATIONS.map((d) => (
               <button key={d.days} type="button" role="radio" aria-checked={days === d.days} onClick={() => setDays(d.days)}
-                className={cn('px-4 h-9 rounded-md text-sm font-medium transition-colors', days === d.days ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
+                className={cn('h-11 w-full rounded-md px-2 text-sm font-medium transition-colors', days === d.days ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
                 {d.label}{d.note && <span className="hidden sm:inline text-xs opacity-80"> · {d.note}</span>}
               </button>
             ))}

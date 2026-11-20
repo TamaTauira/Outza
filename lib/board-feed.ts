@@ -8,6 +8,7 @@ import { CITY_NAMES, cityDef } from '@/lib/cities'
 import { knownCategories, presentListing } from '@/lib/categories'
 import { addressInOtherState, isPastEvent } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
+import { isSameEvent } from '@/lib/quality'
 import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
@@ -128,14 +129,16 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
       return true
     })
   }
-  const seenTitle = new Set<string>()
-  shown = shown.filter((e) => {
-    const day = (typeof e.date === 'string' ? e.date : e.date.toISOString()).slice(0, 10)
-    const key = `${e.title.trim().toLowerCase()}|${day}|${(e.venueName ?? '').trim().toLowerCase()}`
-    if (seenTitle.has(key)) return false
-    seenTitle.add(key)
-    return true
-  })
+  const kept: typeof shown = []
+  for (const event of shown) {
+    const day = (typeof event.date === 'string' ? event.date : event.date.toISOString()).slice(0, 10)
+    const twin = kept.find((earlier) => {
+      const earlierDay = (typeof earlier.date === 'string' ? earlier.date : earlier.date.toISOString()).slice(0, 10)
+      return earlierDay === day && isSameEvent(earlier, event)
+    })
+    if (!twin) kept.push(event)
+  }
+  shown = kept
   if (categories.length) shown = shown.filter((e) => categories.includes(e.category))
   if (suburb) {
     const want = suburb.toLowerCase()

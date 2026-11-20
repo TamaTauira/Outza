@@ -72,7 +72,8 @@ export function coordsFitCity(lat: number, lng: number, city?: string | null): b
   const known = CITIES.some((c) => c.name.toLowerCase() === name.toLowerCase())
   if (!known) return true
   const centre = cityDef(name)
-  return distanceKm({ lat, lng }, { lat: centre.lat, lng: centre.lng }) <= 150
+  // A bit wider than the catalogue radius so greater-metro events stay, and a Tasmanian town does not land on Hobart.
+  return distanceKm({ lat, lng }, { lat: centre.lat, lng: centre.lng }) <= centre.radiusKm * 1.6
 }
 
 /** Nearest catalogue city. Outside Australia returns null so "near me" does not guess. */

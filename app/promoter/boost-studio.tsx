@@ -201,11 +201,11 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
             <div className="grid gap-3 sm:grid-cols-2">
               {boosts.map((row) => (
                 <button key={row.id} type="button" onClick={() => { setInventoryId(row.id as BoostId); setPreview(false) }} aria-pressed={inventoryId === row.id}
-                  className={`rounded-xl border p-4 text-left ${inventoryId === row.id ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}>
+                  className={`flex h-full flex-col rounded-xl border p-4 text-left ${inventoryId === row.id ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}>
                   <p className="font-semibold">{row.name}</p>
-                  <p className="mt-1 text-lg font-bold">{formatAud(pro ? Math.round(row.priceCents * 0.85) : row.priceCents)} <span className="text-xs font-normal text-muted-foreground">AUD incl. GST{pro ? ' · Pro price' : ''}</span></p>
-                  <p className="mt-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Guaranteed. </span>{row.guaranteed}</p>
-                  <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Estimated. </span>{row.estimated}</p>
+                  <p className="mt-auto pt-3 text-lg font-bold tabular-nums">{formatAud(pro ? Math.round(row.priceCents * 0.85) : row.priceCents)} <span className="text-xs font-normal text-muted-foreground">AUD incl. GST{pro ? ' · Pro price' : ''}</span></p>
+                  <p className="mt-2 min-h-[4.5rem] text-xs text-muted-foreground"><span className="font-semibold text-foreground">Guaranteed. </span>{row.guaranteed}</p>
+                  <p className="mt-1 min-h-[4.5rem] text-xs text-muted-foreground"><span className="font-semibold text-foreground">Estimated. </span>{row.estimated}</p>
                 </button>
               ))}
             </div>
