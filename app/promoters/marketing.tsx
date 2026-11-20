@@ -102,7 +102,7 @@ export function PathCards() {
     <section id="paths" className="scroll-mt-24 py-12 sm:py-14">
       <div className={sectionPad}>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">What are you here for?</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid items-stretch gap-[var(--vp-card-gap)] md:grid-cols-3">
           {PATHS.map((path) => (
             <a
               key={path.href}
@@ -128,7 +128,7 @@ export function HowItWorks() {
     <section id="how" className="scroll-mt-24 border-y border-border bg-card/50 py-10 sm:py-12">
       <div className={sectionPad}>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
-        <ol className="mt-6 grid gap-4 md:grid-cols-3">
+        <ol className="mt-6 grid items-stretch gap-[var(--vp-card-gap)] md:grid-cols-3">
           {STEPS.map((step) => (
             <li key={step.n} className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
@@ -152,7 +152,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
         <p className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">Monthly · separate from one-off packages</p>
         <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">For crews who always have something on.</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">For venues, organisers and businesses that have things happening regularly.</p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid items-stretch gap-[var(--vp-card-gap)] sm:grid-cols-2 xl:grid-cols-4">
           {BUSINESS_PLANS.map((plan) => (
             <article key={plan.key} data-testid={`plan-${plan.key}`} className="flex min-w-0 flex-col rounded-3xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
@@ -188,7 +188,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
 export function LocalAds({ href, label }: { href: string; label: string }) {
   return (
     <section id="local" className="scroll-mt-24 py-12 sm:py-16">
-      <div className={`${sectionPad} grid items-center gap-8 lg:grid-cols-2`}>
+      <div className={`${sectionPad} grid items-center gap-[var(--vp-card-gap)] lg:grid-cols-2`}>
         <figure className="min-w-0 rounded-3xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Event listing</p>
@@ -238,7 +238,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
   const otherPerks = PRO_PLAN.perks.filter((perk) => !perk.startsWith(`${PRO_PLAN.discountPct}%`))
   return (
     <section id="pro" className="scroll-mt-24 bg-[#0c0c0e] py-12 text-white sm:py-16">
-      <div className={`${sectionPad} grid items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]`}>
+      <div className={`${sectionPad} grid items-center gap-[var(--vp-card-gap)] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]`}>
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-[var(--vp-brand-orange)]">For people who promote more than once</p>
           <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-5xl">Promote more. Save more.</h2>

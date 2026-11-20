@@ -247,7 +247,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <ArrowLeft className="w-4 h-4" /> Back to events
         </BackToEventsLink>
 
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_19.5rem] lg:gap-x-6 lg:gap-y-4 lg:items-start">
+        <div className="flex flex-col gap-[var(--vp-card-gap)] lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-[var(--vp-card-gap)]">
           <header className="min-w-0 space-y-3 lg:col-start-1">
             <EventGallery event={event}>
               <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border')}>
@@ -334,7 +334,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         {(related?.length ?? 0) > 0 && (
           <div className="mt-8">
             <h2 className="font-display text-xl font-bold mb-4">If you like this, you’ll love…</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 items-stretch gap-[var(--vp-card-gap)] md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {(related ?? []).slice(0, 6).map((ev: any, i: number) => (
                 <EventCard key={ev?.id ?? i} event={ev} index={i} />
               ))}
