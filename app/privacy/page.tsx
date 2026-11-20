@@ -69,7 +69,7 @@ const SECTIONS: { title: string; body: string[]; id?: string }[] = [
 export default function PrivacyPage() {
   return (
     <PageShell>
-    <main className="vp-wrap px-4 py-12 sm:px-6">
+    <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
       <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">Privacy policy</h1>
       <LegalStamp doc="privacy" />

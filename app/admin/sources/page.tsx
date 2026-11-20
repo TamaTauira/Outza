@@ -73,7 +73,7 @@ export default async function AdminSourcesPage() {
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-page-top max-w-5xl mx-auto px-4 pb-8 sm:px-6">
       <h1 className="font-display text-3xl font-bold">Event sources</h1>
       <p className="text-muted-foreground mt-1 mb-6">
         Duplicate links need a score of {DUPLICATE_THRESHOLDS.auto} with a strong id, or {DUPLICATE_THRESHOLDS.corroborate} with a second agreeing fact.

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { TIER_KEYS, TIER_RANK, tierDef, type Tier } from '@/lib/tiers'
 
 export function activePromoWhere(now = new Date()) {
-  return { status: 'ACTIVE', endsAt: { gt: now } }
+  return { status: 'ACTIVE', endsAt: { gt: now }, paymentMode: { not: 'test' } }
 }
 
 /** eventId -> highest active tier (add-ons are ignored) */

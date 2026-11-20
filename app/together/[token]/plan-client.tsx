@@ -132,7 +132,7 @@ export function PlanClient({ token }: { token: string }) {
 
   if (missing) {
     return (
-      <main className="vp-wrap px-4 pb-12 pt-6 text-center">
+      <main className="vp-wrap vp-page-top px-4 pb-12 text-center">
         <h1 className="font-display text-2xl font-bold">That plan has wandered off</h1>
         <Link href="/together" className="mt-4 inline-block text-primary underline">Start another</Link>
       </main>
@@ -144,7 +144,7 @@ export function PlanClient({ token }: { token: string }) {
   const blankStop = { ...emptyStop, date: plan.planDate ?? '' }
 
   return (
-    <main className="vp-wrap px-4 py-8 sm:px-6">
+    <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <Link href="/together" className="text-sm text-muted-foreground hover:text-foreground">All plans</Link>
       <h1 className="font-display text-3xl font-bold mt-2">{plan.name}</h1>
       <p className="mt-2 text-muted-foreground">{[plan.city, plan.planDate].filter(Boolean).join(' · ') || 'City and date are optional.'} One vote each. Private stops stay on this plan. They are not listed on the board.</p>
@@ -179,7 +179,7 @@ export function PlanClient({ token }: { token: string }) {
       <input id="voter-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="What should we call you?" className="mt-1 w-full sm:max-w-xs h-11 rounded-md border border-border bg-background px-3 text-sm" />
       {plan.members.length > 0 && <p className="mt-2 text-sm text-muted-foreground">In the room: {plan.members.join(', ')}</p>}
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] items-start lg:grid-cols-[minmax(0,1fr)_22rem]">
       <ol className="space-y-3">
         {plan.items.map((item, index) => {
           const next = plan.items[index + 1]

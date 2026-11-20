@@ -17,7 +17,7 @@ export default async function VenueHome() {
   if (ids.length === 1) redirect(`/venue/${ids[0]}`)
   const venues = ids.length ? await prisma.venue.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, city: true } }) : []
   return (
-    <main className="max-w-xl mx-auto px-4 py-8">
+    <main className="vp-page-top mx-auto max-w-xl px-4 pb-8">
       <h1 className="font-display text-2xl font-bold">Your venues</h1>
       {venues.length ? (
         <ul className="mt-4 space-y-2">

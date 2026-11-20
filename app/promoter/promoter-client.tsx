@@ -143,7 +143,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
   }
 
   return (
-    <main className="vp-wrap px-4 pb-8 pt-3 sm:px-6 lg:pt-5">
+    <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <div>
         <p className="text-[13px] font-semibold text-primary">Promoter dashboard</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1">
@@ -166,8 +166,6 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
             )}
             {tab === 'promote' && (
               <section className={card}>
-                <h2 className="font-display text-xl font-bold mb-1">Build a campaign</h2>
-                <p className="text-sm text-muted-foreground mb-6">Four steps. Live as soon as payment lands.</p>
                 <CampaignBuilder events={events} pro={account.pro} stripeEnabled={stripeEnabled} eventId={promoteId} initialTier={promoteTier} initialDays={promoteDays ?? undefined} onEventChange={setPromoteId} onDone={() => { load(); selectTab('events') }} />
               </section>
             )}
@@ -194,21 +192,23 @@ function Kpi({ Icon, label, value, window, definition }: { Icon: typeof Eye; lab
   )
 }
 
-function ProCard({ account, onPro, proBusy }: { account: Account; onPro: () => void; proBusy: boolean }) {
+function ProCard({ account, onPro, proBusy, className }: { account: Account; onPro: () => void; proBusy: boolean; className?: string }) {
   const [terms, setTerms] = useState(false)
   return (
-    <div className="rounded-xl p-5 shadow-sm bg-gradient-to-br from-primary/20 via-card to-card border border-primary/40">
+    <div className={cn('flex h-full flex-col rounded-xl border border-primary/40 bg-gradient-to-br from-primary/20 via-card to-card p-5 shadow-sm', className)}>
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /><p className="font-semibold">{PRO_PLAN.name}</p></div>
       {account.pro ? (
-        <p className="text-sm mt-2">Active until <strong>{fmt(account.proUntil)}</strong>. You&apos;re saving {PRO_PLAN.discountPct}% on every campaign.</p>
+        <p className="mt-2 text-sm">Active until <strong>{fmt(account.proUntil)}</strong>. You&apos;re saving {PRO_PLAN.discountPct}% on every campaign.</p>
       ) : (
-        <p className="text-2xl font-bold mt-2">{formatAud(PRO_PLAN.priceCents)}<span className="text-xs font-normal text-muted-foreground"> / {PRO_PLAN.days} days</span></p>
+        <p className="mt-2 text-2xl font-bold">{formatAud(PRO_PLAN.priceCents)}<span className="text-xs font-normal text-muted-foreground"> / {PRO_PLAN.days} days</span></p>
       )}
-      <ul className="mt-3 space-y-1.5">{PRO_PLAN.perks.map((p) => <li key={p} className="text-xs text-muted-foreground flex gap-1.5"><BadgeCheck className="w-3.5 h-3.5 text-primary shrink-0 mt-px" />{p}</li>)}</ul>
-      <div className="mt-4"><PromoterTermsCheck id="pro-promoter-terms" checked={terms} onChange={setTerms} /></div>
-      <button onClick={onPro} disabled={proBusy || !terms} className="mt-4 w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-        {proBusy && <Loader2 className="w-4 h-4 animate-spin" />}{account.pro ? 'Extend 30 days' : 'Go Pro'}
-      </button>
+      <ul className="mt-3 space-y-1.5">{PRO_PLAN.perks.map((p) => <li key={p} className="flex gap-1.5 text-xs text-muted-foreground"><BadgeCheck className="mt-px h-3.5 w-3.5 shrink-0 text-primary" />{p}</li>)}</ul>
+      <div className="mt-auto flex flex-col gap-4 pt-4">
+        <PromoterTermsCheck id="pro-promoter-terms" checked={terms} onChange={setTerms} />
+        <button onClick={onPro} disabled={proBusy || !terms} className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60">
+          {proBusy && <Loader2 className="h-4 w-4 animate-spin" />}{account.pro ? 'Extend 30 days' : 'Go Pro'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -293,8 +293,8 @@ function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onP
   if (incomplete) actions.push({ title: `Finish “${incomplete.title}”`, body: `Still missing ${missingOf(incomplete).join(' and ')}.`, cta: 'Open My events', go: goEvents })
   if (!actions.length) actions.push({ title: 'Nothing waiting', body: 'Upcoming listings are on the board. Promote one if you want it higher up.', cta: 'See my events', go: goEvents })
   return (
-    <div className="mt-6 grid lg:grid-cols-2 gap-4">
-      <div className="rounded-lg border border-border bg-background p-4">
+    <>
+      <div className={`${card} flex h-full flex-col`}>
         <p className="font-semibold text-sm">Listings</p>
         <p className="text-sm mt-2"><b className="tabular-nums">{upcoming.length}</b> upcoming · <b className="tabular-nums">{past}</b> past</p>
         <table className="w-full text-xs mt-3">
@@ -306,7 +306,7 @@ function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onP
           </tbody>
         </table>
       </div>
-      <div className="rounded-lg border border-border bg-background p-4">
+      <div className={`${card} flex h-full flex-col`}>
         <p className="font-semibold text-sm">Next</p>
         <ul className="mt-2 space-y-3">
           {actions.map((a) => (
@@ -318,7 +318,7 @@ function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onP
           ))}
         </ul>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -334,8 +334,8 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
     { Icon: BarChart3, title: 'Track the results', body: 'Opens, saves, reactions, Spotlight and the drop-off in between.', action: goInsights, cta: 'Open results' },
   ]
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+    <div className="vp-stack">
+      <div className="vp-card-grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <Kpi Icon={Rocket} label="Live campaigns" value={String(stats.live)} window="Right now" definition="Campaigns still active, whose end time has not passed." />
         <Kpi Icon={Eye} label="Listing views" value={stats.views.toLocaleString('en-AU')} window="All time" definition="Event page visits stored on your events." />
         <Kpi Icon={MousePointerClick} label="Ticket clicks" value={stats.clicks.toLocaleString('en-AU')} window="All time" definition={stats.views ? `Taps on the ticket link. ${((stats.clicks / stats.views) * 100).toFixed(1)}% of listing views.` : 'Taps on the ticket link stored on your events.'} />
@@ -345,9 +345,9 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
 
       <section className={card}>
         <h2 className="font-semibold mb-4">How it works</h2>
-        <ol className="grid gap-4 md:grid-cols-3">
+        <ol className="vp-card-grid md:grid-cols-3">
           {steps.map((s, i) => (
-            <li key={s.title} className="flex h-full flex-col rounded-lg border border-border bg-background p-4">
+            <li key={s.title} className="flex h-full flex-col rounded-lg border border-border bg-background p-5">
               <div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{i + 1}</span><s.Icon className="h-4 w-4 text-primary" /></div>
               <p className="mt-3 text-sm font-semibold">{s.title}</p>
               <p className="mt-1 flex-1 text-sm text-muted-foreground">{s.body}</p>
@@ -356,36 +356,44 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
           ))}
         </ol>
       </section>
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <section className={card}>
+      <div className="vp-card-grid items-stretch lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="vp-stack h-full">
           {!events.length && (
-            <div className="mt-6 rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Nothing on your board yet</p>
-              <p className="mt-1">Create an event you can edit, claim one you organise, or add a local business ad. Views and ticket taps show up here once people open your listings.</p>
+            <section className={card}>
+              <p className="font-medium">Nothing on your board yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Create an event you can edit, claim one you organise, or add a local business ad. Views and ticket taps show up here once people open your listings.</p>
+            </section>
+          )}
+          {events.length > 0 && (
+            <div className="vp-card-grid items-stretch sm:grid-cols-2">
+              <ListingHealth events={events} onPromote={onPromote} goEvents={goEvents} />
             </div>
           )}
-          {events.length > 0 && <ListingHealth events={events} onPromote={onPromote} goEvents={goEvents} />}
-          {events.length > 0 && (
-            <>
-              <h3 className="font-semibold text-sm mt-6 mb-2">Your next events</h3>
-              <div className="divide-y divide-border">
-                {events.filter((e) => new Date(e.date).getTime() >= Date.now() - 86400000).slice(0, 4).map((e) => {
-                  const live = e.promotions?.find((p) => isLive(p) && tierDef(p.tier))
-                  return (
-                    <div key={e.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
-                      <span className="min-w-0 truncate">{e.hidden ? <span className="font-medium">{e.title}</span> : <Link href={`/events/${e.id}`} className="font-medium hover:text-primary">{e.title}</Link>} <span className="text-muted-foreground text-xs">· {fmt(e.date)}{e.hidden ? ' · Draft' : ''}</span></span>
-                      {live ? <TierBadge tier={live.tier} /> : <button onClick={() => onPromote(e.id)} className="shrink-0 text-xs font-semibold text-primary hover:underline">Promote</button>}
-                    </div>
-                  )
-                })}
+          <section className={`${card} flex flex-1 flex-col gap-4`}>
+            {events.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Your next events</h3>
+                <div className="divide-y divide-border">
+                  {events.filter((e) => new Date(e.date).getTime() >= Date.now() - 86400000).slice(0, 4).map((e) => {
+                    const live = e.promotions?.find((p) => isLive(p) && tierDef(p.tier))
+                    return (
+                      <div key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                        <span className="min-w-0 truncate">{e.hidden ? <span className="font-medium">{e.title}</span> : <Link href={`/events/${e.id}`} className="font-medium hover:text-primary">{e.title}</Link>} <span className="text-xs text-muted-foreground">· {fmt(e.date)}{e.hidden ? ' · Draft' : ''}</span></span>
+                        {live ? <TierBadge tier={live.tier} /> : <button onClick={() => onPromote(e.id)} className="shrink-0 text-xs font-semibold text-primary hover:underline">Promote</button>}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            </>
-          )}
-          <h3 className="font-semibold text-sm mt-6 mb-3 flex items-center gap-2"><Share2 className="w-4 h-4 text-primary" />Where your visitors come from</h3>
-          {anyUnlocked ? <ReferralBars referrals={referrals} /> : <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" />Traffic sources unlock for promoted events, or for every event with {PRO_PLAN.name}.</p>}
-        </section>
-        <div className="space-y-6">
-          <ProCard account={account} onPro={onPro} proBusy={proBusy} />
+            )}
+            <div className={events.length > 0 ? 'mt-auto' : ''}>
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Share2 className="h-4 w-4 text-primary" />Where your visitors come from</h3>
+              {anyUnlocked ? <ReferralBars referrals={referrals} /> : <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" />Traffic sources unlock for promoted events, or for every event with {PRO_PLAN.name}.</p>}
+            </div>
+          </section>
+        </div>
+        <div className="flex h-full flex-col gap-[var(--vp-card-gap)]">
+          <ProCard account={account} onPro={onPro} proBusy={proBusy} className="min-h-0 flex-1" />
           <ReportsCard account={account} onAccount={onAccount} />
         </div>
       </div>
@@ -478,7 +486,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
   const owned = new Set(events.map((e) => e.id))
 
   return (
-    <div className="space-y-6">
+    <div className="vp-stack">
       <section className={card}>
         <h2 className="font-semibold mb-1">My events</h2>
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
@@ -549,8 +557,8 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
         )}
       </section>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <section className={card}>
+      <div className="vp-card-grid items-stretch lg:grid-cols-2">
+        <section className={`${card} h-full`}>
           <h2 className="font-semibold mb-1">Already listed? Claim it</h2>
           <p className="text-xs text-muted-foreground mb-3">We list thousands of events automatically. Find yours and add it to your dashboard.</p>
           <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
@@ -577,7 +585,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
           {results.length > 10 && <button type="button" onClick={() => setShowAllClaims((on) => !on)} className="mt-2 text-sm font-semibold text-primary">{showAllClaims ? 'Show fewer' : `Show all ${results.length}`}</button>}
         </section>
 
-        <section id="create" className={`${card} scroll-mt-24`}>
+        <section id="create" className={`${card} h-full scroll-mt-24`}>
           <h2 className="font-semibold mb-1">Create a new event</h2>
           <p className="text-xs text-muted-foreground mb-3">This saves a draft. It stays off the public board until you press Publish.</p>
           <form onSubmit={create} className="grid gap-3 sm:grid-cols-2">
@@ -639,9 +647,9 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
   const statusLabel = (r: (typeof rows)[number]) => (r.status === 'CANCELLED' ? 'Cancelled' : r.endsAt && new Date(r.endsAt) > new Date() ? 'Active' : 'Completed')
 
   return (
-    <div className="space-y-6">
+    <div className="vp-stack">
       <OrganiserPlans />
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <div className="vp-card-grid items-stretch lg:grid-cols-[minmax(0,1fr)_20rem]">
       <section className={card}>
         <h2 className="font-semibold mb-4">Billing history</h2>
         {!rows.length ? <p className="text-sm text-muted-foreground">No purchases yet.</p> : (

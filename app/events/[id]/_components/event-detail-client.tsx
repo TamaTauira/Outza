@@ -242,7 +242,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
     <div className="min-h-screen bg-background">
       {nav}
 
-      <main className="vp-wrap px-4 py-4 pb-36 sm:px-6 sm:py-5 lg:pb-5">
+      <main className="vp-wrap vp-page-top px-4 pb-36 sm:px-6 lg:pb-5">
         <BackToEventsLink className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to events
         </BackToEventsLink>

@@ -17,6 +17,7 @@ import { PeepIcon } from '@/components/peep-icon'
 import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { BottomNav } from '@/components/bottom-nav'
 import { useHasLocalListings } from '@/components/use-has-local-listings'
+import { CITY_NAMES } from '@/lib/cities'
 
 export type AppView = 'board' | 'map' | 'saved'
 
@@ -32,10 +33,14 @@ const TABS: { key: AppView; label: string; Icon: ComponentType<{ className?: str
 ]
 
 export function viewForPath(pathname: string | null): AppView | null {
+  if (!pathname) return null
   if (pathname === '/map') return 'map'
   if (pathname === '/saved') return 'saved'
-  if (pathname?.startsWith('/local') || pathname?.startsWith('/itinerary')) return null
-  return 'board'
+  if (pathname.startsWith('/local') || pathname.startsWith('/itinerary')) return null
+  if (pathname === '/' || pathname.startsWith('/events')) return 'board'
+  const head = pathname.split('/').filter(Boolean)[0]?.toLowerCase()
+  if (head && CITY_NAMES.some((name) => name.toLowerCase().replace(/\s+/g, '-') === head)) return 'board'
+  return null
 }
 
 export function Navbar({ savedCount }: NavbarProps) {

@@ -102,7 +102,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
   const owned = data ? data.voice.owned : intelOwnerVoice(events.find((e) => e.id === eventId)?.source)
   const venueWord = owned ? 'your venue' : 'the venue'
   return (
-    <div className="space-y-6">
+    <div className="vp-stack">
       <div className={card}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -178,7 +178,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
             </Section>
           )}
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="vp-card-grid lg:grid-cols-2">
             {data.ages.length > 0 && (
               <Section title="Age mix of residents" Icon={Users} sub={`Share of residents, venue area vs ${data.benchLabel} (ABS, ${data.agePeriod}).`} credit={<AbsCredit dataset="Data by Region" />}>
                 <ul className="space-y-3">
@@ -240,7 +240,7 @@ export function IntelTab({ events }: { events: Ev[] }) {
             </Section>
           )}
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="vp-card-grid lg:grid-cols-2">
             {data.spending.length > 0 && (
               <Section title={`${data.spendLabel} household spending`} Icon={ShoppingBag} sub={`ABS Monthly Household Spending Indicator, ${period(data.spending[0].month)}. Statewide, current prices.`} credit={<AbsCredit dataset="Monthly Household Spending Indicator" />}>
                 <table className="w-full text-sm">

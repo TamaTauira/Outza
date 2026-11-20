@@ -47,5 +47,8 @@ export function firstHttpsShareUrl(urls: (string | null | undefined)[]): string 
 export function openGraphImage(raw: string | null | undefined, alt: string, fallback = BRAND_OG_IMAGE): OgImage {
   const url = httpsShareUrl(raw) ?? httpsShareUrl(fallback) ?? BRAND_OG_IMAGE
   const label = alt.trim() || BRAND_NAME
-  return { url, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: label }
+  const branded = url === BRAND_OG_IMAGE || url.endsWith(BRAND_OG_IMAGE)
+  return branded
+    ? { url, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: label }
+    : { url, width: 0, height: 0, alt: label }
 }

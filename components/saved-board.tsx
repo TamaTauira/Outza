@@ -145,7 +145,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
               </div>
             </div>
           ) : (
-            <div className="mt-4 grid gap-4 grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))]">
+            <div className="vp-card-grid mt-[var(--vp-card-gap)] grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))]">
               {visible.map((ev) => (
                 <SavedCard
                   key={ev.id}

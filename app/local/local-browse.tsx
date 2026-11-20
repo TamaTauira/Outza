@@ -212,7 +212,7 @@ export function LocalBrowse({
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
         <div className="relative mt-4">
-          <div className="flex snap-x gap-3 overflow-x-auto pb-1 pr-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:none] max-lg:[mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] lg:grid lg:grid-cols-5 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             {LOCAL_TILES.map((tile) => (
               <CategoryButton key={tile.key} tile={tile} on={category === tile.key} onPick={() => pick(tile.key)} />
             ))}
@@ -243,7 +243,7 @@ export function LocalBrowse({
         )}
         {!!featured.length && (
           <div className="relative mt-4">
-            <div className={cn('flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] lg:grid lg:overflow-visible [&::-webkit-scrollbar]:hidden', featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2')}>
+            <div className={cn('flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-2 [scrollbar-width:none] lg:grid lg:overflow-visible [&::-webkit-scrollbar]:hidden', featured.length >= 4 ? 'lg:grid-cols-4' : featured.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2')}>
               {featured.map((ev) => (
                 <article key={rowKey(ev)} onClick={(event) => { if ((event.target as HTMLElement).closest('a,button')) return; openListing(ev.href) }} className="flex w-[78vw] max-w-[280px] shrink-0 cursor-pointer snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:w-auto lg:max-w-none">
                   <Link href={ev.href || '/local'} scroll={false} className="block">

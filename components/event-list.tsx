@@ -352,7 +352,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       ))
     }
     return (
-      <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))] gap-3 p-3">
+      <div className="vp-card-grid w-full grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))] p-5">
         {rows.map(({ ev }) => {
           const cat = CATEGORIES.find((item) => item.name === ev.category)
           const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
@@ -396,7 +396,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> events in {city || 'Australia'}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
+        <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {city || 'Australia'}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
         {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (

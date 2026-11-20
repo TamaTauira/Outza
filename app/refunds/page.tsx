@@ -100,7 +100,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
 export default function RefundsPage() {
   return (
     <PageShell>
-      <main className="vp-wrap px-4 py-12 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Refunds</h1>
         <LegalStamp doc="refunds" />

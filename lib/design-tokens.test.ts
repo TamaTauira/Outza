@@ -27,7 +27,10 @@ test('the dark theme declares every spec colour, radius, space and the fluid she
   for (const size of Object.values(VP_RADIUS)) assert.match(css, new RegExp(size))
   for (const size of Object.values(VP_SPACE)) assert.match(css, new RegExp(` ${size}`))
   assert.match(css, new RegExp(VP_CONTAINER_MAX))
+  assert.match(css, /--vp-page-top:\s*0\.5rem/)
+  assert.match(css, /--vp-card-gap:\s*1rem/)
   assert.match(globals, /max-width:\s*var\(--vp-container-max\)/)
+  assert.match(globals, /\.vp-page-top\s*\{\s*padding-top:\s*var\(--vp-page-top\)/)
 })
 
 test('display and body faces are Manrope and Inter', () => {

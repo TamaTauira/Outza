@@ -115,7 +115,7 @@ export default async function MetricsAdminPage() {
   const trust = data?.trust
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-page-top max-w-5xl mx-auto px-4 pb-8 sm:px-6">
       <p className="text-sm"><Link href="/admin" className="text-primary hover:underline">Admin</Link></p>
       <h1 className="mt-2 font-display text-3xl font-bold">The numbers</h1>
       <p className="mt-1 text-sm text-muted-foreground">Who’s coming back, whether the listings hold up, and what the paying businesses are worth. Eight of these already live in the database. Monthly marketing spend is the one you type in.</p>

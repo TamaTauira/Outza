@@ -33,7 +33,7 @@ export default async function AdminHome() {
     )
   }
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-page-top max-w-5xl mx-auto px-4 pb-8 sm:px-6">
       <h1 className="font-display text-3xl font-bold">Admin</h1>
       <p className="text-muted-foreground mt-1 mb-6">Owner tools. Trust & listings shows how many decisions are waiting.</p>
       <ul className="grid sm:grid-cols-2 gap-3">

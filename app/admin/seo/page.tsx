@@ -39,7 +39,7 @@ export default async function AdminSeoPage() {
   const totalVisits = r.referrals.reduce((s, x) => s + x.visits, 0)
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+    <main className="vp-page-top max-w-6xl mx-auto px-4 pb-10 sm:px-6 space-y-6">
       <header>
         <h1 className="font-display text-3xl font-bold">SEO & organic discovery</h1>
         <p className="text-muted-foreground mt-1">Built only from VibePeep’s own data. Nothing here is estimated. Generated {fmt(r.generatedAt)} · listings last refreshed {fmt(r.lastRefresh)}.</p>

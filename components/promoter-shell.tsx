@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Plus, Receipt, Rocket, Store } from 'lucide-react'
+import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Receipt, Rocket, Store } from 'lucide-react'
 import { VibePeepWordmark } from '@/components/vibepeep-logo'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PROMOTER_NAV_EVENT } from '@/lib/promoter-nav'
@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils'
 const PRIMARY = [
   { href: '/promoter?tab=overview', label: 'Dashboard', icon: LayoutDashboard, tab: 'overview' },
   { href: '/promoter?tab=events', label: 'My events', icon: CalendarDays, tab: 'events' },
-  { href: '/promoter?tab=events#create', label: 'Create', icon: Plus, tab: 'create' },
   { href: '/promoter?tab=promote', label: 'Promote an event', icon: Rocket, tab: 'promote' },
   { href: '/promoter?tab=boosts', label: 'Short boosts', icon: Megaphone, tab: 'boosts' },
   { href: '/promoter?tab=intel', label: 'Intelligence', icon: Brain, tab: 'intel' },
@@ -39,7 +38,6 @@ const MORE = [
   { href: '/promoter?tab=intel', label: 'Intelligence' },
   { href: '/promoter?tab=local', label: 'Local business ads' },
   { href: '/promoter?tab=billing', label: 'Billing' },
-  { href: '/promoter?tab=events#create', label: 'Create' },
   { href: '/venue', label: 'Venue' },
   { href: '/account', label: 'Settings' },
   { href: '/contact', label: 'Help' },
@@ -95,8 +93,6 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
     if (!onDashboard) return false
     if (key === 'overview') return !tab || tab === 'overview'
     if (key === 'promote') return tab === 'promote'
-    if (key === 'create') return false
-    if (key === 'create') return false
     return tab === key
   }
 
@@ -104,7 +100,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
     <div className="min-h-screen bg-[#0C0F0E] print:bg-white">
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-screen w-[240px] flex-col bg-[#151A19] text-white print:hidden lg:flex">
-          <div className="px-4 pb-2 pt-5">
+          <div className="vp-page-top px-4 pb-2">
             <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="Promoter dashboard">
               <VibePeepWordmark tone="on-dark" className="h-6 w-auto" />
             </Link>

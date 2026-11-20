@@ -38,7 +38,7 @@ export default async function SponsorshipAdminPage() {
     { label: 'Campaign gross margin', value: pct(metrics.margin.margin), hint: `${formatAudCents(metrics.margin.revenueCents)} revenue after estimated card fees of ${formatAudCents(metrics.margin.feeCents)}` },
   ] : []
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <main className="vp-page-top max-w-5xl mx-auto px-4 pb-8 sm:px-6">
       <p className="text-sm"><Link href="/admin" className="text-primary hover:underline">Admin</Link></p>
       <h1 className="mt-2 font-display text-3xl font-bold">Sponsorship</h1>
       <p className="mt-1 text-sm text-muted-foreground">Card payments only. Test-mode packages are left out. Margin is revenue minus an estimated 1.7% + 30c card fee. The placement itself is our inventory, so this is not a full profit-and-loss.</p>

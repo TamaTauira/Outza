@@ -394,7 +394,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
 
       <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : ''}>
         {view === 'board' ? (
-          <div className="vp-wrap px-4 pt-5 sm:px-6">
+          <div className="vp-wrap vp-page-top px-4 sm:px-6">
           <HeroCard
             priority
             image={cityHeroSrc(city)}
@@ -429,7 +429,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </div>
         ) : null}
 
-        <div className={view === 'map' ? 'contents' : 'vp-wrap px-4 pt-5 sm:px-6'}>
+        <div className={view === 'map' ? 'contents' : view === 'board' ? 'vp-wrap px-4 pt-5 sm:px-6' : 'vp-wrap vp-page-top px-4 sm:px-6'}>
         {view === 'board' && <FeaturedTurnstile city={city} />}
         {view === 'board' && (
           <HomeRails
@@ -441,10 +441,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           />
         )}
         {view === 'map' && (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="vp-wrap flex min-h-0 w-full flex-1 flex-col px-4 pb-3 sm:px-6">
             <h1 className="sr-only">Map</h1>
-            <div className="vp-map-toolbar flex shrink-0 flex-col gap-2 border-b border-border bg-background px-3 py-2 sm:flex-row sm:items-center sm:px-4 lg:gap-0 lg:px-0">
-              <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none lg:px-4">
+            <div className="vp-map-toolbar flex shrink-0 flex-col gap-[var(--vp-card-gap)] bg-background py-2 sm:flex-row sm:items-center">
+              <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none">
                 <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
                   <MapPin className="h-4 w-4 shrink-0 text-primary" />
                   <span className="sr-only">Choose a city</span>
@@ -453,11 +453,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   </select>
                 </label>
               </div>
-              <div className="min-w-0 w-full sm:flex-1 lg:px-4">
+              <div className="min-w-0 w-full sm:flex-1">
                 <SearchField id="map-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search the map" label="Search events" />
               </div>
             </div>
-            <div className="relative min-h-0 flex-1">
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border">
               <div className="absolute inset-0">
               <MapView
                 filters={mapFilters}

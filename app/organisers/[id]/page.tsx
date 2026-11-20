@@ -53,7 +53,7 @@ export default async function OrganiserPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="vp-wrap px-4 py-8 sm:px-6 lg:py-10">
+      <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6 lg:pb-10">
         <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
         <div className="mt-6 flex items-start gap-4">
           {user.image && <img src={user.image} alt="" className="w-16 h-16 rounded-full object-cover bg-muted" />}

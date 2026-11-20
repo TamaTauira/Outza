@@ -182,34 +182,33 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="font-display text-xl font-bold">Short boosts</h2>
-        <p className="mt-1 text-sm text-muted-foreground">An evening or a day in the Coming up next band, on top of the 7, 14 and 30 day packages. You pick the event, the window and the words. We show you the card before anyone pays.</p>
-      </div>
-
+    <div className="vp-stack">
       {!events.length ? (
         <p className="text-sm text-muted-foreground">You need an upcoming event on the dashboard before a boost has somewhere to sit.</p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="space-y-5">
+        <div className="vp-card-grid items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="vp-stack min-w-0">
+            <div>
+              <h2 className="font-display text-xl font-bold">Short boosts</h2>
+              <p className="mt-1 text-sm text-muted-foreground">An evening or a day in the Coming up next band, on top of the 7, 14 and 30 day packages. You pick the event, the window and the words. We show you the card before anyone pays.</p>
+            </div>
             <label className="block text-sm font-medium">Event
               <select value={eventId} onChange={(e) => { setEventId(e.target.value); setPreview(false) }} className={`${field} mt-1`} aria-label="Event to boost">
                 {events.map((row) => <option key={row.id} value={row.id}>{row.title}{row.city ? ` · ${row.city}` : ''}</option>)}
               </select>
             </label>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-stretch gap-[var(--vp-card-gap)] sm:grid-cols-2">
               {boosts.map((row) => (
                 <button key={row.id} type="button" onClick={() => { setInventoryId(row.id as BoostId); setPreview(false) }} aria-pressed={inventoryId === row.id}
-                  className={`rounded-xl border p-4 text-left ${inventoryId === row.id ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}>
+                  className={`flex h-full flex-col rounded-xl border p-4 text-left ${inventoryId === row.id ? 'border-primary ring-2 ring-primary/40' : 'border-border'}`}>
                   <p className="font-semibold">{row.name}</p>
-                  <p className="mt-1 text-lg font-bold">{formatAud(pro ? Math.round(row.priceCents * 0.85) : row.priceCents)} <span className="text-xs font-normal text-muted-foreground">AUD incl. GST{pro ? ' · Pro price' : ''}</span></p>
-                  <p className="mt-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Guaranteed. </span>{row.guaranteed}</p>
-                  <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Estimated. </span>{row.estimated}</p>
+                  <p className="mt-auto pt-3 text-lg font-bold tabular-nums">{formatAud(pro ? Math.round(row.priceCents * 0.85) : row.priceCents)} <span className="text-xs font-normal text-muted-foreground">AUD incl. GST{pro ? ' · Pro price' : ''}</span></p>
+                  <p className="mt-2 min-h-[4.5rem] text-xs text-muted-foreground"><span className="font-semibold text-foreground">Guaranteed. </span>{row.guaranteed}</p>
+                  <p className="mt-1 min-h-[4.5rem] text-xs text-muted-foreground"><span className="font-semibold text-foreground">Estimated. </span>{row.estimated}</p>
                 </button>
               ))}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid items-stretch gap-[var(--vp-card-gap)] sm:grid-cols-2">
               <label className="block text-sm font-medium">Starts
                 <input type="datetime-local" value={start} onChange={(e) => { setStart(e.target.value); setPreview(false) }} className={`${field} mt-1`} />
               </label>
@@ -242,7 +241,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
               </div>
             )}
           </div>
-          <aside className="h-fit rounded-xl border border-border bg-background p-5 lg:sticky lg:top-24">
+          <aside className="h-fit rounded-xl border border-border bg-background p-5 lg:sticky lg:top-6">
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">This boost</p>
             <p className="mt-2 font-semibold">{product.name}</p>
             <p className="text-2xl font-bold tabular-nums">{formatAud(price)}</p>
@@ -264,7 +263,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
                   <span>Charge my card {formatAud(price)} AUD once. Spotlight, Boost and Headliner are one-off. They are not the free month on a monthly plan. <Link href="/refunds" className="underline">Refunds</Link> include the Australian Consumer Law.</span>
                 </label>
-                <button type="button" onClick={pay} disabled={busy} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60">
+                <button type="button" onClick={pay} disabled={busy || !selected} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-[#1a1408] disabled:bg-muted disabled:text-muted-foreground">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}{preview ? `Pay ${formatAud(price)}` : 'Preview the card'}
                 </button>
               </>

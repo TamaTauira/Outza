@@ -133,7 +133,7 @@ export function OrganiserPlans() {
       {current?.status === 'TRIALING' && until && (
         <p className="mt-2 text-sm text-muted-foreground">The free month ends on {until}. Cancel before then and the first charge does not happen. After that the plan renews each month until you cancel.</p>
       )}
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] lg:grid-cols-3">
         {plans.map((plan) => (
           <div key={plan.id} className={`rounded-xl border p-4 ${current?.id === plan.id ? 'border-primary' : 'border-border'}`}>
             <p className="font-semibold">{plan.name}</p>

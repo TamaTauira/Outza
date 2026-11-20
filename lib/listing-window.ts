@@ -220,6 +220,9 @@ export function formatBoardRange(ev: SlotInput): BoardRange {
   const startLabel = `${start.hm} ${start.ampm}`
   const startOnly = { hm: start.hm, ampm: start.ampm, endLine: null, endNote: null, label: startLabel }
   if (sched.end == null || sched.bogusEnd) return startOnly
+  const endClockMins = ((sched.end % 1440) + 1440) % 1440
+  // 23:59 is a placeholder for "no finish was listed", not a real clock time.
+  if (endClockMins === 23 * 60 + 59 && sched.start !== 0) return startOnly
   if ((sched.end % 1440) <= sched.start && !sched.endKey) return startOnly
   const end = clockParts(sched.end)
   const clock = `${end.hm} ${end.ampm}`

@@ -73,7 +73,7 @@ export default async function VenueProfilePage({ params }: { params: Promise<{ i
 
   return (
     <PageShell>
-    <main className="vp-wrap px-4 py-6 pb-24 sm:px-6">
+    <main className="vp-wrap vp-page-top px-4 pb-24 sm:px-6">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
       <div>
       <p className="text-xs text-muted-foreground">{venue.city}</p>

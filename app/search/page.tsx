@@ -45,7 +45,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <PageShell>
-      <main className="vp-wrap px-4 py-8 sm:px-6">
+      <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
         <h1 className="font-display text-3xl font-bold tracking-tight">Search</h1>
         <p className="mt-2 max-w-xl text-muted-foreground">Search what’s on. The link keeps your words, so you can send it.</p>
         <form role="search" action="/search" method="get" className="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">

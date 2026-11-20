@@ -124,13 +124,13 @@ export function AccountClient() {
   const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
 
   return (
-    <main className="vp-wrap px-4 pb-6 pt-3 sm:px-6 sm:pb-8 lg:pt-5">
+    <main className="vp-wrap vp-page-top px-4 pb-6 sm:px-6 sm:pb-8">
       {promoter ? <Link href="/promoter" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Promoter dashboard</Link> : <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>}
       <div className="mt-4">
         <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
-      <div className="mt-5 grid items-start gap-5 lg:grid-cols-2">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] items-stretch lg:grid-cols-2">
 
       {!promoter && <section className={`${card} lg:col-span-2`}>
         <h2 className="font-semibold mb-1">About you</h2>
