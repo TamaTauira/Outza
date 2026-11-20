@@ -1,6 +1,6 @@
 import { existsSync } from 'fs'
 import path from 'path'
-import { BRAND_DEEP, BRAND_MASCOT_EMAIL, BRAND_MASCOT_EMAIL_HEIGHT, BRAND_MASCOT_EMAIL_WIDTH, BRAND_ORANGE, BRAND_PINK, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
+import { BRAND_DEEP, BRAND_ICON_512, BRAND_ORANGE, BRAND_PINK, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 
@@ -40,14 +40,16 @@ export const EMAIL_C = {
   darkPriceInk: '#ffb08a',
 } as const
 
-const MASCOT_W = 88
-const MASCOT_H = Math.round((MASCOT_W * BRAND_MASCOT_EMAIL_HEIGHT) / BRAND_MASCOT_EMAIL_WIDTH)
-const WORD_H = 40
-const WORD_W = Math.round((WORD_H * BRAND_WORDMARK_WIDTH) / BRAND_WORDMARK_HEIGHT)
+/** Same geometry as .vp-lockup: icon 40px, wordmark cap top flush, tagline baseline on the bottom. */
+const MARK = 40
+const CAP = MARK * 0.56
+const WORD_H = Math.round(CAP * (1974 / 1440))
+const WORD_W = Math.round(WORD_H * (BRAND_WORDMARK_WIDTH / BRAND_WORDMARK_HEIGHT))
+const WORD_TOP = Math.round(CAP * (42 / 1440))
 const TICK_W = 16
 const TICK_H = 16
 
-export const EMAIL_MASCOT_DISPLAY = { width: MASCOT_W, height: MASCOT_H }
+export const EMAIL_MASCOT_DISPLAY = { width: MARK, height: MARK }
 export const EMAIL_WORDMARK_DISPLAY = { width: WORD_W, height: WORD_H }
 
 const T = 'role="presentation" cellpadding="0" cellspacing="0" border="0"'
@@ -68,16 +70,18 @@ function img(src: string, alt: string, w: number, h: number): string {
   return `<img src="${url}" alt="${label}" width="${w}" height="${h}" style="display:block;width:${w}px;height:${h}px;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;"/>`
 }
 
-/** Mascot plus the wordmark and tagline. One of each. No icon, no second wordmark, no text logo. */
+/** Icon, wordmark and tagline. Same edges as the site lockup. PNGs only. */
 export function emailLockup(opts: { dark?: boolean } = {}): string {
   const wordSrc = emailAssetUrl(opts.dark ? BRAND_WORDMARK_DARK_SRC : BRAND_WORDMARK_SRC)
-  const mascotSrc = emailAssetUrl(BRAND_MASCOT_EMAIL)
+  const iconSrc = emailAssetUrl(BRAND_ICON_512.split('?')[0])
   const tagline = opts.dark ? EMAIL_C.onDarkMuted : '#6b6b6b'
   return `<table ${T}><tr>
-<td style="padding-right:14px;vertical-align:middle;line-height:0;font-size:0;">${img(mascotSrc, 'VibePeep mascot', MASCOT_W, MASCOT_H)}</td>
-<td style="vertical-align:middle;">
-${img(wordSrc, 'VibePeep', WORD_W, WORD_H)}
-<div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.35;color:${tagline};padding-top:6px;">${emailEscape(BRAND_TAGLINE)}</div>
+<td width="${MARK}" style="width:${MARK}px;padding-right:9px;vertical-align:top;line-height:0;font-size:0;">${img(iconSrc, 'VibePeep', MARK, MARK)}</td>
+<td style="vertical-align:top;">
+<div style="height:${MARK}px;">
+<img src="${emailEscape(wordSrc)}" alt="VibePeep" width="${WORD_W}" height="${WORD_H}" style="display:block;width:${WORD_W}px;height:${WORD_H}px;border:0;margin-top:-${WORD_TOP}px;"/>
+<div style="font-family:${EMAIL_FONT};font-size:12px;line-height:12px;color:${tagline};margin-top:2px;">${emailEscape(BRAND_TAGLINE)}</div>
+</div>
 </td>
 </tr></table>`
 }

@@ -23,46 +23,47 @@ function WordImg({ src, className, decorative }: { src: string; className: strin
 }
 
 /** Wordmark. Light surfaces keep black Vibe; dark surfaces use white Vibe. No plate behind it. */
-export function VibePeepWordmark({ className = 'h-7 w-auto', tone = 'auto', decorative = false }: { className?: string; tone?: Tone; decorative?: boolean }) {
-  if (tone === 'on-dark') return <WordImg src={WORDMARK_SVG_DARK} className={className} decorative={decorative} />
-  if (tone === 'on-light') return <WordImg src={WORDMARK_SVG} className={className} decorative={decorative} />
+export function VibePeepWordmark({ className = '', tone = 'auto', decorative = false }: { className?: string; tone?: Tone; decorative?: boolean }) {
+  const plate = (src: string, extra = '') => (
+    <WordImg src={src} className={`h-full w-auto ${extra}`} decorative={decorative} />
+  )
+  if (tone === 'on-dark') return <span className={className}>{plate(WORDMARK_SVG_DARK)}</span>
+  if (tone === 'on-light') return <span className={className}>{plate(WORDMARK_SVG)}</span>
   return (
-    <span className="inline-flex items-center">
-      <WordImg src={WORDMARK_SVG} className={`${className} dark:hidden`} decorative={decorative} />
-      <WordImg src={WORDMARK_SVG_DARK} className={`${className} hidden dark:inline`} decorative={decorative} />
+    <span className={className}>
+      {plate(WORDMARK_SVG, 'dark:hidden')}
+      {plate(WORDMARK_SVG_DARK, 'hidden dark:block')}
     </span>
   )
 }
 
-const SIZES = {
-  sm: { mark: 'w-8 h-8', word: 'h-[22px] w-auto', tag: 'text-xs' },
-  md: { mark: 'w-10 h-10', word: 'h-7 w-auto', tag: 'text-xs' },
-  lg: { mark: 'w-11 h-11', word: 'h-8 w-auto', tag: 'text-xs' },
-} as const
+const MARK = { sm: '2rem', md: '2.5rem', lg: '2.75rem' } as const
 
-/** Brand lockup: icon, wordmark, and the tagline. */
+/**
+ * Icon plus wordmark and tagline. The text block is exactly the icon’s height:
+ * the wordmark’s cap top meets the icon’s top, and the tagline’s baseline meets its bottom.
+ * Narrow slots drop the tagline and centre the wordmark on the icon.
+ */
 export function VibePeepLogo({
   size = 'md',
   className = '',
-  labelClassName = 'flex',
   showTagline = true,
   tone = 'auto',
 }: {
-  size?: keyof typeof SIZES
+  size?: keyof typeof MARK
   className?: string
   labelClassName?: string
   showTagline?: boolean
   tone?: Tone
 }) {
-  const s = SIZES[size]
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`} role="img" aria-label={showTagline ? `VibePeep. ${BRAND_TAGLINE}` : 'VibePeep'}>
-      <VibePeepMark className={s.mark} decorative />
-      <span className={`${labelClassName} min-w-0 flex-col leading-none text-left`} aria-hidden>
-        <VibePeepWordmark className={s.word} decorative tone={tone} />
-        {showTagline && (
-          <span className={`vp-lockup-tag mt-1 max-w-[15rem] font-medium leading-tight text-muted-foreground ${s.tag}`}>{BRAND_TAGLINE}</span>
-        )}
+    <span className={`vp-lockup-slot ${className}`}>
+      <span className={`vp-lockup${showTagline ? '' : ' is-compact'}`} style={{ fontSize: MARK[size] }} role="img" aria-label={showTagline ? `VibePeep. ${BRAND_TAGLINE}` : 'VibePeep'}>
+        <VibePeepMark className="vp-lockup-mark" decorative />
+        <span className="vp-lockup-copy" aria-hidden>
+          <VibePeepWordmark className="vp-lockup-word" decorative tone={tone} />
+          {showTagline && <span className="vp-lockup-tag">{BRAND_TAGLINE}</span>}
+        </span>
       </span>
     </span>
   )

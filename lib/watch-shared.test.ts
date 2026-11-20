@@ -19,11 +19,11 @@ function row(over: Partial<WatchRow> & { id: string; title: string; date: string
   }
 }
 
-test('the lockup is one mascot and one wordmark, both PNG on the production host', () => {
+test('the lockup is one icon and one wordmark, both PNG on the production host', () => {
   const html = emailLockup({ dark: true })
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((match) => match[0])
   assert.equal(imgs.length, 2)
-  assert.equal(imgs.filter((tag) => tag.includes('vibepeep-mascot-email.png')).length, 1)
+  assert.equal(imgs.filter((tag) => tag.includes('icon-512.png')).length, 1)
   assert.equal(imgs.filter((tag) => tag.includes('vibepeep-wordmark-ondark.png')).length, 1)
   assert.equal(html.includes('icon-192'), false)
   assert.equal(html.includes('.svg'), false)
@@ -103,7 +103,8 @@ test('an empty digest is not sent, and an empty section is left out', () => {
   assert.equal(mail.html.includes('.svg'), false)
   assert.equal(mail.html.includes('.webp'), false)
   const imgs = [...mail.html.matchAll(/<img\b[^>]*>/g)].map((match) => match[0])
-  assert.equal(imgs.filter((tag) => tag.includes('vibepeep-mascot')).length, 1)
+  assert.equal(imgs.filter((tag) => tag.includes('icon-512.png')).length, 1)
+  assert.equal(imgs.filter((tag) => tag.includes('vibepeep-mascot')).length, 0)
   assert.equal(imgs.filter((tag) => tag.includes('icon-192')).length, 0)
   for (const tag of imgs) {
     assert.match(/src="([^"]+)"/.exec(tag)?.[1] ?? '', /^https:\/\/outza-outza\.vercel\.app\//)
