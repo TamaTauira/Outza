@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Plus, Receipt, Rocket, Store } from 'lucide-react'
+import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Receipt, Rocket, Store } from 'lucide-react'
 import { VibePeepWordmark } from '@/components/vibepeep-logo'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PROMOTER_NAV_EVENT } from '@/lib/promoter-nav'
@@ -12,7 +12,6 @@ import { cn } from '@/lib/utils'
 const PRIMARY = [
   { href: '/promoter?tab=overview', label: 'Dashboard', icon: LayoutDashboard, tab: 'overview' },
   { href: '/promoter?tab=events', label: 'My events', icon: CalendarDays, tab: 'events' },
-  { href: '/promoter?tab=events#create', label: 'Create', icon: Plus, tab: 'create' },
   { href: '/promoter?tab=promote', label: 'Promote an event', icon: Rocket, tab: 'promote' },
   { href: '/promoter?tab=boosts', label: 'Short boosts', icon: Megaphone, tab: 'boosts' },
   { href: '/promoter?tab=intel', label: 'Intelligence', icon: Brain, tab: 'intel' },
@@ -39,7 +38,6 @@ const MORE = [
   { href: '/promoter?tab=intel', label: 'Intelligence' },
   { href: '/promoter?tab=local', label: 'Local business ads' },
   { href: '/promoter?tab=billing', label: 'Billing' },
-  { href: '/promoter?tab=events#create', label: 'Create' },
   { href: '/venue', label: 'Venue' },
   { href: '/account', label: 'Settings' },
   { href: '/contact', label: 'Help' },
@@ -95,8 +93,6 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
     if (!onDashboard) return false
     if (key === 'overview') return !tab || tab === 'overview'
     if (key === 'promote') return tab === 'promote'
-    if (key === 'create') return false
-    if (key === 'create') return false
     return tab === key
   }
 
