@@ -14,6 +14,7 @@ export function ViewToggle<T extends string = 'list' | 'map'>({
   label = 'List or map',
   compact = false,
   options,
+  className,
 }: {
   value: T
   onChange: (next: T) => void
@@ -23,13 +24,14 @@ export function ViewToggle<T extends string = 'list' | 'map'>({
   /** Shorter buttons so the control can sit beside a heading on a phone. */
   compact?: boolean
   options?: Choice<T>[]
+  className?: string
 }) {
   const items: Choice<T>[] = options ?? [
     { key: 'list' as T, text: listLabel, Icon: LayoutList },
     { key: 'map' as T, text: mapLabel, Icon: MapIcon },
   ]
   return (
-    <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full shrink-0 rounded-full bg-muted', compact ? 'p-0.5' : 'p-1')}>
+    <div role="tablist" aria-label={label} className={cn('inline-flex max-w-full shrink-0 rounded-full bg-muted', compact ? 'p-0.5' : 'p-1', className)}>
       {items.map(({ key, text, Icon }) => {
         const on = value === key
         return (

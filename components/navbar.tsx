@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Bookmark, Sun, Moon, Monitor, User, LogOut, Megaphone, Settings, House, Users, ShieldCheck, Building2, List } from 'lucide-react'
+import { MapPin, Bookmark, Sun, Moon, Monitor, User, LogOut, Megaphone, Settings, House, Users, ShieldCheck, Building2, List, Sparkles } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { TrustCount } from '@/components/admin-nav'
 import { usePathname } from 'next/navigation'
@@ -98,7 +98,8 @@ export function Navbar({ savedCount }: NavbarProps) {
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
           <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-[13px] text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
-            Ask
+            <Sparkles className="h-4 w-4" aria-hidden />
+            <span className="hidden xl:inline">Ask</span>
           </button>
         </nav>
 

@@ -16,8 +16,9 @@ export const BRAND_WORDMARK_SRC = '/vibepeep-wordmark.png'
 export const BRAND_WORDMARK_DARK_SRC = '/vibepeep-wordmark-ondark.png'
 /** Vector app icon. Transparent outside the rounded square. */
 export const BRAND_ICON_SRC = '/vibepeep-icon.svg?v=3'
-export const BRAND_WORDMARK_WIDTH = 868
-export const BRAND_WORDMARK_HEIGHT = 220
+/** Raster of the vector wordmark, sized for retina email (displayed near 40px tall). */
+export const BRAND_WORDMARK_WIDTH = 2000
+export const BRAND_WORDMARK_HEIGHT = 426
 export const BRAND_ICON_SIZE = 512
 
 /** Mascot cut out of the brand sheet: no ground, no shadow, no watermark. */

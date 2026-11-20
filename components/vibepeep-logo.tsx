@@ -1,4 +1,8 @@
-import { BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
+import { BRAND_TAGLINE, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
+
+/** Vector wordmark. The PNG twins in lib/brand stay for email clients that drop SVG. */
+const WORDMARK_SVG = '/vibepeep-wordmark.svg'
+const WORDMARK_SVG_DARK = '/vibepeep-wordmark-ondark.svg'
 import { VibePeepMark } from '@/components/vibepeep-mark'
 
 export const VIBEPEEP_TAGLINE = BRAND_TAGLINE
@@ -20,12 +24,12 @@ function WordImg({ src, className, decorative }: { src: string; className: strin
 
 /** Wordmark. Light surfaces keep black Vibe; dark surfaces use white Vibe. No plate behind it. */
 export function VibePeepWordmark({ className = 'h-7 w-auto', tone = 'auto', decorative = false }: { className?: string; tone?: Tone; decorative?: boolean }) {
-  if (tone === 'on-dark') return <WordImg src={BRAND_WORDMARK_DARK_SRC} className={className} decorative={decorative} />
-  if (tone === 'on-light') return <WordImg src={BRAND_WORDMARK_SRC} className={className} decorative={decorative} />
+  if (tone === 'on-dark') return <WordImg src={WORDMARK_SVG_DARK} className={className} decorative={decorative} />
+  if (tone === 'on-light') return <WordImg src={WORDMARK_SVG} className={className} decorative={decorative} />
   return (
     <span className="inline-flex items-center">
-      <WordImg src={BRAND_WORDMARK_SRC} className={`${className} dark:hidden`} decorative={decorative} />
-      <WordImg src={BRAND_WORDMARK_DARK_SRC} className={`${className} hidden dark:inline`} decorative={decorative} />
+      <WordImg src={WORDMARK_SVG} className={`${className} dark:hidden`} decorative={decorative} />
+      <WordImg src={WORDMARK_SVG_DARK} className={`${className} hidden dark:inline`} decorative={decorative} />
     </span>
   )
 }

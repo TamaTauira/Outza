@@ -10,6 +10,7 @@ import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { DeploymentFetchPin } from '@/components/deployment-fetch-pin'
 import { Providers } from '@/components/providers'
 import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { DEFAULT_OG_ALT, openGraphImage } from '@/lib/share-image'
 import { siteUrl } from '@/lib/site-url'
 import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
@@ -101,6 +102,9 @@ export default function RootLayout({
           <div className="vp-hinge" aria-hidden="true" />
           <Providers>
             <div id="content">
+              <div className="vp-print-logo vp-wrap px-4 sm:px-6">
+                <VibePeepLogo size="sm" tone="on-light" />
+              </div>
               {children}
               {modal}
             </div>

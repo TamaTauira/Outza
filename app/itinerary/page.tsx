@@ -336,7 +336,7 @@ export default function ItineraryPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
-      <main className="vp-wrap px-4 py-6 sm:px-6 lg:py-8">
+      <main className="vp-wrap px-4 pb-8 pt-5 sm:px-6">
         <PageMasthead variant="itinerary" />
 
         {shared.length > 0 && (
@@ -353,7 +353,7 @@ export default function ItineraryPage() {
 
         {!arranged.length ? (
           <div className="mt-8">
-            <div className="rounded-3xl border border-[#FF4E6A]/20 bg-[#fff5f6] px-4 py-8 text-center dark:bg-[#2a1218] sm:px-8">
+            <div className="rounded-3xl bg-card px-4 py-8 text-center shadow-[var(--vp-shadow-md)] sm:px-8">
               <CalendarPlusIcon className="mx-auto h-8 w-8 text-primary" aria-hidden />
               <h2 className="mt-3 font-display text-3xl font-bold">Nothing lined up yet.</h2>
               <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Spot something worth leaving the house for, add it here, and stack the rest around it.</p>
@@ -363,7 +363,7 @@ export default function ItineraryPage() {
                 {status !== 'authenticated' && <Link href="/login?next=/itinerary" className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Sign in</Link>}
               </div>
             </div>
-            <aside className="mt-6 rounded-2xl border border-dashed border-border bg-muted/40 p-4" aria-label="Example itinerary">
+            <aside className="mt-6 rounded-3xl bg-card p-4 shadow-[var(--vp-shadow-sm)]" aria-label="Example itinerary">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example only. Not your plan, and not a real listing.</p>
               <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <li>Evening · A gig</li>
@@ -488,17 +488,17 @@ export default function ItineraryPage() {
         <section ref={agendaRef} className="mt-10 scroll-mt-24">
           <h2 className="font-display text-2xl font-bold">What’s next on the agenda?</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <button type="button" onClick={() => openPanel('event')} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary">
+            <button type="button" onClick={() => openPanel('event')} className="rounded-3xl bg-card p-4 text-left shadow-[var(--vp-shadow-sm)] hover:shadow-[var(--vp-shadow-md)]">
               <Search className="h-5 w-5 text-primary" />
               <p className="mt-2 font-semibold">Add something from the board</p>
               <p className="mt-1 text-sm text-muted-foreground">Search what’s on and drop it in.</p>
             </button>
-            <button type="button" onClick={() => openPanel('custom')} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary">
+            <button type="button" onClick={() => openPanel('custom')} className="rounded-3xl bg-card p-4 text-left shadow-[var(--vp-shadow-sm)] hover:shadow-[var(--vp-shadow-md)]">
               <Plus className="h-5 w-5 text-primary" />
               <p className="mt-2 font-semibold">Add your own stop</p>
               <p className="mt-1 text-sm text-muted-foreground">Dinner, a meet-up, the bit in between.</p>
             </button>
-            <button type="button" onClick={() => openPanel('nearby')} className="rounded-2xl border border-border bg-card p-4 text-left hover:border-primary">
+            <button type="button" onClick={() => openPanel('nearby')} className="rounded-3xl bg-card p-4 text-left shadow-[var(--vp-shadow-sm)] hover:shadow-[var(--vp-shadow-md)]">
               <MapPin className="h-5 w-5 text-primary" />
               <p className="mt-2 font-semibold">Find something nearby</p>
               <p className="mt-1 text-sm text-muted-foreground">More things on, within about 8 km of your last pin.</p>
