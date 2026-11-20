@@ -49,7 +49,7 @@ export function Hero({ primaryHref, primaryLabel, showSignIn, supply }: { primar
   const updated = supply?.updated ? new Date(supply.updated).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null
   return (
     <section className="overflow-x-clip bg-[#0c0c0e] text-white">
-      <div className={`${sectionPad} grid items-center gap-10 py-8 sm:py-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:py-14`}>
+      <div className={`${sectionPad} vp-page-top grid items-center gap-10 pb-8 sm:pb-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pb-14`}>
         <div className="min-w-0">
           <BackToEventsLink className="inline-flex items-center text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             Back to events

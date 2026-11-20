@@ -16,7 +16,7 @@ export default async function ManageEventPage({ params }: { params: Promise<{ id
   if (!id) notFound()
   return (
     <PromoterAppShell backHref="/promoter?tab=events" backLabel="My events">
-      <main className="max-w-xl mx-auto px-4 sm:px-6 py-6 pb-16">
+      <main className="vp-page-top mx-auto max-w-xl px-4 pb-16 sm:px-6">
         <ManageEvent eventId={id} />
       </main>
     </PromoterAppShell>

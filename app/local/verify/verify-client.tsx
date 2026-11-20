@@ -25,7 +25,7 @@ function VerifyInner() {
   }, [token])
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-10">
+    <main className="vp-page-top mx-auto max-w-xl px-4 pb-10">
       {state === 'working' && <p className="text-base">Checking that link…</p>}
       {state === 'bad' && <p className="text-base">{result.error || 'That link has expired. Ask for a fresh code from the listing form.'}</p>}
       {state === 'ok' && (
@@ -44,7 +44,7 @@ function VerifyInner() {
 
 export function CommunityVerifyClient() {
   return (
-    <Suspense fallback={<main className="mx-auto max-w-xl px-4 py-10">Checking that link…</main>}>
+    <Suspense fallback={<main className="vp-page-top mx-auto max-w-xl px-4 pb-10">Checking that link…</main>}>
       <VerifyInner />
     </Suspense>
   )

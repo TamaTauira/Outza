@@ -12,7 +12,7 @@ export default async function AdminVenuesPage() {
     return <main className="max-w-xl mx-auto px-4 py-16 text-center text-sm">Admins only.</main>
   }
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6">
+    <main className="vp-page-top mx-auto max-w-3xl px-4 pb-6">
       <h1 className="font-display text-2xl font-bold">Venue claims</h1>
       <p className="text-sm text-muted-foreground mt-1">A person approves these. A model score is not a decision.</p>
       <VenueAdmin />

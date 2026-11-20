@@ -145,7 +145,7 @@ export function NewsletterAdminClient() {
 
   const field = 'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm'
   return (
-    <main className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+    <main className="vp-page-top mx-auto max-w-6xl space-y-8 px-4 pb-10">
       <header>
         <h1 className="font-display text-3xl font-bold">The Weekender — newsletter</h1>
         <p className="text-muted-foreground text-sm mt-1">Preview any subscriber’s issue, run QA, send yourself a test, and track performance.</p>

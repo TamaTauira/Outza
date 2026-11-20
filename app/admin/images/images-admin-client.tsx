@@ -94,7 +94,7 @@ export function ImagesAdminClient() {
 
   const t = stats?.totals ?? {}
   return (
-    <main className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+    <main className="vp-page-top mx-auto max-w-5xl space-y-8 px-4 pb-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold">Event images</h1>
