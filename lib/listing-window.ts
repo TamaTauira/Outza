@@ -204,7 +204,18 @@ export type BoardRange = {
  * The public clock is start and finish only. Multi-day events keep their dates
  * on the day heading, never inside the time column.
  */
-function shownFinish(_ev: SlotInput, _sched: ResolvedSchedule, endClockLabel: string): { endLabel: string; endNote: string | null } {
+function shortDay(key: string): string {
+  return new Date(`${key}T12:00:00Z`).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+}
+
+/** Overnight finishes are +1. A finish more than one night later keeps its date. */
+function shownFinish(ev: SlotInput, sched: ResolvedSchedule, endClockLabel: string): { endLabel: string; endNote: string | null } {
+  const startKey = dateKeyOf(ev.date)
+  if (sched.endKey && startKey && daySpan(startKey, sched.endKey) > 1) {
+    return { endLabel: endClockLabel, endNote: shortDay(sched.endKey) }
+  }
+  if (sched.overnight) return { endLabel: endClockLabel, endNote: '+1' }
+  if (sched.multiDay && sched.endKey) return { endLabel: endClockLabel, endNote: shortDay(sched.endKey) }
   return { endLabel: endClockLabel, endNote: null }
 }
 
