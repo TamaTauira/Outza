@@ -102,7 +102,7 @@ export function PathCards() {
     <section id="paths" className="scroll-mt-24 py-12 sm:py-14">
       <div className={sectionPad}>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">What are you here for?</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-6 grid items-stretch gap-[var(--vp-card-gap)] md:grid-cols-3">
           {PATHS.map((path) => (
             <a
               key={path.href}
@@ -238,7 +238,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
   const otherPerks = PRO_PLAN.perks.filter((perk) => !perk.startsWith(`${PRO_PLAN.discountPct}%`))
   return (
     <section id="pro" className="scroll-mt-24 bg-[#0c0c0e] py-12 text-white sm:py-16">
-      <div className={`${sectionPad} grid items-center gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]`}>
+      <div className={`${sectionPad} grid items-center gap-[var(--vp-card-gap)] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]`}>
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-[var(--vp-brand-orange)]">For people who promote more than once</p>
           <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-5xl">Promote more. Save more.</h2>

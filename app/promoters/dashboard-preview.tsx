@@ -18,7 +18,7 @@ const BENEFITS = [
 /** Where each package sits. No sample numbers. */
 export function DashboardPreview() {
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-2">
+    <div className="grid items-stretch gap-[var(--vp-card-gap)] lg:grid-cols-2">
       <div className="min-w-0 rounded-3xl border border-border bg-card p-5 shadow-sm">
         <h3 className="font-display text-xl font-bold">Where a package appears</h3>
         <ol className="mt-4 space-y-3">
