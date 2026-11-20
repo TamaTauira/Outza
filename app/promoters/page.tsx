@@ -28,7 +28,7 @@ export default async function PromotersPage() {
   return (
     <div className="min-h-screen bg-background">
       <PromoterSalesHeader accountHref={primaryHref} />
-      <main className="vp-promoters">
+      <main className="vp-promoters vp-page-top">
         <Hero primaryHref={primaryHref} primaryLabel={primaryLabel} showSignIn={!signedIn} supply={supply} />
         <HowItWorks />
         <PromotionStudio isPromoter={isPromoter} />
