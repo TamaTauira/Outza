@@ -17,6 +17,7 @@ export async function notifyPromotionPurchased(promotionId: string, orderId?: st
     title: 'New promotion purchase',
     preheader: `${p.event.title} · ${formatAud(total)}`,
     manageHref: `${home}/admin`,
+    banner: 'promotion',
     homeHref: home,
     reason: 'This note goes to the VibePeep owner when a promotion is purchased.',
     rows: emailBodyCell(`<h2 style="color:${EMAIL_C.orange};margin:0 0 12px;font-size:20px;">New promotion purchase${p.paymentMode === 'test' ? ' (test mode — no payment taken)' : ''}</h2>
@@ -40,6 +41,7 @@ export async function notifyProPurchased(passId: string) {
     title: `New ${PRO_PLAN.name} membership`,
     preheader: p.user.orgName || p.user.name || p.user.email,
     manageHref: `${home}/admin`,
+    banner: 'pro',
     homeHref: home,
     reason: 'This note goes to the VibePeep owner when a membership is purchased.',
     rows: emailBodyCell(`<h2 style="color:${EMAIL_C.orange};margin:0 0 12px;font-size:20px;">New ${PRO_PLAN.name} membership${p.paymentMode === 'test' ? ' (test mode — no payment taken)' : ''}</h2>

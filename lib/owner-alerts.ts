@@ -215,6 +215,7 @@ export async function reportFault(opts: FaultReport) {
       title: 'VibePeep fault detected',
       preheader: title,
       manageHref: `${home}/admin`,
+      banner: 'owner-fault',
       homeHref: home,
       reason: 'Repeats of this same fault are bundled: at most one email every 6 hours.',
       rows: emailBodyCell(`<h2 style="color:#d92d20;margin:0 0 8px;font-size:20px;">VibePeep fault detected</h2>
@@ -295,6 +296,7 @@ export async function runIdeasDigest(opts: { force?: boolean } = {}) {
     title: 'Your fortnightly ideas summary',
     preheader: `${ideas.length} new idea${ideas.length === 1 ? '' : 's'}`,
     manageHref: `${home}/admin`,
+    banner: 'owner-ideas',
     homeHref: home,
     reason: 'This note goes to the VibePeep owner when new suggestions are waiting.',
     rows: emailBodyCell(`<h2 style="color:${EMAIL_C.orange};margin:0 0 8px;font-size:20px;">Your fortnightly ideas summary</h2>

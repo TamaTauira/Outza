@@ -62,6 +62,7 @@ async function sendCodeMail(to: string, code: string, token: string, title: stri
     title: 'Your VibePeep code is in',
     preheader: `Your code for ${title}`,
     manageHref: `${home}/account`,
+    banner: 'community',
     homeHref: home,
     reason: 'The code is only for you. VibePeep won’t show your email on the listing.',
     rows: emailBodyCell(`<p style="font-size:18px;margin:0 0 12px;">Your listing “${esc(title)}” is one code away from the neighbourhood.</p>
@@ -196,6 +197,7 @@ async function acceptVerification(eventId: string) {
       preheader: approvalState === 'APPROVED' ? 'It’s up. Neighbours can peep it now.' : 'A person will check this one before it goes public.',
       manageHref: link,
       homeHref: home,
+      banner: 'community-listing',
       rows: emailBodyCell(`<p style="margin:0 0 12px;">${approvalState === 'APPROVED' ? 'It’s up. Neighbours can peep it now.' : 'Got it. A person will check this one before it goes public.'}</p>
       <p style="margin:0 0 12px;"><a href="${esc(page)}">Listing page</a></p>
       <p style="margin:0 0 12px;"><a href="${esc(link)}">Edit, postpone or take it down</a>. Keep this link. It’s the key to the listing.</p>

@@ -3,7 +3,7 @@ import { formatTime } from '@/lib/board'
 import { priceSummary } from '@/lib/quality'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
-import { EMAIL_FONT, emailLockup } from '@/lib/email-brand'
+import { EMAIL_FONT, emailBanner, emailLockup } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
@@ -274,7 +274,7 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 <table ${T} width="100%" class="bg" bgcolor="${C.page}" style="background:${C.page};"><tr><td align="center" class="shell" style="padding:16px 8px;">
 <table ${T} width="600" class="w100 bg" bgcolor="${C.page}" style="width:600px;max-width:600px;background:${C.page};">
 
-<tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:20px 20px 0 0;padding:26px 24px 28px;">
+<tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:16px 16px 0 0;padding:26px 24px 28px;">
 <table ${T} width="100%"><tr>
 <td valign="middle"><a href="${x(home)}" style="text-decoration:none;">${emailLockup({ dark: true })}</a></td>
 <td align="right" valign="middle" style="font-family:${FONT};font-size:11px;line-height:1.3;letter-spacing:1.6px;font-weight:800;color:${C.accent};">${x(ed)}</td>
@@ -284,6 +284,7 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 <td width="28" height="4" bgcolor="${C.accent}" style="width:28px;height:4px;background:${C.accent};font-size:0;line-height:4px;">&nbsp;</td>
 <td>&nbsp;</td>
 </tr></table>
+<div style="padding-top:16px;">${emailBanner(r.editionKey === 'daily' ? 'daily-drop' : 'newsletter')}</div>
 <div style="font-family:${FONT};font-size:12px;line-height:1.4;letter-spacing:1.4px;font-weight:700;color:${C.onDarkMuted};padding-top:18px;text-transform:uppercase;">${x(r.city)} &nbsp;&middot;&nbsp; ${x(range)}</div>
 <div class="h1" style="font-family:${FONT};font-size:32px;line-height:1.15;font-weight:800;color:${C.onDark};padding-top:8px;">${x(r.greeting)}</div>
 <div style="font-family:${FONT};font-size:16px;line-height:1.55;color:#e6e6e6;padding-top:10px;">${x(r.intro)}</div>
@@ -304,7 +305,7 @@ ${r.sponsoredPos === 'end' ? sponsoredBlock(r) : ''}
 ${button(go(r, 'explore', 'explore'), `Explore what’s on in ${r.city}`)}
 </td></tr></table></td></tr>
 
-<tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:0 0 20px 20px;padding:28px 24px 32px;">
+<tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:0 0 16px 16px;padding:28px 24px 32px;">
 <div style="font-family:${FONT};font-size:16px;line-height:1.3;font-weight:800;color:#ffffff;">See you out there.</div>
 <div style="font-family:${FONT};font-size:13px;line-height:1.45;color:${C.onDarkMuted};padding-top:4px;">Two eyes on your city. Only the nights you asked for.</div>
 <div style="font-family:${FONT};font-size:13px;line-height:1.7;color:#e4e4e4;padding-top:18px;">${link(prefs, 'Manage preferences')}<span class="fdot"> &middot; </span>${link(prefs, 'Change frequency')}<span class="fdot"> &middot; </span>${link(unsub, 'Unsubscribe')}<span class="fdot"> &middot; </span>${link(`${home}/privacy`, 'Privacy policy')}<span class="fdot"> &middot; </span>${link(`${home}/disclaimer`, 'Disclaimer')}</div>

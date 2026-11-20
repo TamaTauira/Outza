@@ -1,3 +1,5 @@
+import { existsSync } from 'fs'
+import path from 'path'
 import { BRAND_DEEP, BRAND_MASCOT_EMAIL, BRAND_MASCOT_EMAIL_HEIGHT, BRAND_MASCOT_EMAIL_WIDTH, BRAND_ORANGE, BRAND_PINK, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
@@ -99,9 +101,26 @@ export function emailButton(href: string, label: string): string {
 <![endif]-->
 <!--[if !mso]><!-->
 <table ${T}><tr><td bgcolor="${EMAIL_C.deep}" style="border-radius:999px;background:${EMAIL_C.deep};">
-<a href="${url}" style="display:inline-block;padding:11px 18px;font-family:${EMAIL_FONT};font-size:14px;line-height:18px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${safe}</a>
+<a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${EMAIL_FONT};font-size:14px;line-height:18px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${safe}</a>
 </td></tr></table>
 <!--<![endif]-->`
+}
+
+/**
+ * Per-type header art, 1200×400 when the file lands in public/email-headers/<kind>.png.
+ * Until then every type uses the same brand band so a missing file never shows a broken image.
+ */
+export function emailBanner(kind: string): string {
+  const safe = kind.replace(/[^a-z0-9-]/gi, '') || 'general'
+  const disk = path.join(process.cwd(), 'public', 'email-headers', `${safe}.png`)
+  if (existsSync(disk)) {
+    const src = emailAssetUrl(`/email-headers/${safe}.png`)
+    return `<img src="${emailEscape(src)}" alt="" width="552" height="184" style="display:block;width:100%;max-width:552px;height:auto;border:0;border-radius:12px;"/>`
+  }
+  return `<table ${T} width="100%"><tr>
+<td bgcolor="#1a1408" style="background:linear-gradient(105deg,${EMAIL_C.orange} 0%,${EMAIL_C.accent} 100%);border-radius:12px;padding:18px 20px;">
+<div style="font-family:${EMAIL_FONT};font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#1a1408;font-weight:700;">VibePeep</div>
+</td></tr></table>`
 }
 
 export function emailBodyCell(html: string): string {
@@ -121,13 +140,15 @@ export function emailDocument(opts: {
   homeHref?: string
   disclaimer?: string
   reason?: string
+  /** File stem under public/email-headers/. The brand band is used until that PNG exists. */
+  banner?: string
 }): string {
   const home = opts.homeHref ?? CANONICAL_SITE_URL
   const link = (href: string, label: string) => `<a class="flink" href="${emailEscape(href)}" style="color:#e4e4e4;text-decoration:underline;">${emailEscape(label)}</a>`
   const links = [
     link(opts.manageHref, 'Manage preferences'),
     opts.unsubscribeHref ? link(opts.unsubscribeHref, 'Unsubscribe') : '',
-    link(home, 'VibePeep'),
+    link(home, 'Home'),
   ].filter(Boolean).join('<span class="fdot"> &middot; </span>')
   const pre = opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${emailEscape(opts.preheader)}${'&#8204;&nbsp;'.repeat(24)}</div>` : ''
   const disclaimer = opts.disclaimer
@@ -172,8 +193,9 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 ${pre}
 <table ${T} width="100%" class="bg" bgcolor="${EMAIL_C.page}" style="background:${EMAIL_C.page};"><tr><td align="center" style="padding:16px 8px;">
 <table ${T} width="600" class="w100" style="width:600px;max-width:600px;">
-<tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:20px 20px 0 0;padding:22px 24px 24px;">
+<tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:16px 16px 0 0;padding:22px 24px 18px;">
 <a href="${emailEscape(home)}" style="text-decoration:none;">${emailLockup({ dark: true })}</a>
+<div style="padding-top:16px;">${emailBanner(opts.banner ?? 'general')}</div>
 <table ${T} style="margin-top:16px;"><tr>
 <td width="28" height="4" bgcolor="${EMAIL_C.orange}" style="width:28px;height:4px;background:${EMAIL_C.orange};font-size:0;line-height:4px;">&nbsp;</td>
 <td width="28" height="4" bgcolor="${EMAIL_C.accent}" style="width:28px;height:4px;background:${EMAIL_C.accent};font-size:0;line-height:4px;">&nbsp;</td>
@@ -181,7 +203,7 @@ ${pre}
 </tr></table>
 </td></tr>
 ${opts.rows}
-<tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:0 0 20px 20px;padding:22px 24px 26px;">
+<tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:0 0 16px 16px;padding:22px 24px 26px;">
 ${disclaimer}
 <div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.7;color:#e4e4e4;padding-top:14px;">${links}</div>
 ${reason}
