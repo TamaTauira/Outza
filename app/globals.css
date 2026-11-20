@@ -315,7 +315,17 @@
 .vp-time-start,
 .vp-time-end { grid-column: 2; display: block; height: var(--lh); line-height: var(--lh); white-space: nowrap; }
 .vp-time b { font-weight: 500; font-size: 13px; letter-spacing: -0.005em; }
-.vp-time i { font-style: normal; margin-left: 3px; font-size: 11px; color: hsl(var(--muted-foreground)); }
+/* Two-digit hour column. 9: and 10: put the colon on the same x, on both lines and every row. */
+.vp-time-hm {
+  display: inline-grid;
+  grid-template-columns: 2ch auto auto;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0;
+}
+.vp-time-hour { text-align: right; }
+.vp-time i { font-style: normal; margin-left: 0.35ch; font-size: 11px; color: hsl(var(--muted-foreground)); }
 .vp-time-start b { color: hsl(var(--foreground)); }
 .vp-time-end b { color: hsl(var(--muted-foreground)); }
 .vp-time-dot,
