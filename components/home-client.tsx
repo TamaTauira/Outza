@@ -409,7 +409,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                   {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
                 </select>
               </label>
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz this Friday" queryRequest={askRequest} chips={false} goToPage />
+              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz Friday" queryRequest={askRequest} chips={false} goToPage />
             </div>
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-[13px] text-white/70">Describe a vibe, a date, a place or a budget. Or just browse.</p>
             <div className="vp-chip-row relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
