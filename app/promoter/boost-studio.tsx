@@ -35,7 +35,7 @@ type CampaignRow = {
   refundReason: string
 }
 
-const field = 'h-11 w-full rounded-md border border-border bg-background px-3 text-base sm:text-sm'
+const field = 'h-11 w-full rounded-xl border border-border bg-background px-3 text-base sm:text-sm'
 const localValue = (date: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -251,8 +251,8 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
                 <p className="text-sm font-medium">Payments coming soon</p>
                 <p className="text-xs text-muted-foreground">Leave a quote request. This does not charge a card and does not put the boost live.</p>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@venue.com" className={field} aria-label="Email for the quote" />
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Which night, which room" rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
-                <button type="button" onClick={quote} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border text-sm font-semibold disabled:opacity-60">
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Which night, which room" rows={3} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+                <button type="button" onClick={quote} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold disabled:opacity-60">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}Request a quote
                 </button>
               </div>

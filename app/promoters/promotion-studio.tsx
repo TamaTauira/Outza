@@ -42,11 +42,11 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
           <h2 className="mt-2 max-w-3xl font-display text-3xl font-bold tracking-tight sm:text-4xl">Give your event the spotlight.</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">Three ways to get noticed. One easy way to get started.</p>
 
-          <div className="mt-8 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+          <div className="mt-8 grid items-stretch gap-[var(--vp-card-gap)] xl:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="order-1 xl:order-2">
               <DurationPanel days={days} onChange={choose} />
             </div>
-            <div className="order-2 grid gap-4 md:grid-cols-2 xl:order-1 xl:grid-cols-3">
+            <div className="order-2 grid items-stretch gap-[var(--vp-card-gap)] md:grid-cols-2 xl:order-1 xl:grid-cols-3">
               {TIERS.map((tier) => {
                 const perDay = Math.round(tier.prices[days] / days)
                 return (

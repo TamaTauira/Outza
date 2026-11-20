@@ -74,7 +74,7 @@ export default async function VenueProfilePage({ params }: { params: Promise<{ i
   return (
     <PageShell>
     <main className="vp-wrap vp-page-top px-4 pb-24 sm:px-6">
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-[var(--vp-card-gap)]">
       <div>
       <p className="text-xs text-muted-foreground">{venue.city}</p>
       <h1 className="mt-1 flex flex-wrap items-center gap-2 font-display text-3xl font-bold tracking-tight lg:text-4xl">
