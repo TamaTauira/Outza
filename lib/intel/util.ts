@@ -1,5 +1,6 @@
 // Pure helpers for VibePeep Intelligence (no DB access; unit-tested).
 import { createHash } from 'crypto'
+import { BudgetStop, budgetReached, fetchBudgetMs, intelDeadline, isAbortError, isBudgetStop } from './budget'
 
 /** RFC-4180-ish CSV parser (handles quoted fields with commas/quotes/newlines). */
 export function parseCsv(text: string): Record<string, string>[] {
@@ -31,14 +32,56 @@ export const sha = (s: string) => createHash('sha256').update(s).digest('hex').s
 export async function fetchRetry(url: string, init: RequestInit = {}, attempts = 3, timeoutMs = 90_000): Promise<{ res: Response; attempts: number }> {
   let last: unknown
   for (let i = 1; i <= attempts; i++) {
+    if (budgetReached()) throw new BudgetStop()
+    const ms = fetchBudgetMs(timeoutMs)
+    const capped = intelDeadline() != null && ms < timeoutMs
+    if (capped && ms < 1_000) throw new BudgetStop()
     try {
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs), cache: 'no-store' })
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(Math.max(1, ms)), cache: 'no-store' })
       if (res.ok) return { res, attempts: i }
       last = new Error(`HTTP ${res.status} from ${new URL(url).host}`)
       if (res.status >= 400 && res.status < 500 && res.status !== 429) break
-    } catch (e) { last = e }
-    if (i < attempts) await new Promise((r) => setTimeout(r, 1500 * i * i))
+    } catch (e) {
+      if (isBudgetStop(e) || budgetReached() || (capped && isAbortError(e))) throw new BudgetStop()
+      last = e
+    }
+    if (i < attempts) {
+      if (budgetReached()) throw new BudgetStop()
+      await new Promise((r) => setTimeout(r, 1500 * i * i))
+    }
   }
+  if (budgetReached()) throw new BudgetStop()
+  throw last instanceof Error ? last : new Error(String(last))
+}
+
+/** Fetch and read the body on one signal, so a slow ABS download cannot outlive the import budget. */
+export async function fetchText(url: string, init: RequestInit = {}, attempts = 3, timeoutMs = 90_000): Promise<{ text: string; attempts: number }> {
+  let last: unknown
+  for (let i = 1; i <= attempts; i++) {
+    if (budgetReached()) throw new BudgetStop()
+    const ms = fetchBudgetMs(timeoutMs)
+    const capped = intelDeadline() != null && ms < timeoutMs
+    if (capped && ms < 1_000) throw new BudgetStop()
+    const signal = AbortSignal.timeout(Math.max(1, ms))
+    try {
+      const res = await fetch(url, { ...init, signal, cache: 'no-store' })
+      if (!res.ok) {
+        await res.body?.cancel().catch(() => {})
+        last = new Error(`HTTP ${res.status} from ${new URL(url).host}`)
+        if (res.status >= 400 && res.status < 500 && res.status !== 429) break
+      } else {
+        return { text: await res.text(), attempts: i }
+      }
+    } catch (e) {
+      if (isBudgetStop(e) || budgetReached() || (capped && isAbortError(e))) throw new BudgetStop()
+      last = e
+    }
+    if (i < attempts) {
+      if (budgetReached()) throw new BudgetStop()
+      await new Promise((r) => setTimeout(r, 1500 * i * i))
+    }
+  }
+  if (budgetReached()) throw new BudgetStop()
   throw last instanceof Error ? last : new Error(String(last))
 }
 

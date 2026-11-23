@@ -5,7 +5,7 @@ import { chunksFor, chunkProgressMessage, datasetMinimums, planFor, readHashMap,
 import { runChunkPlan } from './chunk-run'
 import { createAbsFetcher } from './connectors'
 import { asConfig } from './schedule'
-import { activateDatasetVersion, activeDatasetVersion, appendDatasetRows, discardDatasetVersion } from './store'
+import { chunkObservationStore } from './store'
 
 export async function runChunkedAbs(opts: {
   source: 'abs_region' | 'abs_seifa'
@@ -26,12 +26,7 @@ export async function runChunkedAbs(opts: {
     datasetMin: datasetMinimums(opts.source),
     deadline: opts.deadline,
     fetchChunk,
-    store: {
-      append: (dataset, version, rows) => appendDatasetRows(opts.source, dataset, version, rows),
-      activate: (dataset, version, rows, latestPeriod) => activateDatasetVersion(opts.source, dataset, version, rows, latestPeriod),
-      discard: (dataset, version) => discardDatasetVersion(opts.source, dataset, version),
-      activeVersion: (dataset) => activeDatasetVersion(opts.source, dataset),
-    },
+    store: chunkObservationStore(opts.source, opts.deadline),
     onCheckpoint: async (cursor) => {
       const cur = await prisma.intelSource.findUnique({ where: { key: opts.source } })
       const next = asConfig(cur?.config)

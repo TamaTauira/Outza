@@ -3,7 +3,7 @@ import { completeJson, llmConfigured } from '@/lib/llm'
 import { prisma } from '@/lib/prisma'
 import { siteUrl } from '@/lib/site-url'
 import { mapChunkRows, type AbsChunk } from './abs-plan'
-import { fetchRetry, htmlToText, normStation, parseCsv, parseDnswHeadline, sha } from './util'
+import { fetchRetry, fetchText, htmlToText, normStation, parseCsv, parseDnswHeadline, sha } from './util'
 import type { ObsRow } from './store'
 
 export type ConnectorResult = { datasets: { dataset: string; rows: ObsRow[] }[]; note?: string; attempts: number; extra?: () => Promise<number> }
@@ -13,8 +13,8 @@ const SDMX_CSV = { Accept: 'application/vnd.sdmx.data+csv' }
 const UA = () => ({ 'User-Agent': `Mozilla/5.0 (compatible; VibePeep-Intelligence/1.0; +${siteUrl()})` })
 
 async function absCsv(flow: string, key: string, params: string, attempts = 3, timeoutMs = 90_000) {
-  const { res, attempts: used } = await fetchRetry(`${ABS}/ABS,${flow}/${key}?${params}`, { headers: SDMX_CSV }, attempts, timeoutMs)
-  return { rows: parseCsv(await res.text()), attempts: used }
+  const { text, attempts: used } = await fetchText(`${ABS}/ABS,${flow}/${key}?${params}`, { headers: SDMX_CSV }, attempts, timeoutMs)
+  return { rows: parseCsv(text), attempts: used }
 }
 const num = (s?: string) => { if (s == null || s === '') return null; const n = Number(s); return isFinite(n) ? n : null }
 

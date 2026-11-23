@@ -1,8 +1,9 @@
 // Ingestion runner: change detection, retries (inside connectors), job logs, last-good retention and fault alerts.
 // National ABS imports are chunked and checkpointed so a 300s function limit can resume instead of stalling.
-import { prisma } from '@/lib/prisma'
+import { prisma, runWithJobPrisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 import { reportFault } from '@/lib/owner-alerts'
+import { isBudgetStop, withIntelDeadline } from './budget'
 import { INTEL_SOURCES, type SourceKey } from './sources'
 import { absHsi, dnsw, tfnsw, type ConnectorResult } from './connectors'
 import { runChunkedAbs } from './abs-run'
@@ -57,7 +58,11 @@ export async function recoverStaleRunningSources(now = Date.now()) {
   }
 }
 
-export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 'cron' | 'test' = 'schedule', deadline = Date.now() + IMPORT_BUDGET_MS) {
+export function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 'cron' | 'test' = 'schedule', deadline = Date.now() + IMPORT_BUDGET_MS) {
+  return runWithJobPrisma(() => withIntelDeadline(deadline, () => runSourceAt(key, trigger, deadline)))
+}
+
+async function runSourceAt(key: SourceKey, trigger: 'schedule' | 'admin' | 'cron' | 'test', deadline: number) {
   await ensureSources()
   if (running.has(key)) return { status: 'already_running' as const }
   running.add(key)
@@ -85,6 +90,7 @@ export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 
       const result = await RUNNERS[key]((before?.config as Record<string, string> | null) ?? null)
       return await finishConnector(key, job.id, before?.config, result)
     } catch (e) {
+      if (isBudgetStop(e)) return await markBudgetPartial(key, job.id)
       const msg = e instanceof Error ? e.message : String(e)
       // Config (including a chunk cursor) is left as the last checkpoint saved it.
       const s = await prisma.intelSource.update({ where: { key }, data: { status: 'failed', lastError: msg.slice(0, 2000), failCount: { increment: 1 } } })
@@ -93,6 +99,18 @@ export async function runSource(key: SourceKey, trigger: 'schedule' | 'admin' | 
       return { status: 'failed' as const, message: msg }
     }
   } finally { running.delete(key) }
+}
+
+/** The platform clock ran out. Keep the cursor and the last good dataset, and let the next call continue. */
+async function markBudgetPartial(key: SourceKey, jobId: string) {
+  const cur = await prisma.intelSource.findUnique({ where: { key } })
+  const cfg = asConfig(cur?.config)
+  delete cfg.retryNow
+  const message = 'Import paused at the time budget. The next run continues. The last good dataset is still being served.'
+  await prisma.intelSource.update({ where: { key }, data: { status: 'partial', lastError: message, config: jsonConfig(cfg) } })
+  await prisma.intelIngestJob.update({ where: { id: jobId }, data: { status: 'partial', endedAt: new Date(), message } })
+  console.log(`[intel] ${key} paused at the time budget`)
+  return { status: 'partial' as const, message }
 }
 
 async function runCrowd(key: 'tra' | 'footfall', config: unknown, resume: boolean, deadline: number, jobId: string, previousLatest: string | null) {
@@ -120,6 +138,7 @@ async function finishChunked(key: SourceKey, result: Awaited<ReturnType<typeof r
     })
     await prisma.intelIngestJob.update({ where: { id: jobId }, data: { status: 'partial', endedAt: new Date(), rows: result.rows, attempts: result.attempts, message: result.message } })
     if (result.changed) await prisma.intelCache.deleteMany({})
+    console.log(`[intel] ${key} paused inside the time budget: ${result.message}`)
     return { status: 'partial' as const, message: result.message }
   }
   delete cfg.import
@@ -173,11 +192,14 @@ async function finishConnector(key: Exclude<SourceKey, 'google_bp' | 'abs_region
   return { status, message }
 }
 
-/** Run every enabled source whose schedule is due. Failures retry on the next hour (max every 6h after 3 fails). Chunked ABS imports resume on the next call. */
-export async function runDueSources() {
+/** Run every enabled source whose schedule is due. Failures retry on the next hour (max every 6h after 3 fails). Chunked imports resume on the next call. */
+export function runDueSources(deadline = Date.now() + IMPORT_BUDGET_MS) {
+  return runWithJobPrisma(() => withIntelDeadline(deadline, () => runDueSourcesAt(deadline)))
+}
+
+async function runDueSourcesAt(deadline: number) {
   await ensureSources()
   const sources = await prisma.intelSource.findMany({ where: { enabled: true } })
-  const deadline = Date.now() + IMPORT_BUDGET_MS
   const out: Record<string, string> = {}
   const ranked = [...sources].sort(compareSourceRun)
   for (const s of ranked) {

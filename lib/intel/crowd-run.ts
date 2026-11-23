@@ -6,7 +6,7 @@ import { runChunkPlan } from './chunk-run'
 import { fetchCrowdChunk } from './crowd-fetch'
 import { crowdChunks, crowdDatasetMin, crowdPlan, type CrowdChunk } from './crowd-plan'
 import { asConfig } from './schedule'
-import { activateDatasetVersion, activeDatasetVersion, appendDatasetRows, discardDatasetVersion } from './store'
+import { chunkObservationStore } from './store'
 
 export async function runChunkedCrowd(opts: {
   source: 'tra' | 'footfall'
@@ -25,12 +25,7 @@ export async function runChunkedCrowd(opts: {
     datasetMin: crowdDatasetMin(opts.source),
     deadline: opts.deadline,
     fetchChunk: (chunk) => fetchCrowdChunk(chunk),
-    store: {
-      append: (dataset, version, rows) => appendDatasetRows(opts.source, dataset, version, rows),
-      activate: (dataset, version, rows, latestPeriod) => activateDatasetVersion(opts.source, dataset, version, rows, latestPeriod),
-      discard: (dataset, version) => discardDatasetVersion(opts.source, dataset, version),
-      activeVersion: (dataset) => activeDatasetVersion(opts.source, dataset),
-    },
+    store: chunkObservationStore(opts.source, opts.deadline),
     onCheckpoint: async (cursor) => {
       const cur = await prisma.intelSource.findUnique({ where: { key: opts.source } })
       const next = asConfig(cur?.config)

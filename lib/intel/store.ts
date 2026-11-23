@@ -1,7 +1,11 @@
 // Versioned observation store: a dataset pointer moves only once that dataset is complete,
 // so a failed or partial import never replaces the last good dataset.
 import { prisma } from '@/lib/prisma'
+import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
+import { BudgetStop } from './budget'
+import { MIN_CHUNK_MS } from './schedule'
 import { dedupeRows, latestPeriod, versionOf, type ObsRow } from './rows'
+import type { ChunkStore } from './chunk-run'
 
 export type { ObsRow } from './rows'
 export { dedupeRows, versionOf } from './rows'
@@ -37,9 +41,10 @@ export async function writeDataset(source: string, dataset: string, rows: ObsRow
 }
 
 /** Append rows to an in-progress version. Does not move the live dataset pointer. */
-export async function appendDatasetRows(source: string, dataset: string, version: string, rows: ObsRow[]) {
+export async function appendDatasetRows(source: string, dataset: string, version: string, rows: ObsRow[], stopBefore?: number) {
   const uniq = dedupeRows(rows)
   for (let i = 0; i < uniq.length; i += 1000) {
+    if (stopBefore != null && stopBefore - Date.now() < MIN_CHUNK_MS) throw new BudgetStop()
     await prisma.intelObservation.createMany({
       data: uniq.slice(i, i + 1000).map((r) => ({
         source, dataset, version, measure: r.measure, geoType: r.geoType, geoCode: r.geoCode, period: r.period, value: r.value,
@@ -50,7 +55,10 @@ export async function appendDatasetRows(source: string, dataset: string, version
   }
 }
 
-/** Point the dataset at a finished version and drop older versions. */
+/**
+ * Point the dataset at a finished version. Old versions are removed by a budgeted sweep
+ * after the resume cursor is saved, so a large delete cannot be killed mid-way with status still `running`.
+ */
 export async function activateDatasetVersion(source: string, dataset: string, version: string, rows: number, latest: string | null) {
   const id = `${source}:${dataset}`
   await prisma.intelDataset.upsert({
@@ -58,14 +66,36 @@ export async function activateDatasetVersion(source: string, dataset: string, ve
     update: { activeVersion: version, rows, latestPeriod: latest },
   })
   versionCache = null
-  await deleteVersionRows(source, dataset, (v) => v !== version)
 }
 
-/** Drop an in-progress version without touching the live pointer. */
-export async function discardDatasetVersion(source: string, dataset: string, version: string) {
+/** Drop an in-progress version without touching the live pointer. False when the time budget stopped the delete. */
+export async function discardDatasetVersion(source: string, dataset: string, version: string, stopBefore?: number) {
   const current = await prisma.intelDataset.findUnique({ where: { id: `${source}:${dataset}` } })
-  if (current?.activeVersion === version) return
-  await deleteVersionRows(source, dataset, (v) => v === version)
+  if (current?.activeVersion === version) return true
+  return deleteVersionRows(source, dataset, (v) => v === version, stopBefore)
+}
+
+/** Drop every version except the live one. False when the time budget stopped the delete. */
+export async function trimInactiveVersions(source: string, dataset: string, stopBefore?: number) {
+  const active = await activeDatasetVersion(source, dataset)
+  if (!active) return true
+  return deleteVersionRows(source, dataset, (v) => v !== active, stopBefore)
+}
+
+export function countDatasetRows(source: string, dataset: string, version: string) {
+  return prisma.intelObservation.count({ where: { source, dataset, version } })
+}
+
+/** Store callbacks for a chunked import. Deletes stop at `stopBefore` instead of running to the platform kill. */
+export function chunkObservationStore(source: string, stopBefore: number): ChunkStore {
+  return {
+    append: (dataset, version, rows) => appendDatasetRows(source, dataset, version, rows, stopBefore),
+    activate: (dataset, version, rows, latestPeriod) => activateDatasetVersion(source, dataset, version, rows, latestPeriod),
+    discard: (dataset, version) => discardDatasetVersion(source, dataset, version, stopBefore),
+    activeVersion: (dataset) => activeDatasetVersion(source, dataset),
+    count: (dataset, version) => countDatasetRows(source, dataset, version),
+    sweep: (dataset) => trimInactiveVersions(source, dataset, stopBefore),
+  }
 }
 
 export async function activeDatasetVersion(source: string, dataset: string) {
@@ -73,16 +103,32 @@ export async function activeDatasetVersion(source: string, dataset: string) {
   return row?.activeVersion ?? null
 }
 
-async function deleteVersionRows(source: string, dataset: string, match: (v: string) => boolean) {
+async function deleteBatch(source: string, dataset: string, version: string, stopBefore?: number) {
+  const take = (db: typeof prisma) => db.intelObservation.findMany({ where: { source, dataset, version }, select: { id: true }, take: 4000 })
+  const ids = stopBefore == null ? await take(prisma) : await withStatementTimeout(MIN_CHUNK_MS, take)
+  if (!ids.length) return 0
+  const remove = (db: typeof prisma) => db.intelObservation.deleteMany({ where: { id: { in: ids.map((x) => x.id) } } })
+  if (stopBefore == null) await remove(prisma)
+  else await withStatementTimeout(MIN_CHUNK_MS, remove)
+  return ids.length
+}
+
+/** True when every matching row is gone. False when the budget or a statement timeout stopped a batch. */
+async function deleteVersionRows(source: string, dataset: string, match: (v: string) => boolean, stopBefore?: number) {
   const versions = await prisma.intelObservation.groupBy({ by: ['version'], where: { source, dataset } })
   for (const { version } of versions) {
     if (!match(version)) continue
     for (;;) {
-      const ids = await prisma.intelObservation.findMany({ where: { source, dataset, version }, select: { id: true }, take: 4000 })
-      if (!ids.length) break
-      await prisma.intelObservation.deleteMany({ where: { id: { in: ids.map((x) => x.id) } } })
+      if (stopBefore != null && stopBefore - Date.now() < MIN_CHUNK_MS) return false
+      try {
+        if (await deleteBatch(source, dataset, version, stopBefore) === 0) break
+      } catch (e) {
+        if (stopBefore != null && (isDbSaturation(e) || e instanceof BudgetStop)) return false
+        throw e
+      }
     }
   }
+  return true
 }
 
 let versionCache: { at: number; map: Map<string, string> } | null = null

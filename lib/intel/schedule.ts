@@ -4,11 +4,22 @@ import { isOpenImport } from './abs-plan'
 /** A platform kill leaves status=running. After this, cron and admin may take the source back. */
 export const STALE_RUNNING_MS = 20 * 60 * 1000
 
-/** Stop a chunked import this long before the 300s function limit, leaving room for cold start and the final status write. */
-export const IMPORT_BUDGET_MS = 200_000
+/** Vercel maxDuration for /api/cron/intel. The platform kills the isolate at this point and cannot save status. */
+export const FUNCTION_LIMIT_MS = 300_000
 
-/** Don't start another ABS chunk when less than this remains. One chunk has to finish inside the budget. */
+/** Leave this much of the function limit for the status write after work stops. */
+export const BUDGET_HEADROOM_MS = 60_000
+
+/** Stop fetching, inserting and deleting at this point so the run can still be marked partial. */
+export const IMPORT_BUDGET_MS = FUNCTION_LIMIT_MS - BUDGET_HEADROOM_MS
+
+/** Don't start another chunk or cleanup batch when less than this remains. One batch has to finish or be abandoned inside the headroom. */
 export const MIN_CHUNK_MS = 20_000
+
+/** Follow-up calls of the same cron route after a partial import. Not a new schedule. */
+export const IMPORT_RESUME_STEPS = 8
+
+const CHUNKED_RESUME_KEYS = new Set(['abs_region', 'abs_seifa', 'tra', 'footfall'])
 
 export const NATIONAL_COVERAGE = 'au-cities-v1'
 export const NATIONAL_SOURCES = new Set(['abs_region', 'abs_seifa', 'abs_hsi', 'tra', 'footfall'])
@@ -67,4 +78,20 @@ export function sourceRunRank(s: DueSource) {
 
 export function compareSourceRun(a: DueSource, b: DueSource) {
   return sourceRunRank(a) - sourceRunRank(b) || a.key.localeCompare(b.key)
+}
+
+export function sliceHasTime(deadline: number, now = Date.now(), slice = MIN_CHUNK_MS) {
+  return deadline - now >= slice
+}
+
+/** A chunked import that stopped for the budget should continue on the next call of this route, up to a small cap. */
+export function shouldResumeImport(statuses: Record<string, string>, step: number) {
+  if (step >= IMPORT_RESUME_STEPS) return false
+  return Object.entries(statuses).some(([key, status]) => status === 'partial' && CHUNKED_RESUME_KEYS.has(key))
+}
+
+export function resumeStep(header: string | null) {
+  const n = Number(header)
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return Math.min(Math.floor(n), IMPORT_RESUME_STEPS)
 }
