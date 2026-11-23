@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { absRegionChunks, absSeifaChunks, chunkProgressMessage, isOpenImport, mapChunkRows, newCursor, type AbsChunk } from './abs-plan'
 import { runChunkPlan } from './chunk-run'
-import { IMPORT_BUDGET_MS, STALE_RUNNING_MS, isStaleRunning, sourceIsDue, sourceRunRank } from './schedule'
+import { BudgetStop, fetchBudgetMs } from './budget'
+import { BUDGET_HEADROOM_MS, FUNCTION_LIMIT_MS, IMPORT_BUDGET_MS, IMPORT_RESUME_STEPS, STALE_RUNNING_MS, isStaleRunning, resumeStep, shouldResumeImport, sourceIsDue, sourceRunRank } from './schedule'
 import { SEIFA_PREFERENCE, loadSeifaIndexes, seifaCandidates, seifaRowsToIndexes } from './seifa'
 import { INTEL_SOURCES } from './sources'
 import type { ObsRow } from './rows'
@@ -48,8 +49,21 @@ test('an open chunk cursor is due after a failure without waiting out the backof
 test('unfinished ABS imports run before the daily sources', () => {
   assert.equal(sourceRunRank({ key: 'abs_region', status: 'partial', lastCheckedAt: null, failCount: 0, config: {}, lastSuccessAt: null }), 0)
   assert.equal(sourceRunRank({ key: 'abs_hsi', status: 'ok', lastCheckedAt: null, failCount: 0, config: { coverage: 'au-cities-v1' }, lastSuccessAt: new Date() }), 1)
-  assert.ok(IMPORT_BUDGET_MS < 300_000)
-  assert.equal(IMPORT_BUDGET_MS, 200_000)
+  assert.equal(FUNCTION_LIMIT_MS - BUDGET_HEADROOM_MS, IMPORT_BUDGET_MS)
+  assert.equal(BUDGET_HEADROOM_MS, 60_000)
+  assert.ok(IMPORT_BUDGET_MS < FUNCTION_LIMIT_MS)
+  assert.equal(fetchBudgetMs(40_000, 1_000, 10_000), 9_000)
+  assert.equal(fetchBudgetMs(40_000, 1_000, undefined), 40_000)
+})
+
+test('a partial chunked import continues on this route until the resume cap', () => {
+  assert.equal(shouldResumeImport({ abs_region: 'partial' }, 0), true)
+  assert.equal(shouldResumeImport({ abs_region: 'failed', tra: 'ok' }, 0), false)
+  assert.equal(shouldResumeImport({ tfnsw: 'partial' }, 0), false)
+  assert.equal(shouldResumeImport({ abs_region: 'partial' }, IMPORT_RESUME_STEPS), false)
+  assert.equal(resumeStep(null), 0)
+  assert.equal(resumeStep('2'), 2)
+  assert.equal(resumeStep(String(IMPORT_RESUME_STEPS + 3)), IMPORT_RESUME_STEPS)
 })
 
 test('region and SEIFA chunks cover every state and stay uniquely named', () => {
@@ -159,6 +173,75 @@ test('chunked import resumes, activates a finished dataset, and refuses a short 
   assert.match(chunkProgressMessage(4, 48, ['asgs']), /4 of 48 chunks saved/)
 })
 
+test('a fetch stopped for the time budget keeps earlier chunks and stays partial', async () => {
+  const chunks: AbsChunk[] = [
+    { id: 'a1', dataset: 'asgs', flow: 'f', key: 'k', params: 'p', kind: 'asgs', minRows: 1 },
+    { id: 'a2', dataset: 'asgs', flow: 'f', key: 'k', params: 'p', kind: 'asgs', minRows: 1 },
+  ]
+  const store = memoryStore()
+  const fetched: string[] = []
+  const obs = (code: string): ObsRow => ({ measure: 'ERP_P_20', geoType: 'SA2', geoCode: code, period: '2024', value: 1 })
+  const result = await runChunkPlan({
+    plan: 'test-plan', chunks, storedCursor: null, resume: false, previousHashes: {}, datasetMin: { asgs: 2 },
+    deadline: 10_000, minSliceMs: 0, now: () => 0,
+    fetchChunk: async (chunk) => {
+      fetched.push(chunk.id)
+      if (chunk.id === 'a2') throw new BudgetStop()
+      return { rows: [obs(chunk.id)], attempts: 1 }
+    },
+    store, onCheckpoint: async () => {},
+  })
+  assert.equal(result.partial, true)
+  assert.deepEqual(result.cursor.done, ['a1'])
+  assert.deepEqual(fetched, ['a1', 'a2'])
+  assert.equal(store.active.has('asgs'), false)
+})
+
+test('cleanup that runs out of time stays partial and keeps the live version', async () => {
+  const chunks: AbsChunk[] = [{ id: 'a', dataset: 'asgs', flow: 'f', key: 'k', params: 'p', kind: 'asgs', minRows: 1 }]
+  const rows: ObsRow[] = [{ measure: 'ERP_P_20', geoType: 'SA2', geoCode: '101021007', period: '2024', value: 3 }]
+  const store = memoryStore()
+  const opts = { plan: 'p', chunks, datasetMin: { asgs: 1 }, minSliceMs: 0, fetchChunk: async () => ({ rows, attempts: 1 }), store, onCheckpoint: async () => {} }
+  const first = await runChunkPlan({ ...opts, storedCursor: null, resume: false, previousHashes: {}, deadline: 10_000, now: () => 0 })
+  const version = store.active.get('asgs')?.version
+  let t = 0
+  store.discard = async (dataset: string) => { store.ops.push(`discard:${dataset}`); t = 50; return false }
+  const second = await runChunkPlan({
+    ...opts, storedCursor: null, resume: false, previousHashes: { asgs: first.cursor.datasetHashes.asgs },
+    deadline: 40, now: () => t,
+  })
+  assert.equal(second.partial, true)
+  assert.equal(second.changed, false)
+  assert.equal(store.active.get('asgs')?.version, version)
+  assert.ok(second.cursor.finished.includes('asgs'))
+  assert.ok(store.ops.includes('discard:asgs'))
+})
+
+test('a pending version missing its rows is fetched again and not activated', async () => {
+  const chunks: AbsChunk[] = [{ id: 'a', dataset: 'asgs', flow: 'f', key: 'k', params: 'p', kind: 'asgs', minRows: 1 }]
+  let stored = 0
+  const store = memoryStore({ count: async () => stored })
+  const fetched: string[] = []
+  const rows: ObsRow[] = [{ measure: 'ERP_P_20', geoType: 'SA2', geoCode: '101021007', period: '2024', value: 3 }]
+  const run = (cursor: unknown, resume: boolean) => runChunkPlan({
+    plan: 'p', chunks, storedCursor: cursor, resume, previousHashes: {}, datasetMin: { asgs: 1 },
+    deadline: 10_000, minSliceMs: 0, now: () => 0,
+    fetchChunk: async (chunk) => { fetched.push(chunk.id); return { rows, attempts: 1 } },
+    store, onCheckpoint: async () => {},
+  })
+  const first = await run(null, false)
+  assert.equal(first.partial, true)
+  assert.equal(store.active.has('asgs'), false)
+  assert.deepEqual(fetched, ['a'])
+  assert.equal(first.cursor.done.includes('a'), false)
+  stored = 1
+  fetched.length = 0
+  const second = await run(first.cursor, true)
+  assert.deepEqual(fetched, ['a'])
+  assert.equal(second.partial, false)
+  assert.equal(store.active.get('asgs')?.version, second.cursor.pending)
+})
+
 test('an unchanged dataset does not replace the live version', async () => {
   const chunks: AbsChunk[] = [{ id: 'a', dataset: 'asgs', flow: 'f', key: 'k', params: 'p', kind: 'asgs', minRows: 1 }]
   const store = memoryStore()
@@ -177,14 +260,17 @@ function row(partial: Record<string, string>): Record<string, string> {
   return { TIME_PERIOD: '', OBS_VALUE: '', UNIT_MEASURE: '', UNIT_MULT: '', OBS_STATUS: '', ...partial }
 }
 
-function memoryStore() {
+function memoryStore(hooks: { count?: () => Promise<number> } = {}) {
   const active = new Map<string, { version: string }>()
   const ops: string[] = []
-  return {
+  const store = {
     active, ops,
     async append(dataset: string) { ops.push(`append:${dataset}`) },
     async activate(dataset: string, version: string) { ops.push(`activate:${dataset}`); active.set(dataset, { version }) },
-    async discard(dataset: string) { ops.push(`discard:${dataset}`) },
+    async discard(dataset: string) { ops.push(`discard:${dataset}`); return undefined as boolean | void },
     async activeVersion(dataset: string) { return active.get(dataset)?.version ?? null },
+    count: undefined as undefined | (() => Promise<number>),
   }
+  if (hooks.count) store.count = hooks.count
+  return store
 }
