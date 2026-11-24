@@ -91,7 +91,7 @@ export function OpsAdminClient() {
         <Surface className="mt-4 divide-y divide-border px-0 py-0">
           {data.rules.map((rule) => (
             <div key={rule.key} className="flex items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
-              <span className="text-[15px]">{rule.label}</span>
+              <span className="text-sm">{rule.label}</span>
               <Switch
                 checked={rule.enabled}
                 disabled={busy === rule.key}
@@ -108,7 +108,7 @@ export function OpsAdminClient() {
         <Surface className="mt-4 space-y-5">
           {THRESHOLD_FIELDS.map((field) => (
             <label key={field.key} className="block">
-              <span className="text-[15px]">{field.label}</span>
+              <span className="text-sm">{field.label}</span>
               <span className="mt-0.5 block text-sm text-muted-foreground">{field.hint}</span>
               <input
                 type="number"
@@ -158,7 +158,7 @@ export function OpsAdminClient() {
             {data.decisions.map((row) => (
               <li key={row.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-[15px] leading-snug">{row.reason}</p>
+                  <p className="text-sm leading-snug">{row.reason}</p>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">
                     {when(row.createdAt)} AEDT · {row.actor} · {Math.round(row.confidence * 100)}% · {row.action}
                     {row.undoneAt ? ' · undone' : ''}
