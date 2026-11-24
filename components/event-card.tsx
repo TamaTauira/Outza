@@ -5,6 +5,7 @@ import { MapPin, Clock, ExternalLink, Tag } from 'lucide-react'
 import Link from 'next/link'
 import { EventImage } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
+import { eventPictureFrom } from '@/lib/images/display-spec'
 import { cn } from '@/lib/utils'
 import { CATEGORIES } from '@/lib/categories'
 import { ItineraryButton } from '@/components/itinerary-button'
@@ -30,6 +31,11 @@ interface EventData {
   priceMax?: number | null
   imageUrl: string | null
   imageAsset?: ClientImage | null
+  imageWidth?: number | null
+  imageHeight?: number | null
+  imageColor?: string | null
+  imageBlur?: string | null
+  imageDisplay?: unknown
   venueAddress?: string | null
   city?: string | null
   ticketUrl: string | null
@@ -62,10 +68,11 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
           <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A35'}, #1a120c)` }}>
             <EventImage
               image={event.imageAsset}
+              picture={eventPictureFrom(event)}
               src={event.imageUrl}
               kind="card"
               alt={title}
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 767px) 100vw, (max-width: 1279px) 46vw, 400px"
               crop
               accent={catDef?.color}
               category={event.communityKey || event.category}
@@ -186,7 +193,7 @@ export function GuideEventRow({ event, listingQuery }: { event: EventData; listi
   return (
     <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={event.imageAsset} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} slot="square" />
+        <EventImage image={event.imageAsset} picture={eventPictureFrom(event)} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} slot="square" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-semibold leading-snug">{displayTitle(event.title)}</p>

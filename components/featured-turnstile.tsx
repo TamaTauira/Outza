@@ -13,10 +13,11 @@ import { tierDef } from '@/lib/tiers'
 import { EventImage } from '@/components/event-image'
 import { ReachBeacon } from '@/components/reach-beacon'
 import type { ClientImage } from '@/lib/images/spec'
+import { eventPictureFrom } from '@/lib/images/display-spec'
 
 interface FeaturedItem {
   id: string; title: string; date: string; time: string | null; venueName: string; city?: string
-  category: string; isFree: boolean; price: string | null; priceMin?: number | null; priceMax?: number | null; imageUrl?: string | null; imageAsset?: ClientImage | null; tier: string
+  category: string; isFree: boolean; price: string | null; priceMin?: number | null; priceMax?: number | null; imageUrl?: string | null; imageAsset?: ClientImage | null; imageWidth?: number | null; imageHeight?: number | null; imageColor?: string | null; imageBlur?: string | null; imageDisplay?: unknown; tier: string
   creative?: string | null
   sponsored?: boolean
 }
@@ -80,7 +81,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
     <article aria-hidden={hidden} className="relative w-[78vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card shadow-md lg:w-auto lg:max-w-none">
       <Link href={eventPath(it)} tabIndex={hidden ? -1 : undefined} className="block">
         <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[4/3]" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
-          <EventImage image={it.imageAsset} src={it.imageUrl} kind="featured" alt={title} sizes="(min-width: 1024px) 25vw, 80vw" crop accent={color} category={category} slot="featured" />
+          <EventImage image={it.imageAsset} picture={eventPictureFrom(it)} src={it.imageUrl} kind="featured" alt={title} sizes="(max-width: 1023px) min(78vw, 320px), 320px" crop accent={color} category={category} slot="featured" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
           {badge && <span title={`${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>{badge.label}</span>}
           <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white">{category}</span>

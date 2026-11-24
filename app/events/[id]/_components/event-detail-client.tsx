@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { EventImage } from '@/components/event-image'
+import { eventPictureFrom } from '@/lib/images/display-spec'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, Megaphone, Users, Info, Share2, Repeat, Banknote } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
@@ -255,10 +256,11 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                 <EventImage
                   key={event.id}
                   image={event.imageAsset}
+                  picture={eventPictureFrom(event)}
                   src={event.imageUrl}
                   kind="hero"
                   alt={event?.title ?? 'Event'}
-                  sizes="(max-width: 1024px) 100vw, 1200px"
+                  sizes="(max-width: 1024px) calc(100vw - 2rem), 1100px"
                   priority
                   crop
                   accent={catDef?.color}

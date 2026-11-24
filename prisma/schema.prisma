@@ -25,6 +25,15 @@ model Event {
   isFree      Boolean  @default(false)
   price       String?
   imageUrl    String?
+  /// Natural pixel size of the source artwork. Null until a display derivative is stored.
+  imageWidth  Int?
+  imageHeight Int?
+  /// Dominant colour as #rrggbb. The card skeleton uses it while the photo loads.
+  imageColor  String?
+  /// Tiny base64 data URL for the blur placeholder.
+  imageBlur   String?  @db.Text
+  /// Display derivatives: { v, pending?, hash?, base, widths[] }. Null on rows that predate this.
+  imageDisplay Json?
   ticketUrl   String?
   /// Original listing page when it is not the same as the ticket link.
   sourceUrl   String?

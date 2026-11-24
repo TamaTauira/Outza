@@ -186,7 +186,7 @@ export function LocalBrowse({
       >
         <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
           <CityPicker value={city} onChange={setCity} onDark label="City" />
-          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="markets on this weekend" label="Search local events" />
+          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="markets on this weekend" label={`Search names, places, dates and free events in ${city}`} />
         </div>
         <div className="relative mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={onList} className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>

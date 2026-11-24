@@ -8,6 +8,7 @@ import { activeTierMap } from '@/lib/promotions'
 import { friendsGoing } from '@/lib/social'
 import { getSessionUser } from '@/lib/session'
 import { imageAssetSelect } from '@/lib/images/spec'
+import { eventPictureSelect } from '@/lib/images/display-spec'
 import { idFromEventParam, isPastEvent } from '@/lib/seo'
 import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, type Recurrence } from '@/lib/quality'
 import { queueNearStartRecheck } from '@/lib/verification-pass'
@@ -28,7 +29,7 @@ const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
   venueName: true, venueAddress: true, suburb: true, city: true,
   category: true, subTags: true, isLGBTI: true, isFree: true,
-  price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, source: true,
+  price: true, priceMin: true, priceMax: true, imageUrl: true, ...eventPictureSelect, ticketUrl: true, source: true,
   latitude: true, longitude: true, seriesKey: true,
   communityKey: true, locationVisibility: true, childrenInImage: true, imageKidSafe: true,
   imageAsset: { select: imageAssetSelect },

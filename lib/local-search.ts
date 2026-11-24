@@ -11,11 +11,13 @@ import { foldSearchText } from './search-fold'
 export interface LocalSearchItem {
   title: string
   date: string
+  time?: string | null
   section?: string | null
   category?: string | null
   suburb?: string | null
   city?: string | null
   isFree?: boolean
+  isLGBTI?: boolean
   price?: string | null
   priceMin?: number | null
   blurb?: string | null
@@ -36,8 +38,6 @@ export const LOCAL_SEARCH_CAP_DAYS = 60
 const DATE_WORD = /\b(tonight|today|tomorrow|weekend|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|christmas|xmas|nye)\b/i
 const YEAR_PHRASE = /\b(?:in|during|for|throughout)\s+20\d{2}\b|\bthis year\b|\bnext year\b/i
 const MONTH_WORD = /\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b/i
-const TOPIC_SKIP = new Set(['and', 'the', 'for', 'with'])
-
 export function localDateBounds(query: string, filters: Pick<AiFilters, 'dateFrom' | 'dateTo'>, today: string): { from: string; to: string } | null {
   const text = query.trim()
   if (!text) return null
@@ -72,14 +72,65 @@ function postcodesIn(query: string, filters: Pick<AiFilters, 'dateFrom' | 'dateT
   return codes
 }
 
-function topicWords(filters: Pick<AiFilters, 'keywords' | 'category' | 'subTag'>): string[] {
-  const keywords = filters.keywords.map((word) => word.toLowerCase()).filter(Boolean)
-  if (keywords.length) return [...new Set(keywords)]
-  const extra = [filters.subTag, filters.category]
-    .flatMap((value) => (value ?? '').toLowerCase().split(/[^a-z0-9]+/))
-    .filter((word) => word.length > 2 && !TOPIC_SKIP.has(word))
-  return [...new Set(extra)]
+function topicWords(filters: Pick<AiFilters, 'keywords'>): string[] {
+  return [...new Set(filters.keywords.map((word) => word.toLowerCase()).filter(Boolean))]
 }
+
+function clockMinutes(time: string | null | undefined): number | null {
+  const match = /^(\d{1,2}):(\d{2})/.exec(time ?? '')
+  if (!match) return null
+  const minutes = Number(match[1]) * 60 + Number(match[2])
+  return minutes >= 0 && minutes < 24 * 60 ? minutes : null
+}
+
+function matchesTime(item: LocalSearchItem, timeOfDay: AiFilters['timeOfDay']): boolean {
+  if (!timeOfDay || timeOfDay === 'any') return true
+  const minutes = clockMinutes(item.time)
+  if (minutes == null) return true
+  if (timeOfDay === 'morning') return minutes < 12 * 60
+  if (timeOfDay === 'afternoon') return minutes >= 12 * 60 && minutes < 17 * 60
+  return minutes >= 17 * 60
+}
+
+function priceAmount(item: LocalSearchItem): number | null {
+  if (listingIsFree(item)) return 0
+  if (typeof item.priceMin === 'number' && Number.isFinite(item.priceMin)) return item.priceMin
+  const match = (item.price ?? '').replace(/,/g, '').match(/(\d+(?:\.\d+)?)/)
+  return match ? Number(match[1]) : null
+}
+
+function categoryBlob(item: LocalSearchItem): string {
+  const section = sectionByKey(item.section)
+  return foldSearchText([
+    item.category,
+    item.title,
+    item.section,
+    section?.label,
+    section?.short,
+    section?.boardCategory,
+    ...(item.tags ?? []),
+    ...(item.subTags ?? []),
+    ...(section?.subTags ?? []),
+  ].filter(Boolean).join(' '))
+}
+
+function matchesCategory(item: LocalSearchItem, category: string): boolean {
+  const want = foldSearchText(category)
+  if (!want) return true
+  const blob = categoryBlob(item)
+  if (blob.includes(want)) return true
+  return want.split(' ').filter((word) => word.length > 2).every((word) => hasWord(blob, word))
+}
+
+function matchesTag(item: LocalSearchItem, tag: string): boolean {
+  const want = foldSearchText(tag)
+  if (!want) return true
+  const section = sectionByKey(item.section)
+  const blob = foldSearchText([...(item.tags ?? []), ...(item.subTags ?? []), ...(section?.subTags ?? []), item.title].filter(Boolean).join(' '))
+  return blob.includes(want) || want.split(' ').every((word) => hasWord(blob, word))
+}
+
+const QUEER = /\b(lgbt\w*|queers?|gays?|prides?|lesbians?)\b/
 
 function hasWord(blob: string, word: string): boolean {
   const forms = new Set([word])
@@ -153,6 +204,15 @@ export function filterLocalSearch<T extends LocalSearchItem>(items: T[], filters
     if (bounds && from && (day < from || day > bounds.to)) return false
     if (filters.isFree && !listingIsFree(item)) return false
     if (filters.paidOnly && listingIsFree(item)) return false
+    if (filters.maxPrice != null) {
+      const amount = priceAmount(item)
+      if (amount != null && amount > filters.maxPrice) return false
+    }
+    if (!matchesTime(item, filters.timeOfDay)) return false
+    if (filters.lgbtiq && item.isLGBTI !== true && !QUEER.test(listingText(item))) return false
+    // A named word already has to appear. The category is the net for “live music”, where the words themselves are too broad to keep.
+    if (!topics.length && filters.category && !matchesCategory(item, filters.category)) return false
+    if (!topics.length && filters.subTag && !matchesTag(item, filters.subTag)) return false
     if (filters.suburb && !matchesSuburb(item, filters.suburb)) return false
     if (postcodes.some((code) => !matchesPostcode(item, code))) return false
     if (topics.length && !topics.every((word) => hasWord(haystacks[index], word))) return false

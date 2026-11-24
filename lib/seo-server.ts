@@ -5,6 +5,7 @@ import type { Prisma } from '@prisma/client'
 import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
 import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
+import { eventPictureSelect } from '@/lib/images/display-spec'
 import { placeholderAbsolute } from '@/lib/placeholders'
 import { presentListing } from '@/lib/categories'
 import { evaluateSeasons, type SeasonDecision } from '@/lib/seasons'
@@ -22,6 +23,7 @@ const landingSelect = {
   category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, status: true,
   latitude: true, longitude: true, organiserName: true, organiserUrl: true, city: true,
   source: true, sources: true, lastVerifiedAt: true, statusSource: true, duplicateOfId: true,
+  ...eventPictureSelect,
   imageAsset: { select: imageAssetSelect },
 } satisfies Prisma.EventSelect
 

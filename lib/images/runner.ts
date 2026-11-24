@@ -180,7 +180,11 @@ export function runImagePass(opts: { limit?: number; trigger?: string; budgetMs?
 /** Kicks off processing for one event without blocking the caller (e.g. a promoter submission). */
 export function queueEventImage(eventId: string) {
   linkEventImage(eventId)
-    .then((id) => (id ? processAsset(id) : null))
+    .then(async (id) => {
+      const { prepareEventDisplay } = await import('./display-store')
+      await prepareEventDisplay(eventId, { force: true })
+      return id ? processAsset(id) : null
+    })
     .catch((e) => console.error('[images] queue failed:', e?.message))
 }
 

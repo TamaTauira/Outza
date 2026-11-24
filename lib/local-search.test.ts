@@ -139,6 +139,42 @@ test('a named month stays a date and does not demand that year as a postcode', (
   assert.deepEqual(filterLocalSearch(rows, parsed, query, TODAY).map((row) => row.id), ['january'])
 })
 
+test('live music matches the category, not only a suburb', () => {
+  const query = 'live music'
+  const parsed = interpretQuery(query, TODAY)
+  assert.equal(parsed.category, 'Music')
+  const rows = [
+    item({ id: 'gig', title: 'Late set', category: 'Music', time: '20:00' }),
+    item({ id: 'sale', title: 'Garage sale', section: 'garage-sales', category: 'Community', suburb: 'Newtown' }),
+  ]
+  assert.deepEqual(filterLocalSearch(rows, parsed, query, TODAY).map((row) => row.id), ['gig'])
+})
+
+test('a tag, a venue and a price cap stay inside the rows already loaded', () => {
+  const query = 'comedy under $30'
+  const parsed = interpretQuery(query, TODAY)
+  assert.equal(parsed.maxPrice, 30)
+  const rows = [
+    item({ id: 'cheap', title: 'Open mic', subTags: ['Comedy'], venueName: 'The Town Hall', price: '$20', priceMin: 20, isFree: false }),
+    item({ id: 'dear', title: 'Comedy gala', subTags: ['Comedy'], price: '$80', priceMin: 80, isFree: false }),
+    item({ id: 'other', title: 'Garage sale', section: 'garage-sales' }),
+  ]
+  assert.deepEqual(filterLocalSearch(rows, parsed, query, TODAY).map((row) => row.id), ['cheap'])
+})
+
+test('tonight keeps the evening and leaves the morning', () => {
+  const query = 'tonight'
+  const parsed = interpretQuery(query, TODAY)
+  assert.equal(parsed.timeOfDay, 'evening')
+  const rows = [
+    item({ id: 'night', title: 'Night market', time: '19:00', section: 'farmers-markets' }),
+    item({ id: 'morning', title: 'Morning market', time: '09:00', section: 'farmers-markets' }),
+    item({ id: 'untimed', title: 'Stall', section: 'farmers-markets' }),
+  ]
+  const ids = filterLocalSearch(rows, parsed, query, TODAY).map((row) => row.id)
+  assert.deepEqual(ids.sort(), ['night', 'untimed'])
+})
+
 test('a named date widens the occurrence window and a far date stops near 60 days', () => {
   const weekend = { from: '2026-11-20', to: '2026-11-22' }
   const tonight = localDateBounds('jazz tonight', interpretQuery('jazz tonight', TODAY), TODAY)
