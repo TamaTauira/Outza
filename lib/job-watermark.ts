@@ -7,6 +7,7 @@ const jobs = {
   discover: 'image-discover',
   moshtix: 'moshtix-refresh',
   humanitix: 'humanitix-refresh',
+  opsResolve: 'ops-resolve',
 } as const
 
 export type JobName = keyof typeof jobs

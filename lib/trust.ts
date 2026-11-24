@@ -14,6 +14,12 @@ function registrable(host: string): string {
   return parts.slice(-n).join('.')
 }
 
+/** Free inboxes do not prove the sender runs the event. */
+export function isFreeMail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase() ?? ''
+  return !!domain && FREE_MAIL.test(domain)
+}
+
 /** True when the claimant's work email shares a domain with the event's own organiser/official website. */
 export function emailMatchesOrganiser(email: string, urls: (string | null | undefined)[]): boolean {
   const domain = email.split('@')[1]?.toLowerCase()
