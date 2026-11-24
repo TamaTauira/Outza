@@ -10,7 +10,7 @@ Read [docs/handover.md](docs/handover.md) before changing the product. It covers
 
 ## Stack
 
-- Next.js **16.4.1** (App Router, Turbopack) and React 19. Keep these majors as they are.
+- Next.js **16.4.6** (App Router, Turbopack) and React 19. Keep these majors as they are.
 - TypeScript, Tailwind CSS 3.4, shadcn/ui and Radix UI
 - Prisma 6 and PostgreSQL
 - Auth.js / next-auth v5 beta (credentials and Google)
