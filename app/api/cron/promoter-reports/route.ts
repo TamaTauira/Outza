@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { runWeeklyPromoterReports } from '@/lib/promoter-report'
 import { cronAuthorized } from '@/lib/cron-auth'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -16,6 +17,7 @@ async function run(req: Request) {
   try {
     const result = await runWeeklyPromoterReports()
     console.log('[cron] promoter reports', result)
+    await writeHeartbeat('promoter-reports').catch(() => {})
     return NextResponse.json(result)
   } catch (err) {
     console.error('[cron] promoter reports failed', err instanceof Error ? err.message : err)

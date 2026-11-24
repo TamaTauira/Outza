@@ -1824,3 +1824,14 @@ model OpsDigestToken {
 
   @@index([itemId])
 }
+
+/// Consecutive hard failures for one listings source. A pause does not hide listings.
+model SourceHealthState {
+  source      String    @id
+  failStreak  Int       @default(0)
+  pausedAt    DateTime?
+  lastAttempt DateTime?
+  lastSuccess DateTime?
+  lastFailure DateTime?
+  updatedAt   DateTime  @updatedAt
+}

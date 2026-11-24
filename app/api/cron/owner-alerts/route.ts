@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { runIdeasDigest, runHealthChecks } from '@/lib/owner-alerts'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,7 @@ async function run(req: Request) {
   const force = new URL(req.url).searchParams.get('force') === '1'
   const ideas = await runIdeasDigest({ force })
   await runHealthChecks()
+  await writeHeartbeat('owner-alerts').catch(() => {})
   return NextResponse.json({ ideas })
 }
 

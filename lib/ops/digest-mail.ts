@@ -9,7 +9,7 @@ export type DigestMailItem = {
 }
 
 /** One Monday email. The caller skips the send when `items` is empty. */
-export function digestEmail(input: { items: DigestMailItem[]; handled: number; extra: number; undoUrl: string }): { subject: string; html: string } {
+export function digestEmail(input: { items: DigestMailItem[]; handled: number; extra: number; undoUrl: string; notes?: string[] }): { subject: string; html: string } {
   const count = input.items.length + input.extra
   const subject = `VibePeep approvals: ${count} item${count === 1 ? '' : 's'} need you`
   const blocks = input.items.map((item) => `
@@ -23,6 +23,9 @@ export function digestEmail(input: { items: DigestMailItem[]; handled: number; e
   const more = input.extra > 0
     ? `<p class="mu" style="color:${EMAIL_C.muted};">And ${input.extra} more on the Operations page.</p>`
     : ''
+  const notes = (input.notes ?? []).length
+    ? `<p style="margin:16px 0 0;"><strong>Major dependency updates</strong> stay open for you.</p><ul>${(input.notes ?? []).map((note) => `<li>${escapeHtml(note)}</li>`).join('')}</ul>`
+    : ''
   const home = siteUrl()
   const html = emailDocument({
     title: subject,
@@ -33,7 +36,7 @@ export function digestEmail(input: { items: DigestMailItem[]; handled: number; e
     reason: 'Each link works once and expires in 14 days. A decision can be undone for 30 days.',
     rows: emailBodyCell(`<h2 style="margin:0 0 8px;font-size:22px;letter-spacing:-0.02em;">Approvals for this week</h2>
     <p style="margin:0 0 16px;">Bots handled ${input.handled} item${input.handled === 1 ? '' : 's'} this week. <a href="${escapeHtml(input.undoUrl)}">Undo here</a>.</p>
-    ${blocks}${more}`),
+    ${blocks}${more}${notes}`),
   })
   return { subject, html }
 }

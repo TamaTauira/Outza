@@ -169,6 +169,8 @@ export async function POST(req: NextRequest) {
     }
 
     const matched = rankAskRows(rows, { ...filters, city: searchCity }, Math.max(rows.length, 1))
+    const { noteAsk } = await import('@/lib/ops/ask-stats')
+    await noteAsk(true)
 
     return NextResponse.json({
       filters, ai: !!parsed, relaxed, total: matched.length,
@@ -179,6 +181,8 @@ export async function POST(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('ai-search error', e?.message)
+    const { noteAsk } = await import('@/lib/ops/ask-stats')
+    await noteAsk(false)
     return NextResponse.json({ error: 'Ask’s having a moment. Give it another go.' }, { status: 500 })
   }
 }

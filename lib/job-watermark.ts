@@ -86,6 +86,29 @@ export async function writeJobCursor(job: JobName, cursorAt: Date, page = 0, pag
   `
 }
 
+function heartbeatJob(name: string): string {
+  return `hb:${name.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40)}`
+}
+
+/** Marks a cron as finished. The owner-alerts watchdog reads these. */
+export async function writeHeartbeat(name: string, at = new Date()): Promise<void> {
+  await ensureTable()
+  const job = heartbeatJob(name)
+  await prisma.$executeRaw`
+    INSERT INTO "JobWatermark" ("job", "cursorAt", "cursorPage", "cursorPageSize", "sweepId", "updatedAt")
+    VALUES (${job}, ${at}, 0, 0, '', NOW())
+    ON CONFLICT ("job") DO UPDATE SET "cursorAt" = ${at}, "updatedAt" = NOW()
+  `
+}
+
+export async function readHeartbeats(): Promise<{ name: string; at: Date }[]> {
+  await ensureTable()
+  const rows = await prisma.$queryRaw<{ job: string; cursorAt: Date }[]>`
+    SELECT "job", "cursorAt" FROM "JobWatermark" WHERE "job" LIKE 'hb:%'
+  `
+  return rows.map((row) => ({ name: row.job.slice(3), at: new Date(row.cursorAt) }))
+}
+
 /** Prisma filter for rows touched after the cursor. Empty when this is the first pass. */
 export function changedSince(cursor: Date | null): { updatedAt: { gt: Date } } | Record<string, never> {
   return cursor ? { updatedAt: { gt: cursor } } : {}
