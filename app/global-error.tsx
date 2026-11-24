@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { reportCrash } from '@/components/report-crash'
+import { BRAND_ON_PRIMARY, BRAND_ORANGE } from '@/lib/brand'
 import { claimNetworkRetry, isBareNetworkFault } from '@/lib/network-fault'
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -16,11 +17,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error, network, reset])
   return (
     <html lang="en">
-      <body style={{ fontFamily: 'Arial, sans-serif', display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', margin: 0, background: '#fff', color: '#111' }}>
+      <body style={{ fontFamily: 'Inter, Arial, sans-serif', display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center', margin: 0, background: 'white', color: 'black' }}>
         <div style={{ textAlign: 'center', maxWidth: 440, padding: 24 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900 }}>{network ? 'The signal dropped.' : 'Well, that wasn\'t on the programme.'}</h1>
-          <p style={{ color: '#555' }}>{network ? 'VibePeep is fine. The connection blinked. Give it another go?' : 'VibePeep blinked. We\'ve already been told and we\'re on it.'}</p>
-          <button onClick={() => reset()} style={{ marginTop: 12, padding: '10px 20px', borderRadius: 8, border: 0, background: '#FF7A35', color: '#1a1408', fontWeight: 700, cursor: 'pointer' }}>{network ? 'Try again' : 'Try Again'}</button>
+          <h1 style={{ fontSize: 32, fontWeight: 700 }}>{network ? 'The signal dropped.' : 'Well, that wasn\'t on the programme.'}</h1>
+          <p style={{ color: 'rgb(85, 85, 85)' }}>{network ? 'VibePeep is fine. The connection blinked. Give it another go?' : 'VibePeep blinked. We\'ve already been told and we\'re on it.'}</p>
+          <button onClick={() => reset()} style={{ marginTop: 16, minHeight: 44, padding: '10px 20px', borderRadius: 999, border: 0, background: BRAND_ORANGE, color: BRAND_ON_PRIMARY, fontWeight: 700, cursor: 'pointer' }}>{network ? 'Try again' : 'Try again'}</button>
         </div>
       </body>
     </html>

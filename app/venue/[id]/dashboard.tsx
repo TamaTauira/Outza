@@ -7,6 +7,7 @@ import { boardClockLine } from '@/lib/listing-window'
 import { VENUE_PRODUCTS, VENUE_REPORT_REASONS, SPONSORED_LABEL } from '@/lib/ownership'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,7 +16,7 @@ import { VenueReachPanel } from './reach-panel'
 
 const tabs = ['Overview', 'My Venue', 'Upcoming Events', 'Analytics', 'Promotions', 'Team & Access', 'Settings'] as const
 type Tab = (typeof tabs)[number]
-const field = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 
 type EventRow = {
   id: string
@@ -127,10 +128,10 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
   return (
     <main className="vp-page-top mx-auto max-w-3xl px-4 pb-20 sm:px-6">
       <p className="text-xs text-muted-foreground">{city} · {role === 'ADMINISTRATOR' ? 'You manage this venue' : 'Venue manager'}</p>
-      <h1 className="font-display text-2xl sm:text-3xl font-bold">{name}</h1>
+      <h1 className="font-display text-h1">{name}</h1>
       <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 text-sm" aria-label="Venue sections">
         {tabs.map((item) => (
-          <button key={item} type="button" onClick={() => setTab(item)} className={`shrink-0 rounded-full px-3 py-1.5 ${tab === item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{item}</button>
+          <Chip key={item} pressed={tab === item} onClick={() => setTab(item)}>{item}</Chip>
         ))}
       </nav>
 
@@ -172,8 +173,8 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
         <section className="mt-5 space-y-3">
           {role === 'ADMINISTRATOR' && <PromoterTermsCheck id="venue-spotlight-terms" checked={agreeSpotlight} onChange={setAgreeSpotlight} />}
           <div className="flex gap-2 text-sm">
-            <button type="button" onClick={() => setMineOnly(false)} className={`rounded-full px-3 py-1 ${!mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>All Upcoming Events</button>
-            <button type="button" onClick={() => setMineOnly(true)} className={`rounded-full px-3 py-1 ${mineOnly ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>Events I Manage</button>
+            <Chip pressed={!mineOnly} onClick={() => setMineOnly(false)}>All upcoming events</Chip>
+            <Chip pressed={mineOnly} onClick={() => setMineOnly(true)}>Events I manage</Chip>
           </div>
           {!shown.length && <EmptyState title={mineOnly ? 'Nothing you edit' : 'Nothing upcoming'} body={mineOnly ? 'None of these listings are yours to edit. Venue access doesn’t include them.' : 'Nothing upcoming is tied to this venue yet.'} />}
           {shown.map((event) => {
@@ -226,7 +227,7 @@ export function VenueDashboard({ venueId, name, city, role }: { venueId: string;
         <section className="mt-5 space-y-3">
           <div className="flex gap-2 text-sm">
             {['7', '30', '90'].map((item) => (
-              <button key={item} type="button" onClick={() => setRange(item)} className={`rounded-full px-3 py-1 ${range === item ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>Last {item} days</button>
+              <Chip key={item} pressed={range === item} onClick={() => setRange(item)}>Last {item} days</Chip>
             ))}
           </div>
           {analytics && (

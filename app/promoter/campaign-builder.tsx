@@ -18,7 +18,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   return (
     <section>
       <div className="mb-3 flex items-center gap-2.5">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-[#1a1408]">{n}</span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-on-primary">{n}</span>
         <h3 className="font-semibold">{title}</h3>
       </div>
       {children}
@@ -96,7 +96,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
               return (
                 <button key={t.key} type="button" onClick={() => { setTier(t.key); setReview(false) }} aria-pressed={on}
                   className={cn('relative flex h-full flex-col rounded-xl border bg-background p-4 text-left', on ? 'border-primary shadow-md ring-2 ring-primary/40' : 'border-border hover:border-muted-foreground/40')}>
-                  {t.key === 'BRONZE' && <span className="absolute left-4 top-0 z-10 -translate-y-1/2 rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-[#1a1408]">POPULAR</span>}
+                  {t.key === 'BRONZE' && <span className="absolute left-4 top-0 z-10 -translate-y-1/2 rounded-full bg-primary px-2 py-0.5 text-caption font-bold text-on-primary">POPULAR</span>}
                   <span className="block h-1.5 w-10 rounded-full" style={{ backgroundColor: t.color }} />
                   <p className="mt-3 font-semibold">{t.name}</p>
                   <p className="mt-1 min-h-10 text-xs text-muted-foreground">{t.tagline}</p>
@@ -113,9 +113,9 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
           <div className="grid w-full grid-cols-3 gap-[var(--vp-card-gap)]" role="radiogroup" aria-label="Campaign length">
             {DURATIONS.map((d) => (
               <button key={d.days} type="button" role="radio" aria-checked={days === d.days} onClick={() => setDays(d.days)}
-                className={cn('flex min-h-14 w-full flex-col items-center justify-center rounded-xl border px-2 py-2 text-center', days === d.days ? 'border-primary bg-primary text-[#1a1408]' : 'border-border bg-background text-foreground')}>
+                className={cn('flex min-h-14 w-full flex-col items-center justify-center rounded-xl border px-2 py-2 text-center', days === d.days ? 'border-primary bg-primary text-on-primary' : 'border-border bg-background text-foreground')}>
                 <span className="text-sm font-semibold">{d.label}</span>
-                <span className={cn('mt-0.5 min-h-4 text-[11px] leading-tight', days === d.days ? 'text-[#1a1408]/80' : 'text-muted-foreground')}>{d.note ?? ' '}</span>
+                <span className={cn('mt-0.5 min-h-4 text-caption leading-tight', days === d.days ? 'text-on-primary/80' : 'text-muted-foreground')}>{d.note ?? ' '}</span>
               </button>
             ))}
           </div>
@@ -128,7 +128,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
               return (
                 <button key={a.key} type="button" onClick={() => toggleAddon(a.key)} aria-pressed={on}
                   className={cn('flex h-full gap-3 rounded-xl border bg-background p-4 text-left', on ? 'border-primary ring-2 ring-primary/40' : 'border-border hover:border-muted-foreground/40')}>
-                  <span className={cn('mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border', on ? 'border-primary bg-primary text-[#1a1408]' : 'border-border bg-background')}>{on && <Check className="h-3.5 w-3.5" />}</span>
+                  <span className={cn('mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border', on ? 'border-primary bg-primary text-on-primary' : 'border-border bg-background')}>{on && <Check className="h-3.5 w-3.5" />}</span>
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold">{a.name} <span className="text-primary">+{formatAud(a.prices[days])}</span></span>
                     <span className="mt-1 block text-xs text-muted-foreground">{a.desc}</span>
@@ -163,7 +163,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         {scheduleNote && <p className="mt-3 text-xs text-muted-foreground" role="status">{scheduleNote}</p>}
         <div className="mt-4"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}
-        <button onClick={checkout} disabled={busy || !selected} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-[#1a1408] disabled:bg-muted disabled:text-muted-foreground">
+        <button onClick={checkout} disabled={busy || !selected} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-on-primary disabled:bg-muted disabled:text-muted-foreground">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
           {review ? (stripeEnabled ? `Confirm ${formatAud(q.total)} and pay` : `Confirm and activate ${formatAud(q.total)}`) : 'Review campaign'}
         </button>

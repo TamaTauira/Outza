@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { chipClass } from '@/components/ui/chip'
 import { ChevronRight } from 'lucide-react'
 import type { CityDef } from '@/lib/cities'
 import { formatGuideDay, whenPhrase } from '@/lib/local-seo'
@@ -74,7 +75,7 @@ export function GuideLanding(props: {
         </nav>
 
         <header className="max-w-3xl">
-          <h1 className="font-display text-3xl md:text-5xl font-bold tracking-tight">{heading}</h1>
+          <h1 className="font-display text-h1">{heading}</h1>
           {showRange && (
             <p className="mt-2 text-primary font-semibold">{formatGuideDay(from)}{from !== to ? ` – ${formatGuideDay(to!)}` : ''}</p>
           )}
@@ -112,7 +113,7 @@ export function GuideLanding(props: {
             const active = activeGuide === t.key
             return (
               <Link key={t.key} href={cityPath(city, t.key)} aria-current={active ? 'page' : undefined}
-                className={active ? 'shrink-0 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold' : 'shrink-0 px-3.5 py-1.5 rounded-full bg-card shadow-sm text-sm hover:bg-muted transition-colors'}>
+                className={chipClass(active)}>
                 {t.key === 'events' ? `All ${city.name} events` : t.label}
               </Link>
             )
@@ -140,7 +141,7 @@ export function GuideLanding(props: {
             {events.length > 0 && <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
               {events.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
             </div>}
-            {events.length > 0 && <div className="hidden md:grid md:grid-cols-2 md:items-stretch lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {events.length > 0 && <div className="hidden md:grid md:grid-cols-2 md:items-stretch lg:grid-cols-3 xl:grid-cols-4 gap-card">
               {events.map((e, i) => {
                 const key = e.date.toISOString().slice(0, 10)
                 const first = i === 0 || events[i - 1].date.toISOString().slice(0, 10) !== key

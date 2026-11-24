@@ -25,14 +25,14 @@ export function VenueUnsubscribeClient({ u, k }: { u: string; k: string }) {
   if (state === 'done') {
     return (
       <>
-        <h1 className="mt-4 font-display text-2xl font-bold">Monthly venue notes are off.</h1>
+        <h1 className="mt-4 font-display text-h1">Monthly venue notes are off.</h1>
         <p className="mt-2 text-sm text-muted-foreground">You’ll stop getting the monthly stats email. Your newsletter choice is untouched, and the venue dashboard can turn the note back on.</p>
       </>
     )
   }
   return (
     <>
-      <h1 className="mt-4 font-display text-2xl font-bold">Pause the monthly venue note?</h1>
+      <h1 className="mt-4 font-display text-h1">Pause the monthly venue note?</h1>
       <p className="mt-2 text-sm text-muted-foreground">This only stops the monthly stats email. The newsletter, if you asked for it, keeps coming.</p>
       <Button type="button" onClick={go} disabled={state === 'busy'} className="mt-6 w-full">
         {state === 'busy' ? 'Turning it off…' : 'Unsubscribe'}

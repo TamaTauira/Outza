@@ -17,7 +17,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
           <UnsubscribeClient u={u} k={k} s={s} />
         ) : (
           <>
-            <h1 className="mt-4 font-display text-2xl font-bold">Link not recognised</h1>
+            <h1 className="mt-4 font-display text-h1">Link not recognised</h1>
             <p className="mt-2 text-muted-foreground text-sm">This unsubscribe link is invalid. You can turn emails off any time in your account settings.</p>
           </>
         )}

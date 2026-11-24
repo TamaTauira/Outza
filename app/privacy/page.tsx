@@ -71,7 +71,7 @@ export default function PrivacyPage() {
     <PageShell>
     <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
-      <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">Privacy policy</h1>
+      <h1 className="mt-6 font-display text-h1">Privacy policy</h1>
       <LegalStamp doc="privacy" />
       <p className="mt-3 text-muted-foreground">VibePeep is an independent events guide. This page explains, in plain English, what we collect and why.</p>
       <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">

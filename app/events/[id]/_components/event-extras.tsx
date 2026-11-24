@@ -36,7 +36,7 @@ const TRANSPORT_RE = /\b(train|station|bus|ferry|light rail|tram|parking|car par
 export const HERO_FRAME = 'relative h-52 sm:h-60 overflow-hidden bg-muted'
 
 /** Holding-image frame. 16:9 on a phone, 3:1 from 640px, matching the hero files. */
-export const HERO_HOLD = 'relative aspect-[16/9] overflow-hidden bg-[#110e16] sm:aspect-[3/1]'
+export const HERO_HOLD = 'relative aspect-[16/9] overflow-hidden bg-[var(--vp-banner)] sm:aspect-[3/1]'
 
 /** Hero image plus thumbnails for any extra artwork the source supplied. */
 export function EventGallery({ event, children }: { event: any; children: React.ReactNode }) {

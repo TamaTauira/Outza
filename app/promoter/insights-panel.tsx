@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { ReachDashboard } from '@/components/reach-dashboard'
+import { Chip } from '@/components/ui/chip'
 import { auToIso, isoToAu } from '@/lib/au-date'
 import type { ReachPayload } from '@/lib/organiser-reach-load'
 
@@ -76,9 +77,9 @@ export function InsightsPanel() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {['7', '28', '90'].map((item) => (
-            <button key={item} type="button" onClick={() => { setError(''); setLoading(true); setRange(item) }} className={`rounded-full px-3 py-1 text-sm ${range === item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Last {item} days</button>
+            <Chip key={item} pressed={range === item} onClick={() => { setError(''); setLoading(true); setRange(item) }}>Last {item} days</Chip>
           ))}
-          <button type="button" onClick={() => { setError(''); setLoading(true); setRange('custom') }} className={`rounded-full px-3 py-1 text-sm ${range === 'custom' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>Dates</button>
+          <Chip pressed={range === 'custom'} onClick={() => { setError(''); setLoading(true); setRange('custom') }}>Dates</Chip>
         </div>
       </div>
       {range === 'custom' && (

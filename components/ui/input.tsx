@@ -3,8 +3,12 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/** 44px field. 16px type so iOS does not zoom, 12px radius. */
+export const fieldClass =
+  'h-control w-full rounded-control border border-input bg-background px-3 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70'
+
 const inputVariants = cva(
-  "flex w-full rounded-[var(--vp-radius-md)] border bg-background text-sm transition-all duration-fast file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-70",
+  "flex w-full rounded-control border bg-background text-base transition-all duration-fast file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-70",
   {
     variants: {
       variant: {
@@ -14,9 +18,9 @@ const inputVariants = cva(
         ghost: "border-transparent bg-muted/50 hover:bg-muted focus-visible:bg-background focus-visible:border-input focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       },
       size: {
-        default: "h-11 px-3 py-2",
-        sm: "h-8 px-2.5 py-1 text-xs rounded-md",
-        lg: "h-12 px-4 py-3 text-base rounded-lg",
+        default: "h-control px-3 py-2",
+        sm: "h-control px-3 py-2",
+        lg: "h-control-lg px-4 py-3",
       },
     },
     defaultVariants: {

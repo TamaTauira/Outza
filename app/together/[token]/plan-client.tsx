@@ -132,8 +132,8 @@ export function PlanClient({ token }: { token: string }) {
 
   if (missing) {
     return (
-      <main className="vp-wrap vp-page-top px-4 pb-12 text-center">
-        <h1 className="font-display text-2xl font-bold">That plan has wandered off</h1>
+      <main className="vp-wrap vp-page-top px-4 pb-12 text-center sm:px-6">
+        <h1 className="font-display text-h1">That plan has wandered off</h1>
         <Link href="/together" className="mt-4 inline-block text-primary underline">Start another</Link>
       </main>
     )
@@ -146,7 +146,7 @@ export function PlanClient({ token }: { token: string }) {
   return (
     <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <Link href="/together" className="text-sm text-muted-foreground hover:text-foreground">All plans</Link>
-      <h1 className="font-display text-3xl font-bold mt-2">{plan.name}</h1>
+      <h1 className="font-display text-h1 mt-2">{plan.name}</h1>
       <p className="mt-2 text-muted-foreground">{[plan.city, plan.planDate].filter(Boolean).join(' · ') || 'City and date are optional.'} One vote each. Private stops stay on this plan. They are not listed on the board.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={copy} className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-semibold hover:bg-muted">

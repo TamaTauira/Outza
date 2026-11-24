@@ -87,7 +87,7 @@ export function PartnerView({ overview, list, filters }: { overview: PartnerOver
   return (
     <main className="vp-wrap vp-page-top px-4 pb-24 sm:px-6">
       <p className="text-sm font-semibold text-primary">Source partner</p>
-      <h1 className="mt-1 font-display text-3xl font-bold tracking-tight sm:text-4xl">{overview.displayName}</h1>
+      <h1 className="mt-1 font-display text-h1">{overview.displayName}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         Every listing VibePeep stored from {sourceLine}. This login is read-only. Event owners still claim a single listing on their own.
       </p>
@@ -264,7 +264,7 @@ export function PartnerView({ overview, list, filters }: { overview: PartnerOver
         <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Date range">
           {(['7', '28', '90'] as const).map((days) => (
             <Link key={days} href={query({ engagement: days }, filters.page)} aria-current={filters.engagement === days ? 'true' : undefined}
-              className={`inline-flex h-11 items-center rounded-full px-3 text-[13px] font-semibold ${filters.engagement === days ? 'bg-foreground text-background' : 'bg-muted text-foreground'}`}>
+              className={`inline-flex h-11 items-center rounded-full px-3 text-xs font-semibold ${filters.engagement === days ? 'bg-foreground text-background' : 'bg-muted text-foreground'}`}>
               {days} days
             </Link>
           ))}

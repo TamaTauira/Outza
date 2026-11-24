@@ -35,7 +35,7 @@ type CampaignRow = {
   refundReason: string
 }
 
-const field = 'h-11 w-full rounded-xl border border-border bg-background px-3 text-base sm:text-sm'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 const localValue = (date: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
@@ -141,7 +141,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (data?.payments === 'soon') { setPaymentsOn(false); toast('Payments coming soon. Ask for a quote instead. Nothing was charged.'); return }
+      if (data?.payments === 'soon') { setPaymentsOn(false); toast('Card payments are not switched on. Ask for a quote. Nothing was charged.'); return }
       if (!res.ok) throw new Error(data?.error ?? 'Checkout failed')
       if (data.url) { window.location.href = data.url; return }
       throw new Error('Checkout did not return a payment page')
@@ -248,7 +248,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
             <p className="text-xs text-muted-foreground">Spend cap {formatAud(price)}. One charge. It does not renew.</p>
             {paymentsOn === false ? (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium">Payments coming soon</p>
+                <p className="text-sm font-medium">Card payments are not switched on</p>
                 <p className="text-xs text-muted-foreground">Leave a quote request. This does not charge a card and does not put the boost live.</p>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@venue.com" className={field} aria-label="Email for the quote" />
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Which night, which room" rows={3} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
@@ -263,7 +263,7 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
                   <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1" />
                   <span>Charge my card {formatAud(price)} AUD once. Spotlight, Boost and Headliner are one-off. They are not the free month on a monthly plan. <Link href="/refunds" className="underline">Refunds</Link> include the Australian Consumer Law.</span>
                 </label>
-                <button type="button" onClick={pay} disabled={busy || !selected} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-[#1a1408] disabled:bg-muted disabled:text-muted-foreground">
+                <button type="button" onClick={pay} disabled={busy || !selected} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-on-primary disabled:bg-muted disabled:text-muted-foreground">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}{preview ? `Pay ${formatAud(price)}` : 'Preview the card'}
                 </button>
               </>

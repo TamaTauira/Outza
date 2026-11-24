@@ -21,7 +21,7 @@ type Current = {
 }
 type Charge = { id: string; amountCents: number; status: string; createdAt: string; hostedUrl?: string | null }
 
-const field = 'h-11 w-full rounded-md border border-border bg-background px-3 text-base sm:text-sm'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 
 export function OrganiserPlans() {
   const [plans, setPlans] = useState<Plan[]>([...ORGANISER_PLANS])
@@ -63,7 +63,7 @@ export function OrganiserPlans() {
   }, [])
 
   const choose = async (planId: PlanId) => {
-    if (subsOn === false) { setQuotePlan(planId); toast('Payments coming soon. Use the quote box. Nothing is charged.'); return }
+    if (subsOn === false) { setQuotePlan(planId); toast('Card payments are not switched on. Use the quote box. Nothing is charged.'); return }
     if (!agreePromoterTerms) { toast.error('Tick that you agree to the Promoter Terms.'); return }
     if (!consent) { toast.error('Tick the box first.'); return }
     setBusy(planId)
@@ -74,7 +74,7 @@ export function OrganiserPlans() {
         body: JSON.stringify({ action: current ? 'change' : 'checkout', planId, consent: true, agreePromoterTerms: true }),
       })
       const data = await res.json().catch(() => ({}))
-      if (data?.payments === 'soon') { setSubsOn(false); toast('Payments coming soon. Nothing was charged.'); return }
+      if (data?.payments === 'soon') { setSubsOn(false); toast('Card payments are not switched on. Nothing was charged.'); return }
       if (!res.ok) throw new Error(data?.error ?? 'Could not change the plan')
       if (data.url) { window.location.href = data.url; return }
       toast.success(data.when === 'period-end' ? 'That switch waits until the renewal date.' : data.pendingPayment ? 'Stripe needs you to finish the extra charge.' : 'Plan updated.')
@@ -148,7 +148,7 @@ export function OrganiserPlans() {
       </div>
       {subsOn === false ? (
         <div className="mt-4 space-y-2 rounded-lg border border-primary/40 p-4">
-          <p className="text-sm font-medium">Payments coming soon</p>
+          <p className="text-sm font-medium">Card payments are not switched on</p>
           <p className="text-xs text-muted-foreground">Request a quote. We will not charge a card from this form, and we will not start a plan.</p>
           <select value={quotePlan} onChange={(e) => setQuotePlan(e.target.value as PlanId)} className={field} aria-label="Plan to quote">
             {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}

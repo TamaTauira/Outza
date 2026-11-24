@@ -16,7 +16,7 @@ export type EditableEvent = {
   organiserName?: string | null; organiserUrl?: string | null; accessibilityInfo?: string | null; ageRestriction?: string | null; transportInfo?: string | null; capacity?: number | null
 }
 
-const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm w-full'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 const area = 'rounded-md border border-border bg-background px-3 py-2 text-sm w-full'
 
 /** Inline editor for a listing the promoter owns. Saved edits are protected from automatic source refreshes. */

@@ -15,7 +15,7 @@ export default function PricingPage() {
   return (
     <PageShell>
       <main className="vp-wrap vp-page-top px-4 pb-10 sm:px-6">
-        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">What promotion costs</h1>
+        <h1 className="font-display text-h1">What promotion costs</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">All prices are AUD and include GST. Listing an event is free. Campaigns are a one-off payment for that event. The same packages are on the promoter page.</p>
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{DIGITAL_SERVICE_LINE}</p>
 
