@@ -71,6 +71,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await recordAcceptance(user.id, needs, 'signup').catch((err) => {
             console.error('[legal] could not record Google signup acceptance', err instanceof Error ? err.message : err)
           })
+          if (user.email) {
+            const { sendWelcome } = await import('@/lib/customer-mail')
+            await sendWelcome(user.email, user.name).catch((err) => console.error('[account] welcome mail', err instanceof Error ? err.message : err))
+          }
         }
       }
       return true

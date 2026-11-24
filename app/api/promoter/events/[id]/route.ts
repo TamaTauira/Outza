@@ -87,7 +87,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
   const { id } = await params
-  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, source: true } })
+  const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, source: true, status: true, date: true, time: true } })
   if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   if (ev.promoterId !== me.id && me.role !== 'ADMIN') return forbidden()
   if (!promoterCanEditEvent(ev.source)) {
@@ -97,5 +97,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     where: { id },
     data: { status: 'CANCELLED', statusSource: 'promoter', organiserEditedAt: new Date() },
   })
+  const { notifyEventStatusChange } = await import('@/lib/listing-change-mail')
+  await notifyEventStatusChange(id, ev.status, 'CANCELLED', { date: ev.date, time: ev.time }).catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
   return NextResponse.json({ ok: true })
 }

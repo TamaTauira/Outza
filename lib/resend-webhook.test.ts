@@ -26,8 +26,11 @@ test('open and click notices keep the edition id and drop everything else', () =
     type: 'email.clicked',
     data: { email_id: 'email_456', tags: { send_id: 'cm999xyz' } },
   }), { kind: 'click', sendId: 'cm999xyz', emailId: 'email_456' })
-  assert.equal(readResendNotice({ type: 'email.bounced', data: {} }), null)
-  assert.equal(readResendNotice({ type: 'email.opened', data: { tags: [{ name: 'send_id', value: 'nope' }] } })?.sendId, null)
+  assert.deepEqual(readResendNotice({ type: 'email.bounced', data: { to: ['Person@Example.com'], email_id: 'email_9' } }), { kind: 'bounce', email: 'person@example.com', emailId: 'email_9' })
+  assert.deepEqual(readResendNotice({ type: 'email.complained', data: { to: ['a@b.co'] } }), { kind: 'complaint', email: 'a@b.co', emailId: null })
+  assert.equal(readResendNotice({ type: 'email.delivered', data: {} }), null)
+  const thin = readResendNotice({ type: 'email.opened', data: { tags: [{ name: 'send_id', value: 'nope' }] } })
+  assert.equal(thin && thin.kind === 'open' ? thin.sendId : 'missing', null)
   assert.equal(resendEventId('msg_12345678'), 'msg_12345678')
   assert.equal(resendEventId('bad id'), null)
 })

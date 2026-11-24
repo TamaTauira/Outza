@@ -32,7 +32,25 @@ export async function POST(req: Request) {
   let payload: unknown
   try { payload = JSON.parse(body) } catch { return NextResponse.json({ ok: true }) }
   const notice = readResendNotice(payload)
-  if (!notice || (!notice.sendId && !notice.emailId)) return NextResponse.json({ ok: true })
+  if (!notice) return NextResponse.json({ ok: true })
+  if (notice.kind === 'bounce' || notice.kind === 'complaint') {
+    if (notice.email) {
+      try {
+        await prisma.emailSuppression.upsert({
+          where: { email: notice.email },
+          create: { email: notice.email, kind: notice.kind },
+          update: { kind: notice.kind },
+        })
+      } catch (err) {
+        console.error('[resend] suppression', (err as Error).message)
+        await prisma.emailWebhookEvent.delete({ where: { id } }).catch(() => {})
+        return NextResponse.json({ error: 'Not stored' }, { status: 500 })
+      }
+    }
+    return NextResponse.json({ ok: true })
+  }
+  if (notice.kind !== 'open' && notice.kind !== 'click') return NextResponse.json({ ok: true })
+  if (!notice.sendId && !notice.emailId) return NextResponse.json({ ok: true })
 
   const send = await prisma.newsletterSend.findFirst({
     where: {

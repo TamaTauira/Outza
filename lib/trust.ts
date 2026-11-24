@@ -42,6 +42,9 @@ export async function approveClaim(claimId: string, note?: string) {
     await ensureOrganiserGrant(c.userId, c.eventId, c.orgName, user.email).catch((err) => {
       console.error('organiser grant failed', err instanceof Error ? err.message : err)
     })
+    const event = await prisma.event.findUnique({ where: { id: c.eventId }, select: { title: true } })
+    const { sendEventClaimApproved } = await import('@/lib/customer-mail')
+    await sendEventClaimApproved(user.email, event?.title || 'your listing').catch((err) => console.error('[email] claim approved', err instanceof Error ? err.message : err))
   }
   return c
 }

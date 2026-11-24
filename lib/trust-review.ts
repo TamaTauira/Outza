@@ -15,7 +15,10 @@ async function applyOne(kind: QueueKind, id: string, action: QueueAction) {
     if (!report || report.status !== 'OPEN') return false
     await prisma.eventReport.update({ where: { id }, data: { status: decision.status, resolvedAt: new Date() } })
     if (reportListingEffect(report.reason, action) === 'cancel') {
+      const before = await prisma.event.findUnique({ where: { id: report.eventId }, select: { status: true, date: true, time: true } })
       await prisma.event.update({ where: { id: report.eventId }, data: { status: 'CANCELLED', statusSource: 'report' } })
+      const { notifyEventStatusChange } = await import('@/lib/listing-change-mail')
+      await notifyEventStatusChange(report.eventId, before?.status ?? 'SCHEDULED', 'CANCELLED', { date: before?.date, time: before?.time }).catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
     }
     await audit(report.eventId, action, `${decision.status} report ${report.reason} on ${report.event.title}`)
     return true
@@ -27,7 +30,12 @@ async function applyOne(kind: QueueKind, id: string, action: QueueAction) {
       const approved = await approveClaim(id, 'Accepted by an admin')
       if (!approved) return false
     } else {
+      const claim = await prisma.eventClaim.findUnique({ where: { id }, select: { user: { select: { email: true } }, event: { select: { title: true } } } })
       await prisma.eventClaim.update({ where: { id }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: 'Dismissed by an admin' } })
+      if (claim?.user.email) {
+        const { sendEventClaimRejected } = await import('@/lib/customer-mail')
+        await sendEventClaimRejected(claim.user.email, claim.event.title, 'Dismissed by an admin').catch((err) => console.error('[email] claim rejected', err instanceof Error ? err.message : err))
+      }
     }
     await audit(claim.eventId, action, `${decision.status} organiser claim ${id}`)
     return true

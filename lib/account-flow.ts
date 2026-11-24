@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import { emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
+import { renderTemplate, type TemplateId } from '@/lib/email-catalogue'
+import { sendPasswordChanged, sendWelcome } from '@/lib/customer-mail'
 import { siteUrl } from '@/lib/site-url'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import {
@@ -39,7 +41,7 @@ async function recentCount(userId: string, purpose: AuthPurpose): Promise<number
 }
 
 /** Creates a single-use link. Returns null when the hourly cap is already used. */
-export async function issueAuthLink(userId: string, email: string, purpose: AuthPurpose, path: string, subject: string, title: string, body: string, label: string) {
+export async function issueAuthLink(userId: string, email: string, purpose: AuthPurpose, path: string, subject: string, title: string, body: string, label: string, templateId?: TemplateId) {
   if (isQaAccountEmail(email)) {
     console.error(`[account] not emailing a QA login for ${purpose}`)
     return { sent: false as const, limited: false as const }
@@ -54,7 +56,13 @@ export async function issueAuthLink(userId: string, email: string, purpose: Auth
   })
   let result: { ok: boolean; disabled?: boolean; error?: string }
   try {
-    result = await linkMail(email, subject, title, body, `${siteUrl()}${path}${raw}`, label)
+    const href = `${siteUrl()}${path}${raw}`
+    if (templateId) {
+      const mail = renderTemplate(templateId, { href, email })
+      result = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text, kind: 'transactional' })
+    } else {
+      result = await linkMail(email, subject, title, body, href, label)
+    }
   } catch (err) {
     console.error(`[account] ${purpose} mail threw`, err instanceof Error ? err.message : err)
     result = { ok: false, error: 'send threw' }
@@ -79,8 +87,9 @@ export async function requestPasswordReset(emailRaw: string) {
       '/reset-password?token=',
       'Reset your VibePeep password',
       'Reset your password',
-      'Use the link once in the next hour. If you did not ask for this, you can ignore it.',
+      'Use this link once in the next hour to choose a new password. If you didn’t ask for this, you can ignore it — your password stays as it is.',
       'Choose a new password',
+      'A3',
     ).catch((err) => {
       console.error('[account] reset failed', err instanceof Error ? err.message : err)
     })
@@ -111,6 +120,8 @@ export async function resetPassword(rawToken: string, nextPassword: string) {
       data: { usedAt: new Date() },
     }),
   ])
+  const user = await prisma.user.findUnique({ where: { id: row.userId }, select: { email: true } })
+  if (user?.email) await sendPasswordChanged(user.email).catch((err) => console.error('[account] password-changed mail', err instanceof Error ? err.message : err))
   return { ok: true as const }
 }
 
@@ -120,10 +131,11 @@ export async function sendVerification(userId: string, email: string) {
     email,
     'EMAIL_VERIFY',
     '/verify-email?token=',
-    'Verify your VibePeep email',
-    'Verify your email',
+    'Confirm it’s you, then come peep',
+    'Confirm your email',
     'Open the link in the next day to publish events and use organiser tools. Browsing and saving work either way.',
-    'Verify email',
+    'Confirm email',
+    'A1',
   )
 }
 
@@ -138,7 +150,8 @@ export async function verifyEmail(rawToken: string) {
     data: { usedAt: new Date() },
   })
   if (consumed.count !== 1) return { ok: false as const, status: 400, error: 'That link has expired or already been used.' }
-  await prisma.user.update({ where: { id: row.userId }, data: { emailVerified: new Date() } })
+  const user = await prisma.user.update({ where: { id: row.userId }, data: { emailVerified: new Date() }, select: { email: true, name: true } })
+  await sendWelcome(user.email, user.name).catch((err) => console.error('[account] welcome mail', err instanceof Error ? err.message : err))
   return { ok: true as const }
 }
 

@@ -256,12 +256,17 @@ export async function saveOverrides(userId: string, eventId: string, body: { fie
     await prisma.eventOverrideHistory.create({
       data: { eventId, fieldName: field, action: result.historyAction, previousValue: current[field] ?? null, updatedValue: result.eventValue, actorId: userId },
     })
+    const previousStatus = current.status
     current[field] = result.eventValue
     Object.assign(loaded.event, columnPatch(loaded.event, field, result.eventValue))
     if (field === 'date' && result.eventValue) loaded.event.date = new Date(`${result.eventValue.slice(0, 10)}T00:00:00.000Z`)
     if (field === 'time') loaded.event.time = result.eventValue
     if (field === 'endTime') loaded.event.endTime = result.eventValue
-    if (field === 'status' && result.eventValue) loaded.event.status = result.eventValue
+    if (field === 'status' && result.eventValue && result.eventValue !== previousStatus) {
+      const { notifyEventStatusChange } = await import('@/lib/listing-change-mail')
+      await notifyEventStatusChange(eventId, previousStatus || loaded.event.status, result.eventValue, { date: loaded.event.date, time: loaded.event.time }).catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
+      loaded.event.status = result.eventValue
+    }
     applied.push(field)
   }
   if (!applied.length) return { status: 400 as const, error: 'Change a field first.' }
@@ -368,6 +373,11 @@ export async function saveVenueCorrections(userId: string, eventId: string, body
     const patch = columnPatch(event, field, eventValue)
     if (field === 'status') patch.statusSource = 'venue'
     await prisma.event.update({ where: { id: eventId }, data: patch })
+    const previousStatus = current.status || event.status
+    if (field === 'status' && eventValue && eventValue !== previousStatus) {
+      const { notifyEventStatusChange } = await import('@/lib/listing-change-mail')
+      await notifyEventStatusChange(eventId, previousStatus, eventValue, { date: event.date, time: event.time }).catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
+    }
     await prisma.eventOverrideHistory.create({
       data: { eventId, fieldName: field, action: 'SET', previousValue: current[field] ?? null, updatedValue: eventValue, actorId: userId },
     })

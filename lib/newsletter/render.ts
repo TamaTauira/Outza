@@ -3,7 +3,7 @@ import { formatTime } from '@/lib/board'
 import { priceSummary } from '@/lib/quality'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
-import { EMAIL_FONT, emailBanner, emailLockup } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_FONT, EMAIL_ORANGE, EMAIL_PINK, emailBanner, emailBrandRule, emailLockup } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
@@ -11,10 +11,10 @@ import { trustLine } from './taste'
 const C = {
   ink: '#1c1c1e',
   head: '#141414',
-  accent: '#FF4E6A',
-  orange: '#FF8A1A',
-  deep: '#E24B2A',
-  page: '#f6f1ea',
+  accent: EMAIL_PINK,
+  orange: EMAIL_ORANGE,
+  deep: '#141414',
+  page: '#f6f4ee',
   card: '#ffffff',
   muted: '#5e5e5e',
   line: '#efe6dc',
@@ -75,7 +75,7 @@ export function whenLine(e: NlEvent) {
 export const whereLine = (e: NlEvent) => `${e.venueName}${e.suburb && !e.venueName.toLowerCase().includes(e.suburb.toLowerCase()) ? `, ${e.suburb}` : ''}`
 export function priceLine(e: NlEvent) {
   const p = priceSummary(e)
-  return p.range === 'Price not published' ? 'Prices on the ticket site' : p.range
+  return p.range === 'Price not published' ? 'See website' : p.range
 }
 const statusNote = (e: NlEvent) => (e.status === 'RESCHEDULED' ? 'Rescheduled - double-check the new date before you go.' : '')
 const T = 'role="presentation" cellpadding="0" cellspacing="0" border="0"'
@@ -122,7 +122,8 @@ function coverArt(src: string, alt: string, w: number, h: number, href: string, 
 }
 
 function categoryBlock(category: string, w: number, h: number, href: string, kind: 'hero' | 'thumb') {
-  const bg = categoryColor(category)
+  const raw = categoryColor(category)
+  const bg = raw.toUpperCase() === '#FF5A3C' ? EMAIL_ORANGE : raw
   const fg = categoryInk(bg)
   const size = kind === 'hero' ? 22 : 12
   const radius = kind === 'hero' ? 16 : 12
@@ -181,7 +182,7 @@ function compactCard(r: RenderInput, s: Slot, placement: Placement, ctaLabel: st
 <table ${T} width="100%" class="card" bgcolor="${bg}" style="background:${bg};border:1px solid ${C.line};border-radius:16px;"><tr>
 <td class="thumb" width="${THUMB}" valign="top" style="width:${THUMB}px;padding:12px 0 12px 12px;">${thumb}</td>
 <td valign="top" style="padding:14px 16px 16px 12px;">
-<div style="font-family:${FONT};font-size:11px;line-height:1.3;letter-spacing:1.2px;font-weight:800;color:${C.accent};text-transform:uppercase;">${x(s.ev.category)}</div>
+<div style="font-family:${FONT};font-size:12px;line-height:1.3;letter-spacing:1.2px;font-weight:800;color:${C.accent};text-transform:uppercase;">${x(s.ev.category)}</div>
 <a href="${x(href)}" class="tx" style="font-family:${FONT};font-size:18px;line-height:1.25;font-weight:800;color:${C.ink};text-decoration:none;">${x(s.ev.title)}</a>
 ${meta(s.ev)}
 ${whyBlock(s.ev)}
@@ -202,7 +203,7 @@ function bigCard(r: RenderInput, s: Slot, placement: Placement, ctaLabel: string
 <table ${T} width="100%" class="card" bgcolor="${C.card}" style="background:${C.card};border:1px solid ${C.line};border-radius:18px;">
 <tr><td style="padding:0;font-size:0;line-height:0;">${picture}</td></tr>
 <tr><td style="padding:18px 20px 22px;">
-<div style="font-family:${FONT};font-size:11px;line-height:1.3;letter-spacing:1.2px;font-weight:800;color:${C.accent};text-transform:uppercase;">${x(s.ev.category)}</div>
+<div style="font-family:${FONT};font-size:12px;line-height:1.3;letter-spacing:1.2px;font-weight:800;color:${C.accent};text-transform:uppercase;">${x(s.ev.category)}</div>
 <a href="${x(href)}" class="tx" style="font-family:${FONT};font-size:26px;line-height:1.2;font-weight:800;color:${C.ink};text-decoration:none;">${x(s.ev.title)}</a>
 ${meta(s.ev)}
 ${whyBlock(s.ev)}
@@ -214,7 +215,7 @@ ${whyBlock(s.ev)}
 function sponsoredBlock(r: RenderInput) {
   if (!r.sponsored.length) return ''
   return `${sectionHead('From a promoter')}
-<tr><td class="px" style="padding:0 24px 12px;"><span style="display:inline-block;font-family:${FONT};font-size:11px;letter-spacing:1.4px;font-weight:800;color:${C.ink};background:#f0e4d4;border-radius:999px;padding:4px 10px;">SPONSORED</span>
+<tr><td class="px" style="padding:0 24px 12px;"><span style="display:inline-block;font-family:${FONT};font-size:12px;letter-spacing:1.4px;font-weight:800;color:${C.ink};background:#f0e4d4;border-radius:999px;padding:4px 10px;">SPONSORED</span>
 <span class="mu" style="font-family:${FONT};font-size:13px;color:${C.muted};padding-left:8px;">Paid placement from the organiser</span></td></tr>
 ${r.sponsored.map((s) => compactCard(r, s, 'sponsored', CTA_VARIANTS[r.cta].card, C.spons)).join('')}`
 }
@@ -274,20 +275,16 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 <table ${T} width="100%" class="bg" bgcolor="${C.page}" style="background:${C.page};"><tr><td align="center" class="shell" style="padding:16px 8px;">
 <table ${T} width="600" class="w100 bg" bgcolor="${C.page}" style="width:600px;max-width:600px;background:${C.page};">
 
-<tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:16px 16px 0 0;padding:26px 24px 28px;">
+<tr><td class="px head" bgcolor="${C.head}" style="background:${C.head};border-radius:16px 16px 0 0;padding:24px;">
 <table ${T} width="100%"><tr>
 <td valign="middle"><a href="${x(home)}" style="text-decoration:none;">${emailLockup({ dark: true })}</a></td>
-<td align="right" valign="middle" style="font-family:${FONT};font-size:11px;line-height:1.3;letter-spacing:1.6px;font-weight:800;color:${C.accent};">${x(ed)}</td>
+<td align="right" valign="middle" style="font-family:${FONT};font-size:12px;line-height:1.3;letter-spacing:1.6px;font-weight:800;color:${C.accent};">${x(ed)}</td>
 </tr></table>
-<table ${T} style="margin-top:18px;"><tr>
-<td width="28" height="4" bgcolor="${C.orange}" style="width:28px;height:4px;background:${C.orange};font-size:0;line-height:4px;">&nbsp;</td>
-<td width="28" height="4" bgcolor="${C.accent}" style="width:28px;height:4px;background:${C.accent};font-size:0;line-height:4px;">&nbsp;</td>
-<td>&nbsp;</td>
-</tr></table>
-<div style="padding-top:16px;">${emailBanner(r.editionKey === 'daily' ? 'daily-drop' : 'newsletter')}</div>
-<div style="font-family:${FONT};font-size:12px;line-height:1.4;letter-spacing:1.4px;font-weight:700;color:${C.onDarkMuted};padding-top:18px;text-transform:uppercase;">${x(r.city)} &nbsp;&middot;&nbsp; ${x(range)}</div>
-<div class="h1" style="font-family:${FONT};font-size:32px;line-height:1.15;font-weight:800;color:${C.onDark};padding-top:8px;">${x(r.greeting)}</div>
-<div style="font-family:${FONT};font-size:16px;line-height:1.55;color:#e6e6e6;padding-top:10px;">${x(r.intro)}</div>
+${emailBrandRule()}
+<div style="padding-top:24px;">${emailBanner(r.editionKey === 'daily' ? 'daily-drop' : 'newsletter')}</div>
+<div style="font-family:${FONT};font-size:12px;line-height:1.4;letter-spacing:1.4px;font-weight:700;color:${C.onDarkMuted};padding-top:24px;text-transform:uppercase;">${x(r.city)} &nbsp;&middot;&nbsp; ${x(range)}</div>
+<div class="h1" style="font-family:${FONT};font-size:32px;line-height:1.15;font-weight:800;color:${C.onDark};padding-top:24px;">${x(r.greeting)}</div>
+<div style="font-family:${FONT};font-size:16px;line-height:1.55;color:#e6e6e6;padding-top:24px;">${x(r.intro)}</div>
 </td></tr>
 
 ${r.hero ? `<tr><td class="px" style="padding:26px 24px 12px;"><div style="font-family:${FONT};font-size:12px;line-height:1.3;letter-spacing:1.6px;font-weight:800;color:${C.accent};">YOUR TOP PICK</div></td></tr>${bigCard(r, r.hero, 'hero', cta.hero)}` : ''}
@@ -310,6 +307,7 @@ ${button(go(r, 'explore', 'explore'), `Explore what’s on in ${r.city}`)}
 <div style="font-family:${FONT};font-size:13px;line-height:1.45;color:${C.onDarkMuted};padding-top:4px;">Two eyes on your city. Only the nights you asked for.</div>
 <div style="font-family:${FONT};font-size:13px;line-height:1.7;color:#e4e4e4;padding-top:18px;">${link(prefs, 'Manage preferences')}<span class="fdot"> &middot; </span>${link(prefs, 'Change frequency')}<span class="fdot"> &middot; </span>${link(unsub, 'Unsubscribe')}<span class="fdot"> &middot; </span>${link(`${home}/privacy`, 'Privacy policy')}<span class="fdot"> &middot; </span>${link(`${home}/disclaimer`, 'Disclaimer')}</div>
 <div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#b5b5b5;padding-top:12px;">You’re receiving ${x(ed.toLowerCase().replace(/^the /, 'The '))} (${x(r.editionKey)}) because you opted in to VibePeep emails as <span style="color:#e4e4e4;">${x(r.email)}</span>. Sent by VibePeep, an independent events guide. Sponsored placements are paid for by event organisers and are always labelled. Listings come from organisers and ticketing sites and can change: prices are as last listed and may exclude booking fees, so always confirm with the organiser or ticket seller before you go.</div>
+<div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#b5b5b5;padding-top:12px;">${x(EMAIL_ADDRESS)}</div>
 <div style="font-family:${FONT};font-size:12px;line-height:1.6;color:#b5b5b5;padding-top:14px;border-top:1px solid #2a2a2a;margin-top:16px;"><strong style="color:#e4e4e4;">Acknowledgement of Country.</strong> ${x(ACKNOWLEDGEMENT_OF_COUNTRY)}</div>
 </td></tr>
 </table></td></tr></table>
@@ -339,7 +337,7 @@ export function renderText(r: RenderInput): string {
     chunk(`HOT PICKS IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
     r.sponsoredPos === 'end' && r.sponsored.length && `FROM A PROMOTER - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
     `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${go(r, 'explore', 'explore')}`,
-    `---\nVibePeep. Take a peep at what's happening.\nSee you out there.\nManage preferences / change frequency: ${go(r, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
+    `---\nVibePeep. Take a peep at what's happening.\nSee you out there.\nManage preferences / change frequency: ${go(r, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy policy: ${siteUrl()}/privacy\n${EMAIL_ADDRESS}\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled. Details can change - confirm with the organiser before you go.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
   ]
   return parts.filter(Boolean).join('\n\n')
 }

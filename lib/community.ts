@@ -261,6 +261,8 @@ export async function updateManagedListing(token: string, body: Record<string, u
     const status = action === 'postpone' ? 'POSTPONED' : action === 'cancel' ? 'CANCELLED' : 'SCHEDULED'
     await prisma.event.update({ where: { id: current.id }, data: { status, statusSource: 'community', organiserEditedAt: new Date() } })
     await audit(current.id, action.toUpperCase(), status)
+    const { notifyEventStatusChange } = await import('@/lib/listing-change-mail')
+    await notifyEventStatusChange(current.id, current.status, status, { date: current.date, time: current.time }).catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
     return { ok: true as const, status: 200 }
   }
   if (action === 'reschedule') {
@@ -271,6 +273,8 @@ export async function updateManagedListing(token: string, body: Record<string, u
       data: { date: new Date(`${date}T00:00:00.000Z`), status: 'RESCHEDULED', statusSource: 'community', organiserEditedAt: new Date() },
     })
     await audit(current.id, 'RESCHEDULE', date)
+    const { notifyEventStatusChange } = await import('@/lib/listing-change-mail')
+    await notifyEventStatusChange(current.id, current.status, 'RESCHEDULED', { date: current.date, time: current.time }).catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
     return { ok: true as const, status: 200 }
   }
   if (action === 'save-template') {
@@ -373,7 +377,7 @@ export async function noteCommunityReport(eventId: string) {
 }
 
 export async function moderateCommunity(eventId: string, action: 'approve' | 'reject' | 'remove', actorId: string, note?: string | null) {
-  const ev = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, communityKey: true, title: true, city: true, suburb: true, ticketUrl: true, organiserUrl: true } })
+  const ev = await prisma.event.findUnique({ where: { id: eventId }, select: { id: true, communityKey: true, title: true, city: true, suburb: true, ticketUrl: true, organiserUrl: true, contactEmail: true } })
   if (!ev?.communityKey) return { ok: false as const, status: 404, error: 'Listing not found.' }
   const next = moderationResult(action)
   await prisma.event.update({
@@ -387,6 +391,14 @@ export async function moderateCommunity(eventId: string, action: 'approve' | 're
   })
   await audit(ev.id, next.audit, note ?? null, actorId)
   if (action === 'approve') await metric('APPROVED', { city: ev.city, suburb: ev.suburb, category: ev.communityKey })
+  if (ev.contactEmail && (action === 'approve' || action === 'reject')) {
+    const { sendListingLive, sendListingRejected } = await import('@/lib/customer-mail')
+    const href = `${siteUrl()}${eventPath(ev)}`
+    const send = action === 'approve'
+      ? sendListingLive(ev.contactEmail, ev.title, href)
+      : sendListingRejected(ev.contactEmail, ev.title, note?.trim() || 'it needs a change before it can go up', href)
+    await send.catch((err) => console.error('[email] listing decision', err instanceof Error ? err.message : err))
+  }
   return { ok: true as const, status: 200, approvalState: next.approvalState, kept: true }
 }
 

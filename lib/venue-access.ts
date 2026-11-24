@@ -310,6 +310,14 @@ export async function approveVenueClaim(claimId: string, actorId: string | null,
   ])
   await audit(claim.venueId, actorId, 'claim-approved', null, claim.id)
   await linkVenueEvents(claim.venueId).catch((err) => console.error('venue link failed', (err as Error)?.message))
+  const [person, venue] = await Promise.all([
+    prisma.user.findUnique({ where: { id: claim.claimantUserId }, select: { email: true } }),
+    prisma.venue.findUnique({ where: { id: claim.venueId }, select: { name: true } }),
+  ])
+  if (person?.email && venue?.name) {
+    const { sendVenueClaimApproved } = await import('@/lib/customer-mail')
+    await sendVenueClaimApproved(person.email, venue.name, `${siteUrl()}/venue/${claim.venueId}`).catch((err) => console.error('[email] venue claim', err instanceof Error ? err.message : err))
+  }
   return claim
 }
 
@@ -347,6 +355,14 @@ export async function rejectVenueClaim(claimId: string, actorId: string, note: s
   const approved = await prisma.venueManagementGrant.count({ where: { venueId: claim.venueId, status: 'APPROVED' } })
   if (!still && !approved) await prisma.venue.update({ where: { id: claim.venueId }, data: { claimStatus: 'UNCLAIMED' } })
   await audit(claim.venueId, actorId, 'claim-rejected', null, note)
+  const [person, venue] = await Promise.all([
+    prisma.user.findUnique({ where: { id: claim.claimantUserId }, select: { email: true } }),
+    prisma.venue.findUnique({ where: { id: claim.venueId }, select: { name: true } }),
+  ])
+  if (person?.email && venue?.name) {
+    const { sendVenueClaimRejected } = await import('@/lib/customer-mail')
+    await sendVenueClaimRejected(person.email, venue.name, note).catch((err) => console.error('[email] venue claim', err instanceof Error ? err.message : err))
+  }
   return claim
 }
 
