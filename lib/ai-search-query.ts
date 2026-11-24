@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client'
 import { tagForms } from './ai-search-rank'
-import { LGBTI_NEEDLES, LGBTI_TERMS, isLgbtiTerm, searchSpellings } from './search-fold'
+import { LGBTI_NEEDLES, isLgbtiTerm, searchSpellings } from './search-fold'
 
 const mode = 'insensitive' as const
 
@@ -35,14 +35,13 @@ export function askTextWhere(keywords: string[], lgbtiq: boolean): Prisma.EventW
   const widen = lgbtiq || words.some((word) => isLgbtiTerm(word))
   const parts: Prisma.EventWhereInput[] = required.map(wordClause)
   if (widen) {
+    // The flag is the same net as the LGBTIQ+ guide. Description LIKEs across every
+    // fancy spelling time out, and the chip then comes back empty.
     const needles = [...new Set(LGBTI_NEEDLES.flatMap((term) => searchSpellings(term)))]
-    const tags = [...new Set(LGBTI_TERMS.flatMap((term) => tagForms(term)))]
     parts.push({
       OR: [
         { isLGBTI: true },
         ...fieldContains('title', needles),
-        ...fieldContains('description', needles),
-        { subTags: { hasSome: tags } },
       ],
     })
   }

@@ -102,7 +102,7 @@ export default function RefundsPage() {
     <PageShell>
       <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Refunds</h1>
+        <h1 className="font-display text-h1 mt-2">Refunds</h1>
         <LegalStamp doc="refunds" />
         <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">
           Multi-day campaigns, Promoter Pro and local recommendations are one-off purchases. A monthly organiser plan can start with one free month, then renews until you cancel. The same rules are in the <Link href="/terms/promoters" className="underline underline-offset-2 hover:text-foreground">Promoter &amp; Advertising Terms</Link>.

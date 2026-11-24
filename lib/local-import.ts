@@ -11,7 +11,8 @@ import { isCommunityGathering } from '@/lib/local-feed'
 /**
  * Fills VibePeep Local from public listings VibePeep already ingests for the main board
  * (official market/organiser sites, City of Sydney What's On, Eventbrite, Humanitix, Moshtix, Oztix).
- * Facts only (title, date, time, place, price, original link) — no images, no private events.
+ * Facts only (title, date, time, place, price, original link) — no private events.
+ * Pictures come from the listing page (og:image, or a Humanitix bannerImage). A holding image is used only when that page has none.
  * Every imported row keeps its source and links back to the original listing.
  */
 export const LOCAL_IMPORT_SOURCES: Record<string, string> = {
@@ -61,14 +62,9 @@ interface Row {
   updatedAt: Date
 }
 
-/** Page lookups per import run. The rest are filled by the image backfill. */
-const IMAGE_LOOKUPS = 15
-let imageLookups = 0
-
 type Draft = Omit<RecurringShape, 'endDate' | 'recurUntil'> & { endDate: string | null; recurUntil: string | null; row: Row; sourceKey: string }
 
 export async function importLocalFromBoard(): Promise<{ upserted: number; skipped: number; rowsRead: number }> {
-  imageLookups = 0
   const started = new Date()
   const cursor = await readJobCursor('localImport').catch(() => null)
   const since = new Date(Date.now() - 86400000)
@@ -185,15 +181,18 @@ export async function importLocalFromBoard(): Promise<{ upserted: number; skippe
   return { upserted, skipped, rowsRead: loaded.length + kept.length }
 }
 
-/** The event's own picture, or the one on its public page when that picture is missing. */
+/**
+ * The picture on the listing page wins (Humanitix bannerImage, otherwise og:image).
+ * The board image is only a fallback, and only when it is a real source picture.
+ */
 async function sourcePicture(row: Row): Promise<string | null> {
   const direct = usableSourceImage(row.imageUrl)
-  if (direct && !imageWillExpire(direct)) return direct
-  const page = row.ticketUrl || row.organiserUrl
-  if (!page || imageLookups >= IMAGE_LOOKUPS || yieldIfBudget('local image')) return direct
-  imageLookups += 1
+  const directOk = direct && !imageWillExpire(direct) ? direct : null
+  const page = (row.ticketUrl || row.organiserUrl || '').trim()
+  if (!page || yieldIfBudget('local image')) return directOk
   const found = usableSourceImage(await imageFromListingPage(page).catch(() => null))
-  return found ?? direct
+  if (found && !imageWillExpire(found)) return found
+  return directOk
 }
 
 const windowFor = (city: string) => { const t = todayIn(cityDef(city).tz); return [t, addDaysStr(t, 180)] as const }

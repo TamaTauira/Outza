@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
 
 type Missing = { doc: string; version: string; title: string; path: string }
 
@@ -78,8 +79,8 @@ export function LegalAcceptPrompt() {
         </ul>
         {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={accept} disabled={busy} className="h-11 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">I accept</button>
-          <button type="button" onClick={() => signOut({ callbackUrl: '/' })} className="h-11 rounded-full bg-muted px-5 text-sm font-semibold">Sign out</button>
+          <Button type="button" onClick={accept} disabled={busy} loading={busy}>I accept</Button>
+          <Button type="button" variant="secondary" onClick={() => signOut({ callbackUrl: '/' })}>Sign out</Button>
         </div>
       </div>
     </div>

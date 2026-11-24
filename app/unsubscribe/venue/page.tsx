@@ -15,7 +15,7 @@ export default async function VenueUnsubscribePage({ searchParams }: { searchPar
         <Link href="/" aria-label="VibePeep home" className="inline-flex"><VibePeepLogo size="md" /></Link>
         {valid ? <VenueUnsubscribeClient u={u} k={k} /> : (
           <>
-            <h1 className="mt-4 font-display text-2xl font-bold">Link not recognised</h1>
+            <h1 className="mt-4 font-display text-h1">Link not recognised</h1>
             <p className="mt-2 text-sm text-muted-foreground">This unsubscribe link is invalid. You can turn the monthly note off any time in the venue dashboard.</p>
           </>
         )}

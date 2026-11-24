@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Page } from '@/components/layout/page'
+import { PageHeader } from '@/components/layout/page-header'
 import { PageShell } from '@/components/page-shell'
 import { getBoardFeed } from '@/lib/board-feed'
+import { COPY } from '@/lib/copy'
 import { CITY_NAMES, cityDef, DEFAULT_CITY } from '@/lib/cities'
 import { cityToday } from '@/lib/seo'
 import { EventCardRow } from '@/components/event-card'
+import { Button } from '@/components/ui/button'
+import { Surface } from '@/components/ui/surface'
 import { relaxedSearchArgs, searchFeedArgs } from '@/lib/search-feed'
 
 export const dynamic = 'force-dynamic'
@@ -45,9 +50,9 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <PageShell>
-      <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
-        <h1 className="font-display text-3xl font-bold tracking-tight">Search</h1>
-        <p className="mt-2 max-w-xl text-muted-foreground">Search what’s on. The link keeps your words, so you can send it.</p>
+      <main>
+      <Page className="pb-8">
+        <PageHeader title="Search" lede="Search what’s on. The link keeps your words, so you can send it." />
         <form role="search" action="/search" method="get" className="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
           <label className="sr-only" htmlFor="search-q">Search events</label>
           <input
@@ -59,10 +64,10 @@ export default async function SearchPage({ searchParams }: Props) {
             autoComplete="off"
             defaultValue={q}
             placeholder='Try "jazz this Friday"'
-            className="h-14 min-w-0 flex-1 rounded-full border border-input bg-card px-5 text-base focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-control min-w-0 flex-1 rounded-full border border-input bg-card px-5 text-base focus:outline-none focus:ring-2 focus:ring-ring sm:h-control-lg"
           />
           <input type="hidden" name="city" value={cityName} />
-          <button type="submit" className="h-14 rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground">Find events</button>
+          <Button type="submit" size="lg">Find events</Button>
         </form>
         {q && (
           <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
@@ -71,22 +76,23 @@ export default async function SearchPage({ searchParams }: Props) {
           </p>
         )}
         {q && events.length === 0 && (
-          <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-6">
-            <p className="font-display text-lg font-bold">Nothing matched those words.</p>
+          <Surface tone="dashed" pad="lg" className="mt-6">
+            <p className="font-display text-h3">Nothing matched those words.</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a suburb, a kind of night, or a shorter phrase.</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/" className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Browse what’s on</Link>
-              <Link href={`/search?city=${encodeURIComponent(cityName)}`} className="inline-flex h-11 items-center rounded-full border border-border px-4 text-sm font-semibold">Clear search</Link>
+              <Button asChild><Link href="/">{COPY.browse}</Link></Button>
+              <Button variant="outline" asChild><Link href={`/search?city=${encodeURIComponent(cityName)}`}>Clear search</Link></Button>
             </div>
-          </div>
+          </Surface>
         )}
-        <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+        <ul className="mt-4 divide-y divide-border overflow-hidden rounded-card border border-border bg-card shadow-vp-sm">
           {events.map((event) => (
             <li key={event.id}>
               <EventCardRow event={event} />
             </li>
           ))}
         </ul>
+      </Page>
       </main>
     </PageShell>
   )

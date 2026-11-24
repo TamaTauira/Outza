@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Sparkles } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
+import { Surface } from '@/components/ui/surface'
 import { VIBE_BIO_MAX, VIBE_QUESTIONS, asVibe, cleanVibe, vibeProgress, type VibeKey, type VibeProfile } from '@/lib/vibe-shared'
-
-const chip = (on: boolean) => cn('px-3 min-h-9 py-1.5 rounded-full text-xs sm:text-sm border transition-colors text-left', on ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted')
 
 /** Optional "vibe" questions. Saved together with one button so tapping around doesn't spam saves. */
 export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: VibeProfile | null) => void }) {
@@ -36,7 +36,7 @@ export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: 
   }
 
   return (
-    <section id="vibe" className="rounded-xl bg-card border border-border p-5 shadow-sm">
+    <Surface id="vibe" pad="lg" className="scroll-mt-24">
       <div className="flex items-start justify-between gap-3">
         <h2 className="font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Your vibe</h2>
         <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Optional</span>
@@ -54,7 +54,7 @@ export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: 
         <div>
           <label htmlFor="vibe-bio" className="text-sm font-medium">Your vibe in one line</label>
           <textarea id="vibe-bio" rows={2} maxLength={VIBE_BIO_MAX} value={vibe.bio ?? ''} onChange={(e) => setVibe((v) => ({ ...v, bio: e.target.value }))}
-            placeholder="e.g. Sunday markets, dumplings, then a sneaky gig" className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 text-sm resize-none" />
+            placeholder="e.g. Sunday markets, dumplings, then a sneaky gig" className="mt-1.5 w-full resize-none rounded-control border border-border bg-background px-3 py-2 text-base" />
           <p className="text-xs text-muted-foreground text-right">{(vibe.bio ?? '').length}/{VIBE_BIO_MAX}</p>
         </div>
 
@@ -64,7 +64,7 @@ export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: 
             <div className="flex flex-wrap gap-2 mt-2">
               {q.options.map((o) => {
                 const on = (vibe[q.key] ?? []).includes(o)
-                return <button key={o} type="button" aria-pressed={on} onClick={() => toggle(q.key, q.multi, o)} className={chip(on)}>{o}</button>
+                return <Chip key={o} pressed={on} onClick={() => toggle(q.key, q.multi, o)} className="whitespace-normal text-left">{o}</Chip>
               })}
             </div>
           </fieldset>
@@ -72,10 +72,8 @@ export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: 
       </div>
 
       <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-3">
-        <button type="button" onClick={save} disabled={saving || !dirty} className="h-10 px-5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2">
-          {saving && <Loader2 className="w-4 h-4 animate-spin" />}Save My Vibe
-        </button>
+        <Button type="button" onClick={save} disabled={!dirty} loading={saving}>Save vibe</Button>
       </div>
-    </section>
+    </Surface>
   )
 }

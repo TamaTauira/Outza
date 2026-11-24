@@ -177,7 +177,7 @@ html[data-walkstill='1'] .vp-hero-clock {
   will-change: auto;
   background: #fff;
   color: #1a120e;
-  border: 1px solid #ff8a1a;
+  border: 1px solid #ff7a35;
   border-radius: 999px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
   display: grid;
@@ -206,7 +206,7 @@ html[data-walkstill='1'] .vp-hero-clock {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border: 2px solid #ff8a1a;
+  border: 2px solid #ff7a35;
   border-radius: 999px;
   background: #fff;
   color: #1a120e;

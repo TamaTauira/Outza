@@ -19,7 +19,7 @@ type Payload = {
   event: { id: string; title: string; materialConflict: string | null }
 }
 
-const fieldClass = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
+const fieldClass = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 
 export function ManageEvent({ eventId }: { eventId: string }) {
   const [data, setData] = useState<Payload | null>(null)
@@ -87,7 +87,7 @@ export function ManageEvent({ eventId }: { eventId: string }) {
   return (
     <div className="space-y-4">
       <Link href={`/events/${eventId}`} className="text-sm text-muted-foreground underline">Back to the listing</Link>
-      <h1 className="font-display text-2xl font-bold">{data.event.title}</h1>
+      <h1 className="font-display text-h1">{data.event.title}</h1>
       {performance && (
         <section className="rounded-xl border border-border p-4 space-y-2">
           <h2 className="font-semibold">Performance</h2>

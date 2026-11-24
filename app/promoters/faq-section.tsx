@@ -81,7 +81,7 @@ export function FaqSection() {
             ))}
           </div>
         </div>
-        <aside className="rounded-3xl bg-[#0c0c0e] p-6 text-white lg:sticky lg:top-24">
+        <aside className="rounded-hero bg-[var(--vp-banner)] p-card-lg text-white lg:sticky lg:top-24">
           <Headphones className="h-8 w-8 text-[var(--vp-brand-orange)]" aria-hidden />
           <h3 className="mt-4 font-display text-2xl font-bold">Still have questions?</h3>
           <p className="mt-2 text-sm text-white/80">Write to us about a listing, a purchase or your account. The contact page says where that note goes.</p>

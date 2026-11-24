@@ -132,7 +132,9 @@ export function recurrenceLabel(l: RecurringShape): string {
 
 export const fmtTime = (t: string) => {
   const [h, m] = t.split(':').map(Number)
-  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'am' : 'pm'}`
+  if (!Number.isFinite(h)) return ''
+  const minutes = String(Number.isFinite(m) ? m : 0).padStart(2, '0')
+  return `${h % 12 || 12}:${minutes} ${h < 12 ? 'am' : 'pm'}`
 }
 /** Canonical detail URL for a Local listing: /local/<slug>-<id> (ids never contain hyphens). */
 export const localPath = (l: { id: string; title?: string | null }, date?: string | null) => {

@@ -13,7 +13,7 @@ export default function AttributionsPage() {
     <PageShell>
       <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Data sources</h1>
+        <h1 className="mt-2 font-display text-h1">Data sources</h1>
         <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">
           VibePeep listings are gathered from public event sources. The figures on Promoter Intelligence, and the map under the pins, come from the publishers below. Each chart on an intelligence report repeats the credit for the dataset it draws.
         </p>

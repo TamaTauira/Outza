@@ -116,12 +116,12 @@ export function emailButton(href: string, label: string): string {
   return `<!--[if mso]>
 <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:40px;v-text-anchor:middle;width:${width}px;" arcsize="50%" strokecolor="${EMAIL_C.deep}" fillcolor="${EMAIL_C.deep}">
 <w:anchorlock/>
-<center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;">${safe}</center>
+<center style="color:#1a1408;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;">${safe}</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
 <table ${T}><tr><td bgcolor="${EMAIL_C.deep}" style="border-radius:999px;background:${EMAIL_C.deep};">
-<a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${EMAIL_FONT};font-size:14px;line-height:18px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${safe}</a>
+<a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${EMAIL_FONT};font-size:14px;line-height:18px;font-weight:700;color:#1a1408;text-decoration:none;border-radius:999px;">${safe}</a>
 </td></tr></table>
 <!--<![endif]-->`
 }

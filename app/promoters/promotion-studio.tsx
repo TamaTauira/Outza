@@ -8,9 +8,9 @@ import { DURATIONS, TIERS, formatAud, isDuration, type Duration } from '@/lib/ti
 import { ctaClass, sectionPad } from './styles'
 
 const HEADER: Record<string, string> = {
-  SILVER: '#9A3412',
-  BRONZE: '#9F1239',
-  GOLD: 'linear-gradient(105deg,#9A3412 0%,#9F1239 100%)',
+  SILVER: 'var(--vp-brand-orange-ink)',
+  BRONZE: 'var(--vp-brand-pink)',
+  GOLD: 'linear-gradient(105deg, var(--vp-brand-orange-ink) 0%, var(--vp-brand-pink) 100%)',
 }
 
 const PACKAGE_SLUG: Record<string, string> = { SILVER: 'boost', BRONZE: 'spotlight', GOLD: 'headliner' }
@@ -38,7 +38,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
     <>
       <section id="packages" className="scroll-mt-24 border-y border-border bg-card/40 py-12 sm:py-16">
         <div className={sectionPad}>
-          <p className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">One-off · per event · AUD incl. GST</p>
+          <p className="text-xs font-semibold text-[var(--vp-brand-orange-ink)]">One-off · per event · AUD incl. GST</p>
           <h2 className="mt-2 max-w-3xl font-display text-3xl font-bold tracking-tight sm:text-4xl">Give your event the spotlight.</h2>
           <p className="mt-2 max-w-2xl text-muted-foreground">Three ways to get noticed. One easy way to get started.</p>
 
@@ -55,7 +55,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
                     data-testid={`package-${tier.key}`}
                     data-days={days}
                     data-price={tier.prices[days]}
-                    className="flex min-w-0 flex-col overflow-hidden rounded-[var(--vp-radius-xl)] bg-[#141418] text-white ring-1 ring-white/10"
+                    className="flex min-w-0 flex-col overflow-hidden rounded-hero bg-[var(--vp-banner)] text-white ring-1 ring-white/10"
                   >
                     <header className="px-5 py-4 text-white" style={{ background: HEADER[tier.key] }}>
                       <h3 className="font-display text-xl font-bold">{tier.name}</h3>
@@ -101,7 +101,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
 function DurationPanel({ days, onChange }: { days: Duration; onChange: (days: number) => void }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-24">
-      <h3 className="text-[13px] font-semibold text-muted-foreground">Choose your duration</h3>
+      <h3 className="text-xs font-semibold text-muted-foreground">Choose your duration</h3>
       <p className="mt-1 text-xs text-muted-foreground" id="duration-hint">Sets the length on all three packages. Default is 7 days.</p>
       <div role="radiogroup" aria-label="Campaign length" aria-describedby="duration-hint" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
         {DURATIONS.map((d) => {

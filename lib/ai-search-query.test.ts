@@ -19,7 +19,8 @@ test('inferred LGBTIQ+ widens the query instead of requiring the flag', () => {
   assert.match(blob, /"isLGBTI":true/)
   assert.ok(blob.includes(styleLetters('GAY', SANS_BOLD_UPPER)))
   assert.match(blob, /"contains":"gay"/)
-  assert.match(blob, /"description"/)
+  assert.match(blob, /"title"/)
+  assert.equal(blob.includes('"description"'), false)
 
   const jazz = askTextWhere(['jazz'], false)
   assert.equal(JSON.stringify(jazz).includes('isLGBTI'), false)

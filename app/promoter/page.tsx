@@ -25,9 +25,9 @@ export default async function PromoterPage({ searchParams }: { searchParams?: Pr
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="vp-wrap vp-page-top grid items-center gap-[var(--vp-card-gap)] px-4 pb-16 lg:grid-cols-2">
+        <main className="vp-wrap vp-page-top grid items-center gap-[var(--vp-card-gap)] px-4 pb-16 sm:px-6 lg:grid-cols-2">
           <div className="text-center lg:text-left">
-            <h1 className="mb-2 font-display text-2xl font-bold lg:text-4xl">This bit’s for promoters</h1>
+            <h1 className="mb-2 font-display text-h1">This bit’s for promoters</h1>
             <p className="mb-6 text-muted-foreground">Flip to a promoter account to list and boost your events. Your saves and follows stay put.</p>
             <BecomePromoter />
           </div>

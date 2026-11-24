@@ -194,6 +194,16 @@ test('Gay 2027 is the whole year, with LGBTIQ+ inferred and the word kept', () =
   assert.deepEqual(gaylard.keywords, ['charlie', 'gaylard'])
 })
 
+test('LGBTIQ+ this week is one week, and the identity word is not a second filter chip source', () => {
+  const saturday = '2026-11-21'
+  const parsed = interpretQuery('LGBTIQ+ this week', saturday)
+  assert.equal(parsed.lgbtiq, true)
+  assert.equal(parsed.dateFrom, saturday)
+  assert.equal(parsed.dateTo, '2026-11-27')
+  assert.equal(parsed.keywords.includes('week'), false)
+  assert.equal(parsed.keywords.includes('this'), false)
+})
+
 test('relative dates still resolve when no year is named', () => {
   const tonight = interpretQuery('live music tonight', TODAY)
   assert.equal(tonight.dateFrom, TODAY)

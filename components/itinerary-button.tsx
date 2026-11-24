@@ -1,14 +1,14 @@
 'use client'
 
-import { toast } from 'sonner'
+import { notifyAddedToItinerary, notifyRemovedFromItinerary } from '@/lib/notify'
 import { CalendarCheckIcon, CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { useItinerary, eventToItem } from '@/lib/itinerary'
 import { cn } from '@/lib/utils'
 
 type Ev = Parameters<typeof eventToItem>[0]
 
-const ADD_LABEL = 'Add to itinerary'
-const ADDED_LABEL = 'Added to itinerary'
+const ADD_LABEL = 'Add to Itinerary'
+const ADDED_LABEL = 'On your Itinerary'
 
 /** Add to the itinerary. `compact` and `lineup` are icon-only; the default button includes the words. */
 export function ItineraryButton({ event, compact = false, lineup = false, outline = false, surface, className }: { event: Ev; compact?: boolean; lineup?: boolean; outline?: boolean; surface?: string; className?: string }) {
@@ -19,10 +19,10 @@ export function ItineraryButton({ event, compact = false, lineup = false, outlin
     e.stopPropagation()
     if (inIt) {
       remove(event.id)
-      toast(lineup ? 'Dropped from the plan.' : 'Gone. Itinerary’s lighter.')
+      notifyRemovedFromItinerary()
     } else {
       add(eventToItem(event), surface)
-      toast.success(lineup ? 'On the itinerary.' : 'Locked in. It’s on your Itinerary.', { action: { label: 'View', onClick: () => { window.location.href = '/itinerary' } } })
+      notifyAddedToItinerary()
     }
   }
   const iconLabel = inIt ? ADDED_LABEL : ADD_LABEL
@@ -51,9 +51,9 @@ export function ItineraryButton({ event, compact = false, lineup = false, outlin
     )
   }
 
-  const label = inIt ? 'On Your Itinerary' : 'Add to Itinerary'
+  const label = inIt ? 'On your Itinerary' : 'Add to Itinerary'
   if (outline) {
-    const short = inIt ? 'On itinerary' : 'Add to Itinerary'
+    const short = inIt ? 'On your Itinerary' : 'Add to Itinerary'
     return (
       <button
         type="button"

@@ -28,7 +28,7 @@ export function LocalClock({ city, className }: { city?: string; className?: str
         {t && t.zone !== t.place ? t.zone : t ? '' : 'Local'} <span className={t && t.zone === t.place ? 'text-primary' : 'text-primary ml-2'}>{t ? `${t.place} time` : 'your time'}</span>
       </div>
       <div className="font-mono font-bold tabular-nums leading-none mt-1.5 text-white">
-        <span className="text-2xl sm:text-[40px]">{t ? `${t.hh}:${t.mm}` : '--:--'}</span>
+        <span className="text-2xl sm:text-[2.5rem]">{t ? `${t.hh}:${t.mm}` : '--:--'}</span>
         <span className="ml-1 text-sm">{t?.ampm ?? ''}</span>
       </div>
     </div>

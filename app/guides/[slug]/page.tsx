@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { PageShell } from '@/components/page-shell'
 import { LandingViewBeacon } from '@/components/landing-beacon'
 import { EventCard, GuideEventRow } from '@/components/event-card'
+import { chipClass } from '@/components/ui/chip'
 import { assessEditorial, editorialFacts, editorialGuide, editorialPath, EDITORIAL_GUIDES } from '@/lib/editorial'
 import { cityPath, topicDef } from '@/lib/seo'
 import { eventJsonLd, jsonLdString, landingData, lastRefreshAt, loadCityGuideModels } from '@/lib/seo-server'
@@ -103,7 +104,7 @@ export default async function EditorialGuidePage({ params }: Props) {
           <span className="text-foreground">{guide.label}</span>
         </nav>
         <header className="max-w-3xl">
-          <h1 className="font-display text-3xl md:text-5xl font-bold tracking-tight">{guide.h1}</h1>
+          <h1 className="font-display text-h1">{guide.h1}</h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{guide.description}</p>
           <p className="mt-3 text-base leading-relaxed text-muted-foreground">
             {gate.total} upcoming {gate.total === 1 ? 'listing' : 'listings'} across {shown.length} {shown.length === 1 ? 'city' : 'cities'}.
@@ -119,7 +120,7 @@ export default async function EditorialGuidePage({ params }: Props) {
         <nav aria-label="Topics" className="mt-6 flex gap-2 overflow-x-auto [scrollbar-width:thin]">
           {EDITORIAL_GUIDES.map((g) => (
             <Link key={g.slug} href={editorialPath(g.slug)} aria-current={g.slug === guide.slug ? 'page' : undefined}
-              className={g.slug === guide.slug ? 'shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-sm font-semibold text-primary-foreground' : 'shrink-0 rounded-full bg-card px-3.5 py-1.5 text-sm shadow-sm hover:bg-muted'}>
+              className={chipClass(g.slug === guide.slug)}>
               {g.label}
             </Link>
           ))}
@@ -144,7 +145,7 @@ export default async function EditorialGuidePage({ params }: Props) {
             <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
               {events.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as never }} />)}
             </div>
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-card">
               {events.map((e, i) => <EventCard key={e.id} index={i} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as never }} />)}
             </div>
           </section>

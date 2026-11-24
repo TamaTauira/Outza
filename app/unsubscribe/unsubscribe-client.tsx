@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 
 export function UnsubscribeClient({ u, k, s }: { u: string; k: string; s: string }) {
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle')
@@ -21,19 +22,17 @@ export function UnsubscribeClient({ u, k, s }: { u: string; k: string; s: string
   if (state === 'done') {
     return (
       <>
-        <h1 className="mt-4 font-display text-2xl font-bold">No hard feelings.</h1>
+        <h1 className="mt-4 font-display text-h1">No hard feelings.</h1>
         <p className="mt-2 text-muted-foreground text-sm">Newsletters are off. Your saved events and account haven’t gone anywhere.</p>
       </>
     )
   }
   return (
     <>
-      <h1 className="mt-4 font-display text-2xl font-bold">Breaking up with our emails?</h1>
+      <h1 className="mt-4 font-display text-h1">Breaking up with our emails?</h1>
       <p className="mt-2 text-muted-foreground text-sm">You’ll stop receiving the newsletter. You can switch it back on, or just change how often it arrives, in your account.</p>
-      <button onClick={go} disabled={state === 'busy'} className="mt-6 w-full h-11 rounded-full bg-primary text-primary-foreground font-semibold disabled:opacity-60">
-        {state === 'busy' ? 'Unsubscribing…' : 'Unsubscribe'}
-      </button>
-      {state === 'error' && <p className="mt-3 text-sm text-red-500">{msg}</p>}
+      <Button onClick={go} disabled={state === 'busy'} loading={state === 'busy'} className="mt-6 w-full">Unsubscribe</Button>
+      {state === 'error' && <p className="mt-3 text-sm text-destructive">{msg}</p>}
     </>
   )
 }

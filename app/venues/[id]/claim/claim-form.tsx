@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-const field = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 
 export function ClaimForm({ venueId, defaultName, defaultEmail, dispute }: { venueId: string; defaultName: string; defaultEmail: string; dispute: boolean }) {
   const router = useRouter()

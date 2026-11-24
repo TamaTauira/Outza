@@ -9,6 +9,7 @@ import { useSaved } from '@/lib/saved'
 import { cn } from '@/lib/utils'
 import { Footer } from '@/components/footer'
 import { EventCard } from '@/components/event-card'
+import { BRAND_ORANGE } from '@/lib/brand'
 import { CATEGORIES } from '@/lib/categories'
 import { StatusBanner } from '@/components/data-confidence'
 import { LocalRecommendations } from '@/components/local-recommendations'
@@ -271,7 +272,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   </div>
                 )}
                 {event?.isFree && (
-                  <div className="absolute left-3 top-3 z-10 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-[13px] font-semibold text-white">
+                  <div className="absolute left-3 top-3 z-10 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white">
                     Free
                   </div>
                 )}
@@ -280,7 +281,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             {(event?.category || tags.length > 0) && (
               <div className="flex flex-wrap gap-1.5">
                 {event?.category && (
-                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: catDef?.color ?? '#c2410c' }}>
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold text-white" style={{ backgroundColor: catDef?.color ?? BRAND_ORANGE }}>
                     {event.category}
                   </span>
                 )}
@@ -293,7 +294,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             )}
 
             <StatusBanner status={event.quality?.status ?? null} />
-            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight">{displayTitle(event?.title)}</h1>
+            <h1 className="font-display text-h1">{displayTitle(event?.title)}</h1>
             {event?.provenance && <ListingSources provenance={event.provenance} />}
             {event?.venueUpdate && <OrganiserUpdateNotice notice={event.venueUpdate} kind="venue" />}
             {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}

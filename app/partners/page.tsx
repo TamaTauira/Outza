@@ -24,7 +24,7 @@ export default async function PartnerPage({ searchParams }: Props) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="vp-wrap vp-page-top px-4 pb-16">
+        <main className="vp-wrap vp-page-top px-4 pb-16 sm:px-6">
           <EmptyState
             title="This page is for source partners"
             body="Ticketing platforms and other sources get a read-only overview of the listings VibePeep takes from them. Event owners still claim a listing from the event page. There is no public sign-up for a partner login."
@@ -47,7 +47,7 @@ export default async function PartnerPage({ searchParams }: Props) {
     return (
       <div className="min-h-screen bg-background">
         <SiteHeader />
-        <main className="vp-wrap vp-page-top px-4 pb-16">
+        <main className="vp-wrap vp-page-top px-4 pb-16 sm:px-6">
           <EmptyState title="No source is assigned yet" body="This partner login is active, but it is not linked to a source. An admin adds that from the partner page in admin." />
         </main>
         <Footer lastRefresh={null} />

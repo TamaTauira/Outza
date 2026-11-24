@@ -14,7 +14,7 @@ export function vibeMapStyle(dark: boolean): string {
 }
 
 /** Orange teardrop. The tip is the place, so the icon anchors at the bottom. */
-export function eventPinHtml(color = '#FF7A1A', letter = ''): string {
+export function eventPinHtml(color = '#FF7A35', letter = ''): string {
   const ink = '#1c1916'
   const mark = letter
     ? `<text x="18" y="20.5" text-anchor="middle" font-family="inherit" font-size="12" font-weight="700" fill="${ink}">${letter}</text>`

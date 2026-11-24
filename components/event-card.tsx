@@ -59,7 +59,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
       <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="block h-full group">
         <div className="flex h-full flex-col overflow-hidden rounded-[var(--vp-radius-lg)] border border-border bg-card transition-colors duration-300 group-hover:border-[var(--vp-border-default)]">
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A1A'}, #1a120c)` }}>
+          <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A35'}, #1a120c)` }}>
             <EventImage
               image={event.imageAsset}
               src={event.imageUrl}
@@ -80,7 +80,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
 
             {/* Free badge */}
             {event.isFree && (
-              <div className="absolute z-10 top-3 right-3 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-[13px] font-semibold text-white">
+              <div className="absolute z-10 top-3 right-3 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white">
                 Free
               </div>
             )}
@@ -101,7 +101,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
             <div className="flex flex-wrap items-center gap-1.5">
               <span
                 className="rounded-md px-2 py-0.5 text-xs font-semibold"
-                style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A1A'} 28%, #151a19)`, color: '#F5F5F2' }}
+                style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A35'} 28%, #151a19)`, color: '#F5F5F2' }}
               >
                 {event.category}
               </span>
@@ -139,7 +139,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               <span className="text-sm font-semibold tabular-nums text-foreground">
                 {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
               </span>
-              <span className="flex items-center gap-1 text-[13px] font-semibold text-primary transition-all group-hover:gap-2">
+              <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-all group-hover:gap-2">
                 Get tickets <ExternalLink className="w-3 h-3" />
               </span>
             </div>
@@ -167,7 +167,7 @@ export function EventCardRow({ event, listingQuery }: { event: EventData; listin
       <span className="min-w-0">
         <span className="line-clamp-2 font-semibold leading-snug">{displayTitle(event.title)}</span>
         <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-          <span className="shrink-0 rounded-md px-1.5 py-0.5 font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A1A'} 28%, #151a19)`, color: '#F5F5F2' }}>{event.category}</span>
+          <span className="shrink-0 rounded-md px-1.5 py-0.5 font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A35'} 28%, #151a19)`, color: '#F5F5F2' }}>{event.category}</span>
           <span className="truncate">{[clock, tidyVenueName(event.venueName, event.venueAddress, event.city), suburb].filter(Boolean).join(' · ')}</span>
         </span>
       </span>
@@ -179,7 +179,7 @@ export function EventCardRow({ event, listingQuery }: { event: EventData; listin
 /** Two-line city-guide row used under the desktop card breakpoint. */
 export function GuideEventRow({ event, listingQuery }: { event: EventData; listingQuery?: string }) {
   const catDef = CATEGORIES.find((c) => c.name === event.category)
-  const color = catDef?.color ?? '#FF7A1A'
+  const color = catDef?.color ?? '#FF7A35'
   const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
   const clock = boardClockLine(event)

@@ -17,7 +17,7 @@ test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice('$25 - $80').price, '$25 – $80')
   assert.equal(readPrice('$1,250').min, 1250)
   assert.equal(readPrice('TBA').price, null)
-  assert.equal(formatPrice(false, null).value, 'Price TBA')
+  assert.equal(formatPrice(false, null).value, 'See website')
   assert.equal(formatPrice(false, null, 30, 45).value, '$30–$45')
   assert.equal(readPrice({ major_value: '25.00' }).price, '$25')
   const cents = readPrice({ currency: 'AUD', value: 2500 })

@@ -10,17 +10,18 @@ import { useSession } from 'next-auth/react'
 import { AskSheet } from '@/components/ask-sheet'
 import { MenuSheet } from '@/components/menu-sheet'
 import { navShouldHide, shouldPopSaved } from '@/lib/bottom-nav'
+import { navItem } from '@/lib/nav'
 import './bottom-nav.css'
 
 const LEFT = [
-  { key: 'board', label: 'Explore', href: '/', Icon: PeepIcon },
-  { key: 'map', label: 'Map', href: '/map', Icon: MapPin },
-  { key: 'local', label: 'Local', href: '/local', Icon: House },
+  { key: 'board', label: navItem('board').label, href: '/', Icon: PeepIcon },
+  { key: 'map', label: navItem('map').label, href: '/map', Icon: MapPin },
+  { key: 'local', label: navItem('local').label, href: '/local', Icon: House },
 ] as const
 
 const RIGHT = [
-  { key: 'itinerary', label: 'Itinerary', href: '/itinerary', Icon: CalendarPlusIcon },
-  { key: 'saved', label: 'Saved', href: '/saved', Icon: Bookmark },
+  { key: 'itinerary', label: navItem('itinerary').label, href: '/itinerary', Icon: CalendarPlusIcon },
+  { key: 'saved', label: navItem('saved').label, href: '/saved', Icon: Bookmark },
 ] as const
 
 type TabKey = (typeof LEFT)[number]['key'] | (typeof RIGHT)[number]['key']
@@ -212,7 +213,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
             <span className="vp-ask-face">
               <Sparkles className="h-6 w-6" aria-hidden />
             </span>
-            <span className="vp-ask-label vp-tab-label">Ask</span>
+            <span className="vp-ask-label vp-tab-label">{navItem('ask').label}</span>
           </button>
           {RIGHT.map(tab)}
           <button
@@ -230,7 +231,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
             <span className="vp-bottom-ico">
               {signedIn ? <span className="vp-menu-initial" aria-hidden>{initial}</span> : <User className="h-5 w-5" aria-hidden />}
             </span>
-            <span className="vp-tab-label">Menu</span>
+            <span className="vp-tab-label">{navItem('menu').label}</span>
           </button>
         </div>
       </nav>

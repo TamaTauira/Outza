@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Receipt, Rocket, Store } from 'lucide-react'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { VP_COLOUR } from '@/lib/design-tokens'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PROMOTER_NAV_EVENT } from '@/lib/promoter-nav'
 import { cn } from '@/lib/utils'
@@ -97,9 +98,9 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
   }
 
   return (
-    <div className="min-h-screen bg-[#0C0F0E] print:bg-white">
+    <div className="min-h-screen print:bg-white" style={{ backgroundColor: VP_COLOUR.bgCanvas }}>
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="sticky top-0 hidden h-screen w-[240px] flex-col bg-[#151A19] text-white print:hidden lg:flex">
+        <aside className="sticky top-0 hidden h-screen w-[240px] flex-col text-white print:hidden lg:flex" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
           <div className="vp-page-top px-4 pb-2">
             <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="Promoter dashboard" className="block w-full">
               <VibePeepLogo size="sm" tone="on-dark" showTagline={false} />
@@ -140,7 +141,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
           {children}
         </div>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#151A19] text-white print:hidden lg:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} aria-label="Promoter">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 text-white print:hidden lg:hidden" style={{ backgroundColor: VP_COLOUR.bgSurface, paddingBottom: 'env(safe-area-inset-bottom)' }} aria-label="Promoter">
         <div className="grid grid-cols-5">
           {MOBILE.map((item) => (
             <Link
@@ -148,7 +149,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
               href={item.href}
               aria-current={active(item.tab) ? 'page' : undefined}
               onClick={(event) => onPromoterClick(event, item.href)}
-              className={cn('flex min-h-11 flex-col items-center justify-center gap-1 px-1 py-1.5 text-[12px] leading-tight', active(item.tab) ? 'font-semibold text-white' : 'text-white/65')}
+              className={cn('flex min-h-11 flex-col items-center justify-center gap-1 px-1 py-1.5 text-caption leading-tight', active(item.tab) ? 'font-semibold text-white' : 'text-white/65')}
             >
               <item.icon className="h-5 w-5" aria-hidden />
               {item.label}
@@ -156,7 +157,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
           ))}
           <button
             type="button"
-            className="flex min-h-11 flex-col items-center justify-center gap-1 px-1 py-1.5 text-[12px] leading-tight text-white/65"
+            className="flex min-h-11 flex-col items-center justify-center gap-1 px-1 py-1.5 text-caption leading-tight text-white/65"
             aria-expanded={more}
             aria-haspopup="dialog"
             onClick={() => setMore(true)}
@@ -167,7 +168,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
         </div>
       </nav>
       <Sheet open={more} onOpenChange={setMore}>
-        <SheetContent side="bottom" className="border-white/10 bg-[#151A19] text-white">
+        <SheetContent side="bottom" className="border-white/10 text-white" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
           <SheetHeader>
             <SheetTitle className="text-white">More</SheetTitle>
             <SheetDescription className="text-white/70">Venue, settings and help.</SheetDescription>

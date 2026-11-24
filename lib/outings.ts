@@ -257,6 +257,95 @@ export function buildOuting(template: OutingTemplate, events: OutingEvent[], cit
   return { slug: template.slug, title: template.title, blurb: template.blurb, city, date, stops, eventIds: picked.map((e) => e.id) }
 }
 
+export type OutingEdit = 'swap' | 'add' | 'shuffle' | 'remove'
+
+function fitsTemplate(template: OutingTemplate, ev: OutingEvent, date: string | null): boolean {
+  if (date && ev.date !== date) return false
+  if (!date && template.weekday != null && new Date(`${ev.date}T00:00:00Z`).getUTCDay() !== template.weekday) return false
+  if (template.categories.length && !template.categories.includes(ev.category)) return false
+  if (template.freeOnly && (ev.isFree !== true || isPaidListing(ev))) return false
+  if (template.maxPrice != null && !underCap(ev, template.maxPrice)) return false
+  const start = toMin(ev.time)
+  if (start == null) return !!template.allowUntimed
+  if (template.fromMin != null && start < template.fromMin) return false
+  if (template.toMin != null && start >= template.toMin) return false
+  return true
+}
+
+function nearest(pool: OutingEvent[], anchors: OutingEvent[], blocked: Set<string>): OutingEvent | null {
+  let best: OutingEvent | null = null
+  let bestKm = Infinity
+  for (const ev of pool) {
+    if (blocked.has(ev.id)) continue
+    if (anchors.some((anchor) => anchor.venueName.trim().toLowerCase() === ev.venueName.trim().toLowerCase())) continue
+    const distances = anchors
+      .map((anchor) => hopKm(anchor, ev))
+      .filter((km): km is number => km != null)
+    const km = distances.length ? Math.min(...distances) : 0
+    if (!best || km < bestKm) {
+      best = ev
+      bestKm = km
+    }
+  }
+  return best
+}
+
+/**
+ * Swap, add, remove or shuffle the real stops in a plan.
+ * A swap keeps the same day, the template window and the same filters, and prefers a nearby listing.
+ * Returns null when nothing else fits.
+ */
+export function editOutingEvents(
+  template: OutingTemplate,
+  pool: OutingEvent[],
+  current: OutingEvent[],
+  action: OutingEdit,
+  replaceId?: string | null,
+): OutingEvent[] | null {
+  const date = current[0]?.date ?? null
+  const blocked = new Set(current.map((ev) => ev.id))
+  if (action === 'remove') {
+    if (!replaceId) return null
+    const next = current.filter((ev) => ev.id !== replaceId)
+    return next.length === current.length ? null : next
+  }
+  if (action === 'shuffle') {
+    if (current.length < 2) return null
+    const next = [...current]
+    for (let i = next.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[next[i], next[j]] = [next[j], next[i]]
+    }
+    const moved = next.some((ev, index) => ev.id !== current[index]?.id)
+    return moved ? next : null
+  }
+  const candidates = pool.filter((ev) => fitsTemplate(template, ev, date) && !blocked.has(ev.id))
+  if (action === 'add') {
+    const pick = nearest(candidates, current, blocked)
+    return pick ? [...current, pick] : null
+  }
+  const index = current.findIndex((ev) => ev.id === replaceId)
+  if (index < 0) return null
+  const neighbors = [current[index - 1], current[index + 1]].filter((ev): ev is OutingEvent => !!ev)
+  const pick = nearest(candidates, neighbors.length ? neighbors : current.filter((ev) => ev.id !== replaceId), blocked)
+  if (!pick) return null
+  const next = [...current]
+  next[index] = pick
+  return next
+}
+
+export function finishOuting(template: OutingTemplate, events: OutingEvent[], city: string): BuiltOuting {
+  return {
+    slug: template.slug,
+    title: template.title,
+    blurb: template.blurb,
+    city,
+    date: events[0]?.date ?? null,
+    stops: withTips(template, events, city),
+    eventIds: events.map((ev) => ev.id),
+  }
+}
+
 function gapBeforeNext(events: OutingEvent[]): number | null {
   if (events.length < 2) return null
   const start = toMin(events[0].time)

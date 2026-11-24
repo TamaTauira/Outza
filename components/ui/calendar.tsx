@@ -35,7 +35,7 @@ function Calendar({
         day: 'inline-flex h-8 w-8 items-center justify-center rounded-full p-0 text-sm font-medium hover:bg-muted',
         day_range_end: 'day-range-end',
         day_selected: 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
-        day_today: 'ring-2 ring-[#F05A9D] ring-offset-2 ring-offset-background',
+        day_today: 'ring-2 ring-brand-pink ring-offset-2 ring-offset-background',
         day_outside: 'day-outside text-muted-foreground/50',
         day_disabled: 'text-muted-foreground/40',
         day_range_middle: 'aria-selected:bg-primary/15 aria-selected:text-foreground',

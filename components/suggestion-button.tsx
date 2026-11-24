@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Lightbulb, Loader2 } from 'lucide-react'
+import { Lightbulb } from 'lucide-react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { cn } from '@/lib/utils'
 
 export function SuggestionButton() {
   const [open, setOpen] = useState(false)
@@ -29,14 +30,14 @@ export function SuggestionButton() {
     } finally { setBusy(false) }
   }
 
-  const field = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40'
+  const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary/40'
   return (
     <>
       {/* In the page flow on small screens so it does not cover Hot Right Now or the map loading label. */}
       <div className="px-4 pb-8">
-        <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 px-4 h-11 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-md hover:opacity-90">
-          <Lightbulb className="w-4 h-4" /> Got an idea? Send it
-        </button>
+        <Button onClick={() => setOpen(true)}>
+          <Lightbulb className="h-4 w-4" /> Got an idea? Send it
+        </Button>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -47,9 +48,9 @@ export function SuggestionButton() {
           <form onSubmit={submit} className="space-y-3">
             <div className="flex gap-2">
               {(['CONSUMER', 'PROMOTER'] as const).map((r) => (
-                <button type="button" key={r} onClick={() => setRole(r)} className={cn('flex-1 h-9 rounded-md border text-sm', role === r ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted')}>
+                <Chip key={r} pressed={role === r} onClick={() => setRole(r)} className="flex-1">
                   {r === 'CONSUMER' ? 'I go to events' : 'I run events'}
-                </button>
+                </Chip>
               ))}
             </div>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Your suggestion…" className={field} required />
@@ -57,9 +58,7 @@ export function SuggestionButton() {
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (optional)" className={field} />
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional)" className={field} />
             </div>
-            <button disabled={busy} className="w-full h-10 rounded-md bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-              {busy && <Loader2 className="w-4 h-4 animate-spin" />} Send idea
-            </button>
+            <Button disabled={busy} loading={busy} className="w-full">Send idea</Button>
           </form>
         </DialogContent>
       </Dialog>

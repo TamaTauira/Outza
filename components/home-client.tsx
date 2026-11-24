@@ -17,6 +17,7 @@ import { SearchField } from '@/components/ui/search-field';
 import { FilterBar, filterChipClass } from '@/components/filter-bar';
 import { cn } from '@/lib/utils';
 import { CITIES, cityDef, DEFAULT_CITY } from '@/lib/cities';
+import { CityPicker } from '@/components/city-picker';
 import { weekendRange } from '@/lib/seo';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -404,16 +405,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             lede={<><p>Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p><p className="mt-2 text-sm font-semibold text-white/85">Your city’s calling. Answer it.</p></>}
           >
             <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-              <label className="inline-flex h-14 items-center gap-2 rounded-2xl bg-white/10 px-3">
-                <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                <span className="sr-only">Choose a city</span>
-                <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="Choose a city">
-                  {CITIES.map((c) => <option key={c.name} value={c.name} className="bg-popover text-popover-foreground">{c.name}, {c.state}</option>)}
-                </select>
-              </label>
+              <CityPicker value={city || DEFAULT_CITY} onChange={setCity} onDark />
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz Friday" queryRequest={askRequest} chips={false} goToPage />
             </div>
-            <p className="relative mt-2 max-w-[var(--vp-measure)] text-[13px] text-white/70">Describe a vibe, a date, a place or a budget. Or just browse.</p>
+            <p className="relative mt-2 max-w-[var(--vp-measure)] text-xs text-white/80">Describe a vibe, a date, a place or a budget. Try “plan my Saturday” and I’ll line the night up in Ask.</p>
             <div className="vp-chip-row relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {[
                 { label: 'Tonight', run: () => applyPlan('tonight') },
@@ -431,7 +426,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           </div>
         ) : null}
 
-        <div className={view === 'map' ? 'contents' : view === 'board' ? 'vp-wrap px-4 pt-5 sm:px-6' : 'vp-wrap vp-page-top px-4 sm:px-6'}>
+        <div className={view === 'map' ? 'contents' : view === 'board' ? 'vp-wrap px-4 pt-hero sm:px-6' : 'vp-wrap vp-page-top px-4 sm:px-6'}>
         {view === 'board' && <FeaturedTurnstile city={city} />}
         {view === 'board' && (
           <HomeRails
@@ -447,13 +442,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <h1 className="sr-only">Map</h1>
             <div className="vp-map-toolbar flex shrink-0 flex-col gap-[var(--vp-card-gap)] bg-background py-[var(--vp-page-top)] sm:flex-row sm:items-center">
               <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none">
-                <label className="flex h-11 w-full items-center gap-2 rounded-full border border-border bg-background px-3 shadow-sm">
-                  <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                  <span className="sr-only">Choose a city</span>
-                  <select value={city || DEFAULT_CITY} onChange={(e) => setCity(e.target.value)} className="min-w-0 flex-1 truncate bg-transparent text-base font-medium focus:outline-none md:text-sm" aria-label="Choose a city">
-                    {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  </select>
-                </label>
+                <CityPicker value={city || DEFAULT_CITY} onChange={setCity} />
               </div>
               <div className="min-w-0 w-full sm:flex-1">
                 <SearchField id="map-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search the map" label="Search events" />

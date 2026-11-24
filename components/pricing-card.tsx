@@ -42,7 +42,7 @@ export function PricingCard({
           {exclusions.map((item) => <li key={item}>Not included: {item}</li>)}
         </ul>
       )}
-      <p className="mt-3 text-[13px] text-muted-foreground">{renewal}</p>
+      <p className="mt-3 text-xs text-muted-foreground">{renewal}</p>
       {unavailable ? <p className="mt-4 text-sm font-semibold">Not on sale</p> : action ? <div className="mt-4">{action}</div> : null}
     </article>
   )

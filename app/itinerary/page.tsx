@@ -16,6 +16,7 @@ import { PageMasthead } from '@/components/page-masthead'
 import { ViewToggle } from '@/components/view-toggle'
 import { useItinerary, useItineraryLabel, sortItinerary, clashMap, eventToItem, type ItineraryItem } from '@/lib/itinerary'
 import { boardClockLine } from '@/lib/listing-window'
+import { formatTime } from '@/lib/format'
 import { coordsFitCity, directionsUrl, distanceKm, fmtKm, fmtMin, planLeg } from '@/lib/travel'
 import { eventsToIcs, ITINERARY_ICS_FILENAME } from '@/lib/ics'
 import { StopForm, emptyStop, type StopFormValues } from './stop-form'
@@ -30,13 +31,7 @@ const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('e
 const toMin = (t: string | null) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null)
 const believable = (i: ItineraryItem) => i.lat != null && i.lng != null && coordsFitCity(i.lat, i.lng, i.city)
 const needsGeo = (i: ItineraryItem) => !believable(i) && !i.geoFailed && (i.kind === 'event' || !!(i.place || i.venueName))
-const clock = (t: string | null) => {
-  if (!t) return null
-  const h = Number(t.slice(0, 2))
-  const m = t.slice(3, 5)
-  if (!Number.isFinite(h)) return null
-  return `${h % 12 === 0 ? 12 : h % 12}:${m} ${h < 12 ? 'am' : 'pm'}`
-}
+const clock = (t: string | null) => formatTime(t) || null
 const durationLabel = (start: string | null, end: string | null) => {
   const a = toMin(start)
   const b = toMin(end)
@@ -57,13 +52,13 @@ function arrange(list: ItineraryItem[]) {
 }
 
 function derivedTitle(list: ItineraryItem[]) {
-  if (!list.length) return 'Your plan'
+  if (!list.length) return 'Your Itinerary'
   const day = list[0].date
   const sameDay = list.every((item) => item.date === day)
   const cities = [...new Set(list.map((item) => item.city).filter(Boolean))]
   const times = list.map((item) => item.time).filter((time): time is string => !!time)
   const evening = times.length > 0 && times.every((time) => time >= '17:00')
-  const when = sameDay ? `${new Date(`${day}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' })}${evening ? ' night' : ''}` : 'Your plan'
+  const when = sameDay ? `${new Date(`${day}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'long', timeZone: 'UTC' })}${evening ? ' night' : ''}` : 'Your Itinerary'
   return cities.length === 1 ? `${when} in ${cities[0]}` : when
 }
 
@@ -320,7 +315,7 @@ export default function ItineraryPage() {
     try {
       if (navigator.share) { await navigator.share({ title, text, url: link }); return }
       await navigator.clipboard.writeText(text)
-      toast.success('Plan’s copied, link and all.')
+      toast.success('Itinerary link copied.')
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return
       toast('Couldn’t share that just now')
@@ -340,9 +335,9 @@ export default function ItineraryPage() {
         <PageMasthead variant="itinerary" />
 
         {shared.length > 0 && (
-          <section className="mt-6 rounded-2xl border border-border bg-card p-4" aria-label="Shared plan">
-            <h2 className="font-display text-xl font-bold">Shared plan</h2>
-            <p className="mt-1 text-sm text-muted-foreground">A read-only look at the stops in this link. It does not change the plan on this device.</p>
+          <section className="mt-hero rounded-card border border-border bg-card p-card" aria-label="Shared Itinerary">
+            <h2 className="font-display text-h3">Shared Itinerary</h2>
+            <p className="mt-1 text-sm text-muted-foreground">A read-only look at the stops in this link. It does not change the Itinerary on this device.</p>
             <ul className="mt-3 divide-y divide-border">
               {shared.map((event) => (
                 <li key={event.id} className="py-2"><Link href={event.href} className="font-semibold hover:text-primary">{event.title}</Link></li>
@@ -359,12 +354,12 @@ export default function ItineraryPage() {
               <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Spot something worth leaving the house for, add it here, and stack the rest around it.</p>
               <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <button type="button" onClick={() => openPanel('event')} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Start planning.</button>
+                <button type="button" onClick={() => openPanel('event')} className="inline-flex h-control items-center rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">Add a stop</button>
                 {status !== 'authenticated' && <Link href="/login?next=/itinerary" className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Sign in</Link>}
               </div>
             </div>
-            <aside className="mt-6 rounded-3xl bg-card p-4 shadow-[var(--vp-shadow-sm)]" aria-label="Example itinerary">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Example only. Not your plan, and not a real listing.</p>
+            <aside className="mt-hero rounded-hero bg-card p-card shadow-vp-sm" aria-label="Example itinerary">
+              <p className="vp-eyebrow text-muted-foreground">Example only. Not your Itinerary, and not a real listing.</p>
               <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <li>Evening · A gig</li>
                 <li>Later · Dinner</li>
@@ -394,7 +389,7 @@ export default function ItineraryPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={share} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Share2 className="h-4 w-4" /> Share</button>
-                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename plan</button>
+                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-control items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename</button>
                   <details className="relative">
                     <summary className="flex h-11 cursor-pointer list-none items-center rounded-full border border-border px-4 text-sm font-semibold">More options</summary>
                     <button type="button" onClick={() => setClearOpen(true)} className="absolute right-0 z-10 mt-2 whitespace-nowrap rounded-xl border border-border bg-popover px-4 py-3 text-sm shadow-lg">Clear all</button>
@@ -436,7 +431,7 @@ export default function ItineraryPage() {
                                         {i.kind === 'event' ? <Link href={i.href ?? eventPath(i)} className="font-semibold hover:text-primary">{i.title}</Link> : <p className="font-semibold">{i.title}</p>}
                                         {i.venueName && <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{i.venueName}{i.suburb ? ` · ${i.suburb}` : ''}</p>}
                                         {(i.place && i.place !== i.venueName) && <p className="text-sm text-muted-foreground">{i.place}</p>}
-                                        <p className="mt-1 flex flex-wrap gap-1 text-[13px] font-semibold text-muted-foreground">
+                                        <p className="mt-1 flex flex-wrap gap-1 text-xs font-semibold text-muted-foreground">
                                           {i.kind === 'custom' && <span className="rounded bg-muted px-1.5 py-0.5">My stop</span>}
                                           {i.stopCategory && <span className="rounded bg-muted px-1.5 py-0.5">{i.stopCategory}</span>}
                                           {i.adId && <span>Sponsored</span>}
@@ -542,8 +537,8 @@ export default function ItineraryPage() {
         </section>
 
         <section className="mt-8 rounded-3xl bg-[#0c0f0e] px-5 py-6 text-white">
-          <h2 className="font-display text-2xl font-bold">Good plans are better shared.</h2>
-          <p className="mt-2 max-w-2xl text-sm text-white/75">Send the plan, or drop the whole thing in your calendar.</p>
+          <h2 className="font-display text-h2">A good Itinerary is better shared.</h2>
+          <p className="mt-2 max-w-2xl text-sm text-white/80">Send the link, or drop the whole thing in your calendar.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" onClick={share} disabled={!arranged.length} className="inline-flex h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50"><Share2 className="h-4 w-4" /> Share itinerary</button>
             <button type="button" onClick={() => downloadIcs(arranged, title)} disabled={!arranged.length} className="inline-flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-neutral-900 disabled:opacity-50"><CalendarPlus className="h-4 w-4" /> Add to calendar</button>
@@ -554,11 +549,11 @@ export default function ItineraryPage() {
       <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear the whole plan?</AlertDialogTitle>
+            <AlertDialogTitle>Clear the whole Itinerary?</AlertDialogTitle>
             <AlertDialogDescription>Every stop on this device goes. Saved events stay saved.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep the plan</AlertDialogCancel>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
             <AlertDialogAction onClick={() => clear()}>Clear all</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

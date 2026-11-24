@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { createBasemap } from '@/lib/map-basemap'
-import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
+import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { coordsFitCity, fmtMin, planLeg } from '@/lib/travel'
 import { eventPath } from '@/lib/seo'
@@ -21,7 +21,7 @@ function popupHtml(stop: ItineraryItem, number: number) {
   const img = stop.imageUrl && /^https?:\/\//i.test(stop.imageUrl)
     ? `<img src="${esc(stop.imageUrl)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:10px;margin-bottom:8px" />`
     : ''
-  return `<div style="min-width:180px;font-family:inherit">${img}<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">Stop ${number}${stop.kind === 'custom' ? ' · Your stop' : ''}</div><div style="font-weight:700;margin-top:2px">${esc(stop.title)}</div><div style="font-size:12px;margin-top:4px;opacity:.8">${esc(stop.time ?? 'Time not set')}${where ? `<br/>${esc(where)}` : ''}</div>${href ? `<div style="margin-top:6px"><a href="${esc(href)}">Details →</a></div>` : ''}</div>`
+  return `<div style="min-width:180px;font-family:inherit">${img}<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">Stop ${number}${stop.kind === 'custom' ? ' · Your stop' : ''}</div><div style="font-weight:700;margin-top:2px">${esc(stop.title)}</div><div style="font-size:12px;margin-top:4px;opacity:.8">${esc(stop.time ?? 'Time not set')}${where ? `<br/>${esc(where)}` : ''}</div>${href ? `<div style="margin-top:6px"><a href="${esc(href)}">Details →</a></div>` : ''}</div>`
 }
 
 /** Numbered itinerary pins and a route that only joins stops we can actually place. */
@@ -82,7 +82,11 @@ export function ItineraryMap({
         console.error('Itinerary map style failed:', err)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      detachBasemap(mapInstance.current, tileRef.current)
+      tileRef.current = null
+    }
   }, [ready, dark])
 
   useEffect(() => {
@@ -102,7 +106,7 @@ export function ItineraryMap({
       if (previous && pinOk(previous)) {
         const planned = planLeg(previous, stop)
         if (planned.kind === 'trip') {
-          const line = L.polyline([[previous.lat, previous.lng], at], { color: '#FF5A3C', weight: 4, opacity: 0.9 })
+          const line = L.polyline([[previous.lat, previous.lng], at], { color: '#FF7A35', weight: 4, opacity: 0.9 })
           line.bindTooltip(`≈ ${fmtMin(planned.leg.recommendedMin)} · ${planned.leg.mode === 'walking' ? 'walk' : 'drive'}`, { sticky: true })
           group.addLayer(line)
         }
@@ -110,7 +114,7 @@ export function ItineraryMap({
       const custom = stop.kind === 'custom'
       const icon = L.divIcon({
         className: 'se-marker-wrap',
-        html: `<div style="width:32px;height:32px;border-radius:${custom ? '8px' : '999px'};background:${custom ? '#1c1c1e' : '#FF5A3C'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.25)">${number}</div>`,
+        html: `<div style="width:32px;height:32px;border-radius:${custom ? '8px' : '999px'};background:${custom ? '#1c1c1e' : '#FF7A35'};color:${custom ? '#fff' : '#1a1408'};display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.25)">${number}</div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
       })

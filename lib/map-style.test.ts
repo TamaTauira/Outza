@@ -14,8 +14,8 @@ test('the basemap uses OpenFreeMap stock styles and keeps attribution', () => {
 })
 
 test('the event pin is an orange teardrop', () => {
-  const html = eventPinHtml('#FF7A1A', 'A')
-  assert.match(html, /#FF7A1A/)
+  const html = eventPinHtml('#FF7A35', 'A')
+  assert.match(html, /#FF7A35/)
   assert.match(html, />A</)
   assert.match(html, /class="se-pin"/)
 })
