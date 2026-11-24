@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { runIdeasDigest, runHealthChecks } from '@/lib/owner-alerts'
+import { runLegalNotices } from '@/lib/legal-notice'
 import { getSessionUser } from '@/lib/session'
 import { writeHeartbeat } from '@/lib/job-watermark'
 
@@ -15,9 +16,13 @@ async function run(req: Request) {
   if (!authed && me?.role !== 'ADMIN') return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
   const force = new URL(req.url).searchParams.get('force') === '1'
   const ideas = await runIdeasDigest({ force })
+  const legal = await runLegalNotices().catch((err) => {
+    console.error('[legal] notice', err instanceof Error ? err.message : err)
+    return []
+  })
   await runHealthChecks()
   await writeHeartbeat('owner-alerts').catch(() => {})
-  return NextResponse.json({ ideas })
+  return NextResponse.json({ ideas, legal })
 }
 
 export async function GET(req: Request) { return run(req) }

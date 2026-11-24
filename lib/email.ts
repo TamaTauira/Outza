@@ -406,6 +406,8 @@ export async function sendEmail(opts: {
     console.error('[email] skipped: SMTP is not configured and RESEND_API_KEY is not set')
     return { ok: false, disabled: true, error: 'Email sending is turned off' }
   }
+  const { emailSuppressed } = await import('@/lib/email-suppression')
+  if (await emailSuppressed(to)) return { ok: false, error: 'This address is suppressed after a bounce or complaint' }
   const headers = listUnsubscribeHeaders({ kind: opts.kind, unsubscribeUrl: opts.unsubscribeUrl })
   const message = {
     to,

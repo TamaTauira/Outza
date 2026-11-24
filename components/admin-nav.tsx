@@ -15,6 +15,7 @@ const LINKS = [
   { href: '/admin/local', label: 'Local' },
   { href: '/admin/community', label: 'Community' },
   { href: '/admin/newsletter', label: 'Newsletter' },
+  { href: '/admin/emails', label: 'Emails' },
   { href: '/admin/seo', label: 'SEO' },
   { href: '/admin/images', label: 'Images' },
   { href: '/admin/intel', label: 'Intelligence' },

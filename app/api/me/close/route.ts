@@ -13,6 +13,8 @@ export async function POST(req: Request) {
   if (!me.email || confirm !== me.email.toLowerCase()) {
     return NextResponse.json({ error: 'Type your account email to close it' }, { status: 400 })
   }
+  const { sendAccountClosed } = await import('@/lib/customer-mail')
+  await sendAccountClosed(me.email).catch((err) => console.error('[account] closed mail', err instanceof Error ? err.message : err))
   await prisma.user.delete({ where: { id: me.id } })
   return NextResponse.json({ ok: true })
 }

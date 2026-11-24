@@ -1,6 +1,6 @@
 import { existsSync } from 'fs'
 import path from 'path'
-import { BRAND_DEEP, BRAND_ICON_512, BRAND_ORANGE, BRAND_PINK, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
+import { BRAND_ICON_512, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 
@@ -14,6 +14,14 @@ import { CANONICAL_SITE_URL } from '@/lib/site-url'
 /** System stack. Mail clients must not fetch a webfont. */
 export const EMAIL_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 
+/** Email-only brand colours. The site palette is separate. */
+export const EMAIL_ORANGE = '#FF7A35'
+export const EMAIL_PINK = '#F05A9D'
+/** Charcoal pill. White on orange fails contrast. */
+export const EMAIL_BUTTON = '#141414'
+/** Postal line until a street address is supplied. */
+export const EMAIL_ADDRESS = 'VibePeep, Australia'
+
 export const EMAIL_C = {
   page: '#f6f4ee',
   ink: '#161a16',
@@ -21,9 +29,9 @@ export const EMAIL_C = {
   line: '#e7e2d6',
   card: '#ffffff',
   head: '#141414',
-  accent: BRAND_PINK,
-  orange: BRAND_ORANGE,
-  deep: BRAND_DEEP,
+  accent: EMAIL_PINK,
+  orange: EMAIL_ORANGE,
+  deep: EMAIL_BUTTON,
   freeBg: '#e5f6ee',
   freeInk: '#0d6b45',
   priceBg: '#fff1ea',
@@ -93,6 +101,14 @@ export function emailTick(kind: keyof typeof CLAIMED_TICK_COPY): string {
   return `<img src="${emailEscape(src)}" alt="${emailEscape(copy.label)}" width="${TICK_W}" height="${TICK_H}" style="display:inline-block;width:${TICK_W}px;height:${TICK_H}px;border:0;outline:none;text-decoration:none;vertical-align:middle;"/>`
 }
 
+/** Full-width 2px orange-to-pink rule. Two cells, so clients that drop gradients still show both colours. */
+export function emailBrandRule(): string {
+  return `<table ${T} width="100%" style="width:100%;margin-top:24px;"><tr>
+<td width="50%" height="2" bgcolor="${EMAIL_ORANGE}" style="width:50%;height:2px;background:${EMAIL_ORANGE};font-size:0;line-height:2px;">&nbsp;</td>
+<td width="50%" height="2" bgcolor="${EMAIL_PINK}" style="width:50%;height:2px;background:${EMAIL_PINK};font-size:0;line-height:2px;">&nbsp;</td>
+</tr></table>`
+}
+
 export function emailButton(href: string, label: string): string {
   const safe = emailEscape(label)
   const url = emailEscape(href)
@@ -138,20 +154,23 @@ export function emailDocument(opts: {
   title: string
   preheader?: string
   rows: string
-  manageHref: string
+  manageHref?: string
   unsubscribeHref?: string
   homeHref?: string
   disclaimer?: string
   reason?: string
   /** File stem under public/email-headers/. The brand band is used until that PNG exists. */
-  banner?: string
+  /** Pass null to leave the banner out. Omit it and the general band is used. */
+  banner?: string | null
 }): string {
   const home = opts.homeHref ?? CANONICAL_SITE_URL
+  const privacy = `${home.replace(/\/$/, '')}/privacy`
   const link = (href: string, label: string) => `<a class="flink" href="${emailEscape(href)}" style="color:#e4e4e4;text-decoration:underline;">${emailEscape(label)}</a>`
   const links = [
-    link(opts.manageHref, 'Manage preferences'),
-    opts.unsubscribeHref ? link(opts.unsubscribeHref, 'Unsubscribe') : '',
     link(home, 'Home'),
+    link(privacy, 'Privacy'),
+    opts.manageHref ? link(opts.manageHref, 'Manage preferences') : '',
+    opts.unsubscribeHref ? link(opts.unsubscribeHref, 'Unsubscribe') : '',
   ].filter(Boolean).join('<span class="fdot"> &middot; </span>')
   const pre = opts.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${emailEscape(opts.preheader)}${'&#8204;&nbsp;'.repeat(24)}</div>` : ''
   const disclaimer = opts.disclaimer
@@ -196,20 +215,17 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 ${pre}
 <table ${T} width="100%" class="bg" bgcolor="${EMAIL_C.page}" style="background:${EMAIL_C.page};"><tr><td align="center" style="padding:16px 8px;">
 <table ${T} width="600" class="w100" style="width:600px;max-width:600px;">
-<tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:16px 16px 0 0;padding:22px 24px 18px;">
+<tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:16px 16px 0 0;padding:24px;">
 <a href="${emailEscape(home)}" style="text-decoration:none;">${emailLockup({ dark: true })}</a>
-<div style="padding-top:16px;">${emailBanner(opts.banner ?? 'general')}</div>
-<table ${T} style="margin-top:16px;"><tr>
-<td width="28" height="4" bgcolor="${EMAIL_C.orange}" style="width:28px;height:4px;background:${EMAIL_C.orange};font-size:0;line-height:4px;">&nbsp;</td>
-<td width="28" height="4" bgcolor="${EMAIL_C.accent}" style="width:28px;height:4px;background:${EMAIL_C.accent};font-size:0;line-height:4px;">&nbsp;</td>
-<td>&nbsp;</td>
-</tr></table>
+${emailBrandRule()}
+${opts.banner === null ? '' : `<div style="padding-top:24px;">${emailBanner(opts.banner ?? 'general')}</div>`}
 </td></tr>
 ${opts.rows}
 <tr><td class="px head" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:0 0 16px 16px;padding:22px 24px 26px;">
 ${disclaimer}
 <div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.7;color:#e4e4e4;padding-top:14px;">${links}</div>
 ${reason}
+<div style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:#9a9a9a;padding-top:10px;">${emailEscape(EMAIL_ADDRESS)}</div>
 </td></tr>
 </table></td></tr></table>
 </body></html>`

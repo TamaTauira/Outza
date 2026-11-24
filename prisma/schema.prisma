@@ -518,7 +518,7 @@ model Suggestion {
   role      String   @default("CONSUMER")
   message    String    @db.Text
   createdAt  DateTime  @default(now())
-  /// Set once the suggestion has gone out in the owner's fortnightly ideas summary.
+  /// Set once the suggestion has gone out in the owner's monthly ideas summary.
   digestedAt DateTime?
   user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
@@ -1762,6 +1762,32 @@ model PartnerSource {
 
   @@unique([partnerId, sourceKey])
   @@index([sourceKey])
+}
+
+/// Contact form messages stored on the site. Delivery to the owner inbox is unchanged.
+model ContactMessage {
+  id                String   @id @default(cuid())
+  topic             String
+  email             String
+  message           String   @db.Text
+  status            String   @default("NEW") // NEW | AUTO_ANSWERED | DRAFTED | ESCALATED | CLOSED
+  category          String?
+  urgency           String?
+  aiSummary         String?  @db.Text
+  draftReply        String?  @db.Text
+  sentReplyTemplate String?
+  createdAt         DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+/// Address that bounced or complained. Later sends to it are skipped.
+model EmailSuppression {
+  email     String   @id
+  kind      String
+  detail    String?
+  createdAt DateTime @default(now())
 }
 
 /// One automated or owner decision. Nothing is hard-deleted. Undo is allowed for 30 days.

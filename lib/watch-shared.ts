@@ -1,5 +1,5 @@
 import { cityDef, tidyVenueName } from '@/lib/cities'
-import { EMAIL_C, EMAIL_FONT, emailButton, emailDocument, emailEscape, emailTick } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_C, EMAIL_FONT, emailButton, emailDocument, emailEscape, emailTick } from '@/lib/email-brand'
 import { categoryColor, categoryInk } from '@/lib/categories'
 import { dateKeyOf, formatBoardRange, minutesNow, minutesOf, resolveSchedule, scheduleFinished } from '@/lib/listing-window'
 import { formatPrice } from '@/lib/price'
@@ -276,6 +276,7 @@ export function composeWatchEmail(input: {
   text.push(`Manage preferences: ${manage}`)
   text.push(`Unsubscribe: ${unsubscribe}`)
   text.push(`VibePeep: ${home}`)
+  text.push(EMAIL_ADDRESS)
   const rows = [sectionRows(savedHeading, input.saved), sectionRows(matchHeading, input.matches)].join('')
   const html = emailDocument({
     title: subject,

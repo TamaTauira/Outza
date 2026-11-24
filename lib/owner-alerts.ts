@@ -6,8 +6,6 @@ import { TRANSIENT_WINDOW_MS, foldTransientSessions } from '@/lib/network-fault'
 
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
 const MAX_FAULT_EMAILS_PER_HOUR = 10
-const DIGEST_EVERY_MS = 14 * 24 * 60 * 60 * 1000
-const DIGEST_KEY = 'ideas-digest'
 
 /** Ops inbox that receives every fault alert when FAULT_ALERT_EXTRA_RECIPIENTS is unset. */
 export const DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS = 'outza-tester+faults@mail.grokbot.com'
@@ -283,45 +281,4 @@ export async function runHealthChecks() {
   }
 }
 
-/** Fortnightly ideas summary: only sends when there are new suggestions and 14+ days have passed since the last one. */
-export async function runIdeasDigest(opts: { force?: boolean } = {}) {
-  if (!emailSendingEnabled()) return { sent: false, reason: 'email off' }
-  const marker = await prisma.ownerAlert.findUnique({ where: { key: DIGEST_KEY } })
-  const now = new Date()
-  if (!marker) {
-    // First run anchors the fortnightly schedule.
-    await prisma.ownerAlert.create({ data: { key: DIGEST_KEY, kind: 'IDEAS_DIGEST', title: 'Fortnightly ideas summary', lastEmailedAt: now } })
-    if (!opts.force) return { sent: false, reason: 'schedule started' }
-  } else if (!opts.force && marker.lastEmailedAt && now.getTime() - marker.lastEmailedAt.getTime() < DIGEST_EVERY_MS) {
-    return { sent: false, reason: 'not due' }
-  }
-  const ideas = await prisma.suggestion.findMany({ where: { digestedAt: null }, orderBy: { createdAt: 'asc' }, take: 200 })
-  if (!ideas.length) return { sent: false, reason: 'no new suggestions' }
-
-  const promoters = ideas.filter((s) => s.role === 'PROMOTER').length
-  const rows = ideas.map((s) => `
-      <div class="card" style="background:#f6f6f6;padding:12px 14px;border-radius:8px;margin-bottom:10px;">
-        <p class="mu" style="margin:0 0 6px;font-size:12px;color:${EMAIL_C.muted};">${s.createdAt.toISOString().slice(0, 10)} · ${s.role === 'PROMOTER' ? 'Promoter' : 'Event-goer'} · ${escapeHtml(s.name) || 'Anonymous'}${s.email ? ` (${escapeHtml(s.email)})` : ''}</p>
-        <p class="tx" style="margin:0;white-space:pre-wrap;color:${EMAIL_C.ink};">${escapeHtml(s.message)}</p>
-      </div>`).join('')
-  const home = siteUrl()
-  const html = emailDocument({
-    title: 'Your fortnightly ideas summary',
-    preheader: `${ideas.length} new idea${ideas.length === 1 ? '' : 's'}`,
-    manageHref: `${home}/admin`,
-    banner: 'owner-ideas',
-    homeHref: home,
-    reason: 'This note goes to the VibePeep owner when new suggestions are waiting.',
-    rows: emailBodyCell(`<h2 style="color:${EMAIL_C.orange};margin:0 0 8px;font-size:20px;">Your fortnightly ideas summary</h2>
-    <p style="margin:0 0 16px;">${ideas.length} new idea${ideas.length === 1 ? '' : 's'} (${promoters} from promoters, ${ideas.length - promoters} from event-goers) since the last summary.</p>
-    ${rows}`),
-  })
-  const res = await sendEmail({ to: OWNER_EMAIL, subject: `VibePeep ideas: ${ideas.length} new suggestion${ideas.length === 1 ? '' : 's'} this fortnight`, html })
-  if (!res.ok) {
-    await reportFault({ area: 'Owner emails', key: 'ideas-digest-failed', route: '/api/cron/owner-alerts', title: 'Fortnightly ideas summary failed to send', detail: res.error })
-    return { sent: false, reason: res.error }
-  }
-  await prisma.suggestion.updateMany({ where: { id: { in: ideas.map((s) => s.id) } }, data: { digestedAt: now } })
-  await prisma.ownerAlert.update({ where: { key: DIGEST_KEY }, data: { lastEmailedAt: now, lastSeen: now, count: { increment: 1 } } })
-  return { sent: true, count: ideas.length }
-}
+export { runIdeasDigest } from '@/lib/ideas-digest'

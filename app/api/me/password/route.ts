@@ -19,6 +19,8 @@ export async function POST(req: Request) {
   if (!user?.password) return NextResponse.json({ error: 'This account signs in with Google, so there is no password to change' }, { status: 400 })
   const ok = await bcrypt.compare(current, user.password)
   if (!ok) return NextResponse.json({ error: 'Current password doesn’t match' }, { status: 400 })
-  await prisma.user.update({ where: { id: me.id }, data: { password: await bcrypt.hash(next, 10) } })
+  await prisma.user.update({ where: { id: me.id }, data: { password: await bcrypt.hash(next, 10), sessionVersion: { increment: 1 } } })
+  const { sendPasswordChanged } = await import('@/lib/customer-mail')
+  await sendPasswordChanged(me.email).catch((err) => console.error('[account] password-changed mail', err instanceof Error ? err.message : err))
   return NextResponse.json({ ok: true })
 }

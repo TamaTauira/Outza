@@ -22,6 +22,14 @@ import { occurrenceEnded, sameShowing, titleAgreesWithSession } from '@/lib/list
 
 const venueIdCache = new Map<string, string | null>()
 
+function noteStatusChange(eventId: string, previous: string, next: string | undefined, previousWhen?: { date?: Date | null; time?: string | null }) {
+  if (!next || previous === next) return
+  if (next !== 'CANCELLED' && next !== 'POSTPONED' && next !== 'RESCHEDULED') return
+  void import('@/lib/listing-change-mail')
+    .then((mod) => mod.notifyEventStatusChange(eventId, previous, next, previousWhen))
+    .catch((err) => console.error('[email] listing change', err instanceof Error ? err.message : err))
+}
+
 /** Fills a missing venue link. Never moves an event that already has one. */
 async function fillVenueLink(eventId: string, city: string, venueName: string, current: string | null | undefined) {
   if (current) return
@@ -337,6 +345,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       }
       // Per-field corrections keep their values. Other fields, including artwork, still refresh.
       if (await applyProtectedRefresh(existing.id, incomingFields, update)) {
+        noteStatusChange(existing.id, existing.status, typeof update.status === 'string' ? update.status : status, { date: existing.date, time: existing.time })
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
@@ -351,6 +360,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         const locked = { ...legacyLock, ...pinOnly(pin, existing) }
         assertNoOwnershipTransfer(locked)
         await prisma.event.update({ where: { id: existing.id }, data: locked })
+        noteStatusChange(existing.id, existing.status, typeof locked.status === 'string' ? locked.status : undefined, { date: existing.date, time: existing.time })
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
@@ -364,9 +374,11 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       }
       assertNoOwnershipTransfer(guarded)
       await prisma.event.update({ where: { id: existing.id }, data: guarded })
+      noteStatusChange(existing.id, existing.status, typeof guarded.status === 'string' ? guarded.status : undefined, { date: existing.date, time: existing.time })
       await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
     } else {
       if (await applyProtectedRefresh(existing.id, incomingFields, { sources, lastVerifiedAt: new Date() })) {
+        noteStatusChange(existing.id, existing.status, status === 'CANCELLED' ? status : undefined, { date: existing.date, time: existing.time })
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
@@ -375,6 +387,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
         const locked = { ...legacyLock, ...pinOnly(pin, existing) }
         assertNoOwnershipTransfer(locked)
         await prisma.event.update({ where: { id: existing.id }, data: locked })
+        noteStatusChange(existing.id, existing.status, typeof locked.status === 'string' ? locked.status : undefined, { date: existing.date, time: existing.time })
         await rememberSource({ eventId: existing.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
         await fillVenueLink(existing.id, city, venueName, existing.venueId)
         return true
@@ -520,6 +533,7 @@ async function mergeInto(
   }
   assertNoOwnershipTransfer(fill)
   await prisma.event.update({ where: { id }, data: fill })
+  if (typeof fill.status === 'string') noteStatusChange(id, cur.status, fill.status, { date: cur.date, time: cur.time })
   const contributed = plan.filled.filter((row) => row.source === source).map((row) => row.field)
   if (contributed.length) {
     await recordContribution({
