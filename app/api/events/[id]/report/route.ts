@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
 import { REPORT_REASONS, reportReasonLabel } from '@/lib/trust-shared'
-import { notifyTrustTeam } from '@/lib/trust'
-import { eventPath } from '@/lib/seo'
+import { queueTrustItem } from '@/lib/ops/queue'
 import { noteCommunityReport } from '@/lib/community'
 import { bumpCounter } from '@/lib/data-health'
 
@@ -31,12 +30,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const dupe = await prisma.eventReport.findFirst({ where: { eventId: ev.id, reason, status: 'OPEN', ...who }, select: { id: true } })
       if (dupe) return NextResponse.json({ ok: true, duplicate: true })
     }
-    await prisma.eventReport.create({ data: { eventId: ev.id, userId: me?.id ?? null, reason, details, email: email || me?.email || null } })
+    const report = await prisma.eventReport.create({ data: { eventId: ev.id, userId: me?.id ?? null, reason, details, email: email || me?.email || null } })
     await noteCommunityReport(ev.id).catch((err) => console.error('community report note failed', err?.message))
     await bumpCounter('invalid_reports').catch((e) => console.error('report counter failed', e?.message))
-    await notifyTrustTeam(`Listing report: ${reportReasonLabel(reason)} — ${ev.title.slice(0, 60)}`, [
-      ['Event', `${ev.title} (${ev.city})`], ['Link', eventPath(ev)], ['Problem', reportReasonLabel(reason)], ['Details', details], ['Reporter', email || me?.email || 'Anonymous'],
-    ])
+    await queueTrustItem({
+      kind: 'EVENT_REPORT',
+      targetType: 'event_report',
+      targetId: report.id,
+      summary: `Listing report: ${reportReasonLabel(reason)} — ${ev.title.slice(0, 80)}`,
+    })
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error('Report failed:', err?.message)

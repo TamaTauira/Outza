@@ -3,7 +3,7 @@ import { queueLocalImage } from '@/lib/images/runner'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
 import { CITIES, cityDef } from '@/lib/cities'
-import { notifyTrustTeam } from '@/lib/trust'
+import { queueTrustItem } from '@/lib/ops/queue'
 import { storagePath } from '@/lib/s3'
 import { addDaysStr, occurrences, recurrenceLabel, todayIn, localCategoryLabel, localDupKey, LOCAL_FLAG_LABEL, localPath } from '@/lib/local-shared'
 import { filterCommunityListings, redactCommunityPublic } from '@/lib/community-shared'
@@ -262,10 +262,12 @@ export async function POST(req: Request) {
     })
     if (imagePath) queueLocalImage(row.id)
     if (status === 'PENDING') {
-      await notifyTrustTeam(`VibePeep Local listing to review: ${i.title.slice(0, 60)}`, [
-        ['Listing', `${i.title} (${localCategoryLabel(i.category)}, ${i.suburb} ${i.city})`], ['When', `${i.startDate} ${i.startTime}–${i.endTime} · ${recurrenceLabel(i)}`],
-        ['Flags', flags.map((f) => LOCAL_FLAG_LABEL[f] ?? f).join(', ')], ['Organiser', `${i.organiserName} <${i.contactEmail}>`], ['Review', '/admin/local'],
-      ])
+      await queueTrustItem({
+        kind: 'LOCAL_REVIEW',
+        targetType: 'local_listing',
+        targetId: row.id,
+        summary: `Local listing to review: ${i.title.slice(0, 80)} (${localCategoryLabel(i.category)}, ${i.suburb})`,
+      })
     }
     const notes = flags.filter((f) => f !== 'SPAM_SIGNALS' && f !== 'MODERATION').map((f) => LOCAL_FLAG_LABEL[f])
     return NextResponse.json({ ok: true, id: row.id, status, notes, duplicateOf: dupe?.title ?? null })

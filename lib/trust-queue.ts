@@ -2,6 +2,7 @@
 
 export const QUEUE_FLAG_ACTIONS = [
   'DUPLICATE_FLAGGED',
+  'DUPLICATE_REVIEW',
   'EXPIRED_HIDDEN',
   'TIME_CONFLICT',
   'MISSING_COORDS',
@@ -14,6 +15,7 @@ export const QUEUE_FLAG_ACTIONS = [
 export function flagIssueLabel(action: string): string {
   switch (action) {
     case 'DUPLICATE_FLAGGED': return 'Flagged duplicate'
+    case 'DUPLICATE_REVIEW': return 'Possible duplicate'
     case 'EXPIRED_HIDDEN': return 'Expired listings'
     case 'TIME_CONFLICT': return 'Conflicting times'
     case 'MISSING_COORDS': return 'Missing venue coordinates'

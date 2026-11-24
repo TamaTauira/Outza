@@ -1789,3 +1789,64 @@ model EmailSuppression {
   detail    String?
   createdAt DateTime @default(now())
 }
+
+/// One automated or owner decision. Nothing is hard-deleted. Undo is allowed for 30 days.
+model OpsDecision {
+  id         String    @id @default(cuid())
+  kind       String
+  targetType String
+  targetId   String
+  action     String
+  reason     String    @db.Text
+  confidence Float
+  /// bot:rules | bot:ai | admin:<id> | owner-digest
+  actor      String
+  before     Json?
+  after      Json?
+  undoneAt   DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+  @@index([kind, createdAt])
+  @@index([undoneAt, createdAt])
+}
+
+/// Rule switches and numeric thresholds. A missing row means the rule is on.
+model OpsSetting {
+  key       String   @id
+  enabled   Boolean  @default(true)
+  value     Json?
+  updatedAt DateTime @updatedAt
+}
+
+/// Something a bot could not decide, or a trust notice waiting for the weekly digest.
+model OpsDigestItem {
+  id         String    @id @default(cuid())
+  kind       String
+  targetType String
+  targetId   String
+  summary    String    @db.Text
+  confidence Float     @default(0)
+  /// QUEUED | OPEN | APPROVED | DECLINED | HANDLED
+  status     String    @default("QUEUED")
+  payload    Json?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+/// Single-use approve or decline link for the weekly digest.
+model OpsDigestToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  itemId    String
+  action    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([itemId])
+}
