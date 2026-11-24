@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { runQualityPass } from '@/lib/quality-pass'
+import { runAutoResolve } from '@/lib/ops/auto-resolve'
 import { getSessionUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 /** Duplicate merge plus an expired-listing audit. Listings are flagged or hidden, never deleted. */
 async function run(req: Request) {
@@ -12,7 +14,12 @@ async function run(req: Request) {
   const me = await getSessionUser().catch(() => null)
   const authed = !!secret && (bearer === `Bearer ${secret}` || header === secret)
   if (!authed && me?.role !== 'ADMIN') return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
-  return NextResponse.json(await runQualityPass())
+  const quality = await runQualityPass()
+  const ops = await runAutoResolve().catch((err) => {
+    console.error('[ops] auto-resolve failed', err instanceof Error ? err.message : err)
+    return { error: 'auto-resolve failed' }
+  })
+  return NextResponse.json({ ...quality, ops })
 }
 
 export async function GET(req: Request) { return run(req) }

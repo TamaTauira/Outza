@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
-import { approveClaim, emailMatchesOrganiser, notifyTrustTeam } from '@/lib/trust'
-import { eventPath } from '@/lib/seo'
+import { approveClaim, emailMatchesOrganiser } from '@/lib/trust'
+import { queueTrustItem } from '@/lib/ops/queue'
 import { assessEventClaim, claimRateLimited, registrableDomain } from '@/lib/ownership'
 import { verifiedOrganiserDomain } from '@/lib/event-overrides'
 
@@ -58,10 +58,13 @@ export async function submitClaim(me: Me, eventId: string, b: Record<string, unk
 
   if (auto) {
     await approveClaim(claim.id, me.role === 'ADMIN' ? 'Added by an admin' : 'Accepted automatically: work email matches the event website')
+  } else {
+    await queueTrustItem({
+      kind: 'EVENT_CLAIM',
+      targetType: 'event_claim',
+      targetId: claim.id,
+      summary: `Listing claim to review: ${ev.title.slice(0, 80)}`,
+    })
   }
-  await notifyTrustTeam(`${auto ? 'Claim accepted' : 'Listing claim to review'}: ${ev.title.slice(0, 60)}`, [
-    ['Event', `${ev.title} (${ev.city})`], ['Link', eventPath(ev)], ['Claimant', `${me.name || ''} <${me.email}>`], ['Organisation', orgName],
-    ['Position', data.position], ['Evidence', evidenceUrl], ['Message', data.message], ['Check', auto ? 'Automatic (email domain matches event website)' : 'Manual review needed'],
-  ])
   return { status: 200, body: { ok: true, status: auto ? 'APPROVED' : 'PENDING', created: !existing } }
 }

@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db'
 import { sendEmail, escapeHtml } from '@/lib/email'
 import { emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
 import { notifyTrustTeam } from '@/lib/trust'
+import { queueTrustItem } from '@/lib/ops/queue'
 import { siteUrl } from '@/lib/site-url'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { sydneyToday } from '@/lib/event-store'
@@ -193,13 +194,12 @@ export async function submitVenueClaim(user: { id: string; email: string; name: 
     const sent = await issueCode('VENUE_CLAIM', claim.id, businessEmail, venue.name)
     return { status: 200 as const, statusText: 'PENDING', claimId: claim.id, emailSent: sent.emailSent, emailError: sent.emailError }
   }
-  await notifyTrustTeam(`Venue claim to review: ${venue.name}`, [
-    ['Venue', `${venue.name}, ${venue.city}`],
-    ['Claimant', `${fullName} <${businessEmail}>`],
-    ['Role', roleAtVenue],
-    ['Evidence', evidenceReference],
-    ['Why', decision.reason],
-  ])
+  await queueTrustItem({
+    kind: 'VENUE_CLAIM',
+    targetType: 'venue_claim',
+    targetId: claim.id,
+    summary: `Venue claim to review: ${venue.name}`,
+  })
   return { status: 200 as const, statusText: 'PENDING', claimId: claim.id }
 }
 
@@ -278,7 +278,12 @@ export async function verifyVenueCode(input: { code?: string | null; token?: str
   })
   if (decision.outcome !== 'APPROVE') {
     await prisma.venueClaimRequest.update({ where: { id: claim.id }, data: { riskNote: decision.reason } })
-    await notifyTrustTeam(`Venue email proved, still needs review: ${claim.venue.name}`, [['Claim', claim.id], ['Why', decision.reason]])
+    await queueTrustItem({
+      kind: 'VENUE_CLAIM',
+      targetType: 'venue_claim',
+      targetId: claim.id,
+      summary: `Venue email proved, still needs review: ${claim.venue.name}. ${decision.reason}`,
+    })
     return { status: 200 as const, statusText: 'PENDING', claimId: claim.id }
   }
   await approveVenueClaim(claim.id, claim.claimantUserId, decision.reason)
@@ -511,7 +516,12 @@ export async function reportVenueEvent(userId: string, venueId: string, body: Re
       text: `A venue reported “${event.title}”. The listing is unchanged while we check it.`,
     })
   }
-  await notifyTrustTeam(`Venue report: ${event.title}`, [['Reason', reason], ['Event', event.id], ['Venue', venueId]])
+  await queueTrustItem({
+    kind: 'VENUE_REPORT',
+    targetType: 'venue_report',
+    targetId: report.id,
+    summary: `Venue report: ${event.title}`,
+  })
   const after = await prisma.event.findUnique({ where: { id: eventId }, select: { title: true, status: true, date: true } })
   return { status: 200 as const, ok: true, reportId: report.id, unchanged: after?.title === event.title && after?.status === event.status }
 }

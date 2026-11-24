@@ -15,6 +15,14 @@ test('a protest or a violent description stays in review', () => {
   assert.equal(listingModeration('Jazz at the Enmore', 'Doors at 7. A full band, two sets, and the bar stays open after.').hidden, false)
 })
 
+test('ordinary classes and a cooking demonstration are not held as rallies', () => {
+  assert.equal(isRally('Kids pottery wheel classes', 'A wheel, clay, and a quiet room for beginners.'), false)
+  assert.equal(listingModeration('Tavern Trivia', 'Teams of four, questions from 7, and the kitchen stays open.').moderationStatus, 'approved')
+  assert.equal(listingModeration('Kids pottery wheel classes', 'Two hours at the wheel with clay, aprons, and a kiln firing the next week.').hidden, false)
+  assert.equal(isRally('Saturday cooking demonstration', 'A chef shows the sauce, then the room eats.'), false)
+  assert.equal(isRally('Street demonstration against the mine'), true)
+})
+
 test('a status word in the title becomes the stored status', () => {
   assert.equal(statusFromTitle('Friday gig CANCELLED'), 'CANCELLED')
   assert.equal(statusFromTitle('Market postponed'), 'POSTPONED')

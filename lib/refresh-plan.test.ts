@@ -134,6 +134,8 @@ test('vercel.json runs each chunk hourly inside one burst with a long idle gap',
   const priceMinute = Number(vercel.crons.find((c) => c.path === '/api/cron/price-enrich')?.schedule.split(' ')[0])
   assert.ok(priceMinute * 60_000 >= finalize.minute * 60_000 + finalize.budgetMs, 'price lookup overlaps finalize')
   for (const cron of vercel.crons) {
+    // Weekly and monthly jobs are not part of the hourly awake window.
+    if (!/^\d+ \* \* \* \*$/.test(cron.schedule)) continue
     const minute = Number(cron.schedule.split(' ')[0].split(',')[0])
     assert.ok(minute >= REFRESH_CHUNKS[0].minute && minute <= Math.max(...HOURLY_SIDE_MINUTES))
   }
