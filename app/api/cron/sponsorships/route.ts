@@ -3,6 +3,7 @@ import { cronAuthorized } from '@/lib/cron-auth'
 import { getSessionUser } from '@/lib/session'
 import { applyDueDowngrades } from '@/lib/sponsorship-billing'
 import { endExpiredBoosts, missingTable } from '@/lib/sponsorship-store'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +13,7 @@ async function run(req: Request) {
   if (!cronAuthorized(req, me?.role)) return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
   try {
     const [boosts, plans] = await Promise.all([endExpiredBoosts(), applyDueDowngrades()])
+    await writeHeartbeat('sponsorships').catch(() => {})
     return NextResponse.json({ ok: true, ...boosts, downgrades: plans.applied })
   } catch (error) {
     if (missingTable(error)) return NextResponse.json({ ok: false, error: 'Sponsorship tables are not installed' }, { status: 503 })

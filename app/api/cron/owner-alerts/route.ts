@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { runIdeasDigest, runHealthChecks } from '@/lib/owner-alerts'
 import { runLegalNotices } from '@/lib/legal-notice'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,7 @@ async function run(req: Request) {
     return []
   })
   await runHealthChecks()
+  await writeHeartbeat('owner-alerts').catch(() => {})
   return NextResponse.json({ ideas, legal })
 }
 

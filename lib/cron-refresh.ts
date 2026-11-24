@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSessionUser } from '@/lib/session'
 import { REFRESH_CHUNKS, chunkById } from '@/lib/refresh-plan'
 import { runRefreshChunk } from '@/lib/refresh'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 function authorized(req: Request, role?: string | null) {
   const secret = process.env.CRON_SECRET
@@ -30,6 +31,7 @@ export async function handleRefreshRequest(req: Request, chunkId: string | null)
 
   console.log(`[refresh] chunk ${chunk.id}`)
   const result = await runRefreshChunk(chunk.id)
+  await writeHeartbeat(`refresh-${chunk.id}`).catch(() => {})
   const index = REFRESH_CHUNKS.findIndex((c) => c.id === chunk.id)
   const next = REFRESH_CHUNKS[index + 1] ?? null
   const chained = chain && next ? await dispatchChunk(req, next.id) : false

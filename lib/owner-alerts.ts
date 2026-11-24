@@ -266,6 +266,19 @@ export async function runHealthChecks() {
   if (blocked >= 3) {
     await reportFault({ area: 'Newsletter', key: 'newsletter-blocked', route: '/api/cron/digest', title: `${blocked} newsletter issues were blocked by QA in the last hour`, detail: 'Open /admin/newsletter to see the QA errors.' })
   }
+  const { readHeartbeats } = await import('@/lib/job-watermark')
+  const { lateHeartbeats } = await import('@/lib/ops/watchdog')
+  const beats = await readHeartbeats().catch(() => [])
+  for (const late of lateHeartbeats(beats.map((beat) => ({ name: beat.name, at: beat.at.getTime() })), now)) {
+    const hours = Math.round(late.ageMs / 3600_000)
+    await reportFault({
+      area: 'Scheduled jobs',
+      key: `cron-late-${late.name}`,
+      route: '/admin/ops',
+      title: `${late.name} has not finished in ${hours} hours`,
+      detail: `Expected at least every ${Math.round(late.limitMs / 2 / 3600_000)} hours. Listings already stored were not changed.`,
+    })
+  }
 }
 
 export { runIdeasDigest } from '@/lib/ideas-digest'

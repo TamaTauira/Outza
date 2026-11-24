@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { runQualityPass } from '@/lib/quality-pass'
 import { runAutoResolve } from '@/lib/ops/auto-resolve'
+import { writeHeartbeat } from '@/lib/job-watermark'
 import { getSessionUser } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,7 @@ async function run(req: Request) {
     console.error('[ops] auto-resolve failed', err instanceof Error ? err.message : err)
     return { error: 'auto-resolve failed' }
   })
+  await writeHeartbeat('quality').catch(() => {})
   return NextResponse.json({ ...quality, ops })
 }
 

@@ -3,6 +3,7 @@ import { runDueDigests } from '@/lib/digest'
 import { cronAuthorized } from '@/lib/cron-auth'
 import { recordMailDelivery } from '@/lib/mail-log'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -17,6 +18,7 @@ async function run(req: Request) {
   try {
     const result = await runDueDigests()
     console.log('[cron] digest', result)
+    await writeHeartbeat('digest').catch(() => {})
     return NextResponse.json(result)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Digest run failed'

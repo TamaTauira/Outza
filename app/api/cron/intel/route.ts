@@ -2,6 +2,7 @@ import { after, NextResponse } from 'next/server'
 import { runDueSources } from '@/lib/intel/ingest'
 import { IMPORT_BUDGET_MS, resumeStep, shouldResumeImport } from '@/lib/intel/schedule'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 // Imports stop 60s before this limit so a slow ABS call or row cleanup can still save partial status.
@@ -34,6 +35,7 @@ async function run(req: Request) {
   if (secret && shouldResumeImport(ran, step)) {
     after(() => pokeNext(url.origin, secret, ran, step))
   }
+  await writeHeartbeat('intel').catch(() => {})
   return NextResponse.json({ ran })
 }
 

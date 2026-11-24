@@ -4,6 +4,7 @@ import { isDbSaturation } from '@/lib/db-guard'
 import { PRICE_ENRICH_BUDGET_MS, runPriceEnrich } from '@/lib/price-enrich'
 import { runWithJobPrisma } from '@/lib/prisma'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -19,6 +20,7 @@ async function run(req: Request) {
   const budgetMs = Number.isFinite(requested) && requested > 5_000 ? Math.min(requested, PRICE_ENRICH_BUDGET_MS) : PRICE_ENRICH_BUDGET_MS
   try {
     const report = await runWithJobPrisma(() => runPriceEnrich({ budgetMs }))
+    await writeHeartbeat('price-enrich').catch(() => {})
     return NextResponse.json(report)
   } catch (err) {
     if (!isDbSaturation(err)) throw err

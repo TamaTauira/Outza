@@ -86,6 +86,10 @@
       "schedule": "0 22 * * 0"
     },
     {
+      "path": "/api/cron/synthetic",
+      "schedule": "26 * * * *"
+    },
+    {
       "path": "/api/cron/sponsorships",
       "schedule": "22 * * * *"
     }
