@@ -166,7 +166,7 @@ function DisplayPhoto({ picture, alt, sizes, priority, crop, className }: {
         <span aria-hidden className="absolute inset-0 scale-110 bg-cover blur-2xl brightness-[0.6]" style={{ backgroundImage: `url(${picture.blur})` }} />
       ) : null}
       {!ready && (
-        <span aria-hidden className="absolute inset-0 animate-pulse" style={{ background: picture.color || '#110e16' }} />
+        <span aria-hidden className="absolute inset-0 animate-pulse bg-background" style={picture.color ? { background: picture.color } : undefined} />
       )}
       <Image
         src={src}
