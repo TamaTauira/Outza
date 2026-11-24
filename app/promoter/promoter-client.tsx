@@ -11,6 +11,7 @@ import { PROMOTER_NAV_EVENT, promoterTabHref } from '@/lib/promoter-nav'
 import { PRO_PLAN, TIER_KEYS, formatAud, isDuration, productName, tierDef, type Duration } from '@/lib/tiers'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
+import { BRAND_ORANGE } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 import { CampaignBuilder } from './campaign-builder'
 import { LocalAdsTab } from './local-ads-tab'
@@ -37,7 +38,7 @@ type Account = { pro: boolean; proUntil: string | null; displayName: string; hom
 type Tab = 'overview' | 'insights' | 'intel' | 'promote' | 'boosts' | 'events' | 'local' | 'billing'
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
-const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm w-full'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '')
 const isLive = (p: Promo) => p.status === 'ACTIVE' && !!p.endsAt && new Date(p.endsAt) > new Date()
 
@@ -145,8 +146,8 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
   return (
     <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <div>
-        <p className="text-[13px] font-semibold text-primary">Promoter dashboard</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-1">
+        <p className="text-xs font-semibold text-primary">Promoter dashboard</p>
+        <h1 className="font-display text-h1 mt-1">
           {account.displayName ? account.displayName : 'Promoter dashboard'}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">Your events, your campaigns, your results.</p>
@@ -184,10 +185,10 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
 function Kpi({ Icon, label, value, window, definition }: { Icon: typeof Eye; label: string; value: string; window: string; definition: string }) {
   return (
     <div className={card}>
-      <div className="flex items-center gap-2 text-[13px] text-muted-foreground"><Icon className="h-4 w-4 text-primary" />{label}</div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="h-4 w-4 text-primary" />{label}</div>
       <p className="mt-2 font-display text-2xl font-bold tabular-nums">{value}</p>
-      <p className="mt-1 text-[13px] text-muted-foreground">{window}</p>
-      <p className="mt-1 text-[13px] text-muted-foreground">{definition}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{window}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{definition}</p>
     </div>
   )
 }
@@ -405,7 +406,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
 
 function TierBadge({ tier }: { tier: string }) {
   const t = tierDef(tier)
-  return <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-black" style={{ backgroundColor: t?.color ?? '#FF7A35' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
+  return <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-black" style={{ backgroundColor: t?.color ?? BRAND_ORANGE }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
 }
 
 const blankListing = (city: string) => ({

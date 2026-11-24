@@ -121,11 +121,11 @@ export function EventImage({ image, src: rawSrc, kind, alt, sizes, priority, cro
           loading={loading}
           decoding="async"
           className={cn('h-full w-full object-cover', className)}
-          style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, #110e16 72%)` : '#110e16' }}
+          style={{ background: accent ? `linear-gradient(145deg, ${accent} 0%, var(--vp-banner) 72%)` : 'var(--vp-banner)' }}
         />
       </picture>
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-1.5 bg-[#fb923c]" />
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1.5 bg-[#f472b6]" />
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-1.5 bg-brand-orange" />
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-1.5 bg-brand-pink" />
     </>
   )
 }

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Surface } from '@/components/ui/surface'
 
 const TOPICS = ['Listing', 'Account', 'Purchase', 'Accessibility', 'Something else'] as const
 
@@ -31,30 +33,30 @@ export function ContactForm() {
   }
 
   if (status === 'sent') {
-    return <p className="rounded-xl border border-border bg-card p-4 text-sm" role="status">Got it. We’ll reply to {email}.</p>
+    return <Surface pad="md" role="status">Got it. We’ll reply to {email}.</Surface>
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 grid max-w-xl gap-3 rounded-xl border border-border bg-card p-4">
+    <Surface pad="lg" className="mt-6 max-w-xl">
+    <form onSubmit={onSubmit} className="grid gap-3">
       <label className="grid gap-1 text-sm">
         Topic
-        <select value={topic} onChange={(event) => setTopic(event.target.value as (typeof TOPICS)[number])} className="h-11 rounded-md border border-input bg-background px-3">
+        <select value={topic} onChange={(event) => setTopic(event.target.value as (typeof TOPICS)[number])} className="h-control rounded-control border border-input bg-background px-3 text-base">
           {TOPICS.map((item) => <option key={item}>{item}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm">
         Your email
-        <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" className="h-11 rounded-md border border-input bg-background px-3" />
+        <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" className="h-control rounded-control border border-input bg-background px-3 text-base" />
       </label>
       <label className="grid gap-1 text-sm">
         Message
-        <textarea required minLength={8} maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} rows={5} className="rounded-md border border-input bg-background px-3 py-2" />
+        <textarea required minLength={8} maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} rows={5} className="rounded-control border border-input bg-background px-3 py-2 text-base" />
       </label>
       <input type="text" name="company" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-      <button type="submit" disabled={status === 'sending'} className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground disabled:opacity-60">
-        {status === 'sending' ? 'Sending…' : 'Send'}
-      </button>
+      <Button type="submit" disabled={status === 'sending'} loading={status === 'sending'}>Send</Button>
     </form>
+    </Surface>
   )
 }

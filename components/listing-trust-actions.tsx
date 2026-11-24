@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { useSession } from 'next-auth/react'
 import { REPORT_REASONS } from '@/lib/trust-shared'
 
-const field = 'w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40'
+const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary/40'
 
 /** “Report incorrect details” and “Claim this listing” on the event page. */
 export function ListingTrustActions({ event }: { event: { id: string; title: string; promoter?: unknown; isMine?: boolean } }) {

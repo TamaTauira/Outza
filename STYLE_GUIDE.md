@@ -20,9 +20,7 @@ The root layout, `app/layout.tsx`, is the single place for app-wide providers an
 | Display | Manrope | `font-display` | Page titles, hero headings, section headers |
 | Mono | Inter | `font-mono` | Numeric data, IDs, timestamps |
 
-**Size hierarchy:** Use Tailwind's scale. Headings: `text-4xl`→`text-3xl`→`text-2xl`→`text-xl`. Body: `text-base`→`text-sm`. Captions: `text-xs`.
-
-Always use `tracking-tight` on large headings (`text-2xl` and above).
+**Size hierarchy:** Use the type tokens. `text-display`, `text-h1`, `text-h2`, `text-h3`, `text-body`, `text-small`, `text-xs` (13px), `text-caption` (12px). Nothing smaller than 12px. Eyebrows use `.vp-eyebrow` (12px, semibold, uppercase, tracking 0.16em). Do not use `text-[Npx]`.
 
 ---
 
@@ -34,7 +32,7 @@ All colors use CSS variables — **never hardcode color values**.
 |-------|---------|
 | `background` / `foreground` | Page-level bg and text |
 | `card` / `card-foreground` | Card surfaces |
-| `primary` / `primary-foreground` | Brand orange `#FF7A35` with near-black ink `#1A1408`. Pink is `#F05A9D`. |
+| `primary` / `on-primary` | Brand orange `#FF7A35`. Ink on that orange is `#1A1408` (`text-on-primary`). Pink is `#F05A9D` (`brand-pink`). |
 | `secondary` / `secondary-foreground` | Secondary buttons, subtle highlights |
 | `muted` / `muted-foreground` | Disabled states, helper text, subtle backgrounds |
 | `accent` / `accent-foreground` | Hover states, active nav items |
@@ -43,48 +41,47 @@ All colors use CSS variables — **never hardcode color values**.
 | `input` | Form input borders |
 | `ring` | Focus rings |
 
-Usage: `bg-primary`, `text-muted-foreground`, `border-border`, etc.
+Usage: `bg-primary`, `text-on-primary`, `text-brand-pink`, `bg-brand-orange`, `text-muted-foreground`, `border-border`. Raw hex in TSX belongs in `lib/brand.ts`, `lib/categories.ts`, `lib/tiers.ts` or `lib/design-tokens.ts`, not in a page.
 
 ---
 
 ## Spacing Scale
 
-Based on an 8px grid. Use these CSS variables or Tailwind equivalents:
+One rhythm. The same role uses the same gap on every page.
 
 | Token | Value | Tailwind |
 |-------|-------|----------|
-| `--spacing-xs` | 4px | `p-1`, `gap-1` |
-| `--spacing-sm` | 8px | `p-2`, `gap-2` |
-| `--spacing-md` | 16px | `p-4`, `gap-4` |
-| `--spacing-lg` | 24px | `p-6`, `gap-6` |
-| `--spacing-xl` | 32px | `p-8`, `gap-8` |
-| `--spacing-2xl` | 48px | `p-12`, `gap-12` |
-| `--spacing-3xl` | 64px | `p-16`, `gap-16` |
+| `--vp-card-pad-sm` | 12px | `p-card-sm` |
+| `--vp-card-pad-md` | 16px | `p-card`, `gap-card` |
+| `--vp-card-pad-lg` | 24px | `p-card-lg` |
+| `--vp-card-gap` | 16px | `gap-[var(--vp-card-gap)]` |
+| `--vp-hero-gap` | 16px | `mt-hero`, `pt-hero` |
+| `--vp-section` | 48px, 64px from `lg` | `mt-section` |
+| `--vp-control-h` | 44px | `h-control` |
+| `--vp-control-h-lg` | 48px | `h-control-lg` |
 
-**Vary spacing rhythm** — don't use the same gap everywhere. Hero → large gap → content → medium gap → footer.
+Page gutters are `px-4 sm:px-6` inside `Page`. The hero-to-content gap on the four tabs is 16px.
 
 ---
 
 ## Shadow Scale
 
-| Token | Default Usage |
-|-------|-------|
-| `--shadow-sm` | Subtle card lift, input focus |
-| `--shadow-md` | Cards, dropdowns, popovers |
-| `--shadow-lg` | Modals, elevated panels |
-
-These are CSS variables only — use them directly in inline styles or custom CSS as `var(--shadow-sm)` etc. They are not mapped to Tailwind's `shadow-*` utilities.
+| Token | Tailwind | Default Usage |
+|-------|----------|---------------|
+| `--vp-shadow-sm` | `shadow-vp-sm` | Cards |
+| `--vp-shadow-md` | `shadow-vp-md` | Dropdowns, popovers |
+| `--vp-shadow-lg` | `shadow-vp-lg` | Modals, marketing panels |
 
 ---
 
 ## Border Radius
 
-| Token | Value | Default Usage |
-|-------|-------|-------|
-| `--radius` | 12px | Controls. Cards are 16px, heroes 24px. |
-| `--radius-sm` | calc(var(--radius) - 4px) | Small elements (badges, chips) |
-| `--radius-lg` | calc(var(--radius) + 4px) | Large containers, hero cards |
-| `--radius-full` | 9999px | Avatars, pills, circular buttons |
+| Token | Value | Tailwind | Default Usage |
+|-------|-------|----------|---------------|
+| `--radius` / `--vp-radius-control` | 12px | `rounded-control` | Inputs and square controls |
+| `--vp-radius-card` | 16px | `rounded-card` | Cards |
+| `--vp-radius-hero` | 24px | `rounded-hero` | Heroes and large panels |
+| pill | 9999px | `rounded-full` | Buttons, chips, avatars |
 
 ---
 
@@ -100,35 +97,22 @@ These are CSS variables only — use them directly in inline styles or custom CS
 
 ## Layout Components
 
-### `Container` — `@/components/layouts/container`
-Centers content with responsive padding. Props: `size` (`sm`|`md`|`lg`|`xl`|`full`).
-```tsx
-<Container size="lg">{children}</Container>
-```
+### `Page` — `@/components/layout/page`
+Gutters and width. `width` is `full`, `prose` or `narrow`. Every page lines up with the header at `sm` and above.
 
-### `Section` — `@/components/layouts/section`
-Vertical spacing wrapper for page sections. Props: `id`, `className`.
-```tsx
-<Section id="features">{children}</Section>
-```
+### `PageHeader` — `@/components/layout/page-header`
+Eyebrow, `text-h1` title, lede and actions. Use it on pages that are not one of the four tab heroes.
 
-### `PageHeader` — `@/components/layouts/page-header`
-Title + description + action buttons. Use at top of every app page.
-```tsx
-<PageHeader title="Dashboard" description="Overview of your account" actions={<Button>Export</Button>} />
-```
+### `Section` / `SectionHeader` — `@/components/layout/section`
+One section gap (`mt-section`). Headings are `text-h2` or `text-h3`.
 
-### `AppShell` — `@/components/layouts/app-shell`
-Sidebar + header + main content. The standard layout for dashboards and admin panels.
-```tsx
-<AppShell sidebar={<nav>...</nav>} header={<div>...</div>}>{children}</AppShell>
-```
+### `Surface` — `@/components/ui/surface`
+The card. `pad` is `sm`, `md` or `lg`. `tone` is `card`, `muted`, `dark` or `dashed`.
 
-### `AuthLayout` — `@/components/layouts/auth-layout`
-Centered card on gradient background. Use for login, signup, onboarding flows.
-```tsx
-<AuthLayout title="Welcome back" description="Sign in to continue">{form}</AuthLayout>
-```
+### `AuthShell` — `@/components/auth-shell`
+Sign-in, sign-up, password and verify. The VibePeep logo stays the shared lockup.
+
+`scripts/check-design.ts` fails the unit job on legacy brand hex, `text-[Npx]`, type under 12px, and raw hex or hand-rolled orange pills on the pages this guide covers. Email templates and the mascot files are outside that check.
 
 ---
 

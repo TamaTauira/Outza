@@ -80,7 +80,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
 
             {/* Free badge */}
             {event.isFree && (
-              <div className="absolute z-10 top-3 right-3 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-[13px] font-semibold text-white">
+              <div className="absolute z-10 top-3 right-3 rounded-[var(--vp-radius-sm)] bg-emerald-700 px-2.5 py-1 text-xs font-semibold text-white">
                 Free
               </div>
             )}
@@ -139,7 +139,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               <span className="text-sm font-semibold tabular-nums text-foreground">
                 {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
               </span>
-              <span className="flex items-center gap-1 text-[13px] font-semibold text-primary transition-all group-hover:gap-2">
+              <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-all group-hover:gap-2">
                 Get tickets <ExternalLink className="w-3 h-3" />
               </span>
             </div>

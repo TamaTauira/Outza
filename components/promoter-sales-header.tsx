@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { Button } from '@/components/ui/button'
+import { COPY } from '@/lib/copy'
 
 /** Sales header for promoters. Consumer navigation stays on the event pages. */
 export function PromoterSalesHeader({ accountHref }: { accountHref: string }) {
@@ -15,8 +17,8 @@ export function PromoterSalesHeader({ accountHref }: { accountHref: string }) {
           <Link href="/promoters#faq" className="hidden font-medium text-muted-foreground hover:text-foreground md:inline">FAQ</Link>
           <Link href="/local-ads" className="font-medium text-muted-foreground hover:text-foreground">Local business ads</Link>
           <Link href="/" className="hidden font-medium text-muted-foreground hover:text-foreground lg:inline">Back to events</Link>
-          <Link href="/login?next=/promoter" className="font-medium text-muted-foreground hover:text-foreground">Log in</Link>
-          <Link href={accountHref} className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Create free account</Link>
+          <Link href="/login?next=/promoter" className="font-medium text-muted-foreground hover:text-foreground">{COPY.signIn}</Link>
+          <Button asChild size="sm"><Link href={accountHref}>Create free account</Link></Button>
         </nav>
       </div>
     </header>

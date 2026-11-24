@@ -19,13 +19,13 @@ export function MetricCard({
 }) {
   return (
     <div className={cn('rounded-[var(--vp-radius-lg)] border border-border bg-card p-5', className)}>
-      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {Icon ? <Icon className="h-4 w-4 text-primary" /> : null}
         <span>{label}</span>
       </div>
       <p className="mt-2 font-display text-2xl font-bold tabular-nums">{value}</p>
-      {window ? <p className="mt-1 text-[13px] text-muted-foreground">{window}</p> : null}
-      <p className="mt-1 text-[13px] text-muted-foreground">{definition}</p>
+      {window ? <p className="mt-1 text-xs text-muted-foreground">{window}</p> : null}
+      <p className="mt-1 text-xs text-muted-foreground">{definition}</p>
     </div>
   )
 }

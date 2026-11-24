@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation'
 import { Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { CITIES } from '@/lib/cities'
-import { EmptyState } from '@/components/empty-state'
+import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Surface } from '@/components/ui/surface'
 
 type PlanRow = { token: string; name: string; city: string | null; planDate: string | null; items: number; votes: number }
 
@@ -42,36 +44,37 @@ export function TogetherHome() {
 
   return (
     <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary">VibePeep Together</p>
-      <h1 className="font-display text-3xl sm:text-4xl font-bold mt-2">Plan it with your people.</h1>
+      <p className="vp-eyebrow text-primary">VibePeep Together</p>
+      <h1 className="font-display text-h1 mt-2">Plan it with your people.</h1>
       <p className="mt-3 text-muted-foreground text-base sm:text-lg">Shortlist a few events, send one link, and vote. Guests can join without making an account.</p>
 
       <div className="vp-card-grid mt-[var(--vp-card-gap)] items-stretch lg:grid-cols-2">
-      <form onSubmit={create} className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
+      <Surface pad="lg">
+      <form onSubmit={create} className="space-y-3">
         <label className="block text-sm font-semibold" htmlFor="plan-name">Plan name</label>
-        <input id="plan-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} placeholder="Saturday in Newtown" className="w-full h-11 rounded-md border border-border bg-background px-3 text-sm" />
+        <input id="plan-name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} placeholder="Saturday in Newtown" className="h-control w-full rounded-control border border-border bg-background px-3 text-base" />
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="block text-sm">
             <span className="font-semibold">City <span className="font-normal text-muted-foreground">(optional)</span></span>
-            <select value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 w-full h-11 rounded-md border border-border bg-background px-3 text-sm">
+            <select value={city} onChange={(e) => setCity(e.target.value)} className="mt-1 h-control w-full rounded-control border border-border bg-background px-3 text-base">
               {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
           </label>
           <label className="block text-sm">
             <span className="font-semibold">Date <span className="font-normal text-muted-foreground">(optional)</span></span>
-            <input type="date" value={planDate} onChange={(e) => setPlanDate(e.target.value)} className="mt-1 w-full h-11 rounded-md border border-border bg-background px-3 text-sm" />
+            <input type="date" value={planDate} onChange={(e) => setPlanDate(e.target.value)} className="mt-1 h-control w-full rounded-control border border-border bg-background px-3 text-base" />
           </label>
         </div>
-        <button disabled={busy} className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold inline-flex items-center gap-2 disabled:opacity-60">
-          {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}Rally the crew
-        </button>
+        <Button disabled={busy} loading={busy}><Users className="h-4 w-4" />Rally the crew</Button>
       </form>
+      </Surface>
 
       <section>
-        <h2 className="font-display text-xl font-bold mb-3">Your plans</h2>
+        <h2 className="mb-3 font-display text-h3">Your plans</h2>
         {plans === null && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
         {plans?.length === 0 && (
           <EmptyState
+            size="page"
             title="No crew plans yet. Who’s in?"
             lede="Shortlist a few events, send one link, and vote. Guests can join without an account."
             action={{ href: '/', label: 'Browse events' }}

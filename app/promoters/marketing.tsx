@@ -48,14 +48,14 @@ const PLAN_POINTS: Record<string, string[]> = {
 export function Hero({ primaryHref, primaryLabel, showSignIn, supply }: { primaryHref: string; primaryLabel: string; showSignIn: boolean; supply?: { events: number; cities: number; sources: number; updated: string | null } | null }) {
   const updated = supply?.updated ? new Date(supply.updated).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null
   return (
-    <section className="overflow-x-clip bg-[#0c0c0e] text-white">
+    <section className="overflow-x-clip bg-[var(--vp-banner)] text-white">
       <div className={`${sectionPad} grid items-center gap-10 pb-8 sm:pb-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pb-14`}>
         <div className="min-w-0">
           <BackToEventsLink className="inline-flex items-center text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
             Back to events
           </BackToEventsLink>
-          <p className="mt-4 text-[13px] font-semibold text-[var(--vp-brand-orange)]">For promoters</p>
-          <h1 className="mt-3 font-display text-[2.6rem] font-bold leading-[0.95] tracking-tight sm:text-6xl">
+          <p className="mt-4 text-xs font-semibold text-[var(--vp-brand-orange)]">For promoters</p>
+          <h1 className="mt-3 font-display text-display">
             Put your event in front of people planning their weekend.
           </h1>
           <p className="mt-4 max-w-xl text-lg text-white/90">List for free. An evening pass is $9. Boost is $19 for a week. We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
@@ -109,7 +109,7 @@ export function PathCards() {
               href={path.href}
               className="group flex min-w-0 flex-col rounded-3xl border border-border bg-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--vp-brand-orange-ink)] motion-reduce:transform-none"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#9A3412,#9F1239)] text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,var(--vp-brand-orange-ink),var(--vp-brand-pink))] text-white">
                 <path.Icon className="h-5 w-5" aria-hidden />
               </span>
               <h3 className="mt-4 font-display text-xl font-bold">{path.title}</h3>
@@ -132,7 +132,7 @@ export function HowItWorks() {
           {STEPS.map((step) => (
             <li key={step.n} className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#141418] font-mono text-xs font-bold text-white">{step.n}</span>
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--vp-banner)] font-mono text-xs font-bold text-white">{step.n}</span>
                 <step.Icon className="h-5 w-5 text-[var(--vp-brand-orange-ink)]" aria-hidden />
                 <h3 className="font-semibold">{step.title}</h3>
               </div>
@@ -149,7 +149,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
   return (
     <section id="plans" className="scroll-mt-24 bg-card/40 py-12 sm:py-16">
       <div className={sectionPad}>
-        <p className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">Monthly · separate from one-off packages</p>
+        <p className="text-xs font-semibold text-[var(--vp-brand-orange-ink)]">Monthly · separate from one-off packages</p>
         <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">For crews who always have something on.</h2>
         <p className="mt-2 max-w-2xl text-muted-foreground">For venues, organisers and businesses that have things happening regularly.</p>
         <div className="mt-8 grid items-stretch gap-[var(--vp-card-gap)] sm:grid-cols-2 xl:grid-cols-4">
@@ -157,7 +157,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
             <article key={plan.key} data-testid={`plan-${plan.key}`} className="flex min-w-0 flex-col rounded-3xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-display text-xl font-bold">{plan.name}</h3>
-                {!plan.live && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Coming soon</span>}
+                {!plan.live && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Not on sale</span>}
               </div>
               <p className="mt-3 font-display text-4xl font-bold tabular-nums">
                 {formatAud(plan.monthlyCents)}
@@ -175,7 +175,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
             </article>
           ))}
         </div>
-        <p className="mt-5 text-sm text-muted-foreground">Subscribe from the promoter dashboard once a plan is on sale. If card billing is not switched on, the dashboard takes a quote instead and does not charge a card. Listing an event stays free. Coming soon plans on this page can’t be bought.</p>
+        <p className="mt-5 text-sm text-muted-foreground">Subscribe from the promoter dashboard once a plan is on sale. If card billing is not switched on, the dashboard takes a quote instead and does not charge a card. Listing an event stays free. Plans marked not on sale can’t be bought.</p>
         <div className="mt-5 rounded-2xl border-l-4 border-[var(--vp-brand-orange-ink)] bg-[var(--vp-brand-orange-ink)]/10 px-5 py-4">
           <p className="font-semibold">We charge for reach and tools. Listing an event stays free.</p>
           <p className="mt-1 text-sm text-muted-foreground">Free listings help fill the board that brings people to VibePeep, so the basic listing never costs a cent.</p>
@@ -194,7 +194,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Event listing</p>
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold">Illustrative</span>
           </div>
-          <div className="mt-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#1c1917,#9A3412)] p-4 text-white">
+          <div className="mt-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,var(--vp-banner),var(--vp-brand-orange-ink))] p-4 text-white">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/80">Live music</p>
             <p className="mt-2 font-display text-2xl font-bold">Boogie Nights</p>
             <p className="mt-1 text-sm text-white/80">Sat · 9:00 pm · The Roundhouse · Sydney</p>
@@ -202,7 +202,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
           <div className="mt-3 rounded-2xl border border-dashed border-[var(--vp-brand-pink)]/40 bg-[var(--vp-brand-pink)]/5 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-black px-1.5 py-0.5 text-xs font-bold text-white">SPONSORED</span>
-              <span className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">Recommended</span>
+              <span className="text-xs font-semibold text-[var(--vp-brand-orange-ink)]">Recommended</span>
             </div>
             <p className="mt-2 font-semibold">The Late Kitchen</p>
             <p className="text-sm text-muted-foreground">Pre-show dining, a short walk from the door. Made-up example.</p>
@@ -210,7 +210,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
           <figcaption className="mt-3 text-xs text-muted-foreground">Illustrative. This event and business are not real listings.</figcaption>
         </figure>
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-[var(--vp-brand-orange-ink)]">For restaurants, bars, parking and experiences</p>
+          <p className="text-xs font-semibold text-[var(--vp-brand-orange-ink)]">For restaurants, bars, parking and experiences</p>
           <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Get recommended. Get noticed.</h2>
           <p className="mt-2 text-muted-foreground">Your next customers might already be deciding where to go.</p>
           <p className="mt-4 font-display text-4xl font-bold tabular-nums" data-testid="local-price">
@@ -237,10 +237,10 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
 export function ProBand({ href, label }: { href: string; label: string }) {
   const otherPerks = PRO_PLAN.perks.filter((perk) => !perk.startsWith(`${PRO_PLAN.discountPct}%`))
   return (
-    <section id="pro" className="scroll-mt-24 bg-[#0c0c0e] py-12 text-white sm:py-16">
+    <section id="pro" className="scroll-mt-24 bg-[var(--vp-banner)] py-12 text-white sm:py-16">
       <div className={`${sectionPad} grid items-center gap-[var(--vp-card-gap)] lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]`}>
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-[var(--vp-brand-orange)]">For people who promote more than once</p>
+          <p className="text-xs font-semibold text-[var(--vp-brand-orange)]">For people who promote more than once</p>
           <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-5xl">Promote more. Save more.</h2>
           <p className="mt-4 max-w-xl text-4xl font-bold leading-tight text-brand-gradient sm:text-5xl">{PRO_PLAN.discountPct}% off</p>
           <p className="mt-2 max-w-xl text-lg text-white/85">packages, add-ons and short boosts, while the pass is active.</p>
@@ -257,7 +257,7 @@ export function ProBand({ href, label }: { href: string; label: string }) {
             </li>
           </ul>
         </div>
-        <div className="min-w-0 rounded-3xl border border-white/10 bg-[#16161a] p-6 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+        <div className="min-w-0 rounded-3xl border border-white/10 bg-[var(--vp-banner)] p-6 shadow-vp-lg">
           <p className="font-display text-5xl font-bold tabular-nums" data-testid="pro-price">{formatAud(PRO_PLAN.priceCents)}</p>
           <p className="mt-1 text-white/75">for {PRO_PLAN.days} days · extend any time</p>
           <p className="mt-4 text-sm text-white/80">A volume discount and the advanced tools, for people running more than one event. Views, saves and ticket clicks stay on the free account. The break-even figure is in the questions below.</p>
@@ -284,7 +284,7 @@ export function DashboardSection() {
 
 export function FinalCta({ href, label }: { href: string; label: string }) {
   return (
-    <section className="bg-[#0c0c0e] py-14 text-white sm:py-16">
+    <section className="bg-[var(--vp-banner)] py-14 text-white sm:py-16">
       <div className={`${sectionPad} text-center`}>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-5xl">Ready to get on the radar?</h2>
         <p className="mx-auto mt-3 max-w-xl text-lg text-white/80">Your event deserves an audience. Let’s get it out there.</p>

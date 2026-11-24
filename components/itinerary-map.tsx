@@ -21,7 +21,7 @@ function popupHtml(stop: ItineraryItem, number: number) {
   const img = stop.imageUrl && /^https?:\/\//i.test(stop.imageUrl)
     ? `<img src="${esc(stop.imageUrl)}" alt="" style="width:100%;height:96px;object-fit:cover;border-radius:10px;margin-bottom:8px" />`
     : ''
-  return `<div style="min-width:180px;font-family:inherit">${img}<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">Stop ${number}${stop.kind === 'custom' ? ' · Your stop' : ''}</div><div style="font-weight:700;margin-top:2px">${esc(stop.title)}</div><div style="font-size:12px;margin-top:4px;opacity:.8">${esc(stop.time ?? 'Time not set')}${where ? `<br/>${esc(where)}` : ''}</div>${href ? `<div style="margin-top:6px"><a href="${esc(href)}">Details →</a></div>` : ''}</div>`
+  return `<div style="min-width:180px;font-family:inherit">${img}<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7">Stop ${number}${stop.kind === 'custom' ? ' · Your stop' : ''}</div><div style="font-weight:700;margin-top:2px">${esc(stop.title)}</div><div style="font-size:12px;margin-top:4px;opacity:.8">${esc(stop.time ?? 'Time not set')}${where ? `<br/>${esc(where)}` : ''}</div>${href ? `<div style="margin-top:6px"><a href="${esc(href)}">Details →</a></div>` : ''}</div>`
 }
 
 /** Numbered itinerary pins and a route that only joins stops we can actually place. */

@@ -10,24 +10,22 @@ type ChipProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
 }
 
+/** Class for a chip that has to be a link. Pressed is brand orange with near-black ink. */
+export function chipClass(pressed = false) {
+  return cn(
+    'inline-flex h-control min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+    pressed ? 'bg-primary text-on-primary' : 'border border-border bg-card text-foreground hover:bg-muted',
+  )
+}
+
 /** 44px pill. Pressed is brand orange with near-black ink. Tokens, not neutral greys. */
 export function Chip({ pressed = false, onDark = false, onLight = false, className, children, type = 'button', ...props }: ChipProps) {
   return (
     <button
       type={type}
       aria-pressed={pressed}
-      className={cn(
-        'inline-flex h-control min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-        pressed
-          ? 'bg-primary text-on-primary'
-          : onDark
-            ? 'bg-white/15 text-white hover:bg-white/25'
-            : onLight
-              ? 'bg-[var(--vp-on-light-fill)] text-[var(--vp-on-light)] hover:bg-[var(--vp-on-light-fill-hover)]'
-              : 'border border-border bg-card text-foreground hover:bg-muted',
-        className,
-      )}
+      className={cn(chipClass(pressed), onDark && !pressed && 'border-transparent bg-white/15 text-white hover:bg-white/25', onLight && !pressed && 'border-transparent bg-[var(--vp-on-light-fill)] text-[var(--vp-on-light)] hover:bg-[var(--vp-on-light-fill-hover)]', className)}
       {...props}
     >
       {children}

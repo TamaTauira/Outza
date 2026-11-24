@@ -49,7 +49,7 @@ export default function HowListingsWorkPage() {
     <PageShell>
     <main className="vp-wrap vp-page-top px-4 pb-12 sm:px-6">
       <BackToEventsLink className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>
-      <h1 className="mt-6 font-display text-3xl sm:text-4xl font-bold tracking-tight">How VibePeep listings work</h1>
+      <h1 className="mt-6 font-display text-h1">How VibePeep listings work</h1>
       <p className="mt-3 text-muted-foreground">Plain-English answers about where our event information comes from and how we keep it honest.</p>
       <div className="mt-10 grid items-start gap-5 lg:grid-cols-2">
         {SECTIONS.map((s) => (

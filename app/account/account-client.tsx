@@ -7,7 +7,6 @@ import { ArrowLeft, Calendar, Loader2 } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
-import { cn } from '@/lib/utils'
 import { ProfileFields } from '@/components/profile-fields'
 import { aboutYouStatus, profileDigits, visibleAboutErrors } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
@@ -15,12 +14,13 @@ import { eventsToIcs, SAVED_ICS_FILENAME } from '@/lib/ics'
 import { eventPath } from '@/lib/seo'
 import { useSaved } from '@/lib/saved'
 import { PasswordField } from '@/components/password-field'
+import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
 
 type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; emailActivityPersonalisation?: boolean; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
 
-const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
-const chip = (on: boolean) => cn('px-3 min-h-9 py-1.5 rounded-full text-xs border transition-colors', on ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted')
+const card = 'rounded-card border border-border bg-card p-card-lg shadow-vp-sm'
 
 export function AccountClient() {
   const [me, setMe] = useState<Me | null>(null)
@@ -127,7 +127,7 @@ export function AccountClient() {
     <main className="vp-wrap vp-page-top px-4 pb-6 sm:px-6 sm:pb-8">
       {promoter ? <Link href="/promoter" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Promoter dashboard</Link> : <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>}
       <div className="mt-4">
-        <h1 className="font-display text-2xl font-bold sm:text-3xl lg:text-4xl">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
+        <h1 className="font-display text-h1">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
       <div className="vp-card-grid mt-[var(--vp-card-gap)] items-stretch lg:grid-cols-2">
@@ -139,7 +139,7 @@ export function AccountClient() {
           <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} yearRequired={yearRequired} yearError={shown.yearError} postcodeError={shown.postcodeError} onBirthYearBlur={() => setYearTouched(true)} onEnter={() => { void saveAbout() }} yearRef={yearRef} postcodeRef={pcRef} />
           {/* pointer-events-none while disabled lets the same tap read the inputs. iOS can commit the last digit on blur after the button has already ignored the click. */}
           <span className="inline-flex" onClick={() => { void saveAbout() }}>
-            <button type="button" disabled={!about.canSave} className="mt-3 h-11 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-70 disabled:pointer-events-none touch-manipulation">{saving ? 'Saving…' : 'Save details'}</button>
+            <Button type="button" disabled={!about.canSave} className="mt-3">{saving ? 'Saving…' : 'Save details'}</Button>
           </span>
         </form>
       </section>}
@@ -150,14 +150,14 @@ export function AccountClient() {
 
       {!promoter && <section className={`${card} lg:col-span-2`}>
         <label htmlFor="acct-city" className="font-semibold block mb-3">Home city</label>
-        <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-11 w-full sm:w-auto rounded-md border border-border bg-background px-3 text-sm">
+        <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-control w-full rounded-control border border-border bg-background px-3 text-base sm:w-auto">
           {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
         </select>
         <h2 className="font-semibold mt-5 mb-1">What’s your thing?</h2>
         <p className="text-xs text-muted-foreground mb-3">We’ll use this when we write to you.</p>
-        <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <button key={c.name} onClick={() => save({ preferredCategories: toggleIn(me.preferredCategories ?? [], c.name) })} className={chip((me.preferredCategories ?? []).includes(c.name))}>{c.name}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <Chip key={c.name} pressed={(me.preferredCategories ?? []).includes(c.name)} onClick={() => save({ preferredCategories: toggleIn(me.preferredCategories ?? [], c.name) })}>{c.name}</Chip>)}</div>
         <h2 className="font-semibold mt-5 mb-3">Cities to include</h2>
-        <div className="flex flex-wrap gap-2">{CITIES.map((c) => <button key={c.name} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })} className={chip((me.preferredCities ?? []).includes(c.name))}>{c.name}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{CITIES.map((c) => <Chip key={c.name} pressed={(me.preferredCities ?? []).includes(c.name)} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })}>{c.name}</Chip>)}</div>
       </section>}
 
       {!promoter && <FollowsCard />}
@@ -170,7 +170,7 @@ export function AccountClient() {
           <span>Send me a note ({(me.emailFrequency || 'weekly').toLowerCase()}). I’ll round up upcoming keepers and new events at venues you follow.</span>
         </label>
         <div className="mt-3 flex flex-wrap gap-2">
-          {['daily', 'weekly', 'monthly'].map((f) => <button key={f} type="button" disabled={!me.emailOptIn} onClick={() => save({ emailFrequency: f })} className={cn(chip(me.emailFrequency?.toLowerCase() === f), 'disabled:opacity-40')}>{f[0].toUpperCase() + f.slice(1)}</button>)}
+          {['daily', 'weekly', 'monthly'].map((f) => <Chip key={f} type="button" disabled={!me.emailOptIn} pressed={me.emailFrequency?.toLowerCase() === f} onClick={() => save({ emailFrequency: f })} className="disabled:opacity-40">{f[0].toUpperCase() + f.slice(1)}</Chip>)}
         </div>
         <label className="mt-4 flex items-start gap-3 text-sm cursor-pointer">
           <input type="checkbox" checked={!!me.reminderOptIn} onChange={(e) => save({ reminderOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
@@ -190,7 +190,7 @@ export function AccountClient() {
         <h2 className="font-semibold mb-3">Friends</h2>
         <form onSubmit={(e) => { e.preventDefault(); if (friendEmail) { friendAction({ email: friendEmail }, 'POST'); setFriendEmail('') } }} className="flex gap-2">
           <input type="email" value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} placeholder="Friend's email" className="flex-1 min-w-0 h-10 rounded-md border border-border bg-background px-3 text-sm" />
-          <button className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold">Add</button>
+          <Button>Add</Button>
         </form>
         {friends.incoming.map((p) => (
           <div key={p.friendshipId} className="flex items-center justify-between mt-3 text-sm">
@@ -243,7 +243,7 @@ function PromoterProfile({ me, onSaved }: { me: Me; onSaved: (patch: Partial<Me>
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio" aria-label="Bio" rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
         <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Website (https://…)" aria-label="Website" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
         <input value={image} onChange={(e) => setImage(e.target.value)} placeholder="Logo image link (https://…)" aria-label="Logo" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
-        <button disabled={busy} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">{busy ? 'Saving…' : 'Save profile'}</button>
+        <Button disabled={busy}>{busy ? 'Saving…' : 'Save profile'}</Button>
       </form>
       {me.id && <p className="mt-3 text-xs text-muted-foreground">Public page: <Link href={`/organisers/${me.id}`} className="underline">your organiser page</Link> is linked from each event you present.</p>}
     </section>
@@ -310,7 +310,7 @@ function FollowsCard() {
             <h3 className="text-sm font-semibold">Interests</h3>
             <div className="mt-2 flex flex-wrap gap-2">
               {tags.map((tag) => (
-                <button key={tag} type="button" onClick={() => { void unfollowTag(tag) }} className="h-9 rounded-full bg-primary px-3 text-sm text-primary-foreground">{tag} · Unfollow</button>
+                <Button key={tag} type="button" size="sm" onClick={() => { void unfollowTag(tag) }}>{tag} · Unfollow</Button>
               ))}
               {!tags.length && <p className="text-sm text-muted-foreground">No interests yet. Follow one from an event.</p>}
             </div>

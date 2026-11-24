@@ -102,7 +102,7 @@ export default function PromoterTermsPage() {
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Promoter &amp; Advertising Terms</h1>
+        <h1 className="font-display text-h1 mt-2">Promoter &amp; Advertising Terms</h1>
         <LegalStamp doc="promoter" />
         <p className="mt-4 text-muted-foreground leading-relaxed">
           Also read the <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">terms of use</Link>, <Link href="/disclaimer" className="underline underline-offset-2 hover:text-foreground">disclaimer</Link> and <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">privacy policy</Link>. Version {LEGAL_DOCS.promoter.version}.

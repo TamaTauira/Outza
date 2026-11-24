@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { ReachDashboard } from '@/components/reach-dashboard'
+import { Chip } from '@/components/ui/chip'
 import type { ReachPayload } from '@/lib/organiser-reach-load'
 
 export function VenueReachPanel({ venueId }: { venueId: string }) {
@@ -23,7 +24,7 @@ export function VenueReachPanel({ venueId }: { venueId: string }) {
     <div className="mt-5 space-y-4">
       <div className="flex flex-wrap gap-2 text-sm">
         {['7', '28', '90'].map((item) => (
-          <button key={item} type="button" onClick={() => setRange(item)} className={`rounded-full px-3 py-1 ${range === item ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>Last {item} days</button>
+          <Chip key={item} pressed={range === item} onClick={() => setRange(item)}>Last {item} days</Chip>
         ))}
       </div>
       <p className="text-xs text-muted-foreground">This is the room, not another organiser’s spend. Views and clicks are not attendance.</p>

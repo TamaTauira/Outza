@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { Check, Plus } from 'lucide-react'
+import { Chip } from '@/components/ui/chip'
 import { cn } from '@/lib/utils'
 import { venueKey } from '@/lib/together'
 
@@ -49,18 +50,16 @@ export function FollowListing({ category, venueName, city, className }: { catego
   return (
     <div className={cn('flex flex-wrap gap-2', className)}>
       {category && (
-        <button type="button" onClick={() => toggle('tag', category, tagOn)} aria-pressed={tagOn}
-          className={cn('inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-sm font-semibold', tagOn ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted')}>
-          {tagOn ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+        <Chip pressed={tagOn} onClick={() => toggle('tag', category, tagOn)}>
+          {tagOn ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           {tagOn ? `Following ${category}` : `Follow ${category}`}
-        </button>
+        </Chip>
       )}
       {venueName && (
-        <button type="button" onClick={() => toggle('venue', venueName, venueOn)} aria-pressed={venueOn}
-          className={cn('inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-sm font-semibold', venueOn ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted')}>
-          {venueOn ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+        <Chip pressed={venueOn} onClick={() => toggle('venue', venueName, venueOn)}>
+          {venueOn ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           {venueOn ? `Following ${venueName}` : `Follow ${venueName}`}
-        </button>
+        </Chip>
       )}
     </div>
   )

@@ -431,7 +431,7 @@ export default function ItineraryPage() {
                                         {i.kind === 'event' ? <Link href={i.href ?? eventPath(i)} className="font-semibold hover:text-primary">{i.title}</Link> : <p className="font-semibold">{i.title}</p>}
                                         {i.venueName && <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{i.venueName}{i.suburb ? ` · ${i.suburb}` : ''}</p>}
                                         {(i.place && i.place !== i.venueName) && <p className="text-sm text-muted-foreground">{i.place}</p>}
-                                        <p className="mt-1 flex flex-wrap gap-1 text-[13px] font-semibold text-muted-foreground">
+                                        <p className="mt-1 flex flex-wrap gap-1 text-xs font-semibold text-muted-foreground">
                                           {i.kind === 'custom' && <span className="rounded bg-muted px-1.5 py-0.5">My stop</span>}
                                           {i.stopCategory && <span className="rounded bg-muted px-1.5 py-0.5">{i.stopCategory}</span>}
                                           {i.adId && <span>Sponsored</span>}

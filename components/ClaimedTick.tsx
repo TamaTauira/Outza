@@ -13,8 +13,9 @@ export function ClaimedTick({ kind, className }: { kind: keyof typeof CLAIMED_TI
         <button
           type="button"
           className={cn(
-            'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-primary align-[-0.15em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'inline-flex shrink-0 items-center justify-center rounded-sm text-primary align-[-0.125em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             className,
+            'h-[1em] w-[1em]',
           )}
           aria-label={copy.label}
           title={copy.label}

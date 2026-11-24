@@ -290,7 +290,7 @@
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-family: var(--font-display), var(--font-sans), sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1;
 }

@@ -238,7 +238,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
 
 export function BoardHeadings() {
   return (
-    <div className={cn('sticky top-14 z-10 hidden border-b border-border bg-muted/90 px-5 py-2 font-mono text-[13px] text-muted-foreground backdrop-blur xl:grid xl:gap-x-3 sm:top-16', BOARD_COLS)}>
+    <div className={cn('sticky top-14 z-10 hidden border-b border-border bg-muted/90 px-5 py-2 font-mono text-xs text-muted-foreground backdrop-blur xl:grid xl:gap-x-3 sm:top-16', BOARD_COLS)}>
       <span>Time</span>
       <span>Event</span>
       <span>Venue / Suburb</span>

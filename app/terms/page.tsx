@@ -66,7 +66,7 @@ export default function TermsPage() {
           <ArrowLeft className="w-4 h-4" />Back to events
         </BackToEventsLink>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">Legal</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight mt-2">Terms of use</h1>
+        <h1 className="font-display text-h1 mt-2">Terms of use</h1>
         <LegalStamp doc="terms" />
         <p className="mt-2 text-sm text-muted-foreground">Paid listings and subscriptions are also covered by the <Link href="/terms/promoters" className="underline underline-offset-2 hover:text-foreground">Promoter & Advertising Terms</Link>.</p>
         <p className="mt-4 text-muted-foreground leading-relaxed">

@@ -7,7 +7,7 @@ const ROWS = [
 /** Where the three packages sit. Not a sample event and not a measured result. */
 export function HeroStage() {
   return (
-    <figure className="rounded-[1.75rem] border border-white/10 bg-[#1c1c22] p-4 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+    <figure className="rounded-hero border border-white/10 bg-[var(--vp-banner)] p-4 text-white shadow-vp-lg">
       <figcaption className="text-sm font-semibold">Featured row</figcaption>
       <p className="mt-1 text-xs text-white/70">Each paid place is labelled Sponsored. Organic events stay in the row.</p>
       <ol className="mt-4 space-y-2">

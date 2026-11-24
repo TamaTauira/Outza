@@ -20,7 +20,7 @@ export default async function VenueClaimPage({ params, searchParams }: { params:
   return (
     <main className="vp-page-top mx-auto max-w-xl px-4 pb-16 sm:px-6">
       <Link href={`/venues/${id}`} className="text-sm text-muted-foreground underline">Back to {venue.name}</Link>
-      <h1 className="font-display text-2xl font-bold mt-3">{dispute ? 'Request access' : 'Claim this venue'}</h1>
+      <h1 className="font-display text-h1 mt-3">{dispute ? 'Request access' : 'Claim this venue'}</h1>
       <p className="mt-2 text-sm text-muted-foreground">It’s free. We check you can speak for the venue before anyone can edit the profile. A person reviews it.</p>
       <dl className="mt-4 text-sm space-y-1">
         <div><dt className="text-muted-foreground inline">Venue </dt><dd className="inline">{venue.name}</dd></div>

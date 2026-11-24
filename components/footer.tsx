@@ -59,7 +59,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
           Times and prices shift, so check with whoever’s running it before you head out.
         </p>
         {quickLinks.length > 0 && (
-          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted-foreground md:max-w-[340px] md:justify-end">
+          <nav className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground md:max-w-[340px] md:justify-end">
             {quickLinks.map((l) => (
               <button key={l.label} onClick={l.onClick} aria-pressed={!!l.active} className={l.active ? 'text-foreground font-semibold underline underline-offset-4' : 'hover:text-foreground transition-colors'}>{l.label}</button>
             ))}
@@ -68,7 +68,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
       </div>
       <nav aria-label="Events by city" className="vp-wrap px-4 sm:px-6 pb-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Cities</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-[13px]">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
           {CITIES.map((c) => (
             <Link key={c.name} href={cityPath(c)} className="text-muted-foreground hover:text-foreground transition-colors">{c.name}</Link>
           ))}
@@ -82,7 +82,7 @@ export function Footer({ lastRefresh, quickLinks = [], city }: FooterProps & { c
         </summary>
         <nav aria-label="Popular guides by city" className="mt-3 space-y-2">
           {CITIES.map((c) => (
-            <p key={c.name} className="text-[13px] leading-relaxed">
+            <p key={c.name} className="text-xs leading-relaxed">
               <Link href={cityPath(c)} className="font-semibold text-foreground hover:text-primary">{c.name}</Link>
               <span className="text-muted-foreground"> · </span>
               {POPULAR_GUIDES.map(([label, title, topic], i) => (

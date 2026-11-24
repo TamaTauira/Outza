@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { Surface } from '@/components/ui/surface'
 import { BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 
 const ASIDE_LINKS = [
@@ -18,23 +19,23 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
             <VibePeepLogo size="md" />
           </Link>
           <div className="mt-8 hidden max-w-md lg:block">
-            <p className="font-display text-4xl font-bold tracking-tight">{BRAND_TAGLINE}</p>
-            <p className="mt-3 text-muted-foreground">{BRAND_SUBLINE}</p>
-            <ul className="mt-8 grid grid-cols-2 gap-3 text-sm">
+            <p className="font-display text-h2">{BRAND_TAGLINE}</p>
+            <p className="mt-3 text-body text-muted-foreground">{BRAND_SUBLINE}</p>
+            <ul className="mt-8 grid grid-cols-2 gap-card text-sm">
               {ASIDE_LINKS.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="block rounded-xl border border-border bg-card px-4 py-3 font-semibold hover:bg-muted">{item.label}</Link>
+                  <Link href={item.href} className="block rounded-card border border-border bg-card px-4 py-3 font-semibold hover:bg-muted">{item.label}</Link>
                 </li>
               ))}
             </ul>
           </div>
         </div>
         <div>
-          <div className="rounded-[var(--vp-radius-xl)] border border-border bg-card p-6 text-card-foreground sm:p-8">
-            <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
-            <p className="mb-6 mt-1 text-sm text-muted-foreground">{subtitle}</p>
+          <Surface pad="lg" className="text-card-foreground sm:p-8">
+            <h1 className="font-display text-h1">{title}</h1>
+            <p className="mb-6 mt-2 text-sm text-muted-foreground">{subtitle}</p>
             {children}
-          </div>
+          </Surface>
           <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
             We acknowledge the Traditional Custodians of the lands across Australia and pay our respects to Elders past and present.
           </p>

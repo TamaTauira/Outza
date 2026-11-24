@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Check, Loader2, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
 
 /** Follow / unfollow the promoter behind an event. Signed-out people are sent to log in and brought back. */
 export function FollowPromoterButton({ promoterId, initialFollowing, signedIn }: { promoterId: string; initialFollowing: boolean; signedIn: boolean }) {
@@ -26,11 +26,9 @@ export function FollowPromoterButton({ promoterId, initialFollowing, signedIn }:
   }
 
   return (
-    <button type="button" onClick={onClick} disabled={busy} aria-pressed={following}
-      className={cn('inline-flex items-center gap-1 h-7 px-3 rounded-full border text-xs font-semibold transition-colors disabled:opacity-60',
-        following ? 'bg-primary text-primary-foreground border-primary' : 'border-primary text-primary hover:bg-primary/10')}>
-      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : following ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+    <Chip pressed={following} onClick={onClick} disabled={busy}>
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : following ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
       {following ? 'Following' : 'Follow'}
-    </button>
+    </Chip>
   )
 }
