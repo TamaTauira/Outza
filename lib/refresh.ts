@@ -239,7 +239,11 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
 /** Artwork follow-up stays inside the cron that started it. The old fire-and-forget pass ran for minutes on the same instance as the next cron. */
 async function boundedImagePass() {
   await Promise.race([
-    runImagePass({ trigger: 'refresh', budgetMs: 20_000 }),
+    (async () => {
+      const { flushPendingDisplays } = await import('@/lib/images/display-store')
+      await flushPendingDisplays({ limit: 8, budgetMs: 12_000 })
+      await runImagePass({ trigger: 'refresh', budgetMs: 12_000 })
+    })(),
     new Promise((resolve) => setTimeout(resolve, 25_000)),
   ]).catch((err) => console.error('[images] pass failed', err instanceof Error ? err.message : err))
 }

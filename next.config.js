@@ -16,7 +16,7 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     qualities: [75, 85],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1600, 1920, 2048, 2560, 3840],
+    deviceSizes: [480, 640, 750, 828, 960, 1080, 1200, 1440, 1600, 1920, 2560],
     remotePatterns: [
       { protocol: 'https', hostname: 'images.humanitix.com' },
       { protocol: 'https', hostname: '**.ticketm.net' },
@@ -28,6 +28,10 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.wixstatic.com' },
       { protocol: 'https', hostname: '**.framerusercontent.com' },
       { protocol: 'https', hostname: '**.wsimg.com' },
+      { protocol: 'https', hostname: '**.oztix.com.au' },
+      { protocol: 'https', hostname: 'whatson.cityofsydney.nsw.gov.au' },
+      { protocol: 'https', hostname: '**.amazonaws.com' },
+      { protocol: 'https', hostname: '**.public.blob.vercel-storage.com' },
     ],
   },
   // 308 the legacy production alias onto the canonical host. Vercel serves this

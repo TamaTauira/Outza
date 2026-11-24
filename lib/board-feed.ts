@@ -11,6 +11,7 @@ import { coordsFitCity } from '@/lib/travel'
 import { collapseShowings, hiddenFromPublic, sameShowing } from '@/lib/listing-visibility'
 import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
+import { eventPictureSelect } from '@/lib/images/display-spec'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 
 export const BOARD_SELECT = {
@@ -19,7 +20,7 @@ export const BOARD_SELECT = {
   venueName: true, venueAddress: true, suburb: true, city: true,
   category: true, subTags: true, isLGBTI: true, isFree: true,
   price: true, priceMin: true, priceMax: true, ticketUrl: true, sourceUrl: true, organiserUrl: true,
-  imageUrl: true, latitude: true, longitude: true, status: true, statusSource: true, source: true,
+  imageUrl: true, ...eventPictureSelect, latitude: true, longitude: true, status: true, statusSource: true, source: true,
   lastVerifiedAt: true, updatedAt: true, duplicateOfId: true,
   communityKey: true, locationVisibility: true, childrenInImage: true, imageKidSafe: true,
   imageAsset: { select: imageAssetSelect },

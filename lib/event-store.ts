@@ -10,6 +10,7 @@ import { findEventIdBySourceKey, recordContribution, rememberSource } from '@/li
 import { recordFieldConflict } from '@/lib/listing-audit'
 import { readPrice } from '@/lib/price'
 import { assetIdFor, bestSourceUrl } from '@/lib/images/source-url'
+import { displayPendingData } from '@/lib/images/display-spec'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { sanitizeDbText, sanitizeDbUrl } from '@/lib/db-text'
 import { sanitizeDescription } from '@/lib/description-text'
@@ -333,6 +334,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       const imageChanging = !existing.imageLocked && !!imageUrl && imageUrl !== existing.imageUrl
       if (imageChanging) {
         update.imageUrl = imageUrl
+        Object.assign(update, displayPendingData)
         if (existing.imageAssetId && existing.imageAssetId !== assetIdFor(imageUrl)) update.imageAssetId = null
       }
       // Per-field corrections keep their values. Other fields, including artwork, still refresh.
@@ -431,6 +433,7 @@ export async function saveEvent(ev: RawEvent): Promise<boolean> {
       suburb,
       source: ev.source, sources: [ev.source], dedupeHash, city,
       seriesKey: makeSeriesKey(title, venueName, city),
+      ...(imageUrl ? displayPendingData : {}),
     },
   })
   await rememberSource({ eventId: created.id, source: ev.source, externalId, url: identityUrl, date: ev.date, time })
@@ -503,6 +506,9 @@ async function mergeInto(
     status: f.status,
   }])
   const fill: Record<string, unknown> = { ...plan.patch, sources, lastVerifiedAt: new Date() }
+  if (typeof fill.imageUrl === 'string' && fill.imageUrl && fill.imageUrl !== cur.imageUrl && !cur.imageLocked) {
+    Object.assign(fill, displayPendingData, { imageUrl: fill.imageUrl })
+  }
   if (!usableUrl(cur.sourceUrl) && f.sourceUrl) fill.sourceUrl = f.sourceUrl
   if (!usableUrl(cur.organiserUrl) && f.organiserUrl) fill.organiserUrl = f.organiserUrl
   if (typeof fill.venueName === 'string' && fill.venueName !== cur.venueName) {

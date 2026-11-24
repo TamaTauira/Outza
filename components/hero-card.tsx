@@ -48,7 +48,8 @@ export function HeroCard({
         alt=""
         fill
         priority={priority}
-        sizes="(max-width: 640px) 100vw, (max-width: 1080px) 100vw, (max-width: 1600px) 90vw, 1600px"
+        quality={75}
+        sizes="(max-width: 768px) calc(100vw - 2rem), min(1712px, calc(100vw - 3rem))"
         className="object-cover object-right"
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black via-black/78 to-black/20" />

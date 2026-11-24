@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { EventImage } from '@/components/event-image'
+import { eventPictureFrom } from '@/lib/images/display-spec'
 import { EventReactions } from '@/components/event-reactions'
 import { ItineraryButton } from '@/components/itinerary-button'
 const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mod.VenueMap), { ssr: false })
@@ -185,10 +186,11 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
             <div className="relative aspect-[16/9] bg-[#110e16] sm:aspect-[2/1]">
               <EventImage
                 image={event.imageAsset as never}
+                picture={eventPictureFrom(event)}
                 src={event.imageUrl}
                 kind="hero"
                 alt={event.title}
-                sizes="(max-width: 640px) 100vw, 900px"
+                sizes="(max-width: 640px) 100vw, 720px"
                 crop
                 accent={cat?.color}
                 category={event.communityKey || event.category}

@@ -78,7 +78,7 @@ export function canOptimizeImage(url: string | null | undefined): boolean {
   if (!url || PRESIGNED.test(url)) return false
   try {
     const host = new URL(url).hostname.toLowerCase()
-    return /images\.humanitix\.com$|(^|\.)ticketm\.net$|(^|\.)evbuc\.com$|(^|\.)cloudinary\.com$|(^|\.)moshtix\.com\.au$|(^|\.)squarespace\.com$|(^|\.)wixstatic\.com$|(^|\.)framerusercontent\.com$|(^|\.)wsimg\.com$/.test(host)
+    return /images\.humanitix\.com$|(^|\.)ticketm\.net$|(^|\.)evbuc\.com$|(^|\.)cloudinary\.com$|(^|\.)moshtix\.com\.au$|(^|\.)oztix\.com\.au$|whatson\.cityofsydney\.nsw\.gov\.au$|(^|\.)squarespace\.com$|(^|\.)wixstatic\.com$|(^|\.)framerusercontent\.com$|(^|\.)wsimg\.com$/.test(host)
   } catch {
     return false
   }
