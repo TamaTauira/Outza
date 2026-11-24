@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { runVenueMonthlyReports } from '@/lib/venue-monthly'
 import { cronAuthorized } from '@/lib/cron-auth'
 import { getSessionUser } from '@/lib/session'
+import { writeHeartbeat } from '@/lib/job-watermark'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -16,6 +17,7 @@ async function run(req: Request) {
   try {
     const result = await runVenueMonthlyReports()
     console.log('[cron] venue monthly', result)
+    await writeHeartbeat('venue-monthly').catch(() => {})
     return NextResponse.json(result)
   } catch (err) {
     console.error('[cron] venue monthly failed', err instanceof Error ? err.message : err)

@@ -11,6 +11,8 @@ export async function thankReporter(_input: { email: string | null; reportId: st
   return { sent: false, reason: 'template-not-approved' }
 }
 
+export { monthlyOpsSection } from '@/lib/ops/monthly'
+
 /** Ask a claimant for evidence. No message is sent until a template is approved. */
 export async function requestClaimEvidence(_input: { email: string | null; claimId: string; kind: 'event' | 'venue' }): Promise<TemplateHook> {
   return { sent: false, reason: 'template-not-approved' }

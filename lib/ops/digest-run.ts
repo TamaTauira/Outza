@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, emailSendingEnabled, OWNER_EMAIL } from '@/lib/email'
 import { digestEmail } from '@/lib/ops/digest-mail'
+import { majorDependencyTitles } from '@/lib/ops/deps'
 import { ensureOpsTables } from '@/lib/ops/ensure'
 import { digestTokenSecretConfigured, newDigestToken, tokenHash } from '@/lib/ops/tokens'
 import { siteUrl } from '@/lib/site-url'
@@ -46,11 +47,13 @@ export async function runWeeklyDigest(now = new Date()) {
   const handled = await prisma.opsDecision.count({
     where: { createdAt: { gte: weekAgo }, undoneAt: null, actor: { in: ['bot:rules', 'bot:ai'] }, action: { not: 'digest' } },
   })
+  const notes = await majorDependencyTitles()
   const mail = digestEmail({
     items: links,
     handled,
     extra: Math.max(0, waiting - items.length),
     undoUrl: `${home}/admin/ops`,
+    notes,
   })
   const sent = await sendEmail({ to: OWNER_EMAIL, subject: mail.subject, html: mail.html, kind: 'transactional' })
   if (!sent.ok) return { sent: false, reason: sent.error ?? 'send failed', waiting }

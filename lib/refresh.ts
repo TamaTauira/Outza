@@ -115,18 +115,10 @@ export function refreshAllSources() {
   return refreshSources()
 }
 
-async function faultIfSourceRepeated(name: string, error: string, logId: string) {
-  if (isPartialRefresh(error)) return
-  const { reportFault } = await import('@/lib/owner-alerts')
-  const prev = await prisma.refreshLog.findFirst({
-    where: { id: { not: logId }, status: sourceLogStatus(name), endedAt: { not: null } },
-    orderBy: { startedAt: 'desc' },
-    select: { errors: true },
-  })
-  const prevFailure = refreshFailure(prev?.errors)
-  if (prevFailure && !isPartialRefresh(prevFailure) && prevFailure.includes(`${name}:`)) {
-    await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: error })
-  }
+async function noteSourceOutcome(name: string, error: string | null) {
+  const { noteSourceFailure, noteSourceSuccess } = await import('@/lib/ops/source-pause')
+  if (!error) await noteSourceSuccess(name)
+  else if (!isPartialRefresh(error)) await noteSourceFailure(name, error)
 }
 
 function readSourceRun(value: number | SourceFetchResult | null, fallbackSaved: number, error: Error | null) {
@@ -190,6 +182,11 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
       console.error(`[refresh] ${name} skipped: invocation time budget`)
       continue
     }
+    const { sourceShouldRunNow } = await import('@/lib/ops/source-pause')
+    if (!(await sourceShouldRunNow(name))) {
+      console.log(`[refresh] ${name} is paused; next try is in a few hours`)
+      continue
+    }
     const sourceLog = opts.chunk ? await prisma.refreshLog.create({ data: { status: 'running' } }) : null
     const { added, error, continuation, more, sweepId } = await runNamed(name, fn, budgetFor(name))
     total += added
@@ -206,8 +203,8 @@ async function execute(opts: RefreshSourcesOptions): Promise<RefreshResult> {
           errors: storedError,
         },
       })
-      if (error) await faultIfSourceRepeated(name, error, sourceLog.id)
     }
+    await noteSourceOutcome(name, error)
     await noteVolume(name, { saved: added, continuation, more, sweepId }, error, sourceLog?.id ?? null)
   }
 
@@ -313,26 +310,10 @@ async function runPostSteps(startedAt = Date.now()) {
   return errors
 }
 
-async function reportFullRunFaults(logId: string, selected: number, sourceFailed: number, hard: string[]) {
+async function reportFullRunFaults(_logId: string, selected: number, sourceFailed: number, hard: string[]) {
   const { reportFault } = await import('@/lib/owner-alerts')
   if (selected === SOURCES.length && sourceFailed === SOURCES.length) {
     await reportFault({ area: 'Event refresh', key: 'refresh-all-failed', route: '/api/cron/refresh', title: 'Every listings source failed this run', detail: hard.join('\n') })
-    return
-  }
-  const prev = await prisma.refreshLog.findFirst({
-    where: { id: { not: logId }, endedAt: { not: null }, status: { in: ['completed', 'failed'] } },
-    orderBy: { startedAt: 'desc' },
-    select: { errors: true },
-  })
-  for (const err of hard) {
-    const name = err.split(':')[0]
-    const repeated = (prev?.errors ?? '').split('; ').some((part) => {
-      const failure = refreshFailure(part)
-      return !!failure && failure.startsWith(`${name}:`) && !isPartialRefresh(failure)
-    })
-    if (repeated) {
-      await reportFault({ area: 'Event refresh', key: `refresh-${name}`, route: '/api/cron/refresh', title: `${name} failed two refreshes in a row`, detail: err })
-    }
   }
 }
 

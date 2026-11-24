@@ -12,16 +12,44 @@ Times below are Australia/Sydney (AEDT in November).
 
 Protests and rallies stay hidden. A cooking or product demonstration is not treated as a rally. Contact form mail is unchanged and still goes to the owner's Gmail.
 
+## Health
+
+- `GET /api/ops/summary` with `Authorization: Bearer $OPS_READ_TOKEN` returns queue counts, held listings, recent decisions, contact messages by status (empty until that table exists), last source runs, fault keys, newsletter sends, unclicked search keys, and the Ask error rate. There is no write method on this path.
+- A source that fails three times in a row pauses. It is tried again every 6 hours and resumes on a clean run. Listings from a paused source stay up until the usual stale rules hide them. A fault email is sent only after the pause is older than 24 hours.
+- Each cron writes a heartbeat. The hourly owner-alerts job raises a fault when a heartbeat is older than twice that cron's schedule.
+- Minute 26 of every hour checks the home page, `/sydney`, one event page, Ask, the sitemap, and the share image.
+- Dependabot opens updates weekly (Monday 9:00 am AEDT). Patch and minor updates merge when checks pass. Major updates are listed on the Monday approvals email when `GITHUB_TOKEN` is set.
+- The monthly ideas email should append `monthlyOpsSection()` from `lib/ops/hooks.ts`. This run does not change that email's schedule.
+
 ## Environment
 
-Set these on the Vercel project. This repository does not create them.
+Set these on the Vercel project. This repository does not create database roles.
 
 | Name | Where | Value |
 |---|---|---|
 | `OPS_DIGEST_SECRET` | Production (and Preview if you send test mail) | A random string of at least 16 characters. Signs the Monday links. If it is unset, `CRON_SECRET` is used. |
+| `OPS_READ_TOKEN` | Production | A different random string, at least 16 characters. Bots send it as `Authorization: Bearer …` to `GET /api/ops/summary`. |
+| `DATABASE_URL_READONLY` | Production | Connection string for a Postgres role that has `SELECT` only. The summary uses it when set, and falls back to `DATABASE_URL` until then. The JSON field `databaseRole` says which one answered. |
 | `OPS_RESOLVE_BACKLOG` | Do not set | Leave unset. Setting it to `1` lets the live resolver change rows that existed before `live-since`. That is a production data change and needs a Neon snapshot plus a yes in chat first. |
+| `GITHUB_TOKEN` or `GH_TOKEN` | Optional | When set, the Monday email lists open Dependabot major updates. |
+| `AI_GATEWAY_SPEND_USD` | Optional | Copied into the monthly operations section. If unset, the section says to check the AI Gateway dashboard. |
+| `NEON_STORAGE_BYTES` | Optional | Copied into the monthly operations section. If unset, the section says to check the Neon console. |
 
 `CRON_SECRET` is already required for the crons.
+
+### Read-only database role
+
+Run this in the Neon SQL editor yourself. The app does not run it. Replace the password and the database name (the name in `DATABASE_URL`, often `neondb`).
+
+```sql
+CREATE ROLE vibepeep_ops_read WITH LOGIN PASSWORD 'choose-a-long-password';
+GRANT CONNECT ON DATABASE neondb TO vibepeep_ops_read;
+GRANT USAGE ON SCHEMA public TO vibepeep_ops_read;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO vibepeep_ops_read;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO vibepeep_ops_read;
+```
+
+Put the pooled connection string in `DATABASE_URL_READONLY`. The bot token is `OPS_READ_TOKEN`, not the database password.
 
 ## Dry-run the backlog
 

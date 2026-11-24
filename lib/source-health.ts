@@ -202,6 +202,39 @@ function missingRelation(err: unknown): boolean {
   return code === 'P2021' || code === 'P2022'
 }
 
+export const SOURCE_FAILS_BEFORE_PAUSE = 3
+export const SOURCE_RETRY_MS = 6 * 60 * 60 * 1000
+export const SOURCE_PAUSE_FAULT_MS = 24 * 60 * 60 * 1000
+
+export type SourcePauseState = {
+  failStreak: number
+  pausedAt: number | null
+  lastAttempt: number | null
+}
+
+/**
+ * Three hard failures pause the source. A paused source is tried again every 6 hours.
+ * A success clears the pause. The fault email waits until the pause is older than 24 hours.
+ * Listings already stored are not touched here.
+ */
+export function nextSourcePause(state: SourcePauseState, outcome: 'success' | 'failure', now: number): SourcePauseState & { resumed: boolean; newlyPaused: boolean; fault: boolean } {
+  if (outcome === 'success') {
+    return { failStreak: 0, pausedAt: null, lastAttempt: now, resumed: state.pausedAt != null, newlyPaused: false, fault: false }
+  }
+  const failStreak = state.failStreak + 1
+  const pausedAt = state.pausedAt ?? (failStreak >= SOURCE_FAILS_BEFORE_PAUSE ? now : null)
+  const newlyPaused = state.pausedAt == null && pausedAt != null
+  const fault = pausedAt != null && now - pausedAt >= SOURCE_PAUSE_FAULT_MS
+  return { failStreak, pausedAt, lastAttempt: now, resumed: false, newlyPaused, fault }
+}
+
+/** A paused source stays quiet until 6 hours after the last attempt. */
+export function sourceShouldRun(state: SourcePauseState, now: number): boolean {
+  if (state.pausedAt == null) return true
+  if (state.lastAttempt == null) return true
+  return now - state.lastAttempt >= SOURCE_RETRY_MS
+}
+
 /** Store the alert and reuse the existing owner-fault email. Never throws. Never deletes events. */
 export async function recordQualityAlert(input: { kind: QualityAlertKind; source: string; detail: string }) {
   try {
