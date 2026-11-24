@@ -11,7 +11,7 @@ import { cityDef } from '@/lib/cities'
 import { formatPrice } from '@/lib/board'
 import { boardClockLine } from '@/lib/listing-window'
 import { createBasemap } from '@/lib/map-basemap'
-import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
+import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { isPaidListing } from '@/lib/quality'
@@ -229,7 +229,11 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         if (!isBareNetworkFault(err)) console.error('Map style failed to load:', err)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      detachBasemap(mapInstanceRef.current, tileRef.current)
+      tileRef.current = null
+    }
   }, [ready, dark])
 
   // Re-centre when the city changes
@@ -320,7 +324,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
 
     const addMarker = (e: any, tier?: string) => {
       if (!e?.latitude || !e?.longitude) return
-      const color = tier === 'GOLD' ? '#F5B700' : (CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A1A')
+      const color = tier === 'GOLD' ? '#F5B700' : (CATEGORIES.find((c) => c.name === e?.category)?.color ?? '#FF7A35')
       const m = L.marker([e.latitude, e.longitude], {
         icon: markerIcon(L, e, color, tier),
         title: e?.title,

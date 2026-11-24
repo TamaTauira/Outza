@@ -5,7 +5,7 @@ import { useTheme } from 'next-themes'
 import { Loader2, Maximize2, Minimize2 } from 'lucide-react'
 import { cityDef, CITY_NAMES } from '@/lib/cities'
 import { createBasemap } from '@/lib/map-basemap'
-import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
+import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { EVENT_PIN_ANCHOR, EVENT_PIN_SIZE, eventPinHtml, MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { cn } from '@/lib/utils'
@@ -122,7 +122,11 @@ export function LocalNeighbourhoodMap({ pins, city, hotKey, focusKey, onHot, onF
         console.error('Local map style failed:', err)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      detachBasemap(mapRef.current, tileRef.current)
+      tileRef.current = null
+    }
   }, [ready, dark])
 
   useEffect(() => {
@@ -145,7 +149,7 @@ export function LocalNeighbourhoodMap({ pins, city, hotKey, focusKey, onHot, onF
       const marker = L.marker([pin.lat, pin.lng], {
         icon: L.divIcon({
           className: 'se-pin-wrap vp-local-pin',
-          html: eventPinHtml('#FF7A1A'),
+          html: eventPinHtml('#FF7A35'),
           iconSize: EVENT_PIN_SIZE,
           iconAnchor: EVENT_PIN_ANCHOR,
         }),

@@ -235,7 +235,7 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
           <p className="text-sm text-muted-foreground">School listings show the suburb only. Don’t add a street address or a photo of children.</p>
         ) : (
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={f.showPrecise} onChange={set('showPrecise')} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
+            <input type="checkbox" checked={f.showPrecise} onChange={set('showPrecise')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
             <span>Show the street address publicly. Leave this off and people only see the suburb.</span>
           </label>
         )}
@@ -258,7 +258,7 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
           <input value={f.websiteUrl} onChange={set('websiteUrl')} className={field} placeholder="https://" inputMode="url" />
         </label>
         <label className="flex items-center gap-3 text-sm font-semibold">
-          <input type="checkbox" checked={f.isFree} onChange={set('isFree')} className="h-4 w-4 accent-[#FF4E6A]" />
+          <input type="checkbox" checked={f.isFree} onChange={set('isFree')} className="h-4 w-4 accent-[#F05A9D]" />
           Free to attend
         </label>
         {!f.isFree && (
@@ -272,25 +272,25 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
         {imageUrl && <p className="text-sm text-muted-foreground">Photo attached.</p>}
         {imageUrl && (
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={f.imageRights} onChange={set('imageRights')} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
+            <input type="checkbox" checked={f.imageRights} onChange={set('imageRights')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
             <span>I took this photo or I have permission to publish it.</span>
           </label>
         )}
         {imageUrl && (
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={f.childrenInImage} onChange={set('childrenInImage')} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
+            <input type="checkbox" checked={f.childrenInImage} onChange={set('childrenInImage')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
             <span>This photo shows children. It will not be published.</span>
           </label>
         )}
         {imageUrl && school && !f.childrenInImage && (
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" checked={f.imageKidSafe} onChange={set('imageKidSafe')} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
+            <input type="checkbox" checked={f.imageKidSafe} onChange={set('imageKidSafe')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
             <span>I confirm this photo does not show students or other children.</span>
           </label>
         )}
         <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" value={f.company} onChange={set('company')} name="company" />
         <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" checked={f.isPublic} onChange={set('isPublic')} className="mt-1 h-4 w-4 accent-[#FF4E6A]" />
+          <input type="checkbox" checked={f.isPublic} onChange={set('isPublic')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
           <span>This is open to the public, the details are accurate, and I agree to the <Link href="/disclaimer" className="underline">disclaimer</Link>.</span>
         </label>
       </div>

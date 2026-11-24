@@ -127,7 +127,7 @@ export async function CommunityBoard({
             </select>
           </label>
           <label className="flex items-center gap-2 text-sm font-semibold sm:col-span-2">
-            <input type="checkbox" name="free" value="1" defaultChecked={free} className="h-4 w-4 accent-[#FF4E6A]" />
+            <input type="checkbox" name="free" value="1" defaultChecked={free} className="h-4 w-4 accent-[#F05A9D]" />
             Free listings only
           </label>
           <button type="submit" className="h-12 rounded-full bg-foreground px-5 text-sm font-semibold text-background sm:col-span-2">Show Listings</button>

@@ -16,9 +16,9 @@ The root layout, `app/layout.tsx`, is the single place for app-wide providers an
 
 | Role | Font | Tailwind Class | Default Usage |
 |------|------|---------------|-------|
-| Body | DM Sans | `font-sans` | All body text, labels, descriptions |
-| Display | Plus Jakarta Sans | `font-display` | Page titles, hero headings, section headers |
-| Mono | JetBrains Mono | `font-mono` | Code snippets, numeric data, IDs, timestamps |
+| Body | Inter | `font-sans` | All body text, labels, descriptions |
+| Display | Manrope | `font-display` | Page titles, hero headings, section headers |
+| Mono | Inter | `font-mono` | Numeric data, IDs, timestamps |
 
 **Size hierarchy:** Use Tailwind's scale. Headings: `text-4xl`→`text-3xl`→`text-2xl`→`text-xl`. Body: `text-base`→`text-sm`. Captions: `text-xs`.
 
@@ -34,7 +34,7 @@ All colors use CSS variables — **never hardcode color values**.
 |-------|---------|
 | `background` / `foreground` | Page-level bg and text |
 | `card` / `card-foreground` | Card surfaces |
-| `primary` / `primary-foreground` | Brand buttons, links, accents |
+| `primary` / `primary-foreground` | Brand orange `#FF7A35` with near-black ink `#1A1408`. Pink is `#F05A9D`. |
 | `secondary` / `secondary-foreground` | Secondary buttons, subtle highlights |
 | `muted` / `muted-foreground` | Disabled states, helper text, subtle backgrounds |
 | `accent` / `accent-foreground` | Hover states, active nav items |
@@ -81,7 +81,7 @@ These are CSS variables only — use them directly in inline styles or custom CS
 
 | Token | Value | Default Usage |
 |-------|-------|-------|
-| `--radius` | 0.625rem | Default (buttons, inputs, cards) |
+| `--radius` | 12px | Controls. Cards are 16px, heroes 24px. |
 | `--radius-sm` | calc(var(--radius) - 4px) | Small elements (badges, chips) |
 | `--radius-lg` | calc(var(--radius) + 4px) | Large containers, hero cards |
 | `--radius-full` | 9999px | Avatars, pills, circular buttons |

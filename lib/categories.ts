@@ -1,3 +1,4 @@
+import { BRAND_ORANGE } from '@/lib/brand'
 import { suburbFromAddress, tidyVenueName } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
 import { foldSearchText } from '@/lib/search-fold'
@@ -19,14 +20,14 @@ export const CATEGORIES: CategoryDef[] = [
   { name: 'Nightlife', icon: 'PartyPopper', color: '#6B21A8', subTags: ['Club Night', 'Bar Event', 'DJ Set', 'Party'] },
   { name: 'Community', icon: 'Users', color: '#1D4ED8', subTags: ['Markets', 'Festival', 'Parade', 'Cultural', 'Fundraiser', 'Volunteering', 'Dating', 'Social'] },
   { name: 'Business', icon: 'Briefcase', color: '#1F2937', subTags: ['Conference', 'Networking', 'Workshop', 'Seminar', 'Expo'] },
-  { name: 'Wellness', icon: 'Heart', color: '#0F766E', subTags: ['Yoga', 'Meditation', 'Fitness', 'Health', 'Mindfulness'] },
+  { name: 'Wellness', icon: 'Leaf', color: '#0F766E', subTags: ['Yoga', 'Meditation', 'Fitness', 'Health', 'Mindfulness'] },
   { name: 'Education', icon: 'GraduationCap', color: '#1E40AF', subTags: ['Talk', 'Tour', 'Course', 'Workshop'] },
 ]
 
 /** Solid fill for a category chip or email placeholder. Unknown names use the brand midpoint. */
 export function categoryColor(name: string): string {
   const key = name.trim().toLowerCase()
-  return CATEGORIES.find((c) => c.name.toLowerCase() === key)?.color ?? '#FF5A3C'
+  return CATEGORIES.find((c) => c.name.toLowerCase() === key)?.color ?? BRAND_ORANGE
 }
 
 /** Ink that stays readable on a category fill. */

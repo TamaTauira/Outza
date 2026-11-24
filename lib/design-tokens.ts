@@ -1,7 +1,7 @@
 /**
  * VibePeep visual tokens (design spec v1.1, section 10.2).
  * CSS custom properties in app/design-tokens.css must match these values.
- * Logo files, the roaming mascot and email colours stay on the artwork hexes in lib/brand.ts.
+ * Logo files stay as artwork. Brand orange and pink are #FF7A35 and #F05A9D everywhere, including email.
  */
 
 export const VP_COLOUR = {
@@ -19,6 +19,7 @@ export const VP_COLOUR = {
   brandAmber: '#FFC078',
   /** Orange small-text on a light surface. #FF7A35 is below 4.5:1 on white. */
   brandOrangeInk: '#9A3412',
+  onPrimary: '#1A1408',
 } as const
 
 export const VP_RADIUS = {

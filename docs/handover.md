@@ -9,7 +9,7 @@ _Prepared 27 Oct 2026. Read this whole document before changing any code. It cov
 ## 0. TL;DR
 
 - **What:** VibePeep is an Australian "what's on" events website. It pulls public events from lawful feeds into one board, lets people save favourites, build a night-out itinerary and ask an AI search for ideas. It also has community listings ("VibePeep Local"), a promoter dashboard with paid promotions, and a weekly email newsletter ("THE WEEKENDER").
-- **Brand:** wordmark **VibePeep** (Vibe in the text colour, Peep in an orange-to-pink gradient) and the peeking-eyes icon. Tagline **"Take a peep at what's happening."** Sub-line **"Events · Experiences · Local discoveries."** Fun, energetic, witty copy. Accents `#FF8A1A` to `#FF4E6A`.
+- **Brand:** wordmark **VibePeep** (Vibe in the text colour, Peep in an orange-to-pink gradient) and the peeking-eyes icon. Tagline **"Take a peep at what's happening."** Sub-line **"Events · Experiences · Local discoveries."** Fun, energetic, witty copy. Accents `#FF7A35` to `#F05A9D`.
 - **Live:** https://outza-outza.vercel.app. `https://outza-sepia.vercel.app` 308-redirects there. Set `NEXT_PUBLIC_SITE_URL` only for a custom domain.
 - **Stack:** Next.js **16** (App Router, Turbopack), React, TypeScript, Tailwind 3.4 + shadcn/Radix UI, Prisma + PostgreSQL, Auth.js / next-auth **v5 beta** (credentials + Google), Stripe (currently **not configured → test mode**), Leaflet maps (Esri tiles), sharp for images, S3 for uploads. LLM calls use Vercel AI Gateway. Outbound email uses Yahoo SMTP when `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` are set, and Resend otherwise. Sending stays off when neither is configured.
 - **Hosting:** Vercel. Deploys come from this git repository.

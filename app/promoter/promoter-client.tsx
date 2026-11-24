@@ -405,7 +405,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
 
 function TierBadge({ tier }: { tier: string }) {
   const t = tierDef(tier)
-  return <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-black" style={{ backgroundColor: t?.color ?? '#FF7A1A' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
+  return <span className="shrink-0 rounded px-1.5 py-0.5 text-xs font-bold text-black" style={{ backgroundColor: t?.color ?? '#FF7A35' }}>{(t?.name ?? productName(tier)).toUpperCase()}</span>
 }
 
 const blankListing = (city: string) => ({

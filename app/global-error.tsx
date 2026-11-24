@@ -20,7 +20,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
         <div style={{ textAlign: 'center', maxWidth: 440, padding: 24 }}>
           <h1 style={{ fontSize: 28, fontWeight: 900 }}>{network ? 'The signal dropped.' : 'Well, that wasn\'t on the programme.'}</h1>
           <p style={{ color: '#555' }}>{network ? 'VibePeep is fine. The connection blinked. Give it another go?' : 'VibePeep blinked. We\'ve already been told and we\'re on it.'}</p>
-          <button onClick={() => reset()} style={{ marginTop: 12, padding: '10px 20px', borderRadius: 8, border: 0, background: '#E24B2A', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{network ? 'Try again' : 'Try Again'}</button>
+          <button onClick={() => reset()} style={{ marginTop: 12, padding: '10px 20px', borderRadius: 8, border: 0, background: '#FF7A35', color: '#1a1408', fontWeight: 700, cursor: 'pointer' }}>{network ? 'Try again' : 'Try Again'}</button>
         </div>
       </body>
     </html>

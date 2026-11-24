@@ -147,7 +147,7 @@ export function formatPrice(
   }
   if (min == null) {
     if (price && !UNKNOWN_LABEL.test(price.trim())) return { prefix: '', value: price.trim(), kind: 'paid' }
-    return { prefix: '', value: 'Price TBA', kind: 'unknown' }
+    return { prefix: '', value: 'See website', kind: 'unknown' }
   }
   if (max == null || max === min) {
     if (min === 0) return { prefix: '', value: 'Free', kind: 'free' }

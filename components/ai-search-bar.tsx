@@ -2,13 +2,18 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CalendarDays, ChevronDown, Loader2, MapPin, SlidersHorizontal, Sparkles, X } from 'lucide-react'
-import { categoryIcon, dayLabel, formatTime } from '@/lib/board'
+import { ArrowRight, CalendarDays, CalendarRange, ChevronDown, Loader2, MapPin, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { categoryIcon, dayLabel } from '@/lib/board'
+import { formatTime } from '@/lib/format'
 import { CATEGORIES } from '@/lib/categories'
 import { matchPlanPick, PLAN_PICKS, type PlanPick, type PlanView } from '@/lib/plan-picks'
 import { eventPath } from '@/lib/seo'
 import { cn } from '@/lib/utils'
-import { OutingItinerary } from '@/components/outing-itinerary'
+import { Button } from '@/components/ui/button'
+import { Chip, ChipGroup } from '@/components/ui/chip'
+import { IconButton } from '@/components/ui/icon-button'
+import { PlanCard } from '@/components/plan-card'
+import { isLgbtiTerm } from '@/lib/search-fold'
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
   lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; subTag?: string; paidOnly?: boolean; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
@@ -28,7 +33,8 @@ const BUDGET_OPTS: { key: Exclude<Budget, ''>; label: string }[] = [
 interface AiResult { id: string; title: string; date: string; time: string | null; venueName: string; suburb: string | null; city: string; category: string; isFree: boolean; price: string | null }
 interface AiResponse { filters: AiSearchFilters; ai: boolean; relaxed: boolean; total: number; results: AiResult[] }
 
-const SUGGESTIONS = ['Saturday date night', 'Family Sunday', 'Free afternoon', 'Live music', 'Family day out', 'Comedy under $40', 'LGBTIQ+ this week']
+const PLAN_SUGGESTIONS = ['Saturday date night', 'Family Sunday', 'Free afternoon', 'Family day out']
+const SEARCH_SUGGESTIONS = ['Live music', 'Comedy under $40', 'LGBTIQ+ this week']
 
 function pickedHints(h: Hints) {
   return !!(h.when || h.budget || h.category || h.area.trim())
@@ -44,14 +50,11 @@ function understood(f: AiSearchFilters, today: string | null): string[] {
     f.lgbtiq ? 'LGBTIQ+' : '',
     f.city || '',
     f.suburb ? `Near ${f.suburb}` : '',
-    ...f.keywords.map((k) => `“${k}”`),
+    ...f.keywords.filter((word) => !(f.lgbtiq && isLgbtiTerm(word))).map((k) => `“${k}”`),
   ].filter(Boolean)
 }
 
-const pickClass = (on: boolean) => cn(
-  'h-9 rounded-full px-3 text-sm ring-1 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
-  on ? 'bg-primary text-primary-foreground ring-primary font-medium' : 'bg-neutral-100 text-neutral-800 ring-neutral-200 hover:bg-neutral-200',
-)
+const fieldClass = 'h-control w-full rounded-full border border-border bg-[var(--vp-on-light-fill)] px-3.5 text-sm font-semibold text-[var(--vp-on-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary'
 
 /** Hero search. A plan-shaped ask shows a ready-made outing. Everything else stays a listing search. */
 export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean; inputId?: string; goToPage?: boolean }) {
@@ -64,6 +67,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
   const [planBusy, setPlanBusy] = useState(false)
   const [planError, setPlanError] = useState('')
   const [plan, setPlan] = useState<PlanView | null>(null)
+  const [planHistory, setPlanHistory] = useState<PlanView[]>([])
   const [planFallback, setPlanFallback] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -101,6 +105,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
         return 'empty'
       }
       setPlan(view)
+      setPlanHistory([])
       setData(null)
       setPlanFallback('')
       return 'ready'
@@ -171,6 +176,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
     setData(null)
     setError('')
     setPlan(null)
+    setPlanHistory([])
     setPlanFallback('')
     setPlanError('')
     loadedSlug.current = null
@@ -265,14 +271,51 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
     e.preventDefault()
   }
 
+  const rememberPlan = (next: PlanView | null) => {
+    if (plan) setPlanHistory((history) => [...history.slice(-9), plan])
+    setPlan(next)
+  }
+
+  const editPlan = async (action: 'swap' | 'add' | 'shuffle' | 'remove', replaceId?: string) => {
+    if (!plan) return
+    const eventIds = plan.stops.flatMap((stop) => (stop.kind === 'event' ? [stop.event.id] : []))
+    setPlanBusy(true)
+    setPlanError('')
+    try {
+      const res = await fetch('/api/outings', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: plan.slug, city: plan.city || city, action, eventIds, replaceId }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok || !body?.plan) {
+        setPlanError(typeof body?.error === 'string' ? body.error : 'Nothing else fits that slot.')
+        return
+      }
+      rememberPlan(body.plan as PlanView)
+    } catch (err) {
+      console.error(err)
+      setPlanError('The planner’s having a moment. Give it another go.')
+    } finally {
+      setPlanBusy(false)
+    }
+  }
+
+  const undoPlan = () => {
+    const previous = planHistory[planHistory.length - 1]
+    if (!previous) return
+    setPlan(previous)
+    setPlanHistory((history) => history.slice(0, -1))
+  }
+
   const errorEl = error
-    ? <p role="alert" className={open ? 'mb-3 text-sm text-red-700' : 'mt-3 text-sm text-[#ffb4a6]'}>{error}</p>
+    ? <p role="alert" className={open ? 'mb-3 text-sm font-medium text-red-700' : 'mt-hero rounded-card border border-border bg-card p-card text-sm font-medium text-foreground'}>{error}</p>
     : null
 
   return (
     <div className="flex-1 min-w-0">
-      <div ref={rootRef} className="rounded-xl bg-white text-neutral-900 ring-2 ring-primary/50 focus-within:ring-primary shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] overflow-hidden">
-        <form role="search" action={goToPage ? '/search' : undefined} method={goToPage ? 'get' : undefined} onSubmit={(e) => { if (goToPage) return; e.preventDefault(); void search(q, hints, true) }} className="flex items-center gap-2 pl-4 pr-1.5 h-14">
+      <div ref={rootRef} className="overflow-hidden rounded-hero bg-white text-[var(--vp-on-light)] ring-2 ring-primary/50 focus-within:ring-primary shadow-vp-md">
+        <form role="search" action={goToPage ? '/search' : undefined} method={goToPage ? 'get' : undefined} onSubmit={(e) => { if (goToPage) return; e.preventDefault(); void search(q, hints, true) }} className="flex h-control-lg items-center gap-2 pl-4 pr-1.5">
           <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />
           {goToPage && <input type="hidden" name="city" value={city} />}
           <label htmlFor={inputId} className="sr-only">Tell us your vibe</label>
@@ -288,43 +331,42 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
             }}
             onChange={(e) => setQ(e.target.value)}
             placeholder={placeholder ?? 'Ask for a vibe…'}
-            className="flex-1 min-w-0 bg-transparent text-base sm:text-lg text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
+            className="min-w-0 flex-1 bg-transparent text-base text-[var(--vp-on-light)] placeholder:text-[var(--vp-text-muted)] focus:outline-none" />
           <p id={`${inputId}-help`} className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
           {q && !working && (
-            <button type="button" aria-label="Clear search" onClick={clearBar} className="p-1.5 rounded-md text-neutral-500 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"><X className="w-4 h-4" /></button>
+            <IconButton type="button" variant="ghost" label="Clear search" onClick={clearBar} className="text-[var(--vp-on-light)]"><X className="h-4 w-4" /></IconButton>
           )}
-          <button
+          <IconButton
             type="button"
+            variant="ghost"
             aria-expanded={open}
             aria-controls={`${inputId}-panel`}
-            aria-label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
+            label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
             onClick={() => setOpen((v) => !v)}
-            className="relative grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            className="relative text-[var(--vp-on-light)]"
           >
             <SlidersHorizontal className="h-4 w-4" aria-hidden />
             {hintCount > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-xs font-bold leading-none text-primary-foreground" aria-hidden>{hintCount}</span>
+              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-xs font-bold leading-none text-on-primary" aria-hidden>{hintCount}</span>
             )}
-          </button>
-          <button
-            type="submit"
-            disabled={working}
-            aria-label="Find events"
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-1 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:brightness-95 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/30"
-          >
+          </IconButton>
+          <Button type="submit" size="md" disabled={working} aria-label="Find events" className="shrink-0">
             {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4 sm:hidden" aria-hidden /><span className="hidden sm:inline">Find events</span></>}
-          </button>
+          </Button>
         </form>
 
         {chips && (
-          <div className="px-3 pb-2.5">
-            <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Suggested searches">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} type="button" onClick={() => search(s, hints, true)} disabled={busy} className="h-8 shrink-0 rounded-full bg-neutral-100 px-3 text-sm text-neutral-800 ring-1 ring-neutral-200 hover:bg-neutral-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 disabled:opacity-60">
-                  {s}
-                </button>
+          <div className="grid gap-3 px-3 pb-3">
+            <ChipGroup onLight label="Plan my..." icon={<CalendarRange className="h-3.5 w-3.5" aria-hidden />}>
+              {PLAN_SUGGESTIONS.map((s) => (
+                <Chip key={s} onLight type="button" onClick={() => search(s, hints, true)} disabled={busy}>{s}</Chip>
               ))}
-            </div>
+            </ChipGroup>
+            <ChipGroup onLight label="Search" icon={<Search className="h-3.5 w-3.5" aria-hidden />}>
+              {SEARCH_SUGGESTIONS.map((s) => (
+                <Chip key={s} onLight type="button" onClick={() => search(s, hints, true)} disabled={busy}>{s}</Chip>
+              ))}
+            </ChipGroup>
           </div>
         )}
 
@@ -340,43 +382,43 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
             {errorEl}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div role="group" aria-label="When" className="min-w-0">
-                <div className="mb-1.5 text-xs font-medium text-neutral-500">When</div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="vp-eyebrow mb-2 text-[var(--vp-on-light)]">When</div>
+                <div className="flex flex-wrap gap-2">
                   {WHEN_OPTS.map((o) => (
-                    <button key={o.key} type="button" title={o.hint} aria-pressed={hints.when === o.key} onClick={() => setHint('when', o.key)} className={pickClass(hints.when === o.key)}>{o.label}</button>
+                    <Chip key={o.key} onLight title={o.hint} pressed={hints.when === o.key} onClick={() => setHint('when', o.key)}>{o.label}</Chip>
                   ))}
                 </div>
               </div>
               <div role="group" aria-label="Budget" className="min-w-0">
-                <div className="mb-1.5 text-xs font-medium text-neutral-500">Budget</div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="vp-eyebrow mb-2 text-[var(--vp-on-light)]">Budget</div>
+                <div className="flex flex-wrap gap-2">
                   {BUDGET_OPTS.map((o) => (
-                    <button key={o.key} type="button" aria-pressed={hints.budget === o.key} onClick={() => setHint('budget', o.key)} className={pickClass(hints.budget === o.key)}>{o.label}</button>
+                    <Chip key={o.key} onLight pressed={hints.budget === o.key} onClick={() => setHint('budget', o.key)}>{o.label}</Chip>
                   ))}
                 </div>
               </div>
               <div className="min-w-0">
-                <label htmlFor="ai-search-category" className="mb-1.5 block text-xs font-medium text-neutral-500">Vibe</label>
+                <label htmlFor="ai-search-category" className="vp-eyebrow mb-2 block text-[var(--vp-on-light)]">Vibe</label>
                 <span className="relative block">
                   <select id="ai-search-category" value={hints.category} onChange={(e) => setHint('category', e.target.value)} aria-label="Vibe"
-                    className={cn(pickClass(!!hints.category), 'w-full appearance-none pr-8 text-left')}>
-                    <option value="" className="bg-white text-neutral-900">Any vibe</option>
-                    {CATEGORIES.map((c) => <option key={c.name} value={c.name} className="bg-white text-neutral-900">{c.name}</option>)}
+                    className={cn(fieldClass, 'appearance-none pr-8 text-left', hints.category && 'bg-primary text-on-primary')}>
+                    <option value="">Any vibe</option>
+                    {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-80" />
                 </span>
               </div>
               <div className="min-w-0">
-                <label htmlFor="ai-search-suburb" className="mb-1.5 block text-xs font-medium text-neutral-500">Suburb</label>
+                <label htmlFor="ai-search-suburb" className="vp-eyebrow mb-2 block text-[var(--vp-on-light)]">Suburb</label>
                 <span className="relative block">
-                  <MapPin className={cn('pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5', hints.area.trim() ? 'text-primary-foreground' : 'text-neutral-500')} />
+                  <MapPin className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', hints.area.trim() ? 'text-on-primary' : 'text-[var(--vp-on-light)]')} />
                   <input id="ai-search-suburb" value={hints.area} onChange={(e) => setHint('area', e.target.value)} maxLength={40} autoComplete="off"
-                    placeholder="Any suburb" className={cn(pickClass(!!hints.area.trim()), 'w-full pl-8 placeholder:text-neutral-500')} />
+                    placeholder="Any suburb" className={cn(fieldClass, 'pl-9', hints.area.trim() && 'bg-primary text-on-primary placeholder:text-on-primary/70')} />
                 </span>
               </div>
               {hasHints && (
                 <div className="flex justify-end sm:col-span-2">
-                  <button type="button" onClick={clearHints} className="text-sm font-medium text-neutral-500 hover:text-neutral-900 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 rounded">Clear picks</button>
+                  <button type="button" onClick={clearHints} className="inline-flex h-control items-center rounded-full px-3 text-sm font-semibold text-[var(--vp-on-light)] underline-offset-2 hover:underline">Clear picks</button>
                 </div>
               )}
             </div>
@@ -386,60 +428,54 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
 
       {!open && errorEl}
 
-      {planError && <p role="alert" className="mt-3 text-sm text-[#ffb4a6]">{planError}</p>}
+      {planError && <p role="alert" className="mt-hero text-sm font-medium text-destructive">{planError}</p>}
 
       {planBusy && !plan && (
-        <p className="mt-4 text-sm text-white/80" aria-live="polite">Stitching the stops together…</p>
+        <p className="mt-hero text-sm text-foreground" aria-live="polite">Stitching the stops together…</p>
       )}
 
       {planReady && plan && (
-        <div className="mt-4 rounded-xl bg-white/[0.04] p-4 ring-1 ring-white/10" aria-live="polite">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#ffb4a6]">Your plan</p>
-          <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-            <h2 className="font-display text-xl font-bold leading-tight">{plan.title}</h2>
-            <span className="text-sm text-[#ffb4a6]">This plan stays here. Save the stops you want.</span>
-          </div>
-          <p className="mt-1 text-sm text-white/70">{plan.city}{plan.date ? ` · ${dayLabel(plan.date, today)}` : ''}</p>
-          <p className="mt-2 text-sm text-white/80">{plan.blurb}</p>
-          {plan.stops.length ? (
-            <div className="mt-3">
-              <OutingItinerary stops={plan.stops} legs={plan.legs} tone="hero" today={today} />
-              {plan.legs.length > 0 && <p className="mt-3 text-xs text-white/55">Travel times are a rough hop from the distance between stops. Not a timetable, and not the traffic.</p>}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-white/80">The board’s quiet for that one{plan.city ? ` in ${plan.city}` : ''}. Try another city, or ask me for a single thing to do.</p>
-          )}
-        </div>
+        <PlanCard
+          plan={plan}
+          today={today}
+          busy={planBusy}
+          canUndo={planHistory.length > 0}
+          onSwap={(id) => { void editPlan('swap', id) }}
+          onAdd={() => { void editPlan('add') }}
+          onShuffle={() => { void editPlan('shuffle') }}
+          onRemove={(id) => { void editPlan('remove', id) }}
+          onUndo={undoPlan}
+        />
       )}
 
       {busy && !data && !planReady && (
-        <p className="mt-4 text-sm text-white/80" aria-live="polite">Having a peep…</p>
+        <p className="mt-hero text-sm text-foreground" aria-live="polite">Having a peep…</p>
       )}
 
       {data && !planReady && (
-        <div className="mt-4 rounded-xl bg-white/[0.04] ring-1 ring-white/10 p-4" aria-live="polite">
-          {planFallback && <p className="mb-3 text-sm text-white/80">{planFallback}</p>}
-          <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-            <span className="text-white/60">{data.ai ? 'Got it:' : 'Searching for:'}</span>
-            {understood(data.filters, today).map((c) => <span key={c} className="rounded-full bg-primary/15 text-[#ffb4a6] px-2.5 py-0.5 ring-1 ring-primary/30">{c}</span>)}
+        <div className="mt-hero rounded-card border border-border bg-card p-card text-card-foreground shadow-vp-sm" aria-live="polite">
+          {planFallback && <p className="mb-3 text-sm text-foreground">{planFallback}</p>}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold text-foreground">{data.ai ? 'Got it:' : 'Searching for:'}</span>
+            {understood(data.filters, today).map((c) => <span key={c} className="inline-flex min-h-6 items-center rounded-full bg-muted px-2.5 py-1 text-sm font-semibold text-foreground">{c}</span>)}
           </div>
-          {data.relaxed && <p className="mt-2 text-xs sm:text-sm text-white/70">Couldn’t nail every word, but these tick most of your boxes.</p>}
+          {data.relaxed && <p className="mt-2 text-sm text-muted-foreground">Couldn’t nail every word, but these tick most of your boxes.</p>}
 
           {data.results.length ? (
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {data.results.map((e) => {
                 const Icon = categoryIcon(e.category)
-                const t = formatTime(e.time)
+                const clock = formatTime(e.time)
                 return (
-                  <li key={e.id}>
-                    <Link href={eventPath(e)} className="group flex gap-3 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] p-3 ring-1 ring-white/5 transition-colors">
-                      <span className="mt-0.5 grid place-items-center w-9 h-9 rounded-md bg-primary/15 text-primary shrink-0"><Icon className="w-4 h-4" /></span>
+                  <li key={e.id} className="flex">
+                    <Link href={eventPath(e)} className="group flex min-h-control w-full gap-3 rounded-control border border-border bg-background p-3 text-foreground hover:bg-muted">
+                      <span className="mt-0.5 grid h-control w-control shrink-0 place-items-center rounded-control bg-primary/15 text-primary"><Icon className="h-4 w-4" /></span>
                       <span className="min-w-0">
                         <span className="block font-semibold leading-snug line-clamp-2 group-hover:underline">{e.title}</span>
-                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/70">
-                          <span className="inline-flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />{dayLabel(e.date, today)}{e.time ? ` · ${t.hm}${t.ampm}` : ''}</span>
-                          <span className="inline-flex items-center gap-1 min-w-0"><MapPin className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{e.venueName}{e.suburb ? `, ${e.suburb}` : ''}</span></span>
-                          {e.isFree && <span className="rounded bg-emerald-400/15 text-emerald-300 px-1.5">Free</span>}
+                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-foreground">
+                          <span className="inline-flex items-center gap-1"><CalendarDays className="h-4 w-4" />{dayLabel(e.date, today)}{clock ? ` · ${clock}` : ''}</span>
+                          <span className="inline-flex min-w-0 items-center gap-1"><MapPin className="h-4 w-4 shrink-0" /><span className="truncate">{e.venueName}{e.suburb ? `, ${e.suburb}` : ''}</span></span>
+                          {e.isFree && <span className="rounded-full bg-[hsl(var(--free))] px-2 py-0.5 text-xs font-semibold text-white">Free</span>}
                         </span>
                       </span>
                     </Link>
@@ -448,17 +484,17 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
               })}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-white/80">I had a proper look. Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
+            <p className="mt-3 text-sm text-foreground">I had a proper look. Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
           )}
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-white/55">Real events only. We read your ask. We don’t invent listings.</p>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => { reqId.current++; setBusy(false); setData(null); setQ(''); setHints(NO_HINTS); setError(''); inputRef.current?.focus() }} className="rounded-lg px-3 h-9 text-sm text-white/80 hover:text-white hover:bg-white/[0.06]">Start Fresh</button>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">Real events only. We read your ask. We don’t invent listings.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="ghost" size="md" onClick={() => { reqId.current++; planReq.current += 1; setBusy(false); setPlanBusy(false); setData(null); setPlan(null); setPlanHistory([]); setQ(''); setHints(NO_HINTS); setError(''); setPlanError(''); inputRef.current?.focus() }}>Start Fresh</Button>
               {data.total > 0 && (
-                <button type="button" onClick={() => onShowAll(data.filters)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-3 h-9 text-sm font-medium hover:bg-white/[0.14]">
-                  {data.total > data.results.length ? `See all ${data.total} on the board` : 'Open on the board'}<ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <Button type="button" variant="outline" size="md" onClick={() => onShowAll(data.filters)}>
+                  {data.total > data.results.length ? `See all ${data.total} on the board` : 'Open on the board'}<ArrowRight className="h-4 w-4" />
+                </Button>
               )}
             </div>
           </div>

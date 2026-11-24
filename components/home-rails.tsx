@@ -218,7 +218,7 @@ function Shown({ ids, onShown }: { ids: string[]; onShown?: (ids: string[]) => v
 }
 
 function RailCard({ ev }: { ev: RailEvent }) {
-  const color = CATEGORIES.find((c) => c.name === ev.category)?.color ?? '#FF7A1A'
+  const color = CATEGORIES.find((c) => c.name === ev.category)?.color ?? '#FF7A35'
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const time = formatTime(ev.time)
   return (

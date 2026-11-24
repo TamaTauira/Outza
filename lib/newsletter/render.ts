@@ -3,7 +3,8 @@ import { formatTime } from '@/lib/board'
 import { priceSummary } from '@/lib/quality'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
-import { EMAIL_FONT, emailBanner, emailLockup } from '@/lib/email-brand'
+import { BRAND_ORANGE, BRAND_PINK } from '@/lib/brand'
+import { EMAIL_FONT, emailBanner, emailButton, emailLockup } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
@@ -11,9 +12,9 @@ import { trustLine } from './taste'
 const C = {
   ink: '#1c1c1e',
   head: '#141414',
-  accent: '#FF4E6A',
-  orange: '#FF8A1A',
-  deep: '#E24B2A',
+  accent: BRAND_PINK,
+  orange: BRAND_ORANGE,
+  deep: BRAND_ORANGE,
   page: '#f6f1ea',
   card: '#ffffff',
   muted: '#5e5e5e',
@@ -81,20 +82,7 @@ const statusNote = (e: NlEvent) => (e.status === 'RESCHEDULED' ? 'Rescheduled - 
 const T = 'role="presentation" cellpadding="0" cellspacing="0" border="0"'
 
 function button(href: string, label: string) {
-  const safe = x(label)
-  const url = x(href)
-  const width = Math.min(340, Math.max(168, label.length * 8 + 56))
-  return `<!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:46px;v-text-anchor:middle;width:${width}px;" arcsize="50%" strokecolor="${C.deep}" fillcolor="${C.deep}">
-<w:anchorlock/>
-<center style="color:#ffffff;font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;">${safe} &#8594;</center>
-</v:roundrect>
-<![endif]-->
-<!--[if !mso]><!-->
-<table ${T}><tr><td bgcolor="${C.deep}" style="border-radius:999px;background:${C.deep};">
-<a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${FONT};font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">${safe} &rarr;</a>
-</td></tr></table>
-<!--<![endif]-->`
+  return emailButton(href, `${label} →`)
 }
 
 function coverArt(src: string, alt: string, w: number, h: number, href: string, kind: 'hero' | 'thumb') {

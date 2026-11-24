@@ -30,6 +30,12 @@ export function mapIsLive(map: any) {
   return !!map && !map._vpRemoved && !!map.getContainer?.()
 }
 
+/** Remove a basemap layer while the map is still intact. */
+export function detachBasemap(map: any, layer: any) {
+  if (!map || !layer || !mapIsLive(map)) return
+  try { map.removeLayer(layer) } catch { /* already gone */ }
+}
+
 /** Remove layers first, then the map. Safe to call twice. */
 export function destroyLeafletMap(map: any) {
   if (!map || map._vpRemoved) return

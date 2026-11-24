@@ -3,12 +3,14 @@ export const BRAND_NAME = 'VibePeep'
 export const BRAND_TAGLINE = "Take a peep at what's happening."
 export const BRAND_SUBLINE = 'Events · Experiences · Local discoveries.'
 
-export const BRAND_ORANGE = '#FF8A1A'
-export const BRAND_PINK = '#FF4E6A'
-/** Midpoint of the wordmark gradient. Safe solid for email clients. */
-export const BRAND_MID = '#FF5A3C'
-/** Deeper orange for white text on buttons in light mode and email fills. */
-export const BRAND_DEEP = '#E24B2A'
+export const BRAND_ORANGE = '#FF7A35'
+export const BRAND_PINK = '#F05A9D'
+/** Solid stand-in when a gradient cannot be drawn. The pair is orange and pink. */
+export const BRAND_MID = '#FF7A35'
+/** Same orange. Email buttons use near-black ink, not a third orange. */
+export const BRAND_DEEP = '#FF7A35'
+/** Ink on a brand-orange fill. */
+export const BRAND_ON_PRIMARY = '#1A1408'
 
 /** Light wordmark: black Vibe, orange-to-pink Peep, transparent ground. */
 export const BRAND_WORDMARK_SRC = '/vibepeep-wordmark.png'

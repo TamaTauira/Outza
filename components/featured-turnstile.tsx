@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { holdScrollRestore } from '@/lib/scroll-memory'
 import Link from 'next/link'
-import { Heart, Megaphone } from 'lucide-react'
+import { Bookmark, Megaphone } from 'lucide-react'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
@@ -62,7 +62,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const { isSaved, toggle } = useSaved()
   const category = parentCategory(it.category) || it.category
-  const color = CATEGORIES.find((c) => c.name === category)?.color ?? '#FF7A1A'
+  const color = CATEGORIES.find((c) => c.name === category)?.color ?? '#FF7A35'
   const title = displayTitle(it.title)
   const t = tierDef(it.tier)
   const badge = it.sponsored ? { label: 'SPONSORED', bg: t?.color ?? '#C0C7D1', fg: '#000000' } : null
@@ -94,7 +94,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
         </div>
       </Link>
       <button type="button" onClick={save} aria-pressed={saved} aria-label={saved ? `Remove ${title} from saved` : `Save ${title}`} className="absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white">
-        <Heart className={saved ? 'h-4 w-4 fill-current text-[#FF4E6A]' : 'h-4 w-4'} />
+        <Bookmark className={saved ? 'h-4 w-4 fill-current text-brand-pink' : 'h-4 w-4'} />
       </button>
     </article>
   )
