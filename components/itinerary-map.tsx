@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import { createBasemap } from '@/lib/map-basemap'
-import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
+import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { coordsFitCity, fmtMin, planLeg } from '@/lib/travel'
 import { eventPath } from '@/lib/seo'
@@ -82,7 +82,11 @@ export function ItineraryMap({
         console.error('Itinerary map style failed:', err)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      detachBasemap(mapInstance.current, tileRef.current)
+      tileRef.current = null
+    }
   }, [ready, dark])
 
   useEffect(() => {
@@ -102,7 +106,7 @@ export function ItineraryMap({
       if (previous && pinOk(previous)) {
         const planned = planLeg(previous, stop)
         if (planned.kind === 'trip') {
-          const line = L.polyline([[previous.lat, previous.lng], at], { color: '#FF5A3C', weight: 4, opacity: 0.9 })
+          const line = L.polyline([[previous.lat, previous.lng], at], { color: '#FF7A35', weight: 4, opacity: 0.9 })
           line.bindTooltip(`≈ ${fmtMin(planned.leg.recommendedMin)} · ${planned.leg.mode === 'walking' ? 'walk' : 'drive'}`, { sticky: true })
           group.addLayer(line)
         }
@@ -110,7 +114,7 @@ export function ItineraryMap({
       const custom = stop.kind === 'custom'
       const icon = L.divIcon({
         className: 'se-marker-wrap',
-        html: `<div style="width:32px;height:32px;border-radius:${custom ? '8px' : '999px'};background:${custom ? '#1c1c1e' : '#FF5A3C'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.25)">${number}</div>`,
+        html: `<div style="width:32px;height:32px;border-radius:${custom ? '8px' : '999px'};background:${custom ? '#1c1c1e' : '#FF7A35'};color:${custom ? '#fff' : '#1a1408'};display:flex;align-items:center;justify-content:center;font-weight:700;border:2px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.25)">${number}</div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
       })

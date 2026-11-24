@@ -53,8 +53,8 @@ function Brush() {
     <svg viewBox="0 0 28 64" aria-hidden="true">
       <rect x="11" y="16" width="6" height="34" rx="2" fill="#3a2418" />
       <rect x="8" y="46" width="12" height="6" rx="1" fill="#C9A06A" />
-      <path d="M6 8h16l-2 12H8z" fill="#FF8A1A" />
-      <path d="M8 4h12l-1 6H9z" fill="#FF4E6A" />
+      <path d="M6 8h16l-2 12H8z" fill="#FF7A35" />
+      <path d="M8 4h12l-1 6H9z" fill="#F05A9D" />
     </svg>
   )
 }
@@ -62,8 +62,8 @@ function Brush() {
 function Dab() {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true">
-      <path d="M8 30c8-16 20-16 28-2" fill="none" stroke="#FF8A1A" strokeWidth="5" strokeLinecap="round" />
-      <path d="M14 36c6-8 12-8 18 0" fill="none" stroke="#FF4E6A" strokeWidth="4" strokeLinecap="round" />
+      <path d="M8 30c8-16 20-16 28-2" fill="none" stroke="#FF7A35" strokeWidth="5" strokeLinecap="round" />
+      <path d="M14 36c6-8 12-8 18 0" fill="none" stroke="#F05A9D" strokeWidth="4" strokeLinecap="round" />
     </svg>
   )
 }
@@ -71,11 +71,11 @@ function Dab() {
 function Flower() {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true">
-      <circle cx="24" cy="14" r="7" fill="#FF8A1A" />
-      <circle cx="34" cy="22" r="7" fill="#FF4E6A" />
-      <circle cx="30" cy="34" r="7" fill="#FF8A1A" />
-      <circle cx="16" cy="34" r="7" fill="#FF4E6A" />
-      <circle cx="12" cy="22" r="7" fill="#FF8A1A" />
+      <circle cx="24" cy="14" r="7" fill="#FF7A35" />
+      <circle cx="34" cy="22" r="7" fill="#F05A9D" />
+      <circle cx="30" cy="34" r="7" fill="#FF7A35" />
+      <circle cx="16" cy="34" r="7" fill="#F05A9D" />
+      <circle cx="12" cy="22" r="7" fill="#FF7A35" />
       <circle cx="24" cy="24" r="5" fill="#F6D56A" />
     </svg>
   )

@@ -3,13 +3,15 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bookmark, CalendarDays, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, MapPin, Plus, Search } from 'lucide-react'
+import { Bookmark, CalendarDays, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, Plus } from 'lucide-react'
 import { FilterBar, filterChipClass } from '@/components/filter-bar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { LocalNeighbourhoodMap, type LocalMapPin } from '@/components/local-neighbourhood-map'
-import { CITIES } from '@/lib/cities'
 import { HeroCard } from '@/components/hero-card'
+import { CityPicker } from '@/components/city-picker'
+import { SearchBar } from '@/components/search-bar'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { sectionByKey } from '@/lib/community-shared'
 import { dayLabel } from '@/lib/board'
 import { fmtTime } from '@/lib/local-shared'
@@ -182,22 +184,10 @@ export function LocalBrowse({
         title={<><span className="block">Good things are happening</span><span className="vp-gradient-line block text-brand-gradient">around the corner.</span></>}
         lede="From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you."
       >
-        <form className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start" onSubmit={(event) => { event.preventDefault(); applyQuery(query) }}>
-          <label className="inline-flex h-14 items-center gap-2 rounded-2xl bg-white/10 px-3">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" />
-            <span className="sr-only">Choose a city</span>
-            <select value={city} onChange={(event) => setCity(event.target.value)} className="min-w-0 flex-1 cursor-pointer bg-transparent font-medium text-white focus:outline-none" aria-label="City">
-              {CITIES.map((item) => <option key={item.name} value={item.name} className="bg-popover text-popover-foreground">{item.name}, {item.state}</option>)}
-            </select>
-          </label>
-          <div className="flex min-w-0 items-center gap-2 rounded-xl bg-white p-1.5 text-neutral-900 shadow-[0_10px_30px_-12px_rgba(232,85,63,0.55)] ring-2 ring-primary/50">
-            <Search className="ml-2 h-4 w-4 shrink-0 text-primary" />
-            <input value={query} onChange={(event) => setQuery(event.target.value.slice(0, 200))} placeholder="markets on this weekend" aria-label="Search local events" type="search" enterKeyHint="search" autoComplete="off" maxLength={200} className="h-11 min-w-0 flex-1 bg-transparent px-1 text-sm text-neutral-900 placeholder:text-neutral-500 focus:outline-none" />
-            <button type="submit" className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">
-              <Search className="h-4 w-4" />Search
-            </button>
-          </div>
-        </form>
+        <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+          <CityPicker value={city} onChange={setCity} onDark label="City" />
+          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="markets on this weekend" label="Search local events" />
+        </div>
         <div className="relative mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={onList} className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
           {hasListings && <button type="button" onClick={onMine} className="inline-flex h-11 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">Your listings</button>}
@@ -205,7 +195,7 @@ export function LocalBrowse({
         </div>
       </HeroCard>
 
-      <section className="relative mt-8" aria-labelledby="local-categories">
+      <section className="relative mt-hero" aria-labelledby="local-categories">
         <div className="flex items-end justify-between gap-3">
           <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
         </div>
@@ -274,13 +264,12 @@ export function LocalBrowse({
           </div>
         </div>
         <div className="mt-4 flex flex-col gap-2 px-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-          <div className="flex gap-1 rounded-full bg-muted p-1" role="tablist" aria-label="Local board view">
-            {([['list', 'List', List], ['board', 'Board', LayoutGrid], ['map', 'Map', MapIcon]] as const).map(([key, label, Icon]) => (
-              <button key={key} type="button" role="tab" aria-selected={mode === key} onClick={() => setMode(key)} className={cn('inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold lg:flex-none', mode === key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}>
-                <Icon className="h-4 w-4" />{label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={mode}
+            onChange={setMode}
+            label="Local board view"
+            options={[{ key: 'list', text: 'List', Icon: List }, { key: 'board', text: 'Board', Icon: LayoutGrid }, { key: 'map', text: 'Map', Icon: MapIcon }]}
+          />
           <div className="flex gap-2">
             {mode === 'list' && (
               <select value={sort} onChange={(event) => setSort(event.target.value === 'name' ? 'name' : 'soon')} aria-label="Sort the list" className="h-11 rounded-full border border-border bg-card px-3 text-sm">
@@ -437,7 +426,7 @@ function CategoryButton({ tile, on, onPick }: { tile: LocalTile; on: boolean; on
   return (
     <button type="button" aria-pressed={on} aria-label={tile.label} onClick={onPick} className={cn('flex w-[8.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition min-[1100px]:h-full min-[1100px]:w-auto min-[1100px]:min-w-0', on && 'ring-2 ring-primary ring-offset-2 ring-offset-background')}>
       <MascotFrame tile={tile} className="aspect-[5/4] w-full shrink-0" />
-      <span className="flex h-9 items-center justify-center px-1 text-center text-[11px] font-semibold leading-tight min-[1280px]:h-6 min-[1280px]:whitespace-nowrap min-[1280px]:px-0.5 min-[1280px]:text-[10px] min-[1280px]:tracking-tight">{tile.label}</span>
+      <span className="flex min-h-control items-center justify-center px-1 text-center text-caption font-semibold leading-tight">{tile.label}</span>
     </button>
   )
 }

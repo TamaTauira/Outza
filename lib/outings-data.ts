@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { CITY_NAMES } from '@/lib/cities'
 import { addDaysKey, cityToday } from '@/lib/seo'
 import { cityDef } from '@/lib/cities'
-import { buildOuting, OUTING_TEMPLATES, type BuiltOuting, type OutingEvent } from '@/lib/outings'
+import { buildOuting, editOutingEvents, finishOuting, OUTING_TEMPLATES, type BuiltOuting, type OutingEdit, type OutingEvent } from '@/lib/outings'
 
 export function outingCity(raw: string | undefined | null): string {
   return raw && CITY_NAMES.includes(raw) ? raw : 'Sydney'
@@ -39,4 +39,17 @@ export async function outingBySlug(slug: string, city: string): Promise<BuiltOut
   if (!template) return null
   const events = await loadOutingEvents(city)
   return buildOuting(template, events, city)
+}
+
+/** Rebuilds a plan after a swap, an extra stop, a shuffle or a removal. Null when nothing else fits. */
+export async function editOuting(slug: string, city: string, eventIds: string[], action: OutingEdit, replaceId?: string | null): Promise<BuiltOuting | null> {
+  const template = OUTING_TEMPLATES.find((item) => item.slug === slug)
+  if (!template) return null
+  const pool = await loadOutingEvents(city)
+  const byId = new Map(pool.map((ev) => [ev.id, ev]))
+  const current = eventIds.map((id) => byId.get(id)).filter((ev): ev is OutingEvent => !!ev)
+  if (!current.length && action !== 'add') return null
+  const next = editOutingEvents(template, pool, current, action, replaceId)
+  if (!next) return null
+  return finishOuting(template, next, city)
 }

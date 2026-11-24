@@ -1,8 +1,8 @@
-import { Music, Palette, Trophy, UtensilsCrossed, Baby, PartyPopper, Users, Briefcase, Heart, GraduationCap, Sparkles, type LucideIcon } from 'lucide-react'
+import { Music, Palette, Trophy, UtensilsCrossed, Baby, PartyPopper, Users, Briefcase, Leaf, GraduationCap, Sparkles, type LucideIcon } from 'lucide-react'
 
 export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Music, 'Arts & Culture': Palette, Sports: Trophy, 'Food & Drink': UtensilsCrossed, Family: Baby,
-  Nightlife: PartyPopper, Community: Users, Business: Briefcase, Wellness: Heart, Education: GraduationCap,
+  Nightlife: PartyPopper, Community: Users, Business: Briefcase, Wellness: Leaf, Education: GraduationCap,
 }
 export const categoryIcon = (name: string): LucideIcon => CATEGORY_ICONS[name] ?? Sparkles
 

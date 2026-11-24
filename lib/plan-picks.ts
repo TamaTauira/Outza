@@ -12,11 +12,12 @@ export const PLAN_PICKS: PlanPick[] = [
   { slug: 'saturday-date-night', label: 'Saturday date night', fill: 'Saturday date night' },
   { slug: 'family-sunday', label: 'Family Sunday', fill: 'Family Sunday' },
   { slug: 'free-afternoon', label: 'Free afternoon', fill: 'Free afternoon' },
+  { slug: 'family-sunday', label: 'Family day out', fill: 'Family day out' },
 ]
 
 const ALIASES: Record<string, string[]> = {
   'saturday-date-night': ['saturday date night', 'date night', 'saturday night', 'plan my saturday', 'plan saturday'],
-  'family-sunday': ['family sunday', 'family sunday under 50', 'family day', 'plan my sunday', 'plan sunday'],
+  'family-sunday': ['family sunday', 'family sunday under 50', 'family day', 'family day out', 'plan my sunday', 'plan sunday'],
   'free-afternoon': ['free afternoon', 'a free afternoon', 'free arvo'],
 }
 

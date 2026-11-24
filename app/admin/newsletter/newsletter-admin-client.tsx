@@ -67,7 +67,7 @@ function DigestMailPanel() {
     <section className="rounded-2xl bg-card shadow-sm p-5 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-bold">Event digests</h2>
-        <button type="button" onClick={sendTest} disabled={busy} className="rounded-full bg-[#FF4E6A] text-white px-5 py-2 text-sm font-semibold disabled:opacity-50">
+        <button type="button" onClick={sendTest} disabled={busy} className="rounded-full bg-[#F05A9D] text-white px-5 py-2 text-sm font-semibold disabled:opacity-50">
           {busy ? 'Sending…' : 'Send test digest'}
         </button>
       </div>
@@ -171,7 +171,7 @@ export function NewsletterAdminClient() {
         </label>
         <div className="md:col-span-4 flex flex-wrap gap-3">
           <button onClick={() => run('preview')} disabled={!!busy} className="rounded-full bg-foreground text-background px-5 py-2 text-sm font-semibold disabled:opacity-50">{busy === 'preview' ? 'Building…' : 'Preview issue'}</button>
-          <button onClick={() => run('test')} disabled={!!busy} className="rounded-full bg-[#FF4E6A] text-white px-5 py-2 text-sm font-semibold disabled:opacity-50">{busy === 'test' ? 'Sending…' : 'Send test to me'}</button>
+          <button onClick={() => run('test')} disabled={!!busy} className="rounded-full bg-[#F05A9D] text-white px-5 py-2 text-sm font-semibold disabled:opacity-50">{busy === 'test' ? 'Sending…' : 'Send test to me'}</button>
         </div>
         {msg && <p className={`md:col-span-4 text-sm ${msg.ok ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{msg.text}</p>}
       </section>
@@ -199,7 +199,7 @@ export function NewsletterAdminClient() {
               <h3 className="font-semibold mb-2">Why these events</h3>
               <ul className="space-y-2">{built.sections.map((s) => (
                 <li key={s.placement + s.eventId}>
-                  <span className="text-xs uppercase tracking-wide text-[#FF4E6A] mr-2">{s.placement}</span>
+                  <span className="text-xs uppercase tracking-wide text-[#F05A9D] mr-2">{s.placement}</span>
                   <a href={`/events/${s.eventId}`} target="_blank" rel="noreferrer" className="underline">{s.title}</a>
                   <span className="text-xs text-muted-foreground"> · {s.category} · score {s.score}{s.image ? '' : ' · fallback art'}</span>
                   {s.whyLine && <div className="text-xs">{s.whyLine}</div>}

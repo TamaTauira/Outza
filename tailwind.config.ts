@@ -30,10 +30,35 @@ const config: Config = {
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
+      spacing: {
+        card: 'var(--vp-card-pad-md)',
+        'card-sm': 'var(--vp-card-pad-sm)',
+        'card-lg': 'var(--vp-card-pad-lg)',
+        hero: 'var(--vp-hero-gap)',
+        section: 'var(--vp-section)',
+      },
+      height: {
+        control: 'var(--vp-control-h)',
+        'control-lg': 'var(--vp-control-h-lg)',
+      },
+      width: {
+        control: 'var(--vp-control-h)',
+      },
+      minHeight: {
+        control: 'var(--vp-control-h)',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        control: 'var(--vp-radius-control)',
+        card: 'var(--vp-radius-card)',
+        hero: 'var(--vp-radius-hero)',
+      },
+      boxShadow: {
+        'vp-sm': 'var(--vp-shadow-sm)',
+        'vp-md': 'var(--vp-shadow-md)',
+        'vp-lg': 'var(--vp-shadow-lg)',
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -71,6 +96,9 @@ const config: Config = {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
+        'brand-orange': 'var(--vp-brand-orange)',
+        'brand-pink': 'var(--vp-brand-pink)',
+        'on-primary': 'var(--vp-on-primary)',
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',

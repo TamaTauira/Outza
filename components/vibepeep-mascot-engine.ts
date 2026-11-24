@@ -15,7 +15,7 @@ const WINDOW_MS = 2000
 /** Two taps this close unlock the dance party. A slower second tap still tickles. */
 const QUICK_MS = 420
 const SULK_MS = 50000
-const COLORS = ['#FF8A1A', '#FF4E6A', '#FFD166', '#FFFFFF', '#7CFFCB', '#8AB4FF']
+const COLORS = ['#FF7A35', '#F05A9D', '#FFD166', '#FFFFFF', '#7CFFCB', '#8AB4FF']
 
 type PlayId = ReactionId | 'party'
 type BitKind = 'heart' | 'spark' | 'confetti' | 'note' | 'puff'
@@ -64,9 +64,9 @@ function spawnBits(fx: HTMLElement, id: PlayId) {
     el.style.setProperty('--dy', `${Math.round(Math.sin(forward) * dist - lift)}%`)
     el.style.setProperty('--rot', `${(i * 47) % 200 - 80}deg`)
     el.style.setProperty('--delay', `${(i % 7) * 0.04}s`)
-    el.style.color = i % 2 ? '#FF4E6A' : '#FF8A1A'
+    el.style.color = i % 2 ? '#F05A9D' : '#FF7A35'
     if (kind === 'spark') el.style.color = i % 3 === 0 ? '#FFFFFF' : '#FFD166'
-    if (kind === 'note') el.style.color = i % 2 ? '#FF4E6A' : '#FF8A1A'
+    if (kind === 'note') el.style.color = i % 2 ? '#F05A9D' : '#FF7A35'
     if (kind === 'confetti') {
       el.style.background = COLORS[i % COLORS.length]
       if (i % 3 === 0) el.style.borderRadius = '999px'

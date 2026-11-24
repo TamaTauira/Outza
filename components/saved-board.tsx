@@ -3,16 +3,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { Heart, MapPin } from 'lucide-react'
+import { LayoutList, Map as MapIcon, MapPin } from 'lucide-react'
 import { CalendarCheckIcon, CalendarPlusIcon } from '@/components/calendar-plus-icon'
-import { toast } from 'sonner'
-import { ViewToggle } from '@/components/view-toggle'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
+import { CtaBanner } from '@/components/cta-banner'
+import { AddToCollection, CollectionsPanel, collectionEventFrom } from '@/components/collections-panel'
+import { SaveButton } from '@/components/save-button'
 import { EventImage } from '@/components/event-image'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { PageMasthead } from '@/components/page-masthead'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventToItem, useItinerary } from '@/lib/itinerary'
 import { addDays, formatPrice } from '@/lib/board'
+import { COPY } from '@/lib/copy'
+import { formatDate, formatTime } from '@/lib/format'
+import { notifyAddedToItinerary, notifyRemovedFromItinerary } from '@/lib/notify'
 import { boardClockLine } from '@/lib/listing-window'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { coordsFitCity } from '@/lib/travel'
@@ -82,13 +89,20 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
           <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
           <div className="text-center lg:text-left">
             <h2 className="font-display text-3xl font-bold sm:text-4xl">Sign in to save events</h2>
-            <p className="mt-2 max-w-xl text-muted-foreground">Keepers live on your account. Browse what’s on, then save the ones you want.</p>
+            <p className="mt-2 max-w-xl text-muted-foreground">Saved events live on your account. Browse what’s on, then save the ones you want.</p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-              <Link href="/login?next=/saved" className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Sign in</Link>
-              <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Browse what’s on</button>
+              <Button asChild size="md"><Link href="/login?next=/saved">{COPY.signIn}</Link></Button>
+              <Button type="button" variant="outline" size="md" onClick={onBrowse}>{COPY.browse}</Button>
             </div>
           </div>
         </div>
+        <CollectionsPanel />
+        <CtaBanner
+          tone="card"
+          title="Looking for more to save?"
+          lede="The good stuff is still out there."
+          action={<Button type="button" size="md" onClick={onBrowse}>{COPY.browse}</Button>}
+        />
       </div>
     )
   }
@@ -99,12 +113,12 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
             {tabs.map((item) => (
-              <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)} className={cn('inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold', tab === item.key ? 'bg-white text-neutral-900' : 'bg-white/15 text-white')}>
+              <Chip key={item.key} onDark pressed={tab === item.key} onClick={() => setTab(item.key)}>
                 {item.label}{saved.length > 0 && item.count != null ? ` (${item.count})` : ''}
-              </button>
+              </Chip>
             ))}
           </div>
-          <ViewToggle value={resultsView} onChange={chooseView} className="bg-white/90 text-neutral-900" />
+          <SegmentedControl value={resultsView} onChange={chooseView} label="List or map" className="bg-white/90" options={[{ key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapIcon }]} />
         </div>
       </PageMasthead>
 
@@ -116,7 +130,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
           <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
           <div className="text-center lg:text-left">
           <h2 className="font-display text-3xl font-bold sm:text-4xl">{saved.length && visible.length === 0 ? 'Nothing in this set.' : 'Nothing saved. Yet.'}</h2>
-          <p className="mt-2 max-w-xl text-muted-foreground">{saved.length && visible.length === 0 ? 'None of your keepers fall in this window. Try All saved, or come back when the weekend lands.' : signedIn ? 'Your future plans are out there. See something you love? Tap the heart and we’ll keep it here for you.' : 'Your keepers live on your account. Sign in and we’ll keep them safe.'}</p>
+          <p className="mt-2 max-w-xl text-muted-foreground">{saved.length && visible.length === 0 ? 'None of your saved events fall in this window. Try All saved, or come back when the weekend lands.' : signedIn ? 'See something you love? Tap the bookmark and we’ll keep it here for you.' : 'Your saved events live on your account. Sign in and we’ll keep them safe.'}</p>
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
             {signedIn ? (
               <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find something good.</button>
@@ -156,9 +170,9 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
                   active={focusId === ev.id}
                   onSave={() => toggle(ev)}
                   onPlan={() => {
-                    if (itinerary.has(ev.id)) { itinerary.remove(ev.id); toast('Dropped from the plan.'); return }
+                    if (itinerary.has(ev.id)) { itinerary.remove(ev.id); notifyRemovedFromItinerary(); return }
                     itinerary.add(eventToItem(ev))
-                    toast.success('On the itinerary.')
+                    notifyAddedToItinerary()
                   }}
                   onMap={located(ev) ? () => { setFocusId(ev.id); chooseView('map') } : undefined}
                 />
@@ -168,23 +182,21 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
         </>
       )}
 
-          <p className="mt-10 text-sm text-muted-foreground">Collections are on the way. For now, everything you save sits in the list above.</p>
+          <CollectionsPanel />
 
-          <section className="mt-6 flex flex-col gap-4 rounded-3xl bg-[#0c0f0e] px-5 py-5 text-white sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="font-display text-xl font-bold">Don’t let this one slip past.</h2>
-              <p className="mt-1 text-sm text-white/75">A nudge before it starts.</p>
-            </div>
-            <Link href={signedIn ? '/account#inbox' : '/login?next=/account'} className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Set reminders</Link>
-          </section>
+          <CtaBanner
+            tone="dark"
+            title="Don’t let this one slip past."
+            lede="A nudge before it starts."
+            action={<Button asChild size="md"><Link href={signedIn ? '/account#inbox' : '/login?next=/account'}>Set reminders</Link></Button>}
+          />
 
-          <section className="mt-6 flex flex-col items-start justify-between gap-3 rounded-3xl border border-border bg-card px-5 py-5 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="font-display text-xl font-bold">Looking for more to save?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">The good stuff is still out there.</p>
-            </div>
-            <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">See What’s On</button>
-          </section>
+          <CtaBanner
+            tone="card"
+            title="Looking for more to save?"
+            lede="The good stuff is still out there."
+            action={<Button type="button" size="md" onClick={onBrowse}>{COPY.browse}</Button>}
+          />
     </div>
   )
 }
@@ -203,33 +215,32 @@ function SavedCard({
   onMap?: () => void
 }) {
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
-  const when = boardClockLine(ev) ?? 'Time not listed'
-  const date = new Date(ev.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const when = formatTime(ev.time) || boardClockLine(ev) || COPY.timeNotListed
+  const date = formatDate(ev.date, 'card')
   const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
   const venue = tidyVenueName(ev.venueName, ev.venueAddress, ev.city)
   const href = ev.href ?? eventPath(ev)
   return (
-    <article id={`saved-${ev.id}`} className={cn('overflow-hidden rounded-2xl border bg-card', active ? 'border-primary ring-2 ring-primary/40' : 'border-border')}>
+    <article id={`saved-${ev.id}`} className={cn('flex h-full flex-col overflow-hidden rounded-card border bg-card', active ? 'border-primary ring-2 ring-primary/40' : 'border-border')}>
       <Link href={href} scroll={false} className="relative block aspect-[4/3]">
         <EventImage src={ev.imageUrl} kind="card" alt="" sizes="(min-width: 1280px) 30vw, 100vw" crop category={ev.category} slot="card" />
         <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-2 py-0.5 text-xs font-semibold text-white">{weekend ? 'This weekend' : today && ev.date.slice(0, 10) < today ? 'Past' : 'Coming up'}</span>
       </Link>
-      <div className="space-y-2 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-card">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg font-bold leading-tight"><Link href={href} scroll={false} className="hover:text-primary">{ev.title}</Link></h3>
-          <button type="button" onClick={onSave} aria-pressed={saved} aria-label={saved ? `Remove ${ev.title} from saved` : `Save ${ev.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted">
-            <Heart className={saved ? 'h-4 w-4 fill-current text-[#FF4E6A]' : 'h-4 w-4'} />
-          </button>
+          <h3 className="font-display text-h3 leading-tight"><Link href={href} scroll={false} className="hover:text-primary">{ev.title}</Link></h3>
+          <SaveButton saved={saved} onClick={onSave} label={saved ? `Remove ${ev.title} from saved` : `Save ${ev.title}`} />
         </div>
         <p className="text-sm text-muted-foreground">{date} · {when}</p>
         <p className="text-sm">{venue}{suburb ? ` · ${suburb}` : ''}</p>
         <p className="font-mono text-sm">{[price.prefix, price.value].filter(Boolean).join(' ')} · {ev.category}</p>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button type="button" onClick={onPlan} className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground">
-            {inPlan ? <CalendarCheckIcon className="h-4 w-4" aria-hidden /> : <CalendarPlusIcon className="h-4 w-4" aria-hidden />} {inPlan ? 'Remove from itinerary' : 'Add to itinerary'}
-          </button>
-          {onMap && <button type="button" onClick={onMap} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border px-3 text-sm font-semibold"><MapPin className="h-4 w-4" /> Map</button>}
-          <button type="button" onClick={onSave} className="inline-flex h-10 items-center rounded-full border border-border px-3 text-sm font-semibold">Remove</button>
+        <div className="mt-auto flex flex-wrap gap-2 pt-2">
+          <Button type="button" size="md" onClick={onPlan}>
+            {inPlan ? <CalendarCheckIcon className="h-4 w-4" aria-hidden /> : <CalendarPlusIcon className="h-4 w-4" aria-hidden />} {inPlan ? COPY.onItinerary : COPY.addToItinerary}
+          </Button>
+          {onMap && <Button type="button" size="md" variant="outline" onClick={onMap}><MapPin className="h-4 w-4" /> Map</Button>}
+          <AddToCollection event={collectionEventFrom(ev)} />
+          <Button type="button" size="md" variant="outline" onClick={onSave}>Remove</Button>
         </div>
       </div>
     </article>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Loader2, MapPinOff } from 'lucide-react'
 import { createBasemap } from '@/lib/map-basemap'
-import { destroyLeafletMap, mapIsLive } from '@/lib/leaflet-map'
+import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { EVENT_PIN_ANCHOR, EVENT_PIN_SIZE, eventPinHtml, MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -14,7 +14,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 type Geo = { lat: number; lng: number }
 
 /** Small single-venue map. Same basemap as the Map page, with the branded event pin. */
-export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = '•', label }: {
+export function VenueMap({ lat, lng, query, city, color = '#FF7A35', letter = '•', label }: {
   lat?: number | null; lng?: number | null; query?: string; city?: string | null; color?: string; letter?: string; label?: string
 }) {
   const elRef = useRef<HTMLDivElement>(null)
@@ -77,7 +77,11 @@ export function VenueMap({ lat, lng, query, city, color = '#FF7A1A', letter = '�
         console.error('Map style failed to load:', err)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+      detachBasemap(mapRef.current, tileRef.current)
+      tileRef.current = null
+    }
   }, [ready, dark])
 
   useEffect(() => {

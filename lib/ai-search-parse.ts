@@ -314,6 +314,10 @@ export function fallbackParse(q: string, today: string) {
     out.dateFrom = addDays(from, 7)
     out.dateTo = addDays(to, 7)
     out.explicitDates = true
+  } else if (/\bthis\s+week\b/.test(s)) {
+    out.dateFrom = today
+    out.dateTo = addDays(today, 6)
+    out.explicitDates = true
   } else if (/\bnext\s+week\b/.test(s)) {
     const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
     const toMonday = ((8 - dow) % 7) || 7

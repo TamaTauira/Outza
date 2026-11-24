@@ -50,10 +50,28 @@
   --vp-small-lh: 1.43;
   --vp-caption: 0.75rem;
   --vp-caption-lh: 1.33;
-  --vp-section: 4rem;
+  --vp-section: 3rem;
   --vp-gutter: 1rem;
   /* One gap between cards, horizontal and vertical. */
   --vp-card-gap: 1rem;
+  --vp-card-pad-sm: 12px;
+  --vp-card-pad-md: 16px;
+  --vp-card-pad-lg: 24px;
+  /* Space from a tab hero to the first block. Same on every tab. */
+  --vp-hero-gap: 16px;
+  --vp-control-h: 44px;
+  --vp-control-h-lg: 48px;
+  --vp-radius-control: 12px;
+  --vp-radius-card: 16px;
+  --vp-radius-hero: 24px;
+  /* Near-black ink on brand orange. White on #FF7A35 misses the contrast line. */
+  --vp-on-primary: #1a1408;
+  --vp-scrim: rgba(12, 15, 14, 0.72);
+  /* Always-dark banner and the light chip fill used inside the white Ask bar. */
+  --vp-banner: #0c0f0e;
+  --vp-on-light: #161a18;
+  --vp-on-light-fill: #f3f1ea;
+  --vp-on-light-fill-hover: #e7e4db;
   /* Space under the sticky nav. Same as the Map toolbar’s padding-top (py-2). */
   --vp-page-top: 0.5rem;
   --vp-container-max: 1760px;
@@ -69,6 +87,12 @@
   --vp-measure: 68ch;
   --vp-card-min: 260px;
   --radius: 12px;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --vp-section: 4rem;
+  }
 }
 
 .dark {

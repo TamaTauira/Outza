@@ -97,7 +97,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
   const shownTitle = displayTitle(ev.title)
   const catName = parentCategory(ev.category) || ev.category
   const cat = CATEGORIES.find((c) => c.name === catName)
-  const color = cat?.color ?? '#FF7A1A'
+  const color = cat?.color ?? '#FF7A35'
   const Icon = categoryIcon(ev.category)
   const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
@@ -168,10 +168,10 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
         <Link href={href} scroll={false} onClick={noteSearch} className="min-w-0 flex-1 truncate font-semibold text-base leading-tight hover:text-primary transition-colors after:absolute after:inset-0 after:z-0 after:content-[''] after:rounded-sm focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary" title={ev.title}>
           {shownTitle}
         </Link>
-        {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}
+        {(ev.promoTier || ev.sponsored) && <span className="relative shrink-0 px-1.5 py-0.5 rounded text-caption font-bold tracking-wide text-black" style={{ backgroundColor: ev.promoTier === 'GOLD' ? '#F5B700' : ev.promoTier === 'BRONZE' ? '#CD7F32' : '#C0C7D1' }} title={ev.promoTier ? `${tierDef(ev.promoTier)?.name ?? 'Promoted'} placement` : 'Sponsored placement'}>SPONSORED</span>}
         {!!ev.friendsGoing?.length && <span className="relative shrink-0 px-1.5 py-0.5 rounded bg-free/15 text-free text-xs font-semibold" title={`Going: ${ev.friendsGoing.join(', ')}`}>👥 {ev.friendsGoing.length}</span>}
         {reported && <span className={cn('relative shrink-0 px-1.5 py-0.5 rounded text-xs font-semibold', reported.tone === 'bad' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')} title={reported.note}>{reported.label}</span>}
-        {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-[9px] font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
+        {ev.isLGBTI && <span className="relative shrink-0 rainbow-bg px-1.5 py-0.5 rounded text-caption font-bold text-white tracking-wide" title="LGBTIQ+ event">LGBTIQ+</span>}
       </div>
 
       {/* Save + itinerary (mobile top-right) */}

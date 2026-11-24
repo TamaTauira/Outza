@@ -151,7 +151,7 @@
 .se-pop-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 8px; }
 .se-pop-price { font-family: ui-monospace, monospace; font-size: 13px; font-weight: 600; }
 .se-pop-price.free { color: #16a34a; }
-.se-pop-row a { color: #FF7A1A; font-size: 12px; font-weight: 600; text-decoration: none; }
+.se-pop-row a { color: var(--vp-brand-orange); font-size: 12px; font-weight: 600; text-decoration: none; }
 .se-pop-tier { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; color: #111; margin-bottom: 6px; }
 .se-gold { background: #F5B700; } .se-bronze { background: #CD7F32; } .se-silver { background: #C0C7D1; }
 .se-map .leaflet-control-zoom { border: 0 !important; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.18) !important; margin-right: 16px !important; margin-bottom: 16px !important; }
@@ -327,7 +327,7 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   letter-spacing: 0;
 }
 .vp-time-hour { text-align: right; }
-.vp-time i { font-style: normal; margin-left: 0.35ch; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.vp-time i { font-style: normal; margin-left: 0.35ch; font-size: 12px; color: hsl(var(--muted-foreground)); }
 .vp-time-start b { color: hsl(var(--foreground)); }
 .vp-time-end b { color: hsl(var(--muted-foreground)); }
 .vp-time-dot,
@@ -349,15 +349,15 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   position: relative;
   top: -0.45em;
   margin-left: 1px;
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 0;
+  line-height: 1;
   letter-spacing: 0.01em;
   color: var(--vp-brand-pink);
 }
 .vp-time-day {
   grid-column: 2;
-  font-size: 9.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.1;
   color: var(--vp-brand-pink);
@@ -564,16 +564,24 @@ html:not(.dark) .vp-lockup:not(.is-on-dark) .vp-word-dark { display: none; }
 @media (max-width: 389px) {
   .vp-hero-clock > div:first-child {
     letter-spacing: 0.04em;
-    font-size: 8px;
+    font-size: 12px;
   }
   .vp-hero-clock .text-2xl { font-size: 1.2rem; }
   .vp-hero-clock .text-sm { font-size: 0.7rem; }
 }
 
+.vp-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 1.33;
+  text-transform: uppercase;
+}
+
 /* Primary actions are a solid brand orange. Near-black label text keeps contrast. */
 .bg-primary {
   background-color: var(--vp-brand-orange);
-  color: #1a1408;
+  color: var(--vp-on-primary);
 }
 
 /* The mascot styles already honour reduced motion. A global kill stops it settling. */

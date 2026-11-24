@@ -366,7 +366,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
               imageCategory={ev.category}
               meta={[displaySuburb(ev.suburb, ev.venueAddress, ev.city), clockLabel(ev.time)].filter(Boolean).join(' · ')}
               tag={ev.subTags?.[0] || ev.category}
-              accent={cat?.color ?? '#FF7A1A'}
+              accent={cat?.color ?? '#FF7A35'}
               price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-bold text-white">Free</span> : <span className="font-mono text-xs text-foreground">{[price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')}</span>}
               actions={(
                 <>

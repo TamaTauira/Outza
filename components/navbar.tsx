@@ -18,6 +18,7 @@ import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { BottomNav } from '@/components/bottom-nav'
 import { useHasLocalListings } from '@/components/use-has-local-listings'
 import { CITY_NAMES } from '@/lib/cities'
+import { navItem } from '@/lib/nav'
 
 export type AppView = 'board' | 'map' | 'saved'
 
@@ -27,9 +28,9 @@ interface NavbarProps {
 
 // Board, Map and Saved each have their own address, so Back, bookmarks and sharing all work.
 const TABS: { key: AppView; label: string; Icon: ComponentType<{ className?: string }>; href: string }[] = [
-  { key: 'board', label: 'Explore', Icon: PeepIcon, href: '/' },
-  { key: 'map', label: 'Map', Icon: MapPin, href: '/map' },
-  { key: 'saved', label: 'Saved', Icon: Bookmark, href: '/saved' },
+  { key: 'board', label: navItem('board').label, Icon: PeepIcon, href: '/' },
+  { key: 'map', label: navItem('map').label, Icon: MapPin, href: '/map' },
+  { key: 'saved', label: navItem('saved').label, Icon: Bookmark, href: '/saved' },
 ]
 
 export function viewForPath(pathname: string | null): AppView | null {
@@ -71,8 +72,8 @@ export function Navbar({ savedCount }: NavbarProps) {
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
             if (key === 'local') {
               return (
-                <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
-                  <House className="w-4 h-4" /><span className="hidden xl:inline">Local</span>
+                <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-xs sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
+                  <House className="w-4 h-4" /><span className="hidden xl:inline">{navItem('local').label}</span>
                   {pathname?.startsWith('/local') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
                 </Link>
               )
@@ -85,7 +86,7 @@ export function Navbar({ savedCount }: NavbarProps) {
                 aria-current={view === key ? 'page' : undefined}
                 aria-label={key === 'saved' ? (mounted && savedCount > 0 ? `Saved, ${savedCount}` : 'Saved') : label}
                 className={cn(
-                  'relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm transition-colors',
+                  'relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-xs sm:text-sm transition-colors',
                   view === key ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -98,13 +99,13 @@ export function Navbar({ savedCount }: NavbarProps) {
               </Link>
             )
           })}
-          <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-[13px] sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
-            <CalendarPlusIcon className="w-4 h-4" /><span className="hidden xl:inline">Itinerary</span>
+          <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 sm:gap-1.5 sm:px-4 text-xs sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
+            <CalendarPlusIcon className="w-4 h-4" /><span className="hidden xl:inline">{navItem('itinerary').label}</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-primary" />}
           </Link>
-          <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-[13px] text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
+          <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
             <Sparkles className="h-4 w-4" aria-hidden />
-            <span className="hidden xl:inline">Ask</span>
+            <span className="hidden xl:inline">{navItem('ask').label}</span>
           </button>
         </nav>
 
