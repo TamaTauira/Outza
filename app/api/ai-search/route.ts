@@ -17,6 +17,11 @@ export type { AiFilters }
 
 const CAT_NAMES = CATEGORIES.map((c) => c.name)
 
+function clockMinute(mins: number): string {
+  const clamped = Math.max(0, Math.min(mins, 23 * 60 + 59))
+  return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`
+}
+
 function weekend(today: string): [string, string] {
   const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
   if (dow === 0) return [today, today]
@@ -102,7 +107,11 @@ export async function POST(req: NextRequest) {
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
       ...(searchCity ? { city: searchCity } : {}),
-      ...(filters.categoryStrict && filters.category ? { category: filters.category } : {}),
+      ...((filters.category && (filters.categoryStrict || filters.isFree || filters.timeOfDay !== 'any' || filters.soon)) ? { category: filters.category } : {}),
+      ...(filters.timeOfDay === 'morning' ? { time: { gte: '05:00', lt: '12:00' } } : {}),
+      ...(filters.timeOfDay === 'afternoon' ? { time: { gte: '12:00', lt: '17:00' } } : {}),
+      ...(filters.timeOfDay === 'evening' ? { time: { gte: '17:00' } } : {}),
+      ...(filters.soon ? { time: { gte: clockMinute(now.minutes - 30), lte: clockMinute(now.minutes + 180) } } : {}),
       ...(filters.paidOnly ? { isFree: false } : {}),
       AND: [...narrowed, { deletedAt: null }, { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] }],
     }
