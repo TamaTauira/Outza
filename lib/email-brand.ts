@@ -17,8 +17,9 @@ export const EMAIL_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,He
 /** Email-only brand colours. The site palette is separate. */
 export const EMAIL_ORANGE = '#FF7A35'
 export const EMAIL_PINK = '#F05A9D'
-/** Charcoal pill. White on orange fails contrast. */
-export const EMAIL_BUTTON = '#141414'
+/** Orange pill. #1A1408 on this orange is 7.05:1. White on orange fails contrast. */
+export const EMAIL_BUTTON = '#FF7A35'
+const EMAIL_BUTTON_INK = '#1A1408'
 /** Postal line until a street address is supplied. */
 export const EMAIL_ADDRESS = 'VibePeep, Australia'
 
@@ -31,7 +32,8 @@ export const EMAIL_C = {
   head: '#141414',
   accent: EMAIL_PINK,
   orange: EMAIL_ORANGE,
-  deep: EMAIL_BUTTON,
+  /** Paid price chip. Separate from the pill so a button change cannot recolour it. */
+  deep: '#141414',
   freeBg: '#e5f6ee',
   freeInk: '#0d6b45',
   priceBg: '#fff1ea',
@@ -109,21 +111,32 @@ export function emailBrandRule(): string {
 </tr></table>`
 }
 
+/** 13px + 18px line + 13px = 44px. Outlook sizes the pill from the VML height. */
+const EMAIL_BUTTON_PAD_Y = 13
+const EMAIL_BUTTON_LINE = 18
+const EMAIL_BUTTON_HEIGHT = EMAIL_BUTTON_PAD_Y + EMAIL_BUTTON_LINE + EMAIL_BUTTON_PAD_Y
+
 export function emailButton(href: string, label: string): string {
   const safe = emailEscape(label)
   const url = emailEscape(href)
   const width = Math.min(280, Math.max(148, label.length * 8 + 48))
   return `<!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:40px;v-text-anchor:middle;width:${width}px;" arcsize="50%" strokecolor="${EMAIL_C.deep}" fillcolor="${EMAIL_C.deep}">
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:${EMAIL_BUTTON_HEIGHT}px;v-text-anchor:middle;width:${width}px;" arcsize="50%" strokecolor="${EMAIL_BUTTON}" fillcolor="${EMAIL_BUTTON}">
 <w:anchorlock/>
-<center style="color:#1a1408;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;">${safe}</center>
+<center style="color:${EMAIL_BUTTON_INK};font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:bold;">${safe}</center>
 </v:roundrect>
 <![endif]-->
 <!--[if !mso]><!-->
-<table ${T}><tr><td bgcolor="${EMAIL_C.deep}" style="border-radius:999px;background:${EMAIL_C.deep};">
-<a href="${url}" style="display:inline-block;padding:13px 22px;font-family:${EMAIL_FONT};font-size:14px;line-height:18px;font-weight:700;color:#1a1408;text-decoration:none;border-radius:999px;">${safe}</a>
+<table ${T}><tr><td class="email-btn" height="${EMAIL_BUTTON_HEIGHT}" bgcolor="${EMAIL_BUTTON}" style="height:${EMAIL_BUTTON_HEIGHT}px;border-radius:999px;background:${EMAIL_BUTTON};">
+<a class="email-btn" href="${url}" style="display:inline-block;padding:${EMAIL_BUTTON_PAD_Y}px 22px;font-family:${EMAIL_FONT};font-size:14px;line-height:${EMAIL_BUTTON_LINE}px;font-weight:700;color:${EMAIL_BUTTON_INK};background:${EMAIL_BUTTON};text-decoration:none;border-radius:999px;">${safe}</a>
 </td></tr></table>
 <!--<![endif]-->`
+}
+
+/** Dark-mode clients must keep the shared pill orange. One rule, used by every shell. */
+export function emailButtonColorLock(scope = ''): string {
+  const target = scope ? `${scope} .email-btn,${scope} .email-btn a` : '.email-btn,.email-btn a'
+  return `${target}{background-color:${EMAIL_BUTTON}!important;color:${EMAIL_BUTTON_INK}!important}`
 }
 
 /**
@@ -205,11 +218,14 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
   .chipFree{background-color:${EMAIL_C.darkFreeBg}!important}
   .chipFree span{color:${EMAIL_C.darkFreeInk}!important}
   .head{background-color:#101010!important}
+  ${emailButtonColorLock()}
 }
 [data-ogsc] .tx{color:${EMAIL_C.darkInk}!important}
 [data-ogsc] .mu{color:${EMAIL_C.darkMuted}!important}
+${emailButtonColorLock('[data-ogsc]')}
 [data-ogsb] .bg{background-color:${EMAIL_C.darkPage}!important}
 [data-ogsb] .card{background-color:${EMAIL_C.darkCard}!important}
+${emailButtonColorLock('[data-ogsb]')}
 </style></head>
 <body class="bg" style="margin:0;padding:0;background:${EMAIL_C.page};">
 ${pre}
