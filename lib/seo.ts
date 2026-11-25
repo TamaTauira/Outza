@@ -224,10 +224,10 @@ export const addDaysKey = (key: string, n: number) => {
 export const cityToday = (city: CityDef, now = new Date()) => toSydneyParts(now, city.tz).date
 
 /** True when an event's last day (end date, else start date) is before today in its city. Past events are never shown. */
-export const isPastEvent = (ev: { date: Date | string; endDate?: Date | string | null; city?: string | null }) => {
+export const isPastEvent = (ev: { date: Date | string; endDate?: Date | string | null; city?: string | null }, now = new Date()) => {
   const last = ev.endDate ?? ev.date
   const key = (typeof last === 'string' ? last : last.toISOString()).slice(0, 10)
-  return key < cityToday(CITIES.find((c) => c.name === ev.city) ?? CITIES[0])
+  return key < cityToday(CITIES.find((c) => c.name === ev.city) ?? CITIES[0], now)
 }
 
 /** Friday–Sunday of the current weekend in the city's timezone (from today if already the weekend). */
