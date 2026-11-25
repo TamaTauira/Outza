@@ -1,5 +1,3 @@
-import { existsSync } from 'fs'
-import path from 'path'
 import { BRAND_ICON_512, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
@@ -236,13 +234,11 @@ export function emailLink(href: string, label: string): string {
  * With images blocked, the styled alt sits on the dark cell.
  */
 export function emailHeader(opts: { kind?: string | null; homeHref: string }): string {
-  const kind = (opts.kind || 'general').replace(/[^a-z0-9-]/gi, '') || 'general'
-  const headline = emailHeadline(kind)
+  const raw = (opts.kind || 'general').replace(/[^a-z0-9-]/gi, '') || 'general'
+  const kind = HEADER_HEADLINES[raw] ? raw : 'general'
+  const headline = HEADER_HEADLINES[kind] || 'VibePeep'
   const alt = `VibePeep: ${headline}`
-  const disk = path.join(process.cwd(), 'public', 'email-headers', `${kind}.png`)
-  const inner = existsSync(disk)
-    ? `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="600" height="120" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
-    : `<div style="font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;padding:36px 20px;">${emailEscape(alt)}</div>`
+  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="600" height="120" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
   return `<a href="${emailEscape(opts.homeHref)}" style="text-decoration:none;color:#F7F7F7;">${inner}</a>`
 }
 
