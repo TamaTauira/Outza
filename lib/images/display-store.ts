@@ -2,7 +2,7 @@ import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { putObject, publicUrl, storagePath } from '@/lib/s3'
 import { buildDisplayFromBuffer } from './display-build'
-import { DISPLAY_VERSION, parseDisplayManifest } from './display-spec'
+import { DISPLAY_VERSION, displayColumnPatch, parseDisplayManifest } from './display-spec'
 
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 
@@ -26,22 +26,24 @@ async function download(url: string): Promise<Buffer> {
 
 /**
  * Download the event's source image and store 480/960/1440 AVIF and WebP.
- * A row that is not marked pending is left untouched, so this is not a backfill.
+ * Ingest only resizes a pending row. The backfill passes force so an older row can be filled too.
+ * The update never includes imageUrl.
  */
-export async function prepareEventDisplay(eventId: string, opts: { force?: boolean } = {}): Promise<'stored' | 'skipped' | 'failed'> {
+export async function prepareEventDisplay(eventId: string, opts: { force?: boolean; evenIfLocked?: boolean } = {}): Promise<'stored' | 'skipped' | 'failed'> {
   const ev = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { id: true, imageUrl: true, imageLocked: true, imageDisplay: true },
+    select: { id: true, imageUrl: true, imageLocked: true, imageWidth: true, imageDisplay: true },
   })
   const manifest = parseDisplayManifest(ev?.imageDisplay)
-  if (!ev?.imageUrl || ev.imageLocked) return 'skipped'
+  if (!ev?.imageUrl) return 'skipped'
+  if (ev.imageLocked && !opts.evenIfLocked) return 'skipped'
   if (!opts.force && !manifest?.pending) return 'skipped'
   if (!opts.force && (manifest?.attempts ?? 0) >= MAX_ATTEMPTS) return 'skipped'
+  if (ev.imageWidth && manifest?.base && manifest.widths?.length && !manifest.pending && !manifest.failed) return 'skipped'
 
   try {
     const bytes = await download(ev.imageUrl)
     const hash = crypto.createHash('sha1').update(bytes).digest('hex')
-    if (manifest?.hash === hash && manifest.base && manifest.widths?.length) return 'skipped'
     const built = await buildDisplayFromBuffer(bytes)
     const folder = storagePath(`event-display/${hash}`)
     await Promise.all(built.files.flatMap((file) => [
@@ -50,30 +52,32 @@ export async function prepareEventDisplay(eventId: string, opts: { force?: boole
     ]))
     await prisma.event.update({
       where: { id: eventId },
-      data: {
-        imageWidth: built.width,
-        imageHeight: built.height,
-        imageColor: built.color,
-        imageBlur: built.blur,
-        imageDisplay: {
+      data: displayColumnPatch({
+        width: built.width,
+        height: built.height,
+        color: built.color,
+        blur: built.blur,
+        display: {
           v: DISPLAY_VERSION,
           pending: false,
           hash,
           base: publicUrl(folder),
           widths: built.widths,
-          attempts: (manifest.attempts ?? 0) + 1,
+          attempts: (manifest?.attempts ?? 0) + 1,
         },
-      },
+      }),
     })
     return 'stored'
   } catch (err) {
-    const attempts = (manifest.attempts ?? 0) + 1
+    const attempts = (manifest?.attempts ?? 0) + 1
+    const giveUp = opts.force || attempts >= MAX_ATTEMPTS
     await prisma.event.update({
       where: { id: eventId },
       data: {
         imageDisplay: {
           v: DISPLAY_VERSION,
-          pending: attempts < MAX_ATTEMPTS,
+          pending: giveUp ? false : true,
+          failed: giveUp,
           attempts,
         },
       },
