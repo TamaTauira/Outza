@@ -37,9 +37,12 @@ export async function objectExists(cloud_storage_path: string): Promise<boolean>
 }
 
 export function publicUrl(cloud_storage_path: string): string {
+  const encoded = cloud_storage_path.split('/').map(encodeURIComponent).join('/')
+  const base = process.env.S3_PUBLIC_BASE_URL?.trim().replace(/\/+$/, '')
+  if (base) return `${base}/${encoded}`
   const { bucketName } = getBucketConfig()
   const region = process.env.AWS_REGION ?? 'us-west-2'
-  return `https://${bucketName}.s3.${region}.amazonaws.com/${cloud_storage_path.split('/').map(encodeURIComponent).join('/')}`
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${encoded}`
 }
 
 export async function getFileUrl(cloud_storage_path: string, contentType: string, isPublic: boolean): Promise<string> {
