@@ -7,7 +7,7 @@ import { cityPath, suburbPath, type GuideFact, type TopicDef, type TopicKey, typ
 import { guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
 import { isLandingPath } from '@/lib/landing-attribution'
 import { PageShell } from '@/components/page-shell'
-import { EventCard, GuideEventRow } from '@/components/event-card'
+import { EventCard, GuideEventList } from '@/components/event-card'
 import { LandingViewBeacon } from '@/components/landing-beacon'
 import { LocalListingCards } from '@/components/local-listing-cards'
 
@@ -138,10 +138,10 @@ export function GuideLanding(props: {
           </div>
         ) : (
           <div className="mt-10 space-y-10">
-            {events.length > 0 && <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
-              {events.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />)}
+            {events.length > 0 && <div className="vp-guide-rows mt-0 overflow-hidden rounded-xl border border-border bg-card">
+              <GuideEventList listingQuery={listingQuery} events={events.map((e) => ({ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }))} />
             </div>}
-            {events.length > 0 && <div className="hidden md:grid md:grid-cols-2 md:items-stretch lg:grid-cols-3 xl:grid-cols-4 gap-card">
+            {events.length > 0 && <div className="vp-guide-cards md:grid-cols-2 md:items-stretch lg:grid-cols-3 xl:grid-cols-4 gap-card">
               {events.map((e, i) => {
                 const key = e.date.toISOString().slice(0, 10)
                 const first = i === 0 || events[i - 1].date.toISOString().slice(0, 10) !== key

@@ -7,8 +7,9 @@ import { CATEGORIES, knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent, type Status } from '@/components/board-row'
 import { ListingBoardCard } from '@/components/listing-board-card'
 import { ItineraryButton } from '@/components/itinerary-button'
-import { DAY_PARTS, dayLabel, formatPrice, listSpan, orderedDayParts, toMinutes, type TimeWindow } from '@/lib/board'
-import { rankBoard, resolveSchedule } from '@/lib/listing-window'
+import { DAY_PARTS, categoryIcon, dayLabel, listSpan, orderedDayParts, toMinutes, type TimeWindow } from '@/lib/board'
+import { listPriceLabel } from '@/lib/price'
+import { formatBoardRange, rankBoard, resolveSchedule } from '@/lib/listing-window'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
 import { Bookmark, ChevronRight, Loader2, Sparkles } from 'lucide-react'
@@ -16,9 +17,9 @@ import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
 import { listDepthToLoad } from '@/lib/scroll-restore'
 import { ReachBeacon } from '@/components/reach-beacon'
-import { displaySuburb } from '@/lib/cities'
-import { displayPriceValue, displayTitle } from '@/lib/display-public'
-import { fmtTime } from '@/lib/local-shared'
+import { displaySuburb, tidyVenueName } from '@/lib/cities'
+import { displayTitle, parentCategory } from '@/lib/display-public'
+import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 export type BoardSeed = {
@@ -341,10 +342,6 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     return next
   }
 
-  const clockLabel = (time: string | null | undefined) => {
-    if (!time) return ''
-    return /^\d{1,2}:\d{2}/.test(time) ? fmtTime(time) : time
-  }
   const showRows = (rows: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
     if (layout !== 'board') {
       return rows.map(({ ev, status, showDate }) => (
@@ -352,28 +349,37 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       ))
     }
     return (
-      <div className="vp-card-grid w-full grid-cols-[repeat(auto-fill,minmax(min(100%,var(--vp-card-min)),1fr))] p-5">
+      <div className="vp-board-grid">
         {rows.map(({ ev }) => {
-          const cat = CATEGORIES.find((item) => item.name === ev.category)
-          const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
+          const catName = parentCategory(ev.category) || ev.category
+          const cat = CATEGORIES.find((item) => item.name === catName)
+          const price = listPriceLabel(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
+          const when = formatBoardRange(ev)
+          const place = listPlaceLine(
+            [tidyVenueName(ev.venueName, ev.venueAddress, ev.city), displaySuburb(ev.suburb, ev.venueAddress, ev.city)].filter(Boolean).join(' · '),
+            when.endNote,
+          )
+          const Icon = categoryIcon(catName)
           return (
             <ListingBoardCard
               key={ev.id}
-              media
               title={displayTitle(ev.title)}
               href={ev.href ?? eventPath(ev)}
               imageUrl={ev.imageUrl}
               imageCategory={ev.category}
-              meta={[displaySuburb(ev.suburb, ev.venueAddress, ev.city), clockLabel(ev.time)].filter(Boolean).join(' · ')}
-              tag={ev.subTags?.[0] || ev.category}
+              venue={place}
+              tag={catName}
               accent={cat?.color ?? '#FF7A35'}
-              price={ev.isFree ? <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-bold text-white">Free</span> : <span className="font-mono text-xs text-foreground">{[price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')}</span>}
+              priceText={price.text}
+              priceKind={price.kind}
+              when={when}
+              icon={Icon}
               actions={(
                 <>
-                  <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 place-items-center rounded-full', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
+                  <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('relative z-20 grid h-11 w-11 place-items-center rounded-md p-0', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
                     <Bookmark className={cn('h-4 w-4', isSaved(ev.id) && 'fill-current')} />
                   </button>
-                  <ItineraryButton lineup event={ev} className="grid h-11 w-11 place-items-center rounded-full p-0" />
+                  <ItineraryButton lineup event={ev} className="relative z-20 grid h-11 w-11 place-items-center rounded-md p-0" />
                 </>
               )}
             />
@@ -415,9 +421,21 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <p className="text-sm text-muted-foreground">Having a peep…</p>
           </div>
-          <div className="divide-y divide-border">
+          <div className="xl:hidden">
             {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="px-5 py-4 flex gap-4">
+              <div key={i} className="vp-mrow pointer-events-none" aria-hidden>
+                <span className="vp-mrow-rail"><span className="vp-mrow-dot" /></span>
+                <span className="vp-mrow-start"><span className="inline-block h-3 w-12 rounded bg-muted animate-pulse" /></span>
+                <span className="vp-mrow-line1"><span className="inline-block h-3 w-2/3 rounded bg-muted animate-pulse" /></span>
+                <span className="vp-mrow-venue"><span className="inline-block h-3 w-1/2 rounded bg-muted animate-pulse" /></span>
+                <span className="vp-mrow-meta"><span className="inline-block h-3 w-16 rounded-full bg-muted animate-pulse" /></span>
+                <span className="vp-mrow-actions" />
+              </div>
+            ))}
+          </div>
+          <div className="hidden divide-y divide-border xl:block">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="flex gap-4 px-5 py-4">
                 <div className="h-4 w-16 rounded bg-muted animate-pulse" />
                 <div className="flex-1 space-y-2">
                   <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
