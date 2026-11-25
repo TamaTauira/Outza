@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'The keepers', robots: { index: false, follow: true } }
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata: Metadata = {
+  ...pageMeta({ title: 'The keepers', path: '/saved', index: false }),
+  robots: { index: false, follow: true },
+}
 
 export default function SavedPage() {
   return null

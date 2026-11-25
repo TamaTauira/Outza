@@ -30,16 +30,16 @@ async function load(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const loaded = await load(slug)
-  if (!loaded || loaded.gate.reason === 'empty') return { title: 'Page not found | VibePeep', robots: { index: false } }
+  if (!loaded || loaded.gate.reason === 'empty') return { title: 'Page not found', robots: { index: false }, openGraph: { title: 'Page not found · VibePeep' } }
   const path = editorialPath(loaded.guide.slug)
   const description = `${loaded.guide.description} ${loaded.gate.total} upcoming listings.`
   return {
-    title: `${loaded.guide.h1} | VibePeep`,
+    title: loaded.guide.h1,
     description,
     alternates: { canonical: path },
     robots: loaded.gate.index ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title: loaded.guide.h1, description, url: path, images: [BRAND_OG_IMAGE] },
-    twitter: { card: 'summary_large_image', title: loaded.guide.h1, description, images: [BRAND_OG_IMAGE] },
+    openGraph: { title: `${loaded.guide.h1} · VibePeep`, description, url: path, images: [BRAND_OG_IMAGE] },
+    twitter: { card: 'summary_large_image', title: `${loaded.guide.h1} · VibePeep`, description, images: [BRAND_OG_IMAGE] },
   }
 }
 

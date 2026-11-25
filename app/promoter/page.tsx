@@ -11,7 +11,9 @@ import { BecomePromoter } from './become-promoter'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Promoter dashboard · VibePeep',
+  title: 'Promoter dashboard',
+  alternates: { canonical: '/promoter' },
+  openGraph: { title: 'Promoter dashboard · VibePeep', url: '/promoter' },
   robots: { index: false, follow: false },
 }
 

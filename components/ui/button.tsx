@@ -36,7 +36,7 @@ const buttonVariants = cva(
         md: "h-control px-5",
         xs: "h-control px-2.5 text-sm",
         sm: "h-control px-3",
-        lg: "h-control-lg px-6 text-base",
+        lg: "h-control px-6 text-base",
         icon: "h-11 w-11",
         "icon-sm": "h-11 w-11",
       },

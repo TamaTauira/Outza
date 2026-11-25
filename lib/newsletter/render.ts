@@ -1,5 +1,6 @@
 import { siteUrl } from '@/lib/email'
-import { formatDate, formatTime } from '@/lib/format'
+import { displayClock, formatDate } from '@/lib/format'
+import { formatAddress } from '@/lib/place'
 import { priceSummary } from '@/lib/quality'
 import { EMAIL_ADDRESS, EMAIL_C, EMAIL_DISCLAIMER, EMAIL_FONT, emailBodyCell, emailButton, emailDateRange, emailDocument, emailEscape, emailEventCard, emailMetaLine, emailSectionHeading } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
@@ -47,17 +48,13 @@ function go(r: RenderInput, placement: Placement, target: Target, eventId = '', 
 
 export function whenLine(e: NlEvent) {
   const date = formatDate(e.date.toISOString())
-  const clock = formatTime(e.time)
+  const clock = e.time ? displayClock(e.time, e.endTime) : ''
   return clock ? `${date} · ${clock}` : date
 }
 
 /** Venue, then suburb, then city. A name that already includes the place is not repeated. */
 export function whereLine(e: NlEvent) {
-  const venue = e.venueName.trim()
-  const lower = venue.toLowerCase()
-  const suburb = e.suburb && !lower.includes(e.suburb.toLowerCase()) ? e.suburb.trim() : ''
-  const city = e.city && !lower.includes(e.city.toLowerCase()) && suburb.toLowerCase() !== e.city.toLowerCase() ? e.city.trim() : ''
-  return [venue, suburb, city].filter(Boolean).join(', ')
+  return formatAddress({ venueName: e.venueName, suburb: e.suburb, city: e.city })
 }
 
 export function priceLine(e: NlEvent) {

@@ -6,7 +6,9 @@ import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
-  title: 'Page not found · VibePeep',
+  title: 'Page not found',
+  alternates: { canonical: '/' },
+  openGraph: { title: 'Page not found · VibePeep', url: '/' },
   description: 'This page isn’t on. Head back to what’s happening.',
   robots: { index: false, follow: false },
 }

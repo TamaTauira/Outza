@@ -56,7 +56,7 @@ export interface TopicDef {
 }
 
 export const TOPICS: TopicDef[] = [
-  { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `The friend who knows ${c}: gigs, shows, markets and festivals, sorted by when they start.` },
+  { key: 'events', label: 'All events', title: (c) => `Things to do in ${c}: events & what’s on`, heading: (c) => `Events in ${c}`, blurb: (c) => `The friend who knows ${c}: gigs, shows, markets and festivals.` },
   { key: 'tonight', label: 'Tonight', title: (c) => `Events tonight in ${c}: what’s on from 5pm`, heading: (c) => `What’s on tonight in ${c}`, blurb: (c) => `What’s on from 5pm in ${c}. Listings without a start time are marked possibly available and sit after the timed ones.` },
   { key: 'this-weekend', label: 'This weekend', title: (c) => `What’s on in ${c} this weekend`, heading: (c) => `Things to do in ${c} this weekend`, blurb: (c) => `Friday to Sunday, sorted: live music, markets, theatre, sport and family days out in ${c}.` },
   { key: 'free-events', label: 'Free events', heading: (c) => `Free events in ${c}`, blurb: (c) => `Zero dollars, full fun: free festivals, markets, talks and exhibitions in ${c}.` },
@@ -153,7 +153,7 @@ export function guideFacts(input: {
     case 'events':
       out.push({
         question: `What is there to do in ${where}?`,
-        answer: `This is the full upcoming guide for ${where}: gigs, markets, shows and the rest, sorted by date. ${count}`,
+        answer: `This is the full upcoming guide for ${where}: gigs, markets, shows and the rest, with the date each one is on. ${count}`,
       })
       break
     default:

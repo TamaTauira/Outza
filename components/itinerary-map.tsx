@@ -57,6 +57,9 @@ export function ItineraryMap({
       Leaflet.control.zoom({ position: 'bottomright' }).addTo(map)
       map.attributionControl?.addAttribution(MAP_ATTRIBUTION)
       mapInstance.current = map
+      const paint = () => { if (mapIsLive(map)) map.invalidateSize() }
+      requestAnimationFrame(paint)
+      window.setTimeout(paint, 250)
       setReady(true)
     })()
     return () => {
@@ -78,6 +81,7 @@ export function ItineraryMap({
         if (cancelled || !mapIsLive(map)) return
         if (tileRef.current) map.removeLayer(tileRef.current)
         tileRef.current = layer.addTo(map)
+        requestAnimationFrame(() => { if (mapIsLive(map)) map.invalidateSize() })
       } catch (err) {
         console.error('Itinerary map style failed:', err)
       }
@@ -139,5 +143,5 @@ export function ItineraryMap({
     markers.current.get(stop.id)?.openPopup()
   }, [ready, activeId, signature, stops])
 
-  return <div ref={mapRef} className="absolute inset-0" />
+  return <div ref={mapRef} className="vp-itin-map absolute inset-0" />
 }

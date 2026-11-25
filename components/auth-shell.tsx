@@ -7,7 +7,7 @@ const ASIDE_LINKS = [
   { href: '/', label: 'Explore' },
   { href: '/map', label: 'Map' },
   { href: '/local', label: 'Local' },
-  { href: '/promoters', label: 'For promoters' },
+  { href: '/saved', label: 'Saved' },
 ]
 
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {

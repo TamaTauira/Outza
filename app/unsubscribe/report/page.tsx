@@ -4,7 +4,7 @@ import { verify } from '@/lib/newsletter/links'
 import { ReportUnsubscribeClient } from './report-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Unsubscribe from recaps — VibePeep', robots: { index: false } }
+export const metadata = { title: 'Unsubscribe from recaps', robots: { index: false }, openGraph: { title: 'Unsubscribe from recaps · VibePeep' } }
 
 export default async function ReportUnsubscribePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { u = '', k = '' } = await searchParams

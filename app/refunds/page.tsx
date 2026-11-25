@@ -2,11 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { LegalStamp } from '@/components/legal-stamp'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata: Metadata = {
-  title: 'Refunds — VibePeep',
+export const metadata: Metadata = pageMeta({
+  title: 'Refunds',
   description: 'When a VibePeep placement, plan or Promoter Pro pass can be refunded, and how to ask.',
-}
+  path: '/refunds',
+})
 
 const ACL = 'Nothing in this policy limits your rights under the Australian Consumer Law, including your right to a refund or other remedy for a major failure.'
 

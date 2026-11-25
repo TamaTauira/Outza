@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import { holdScrollRestore } from '@/lib/scroll-memory'
 import Link from 'next/link'
-import { Bookmark, Megaphone } from 'lucide-react'
+import { Megaphone } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventPath } from '@/lib/seo'
-import { formatPrice, formatTime } from '@/lib/board'
+import { formatPrice } from '@/lib/board'
+import { displayClock } from '@/lib/format'
 import { displayPriceValue, displayTitle, parentCategory } from '@/lib/display-public'
 import { tierDef } from '@/lib/tiers'
 import { EventImage, eventImageSizes } from '@/components/event-image'
@@ -23,6 +25,7 @@ interface FeaturedItem {
 
 export function FeaturedTurnstile({ city }: { city: string }) {
   const [items, setItems] = useState<FeaturedItem[]>([])
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -35,7 +38,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
         setItems(city ? rows.filter((it) => !it.city || it.city === city) : rows)
       })
       .catch((err) => console.error('Failed to load featured events:', err))
-      .finally(release)
+      .finally(() => { if (live) setLoaded(true); release() })
     return () => { live = false; release() }
   }, [city])
 
@@ -52,8 +55,8 @@ export function FeaturedTurnstile({ city }: { city: string }) {
         </div>
         <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Put your gig up here</Link>
       </div>
-      <div className="flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-4">
-        {cards}
+      <div className="vp-rail-track flex snap-x gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-3 lg:overflow-visible xl:grid-cols-4">
+        {loaded ? cards : <div className="vp-rail-hold" aria-hidden />}
       </div>
     </section>
   )
@@ -67,7 +70,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const badge = it.sponsored ? { label: 'SPONSORED', bg: t?.color ?? '#C0C7D1', fg: '#000000' } : null
   const price = formatPrice(it.isFree, it.price, it.priceMin, it.priceMax)
   const priceText = [price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')
-  const time = formatTime(it.time)
+  const time = displayClock(it.time)
   const date = new Date(it.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
   const saved = isSaved(it.id)
   const save = () => toggle({
@@ -76,7 +79,7 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
     price: it.price, priceMin: it.priceMin, priceMax: it.priceMax, ticketUrl: null, city: it.city, imageUrl: it.imageUrl,
   } as SavedEvent)
   return (
-    <article aria-hidden={hidden} className="relative w-[78vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card shadow-md lg:w-auto lg:max-w-none">
+    <article aria-hidden={hidden} className="relative w-[78vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-card border border-border bg-card shadow-md lg:w-auto lg:max-w-none">
       <Link href={eventPath(it)} tabIndex={hidden ? -1 : undefined} className="block">
         <div className="relative aspect-[4/5] overflow-hidden bg-card sm:aspect-[4/3]">
           <EventImage image={it.imageAsset} picture={eventPictureFrom(it)} src={it.imageUrl} sourceWidth={it.imageWidth} sourceHeight={it.imageHeight} kind="featured" alt={title} sizes={eventImageSizes('featured')} category={category} slot="featured" />
@@ -87,13 +90,11 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
         <div className="p-3">
           <p className="truncate font-semibold" title={title}>{title}</p>
           {it.tier !== 'HOT' && it.creative && <p className="truncate text-xs text-primary">{it.creative}</p>}
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{date} · {time.hm}{time.ampm ? ` ${time.ampm}` : ''}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{date} · {time}</p>
           <p className="truncate text-xs text-muted-foreground">{it.venueName}{it.city ? ` · ${it.city}` : ''}</p>
         </div>
       </Link>
-      <button type="button" onClick={save} aria-pressed={saved} aria-label={saved ? `Remove ${title} from saved` : `Save ${title}`} className="absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white">
-        <Bookmark className={saved ? 'h-4 w-4 fill-current text-brand-pink' : 'h-4 w-4'} />
-      </button>
+      <SaveButton tone="media" saved={saved} onClick={save} label={saved ? `Remove ${title} from saved` : `Save ${title}`} className="absolute right-3 top-3 z-20" />
     </article>
   )
 }

@@ -7,7 +7,9 @@ import { DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 import { DIGITAL_SERVICE_LINE } from '@/lib/digital-service'
 
 export const metadata: Metadata = {
-  title: 'Pricing — VibePeep',
+  title: 'Pricing',
+  alternates: { canonical: '/pricing' },
+  openGraph: { title: 'Pricing · VibePeep', description: 'Boost, Spotlight, Headliner and Promoter Pro. Prices in AUD, GST included. Listing an event stays free.', url: '/pricing' },
   description: 'Boost, Spotlight, Headliner and Promoter Pro. Prices in AUD, GST included. Listing an event stays free.',
 }
 

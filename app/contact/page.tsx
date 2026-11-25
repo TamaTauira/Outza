@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
 import { ContactForm } from '@/components/contact-form'
 import { InfoPage } from '@/components/info-page'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata: Metadata = {
-  title: 'Contact — VibePeep',
+export const metadata: Metadata = pageMeta({
+  title: 'Contact',
   description: 'Need a hand with a listing, a purchase or your account? Here’s how to reach VibePeep.',
-}
+  path: '/contact',
+})
 
 export default function ContactPage() {
   return (

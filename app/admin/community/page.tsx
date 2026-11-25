@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { CommunityAdminClient } from './community-admin-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Community moderation — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Community moderation', robots: { index: false }, openGraph: { title: 'Community moderation · VibePeep' } }
 
 export default async function AdminCommunityPage() {
   const session = await auth()

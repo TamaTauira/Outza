@@ -4,7 +4,7 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
 import { LEGAL_ARCHIVE, LEGAL_DOCS } from '@/lib/legal-docs'
 
-export const metadata = { title: 'Earlier legal versions — VibePeep', description: 'Previous versions of the VibePeep terms, privacy policy, disclaimer and refunds page.' }
+export const metadata = { title: 'Earlier legal versions', description: 'Previous versions of the VibePeep terms, privacy policy, disclaimer and refunds page.', alternates: { canonical: '/legal/archive' }, openGraph: { title: 'Earlier legal versions · VibePeep', url: '/legal/archive' } }
 
 export default function LegalArchivePage() {
   return (

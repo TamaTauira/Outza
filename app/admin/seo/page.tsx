@@ -5,7 +5,7 @@ import { getSeoReport } from '@/lib/seo-report'
 import { MIN_INDEX, eventPath } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'SEO & organic discovery — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'SEO and organic discovery', robots: { index: false }, openGraph: { title: 'SEO and organic discovery · VibePeep' } }
 
 const fmt = (d: string | null) => d ? new Date(d).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : 'never'
 const pct = (a: number, b: number) => (b > 0 ? `${((a / b) * 100).toFixed(1)}%` : '—')

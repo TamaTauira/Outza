@@ -4,7 +4,7 @@ import { auth } from '@/auth'
 import { TrustCount } from '@/components/admin-nav'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Admin — VibePeep', robots: { index: false } }
+export const metadata = { title: 'Admin', robots: { index: false }, openGraph: { title: 'Admin · VibePeep' } }
 
 const CARDS = [
   { href: '/admin/trust', title: 'Trust & listings', body: 'Reports, organiser claims, and quality flags waiting on you.' },

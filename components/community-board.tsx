@@ -195,7 +195,7 @@ export async function CommunityBoard({
 
 export async function communityMeta(args: Parameters<typeof CommunityBoard>[0]) {
   const section = sectionByKey(args.sectionKey)
-  if (!section) return { title: 'Community | VibePeep', robots: { index: false, follow: false } }
+  if (!section) return { title: 'Community', robots: { index: false, follow: false }, openGraph: { title: 'Community · VibePeep' } }
   const city = args.cityParam ? cityFromSlug(args.cityParam) : undefined
   const suburb = args.place && !isWhenKey(args.place) && !/^\d{4}-\d{2}-\d{2}$/.test(args.place) ? args.place : null
   const when = args.whenParam && isWhenKey(args.whenParam) ? args.whenParam : args.place && isWhenKey(args.place) ? args.place : null
@@ -210,7 +210,8 @@ export async function communityMeta(args: Parameters<typeof CommunityBoard>[0]) 
     index = false
   }
   return {
-    title: `${section.label}${city ? ` in ${city.name}` : ''} | VibePeep Local`,
+    title: `${section.label}${city ? ` in ${city.name}` : ''}`,
+    openGraph: { title: `${section.label}${city ? ` in ${city.name}` : ''} · VibePeep` },
     description: section.blurb,
     alternates: { canonical: [communitySectionPath(section.key), args.cityParam, args.place, args.whenParam].filter(Boolean).join('/') },
     robots: index ? undefined : { index: false as const, follow: true as const },

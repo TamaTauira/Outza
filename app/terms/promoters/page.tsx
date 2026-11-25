@@ -6,7 +6,9 @@ import { PageShell } from '@/components/page-shell'
 import { LEGAL_DOCS } from '@/lib/legal-docs'
 
 export const metadata = {
-  title: 'Promoter & Advertising Terms — VibePeep',
+  title: 'Promoter and advertising terms',
+  alternates: { canonical: '/terms/promoters' },
+  openGraph: { title: 'Promoter and advertising terms · VibePeep', url: '/terms/promoters' },
   description: 'Terms for listings, sponsored placements and promoter subscriptions on VibePeep.',
 }
 

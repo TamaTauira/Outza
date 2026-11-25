@@ -5,7 +5,7 @@ import { configuredTestInbox } from '@/lib/email-test-inbox'
 import { SendTest } from './send-test'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Emails | VibePeep', robots: { index: false, follow: false } }
+export const metadata = { title: 'Emails', robots: { index: false, follow: false }, openGraph: { title: 'Emails · VibePeep' } }
 
 function when(value: Date) {
   return new Intl.DateTimeFormat('en-AU', {

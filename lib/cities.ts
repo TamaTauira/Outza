@@ -83,11 +83,17 @@ export function displaySuburb(suburb: string | null | undefined, address: string
  * A venue named only after the city ("Sydney") is not a place. Prefer the suburb parsed
  * from the address, otherwise TBA, so the city name is not shown as the venue.
  */
+const MEETING_POINT = /meet(?:ing)? point|please (?:meet|arrive)|in front of|outside the|corner of/i
+
 export function tidyVenueName(venueName: string | null | undefined, address: string | null | undefined, city?: string | null): string {
-  const venue = (venueName ?? '').replace(/\s+/g, ' ').trim()
+  const venue = (venueName ?? '').replace(/\s+/g, ' ').trim().replace(/\b([A-Za-z][A-Za-z'’-]*)\s+\1\b/gi, '$1')
   const cityName = (city ?? '').trim()
   // The listing said the event is online. That is not the same as an unknown venue.
   if (/^(online|virtual)$/i.test(venue)) return venue.slice(0, 200)
+  if (MEETING_POINT.test(venue) || venue.split(/\s+/).length > 12) {
+    const suburb = suburbFromAddress(address)
+    return (suburb || 'Meeting point').slice(0, 200)
+  }
   const generic = !venue || /^(tba|tbc)$/i.test(venue) || GENERIC_PLACE.test(venue) || (!!cityName && venue.toLowerCase() === cityName.toLowerCase())
   if (!generic) return venue.slice(0, 200)
   const suburb = suburbFromAddress(address)

@@ -296,6 +296,7 @@ test('a midnight-to-midnight listing reads as all day', () => {
   assert.equal(formatBoardRange({ ...base, time: '00:00', endTime: null }).label, 'All day')
   assert.equal(formatBoardRange({ ...base, time: '00:00', endTime: '00:00' }).label, 'All day')
   assert.match(formatBoardRange({ ...base, time: '00:00', endTime: '03:00' }).label, /12:00 am/)
+  assert.equal(formatBoardRange({ ...base, time: '00:00', endTime: '01:00' }).label, 'time TBA')
   const flagged = formatBoardRange({ ...base, allDay: true, time: '00:00', endTime: '23:59' })
   assert.equal(flagged.label, 'All day')
   const timed = formatBoardRange({ ...base, time: '19:30', endTime: null })

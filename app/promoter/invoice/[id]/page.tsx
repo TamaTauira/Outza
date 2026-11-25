@@ -12,7 +12,7 @@ import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { PrintButton } from './print-button'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Invoice | VibePeep', robots: { index: false } }
+export const metadata: Metadata = { title: 'Invoice', robots: { index: false }, openGraph: { title: 'Invoice · VibePeep' } }
 
 const fmt = (d: Date) => d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' })
 

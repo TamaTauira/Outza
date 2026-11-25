@@ -3,10 +3,13 @@ import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { ACCESSIBILITY_STANDARD, ACCESSIBILITY_UPDATED } from '@/lib/accessibility'
 
-export const metadata: Metadata = {
-  title: 'Accessibility — VibePeep',
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata: Metadata = pageMeta({
+  title: 'Accessibility',
   description: 'How far VibePeep meets WCAG 2.2 Level AA, the gaps we know about, and how to tell us about a barrier.',
-}
+  path: '/accessibility',
+})
 
 export default function AccessibilityPage() {
   return (

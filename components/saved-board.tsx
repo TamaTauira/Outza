@@ -18,7 +18,8 @@ import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventToItem, useItinerary } from '@/lib/itinerary'
 import { addDays, formatPrice } from '@/lib/board'
 import { COPY } from '@/lib/copy'
-import { formatDate, formatTime } from '@/lib/format'
+import { formatDate } from '@/lib/format'
+import { formatVenueLine } from '@/lib/place'
 import { notifyAddedToItinerary, notifyRemovedFromItinerary } from '@/lib/notify'
 import { boardClockLine } from '@/lib/listing-window'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
@@ -215,7 +216,7 @@ function SavedCard({
   onMap?: () => void
 }) {
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
-  const when = formatTime(ev.time) || boardClockLine(ev) || COPY.timeNotListed
+  const when = boardClockLine(ev) || COPY.timeNotListed
   const date = formatDate(ev.date, 'card')
   const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
   const venue = tidyVenueName(ev.venueName, ev.venueAddress, ev.city)
@@ -232,7 +233,7 @@ function SavedCard({
           <SaveButton saved={saved} onClick={onSave} label={saved ? `Remove ${ev.title} from saved` : `Save ${ev.title}`} />
         </div>
         <p className="text-sm text-muted-foreground">{date} · {when}</p>
-        <p className="text-sm">{venue}{suburb ? ` · ${suburb}` : ''}</p>
+        <p className="text-sm">{formatVenueLine({ venueName: venue, suburb, city: ev.city })}</p>
         <p className="font-mono text-sm">{[price.prefix, price.value].filter(Boolean).join(' ')} · {ev.category}</p>
         <div className="mt-auto flex flex-wrap gap-2 pt-2">
           <Button type="button" size="md" onClick={onPlan}>

@@ -3,10 +3,13 @@ import Link from 'next/link'
 import { PageShell } from '@/components/page-shell'
 import { ATTRIBUTIONS } from '@/lib/attributions'
 
-export const metadata: Metadata = {
-  title: 'Data sources — VibePeep',
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata: Metadata = pageMeta({
+  title: 'Data sources',
   description: 'Third-party data and map tiles used on VibePeep, and the credit each one asks for.',
-}
+  path: '/attributions',
+})
 
 export default function AttributionsPage() {
   return (

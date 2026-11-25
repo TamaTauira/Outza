@@ -6,7 +6,8 @@ import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch
 import Link from 'next/link'
 import { eventPath } from '@/lib/seo'
 import { areasForCity } from '@/lib/categories'
-import { addDays, formatPrice, formatTime } from '@/lib/board'
+import { addDays, formatPrice } from '@/lib/board'
+import { boardClockLine } from '@/lib/listing-window'
 import { minutesNow, orderedWindow } from '@/lib/listing-window'
 import { EventImage, eventImageSizes } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
@@ -225,9 +226,9 @@ function Shown({ ids, onShown }: { ids: string[]; onShown?: (ids: string[]) => v
 
 function RailCard({ ev }: { ev: RailEvent }) {
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
-  const time = formatTime(ev.time)
+  const time = boardClockLine(ev) || 'time TBA'
   return (
-    <Link href={eventPath(ev)} scroll={false} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
+    <Link href={eventPath(ev)} scroll={false} className="w-[200px] shrink-0 overflow-hidden rounded-card border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
       <div className="relative aspect-[4/3] bg-card">
         <EventImage image={ev.imageAsset} picture={eventPictureFrom(ev)} src={ev.imageUrl} sourceWidth={ev.imageWidth} sourceHeight={ev.imageHeight} kind="card" alt="" sizes={eventImageSizes('rail')} category={ev.category} slot="card" />
         {ev.sponsored && <span className="vp-media-chip absolute left-2 top-2 rounded-full px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide">Sponsored</span>}
@@ -235,7 +236,7 @@ function RailCard({ ev }: { ev: RailEvent }) {
       </div>
       <div className="p-2.5">
         <p className="truncate text-sm font-semibold">{ev.title}</p>
-        <p className="truncate text-xs text-muted-foreground">{ev.time ? `${time.hm}${time.ampm ? ` ${time.ampm}` : ''}` : 'Time not listed'} · {ev.venueName}</p>
+        <p className="truncate text-xs text-muted-foreground">{time} · {ev.venueName}</p>
       </div>
     </Link>
   )

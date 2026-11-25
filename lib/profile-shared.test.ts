@@ -129,6 +129,17 @@ test('account About you enables Save Details from validity and still writes the 
   assert.match(route, /prisma\.user\.update/)
 })
 
+test('signup API requires a birth year for event-goers', async () => {
+  const res = await POST(new NextRequest('http://localhost/api/signup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'noyer@example.com', password: 'secret12', role: 'CONSUMER' }),
+  }))
+  assert.equal(res.status, 400)
+  const body = await res.json()
+  assert.match(body.error, /year you were born/)
+})
+
 test('signup API blocks an EU under-16 before creating an account', async () => {
   const year = String(new Date().getFullYear() - 14)
   const res = await POST(new NextRequest('http://localhost/api/signup', {

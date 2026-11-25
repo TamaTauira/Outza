@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { chipClass } from '@/components/ui/chip'
 import { ChevronRight } from 'lucide-react'
-import type { CityDef } from '@/lib/cities'
+import { CITY_NAMES, type CityDef } from '@/lib/cities'
 import { formatGuideDay, whenPhrase } from '@/lib/local-seo'
 import { cityPath, suburbPath, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
@@ -46,17 +46,18 @@ export function GuideLanding(props: {
 }) {
   const { city, topic, suburb, when, heading, blurb, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
   const listingQuery = isLandingPath(path) ? `lp=${encodeURIComponent(path)}` : undefined
+  const here = events.filter((event) => {
+    const name = (event.venueName || '').toLowerCase()
+    return !CITY_NAMES.some((other) => other !== city.name && name.includes(other.toLowerCase()))
+  })
+  const listed = here.length ? here : events
   const byDay = new Map<string, LandingEvent[]>()
-  for (const e of events) {
+  for (const e of listed) {
     const k = e.date.toISOString().slice(0, 10)
     byDay.set(k, [...(byDay.get(k) ?? []), e])
   }
-  const cats = topCounts(events, 'category').filter((c) => c !== 'Community' || topic?.key !== 'live-music')
-  const venues = topCounts(events, 'venueName').filter((v) => {
-    const n = v.trim().toLowerCase()
-    return n && n !== city.name.toLowerCase() && n !== 'tba'
-  })
-  const freeShown = events.filter((e) => e.isFree && !/\$\s*[1-9]/.test(e.price ?? '')).length
+  const cats = topCounts(listed, 'category').filter((c) => c !== 'Community' || topic?.key !== 'live-music')
+  const freeShown = listed.filter((e) => e.isFree && !/\$\s*[1-9]/.test(e.price ?? '')).length
   const showRange = (when != null || topic?.key === 'this-weekend') && !!to
   const ld = guideStructuredData({ origin, path, heading, description: blurb, city, crumbs, events, local, total, refreshed, facts })
 
@@ -95,7 +96,6 @@ export function GuideLanding(props: {
                 {suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
               )}
               {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` Plenty of ${list(cats).toLowerCase()} if that’s your thing.`}
-              {venues.length > 0 && ` You’ll see ${list(venues)} a fair bit on this page.`}
               {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} of the events shown here ${freeShown === 1 ? 'is' : 'are'} listed as free.`}
               {local.length > 0 && ` ${local.length} ${local.length === 1 ? 'is a community listing' : 'are community listings'} from VibePeep Local.`}
             </p>

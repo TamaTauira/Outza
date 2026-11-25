@@ -19,9 +19,9 @@ type Props = { params: Promise<{ id: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const user = await prisma.user.findUnique({ where: { id }, select: { orgName: true, name: true, role: true, image: true } })
-  if (!user || (user.role !== 'PROMOTER' && user.role !== 'ADMIN')) return { title: 'Organiser not found | VibePeep', robots: { index: false } }
+  if (!user || (user.role !== 'PROMOTER' && user.role !== 'ADMIN')) return { title: 'Organiser not found', robots: { index: false }, openGraph: { title: 'Organiser not found · VibePeep' } }
   const name = user.orgName || user.name || 'Organiser'
-  const title = `${name} | VibePeep`
+  const title = name
   const description = `Events presented by ${name} on VibePeep.`
   const url = `/organisers/${id}`
   const image = openGraphImage(user.image, `${name} on VibePeep`)
@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, type: 'profile', images: [image] },
-    twitter: { card: 'summary_large_image', title, description, images: [image] },
+    openGraph: { title: `${title} · VibePeep`, description, url, type: 'profile', images: [image] },
+    twitter: { card: 'summary_large_image', title: `${title} · VibePeep`, description, images: [image] },
   }
 }
 

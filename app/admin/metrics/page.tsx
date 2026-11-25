@@ -16,7 +16,7 @@ import {
 import { formatAudCents } from '@/lib/tiers'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Metrics — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Metrics', robots: { index: false }, openGraph: { title: 'Metrics · VibePeep' } }
 
 function count(n: number) {
   return n.toLocaleString('en-AU')

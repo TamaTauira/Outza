@@ -9,7 +9,9 @@ import { supplySnapshot } from './supply'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'For promoters — VibePeep',
+  title: 'For promoters',
+  alternates: { canonical: '/promoters' },
+  openGraph: { title: 'For promoters · VibePeep', description: 'Put your event in front of people planning their weekend. List for free. An evening pass is $9. Boost is $19 for a week.', url: '/promoters' },
   description: 'Put your event in front of people planning their weekend. List for free. An evening pass is $9. Boost is $19 for a week.',
 }
 

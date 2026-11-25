@@ -28,6 +28,7 @@ const RIGHT = [
 type TabKey = (typeof LEFT)[number]['key'] | (typeof RIGHT)[number]['key']
 
 function tabCurrent(key: TabKey, pathname: string | null) {
+  if (pathname?.startsWith('/account') || pathname?.startsWith('/together')) return false
   if (key === 'local') return pathname?.startsWith('/local') ?? false
   if (key === 'itinerary') return pathname?.startsWith('/itinerary') ?? false
   if (pathname?.startsWith('/local') || pathname?.startsWith('/itinerary')) return false
@@ -223,6 +224,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
           <button
             type="button"
             className="vp-bottom-tab vp-menu"
+            aria-current={pathname?.startsWith('/account') ? 'page' : undefined}
             aria-label={signedIn ? `Menu, ${user?.name || user?.email || 'account'}` : 'Menu'}
             aria-expanded={menuOpen}
             aria-controls="vp-menu-sheet"

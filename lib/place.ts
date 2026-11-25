@@ -1,27 +1,75 @@
-/** One address line, without repeating the venue, suburb or city. */
+/** One place formatter for cards, itinerary stops, maps, event pages and email. */
 
-export function placeLine(parts: {
+export type PlaceParts = {
   venueName?: string | null
   venueAddress?: string | null
   suburb?: string | null
   city?: string | null
-}): string {
+}
+
+function tidy(value?: string | null): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+function same(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase()
+}
+
+function has(hay: string, needle: string): boolean {
+  return !!needle && hay.toLowerCase().includes(needle.toLowerCase())
+}
+
+/** "Hobart Hobart High" → "Hobart High". */
+export function collapseRepeatedWords(value: string): string {
+  return tidy(value).replace(/\b([A-Za-z][A-Za-z'’-]*)\s+\1\b/gi, '$1')
+}
+
+function stripName(address: string, name: string): string {
+  let next = tidy(address)
+  const token = tidy(name)
+  if (!next || !token) return next
+  const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  next = next.replace(new RegExp(`^${escaped}\\b[\\s,·\\-–]*`, 'i'), '')
+  next = next.replace(new RegExp(`[\\s,·\\-–]*\\b${escaped}\\b`, 'gi'), '')
+  return tidy(next.replace(/(?:,\s*){2,}/g, ', ').replace(/^,\s*|,\s*$/g, ''))
+}
+
+/** "The Rocks · The Rocks" → "The Rocks". */
+export function formatVenueLine(parts: PlaceParts): string {
+  const city = tidy(parts.city)
+  const venue = collapseRepeatedWords(parts.venueName ?? '')
+  const suburb = collapseRepeatedWords(parts.suburb ?? '')
+  const venueOk = !!venue && !same(venue, city)
+  const suburbOk = !!suburb && !same(suburb, city) && !(venueOk && (same(suburb, venue) || has(venue, suburb)))
+  return [venueOk ? venue : '', suburbOk ? suburb : ''].filter(Boolean).join(' · ')
+}
+
+/**
+ * One postal line. A venue the address already starts with is not repeated,
+ * and a suburb equal to the venue is dropped.
+ */
+export function formatAddress(parts: PlaceParts): string {
+  const city = tidy(parts.city)
+  const venue = collapseRepeatedWords(parts.venueName ?? '')
+  const suburb = collapseRepeatedWords(parts.suburb ?? '')
+  const address = stripName(collapseRepeatedWords(parts.venueAddress ?? ''), venue)
   const bits: string[] = []
-  const push = (value?: string | null) => {
-    const v = (value ?? '').trim()
+  const push = (value: string) => {
+    const v = tidy(value)
     if (!v) return
-    const low = v.toLowerCase()
-    if (bits.some((b) => b.toLowerCase() === low || b.toLowerCase().includes(low) || low.includes(b.toLowerCase()))) return
+    if (bits.some((b) => same(b, v) || has(b, v))) return
     bits.push(v)
   }
-  const venue = (parts.venueName ?? '').trim()
-  const city = (parts.city ?? '').trim()
-  // A venue literally named after the city is a bad default, not a place name.
-  if (venue && venue.toLowerCase() !== city.toLowerCase()) push(venue)
-  push(parts.venueAddress)
-  push(parts.suburb)
-  push(city)
+  if (venue && !same(venue, city)) push(venue)
+  push(address)
+  if (suburb && !same(suburb, venue) && !same(suburb, city)) push(suburb)
+  if (city) push(city)
   return bits.join(', ')
+}
+
+/** One address line, without repeating the venue, suburb or city. */
+export function placeLine(parts: PlaceParts): string {
+  return formatAddress(parts)
 }
 
 const NOT_A_PLACE = /^(?:online|virtual|zoom|livestream|live[\s-]?stream|webinar|tba|tbc|to be announced|to be confirmed)(?:\b|[,])/i

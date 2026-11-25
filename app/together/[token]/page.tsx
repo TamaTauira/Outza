@@ -2,10 +2,13 @@ import type { Metadata } from 'next'
 import { PageShell } from '@/components/page-shell'
 import { PlanClient } from './plan-client'
 
-export const metadata: Metadata = {
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata: Metadata = pageMeta({
   title: 'Together plan',
-  robots: { index: false, follow: false },
-}
+  path: '/together',
+  index: false,
+})
 
 export default async function TogetherPlanPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params

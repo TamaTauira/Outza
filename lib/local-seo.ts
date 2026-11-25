@@ -258,7 +258,7 @@ export function guideCopy(input: {
   const venueBit = venues.length ? ` On this page: ${list(venues)}.` : ''
   return {
     h1,
-    title: `${h1}${span ? ` (${span})` : ''} | VibePeep`,
+    title: `${h1}${span ? ` (${span})` : ''}`,
     description: `${countBit} in ${place}${whereBit}.${venueBit} Listings are the current VibePeep inventory, with times and prices from the organiser.`,
   }
 }

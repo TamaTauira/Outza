@@ -27,7 +27,10 @@ const defaultOgImage = openGraphImage(undefined, DEFAULT_OG_ALT)
 
 export const metadata = {
   metadataBase: new URL(siteUrl()),
-  title: defaultTitle,
+  title: {
+    default: defaultTitle,
+    template: `%s · ${BRAND_NAME}`,
+  },
   description: defaultDescription,
   applicationName: BRAND_NAME,
   manifest: '/manifest.webmanifest',

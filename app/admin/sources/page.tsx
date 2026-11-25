@@ -6,7 +6,7 @@ import { DUPLICATE_THRESHOLDS } from '@/lib/event-identity'
 import { SOURCE_REGISTER, type RegisterStatus } from '@/lib/sources/register'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Event sources — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Event sources', robots: { index: false }, openGraph: { title: 'Event sources · VibePeep' } }
 
 const STATUS_LABEL: Record<RegisterStatus, string> = {
   integrated: 'Integrated',

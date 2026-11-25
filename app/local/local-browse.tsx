@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bookmark, CalendarDays, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, Plus } from 'lucide-react'
+import { CalendarDays, ChevronDown, Heart, LayoutGrid, List, Map as MapIcon, Plus } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { FilterBar, filterChipClass } from '@/components/filter-bar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -247,7 +248,7 @@ export function LocalBrowse({
                     <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                       {priceLine(ev)}
                       <span className="flex shrink-0 items-center">
-                        <SaveButton saved={isSaved(localFeedSaveId(ev))} onClick={() => save(ev)} />
+                        <SaveButton saved={isSaved(localFeedSaveId(ev))} onClick={() => save(ev)} label={isSaved(localFeedSaveId(ev)) ? `Remove ${ev.title} from saved` : `Save ${ev.title}`} />
                         <LocalPlus ev={ev} />
                       </span>
                     </div>
@@ -497,19 +498,11 @@ function BoardCard({ ev, hot, onHot, saved, onSave, onOpen }: { ev: LocalItem; h
       onOpen={onOpen}
       actions={(
         <>
-          <SaveButton saved={saved} onClick={onSave} />
+          <SaveButton saved={saved} onClick={onSave} label={saved ? `Remove ${ev.title} from saved` : `Save ${ev.title}`} />
           <LocalPlus ev={ev} />
         </>
       )}
     />
-  )
-}
-
-function SaveButton({ saved, onClick }: { saved: boolean; onClick: () => void }) {
-  return (
-    <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClick() }} aria-pressed={saved} aria-label={saved ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-full', saved ? 'text-primary' : 'text-muted-foreground')}>
-      <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} />
-    </button>
   )
 }
 

@@ -4,7 +4,13 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
 import { LegalStamp } from '@/components/legal-stamp'
 
-export const metadata = { title: 'Privacy policy — VibePeep', description: 'What VibePeep collects, why, and the choices you have.' }
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata = pageMeta({
+  title: 'Privacy policy',
+  description: 'What VibePeep collects, why, and the choices you have.',
+  path: '/privacy',
+})
 
 const SECTIONS: { title: string; body: string[]; id?: string }[] = [
   { title: 'What we collect', body: [

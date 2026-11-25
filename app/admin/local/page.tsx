@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { LocalAdminClient } from './local-admin-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'VibePeep Local moderation — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Local moderation', robots: { index: false }, openGraph: { title: 'Local moderation · VibePeep' } }
 
 export default async function AdminLocalPage() {
   const session = await auth()

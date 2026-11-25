@@ -158,7 +158,7 @@ export function seasonCopy(input: { city: string; season: SeasonDef; from: strin
   const count = input.total > 0 ? `${input.total} upcoming ${input.total === 1 ? 'listing' : 'listings'}` : 'Upcoming listings'
   return {
     h1,
-    title: `${h1} (${span}) | VibePeep`,
+    title: `${h1} (${span})`,
     description: `${count} in ${input.city} for ${span}. ${input.season.blurb(input.city)} Past dates drop off on their own.`,
   }
 }

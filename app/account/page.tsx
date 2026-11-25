@@ -6,10 +6,13 @@ import { AccountClient } from './account-client'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Your account · VibePeep',
-  robots: { index: false, follow: false },
-}
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata: Metadata = pageMeta({
+  title: 'Your account',
+  path: '/account',
+  index: false,
+})
 
 export default async function AccountPage() {
   const session = await auth()
