@@ -67,7 +67,7 @@ export function EventImage({
   const width = pictureProp?.width ?? sourceWidth ?? null
   const height = pictureProp?.height ?? sourceHeight ?? null
   const knownSize = hasStoredPhotoSize(width, height)
-  const storedLow = storedPhotoIsLowQuality(width, height, pictureProp?.lowQuality)
+  const storedLow = storedPhotoIsLowQuality(width, height)
   const urlLow = declaredPhotoIsLowQuality(src)
   const stage = (storedLow || urlLow)
     ? null

@@ -79,7 +79,7 @@ export function eventPictureFrom(row: {
     blur: row?.imageBlur ?? null,
     base: manifest.base.replace(/\/$/, ''),
     widths,
-    lowQuality: storedPhotoIsLowQuality(width, height, manifest.lowQuality),
+    lowQuality: storedPhotoIsLowQuality(width, height),
   }
 }
 

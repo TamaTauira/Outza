@@ -25,7 +25,7 @@ test('a pending manifest is not a picture, and a stored one keeps its own files'
   assert.equal(displayFileUrl(picture!.base, 480, 'avif'), 'https://cdn.example/event-display/abc/w480.avif')
 })
 
-test('a narrow or short source is marked low quality without changing the file list', () => {
+test('only a tiny source is low quality, and an old flag on a real photo is ignored', () => {
   const small = eventPictureFrom({
     imageWidth: 140,
     imageHeight: 140,
@@ -33,12 +33,18 @@ test('a narrow or short source is marked low quality without changing the file l
   })
   assert.equal(small?.lowQuality, true)
   assert.equal(small?.base, 'https://cdn.example/event-display/tiny')
+  const tile = eventPictureFrom({
+    imageWidth: 472,
+    imageHeight: 315,
+    imageDisplay: { v: 1, lowQuality: true, base: 'https://cdn.example/event-display/tile/', widths: [472] },
+  })
+  assert.equal(tile?.lowQuality, false)
   const flagged = eventPictureFrom({
     imageWidth: 1440,
     imageHeight: 960,
     imageDisplay: { v: 1, lowQuality: true, base: 'https://cdn.example/event-display/flag/', widths: [480, 960, 1440] },
   })
-  assert.equal(flagged?.lowQuality, true)
+  assert.equal(flagged?.lowQuality, false)
 })
 
 test('storage estimate counts both formats at each width', () => {

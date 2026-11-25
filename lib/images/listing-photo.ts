@@ -1,22 +1,17 @@
 /**
- * A listing photo is too small to fill a card when its source is under ~600×400.
- * Callers then show the genre holding image. Dimensions already stored by
- * prepareEventDisplay win; a URL that names its own pixel size is next; the
- * bitmap the browser decoded is only a fallback for rows that have neither.
+ * Holding art is only for a genuinely tiny source. A 140×140 thumbnail looks
+ * bad on a card. A 472×315 tile and a normal photo do not.
+ * The long edge has to be under 300px. A stored lowQuality flag from the old
+ * 600×400 rule is ignored; callers recompute from the pixel size.
  */
 
-export const MIN_LISTING_PHOTO_WIDTH = 600
-export const MIN_LISTING_PHOTO_HEIGHT = 400
+export const TINY_PHOTO_EDGE = 300
 
-export function storedPhotoIsLowQuality(
-  width?: number | null,
-  height?: number | null,
-  flag?: boolean | null,
-): boolean {
-  if (flag === true) return true
-  if (typeof width === 'number' && width > 0 && width < MIN_LISTING_PHOTO_WIDTH) return true
-  if (typeof height === 'number' && height > 0 && height < MIN_LISTING_PHOTO_HEIGHT) return true
-  return false
+export function storedPhotoIsLowQuality(width?: number | null, height?: number | null): boolean {
+  const w = typeof width === 'number' && width > 0 ? width : 0
+  const h = typeof height === 'number' && height > 0 ? height : 0
+  if (!w && !h) return false
+  return Math.max(w, h) < TINY_PHOTO_EDGE
 }
 
 /** Both source edges are known, so the page does not need to measure the file. */
@@ -26,8 +21,8 @@ export function hasStoredPhotoSize(width?: number | null, height?: number | null
 
 /**
  * Some hosts put the pixel size in the file name (`x140x140`) or the query
- * (`width=2400&height=1350`). A full-size original with no size in the URL
- * returns false — that is "unknown", not "good".
+ * (`width=200&height=200`). A full-size original with no size in the URL
+ * returns false — that is "unknown", not "poor".
  */
 export function declaredPhotoIsLowQuality(url?: string | null): boolean {
   if (!url) return false
@@ -35,7 +30,7 @@ export function declaredPhotoIsLowQuality(url?: string | null): boolean {
   const tail = path.match(/(?:^|[^0-9])(\d{2,4})x(\d{2,4})$/i)
   if (tail && storedPhotoIsLowQuality(Number(tail[1]), Number(tail[2]))) return true
   const seo = path.match(/@seo-(\d+)/i)
-  if (seo && Number(seo[1]) > 0 && Number(seo[1]) < MIN_LISTING_PHOTO_WIDTH) return true
+  if (seo && Number(seo[1]) > 0 && Number(seo[1]) < TINY_PHOTO_EDGE) return true
   try {
     const query = new URL(url).searchParams
     const width = Number(query.get('width') || query.get('w') || '')
@@ -48,9 +43,9 @@ export function declaredPhotoIsLowQuality(url?: string | null): boolean {
 }
 
 /**
- * naturalWidth of a next/image response is the size we asked for, not the
- * source. Only trust it when the file came back smaller than that request
- * (the optimiser does not enlarge) or when the img is the original file.
+ * Last resort for a row with no stored size. Only an original file whose
+ * natural width is under 300px counts. A next/image response is a resize of
+ * whatever we asked for, so it must never replace a normal photo.
  */
 export function bitmapIsLowQuality(img: {
   naturalWidth: number
@@ -59,21 +54,8 @@ export function bitmapIsLowQuality(img: {
   src?: string
 }): boolean {
   const width = img.naturalWidth
-  const height = img.naturalHeight
-  if (!(width > 0) || !(height > 0)) return false
-  const src = img.currentSrc || img.src || ''
-  if (src.includes('/_next/image')) {
-    try {
-      const requested = Number(new URL(src, 'https://vibepeep.local').searchParams.get('w') || 0)
-      // next/image does not enlarge. A bitmap close to the requested width was
-      // scaled down from a larger master, so its height is not the source height
-      // (a phone can report a 1088px photo as about 360×180). Only a file well
-      // under the request is the source itself.
-      if (requested > 0 && width >= requested * 0.8) return false
-      if (requested > 0) return storedPhotoIsLowQuality(width, height)
-    } catch {
-      return storedPhotoIsLowQuality(width, height)
-    }
-  }
-  return storedPhotoIsLowQuality(width, height)
+  if (!(width > 0)) return false
+  const src = `${img.currentSrc || ''} ${img.src || ''}`
+  if (src.includes('/_next/image')) return false
+  return width < TINY_PHOTO_EDGE
 }

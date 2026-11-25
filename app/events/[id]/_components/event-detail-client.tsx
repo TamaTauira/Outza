@@ -251,7 +251,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         <div className="flex flex-col gap-[var(--vp-card-gap)] lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-[var(--vp-card-gap)]">
           <header className="min-w-0 space-y-3 lg:col-start-1">
             <EventGallery event={event}>
-              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) && !storedPhotoIsLowQuality(event.imageWidth, event.imageHeight, eventPictureFrom(event)?.lowQuality) && !declaredPhotoIsLowQuality(event.imageUrl) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border bg-black')}>
+              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) && !storedPhotoIsLowQuality(event.imageWidth, event.imageHeight) && !declaredPhotoIsLowQuality(event.imageUrl) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border bg-black')}>
                 <EventImage
                   key={event.id}
                   image={event.imageAsset}
