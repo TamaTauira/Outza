@@ -94,8 +94,8 @@ test('a valid year clears the red field state and an invalid one says why', () =
   assert.doesNotMatch(valid, /border-destructive/)
   assert.doesNotMatch(valid, /role="alert"/)
   assert.match(valid, /inputMode="numeric"/)
-  assert.match(valid, /autoComplete="bday-year"/)
-  assert.match(valid, /autoComplete="postal-code"/)
+  assert.match(valid, /autoComplete="off"/)
+  assert.match(valid, /name="home-postcode"/)
 
   const invalid = renderToStaticMarkup(createElement(ProfileFields, {
     birthYear: '2013', homePostcode: '203', onBirthYear: () => {}, onPostcode: () => {}, idPrefix: 'acct', showNote: false,
@@ -116,12 +116,12 @@ test('account About you enables Save Details from validity and still writes the 
   assert.doesNotMatch(account, /year === \(me\.birthYear/)
   assert.match(account, /body\.birthYear = check\.year/)
   assert.match(account, /method: 'PATCH'/)
-  assert.match(account, /fetch\('\/api\/me'\)/)
+  assert.match(account, /fetch\('\/api\/me', \{ cache: 'no-store' \}/)
   assert.match(account, /Details saved/)
   assert.match(fields, /onInput=\{sync\}/)
   assert.match(fields, /inputMode="numeric"/)
-  assert.match(fields, /autoComplete="bday-year"/)
-  assert.match(fields, /autoComplete="postal-code"/)
+  assert.match(fields, /autoComplete="off"/)
+  assert.match(fields, /name="birth-year"/)
   assert.match(fields, /aria-invalid=\{error \? true : false\}/)
   assert.match(fields, /variant=\{error \? 'error' : 'default'\}/)
   assert.match(route, /data\.birthYear = p\.year/)

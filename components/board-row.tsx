@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Bookmark, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
@@ -158,9 +159,7 @@ export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, a
         <span className={cn('vp-price', price.kind === 'free' && 'is-free')}>{price.text}</span>
       </span>
       <span className="vp-mrow-actions">
-        <button type="button" onClick={() => onToggleSave(ev)} className={cn(iconBtn, saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
-          <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} />
-        </button>
+        <SaveButton saved={saved} onClick={() => onToggleSave(ev)} label={saved ? 'Remove from saved' : 'Save event'} className={cn(iconBtn, 'bg-transparent', saved ? 'text-primary' : 'text-muted-foreground')} />
         <ItineraryButton lineup event={ev} className={iconBtn} />
       </span>
     </div>
@@ -226,13 +225,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active,
 
       {/* Save + itinerary (mobile top-right) */}
       <div className="xl:hidden justify-self-end flex items-center shrink-0">
-        <button
-          onClick={() => onToggleSave(ev)}
-          className={cn('relative z-20 p-1.5 rounded-md hover:bg-muted', saved ? 'text-primary' : 'text-muted-foreground')}
-          aria-label={saved ? 'Remove from saved' : 'Save event'}
-        >
-          <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
-        </button>
+        <SaveButton saved={saved} onClick={() => onToggleSave(ev)} label={saved ? 'Remove from saved' : 'Save event'} className={cn('relative z-20 bg-transparent hover:bg-muted', saved ? 'text-primary' : 'text-muted-foreground')} />
         <ItineraryButton lineup event={ev} className="hover:bg-muted" />
       </div>
 
@@ -271,14 +264,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active,
 
       {/* Actions */}
       <div className="hidden xl:flex items-center justify-end gap-1">
-        <button
-          onClick={() => onToggleSave(ev)}
-          className={cn('relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-md hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')}
-          aria-label={saved ? 'Remove from saved' : 'Save event'}
-          title={saved ? 'Saved' : 'Save'}
-        >
-          <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
-        </button>
+        <SaveButton saved={saved} onClick={() => onToggleSave(ev)} label={saved ? 'Remove from saved' : 'Save event'} className={cn('relative z-20 rounded-md bg-transparent hover:bg-background', saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground')} />
         <ItineraryButton lineup event={ev} className="hover:bg-background" />
       </div>
     </div>

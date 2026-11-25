@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
-import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
+import { Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { SheetHandle, sheetCloseClass } from '@/components/ui/sheet'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { EventImage, eventImageSizes } from '@/components/event-image'
@@ -18,6 +19,7 @@ import { descriptionParagraphs } from '@/lib/description-text'
 import { eventOutbound } from '@/lib/listing-link'
 import { boardClockLine } from '@/lib/listing-window'
 import { mapsDirectionsUrl, placeLine } from '@/lib/place'
+import { formatDate } from '@/lib/format'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { fullPageNavigation } from '@/lib/full-page-nav'
 import { eventPath } from '@/lib/seo'
@@ -110,9 +112,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
   const city = cityDef(event.city)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
   const where = placeLine({ ...event, suburb })
-  const dateLabel = new Date(event.date).toLocaleDateString('en-AU', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: city.tz,
-  })
+  const dateLabel = formatDate(typeof event.date === 'string' ? event.date : new Date(event.date).toISOString(), 'long')
   const clock = boardClockLine(event)
   const cat = CATEGORIES.find((item) => item.name === event.category)
   const price = event.quality?.price?.range ?? (event.isFree ? 'Free' : (event.price || 'See website'))
@@ -217,10 +217,10 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 {(where || event.venueName) && (
                   <li className="flex items-start gap-2">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-                    <span>
+                    <span className="min-w-0">
                       <span className="font-medium">{event.venueName}</span>
-                      {suburb ? <span className="text-muted-foreground"> · {suburb}</span> : null}
-                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${event.venueName || event.title}`} className="mt-1 inline-flex min-h-11 items-center text-primary underline underline-offset-2">Directions</a> : null}
+                      {suburb && suburb.toLowerCase() !== (event.venueName ?? '').trim().toLowerCase() ? <span className="text-muted-foreground"> · {suburb}</span> : null}
+                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${event.venueName || event.title}`} className="mt-1 flex min-h-11 items-center text-primary underline underline-offset-2">Directions</a> : null}
                     </span>
                   </li>
                 )}
@@ -244,9 +244,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
               </div>
               <EventReactions eventId={event.id} signedIn={signedIn} />
               <div className="grid grid-cols-4 gap-1.5">
-                <button type="button" onClick={() => toggle(savedEvent, surface)} aria-label={saved ? 'Saved' : 'Save'} className={cn('flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border px-1 text-xs font-semibold sm:text-xs', saved ? 'border-primary text-primary' : 'border-border')}>
-                  <Bookmark className={cn('h-4 w-4 shrink-0', saved && 'fill-current')} /> {saved ? 'Saved' : 'Save'}
-                </button>
+                <SaveButton saved={saved} onClick={() => toggle(savedEvent, surface)} variant="stack" className="w-full" />
                 <ItineraryButton event={savedEvent} compact surface={surface} className="h-11 w-full rounded-xl" />
                 <AddToPlanButton eventId={event.id} city={event.city} icon surface={surface} className="h-11 w-full min-w-0 rounded-xl" />
                 <button type="button" onClick={() => shareEvent(event, surface)} aria-label="Share" className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border px-1 text-xs font-semibold sm:text-xs">

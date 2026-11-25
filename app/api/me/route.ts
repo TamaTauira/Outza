@@ -26,7 +26,7 @@ export async function GET() {
   if (!me) return unauthorized()
   const user = await prisma.user.findUnique({ where: { id: me.id }, select: SELECT })
   if (!user) return unauthorized()
-  return NextResponse.json({ user: out(user) })
+  return NextResponse.json({ user: out(user) }, { headers: { 'cache-control': 'no-store' } })
 }
 
 export async function PATCH(req: Request) {
@@ -89,5 +89,5 @@ export async function PATCH(req: Request) {
       console.error('[legal] could not record promoter upgrade', err instanceof Error ? err.message : err)
     })
   }
-  return NextResponse.json({ user: out(user) })
+  return NextResponse.json({ user: out(user) }, { headers: { 'cache-control': 'no-store' } })
 }

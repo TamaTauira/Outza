@@ -4,13 +4,13 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { LegalStamp } from '@/components/legal-stamp'
 import { PageShell } from '@/components/page-shell'
 import { LEGAL_DOCS } from '@/lib/legal-docs'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata = {
+export const metadata = pageMeta({
   title: 'Promoter and advertising terms',
-  alternates: { canonical: '/terms/promoters' },
-  openGraph: { title: 'Promoter and advertising terms · VibePeep', url: '/terms/promoters' },
-  description: 'Terms for listings, sponsored placements and promoter subscriptions on VibePeep.',
-}
+  path: '/terms/promoters',
+  description: 'Terms for listings, sponsored placements and promoter passes on VibePeep.',
+})
 
 const ABN = process.env.BUSINESS_ABN?.trim() || ''
 
@@ -25,9 +25,8 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '2. What you can buy',
     body: [
-      'You can list events, and you can pay to feature them. Spotlight, Boost and Headliner are paid placements. A local business ad on /local-ads is also a paid placement: it sits beside an event and is labelled Sponsored. These are one-off purchases, not monthly plans.',
-      'Local Pro, Growth and Venue Plus are monthly subscriptions. A new subscription can start with a 30-day trial. The trial is only on those monthly plans. Spotlight, Boost, Headliner and the 30-day Promoter Pro pass are paid up front and do not include that trial.',
-      'A trial becomes a paid subscription when it ends, unless you cancel before then. We tell you that before you start the trial.',
+      'You can list events, and you can pay to feature them. Boost, Spotlight and Headliner are one-off placements. Promoter Pro is a 30-day pass. A local business ad sits beside an event and is labelled Sponsored. The prices are the ones on the pricing page. These are not monthly plans.',
+      'Monthly organiser plans are not on sale. A plan that is already running renews until you cancel. One-off placements and Promoter Pro are paid up front.',
     ],
   },
   {
@@ -54,8 +53,8 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '6. Paying',
     body: [
-      'Payments are taken by Stripe. Card details go to Stripe, not to our database. Monthly plans renew automatically each billing cycle until you cancel. Cancel before the renewal if you do not want the next period.',
-      'A 30-day trial on Local Pro, Growth or Venue Plus converts to a paid period at the price shown when you started, unless you cancel during the trial. One-off placements and Promoter Pro are charged when you check out.',
+      'When card payments are switched on, they are taken by Stripe. Card details go to Stripe, not to our database. A plan that is already running renews until you cancel. Cancel before the renewal if you do not want the next period.',
+      'One-off placements and Promoter Pro are charged when you check out, at the price on the pricing page.',
     ],
   },
   {

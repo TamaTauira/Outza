@@ -207,7 +207,7 @@ function StageImage({
   onLoad?: (img: HTMLImageElement) => void
   onError?: () => void
 }) {
-  const fit = cn(blur ? 'vp-photo-blur-img object-cover' : 'object-contain', className)
+  const fit = cn(blur ? 'vp-photo-blur-img object-cover' : 'object-cover', className)
   if (optimized && !srcSet) {
     return (
       <Image

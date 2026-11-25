@@ -86,8 +86,8 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(function S
       method={action ? 'get' : undefined}
       onSubmit={submit}
       className={cn(
-        'flex min-w-0 items-center gap-2 pl-4 focus-within:ring-primary',
-        embedded ? 'bg-transparent text-[var(--vp-on-light)]' : cn('rounded-hero shadow-vp-md ring-2 ring-primary/50', tone === 'light' ? 'bg-white text-[var(--vp-on-light)]' : 'bg-card text-foreground ring-border'),
+        'flex min-w-0 flex-wrap items-center gap-2 pl-4 focus-within:ring-primary max-[380px]:h-auto max-[380px]:py-1.5',
+        embedded ? cn('bg-transparent', tone === 'theme' ? 'text-foreground' : 'text-[var(--vp-on-light)]') : cn('rounded-hero shadow-vp-md ring-2 ring-primary/50', tone === 'light' ? 'bg-white text-[var(--vp-on-light)]' : 'bg-card text-foreground ring-border'),
         size === 'lg' ? 'h-control-lg pr-1.5' : 'h-control pr-1',
         className,
       )}
@@ -116,10 +116,10 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(function S
         onClick={onClick}
         onKeyDown={onKeyDown}
         onChange={onChange ? (event) => onChange(event.target.value.slice(0, maxLength)) : undefined}
-        className={cn('h-control min-w-0 flex-1 bg-transparent text-base placeholder:text-[var(--vp-text-muted)] focus:outline-none', tone === 'light' ? 'text-[var(--vp-on-light)]' : 'text-foreground placeholder:text-muted-foreground')}
+        className={cn('h-control min-w-[9rem] flex-1 basis-[9rem] bg-transparent text-base focus:outline-none', tone === 'theme' ? 'text-foreground placeholder:text-muted-foreground' : 'text-[var(--vp-on-light)] placeholder:text-[var(--vp-text-muted)]')}
       />
       {showClear && !busy && (
-        <IconButton type="button" variant="ghost" label="Clear search" onClick={onClear} className="text-[var(--vp-on-light)]">
+        <IconButton type="button" variant="ghost" label="Clear search" onClick={onClear} className={tone === 'theme' ? 'text-foreground' : 'text-[var(--vp-on-light)]'}>
           <X className="h-4 w-4" />
         </IconButton>
       )}

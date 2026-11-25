@@ -109,7 +109,7 @@ function priceLine(ev: LocalItem) {
 export function LocalBrowse({
   city, setCity, query, setQuery, applyQuery, appliedQuery, suburb, setSuburb, category, setCategory, when, setWhen,
   items, error, onRetry, days, pins, today, hotKey, setHotKey, focusKey, focusPin,
-  closed, setClosed, more, setMore, isSaved, save, onList, onMine, onHow, hasListings, nowMinutes,
+  closed, setClosed, more, setMore, isSaved, save, onList, onMine, onHow, nowMinutes,
 }: {
   city: string
   setCity: (city: string) => void
@@ -190,11 +190,11 @@ export function LocalBrowse({
       >
         <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
           <CityPicker value={city} onChange={setCity} onDark label="City" />
-          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="Markets, weekends" label={`Search names, places, dates and free events in ${city}`} />
+          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="Markets, sales" label={`Search names, places, dates and free events in ${city}`} />
         </div>
         <div className="relative mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={onList} className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
-          {hasListings && <button type="button" onClick={onMine} className="inline-flex h-11 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">Your listings</button>}
+          <button type="button" onClick={onMine} className="inline-flex h-11 items-center rounded-full bg-white/15 px-4 text-sm font-semibold text-white">Your listings</button>
           <button type="button" onClick={onHow} className="inline-flex h-11 items-center rounded-full bg-white/10 px-4 text-sm font-semibold text-white">How it works</button>
         </div>
       </HeroCard>

@@ -37,19 +37,27 @@ export function LocalClient() {
   const params = useSearchParams()
   const { saved, isSaved, toggle } = useSaved()
   const { data: session } = useSession() || {}
-  const tab = (TAB_KEYS.find((key) => key === params.get('tab')) ?? 'browse')
+  const tabFromUrl = (TAB_KEYS.find((key) => key === params.get('tab')) ?? 'browse')
+  const [tab, setTabState] = useState(tabFromUrl)
+  const intendedTab = useRef<string | null>(null)
+  const queryState = useRef({ q: params.get('q') ?? '', category: params.get('category') ?? '', when: params.get('when') ?? 'weekend' })
   const pendingScroll = useRef(false)
   const writeLocal = (next: { tab?: string; q?: string; category?: string; when?: string }) => {
-    const sp = new URLSearchParams()
     const tabValue = next.tab ?? tab
+    const qValue = next.q !== undefined ? next.q : queryState.current.q
+    const cat = next.category !== undefined ? next.category : queryState.current.category
+    const whenValue = next.when !== undefined ? next.when : queryState.current.when
+    queryState.current = { q: qValue, category: cat, when: whenValue }
+    intendedTab.current = tabValue
+    setTabState((TAB_KEYS as readonly string[]).includes(tabValue) ? tabValue : 'browse')
+    const sp = new URLSearchParams()
     if (tabValue && tabValue !== 'browse') sp.set('tab', tabValue)
-    const qValue = next.q !== undefined ? next.q : (params.get('q') ?? '')
-    const cat = next.category !== undefined ? next.category : category
-    const whenValue = next.when !== undefined ? next.when : when
     if (qValue) sp.set('q', qValue)
     if (cat) sp.set('category', cat)
     if (whenValue && whenValue !== 'weekend') sp.set('when', whenValue)
-    router.push(sp.toString() ? `/local?${sp}` : '/local', { scroll: false })
+    const href = sp.toString() ? `/local?${sp}` : '/local'
+    window.history.replaceState(window.history.state, '', href)
+    router.replace(href, { scroll: false })
   }
   const setTab = (t: string) => writeLocal({ tab: t })
 
@@ -75,11 +83,16 @@ export function LocalClient() {
   const paramWhen = params.get('when') ?? 'weekend'
 
   useEffect(() => {
+    const fromUrl = TAB_KEYS.find((key) => key === params.get('tab')) ?? 'browse'
+    if (intendedTab.current && fromUrl !== intendedTab.current) return
+    intendedTab.current = null
+    setTabState(fromUrl)
     setCategory(paramCategory)
     setQuery(paramQ)
     setQueryText(paramQ)
     setWhen(paramWhen)
-  }, [paramQ, paramCategory, paramWhen])
+    queryState.current = { q: paramQ, category: paramCategory, when: paramWhen }
+  }, [paramQ, paramCategory, paramWhen, params])
 
   useEffect(() => {
     const tick = () => setNow(nowIn(cityDef(city).tz))

@@ -54,8 +54,8 @@ export function SearchPageForm({
         )}
       />
       {open && (
-        <div className="mt-3 rounded-hero bg-card p-4 ring-1 ring-border">
-          <FilterPicks hints={picks} onChange={setPicks} onClear={() => setPicks({ when: '', budget: '', category: '', area: '' })} />
+        <div className="mt-3 rounded-hero bg-card p-4 text-card-foreground ring-1 ring-border">
+          <FilterPicks surface="theme" hints={picks} onChange={setPicks} onClear={() => setPicks({ when: '', budget: '', category: '', area: '' })} />
         </div>
       )}
       {!q && !pickedHints(picks) && (

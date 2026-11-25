@@ -10,7 +10,7 @@ import { placeholderAbsolute } from '@/lib/placeholders'
 import { presentListing } from '@/lib/categories'
 import { stripTrackingParams } from '@/lib/listing-link'
 import { evaluateSeasons, type SeasonDecision } from '@/lib/seasons'
-import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isPastEvent, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
+import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isPastEvent, isTonightSlot, namesAnotherTown, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
 import { addDaysStr, localDupKey, localPath, occurrences, recurrenceLabel, todayIn } from '@/lib/local-shared'
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
@@ -77,7 +77,7 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   const tonight = opts.when === 'tonight' || (!opts.when && opts.topic === 'tonight')
   try {
     const rows = await withStatementTimeout(8_000, (tx) => tx.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: post || tonight ? 500 : take * 2 }))
-    let clean = collapseShowings(rows.filter((e) => !addressInOtherState(e.venueAddress, city) && !isPastEvent(e) && !hiddenFromPublic(e)))
+    let clean = collapseShowings(rows.filter((e) => !addressInOtherState(e.venueAddress, city) && !namesAnotherTown(city.name, e) && !isPastEvent(e) && !hiddenFromPublic(e)))
       .map((e) => presentListing(e))
     if (post && opts.topic) clean = clean.filter((e) => matchesTopic(e, opts.topic!))
     if (tonight) {

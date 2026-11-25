@@ -7,13 +7,16 @@ import { cn } from '@/lib/utils'
  */
 export function SiteHeaderFrame({ children, grow = false }: { children: ReactNode; grow?: boolean }) {
   return (
-    <header className="vp-site-header sticky top-0 z-50 bg-background/90 backdrop-blur-md">
-      <div className={cn(
-        'vp-header-bar vp-wrap flex min-w-0 items-center gap-1 border-b border-border px-4 sm:px-6',
-        grow ? 'h-auto min-h-14 flex-wrap gap-y-2 py-2 sm:min-h-16' : 'h-14 sm:h-16',
-      )}>
-        {children}
-      </div>
-    </header>
+    <>
+      <header className={cn('vp-site-header vp-header-fixed fixed inset-x-0 top-0 z-50 bg-background/90 backdrop-blur-md', grow && 'vp-header-grow')}>
+        <div className={cn(
+          'vp-header-bar vp-wrap flex min-w-0 items-center gap-1 border-b border-border px-4 sm:px-6',
+          grow ? 'h-auto min-h-14 flex-wrap gap-y-2 py-2 sm:min-h-16' : 'h-14 sm:h-16',
+        )}>
+          {children}
+        </div>
+      </header>
+      <div className={cn('vp-header-spacer', grow ? 'min-h-14 sm:min-h-16' : 'h-14 sm:h-16')} aria-hidden />
+    </>
   )
 }

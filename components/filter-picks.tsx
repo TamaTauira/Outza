@@ -19,7 +19,7 @@ const BUDGET_OPTS: { key: Exclude<Budget, ''>; label: string }[] = [
   { key: '75', label: 'Under $75' },
 ]
 
-const fieldClass = 'h-control w-full rounded-full border border-border bg-[var(--vp-on-light-fill)] px-3.5 text-sm font-semibold text-[var(--vp-on-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary'
+const fieldClass = 'h-control w-full rounded-full border border-border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary'
 
 /**
  * When, Budget, Vibe and Suburb. Home, Ask and /search share this panel.
@@ -30,12 +30,18 @@ export function FilterPicks({
   onChange,
   onClear,
   idPrefix = 'picks',
+  surface = 'light',
 }: {
   hints: SearchHints
   onChange: (next: SearchHints) => void
   onClear: () => void
   idPrefix?: string
+  /** `light` sits on the white hero card. `theme` follows the page, including a dark /search card. */
+  surface?: 'light' | 'theme'
 }) {
+  const onLight = surface === 'light'
+  const label = onLight ? 'text-[var(--vp-on-light)]' : 'text-muted-foreground'
+  const field = cn(fieldClass, onLight ? 'bg-[var(--vp-on-light-fill)] text-[var(--vp-on-light)]' : 'bg-background text-foreground')
   const set = <K extends keyof SearchHints>(key: K, value: SearchHints[K]) => {
     const next = { ...hints, [key]: hints[key] === value && key !== 'area' ? '' : value } as SearchHints
     onChange(next)
@@ -43,34 +49,34 @@ export function FilterPicks({
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div role="group" aria-label="When" className="min-w-0">
-        <div className="vp-eyebrow mb-2 text-[var(--vp-on-light)]">When</div>
-        <div className="grid grid-cols-3 gap-2 min-[360px]:flex min-[360px]:flex-wrap">
+        <div className={cn('vp-eyebrow mb-2', label)}>When</div>
+        <div className="flex flex-wrap gap-2">
           {WHEN_OPTS.map((option) => (
-            <Chip key={option.key} onLight title={option.hint} pressed={hints.when === option.key} onClick={() => set('when', option.key)} className="justify-center px-2 min-[360px]:px-3.5">
+            <Chip key={option.key} onLight={onLight} title={option.hint} pressed={hints.when === option.key} onClick={() => set('when', option.key)} className="justify-center px-3">
               {option.label}
             </Chip>
           ))}
         </div>
       </div>
       <div role="group" aria-label="Budget" className="min-w-0">
-        <div className="vp-eyebrow mb-2 text-[var(--vp-on-light)]">Budget</div>
-        <div className="grid grid-cols-3 gap-2 min-[360px]:flex min-[360px]:flex-wrap">
+        <div className={cn('vp-eyebrow mb-2', label)}>Budget</div>
+        <div className="flex flex-wrap gap-2">
           {BUDGET_OPTS.map((option) => (
-            <Chip key={option.key} onLight pressed={hints.budget === option.key} onClick={() => set('budget', option.key)} className="justify-center px-2 min-[360px]:px-3.5">
+            <Chip key={option.key} onLight={onLight} pressed={hints.budget === option.key} onClick={() => set('budget', option.key)} className="justify-center px-3">
               {option.label}
             </Chip>
           ))}
         </div>
       </div>
       <div className="min-w-0">
-        <label htmlFor={`${idPrefix}-vibe`} className="vp-eyebrow mb-2 block text-[var(--vp-on-light)]">Vibe</label>
+        <label htmlFor={`${idPrefix}-vibe`} className={cn('vp-eyebrow mb-2 block', label)}>Vibe</label>
         <span className="relative block">
           <select
             id={`${idPrefix}-vibe`}
             value={hints.category}
             onChange={(event) => onChange({ ...hints, category: event.target.value })}
             aria-label="Vibe"
-            className={cn(fieldClass, 'appearance-none pr-8 text-left', hints.category && 'bg-primary/10 ring-2 ring-primary')}
+            className={cn(field, 'appearance-none pr-8 text-left', hints.category && 'bg-primary/10 ring-2 ring-primary')}
           >
             <option value="">Any vibe</option>
             {CATEGORIES.map((category) => <option key={category.name} value={category.name}>{category.name}</option>)}
@@ -79,9 +85,9 @@ export function FilterPicks({
         </span>
       </div>
       <div className="min-w-0">
-        <label htmlFor={`${idPrefix}-suburb`} className="vp-eyebrow mb-2 block text-[var(--vp-on-light)]">Suburb</label>
+        <label htmlFor={`${idPrefix}-suburb`} className={cn('vp-eyebrow mb-2 block', label)}>Suburb</label>
         <span className="relative block">
-          <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--vp-on-light)]" />
+          <MapPin className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', onLight ? 'text-[var(--vp-on-light)]' : 'text-muted-foreground')} />
           <input
             id={`${idPrefix}-suburb`}
             value={hints.area}
@@ -89,13 +95,13 @@ export function FilterPicks({
             maxLength={40}
             autoComplete="off"
             placeholder="Any suburb"
-            className={cn(fieldClass, 'pl-9', hints.area.trim() && 'bg-primary/10 ring-2 ring-primary')}
+            className={cn(field, 'pl-9', hints.area.trim() && 'bg-primary/10 ring-2 ring-primary')}
           />
         </span>
       </div>
       {pickedHints(hints) && (
         <div className="flex justify-end sm:col-span-2">
-          <button type="button" onClick={onClear} className="inline-flex h-control items-center rounded-full px-3 text-sm font-semibold text-[var(--vp-on-light)] underline-offset-2 hover:underline">
+          <button type="button" onClick={onClear} className={cn('inline-flex h-control items-center rounded-full px-3 text-sm font-semibold underline-offset-2 hover:underline', label)}>
             {COPY.clearPicks}
           </button>
         </div>

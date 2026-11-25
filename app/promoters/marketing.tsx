@@ -132,7 +132,7 @@ export function PathCards() {
 
 export function HowItWorks({ cardsLive = false }: { cardsLive?: boolean }) {
   const steps = STEPS.map((step) => step.n === '02' && !cardsLive
-    ? { ...step, body: 'Pick Boost, Spotlight or Headliner and confirm it in the dashboard. While card payments are in test mode, confirming does not charge a card and the invoice is marked test.' }
+    ? { ...step, body: 'Pick Boost, Spotlight or Headliner and confirm it in the dashboard. Card payments are not switched on yet, so confirming does not charge a card.' }
     : step)
   return (
     <section id="how" className="scroll-mt-24 border-y border-border bg-card/50 py-10 sm:py-12">
@@ -195,7 +195,7 @@ export function BusinessPlans({ primaryHref, isPromoter, signedIn }: { primaryHr
   )
 }
 
-export function LocalAds({ href, label }: { href: string; label: string }) {
+export function LocalAds({ href, label, heading = 'h2' }: { href: string; label: string; heading?: 'h1' | 'h2' }) {
   return (
     <section id="local" className="scroll-mt-24 py-12 sm:py-16">
       <div className={`${sectionPad} grid items-center gap-[var(--vp-card-gap)] lg:grid-cols-2`}>
@@ -221,7 +221,9 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
         </figure>
         <div className="min-w-0">
           <p className="vp-ink-orange text-xs font-semibold">For restaurants, bars, parking and experiences</p>
-          <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Get recommended. Get noticed.</h2>
+          {heading === 'h1'
+            ? <h1 className="mt-2 font-display text-h1 font-bold">Get recommended. Get noticed.</h1>
+            : <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Get recommended. Get noticed.</h2>}
           <p className="mt-2 text-muted-foreground">Your next customers might already be deciding where to go.</p>
           <p className="mt-4 font-display text-4xl font-bold tabular-nums" data-testid="local-price">
             {formatAud(LOCAL_AD.priceCents)}

@@ -6,27 +6,27 @@ const phone = { pointerCoarse: true, horizontalSegments: 1 }
 const tablet = { pointerCoarse: true, horizontalSegments: 1 }
 const desktop = { pointerCoarse: false, horizontalSegments: 1 }
 
-test('bottom nav covers phones, tablet portrait, folds and a side-by-side span', () => {
+test('bottom nav covers phones and a side-by-side span', () => {
   assert.equal(wantsBottomNav({ ...phone, width: 320, height: 568 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 375, height: 667 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 390, height: 844 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 430, height: 932 }), true)
-  assert.equal(wantsBottomNav({ ...phone, width: 932, height: 430 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 667, height: 375 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 344, height: 882 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 690, height: 829 }), true)
-  assert.equal(wantsBottomNav({ ...phone, width: 884, height: 1104 }), true)
-  assert.equal(wantsBottomNav({ ...tablet, width: 768, height: 1024 }), true)
-  assert.equal(wantsBottomNav({ ...tablet, width: 820, height: 1180 }), true)
-  assert.equal(wantsBottomNav({ ...tablet, width: 834, height: 1194 }), true)
-  assert.equal(wantsBottomNav({ ...tablet, width: 1024, height: 1366 }), true)
   assert.equal(wantsBottomNav({ ...tablet, width: 507, height: 1024 }), true)
   assert.equal(wantsBottomNav({ ...phone, width: 540, height: 720 }), true)
   assert.equal(wantsBottomNav({ ...desktop, width: 1080, height: 720, horizontalSegments: 2 }), true)
   assert.equal(wantsBottomNav({ ...tablet, width: 1114, height: 720, horizontalSegments: 2 }), true)
 })
 
-test('tablet landscape and desktop keep the header links', () => {
+test('tablets and desktop keep the header links', () => {
+  assert.equal(wantsBottomNav({ ...phone, width: 932, height: 430 }), false)
+  assert.equal(wantsBottomNav({ ...tablet, width: 768, height: 1024 }), false)
+  assert.equal(wantsBottomNav({ ...tablet, width: 820, height: 1180 }), false)
+  assert.equal(wantsBottomNav({ ...tablet, width: 834, height: 1194 }), false)
+  assert.equal(wantsBottomNav({ ...tablet, width: 884, height: 1104 }), false)
+  assert.equal(wantsBottomNav({ ...tablet, width: 1024, height: 1366 }), false)
   assert.equal(wantsBottomNav({ ...tablet, width: 1024, height: 768 }), false)
   assert.equal(wantsBottomNav({ ...tablet, width: 1180, height: 820 }), false)
   assert.equal(wantsBottomNav({ ...tablet, width: 1194, height: 834 }), false)
@@ -34,7 +34,7 @@ test('tablet landscape and desktop keep the header links', () => {
   assert.equal(wantsBottomNav({ ...desktop, width: 1280, height: 800 }), false)
   assert.equal(wantsBottomNav({ ...desktop, width: 1440, height: 900 }), false)
   assert.equal(wantsBottomNav({ ...desktop, width: 1100, height: 1400 }), false)
-  assert.equal(wantsBottomNav({ ...desktop, width: 900, height: 800 }), true)
+  assert.equal(wantsBottomNav({ ...desktop, width: 900, height: 800 }), false)
 })
 
 test('the bar hides on the way down and returns on the way up, at the ends, and while locked', () => {

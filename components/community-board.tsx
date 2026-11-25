@@ -11,6 +11,7 @@ import {
 } from '@/lib/community-shared'
 import { boardClockLine } from '@/lib/listing-window'
 import { cityFromSlug, eventPath, slugify, WHEN_KEYS } from '@/lib/seo'
+import { openGraphImage } from '@/lib/share-image'
 
 const field = 'h-12 w-full rounded-lg border border-border bg-background px-3 text-base'
 
@@ -195,7 +196,7 @@ export async function CommunityBoard({
 
 export async function communityMeta(args: Parameters<typeof CommunityBoard>[0]) {
   const section = sectionByKey(args.sectionKey)
-  if (!section) return { title: 'Community', robots: { index: false, follow: false }, openGraph: { title: 'Community · VibePeep' } }
+  if (!section) return { title: 'Community', robots: { index: false, follow: false }, openGraph: { title: 'Community · VibePeep', images: [openGraphImage(undefined, 'Community · VibePeep')] } }
   const city = args.cityParam ? cityFromSlug(args.cityParam) : undefined
   const suburb = args.place && !isWhenKey(args.place) && !/^\d{4}-\d{2}-\d{2}$/.test(args.place) ? args.place : null
   const when = args.whenParam && isWhenKey(args.whenParam) ? args.whenParam : args.place && isWhenKey(args.place) ? args.place : null
@@ -211,7 +212,7 @@ export async function communityMeta(args: Parameters<typeof CommunityBoard>[0]) 
   }
   return {
     title: `${section.label}${city ? ` in ${city.name}` : ''}`,
-    openGraph: { title: `${section.label}${city ? ` in ${city.name}` : ''} · VibePeep` },
+    openGraph: { title: `${section.label}${city ? ` in ${city.name}` : ''} · VibePeep`, images: [openGraphImage(undefined, `${section.label} on VibePeep`)] },
     description: section.blurb,
     alternates: { canonical: [communitySectionPath(section.key), args.cityParam, args.place, args.whenParam].filter(Boolean).join('/') },
     robots: index ? undefined : { index: false as const, follow: true as const },

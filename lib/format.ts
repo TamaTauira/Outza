@@ -43,13 +43,15 @@ export function formatTime(t: string | null | undefined): string {
   return `${h12}:${match[2]} ${hour < 12 ? 'am' : 'pm'}`
 }
 
-/** "Sat 21 Nov" on a card, "Saturday 21 November" on a detail page. */
-export function formatDate(iso: string | null | undefined, style: 'card' | 'detail' = 'card'): string {
+/** "Sat 21 Nov" on a card, "Saturday 21 November 2026" on a detail page. The calendar day is the stored date, not the viewer's timezone. */
+export function formatDate(iso: string | null | undefined, style: 'card' | 'detail' | 'long' = 'card'): string {
   const key = iso?.slice(0, 10) ?? ''
   if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return ''
   const date = new Date(`${key}T00:00:00Z`)
   if (Number.isNaN(date.getTime())) return ''
   const day = date.getUTCDate()
+  const year = date.getUTCFullYear()
+  if (style === 'long') return `${WEEKDAYS_LONG[date.getUTCDay()]} ${day} ${MONTHS_LONG[date.getUTCMonth()]} ${year}`
   if (style === 'detail') return `${WEEKDAYS_LONG[date.getUTCDay()]} ${day} ${MONTHS_LONG[date.getUTCMonth()]}`
   return `${WEEKDAYS[date.getUTCDay()]} ${day} ${MONTHS[date.getUTCMonth()]}`
 }

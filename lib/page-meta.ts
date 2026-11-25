@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { BRAND_NAME } from '@/lib/brand'
+import { DEFAULT_OG_ALT, openGraphImage } from '@/lib/share-image'
 
 /** One document-title pattern. The root layout template appends the brand. */
 export const TITLE_TEMPLATE = `%s · ${BRAND_NAME}`
@@ -20,7 +21,7 @@ export function brandedTitle(title: string): string {
   return `${lead} · ${BRAND_NAME}`
 }
 
-/** Canonical URL, document title and og:title for one page. */
+/** Canonical URL, document title, og:title and the default share image. */
 export function pageMeta(opts: {
   title: string
   description?: string
@@ -30,6 +31,7 @@ export function pageMeta(opts: {
   const lead = titleLead(opts.title)
   const branded = brandedTitle(lead)
   const robots = opts.index === false ? { index: false, follow: false } : undefined
+  const image = openGraphImage(undefined, opts.description ? `${branded}. ${opts.description}` : DEFAULT_OG_ALT)
   return {
     title: lead,
     description: opts.description,
@@ -38,11 +40,13 @@ export function pageMeta(opts: {
       title: branded,
       description: opts.description,
       url: opts.path,
+      images: [image],
     },
     twitter: {
       card: 'summary_large_image',
       title: branded,
       description: opts.description,
+      images: [image],
     },
     robots,
   }

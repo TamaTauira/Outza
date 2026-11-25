@@ -16,7 +16,7 @@ export function FaqSection({ cardsLive = false }: { cardsLive?: boolean }) {
       q: 'When does my campaign start?',
       a: cardsLive
         ? 'Straight away, as soon as payment is confirmed. If you buy again for the same event, the new time is added on to the end.'
-        : 'From the dashboard, as soon as you confirm it. While card payments are in test mode, that does not charge a card and the invoice is marked test. Buying again for the same event adds the new time on to the end.',
+        : 'From the dashboard, as soon as you confirm it. Card payments are not switched on yet, so confirming does not charge a card. Buying again for the same event adds the new time on to the end.',
     },
     {
       q: 'Where does my event appear?',
@@ -43,12 +43,8 @@ export function FaqSection({ cardsLive = false }: { cardsLive?: boolean }) {
       a: `${PRO_PLAN.name} is ${formatAud(PRO_PLAN.priceCents)} for ${PRO_PLAN.days} days, and you can extend it any time. It includes ${PRO_PLAN.perks.join('; ')}. It pays for itself once you spend about ${proPayback} on promotions in a month. Ending it from billing stops the discount and the unlocked analytics. Days already used are not automatically refunded. The refunds page and the Australian Consumer Law still apply.`,
     },
     {
-      q: 'Can I upgrade or downgrade?',
-      a: 'Local Pro, Growth and Venue Plus are not on sale from this page. Request a quote and nothing is charged. When a monthly plan is on sale, an upgrade charges the difference then, and a downgrade waits for the next renewal. Buying a higher package for an event does not cancel the days you already paid for.',
-    },
-    {
-      q: 'What about a monthly plan’s free month?',
-      a: 'When monthly billing is switched on, a plan can start with one free month. The first 30 days are free, then the plan price is charged in AUD, then the same amount each month until you cancel. Cancel before the free month ends and you will not be charged. Nothing is charged until you tick the box in the dashboard. If card billing is not switched on, the dashboard takes a quote instead and does not charge a card.',
+      q: 'Is there a monthly plan?',
+      a: 'Not from this page. Boost, Spotlight, Headliner and Promoter Pro are one-off. A monthly plan is by quote, and nothing is charged from here.',
     },
     {
       q: 'What is a short boost?',

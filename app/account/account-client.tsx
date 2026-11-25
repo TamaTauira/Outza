@@ -33,7 +33,7 @@ export function AccountClient() {
 
   const load = useCallback(async () => {
     try {
-      const [m, f] = await Promise.all([fetch('/api/me').then((r) => r.json()), fetch('/api/friends').then((r) => r.json())])
+      const [m, f] = await Promise.all([fetch('/api/me', { cache: 'no-store' }).then((r) => r.json()), fetch('/api/friends', { cache: 'no-store' }).then((r) => r.json())])
       setMe(m?.user ?? m)
       setFriends({ friends: f?.friends ?? [], incoming: f?.incoming ?? [], outgoing: f?.outgoing ?? [] })
     } catch (err) { console.error('Failed to load account:', err) }
@@ -80,10 +80,10 @@ export function AccountClient() {
     try {
       const body: { birthYear?: number; homePostcode: string } = { homePostcode: pcNow }
       if (check.year != null) body.birthYear = check.year
-      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      const res = await fetch('/api/me', { method: 'PATCH', headers: { 'content-type': 'application/json' }, cache: 'no-store', body: JSON.stringify(body) })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof d?.error === 'string' ? d.error : 'Could not save')
-      const again = await fetch('/api/me')
+      const again = await fetch('/api/me', { cache: 'no-store' })
       const fresh = again.ok ? await again.json().catch(() => null) : null
       const savedUser = fresh?.user ?? d.user
       if (!savedUser) throw new Error('Could not save')

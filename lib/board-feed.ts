@@ -6,7 +6,7 @@ import { sydneyToday } from '@/lib/event-store'
 import { activeTierMap } from '@/lib/promotions'
 import { CITY_NAMES, cityDef } from '@/lib/cities'
 import { knownCategories, presentListing } from '@/lib/categories'
-import { addressInOtherState, isPastEvent } from '@/lib/seo'
+import { addressInOtherState, isPastEvent, namesAnotherTown } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
 import { collapseShowings, hiddenFromPublic, sameShowing } from '@/lib/listing-visibility'
 import { correctPin, placeFromText } from '@/lib/venue-place'
@@ -125,7 +125,7 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
     shown = shown.filter((e) => {
       if (isPastEvent(e) || hiddenFromPublic(e)) return false
       const blob = [e.venueAddress, e.venueName, e.suburb].filter(Boolean).join(' ')
-      if (addressInOtherState(blob, def)) return false
+      if (addressInOtherState(blob, def) || namesAnotherTown(city, e)) return false
       if (e.latitude != null && e.longitude != null && !coordsFitCity(e.latitude, e.longitude, city)) return false
       return true
     })

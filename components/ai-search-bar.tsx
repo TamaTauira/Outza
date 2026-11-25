@@ -18,6 +18,7 @@ import { IconButton } from '@/components/ui/icon-button'
 import { FilterPicks } from '@/components/filter-picks'
 import { PlanCard } from '@/components/plan-card'
 import { SearchBar } from '@/components/search-bar'
+import { cn } from '@/lib/utils'
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
   lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; subTag?: string; paidOnly?: boolean; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
@@ -45,7 +46,7 @@ function understood(f: AiSearchFilters, today: string | null): string[] {
 }
 
 /** Hero search and the Ask sheet. A plan-shaped ask shows a ready-made outing. */
-export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; onResult?: () => void; placeholder?: string; queryRequest?: { id: number; text: string; hints?: Hints } | null; chips?: boolean; inputId?: string; goToPage?: boolean }) {
+export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false, surface = 'light' }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; onResult?: () => void; placeholder?: string; queryRequest?: { id: number; text: string; hints?: Hints } | null; chips?: boolean; inputId?: string; goToPage?: boolean; surface?: 'light' | 'theme' }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -331,7 +332,7 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
 
   return (
     <div className="flex-1 min-w-0">
-      <div ref={rootRef} className="overflow-hidden rounded-hero bg-white text-[var(--vp-on-light)] shadow-vp-md ring-2 ring-primary/50 focus-within:ring-primary">
+      <div ref={rootRef} className={cn('overflow-hidden rounded-hero shadow-vp-md ring-2 ring-primary/50 focus-within:ring-primary', surface === 'theme' ? 'bg-card text-foreground' : 'bg-white text-[var(--vp-on-light)]')}>
         <p id={`${inputId}-help`} className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
         <SearchBar
           ref={inputRef}
@@ -354,6 +355,7 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
             event.preventDefault()
             focusPanel()
           }}
+          tone={surface === 'theme' ? 'theme' : 'light'}
           onClear={q && !working ? clearBar : undefined}
           hidden={goToPage ? [
             { name: 'city', value: city },
@@ -370,7 +372,7 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
               aria-controls={`${inputId}-panel`}
               label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
               onClick={() => setOpen((v) => !v)}
-              className={open ? 'relative bg-primary/15 text-primary' : 'relative text-[var(--vp-on-light)]'}
+              className={open ? 'relative bg-primary/15 text-primary' : surface === 'theme' ? 'relative text-foreground' : 'relative text-[var(--vp-on-light)]'}
             >
               <SlidersHorizontal className="h-4 w-4" aria-hidden />
               {hintCount > 0 && (
@@ -382,14 +384,14 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
 
         {chips && (
           <div className="grid gap-4 px-3 pb-3 pt-3">
-            <ChipGroup onLight label="Plan my..." icon={<CalendarRange className="h-3.5 w-3.5" aria-hidden />}>
+            <ChipGroup onLight={surface === 'light'} label="Plan my..." icon={<CalendarRange className="h-3.5 w-3.5" aria-hidden />}>
               {PLAN_SUGGESTIONS.map((s) => (
-                <Chip key={s} onLight type="button" onClick={() => runSuggestion(s)} disabled={busy}>{s}</Chip>
+                <Chip key={s} onLight={surface === 'light'} type="button" onClick={() => runSuggestion(s)} disabled={busy}>{s}</Chip>
               ))}
             </ChipGroup>
-            <ChipGroup onLight label="Search" icon={<Search className="h-3.5 w-3.5" aria-hidden />}>
+            <ChipGroup onLight={surface === 'light'} label="Search" icon={<Search className="h-3.5 w-3.5" aria-hidden />}>
               {SEARCH_SUGGESTIONS.map((s) => (
-                <Chip key={s} onLight type="button" onClick={() => runSuggestion(s)} disabled={busy}>{s}</Chip>
+                <Chip key={s} onLight={surface === 'light'} type="button" onClick={() => runSuggestion(s)} disabled={busy}>{s}</Chip>
               ))}
             </ChipGroup>
           </div>
@@ -407,6 +409,7 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
             {errorEl}
             <FilterPicks
               idPrefix={inputId}
+              surface={surface}
               hints={hints}
               onChange={(next) => {
                 setHints(next)
@@ -458,7 +461,7 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
           {data.relaxed && <p className="mt-2 text-sm text-muted-foreground">Couldn’t nail every word, but these tick most of your boxes.</p>}
 
           {data.results.length ? (
-            <ul className="mt-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="vp-ask-results mt-3 grid min-w-0 grid-cols-1 gap-3">
               {data.results.map((e) => {
                 const Icon = categoryIcon(e.category)
                 const clock = e.time ? displayClock(e.time) : ''
@@ -473,8 +476,8 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
                       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-control bg-primary/15 text-primary"><Icon className="h-4 w-4" /></span>
                       <span className="min-w-0">
                         <span className="block min-w-0 font-semibold leading-snug line-clamp-2 group-hover:underline">{e.title}</span>
-                        <span className="mt-1 flex min-w-0 items-center gap-1 text-sm text-foreground"><CalendarDays className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{dayLabel(e.date, today)}{clock ? ` · ${clock}` : ''}</span></span>
-                        <span className="mt-0.5 flex min-w-0 items-center gap-1 text-sm text-foreground"><MapPin className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{place}</span></span>
+                        <span className="mt-1 flex min-w-0 items-start gap-1 text-sm text-foreground"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" /><span className="min-w-0 line-clamp-2">{dayLabel(e.date, today, 'short')}{clock ? ` · ${clock}` : ''}</span></span>
+                        <span className="mt-0.5 flex min-w-0 items-start gap-1 text-sm text-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span className="min-w-0 line-clamp-2">{place}</span></span>
                         {e.isFree && <span className="mt-1 inline-flex rounded-full bg-emerald-800 px-2 py-0.5 text-xs font-semibold text-white">Free</span>}
                       </span>
                     </Link>

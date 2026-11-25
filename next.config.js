@@ -82,8 +82,6 @@ const nextConfig = {
       { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self)' },
       { key: 'Content-Security-Policy', value: csp },
-      // Public pages are indexable. A later rule noindexes private areas only.
-      { key: 'X-Robots-Tag', value: 'index, follow' },
     ];
     if (isProd) security.push({ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' });
     const noindex = { key: 'X-Robots-Tag', value: 'noindex, nofollow' };
@@ -98,8 +96,8 @@ const nextConfig = {
       '/saved',
     ];
     const rules = [
-      { source: '/:path*', headers: security },
       ...privatePaths.map((source) => ({ source, headers: [noindex] })),
+      { source: '/:path*', headers: security },
       { source: '/sitemap.xml', headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' }, { key: 'X-Robots-Tag', value: 'index, follow' }] },
       { source: '/sitemaps/:path*', headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600, stale-while-revalidate=86400' }, { key: 'X-Robots-Tag', value: 'index, follow' }] },
       { source: '/robots.txt', headers: [{ key: 'Cache-Control', value: 'public, s-maxage=3600' }, { key: 'X-Robots-Tag', value: 'index, follow' }] },

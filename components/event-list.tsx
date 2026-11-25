@@ -12,7 +12,8 @@ import { listPriceLabel } from '@/lib/price'
 import { formatBoardRange, rankBoard, resolveSchedule } from '@/lib/listing-window'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
-import { Bookmark, ChevronRight, Loader2, Sparkles } from 'lucide-react'
+import { ChevronRight, Loader2, Sparkles } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
 import { listDepthToLoad } from '@/lib/scroll-restore'
@@ -381,9 +382,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
               icon={Icon}
               actions={(
                 <>
-                  <button type="button" onClick={() => toggle(ev)} aria-label={isSaved(ev.id) ? 'Remove from saved' : 'Save'} className={cn('relative z-20 grid h-11 w-11 place-items-center rounded-md p-0', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')}>
-                    <Bookmark className={cn('h-4 w-4', isSaved(ev.id) && 'fill-current')} />
-                  </button>
+                  <SaveButton saved={isSaved(ev.id)} onClick={() => toggle(ev)} label={isSaved(ev.id) ? 'Remove from saved' : 'Save event'} className={cn('relative z-20 rounded-md bg-transparent p-0', isSaved(ev.id) ? 'text-primary' : 'text-muted-foreground')} />
                   <ItineraryButton lineup event={ev} className="relative z-20 grid h-11 w-11 place-items-center rounded-md p-0" />
                 </>
               )}

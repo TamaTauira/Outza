@@ -4,14 +4,14 @@ import { Page } from '@/components/layout/page'
 import { PageShell } from '@/components/page-shell'
 import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { Button } from '@/components/ui/button'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Page not found',
-  alternates: { canonical: '/' },
-  openGraph: { title: 'Page not found · VibePeep', url: '/' },
+  path: '/',
   description: 'This page isn’t on. Head back to what’s happening.',
-  robots: { index: false, follow: false },
-}
+  index: false,
+})
 
 export default function NotFound() {
   return (

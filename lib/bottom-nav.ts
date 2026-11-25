@@ -1,11 +1,9 @@
 /**
  * Where the bottom navigation replaces the top destination links.
  *
- * Phones in either orientation, tablet portrait (including iPad Pro 12.9 at
- * 1024px), coarse-pointer split views, and a horizontal dual-screen span all
- * use the bar. Tablet landscape and desktop keep the header links.
- * The same conditions are repeated in components/bottom-nav.css — keep them
- * together.
+ * Phones (up to 767px wide) and a horizontal dual-screen span use the 7-tab bar.
+ * Tablets and desktop keep the header links, so the bar is not stretched across an iPad.
+ * The same width is repeated in components/bottom-nav.css — keep them together.
  */
 
 export type BottomNavInput = {
@@ -16,9 +14,7 @@ export type BottomNavInput = {
   horizontalSegments: number
 }
 
-export const BOTTOM_NAV_MAX_WIDTH = 1023
-/** Coarse portrait tablets wider than the phone breakpoint, up to iPad Pro 12.9. */
-export const BOTTOM_NAV_TABLET_PORTRAIT_MAX = 1400
+export const BOTTOM_NAV_MAX_WIDTH = 767
 
 /**
  * Whether the bar should leave the screen. `null` means keep the current state.
@@ -49,10 +45,7 @@ export function shouldPopSaved(prev: number | null, next: number, ready: boolean
 
 export function wantsBottomNav(input: BottomNavInput): boolean {
   if (input.horizontalSegments >= 2) return true
-  if (input.width <= BOTTOM_NAV_MAX_WIDTH) return true
-  const portrait = input.height >= input.width
-  if (input.pointerCoarse && portrait && input.width <= BOTTOM_NAV_TABLET_PORTRAIT_MAX) return true
-  return false
+  return input.width <= BOTTOM_NAV_MAX_WIDTH
 }
 
 /**

@@ -74,6 +74,7 @@ export function AskSheet({
           queryRequest={queryRequest}
           onShowAll={() => onOpenChange(false)}
           onResult={() => onOpenChange(false)}
+          surface="theme"
         />
       )}
     </BottomSheet>
