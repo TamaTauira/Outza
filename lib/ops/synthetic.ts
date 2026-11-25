@@ -56,5 +56,5 @@ function asyncExpect(_res: Response, body: string): boolean {
  * so a same-day event whose end time has passed must not be the one the check probes.
  */
 export function pickPublicEvent<T extends PublicSession & { date: string | Date; city?: string | null }>(candidates: T[], now = new Date()): T | null {
-  return candidates.find((ev) => !isPastEvent({ date: ev.date, endDate: ev.endDate, city: ev.city }) && !hiddenFromPublic(ev, now)) ?? null
+  return candidates.find((ev) => !isPastEvent({ date: ev.date, endDate: ev.endDate, city: ev.city }, now) && !hiddenFromPublic(ev, now)) ?? null
 }

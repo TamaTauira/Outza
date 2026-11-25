@@ -3,7 +3,7 @@ import { formatTime } from '@/lib/board'
 import { priceSummary } from '@/lib/quality'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
-import { EMAIL_ADDRESS, EMAIL_FONT, EMAIL_ORANGE, EMAIL_PINK, emailBanner, emailBrandRule, emailButton, emailLockup } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_FONT, EMAIL_ORANGE, EMAIL_PINK, emailBanner, emailBrandRule, emailButton, emailButtonColorLock, emailLockup } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
@@ -252,10 +252,13 @@ body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
   .why{background-color:#2a211c!important}
   .whyTx{color:#f6f0ea!important}
   .price{color:#ffb08a!important}
+  ${emailButtonColorLock()}
 }
 [data-ogsc] .tx{color:#f4f4f4!important}
 [data-ogsc] .mu{color:#c8c8c8!important}
+${emailButtonColorLock('[data-ogsc]')}
 [data-ogsb] .card{background-color:#1c1c1e!important}
+${emailButtonColorLock('[data-ogsb]')}
 </style></head>
 <body class="bg" style="margin:0;padding:0;background:${C.page};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${x(r.preview)}${'&#8204;&nbsp;'.repeat(40)}</div>
