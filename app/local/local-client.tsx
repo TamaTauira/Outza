@@ -13,7 +13,7 @@ import { LocalBrowse, type LocalItem } from './local-browse'
 import { useSaved } from '@/lib/saved'
 import { CITY_NAMES, DEFAULT_CITY, cityDef } from '@/lib/cities'
 import { readCity, writeCity } from '@/lib/city-pref'
-import { LOCAL_SOURCES, fmtDay, fmtTime, localPath } from '@/lib/local-shared'
+import { LOCAL_SOURCES, fmtDay, fmtTime, localFeedSaveId, localPath } from '@/lib/local-shared'
 import { sectionByKey } from '@/lib/community-shared'
 import { CommunitySubmitForm } from './community-submit-form'
 import { cn } from '@/lib/utils'
@@ -164,13 +164,13 @@ export function LocalClient() {
   }
 
   const save = (ev: Item) => toggle({
-    id: ev.id,
+    id: localFeedSaveId(ev),
     title: ev.title,
     description: ev.blurb ?? null,
     date: ev.date,
     endDate: null,
     time: ev.time,
-    endTime: null,
+    endTime: ev.endTime ?? null,
     venueName: ev.suburb || ev.title,
     suburb: ev.suburb,
     category: sectionByKey(ev.section)?.boardCategory ?? 'Community',
@@ -183,6 +183,7 @@ export function LocalClient() {
     href: ev.href || '/local',
     latitude: ev.lat ?? null,
     longitude: ev.lng ?? null,
+    imageUrl: ev.imageUrl,
   }, 'local')
 
   return (

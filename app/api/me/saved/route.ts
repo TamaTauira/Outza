@@ -6,6 +6,7 @@ import { getSessionUser, unauthorized } from '@/lib/session'
 import { sydneyToday } from '@/lib/event-store'
 import { isPastEvent } from '@/lib/seo'
 import { isHiddenFromPublic, omitCommunitySecrets, redactCommunityPublic } from '@/lib/community-shared'
+import { occurrences, parseLocalSaveId } from '@/lib/local-shared'
 export const dynamic = 'force-dynamic'
 
 /** DB pre-filter one day wide (cities west of Sydney can still be on yesterday); the exact per-city check is isPastEvent. */
@@ -48,6 +49,27 @@ export async function GET() {
   return list(me.id)
 }
 
+/**
+ * A Little local finds row is a Local listing, not a board event.
+ * Confirm the dated listing, then let the signed-in device keep it.
+ * SavedEvent can only point at an Event, and this does not write one.
+ */
+async function savedLocalListing(eventId: string) {
+  const parsed = parseLocalSaveId(eventId)
+  if (!parsed) return null
+  const row = await prisma.localListing.findUnique({
+    where: { id: parsed.listingId },
+    select: { id: true, status: true, duplicateOfId: true, expiresAt: true, startDate: true, endDate: true, recurrence: true, recurUntil: true },
+  })
+  if (!row || row.status !== 'APPROVED' || row.duplicateOfId || row.expiresAt < new Date()) {
+    return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+  }
+  if (!occurrences(row, parsed.date, parsed.date).includes(parsed.date)) {
+    return NextResponse.json({ error: 'Listing not found' }, { status: 404 })
+  }
+  return NextResponse.json({ ok: true })
+}
+
 /** body: { eventId, saved } toggles one. A bulk { ids } list is not imported — that copied one account's device cache onto the next person. */
 export async function POST(req: Request) {
   const me = await getSessionUser()
@@ -58,6 +80,8 @@ export async function POST(req: Request) {
   }
   if (typeof b.eventId === 'string') {
     if (b.saved) {
+      const local = await savedLocalListing(b.eventId)
+      if (local) return local
       const ev = await prisma.event.findUnique({ where: { id: b.eventId }, select: { id: true } })
       if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
       const already = await prisma.savedEvent.findUnique({ where: { userId_eventId: { userId: me.id, eventId: ev.id } }, select: { eventId: true } })

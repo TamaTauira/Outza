@@ -29,6 +29,22 @@ export function visibleSavedCount(signedIn: boolean, accountCount: number): numb
  * Event ids to push up when an account is linked.
  * Only this account's pending toggles. The legacy shared list is never uploaded.
  */
+const LOCAL_SAVE_ID = /^local-[A-Za-z0-9]+-\d{4}-\d{2}-\d{2}$/
+
+export function isLocalSaveId(id: string) {
+  return LOCAL_SAVE_ID.test(id)
+}
+
+/**
+ * Local listings are not board events, so the account payload never includes them.
+ * Keep this account's device copies when the server list is applied.
+ */
+export function keepDeviceLocalSaves<T extends { id: string }>(server: T[], device: T[]): T[] {
+  const seen = new Set(server.map((row) => row.id))
+  const extra = device.filter((row) => isLocalSaveId(row.id) && !seen.has(row.id))
+  return extra.length ? [...server, ...extra] : server
+}
+
 export function savesToUpload(userId: string | null | undefined, pendingEventIds: string[]): string[] {
   if (!userId) return []
   const seen = new Set<string>()

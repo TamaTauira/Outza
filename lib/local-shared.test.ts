@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { localToBoard, type LocalOccurrence } from './local-shared'
+import { localFeedSaveId, localToBoard, parseLocalSaveId, type LocalOccurrence } from './local-shared'
 
 const full: LocalOccurrence = {
   id: 'abc',
@@ -54,4 +54,12 @@ test('the shaped /api/local feed item does not throw', () => {
   assert.equal(board.description, '')
   assert.equal(board.title, 'Market')
   assert.equal(board.id, 'local-abc-2026-11-01')
+  assert.equal(board.id, localFeedSaveId({ id: 'abc', date: '2026-11-01', kind: 'local' }))
+})
+
+test('a local find saves under the dated listing id, and a community row keeps the event id', () => {
+  assert.equal(localFeedSaveId({ id: 'cmwc19', date: '2026-11-28', kind: 'local' }), 'local-cmwc19-2026-11-28')
+  assert.equal(localFeedSaveId({ id: 'evt1', date: '2026-11-28', kind: 'community' }), 'evt1')
+  assert.deepEqual(parseLocalSaveId('local-cmwc19-2026-11-28'), { listingId: 'cmwc19', date: '2026-11-28' })
+  assert.equal(parseLocalSaveId('evt1'), null)
 })

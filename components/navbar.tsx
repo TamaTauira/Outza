@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useMounted } from '@/components/client-only'
 import { cn } from '@/lib/utils'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { SiteHeaderBrand, SiteHeaderFrame } from '@/components/site-header-bar'
 import { PeepIcon } from '@/components/peep-icon'
 import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { BottomNav } from '@/components/bottom-nav'
@@ -62,11 +62,8 @@ export function Navbar({ savedCount }: NavbarProps) {
 
   return (
     <>
-    <header className="vp-site-header sticky top-0 z-50 bg-background/90 backdrop-blur-md">
-      <div className="vp-header-bar vp-wrap min-w-0 border-b border-border px-2 sm:px-6 h-14 sm:h-16 flex items-center gap-1">
-        <a href="/" className="vp-header-brand flex shrink-0 items-center">
-          <VibePeepLogo size="md" className="vp-header-lockup" />
-        </a>
+    <SiteHeaderFrame>
+        <SiteHeaderBrand />
 
         <nav className="vp-top-links flex items-stretch h-full min-w-0" aria-label="Primary">
           {(['board', 'map', 'local', 'saved'] as const).map((key) => {
@@ -159,8 +156,7 @@ export function Navbar({ savedCount }: NavbarProps) {
             </div>
           ))}
         </div>
-      </div>
-    </header>
+    </SiteHeaderFrame>
     <BottomNav savedCount={mounted ? savedCount : 0} ready={mounted} />
   </>
   )

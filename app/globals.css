@@ -847,6 +847,8 @@ a[class*="w-9"] {
   flex-direction: column;
   justify-content: flex-end;
   height: 1em;
+  /* The wordmark is out of flow. Reserve its width or the nav paints over the name. */
+  width: calc(0.56em * 9276 / 1440);
   min-width: max-content;
 }
 
@@ -889,6 +891,11 @@ html:not(.dark) .vp-lockup:not(.is-on-dark) .vp-word-dark { display: none; }
 
 .vp-lockup.is-compact .vp-lockup-tag { display: none; }
 
+.vp-lockup.is-compact .vp-lockup-copy {
+  width: calc(0.72em * 9276 / 1920);
+  min-width: calc(0.72em * 9276 / 1920);
+}
+
 .vp-lockup.is-compact .vp-lockup-word {
   top: 50%;
   width: calc(0.72em * 9276 / 1920);
@@ -899,6 +906,10 @@ html:not(.dark) .vp-lockup:not(.is-on-dark) .vp-word-dark { display: none; }
 
 @media (max-width: 1279px) {
   .vp-lockup-tag { display: none; }
+  .vp-lockup-copy {
+    width: calc(0.72em * 9276 / 1920);
+    min-width: calc(0.72em * 9276 / 1920);
+  }
   .vp-lockup-word {
     top: 50%;
     width: calc(0.72em * 9276 / 1920);

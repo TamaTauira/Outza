@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { isPastEvent } from '@/lib/seo'
-import { LEGACY_REMOVED_KEY, LEGACY_SAVED_KEY, pendingStorageKey, savedStorageKey, savesToUpload } from '@/lib/saved-scope'
+import { LEGACY_REMOVED_KEY, LEGACY_SAVED_KEY, keepDeviceLocalSaves, pendingStorageKey, savedStorageKey, savesToUpload } from '@/lib/saved-scope'
 import { listenForOneReconnect, readJson } from '@/lib/client-fetch'
 
 export interface SavedEvent {
@@ -122,16 +122,21 @@ export function setSavedAccountLinked(v: boolean, userId?: string | null) {
   activeUserId = v ? (userId ?? null) : null
 }
 
-function pushToAccount(userId: string, eventId: string, saved: boolean, snapshot?: SavedEvent, surface?: string) {
+function pushToAccount(userId: string, eventId: string, saved: boolean, snapshot?: SavedEvent, surface?: string): Promise<'ok' | 'rejected' | 'offline'> {
   const pending = readPending(userId).filter((p) => p.eventId !== eventId)
   pending.push({ eventId, saved, ...(snapshot ? { snapshot } : {}), ...(surface ? { surface } : {}) })
   writePending(userId, pending)
-  fetch('/api/me/saved', {
+  const dropPending = () => writePending(userId, readPending(userId).filter((p) => p.eventId !== eventId))
+  return fetch('/api/me/saved', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId, saved, ...(surface ? { surface } : {}) }),
   }).then((r) => {
-    if (!r.ok) return
-    writePending(userId, readPending(userId).filter((p) => p.eventId !== eventId))
-  }).catch(() => {})
+    if (!r.ok) {
+      dropPending()
+      return 'rejected' as const
+    }
+    dropPending()
+    return 'ok' as const
+  }).catch(() => 'offline' as const)
 }
 
 /**
@@ -155,7 +160,7 @@ export async function syncSavedWithAccount(userId?: string | null) {
     const pending = readPending(id)
     const uploadIds = savesToUpload(id, pending.map((p) => p.eventId))
     const kept = pending.filter((p) => uploadIds.includes(p.eventId))
-    writeFor(id, applyPending(server, kept))
+    writeFor(id, applyPending(keepDeviceLocalSaves(server, readFor(id)), kept))
     for (const p of kept) {
       const res = await fetch('/api/me/saved', {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId: p.eventId, saved: p.saved, ...(p.surface ? { surface: p.surface } : {}) }),
@@ -225,7 +230,12 @@ export function useSaved() {
       ...(ev.organiserUrl ? { organiserUrl: ev.organiserUrl } : {}),
     }
     writeFor(userId, exists ? list.filter((s) => s.id !== ev.id) : [...list, snapshot])
-    pushToAccount(userId, ev.id, !exists, snapshot, surface)
+    void pushToAccount(userId, ev.id, !exists, snapshot, surface).then((result) => {
+      if (result !== 'rejected') return
+      const now = readFor(userId)
+      writeFor(userId, exists ? (now.some((s) => s.id === ev.id) ? now : [...now, snapshot]) : now.filter((s) => s.id !== ev.id))
+      toast.error(exists ? 'Could not update saved' : 'Could not save that')
+    })
   }, [userId, router])
 
   return { saved, isSaved, toggle, signedIn: !!userId }
