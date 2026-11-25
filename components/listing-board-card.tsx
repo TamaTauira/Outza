@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
-import { EventImage } from '@/components/event-image'
+import { EventImage, eventImageSizes } from '@/components/event-image'
 import { ListClock } from '@/components/list-clock'
 import { cardPhoto } from '@/lib/card-photo'
 import { eventPictureFrom } from '@/lib/images/display-spec'
@@ -82,7 +82,7 @@ export function ListingBoardCard({
           slot="featured"
           kind="featured"
           alt=""
-          sizes="(min-width: 1280px) 30vw, 100vw"
+          sizes={eventImageSizes('board')}
         />
       </span>
       <div className="vp-board-body">

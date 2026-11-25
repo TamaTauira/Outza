@@ -48,7 +48,6 @@ export type BoardArgs = {
 
 function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   const where: Prisma.EventWhereInput = {
-    date: { gte: sydneyToday() },
     duplicateOfId: null,
     status: { not: 'CANCELLED' },
   }
@@ -96,10 +95,16 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   const price = priceWhere({ isFree: a.isFree, maxPrice: a.maxPrice ?? null })
   if (price) and.push(price)
   and.push(...PUBLIC_EVENT_AND)
-  and.push({ OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] })
+  // Today's listings, plus anything still running after midnight (endsAt in the future).
+  and.push({
+    OR: [
+      { date: { gte: sydneyToday() }, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+      { endsAt: { gt: new Date() } },
+    ],
+  })
   if (a.isLGBTI) where.isLGBTI = true
-  if (a.dateFrom) where.date = { ...(where.date as object), gte: new Date(a.dateFrom) }
-  if (a.dateTo) where.date = { ...(where.date as object), lte: new Date(a.dateTo) }
+  if (a.dateFrom) and.push({ date: { gte: new Date(a.dateFrom) } })
+  if (a.dateTo) and.push({ date: { lte: new Date(a.dateTo) } })
   if (a.timeFrom && /^\d{2}:\d{2}$/.test(a.timeFrom)) and.push({ time: { gte: a.timeFrom } })
   if (and.length) where.AND = and
   return where
@@ -186,7 +191,7 @@ async function queryBoard(raw: string) {
   }
 }
 
-const cachedBoard = unstable_cache(queryBoard, ['board-events-v10'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
+const cachedBoard = unstable_cache(queryBoard, ['board-events-v11'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export type BoardFeed = Awaited<ReturnType<typeof queryBoard>>
 

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { MapPin, Clock, ExternalLink, Tag } from 'lucide-react'
 import Link from 'next/link'
-import { EventImage } from '@/components/event-image'
+import { EventImage, eventImageSizes } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
 import { eventPictureFrom } from '@/lib/images/display-spec'
 import { cn } from '@/lib/utils'
@@ -69,7 +69,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
       <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="block h-full group">
         <div className="flex h-full flex-col overflow-hidden rounded-[var(--vp-radius-lg)] border border-border bg-card transition-colors duration-300 group-hover:border-[var(--vp-border-default)]">
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden bg-black">
+          <div className="relative aspect-[4/3] overflow-hidden bg-card">
             <EventImage
               image={event.imageAsset}
               picture={eventPictureFrom(event)}
@@ -78,7 +78,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
               sourceHeight={event.imageHeight}
               kind="card"
               alt={title}
-              sizes="(max-width: 767px) 100vw, (max-width: 1279px) 46vw, 400px"
+              sizes={eventImageSizes('card')}
               category={event.communityKey || event.category}
               slot="card"
             />

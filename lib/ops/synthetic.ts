@@ -52,9 +52,9 @@ function asyncExpect(_res: Response, body: string): boolean {
 }
 
 /**
- * First candidate that the public event page will still serve. The page 404s a listing that already finished,
- * so a same-day event whose end time has passed must not be the one the check probes.
+ * First candidate that is still on. A finished listing keeps its page, but the
+ * hourly check should open one that has not ended yet.
  */
 export function pickPublicEvent<T extends PublicSession & { date: string | Date; city?: string | null }>(candidates: T[], now = new Date()): T | null {
-  return candidates.find((ev) => !isPastEvent({ date: ev.date, endDate: ev.endDate, city: ev.city }, now) && !hiddenFromPublic(ev, now)) ?? null
+  return candidates.find((ev) => !isPastEvent(ev, now) && !hiddenFromPublic(ev, now)) ?? null
 }

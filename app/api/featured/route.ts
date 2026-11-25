@@ -151,6 +151,7 @@ async function queryFeatured(validCity: string, day: string) {
       OR: [
         { date: { gte: today, lt: tomorrow } },
         { AND: [{ date: { lt: today } }, { endDate: { gte: today } }] },
+        { endsAt: { gt: now } },
       ],
     }
     const [nowRows, todayRows, weekRows, fortnightRows, imageRows] = await Promise.all([
@@ -227,7 +228,7 @@ async function queryFeatured(validCity: string, day: string) {
     return JSON.parse(JSON.stringify({ items })) as { items: Record<string, unknown>[] }
 }
 
-const cachedFeatured = unstable_cache(queryFeatured, ['featured-v9'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
+const cachedFeatured = unstable_cache(queryFeatured, ['featured-v10'], { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] })
 
 export async function GET(req: NextRequest) {
   try {

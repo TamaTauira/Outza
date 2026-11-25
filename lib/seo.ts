@@ -223,11 +223,56 @@ export const addDaysKey = (key: string, n: number) => {
 /** Today's date (YYYY-MM-DD) in the city's own timezone. */
 export const cityToday = (city: CityDef, now = new Date()) => toSydneyParts(now, city.tz).date
 
-/** True when an event's last day (end date, else start date) is before today in its city. Past events are never shown. */
-export const isPastEvent = (ev: { date: Date | string; endDate?: Date | string | null; city?: string | null }, now = new Date()) => {
-  const last = ev.endDate ?? ev.date
-  const key = (typeof last === 'string' ? last : last.toISOString()).slice(0, 10)
-  return key < cityToday(CITIES.find((c) => c.name === ev.city) ?? CITIES[0], now)
+function calendarKey(value?: Date | string | null): string {
+  if (!value) return ''
+  if (typeof value === 'string') return value.slice(0, 10)
+  return value.toISOString().slice(0, 10)
+}
+
+function clockMinutes(value?: string | null): number | null {
+  const match = value?.match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (hour > 23 || minute > 59) return null
+  return hour * 60 + minute
+}
+
+/**
+ * True once the listing has finished in its own city.
+ * The calendar day is the stored date key. The clock is that city's wall time
+ * (Australia/Sydney for Sydney). A finish after midnight stays live until that
+ * finish, and a listed endsAt wins over the date key.
+ */
+export function isPastEvent(ev: {
+  date: Date | string
+  endDate?: Date | string | null
+  time?: string | null
+  endTime?: string | null
+  endsAt?: Date | string | null
+  allDay?: boolean | null
+  city?: string | null
+}, now = new Date()): boolean {
+  if (ev.endsAt) {
+    const end = new Date(ev.endsAt).getTime()
+    if (!Number.isNaN(end)) return end <= now.getTime()
+  }
+  const city = CITIES.find((c) => c.name === ev.city) ?? CITIES[0]
+  const startKey = calendarKey(ev.date)
+  if (!startKey) return false
+  const today = toSydneyParts(now, city.tz).date
+  const endDateKey = calendarKey(ev.endDate)
+  const start = clockMinutes(ev.time)
+  const endClock = clockMinutes(ev.endTime)
+  const overnight = ev.allDay !== true && start != null && endClock != null && endClock <= start && start >= 10 * 60 && endClock <= 8 * 60
+  const endKey = endDateKey && endDateKey > startKey ? endDateKey : overnight ? addDaysKey(startKey, 1) : startKey
+  if (endKey > today) return false
+  if (endKey < today) return true
+  // No real finish: the session stays up for the whole city day. 00:00–00:00 is that placeholder, not a clock.
+  const openDay = ev.allDay === true || endClock == null || (endClock === 0 && (start == null || start === 0))
+  if (openDay) return false
+  const nowMin = clockMinutes(toSydneyParts(now, city.tz).time) ?? 0
+  return nowMin >= endClock
 }
 
 /** Friday–Sunday of the current weekend in the city's timezone (from today if already the weekend). */

@@ -2,9 +2,23 @@
  * Rewrites a known event-platform image URL to the highest-resolution original the platform serves,
  * so we never import a cropped thumbnail. Unknown hosts are returned unchanged.
  */
+const KNOWN_IMAGE_HOST = /images\.humanitix\.com$|(^|\.)ticketm\.net$|(^|\.)evbuc\.com$|(^|\.)cloudinary\.com$|(^|\.)moshtix\.com\.au$|(^|\.)oztix\.com\.au$|whatson\.cityofsydney\.nsw\.gov\.au$|(^|\.)squarespace\.com$|(^|\.)squarespace-cdn\.com$|(^|\.)wixstatic\.com$|(^|\.)framerusercontent\.com$|(^|\.)wsimg\.com$/
+
+/** Ticketmaster's optimiser fetches 502. The browser loads the file itself. */
+const SKIP_OPTIMIZER = /(^|\.)ticketm\.net$/
+
+function upgradeHttp(url: string): string {
+  if (!/^http:\/\//i.test(url)) return url
+  try {
+    const host = new URL(url).hostname.toLowerCase()
+    if (KNOWN_IMAGE_HOST.test(host)) return url.replace(/^http:\/\//i, 'https://')
+  } catch { /* keep the original */ }
+  return url
+}
+
 export function bestSourceUrl(url?: string | null): string | null {
   if (!url) return null
-  let u = url.trim()
+  let u = upgradeHttp(url.trim())
   if (!/^https?:\/\//i.test(u)) return null
   try {
     const parsed = new URL(u)
@@ -73,14 +87,25 @@ export function displaySourceUrl(url: string | null | undefined, width: number):
   }
 }
 
-/** next/image can resize these. Presigned object-store links expire, so they stay direct. */
+/** next/image can resize these. Presigned links and Ticketmaster stay direct (the optimiser 502s). */
 export function canOptimizeImage(url: string | null | undefined): boolean {
   if (!url || PRESIGNED.test(url)) return false
   try {
-    const host = new URL(url).hostname.toLowerCase()
-    return /images\.humanitix\.com$|(^|\.)ticketm\.net$|(^|\.)evbuc\.com$|(^|\.)cloudinary\.com$|(^|\.)moshtix\.com\.au$|(^|\.)oztix\.com\.au$|whatson\.cityofsydney\.nsw\.gov\.au$|(^|\.)squarespace\.com$|(^|\.)wixstatic\.com$|(^|\.)framerusercontent\.com$|(^|\.)wsimg\.com$/.test(host)
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:') return false
+    const host = parsed.hostname.toLowerCase()
+    if (SKIP_OPTIMIZER.test(host)) return false
+    return KNOWN_IMAGE_HOST.test(host)
   } catch {
     return false
   }
+}
+
+/** Two Ticketmaster widths so a card does not upscale a 640px file on a phone. */
+export function ticketmasterSrcSet(url: string): string | null {
+  if (!/_TABLET_LANDSCAPE_LARGE_16_9\.\w+$/i.test(url)) return null
+  const retina = url.replace(/_TABLET_LANDSCAPE_LARGE_16_9(\.\w+)$/i, '_RETINA_PORTRAIT_16_9$1')
+  if (retina === url) return null
+  return `${retina} 640w, ${url} 2048w`
 }
 
