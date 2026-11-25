@@ -6,6 +6,7 @@ import { CITIES, type CityDef } from '@/lib/cities'
 import { occurrences, isDateStr, isTimeStr, addDaysStr, diffDays, todayIn } from '@/lib/local-shared'
 import { INDEX_FRESH_DAYS, assessIndexability } from '@/lib/indexability'
 import { whenRange } from '@/lib/local-seo'
+import { stripTrackingParams } from '@/lib/listing-link'
 import { addDaysKey, citySlug, cityToday, eventPath, isTonightSlot, slugify, WHEN_KEYS, type WhenKey } from '@/lib/seo'
 
 export const COMMUNITY_SECTIONS = [
@@ -161,8 +162,13 @@ export function listingCta(ev: {
   source?: string | null
 }): { href: string; label: 'Get Tickets' | 'More Info'; external: boolean } | null {
   const community = !!(ev.communityKey || ev.source === 'community')
-  const ticket = (ev.ticketUrl ?? '').trim()
-  const site = (ev.organiserUrl ?? '').trim()
+  const plain = (raw: string) => {
+    const trimmed = raw.trim()
+    if (!/^https?:\/\//i.test(trimmed)) return trimmed
+    return stripTrackingParams(trimmed) ?? trimmed
+  }
+  const ticket = plain(ev.ticketUrl ?? '')
+  const site = plain(ev.organiserUrl ?? '')
   const own = ev.id ? eventPath({ id: ev.id, title: ev.title }) : ''
   if (ticket && TICKET_HOST.test(ticket)) return { href: ticket, label: 'Get Tickets', external: true }
   if (community) {

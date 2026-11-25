@@ -37,7 +37,6 @@ const SECTIONS: { title: string; body: string[] }[] = [
   ] },
   { title: 'Sponsored placements', body: [
     'Organisers and local businesses can pay for extra visibility. Paid placements are always labelled “Sponsored” or “Featured”, in the newsletter too. Payment never changes the facts shown about an event, and we never promise guaranteed sales, impressions or clicks.',
-    ...(process.env.NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK ? ['Some ticket links (for example to Ticketek) are affiliate links. If you buy through them we may earn a small commission, at no extra cost to you. It never changes which events we show or the facts about them.'] : []),
   ] },
   { title: 'Images and content', body: [
     'Event artwork comes from the organiser or the source listing and is shown unaltered (we may enlarge it, but never redraw, crop out text or generate it). We link back to the original listing and remove content on request from its owner.',

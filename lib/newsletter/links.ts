@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { siteUrl } from '@/lib/email'
-import { isTicketekUrl, ticketHref } from '@/lib/affiliate'
+import { stripTrackingParams } from '@/lib/listing-link'
 
 const secret = () => process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || 'outza'
 
@@ -38,10 +38,9 @@ export function plainEmailUrl(ctx: UtmCtx, placement: Placement, target: Target,
   let dest = siteUrl()
   if (target === 'explore') dest = exploreUrl(ctx.city)
   else if (target === 'prefs') dest = `${siteUrl()}/account`
-  else if (target === 'ticket' && ticketUrl && /^https?:\/\//.test(ticketUrl)) dest = ticketHref(ticketUrl) ?? ticketUrl
+  else if (target === 'ticket' && ticketUrl && /^https?:\/\//.test(ticketUrl)) dest = stripTrackingParams(ticketUrl) ?? ticketUrl
   else if (eventId) dest = `${siteUrl()}/events/${eventId}`
   if (target === 'prefs') return dest
-  if (target === 'ticket' && ticketUrl && isTicketekUrl(ticketUrl) && dest !== ticketUrl) return dest
   return utm(dest, ctx, placement)
 }
 

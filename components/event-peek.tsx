@@ -14,7 +14,6 @@ const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mo
 import { CATEGORIES, categoryInk } from '@/lib/categories'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { descriptionParagraphs } from '@/lib/description-text'
-import { ticketHref } from '@/lib/affiliate'
 import { eventOutbound } from '@/lib/listing-link'
 import { boardClockLine } from '@/lib/listing-window'
 import { mapsDirectionsUrl, placeLine } from '@/lib/place'
@@ -114,7 +113,6 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
   const tags = event.subTags ?? []
   const paragraphs = descriptionParagraphs(event.description)
   const outbound = eventOutbound(event)
-  const sponsored = outbound.kind === 'ticket' && !!event.ticketUrl && (ticketHref(event.ticketUrl) ?? event.ticketUrl) !== event.ticketUrl
   const mapsHref = mapsDirectionsUrl({
     latitude: event.latitude,
     longitude: event.longitude,
@@ -255,7 +253,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
               <a
                 href={outbound.href}
                 target="_blank"
-                rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+                rel="noopener noreferrer"
                 onClick={() => {
                   const kind = outbound.kind === 'ticket' ? 'ticket' : 'info'
                   const body = new Blob([JSON.stringify({ kind })], { type: 'application/json' })

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { siteUrl } from '@/lib/email'
 import { exploreUrl, utm, verify } from '@/lib/newsletter/links'
-import { ticketHref, isTicketekUrl } from '@/lib/affiliate'
+import { stripTrackingParams } from '@/lib/listing-link'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,10 +19,9 @@ export async function GET(req: NextRequest) {
   let dest = siteUrl()
   if (t === 'explore') dest = exploreUrl(ctx.city)
   else if (t === 'prefs') dest = `${siteUrl()}/account`
-  else if (ev && t === 'ticket' && ev.ticketUrl && /^https?:\/\//.test(ev.ticketUrl)) dest = ticketHref(ev.ticketUrl) ?? ev.ticketUrl
+  else if (ev && t === 'ticket' && ev.ticketUrl && /^https?:\/\//.test(ev.ticketUrl)) dest = stripTrackingParams(ev.ticketUrl) ?? ev.ticketUrl
   else if (ev) dest = `${siteUrl()}/events/${ev.id}`
-  // Affiliate tracking links must reach the seller untouched, so no UTM tags on them
-  if (t !== 'prefs' && !(t === 'ticket' && ev && isTicketekUrl(ev.ticketUrl) && dest !== ev.ticketUrl)) dest = utm(dest, ctx, p)
+  if (t !== 'prefs') dest = utm(dest, ctx, p)
 
   if (send && t !== 'unsubscribe') {
     const person = await prisma.user.findUnique({ where: { id: send.userId }, select: { emailActivityPersonalisation: true } }).catch(() => null)

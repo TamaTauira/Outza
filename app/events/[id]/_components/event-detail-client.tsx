@@ -18,7 +18,6 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { EventExtras, EventGallery, HERO_FRAME, HERO_HOLD, shareEvent } from './event-extras'
 import { hasListingPhoto } from '@/lib/placeholders'
 import { ListingTrustActions } from '@/components/listing-trust-actions'
-import { ticketHref } from '@/lib/affiliate'
 import { eventOutbound } from '@/lib/listing-link'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { FollowPromoterButton } from '@/components/follow-promoter-button'
@@ -150,7 +149,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
   const outbound = eventOutbound(event)
-  const sponsored = outbound.kind === 'ticket' && !!event.ticketUrl && (ticketHref(event.ticketUrl) ?? event.ticketUrl) !== event.ticketUrl
   const sourceLink = (className: string) => (
     <a
       href={outbound.href}
@@ -160,7 +158,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         navigator.sendBeacon?.(`/api/events/${event.id}/click`, body)
       }}
       target="_blank"
-      rel={sponsored ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
+      rel="noopener noreferrer"
       className={className}
     >
       {outbound.label} <ExternalLink className="h-4 w-4" />

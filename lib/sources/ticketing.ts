@@ -20,6 +20,7 @@ import { joinOriginPath } from '@/lib/listing-link'
 import { moshtixListingDescription, preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
+import { oztixGenreLabels } from '@/lib/oztix-labels'
 import { cityFromPlace } from '@/lib/venue-city'
 
 const UA = () => `VibePeepEventsBot/1.0 (+${siteUrl()})`
@@ -366,7 +367,7 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
         endTime: en?.time,
         venueName: v.Name ?? 'TBA',
         venueAddress: [v.Address, v.Locality, [v.State, v.Postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
-        genres: [...(e.Categories ?? []), ...(e.Bands?.length ? ['Music'] : [])],
+        genres: oztixGenreLabels(e.Categories, e.Bands),
         price: oztixPrice.price,
         isFree: oztixPrice.isFree,
         imageUrl: e.EventImage1 ? String(e.EventImage1).replace(/\?.*$/, '?width=2400&height=1350') : null,
@@ -405,13 +406,14 @@ export async function fetchOztixEvents(): Promise<number> {
   return saved
 }
 
-// ---------------- Ticketek (licensed partner / affiliate feed only, never the website) ----------------
+// ---------------- Ticketek (licensed partner feed only, never the website) ----------------
 // Ticketek has no public API and its site terms forbid automated access, so nothing is fetched until VibePeep
 // holds a licence. Two licensed routes are supported:
-//  1. impact.com affiliate catalog: IMPACT_ACCOUNT_SID + IMPACT_AUTH_TOKEN + IMPACT_TICKETEK_CATALOG_ID
+//  1. impact.com catalog: IMPACT_ACCOUNT_SID + IMPACT_AUTH_TOKEN + IMPACT_TICKETEK_CATALOG_ID
 //  2. Direct partner feed/API from Ticketek: TICKETEK_FEED_URL (JSON or CSV) + optional TICKETEK_FEED_AUTH
 //     (full Authorization header value, e.g. "Bearer …").
 // Images are only used when the licence allows it (TICKETEK_IMAGES_ALLOWED=1). Availability is never imported.
+// Ticket clicks are the organiser or Ticketek URL. They are never wrapped in an affiliate link.
 
 type Row = Record<string, unknown>
 
