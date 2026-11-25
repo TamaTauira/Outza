@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { ownershipUiEnabled } from '@/lib/ownership'
 import { canManageVenue, publicVenue } from '@/lib/venue-access'
+import { PromoterAppShell } from '@/components/promoter-shell'
 import { VenueDashboard } from './dashboard'
 
 export const dynamic = 'force-dynamic'
@@ -17,5 +18,9 @@ export default async function VenueDashboardPage({ params }: { params: Promise<{
   if (!access.allowed) redirect(`/venues/${id}`)
   const venue = await publicVenue(id)
   if (!venue) notFound()
-  return <VenueDashboard venueId={id} name={venue.name} city={venue.city} role={access.role || 'MANAGER'} />
+  return (
+    <PromoterAppShell backHref="/venue" backLabel="Your venues">
+      <VenueDashboard venueId={id} name={venue.name} city={venue.city} role={access.role || 'MANAGER'} />
+    </PromoterAppShell>
+  )
 }

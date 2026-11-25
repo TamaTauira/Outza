@@ -24,3 +24,9 @@
 .vp-promoters.vp-page-top {
   padding-top: 0;
 }
+
+/* Dark brown ink fails on a dark page. Light orange clears AA there. */
+.vp-ink-orange { color: #9a3412; }
+.dark .vp-ink-orange { color: #fdba74; }
+.vp-promoters .vp-ink-orange,
+.dark .vp-promoters .vp-ink-orange { color: #9a3412; }

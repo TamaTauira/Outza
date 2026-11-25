@@ -9,6 +9,7 @@ import { SiteHeader } from '@/components/site-header'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { ClaimedTick } from '@/components/ClaimedTick'
 import { organiserNameClaimed } from '@/lib/event-overrides'
+import { isPublicPromoterProfile, publicListingFilter } from '@/lib/public-promoter'
 import { boardClockLine } from '@/lib/listing-window'
 import { openGraphImage } from '@/lib/share-image'
 
@@ -18,9 +19,12 @@ type Props = { params: Promise<{ id: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
-  const user = await prisma.user.findUnique({ where: { id }, select: { orgName: true, name: true, role: true, image: true } })
-  if (!user || (user.role !== 'PROMOTER' && user.role !== 'ADMIN')) return { title: 'Organiser not found', robots: { index: false }, openGraph: { title: 'Organiser not found · VibePeep' } }
-  const name = user.orgName || user.name || 'Organiser'
+const user = await prisma.user.findUnique({ where: { id }, select: { orgName: true, name: true, email: true, role: true, image: true } })
+  const published = user ? await prisma.event.count({ where: { promoterId: id, ...publicListingFilter() } }) : 0
+  if (!user || user.role !== 'PROMOTER' || !isPublicPromoterProfile({ orgName: user.orgName, name: user.name, email: user.email, publishedListings: published })) {
+    return { title: 'Organiser not found', robots: { index: false }, openGraph: { title: 'Organiser not found · VibePeep' } }
+  }
+  const name = user.orgName!.trim()
   const title = name
   const description = `Events presented by ${name} on VibePeep.`
   const url = `/organisers/${id}`
@@ -38,10 +42,11 @@ export default async function OrganiserPage({ params }: Props) {
   const { id } = await params
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, orgName: true, bio: true, website: true, image: true, homeCity: true, role: true },
+    select: { id: true, name: true, orgName: true, email: true, bio: true, website: true, image: true, homeCity: true, role: true },
   })
-  if (!user || (user.role !== 'PROMOTER' && user.role !== 'ADMIN')) notFound()
-  const name = user.orgName || user.name || 'Organiser'
+  const published = user ? await prisma.event.count({ where: { promoterId: id, ...publicListingFilter() } }) : 0
+  if (!user || user.role !== 'PROMOTER' || !isPublicPromoterProfile({ orgName: user.orgName, name: user.name, email: user.email, publishedListings: published })) notFound()
+  const name = user.orgName!.trim()
   const claimed = await organiserNameClaimed(user.id)
   const events = await prisma.event.findMany({
     where: { promoterId: user.id, date: { gte: sydneyToday() }, duplicateOfId: null, hidden: false, NOT: { status: 'CANCELLED', statusSource: 'promoter' } },

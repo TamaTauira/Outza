@@ -7,7 +7,10 @@ const BOOKABLE = ['SCHEDULED', 'RESCHEDULED']
 /** Ads run until the end of the event's final day (plus a day of grace for late finishes). */
 export const adEndsAt = (ev: { date: Date; endDate: Date | null }) => new Date((ev.endDate ?? ev.date).getTime() + 24 * 3600e3)
 
-export const activeAdWhere = (eventId: string) => ({ eventId, status: 'ACTIVE', endsAt: { gt: new Date() } })
+/** A live ad, including a test-mode record that still occupies the promoter's slot. */
+export const heldAdWhere = (eventId: string) => ({ eventId, status: 'ACTIVE' as const, endsAt: { gt: new Date() } })
+/** Public board. Test invoices stay off the event page. */
+export const activeAdWhere = (eventId: string) => ({ ...heldAdWhere(eventId), paymentMode: { not: 'test' as const } })
 
 export function normaliseUrl(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
@@ -40,8 +43,8 @@ export async function validateLocalAd(body: any, promoterId: string) {
   if (endsAt <= new Date() || !BOOKABLE.includes(event.status)) return { error: 'This event has finished or isn’t going ahead, so it can’t take recommendations', status: 409 }
   const recentPending = { status: 'PENDING' as const, createdAt: { gt: new Date(Date.now() - 15 * 60_000) } }
   const [count, mine] = await Promise.all([
-    prisma.localAd.count({ where: { eventId: event.id, OR: [activeAdWhere(event.id), recentPending] } }),
-    prisma.localAd.count({ where: { eventId: event.id, promoterId, OR: [activeAdWhere(event.id), recentPending] } }),
+    prisma.localAd.count({ where: { eventId: event.id, OR: [heldAdWhere(event.id), recentPending] } }),
+    prisma.localAd.count({ where: { eventId: event.id, promoterId, OR: [heldAdWhere(event.id), recentPending] } }),
   ])
   if (mine) return { error: 'You already have a recommendation on this event. Edit or cancel it from Local business ads.', status: 409 }
   if (count >= MAX_ADS_PER_EVENT) return { error: 'This event already has a local recommendation. Only one can run at a time.', status: 409 }

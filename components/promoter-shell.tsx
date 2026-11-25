@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Receipt, Rocket, Store } from 'lucide-react'
+import { signOut, useSession } from 'next-auth/react'
+import { BarChart3, Brain, Building2, CalendarDays, CircleHelp, LayoutDashboard, LogOut, Megaphone, Menu, Receipt, Rocket, Settings, Store } from 'lucide-react'
 import { Logo } from '@/components/logo'
 import { VP_COLOUR } from '@/lib/design-tokens'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -22,9 +23,9 @@ const PRIMARY = [
 ] as const
 
 const TEXT_LINKS = [
-  { href: '/venue', label: 'Venue' },
-  { href: '/account', label: 'Settings' },
-  { href: '/contact', label: 'Help' },
+  { href: '/venue', label: 'Venue', icon: Building2 },
+  { href: '/promoter/settings', label: 'Settings', icon: Settings },
+  { href: '/promoter/help', label: 'Help', icon: CircleHelp },
 ] as const
 
 const MOBILE = [
@@ -35,14 +36,14 @@ const MOBILE = [
 ] as const
 
 const MORE = [
-  { href: '/promoter?tab=boosts', label: 'Short boosts' },
-  { href: '/promoter?tab=intel', label: 'Intelligence' },
-  { href: '/promoter?tab=local', label: 'Local business ads' },
-  { href: '/promoter?tab=billing', label: 'Billing' },
-  { href: '/venue', label: 'Venue' },
-  { href: '/account', label: 'Settings' },
-  { href: '/contact', label: 'Help' },
-  { href: '/', label: 'View the public site' },
+  { href: '/promoter?tab=boosts', label: 'Short boosts', icon: Megaphone },
+  { href: '/promoter?tab=intel', label: 'Intelligence', icon: Brain },
+  { href: '/promoter?tab=local', label: 'Local business ads', icon: Store },
+  { href: '/promoter?tab=billing', label: 'Billing', icon: Receipt },
+  { href: '/venue', label: 'Venue', icon: Building2 },
+  { href: '/promoter/settings', label: 'Settings', icon: Settings },
+  { href: '/promoter/help', label: 'Help', icon: CircleHelp },
+  { href: '/', label: 'View the public site', icon: LayoutDashboard },
 ] as const
 
 function tabFromSearch(search: string): string | null {
@@ -74,8 +75,17 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
   backLabel?: string
 }) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const [search, setSearch] = useState('')
   const [more, setMore] = useState(false)
+  const accountName = session?.user?.name || ''
+  const accountEmail = session?.user?.email || ''
+  const signOutPromoter = () => { void signOut({ redirectTo: '/promoters' }) }
+
+  useEffect(() => {
+    document.body.classList.add('vp-promoter-app')
+    return () => document.body.classList.remove('vp-promoter-app')
+  }, [])
 
   useEffect(() => {
     const read = () => setSearch(window.location.search)
@@ -99,10 +109,15 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
 
   return (
     <div className="min-h-screen print:bg-white" style={{ backgroundColor: VP_COLOUR.bgCanvas }}>
-      <div className="sticky top-0 z-40 flex h-14 items-center border-b border-white/10 px-4 print:hidden lg:hidden" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
-        <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="VibePeep promoter dashboard" className="inline-flex items-center">
+      <style>{'body.vp-promoter-app .vp-site-footer{display:none}'}</style>
+      <div className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-white/10 px-4 print:hidden lg:hidden" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
+        <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="VibePeep promoter dashboard" className="inline-flex min-w-0 items-center">
           <Logo size="sm" tone="on-dark" decorative />
         </Link>
+        <button type="button" onClick={signOutPromoter} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 px-2 text-sm font-semibold text-white">
+          <LogOut className="h-4 w-4" aria-hidden />
+          Sign out
+        </button>
       </div>
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-screen w-[240px] flex-col text-white print:hidden lg:flex" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
@@ -127,12 +142,25 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
             ))}
             <div className="mt-3 flex flex-col border-t border-white/10 pt-3">
               {TEXT_LINKS.map((item) => (
-                <Link key={item.href} href={item.href} className={cn('flex min-h-11 items-center px-3 text-sm text-white/80 hover:text-white', pathname === item.href && 'font-semibold text-white')}>
+                <Link key={item.href} href={item.href} className={cn('flex min-h-11 items-center gap-2 px-3 text-sm text-white/80 hover:text-white', pathname === item.href && 'font-semibold text-white')}>
+                  <item.icon className="h-4 w-4 shrink-0" aria-hidden />
                   {item.label}
                 </Link>
               ))}
             </div>
-            <Link href="/" className="mt-auto flex min-h-11 items-center px-3 text-sm text-white/80 hover:text-white">View the public site</Link>
+            <div className="mt-auto border-t border-white/10 pt-3">
+              {(accountName || accountEmail) && (
+                <p className="px-3 pb-1 text-xs text-white/70">
+                  {accountName ? <span className="block truncate font-semibold text-white">{accountName}</span> : null}
+                  {accountEmail ? <span className="block truncate">{accountEmail}</span> : null}
+                </p>
+              )}
+              <button type="button" onClick={signOutPromoter} className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm text-white/80 hover:text-white">
+                <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+                Sign out
+              </button>
+              <Link href="/" className="flex min-h-11 items-center px-3 text-sm text-white/80 hover:text-white">View the public site</Link>
+            </div>
           </nav>
         </aside>
         <div className="min-h-screen min-w-0 bg-background pb-24 print:min-h-0 print:bg-white print:pb-0 lg:pb-0">
@@ -176,14 +204,19 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
         <SheetContent side="bottom" className="border-white/10 text-white" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
           <SheetHeader>
             <SheetTitle className="text-white">More</SheetTitle>
-            <SheetDescription className="text-white/70">Venue, settings and help.</SheetDescription>
+            <SheetDescription className="text-white/70">Everything else in your promoter tools.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 flex flex-col">
             {MORE.map((item) => (
-              <Link key={item.href} href={item.href} onClick={() => setMore(false)} className="flex min-h-11 items-center text-base text-white">
+              <Link key={item.href} href={item.href} onClick={() => setMore(false)} className="flex min-h-11 items-center gap-2 text-base text-white">
+                <item.icon className="h-4 w-4 shrink-0" aria-hidden />
                 {item.label}
               </Link>
             ))}
+            <button type="button" onClick={() => { setMore(false); signOutPromoter() }} className="flex min-h-11 items-center gap-2 text-left text-base text-white">
+              <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+              Sign out
+            </button>
           </div>
         </SheetContent>
       </Sheet>

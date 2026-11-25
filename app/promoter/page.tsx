@@ -5,6 +5,7 @@ import { auth } from '@/auth'
 import { PromoterAppShell } from '@/components/promoter-shell'
 import { SiteHeader } from '@/components/site-header'
 import { promoterLoginHref } from '@/lib/promoter-nav'
+import { cardPaymentsLive } from '@/lib/payments-mode'
 import { PromoterClient } from './promoter-client'
 import { BecomePromoter } from './become-promoter'
 
@@ -43,7 +44,7 @@ export default async function PromoterPage({ searchParams }: { searchParams?: Pr
   }
   return (
     <PromoterAppShell>
-      <PromoterClient stripeEnabled={!!process.env.STRIPE_SECRET_KEY} />
+      <PromoterClient stripeEnabled={cardPaymentsLive()} />
     </PromoterAppShell>
   )
 }

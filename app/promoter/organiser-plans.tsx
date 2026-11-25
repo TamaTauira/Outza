@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { ORGANISER_PLANS, type PlanId } from '@/lib/sponsorship'
 import { formatAud } from '@/lib/tiers'
+import { PAYMENTS_COPY } from '@/lib/payments-mode'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
 type Plan = (typeof ORGANISER_PLANS)[number] & { priceConfigured?: boolean }
@@ -23,11 +24,11 @@ type Charge = { id: string; amountCents: number; status: string; createdAt: stri
 
 const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
 
-export function OrganiserPlans() {
+export function OrganiserPlans({ cardsLive = false }: { cardsLive?: boolean }) {
   const [plans, setPlans] = useState<Plan[]>([...ORGANISER_PLANS])
   const [current, setCurrent] = useState<Current | null>(null)
   const [charges, setCharges] = useState<Charge[]>([])
-  const [subsOn, setSubsOn] = useState<boolean | null>(null)
+  const [subsOn, setSubsOn] = useState<boolean | null>(cardsLive ? null : false)
   const [refund, setRefund] = useState({ eligible: false, reason: '' })
   const [consent, setConsent] = useState(false)
   const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
@@ -133,23 +134,27 @@ export function OrganiserPlans() {
       {current?.status === 'TRIALING' && until && (
         <p className="mt-2 text-sm text-muted-foreground">The free month ends on {until}. Cancel before then and the first charge does not happen. After that the plan renews each month until you cancel.</p>
       )}
-      <div className="vp-card-grid mt-[var(--vp-card-gap)] lg:grid-cols-3">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] items-stretch lg:grid-cols-3">
         {plans.map((plan) => (
-          <div key={plan.id} className={`rounded-xl border p-4 ${current?.id === plan.id ? 'border-primary' : 'border-border'}`}>
+          <div key={plan.id} className={`flex h-full flex-col rounded-xl border p-4 ${current?.id === plan.id ? 'border-primary' : 'border-border'}`}>
             <p className="font-semibold">{plan.name}</p>
             <p className="mt-1 text-2xl font-bold">{formatAud(plan.monthlyCents)}<span className="text-xs font-normal text-muted-foreground"> / month</span></p>
-            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
-            <button type="button" disabled={busy === plan.id || current?.id === plan.id} onClick={() => choose(plan.id)} className="mt-3 flex h-10 w-full items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60">
-              {busy === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {current?.id === plan.id ? 'Current plan' : current ? 'Switch to this' : 'Choose this plan'}
-            </button>
+            <ul className="mt-2 flex-1 space-y-1 text-xs text-muted-foreground">{plan.features.map((feature) => <li key={feature}>{feature}</li>)}</ul>
+            {subsOn === false ? (
+              <button type="button" onClick={() => { setQuotePlan(plan.id); document.getElementById('plan-quote')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }} className="mt-3 flex h-10 w-full items-center justify-center rounded-md border border-border text-sm font-semibold">Request a quote</button>
+            ) : (
+              <button type="button" disabled={busy === plan.id || current?.id === plan.id} onClick={() => choose(plan.id)} className="mt-3 flex h-10 w-full items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100">
+                {busy === plan.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {current?.id === plan.id ? 'Current plan' : current ? 'Switch to this' : 'Choose this plan'}
+              </button>
+            )}
           </div>
         ))}
       </div>
       {subsOn === false ? (
-        <div className="mt-4 space-y-2 rounded-lg border border-primary/40 p-4">
-          <p className="text-sm font-medium">Card payments are not switched on</p>
-          <p className="text-xs text-muted-foreground">Request a quote. We will not charge a card from this form, and we will not start a plan.</p>
+        <div id="plan-quote" className="mt-4 space-y-2 rounded-lg border border-primary/40 p-4">
+          <p className="text-sm font-medium">{PAYMENTS_COPY.plansOffTitle}</p>
+          <p className="text-xs text-muted-foreground">{PAYMENTS_COPY.plansOffBody}</p>
           <select value={quotePlan} onChange={(e) => setQuotePlan(e.target.value as PlanId)} className={field} aria-label="Plan to quote">
             {plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
           </select>

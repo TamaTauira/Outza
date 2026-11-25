@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
+import { lastRefreshAt } from '@/lib/seo-server'
 
 export type SupplySnapshot = {
   events: number
@@ -18,13 +19,13 @@ export async function supplySnapshot(): Promise<SupplySnapshot | null> {
       prisma.event.count({ where }),
       prisma.event.groupBy({ by: ['city'], where }),
       prisma.event.groupBy({ by: ['source'], where }),
-      prisma.refreshLog.findFirst({ where: { status: 'completed' }, orderBy: { endedAt: 'desc' }, select: { endedAt: true } }),
+      lastRefreshAt(),
     ])
     return {
       events,
       cities: cityRows.filter((row) => row.city).length,
       sources: sourceRows.filter((row) => row.source).length,
-      updated: refresh?.endedAt?.toISOString() ?? null,
+      updated: refresh?.toISOString() ?? null,
     }
   } catch (err) {
     console.error('promoter supply snapshot failed', err instanceof Error ? err.message : err)

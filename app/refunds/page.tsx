@@ -90,14 +90,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
       'We do not sell tickets. A ticket refund is between you and the organiser or the ticket company.',
     ],
   },
-  {
-    title: 'Test mode',
-    body: [
-      'When card payments are not switched on, the dashboard says payments are in test mode and nothing is charged. Those invoices are records only.',
-      'A self-serve refund button talks to Stripe only with a test secret. It does not send a live refund. A live charge is handled from the contact page, not by that button.',
-    ],
-  },
-]
+  ]
 
 export default function RefundsPage() {
   return (

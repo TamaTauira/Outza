@@ -6,7 +6,7 @@ import { Loader2, X } from 'lucide-react'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
 import { auToIso, isoToAu } from '@/lib/au-date'
-import { applyListingField, listingPayloadPrice } from '@/lib/promoter-listing'
+import { applyListingField, finishTimeError, listingPayloadPrice } from '@/lib/promoter-listing'
 
 export type EditableEvent = {
   id: string; title: string; date: string; endDate?: string | null; venueName: string; city?: string
@@ -39,6 +39,8 @@ export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEve
     const endDate = f.endDate.trim() ? auToIso(f.endDate) : ''
     if (!date) { toast.error('Enter the start date as dd/mm/yyyy'); return }
     if (f.endDate.trim() && !endDate) { toast.error('Enter the end date as dd/mm/yyyy'); return }
+    const timeError = finishTimeError({ startDate: f.date, endDate: f.endDate, time: f.time, endTime: f.endTime })
+    if (timeError) return
     setBusy(true)
     try {
       const res = await fetch(`/api/promoter/events/${event.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, date, endDate: endDate || '', price: listingPayloadPrice(f.isFree, f.price), subTags: f.subTag ? [f.subTag] : [] }) })
@@ -60,8 +62,9 @@ export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEve
       <input inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={f.endDate} onChange={set('endDate')} className={field} aria-label="End date" />
       <div className="grid grid-cols-2 gap-2">
         <input type="time" value={f.time} onChange={set('time')} className={field} aria-label="Start time" title="Start time" />
-        <input type="time" value={f.endTime} onChange={set('endTime')} className={field} aria-label="Finish time" title="Finish time" />
+        <input type="time" value={f.endTime} onChange={set('endTime')} className={field} aria-label="Finish time" title="Finish time" aria-invalid={!!finishTimeError({ startDate: f.date, endDate: f.endDate, time: f.time, endTime: f.endTime }) || undefined} />
       </div>
+      {finishTimeError({ startDate: f.date, endDate: f.endDate, time: f.time, endTime: f.endTime }) && <p className="text-sm text-destructive sm:col-span-2" role="alert">{finishTimeError({ startDate: f.date, endDate: f.endDate, time: f.time, endTime: f.endTime })}</p>}
       <input required value={f.venueName} onChange={set('venueName')} placeholder="Venue" aria-label="Venue" className={field} />
       <input value={f.venueAddress} onChange={set('venueAddress')} placeholder="Street, suburb, postcode" aria-label="Address" className={field} />
       <select value={f.city} onChange={set('city')} className={field} aria-label="City">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>

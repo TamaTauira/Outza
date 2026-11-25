@@ -26,11 +26,12 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
   const [busy, setBusy] = useState(false)
   const [form, setForm] = useState({ kind: 'DINING' as LocalAdKind, businessName: '', blurb: '', address: '', url: '' })
   const [agreePromoterTerms, setAgreePromoterTerms] = useState(false)
+  const [testMode, setTestMode] = useState(true)
 
   const load = useCallback(() => {
     fetch(`/api/local-ads?eventId=${encodeURIComponent(eventId)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d) => { setAds(d.ads ?? []); setSlotsLeft(d.slotsLeft ?? 0); setYouHaveOne(!!d.youHaveOne) })
+      .then((d) => { setAds(d.ads ?? []); setSlotsLeft(d.slotsLeft ?? 0); setYouHaveOne(!!d.youHaveOne); if (typeof d.testMode === 'boolean') setTestMode(d.testMode) })
       .catch((e) => console.error('Failed to load local recommendations:', e))
       .finally(() => setLoaded(true))
   }, [eventId])
@@ -51,7 +52,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Checkout failed')
       if (d.url) { window.location.href = d.url; return }
-      toast.success('Your recommendation is live (test mode — no card charged)')
+      toast.success(d.testMode ? 'Your recommendation is on (test mode — no card charged). The invoice is marked test.' : 'Your recommendation is live.')
       setOpen(false); setForm({ kind: 'DINING', businessName: '', blurb: '', address: '', url: '' }); load()
     } catch (err) {
       console.error('Local ad checkout failed:', err)
@@ -110,7 +111,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="font-semibold">Recommend your business beneath “{eventTitle}”</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{formatAud(LOCAL_AD.priceCents)} one-off, AUD incl. GST. Runs until the event ends and is labelled Sponsored.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{formatAud(LOCAL_AD.priceCents)} one-off, AUD incl. GST. Runs until the event ends and is labelled Sponsored.{testMode ? ' Test mode: no card is charged, and the invoice is marked test.' : ''}</p>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
           </div>
@@ -131,7 +132,7 @@ export function LocalRecommendations({ eventId, eventTitle, venue }: { eventId: 
           <p className="text-xs text-muted-foreground">Only describe what you actually offer. Listings that are misleading or unrelated to the event may be removed. See our <Link href="/disclaimer" className="underline">disclaimer</Link>.</p>
           <PromoterTermsCheck id="local-ad-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} />
           <button disabled={busy} className="h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-60">
-            {busy && <Loader2 className="w-4 h-4 animate-spin" />}Pay {formatAud(LOCAL_AD.priceCents)} &amp; go live
+            {busy && <Loader2 className="w-4 h-4 animate-spin" />}{testMode ? `Activate ${formatAud(LOCAL_AD.priceCents)} (test mode, no charge)` : `Pay ${formatAud(LOCAL_AD.priceCents)} and go live`}
           </button>
         </form>
       )}

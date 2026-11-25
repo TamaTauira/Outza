@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Check, Loader2, Lock, Sparkles } from 'lucide-react'
 import { campaignScheduleNote } from '@/lib/promoter-listing'
 import { ADDONS, DURATIONS, PRO_PLAN, TIERS, formatAud, quote, tierDef, type Addon, type Duration, type Tier } from '@/lib/tiers'
+import { PAYMENTS_COPY, campaignConfirmLabel } from '@/lib/payments-mode'
 import { cn } from '@/lib/utils'
 import { PlacementPreview } from './placement-preview'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
@@ -59,7 +60,7 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Checkout failed')
       if (d.url) { window.location.href = d.url; return }
-      toast.success('Campaign is live (test mode — no card charged)')
+      toast.success(PAYMENTS_COPY.campaignActivated)
       setAddons([])
       setReview(false)
       setPlaced(true)
@@ -163,9 +164,9 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         {scheduleNote && <p className="mt-3 text-xs text-muted-foreground" role="status">{scheduleNote}</p>}
         <div className="mt-4"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}
-        <button onClick={checkout} disabled={busy || !selected} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-on-primary disabled:bg-muted disabled:text-muted-foreground">
+        <button onClick={checkout} disabled={busy || !selected} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-xl bg-primary px-3 py-2 text-center text-sm font-semibold text-on-primary disabled:bg-muted disabled:text-muted-foreground">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-          {review ? (stripeEnabled ? `Confirm ${formatAud(q.total)} and pay` : `Confirm and activate ${formatAud(q.total)}`) : 'Review campaign'}
+          {review ? campaignConfirmLabel(formatAud(q.total), stripeEnabled) : 'Review campaign'}
         </button>
         {blocked && <p className="mt-2 text-xs text-muted-foreground">{blocked}</p>}
         {review && <button type="button" onClick={() => setReview(false)} className="mt-2 w-full text-xs text-muted-foreground underline">Back to the package</button>}

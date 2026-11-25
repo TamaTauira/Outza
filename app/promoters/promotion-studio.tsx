@@ -10,7 +10,12 @@ import { ctaClass, sectionPad } from './styles'
 const HEADER: Record<string, string> = {
   SILVER: 'var(--vp-brand-orange-ink)',
   BRONZE: 'var(--vp-brand-pink)',
-  GOLD: 'linear-gradient(105deg, var(--vp-brand-orange-ink) 0%, var(--vp-brand-pink) 100%)',
+  GOLD: 'linear-gradient(105deg, #9a3412 0%, #9d174d 100%)',
+}
+const HEADER_INK: Record<string, string> = {
+  SILVER: 'text-white',
+  BRONZE: 'text-[var(--vp-on-primary)]',
+  GOLD: 'text-white',
 }
 
 const PACKAGE_SLUG: Record<string, string> = { SILVER: 'boost', BRONZE: 'spotlight', GOLD: 'headliner' }
@@ -27,8 +32,8 @@ const PLACEMENT: Record<string, string> = {
   GOLD: 'Top of the Featured row for your event’s city.',
 }
 
-export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
-  const [days, setDays] = useState<Duration>(7)
+export function PromotionStudio({ isPromoter, cardsLive = false }: { isPromoter: boolean; cardsLive?: boolean }) {
+  const [days, setDays] = useState<Duration | null>(null)
 
   const choose = (next: number) => {
     if (isDuration(next)) setDays(next)
@@ -48,23 +53,24 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
             </div>
             <div className="order-2 grid items-stretch gap-[var(--vp-card-gap)] md:grid-cols-2 xl:order-1 xl:grid-cols-3">
               {TIERS.map((tier) => {
-                const perDay = Math.round(tier.prices[days] / days)
+                const length = days ?? tier.headlineDays
+                const perDay = Math.round(tier.prices[length] / length)
                 return (
                   <article
                     key={tier.key}
                     data-testid={`package-${tier.key}`}
-                    data-days={days}
-                    data-price={tier.prices[days]}
+                    data-days={length}
+                    data-price={tier.prices[length]}
                     className="flex min-w-0 flex-col overflow-hidden rounded-hero bg-[var(--vp-banner)] text-white ring-1 ring-white/10"
                   >
-                    <header className="px-5 py-4 text-white" style={{ background: HEADER[tier.key] }}>
+                    <header className={`px-5 py-4 ${HEADER_INK[tier.key]}`} style={{ background: HEADER[tier.key] }}>
                       <h3 className="font-display text-xl font-bold">{tier.name}</h3>
-                      <p className="mt-1 text-sm text-white">{PLACEMENT[tier.key]}</p>
+                      <p className="mt-1 text-sm">{PLACEMENT[tier.key]}</p>
                     </header>
                     <div className="flex flex-1 flex-col p-5">
                       <p className="font-display text-4xl font-bold tabular-nums" aria-live="polite">
-                        {formatAud(tier.prices[days])}
-                        <span className="text-base font-normal text-white/80"> / {days} days</span>
+                        {formatAud(tier.prices[length])}
+                        <span className="text-base font-normal text-white/80"> / {length} days</span>
                       </p>
                       <p className="mt-1 text-xs font-medium text-white/80">{formatAud(perDay)} per day. Longer runs cost less per day.</p>
                       <ul className="mt-4 flex-1 space-y-2">
@@ -75,7 +81,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
                           </li>
                         ))}
                       </ul>
-                      <Link href={promoteHref(isPromoter, tier.key, days)} className={`${ctaClass} mt-4 w-full`}>
+                      <Link href={promoteHref(isPromoter, tier.key, length)} className={`${ctaClass} mt-4 w-full`}>
                         Choose {tier.name}
                       </Link>
                     </div>
@@ -87,7 +93,7 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
 
           <div className="mt-6 rounded-2xl border border-border bg-background px-4 py-4">
             <p className="font-semibold">Last minute?</p>
-            <p className="mt-1 text-sm text-muted-foreground">Evening pass {formatAud(BOOSTS.EVENING.priceCents)}, day pass {formatAud(BOOSTS.DAY_PASS.priceCents)}. Each is a Sponsored card in Coming up next, bought from the promoter dashboard.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Evening pass {formatAud(BOOSTS.EVENING.priceCents)}, day pass {formatAud(BOOSTS.DAY_PASS.priceCents)}. {cardsLive ? 'Each is a Sponsored card in Coming up next, bought from the promoter dashboard.' : 'These short boosts are not on sale until card payments are switched on. The dashboard takes a quote and does not charge a card.'}</p>
           </div>
           <p className="mt-5 text-sm">One-off payment. Guaranteed placement for the days you buy, subject to inventory. No guarantee of ticket sales.</p>
           <p className="mt-2 text-sm text-muted-foreground">Already listed your event? Open it while signed in and choose Promote this event. Add-ons are chosen in checkout, not on this page.</p>
@@ -98,11 +104,11 @@ export function PromotionStudio({ isPromoter }: { isPromoter: boolean }) {
   )
 }
 
-function DurationPanel({ days, onChange }: { days: Duration; onChange: (days: number) => void }) {
+function DurationPanel({ days, onChange }: { days: Duration | null; onChange: (days: number) => void }) {
   return (
     <div className="rounded-3xl border border-border bg-card p-4 shadow-sm xl:sticky xl:top-24">
       <h3 className="text-xs font-semibold text-muted-foreground">Choose your duration</h3>
-      <p className="mt-1 text-xs text-muted-foreground" id="duration-hint">Sets the length on all three packages. Default is 7 days.</p>
+      <p className="mt-1 text-xs text-muted-foreground" id="duration-hint">Each package opens on its usual length: Boost 7 days, Spotlight 14, Headliner 30. Pick one length to compare them. The dashboard opens Spotlight on 14 days.</p>
       <div role="radiogroup" aria-label="Campaign length" aria-describedby="duration-hint" className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3 xl:grid-cols-1">
         {DURATIONS.map((d) => {
           const on = days === d.days
@@ -124,7 +130,7 @@ function DurationPanel({ days, onChange }: { days: Duration; onChange: (days: nu
         {TIERS.map((tier) => (
           <li key={tier.key} className="flex items-baseline justify-between gap-3">
             <span>{tier.name}</span>
-            <span className="font-semibold tabular-nums">{formatAud(tier.prices[days])}</span>
+            <span className="font-semibold tabular-nums">{formatAud(tier.prices[days ?? tier.headlineDays])}</span>
           </li>
         ))}
       </ul>

@@ -123,7 +123,7 @@ function AppHeader({ savedCount }: { savedCount: number }) {
                 <DropdownMenuSeparator />
                 {!isPromoter && <DropdownMenuItem asChild><Link href="/itinerary"><CalendarPlusIcon className="mr-2 h-4 w-4" />Itinerary</Link></DropdownMenuItem>}
                 {!isPromoter && <DropdownMenuItem asChild><Link href="/together"><Users className="mr-2 h-4 w-4" />Plan with your crew</Link></DropdownMenuItem>}
-                <DropdownMenuItem asChild><Link href="/account"><Settings className="mr-2 h-4 w-4" />{isPromoter ? 'Promoter settings' : 'Your account'}</Link></DropdownMenuItem>
+                <DropdownMenuItem asChild><Link href={isPromoter ? '/promoter/settings' : '/account'}><Settings className="mr-2 h-4 w-4" />{isPromoter ? 'Promoter settings' : 'Your account'}</Link></DropdownMenuItem>
                 {hasListings && <DropdownMenuItem asChild><Link href="/local?tab=mine"><List className="mr-2 h-4 w-4" />Your listings</Link></DropdownMenuItem>}
                 {user.role === 'PARTNER'
                   ? <DropdownMenuItem asChild><Link href="/partners"><Megaphone className="mr-2 h-4 w-4" />Source partner overview</Link></DropdownMenuItem>
@@ -159,6 +159,9 @@ function AppHeader({ savedCount }: { savedCount: number }) {
 }
 
 function MarketingHeader({ accountHref }: { accountHref: string }) {
+  const { data, status } = useSession()
+  const user = status === 'authenticated' ? data?.user : null
+  const isPromoter = user?.role === 'PROMOTER' || user?.role === 'ADMIN'
   return (
     <SiteHeaderFrame grow>
       <LogoHomeLink size="md" className="vp-header-brand" />
@@ -168,8 +171,17 @@ function MarketingHeader({ accountHref }: { accountHref: string }) {
         <Link href="/promoters#faq" className="hidden whitespace-nowrap font-medium text-muted-foreground hover:text-foreground md:inline">FAQ</Link>
         <Link href="/local-ads" className="whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">Local business ads</Link>
         <Link href="/" className="hidden whitespace-nowrap font-medium text-muted-foreground hover:text-foreground lg:inline">Back to events</Link>
-        <Link href="/login?next=/promoter" className="whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">{COPY.signIn}</Link>
-        <Button asChild size="sm"><Link href={accountHref}>Create free account</Link></Button>
+        {user ? (
+          <>
+            <Link href={isPromoter ? '/promoter' : accountHref} className="whitespace-nowrap font-semibold text-foreground">{isPromoter ? 'Go to dashboard' : 'Open promoter tools'}</Link>
+            <button type="button" onClick={() => signOut({ redirectTo: '/promoters' })} className="inline-flex min-h-11 items-center whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">Sign out</button>
+          </>
+        ) : status === 'loading' ? null : (
+          <>
+            <Link href="/login?next=/promoter" className="whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">{COPY.signIn}</Link>
+            <Button asChild size="sm"><Link href={accountHref}>Create free account</Link></Button>
+          </>
+        )}
       </nav>
     </SiteHeaderFrame>
   )
