@@ -3,20 +3,10 @@
  * Exact identifiers outrank text. Text never reaches the automatic-link band
  * on its own. These thresholds are design rules, not measured probabilities.
  */
-import { usableUrl } from '@/lib/listing-link'
+import { isTrackingParam, usableUrl } from '@/lib/listing-link'
 import { equivalentTitles, isWeakVenueName, pinsNear, sharesStreet, suburbLabelMatch, titleIsTourOf, venuesMatch } from '@/lib/place-match'
 import { isSameEvent, normalizeTitle, normalizeVenue, similarity } from '@/lib/quality'
 import { conflictingRooms, resolveVenueIdentity, sameVenueIdentity } from '@/lib/venue-identity'
-
-/** Tracking parameters only. Session, product and event ids stay on the URL. */
-const TRACKING_PARAMS = new Set([
-  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
-  'fbclid', 'gclid', 'gclsrc', 'dclid', 'mc_cid', 'mc_eid', 'igshid', 'yclid',
-  '_ga', '_gl', 'mkt_tok', 'fb_action_ids', 'fb_action_types', 'fb_source',
-  'vero_id', '_hsenc', '_hsmi', 'hsa_cam', 'hsa_grp', 'hsa_mt', 'hsa_src',
-  'hsa_ad', 'hsa_acc', 'hsa_net', 'hsa_kw', 'hsa_ver',
-  'aff', 'affiliate', 'ref', 'referral', 'cmp', 'irclickid', 'clickid', 'dicbo',
-])
 
 export const DUPLICATE_THRESHOLDS = {
   /** Automatic link only with a strong identifier and no material contradiction. */
@@ -73,7 +63,7 @@ export function canonicalizeListingUrl(raw?: string | null): string | null {
   if (parsed.pathname === '/' || /\/search\b/i.test(parsed.pathname)) return null
   parsed.hash = ''
   parsed.hostname = canonicalHost(parsed.hostname)
-  const kept = [...parsed.searchParams.entries()].filter(([key]) => !TRACKING_PARAMS.has(key.toLowerCase()))
+  const kept = [...parsed.searchParams.entries()].filter(([key]) => !isTrackingParam(key))
   kept.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]))
   parsed.search = ''
   for (const [key, value] of kept) parsed.searchParams.append(key, value)

@@ -79,10 +79,10 @@ export const PROVIDER_POLICY: Record<string, {
     toConfirm: 'Request written permission or a partner feed from Oztix before relying on this source.',
   },
   ticketek: {
-    name: 'Ticketek', access: 'Licensed feed only (impact.com affiliate catalog or Ticketek partner API); off until approved', termsUrl: 'https://premier.ticketek.com.au/',
+    name: 'Ticketek', access: 'Licensed feed only (impact.com catalog or Ticketek partner API); off until approved', termsUrl: 'https://premier.ticketek.com.au/',
     data: 'NEEDS_REVIEW', images: 'NEEDS_REVIEW',
-    obligations: ['Never scrape or bypass blocks on the Ticketek website', 'Use the affiliate tracking link for ticket clicks and label it', 'Images only if the licence allows (TICKETEK_IMAGES_ALLOWED)', 'Do not imply live availability'],
-    toConfirm: 'Apply to the Ticketek affiliate program on impact.com (catalog + tracking links) and/or Ticketek’s partner team for an event API, then add the credentials to switch the source on.',
+    obligations: ['Never scrape or bypass blocks on the Ticketek website', 'Ticket links go straight to Ticketek, with no affiliate parameters', 'Images only if the licence allows (TICKETEK_IMAGES_ALLOWED)', 'Do not imply live availability'],
+    toConfirm: 'A licensed Impact catalog or Ticketek partner feed can switch the source on. Ticket clicks are never affiliate-tracked.',
   },
   brisbanecouncil: {
     name: 'Brisbane City Council',

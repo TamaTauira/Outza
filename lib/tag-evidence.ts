@@ -93,11 +93,20 @@ function metalEvidence(text: string): TagEvidence {
 }
 
 function runningEvidence(text: string): TagEvidence {
+  // Darts is its own sport. "Run to the semi-finals" and "nine-dart" are not a footrace.
+  if (/\b(darts?|oche)\b/i.test(text)) return 'misleading'
   const activity = /\b(fun[\s-]?runs?|park[\s-]?runs?|trail runs?|night runs?|colou?r runs?|beach runs?|charity runs?|run(?:ning)? (?:clubs?|crews?|groups?|sessions?)|half[\s-]?marathons?|marathons?|ultra[\s-]?marathons?|\d+\s?k(?:m)?\s(?:run|race)|\d+k\b|jog(?:ging)?|runners|running (?:races?|events?|festivals?|track|coach(?:ing)?)|go(?:es|ing)? running|trail running|road running|run\/walk|walk(?:\s*(?:&|and|or)\s*)run)\b/i
   const nounRun = /\brun\b/i
   const verb = /\b(?:are|is|be|been|was|were|we're|currently|now|keep|kept)\s+running\b|\brunning (?:a|an|the|this|our|free|\d+|weekly|monthly|since|for|from|until|through(?:out)?|every|on|in|at|late|times|regularly|workshops?|sessions? on|programs?|events?\b(?! like))/i
   const boilerplate = /\brunning times\b|\brunning stitch(?:es)?\b|\bup and running\b|\brunning late\b|\brunning regularly\b/i
-  if (verb.test(text) || boilerplate.test(text)) {
+  // A campaign or a rules line, not a running event.
+  const notARace = /\brun to the\b|\b(?:unforgettable|famous|career(?:-defining)?|sensational|winning|title) run\b|\brunning to (?:either|a|an|the)\b/i
+  // One pass down a drag strip is "a run". A fun run at the same event still counts.
+  if (/\b(drag[\s-]?racing|dragway)\b/i.test(text)) {
+    const rest = text.replace(/\ba run\b/gi, ' ').replace(/\brunning to\b/gi, ' ').replace(notARace, ' ')
+    if (!activity.test(rest)) return 'misleading'
+  }
+  if (verb.test(text) || boilerplate.test(text) || notARace.test(text)) {
     const rest = text
       .replace(verb, ' ')
       .replace(/\brunning times\b/gi, ' ')
@@ -105,6 +114,7 @@ function runningEvidence(text: string): TagEvidence {
       .replace(/\bup and running\b/gi, ' ')
       .replace(/\brunning late\b/gi, ' ')
       .replace(/\brunning regularly\b/gi, ' ')
+      .replace(notARace, ' ')
     if (activity.test(rest)) return 'clear'
     return 'misleading'
   }
@@ -354,5 +364,5 @@ export function retagLgbti(stored: boolean, title: string, description?: string 
 }
 
 export function sportSignal(text: string): boolean {
-  return /\b(rugby|nrl|afl|cricket|a-league|football|soccer|basketball|tennis|melbourne cup|mma|wrestling|marathons?|parkruns?|grand prix|tip[\s-]?offs?|motorsports?|swimming|cycling)\b/i.test(text)
+  return /\b(rugby|nrl|afl|cricket|a-league|football|soccer|basketball|tennis|melbourne cup|mma|wrestling|marathons?|parkruns?|grand prix|tip[\s-]?offs?|motorsports?|swimming|cycling|darts?|oche|drag[\s-]?racing|dragway)\b/i.test(text)
 }

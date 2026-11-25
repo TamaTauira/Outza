@@ -7,6 +7,7 @@ import { CITIES, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { placeholderAbsolute } from '@/lib/placeholders'
 import { presentListing } from '@/lib/categories'
+import { stripTrackingParams } from '@/lib/listing-link'
 import { evaluateSeasons, type SeasonDecision } from '@/lib/seasons'
 import { addDaysKey, addressInOtherState, cityToday, eventPath, isLandingSuburb, isPastEvent, isTonightSlot, slugify, tzOffset, weekendRange, TOPICS, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { ACTIVITY_TOPICS, evaluateGuides, matchesCommunity, matchesGarage, matchesMarketTitle, matchesPopup, matchesTopic, matchesWarehouse, suburbDirectory, whenRange, type GuideDecision, type InvRow } from '@/lib/local-seo'
@@ -305,14 +306,16 @@ export function eventJsonLd(ev: JsonLdEvent, origin: string) {
   if (ev.endTime || ev.endDate) ld.endDate = iso(endKey, ev.endTime, city.tz)
   if (ev.description) ld.description = ev.description.slice(0, 500)
   ld.image = [image]
-  if (organiser) ld.organizer = { '@type': 'Organization', name: organiser, ...(ev.organiserUrl ? { url: ev.organiserUrl } : {}) }
+  const organiserPage = ev.organiserUrl ? stripTrackingParams(ev.organiserUrl) : null
+  if (organiser) ld.organizer = { '@type': 'Organization', name: organiser, ...(organiserPage ? { url: organiserPage } : {}) }
   if (ev.isFree) ld.isAccessibleForFree = true
-  if (ev.ticketUrl && /^https?:\/\//.test(ev.ticketUrl) && (ev.isFree || ev.priceMin != null)) {
+  const ticketPage = ev.ticketUrl ? stripTrackingParams(ev.ticketUrl) : null
+  if (ticketPage && (ev.isFree || ev.priceMin != null)) {
     const lo = ev.isFree ? 0 : ev.priceMin!
     const hi = ev.isFree ? 0 : ev.priceMax ?? lo
     ld.offers = hi !== lo
-      ? { '@type': 'AggregateOffer', url: ev.ticketUrl, priceCurrency: 'AUD', lowPrice: lo, highPrice: hi }
-      : { '@type': 'Offer', url: ev.ticketUrl, priceCurrency: 'AUD', price: lo }
+      ? { '@type': 'AggregateOffer', url: ticketPage, priceCurrency: 'AUD', lowPrice: lo, highPrice: hi }
+      : { '@type': 'Offer', url: ticketPage, priceCurrency: 'AUD', price: lo }
   }
   return ld
 }

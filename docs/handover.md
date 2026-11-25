@@ -108,7 +108,7 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 - Categorising: `lib/categories.ts` `classifyCategory` (Music + comedy/theatre/circus/cabaret now → Arts & Culture; only affects new/refreshed rows), `checkLGBTI`, `checkFree`, `guessSuburb`.
 - Quality: `lib/quality.ts`, `lib/quality-pass.ts`, `PROVIDER_POLICY` (stays "Needs review" until confirmed).
 - After refresh, `lib/local-import.ts` imports public community events into VibePeep Local.
-- **Ticketek:** never scrape or bypass blocks. `fetchTicketekEvents` runs only with impact.com affiliate env vars (`IMPACT_ACCOUNT_SID`, `IMPACT_AUTH_TOKEN`, `IMPACT_TICKETEK_CATALOG_ID`) or a partner feed (`TICKETEK_FEED_URL`, `TICKETEK_FEED_AUTH`). Images only if `TICKETEK_IMAGES_ALLOWED=1`. Affiliate deep links: `lib/affiliate.ts` `ticketHref()` + `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
+- **Ticketek:** never scrape or bypass blocks. `fetchTicketekEvents` runs only with a licensed Impact catalog (`IMPACT_ACCOUNT_SID`, `IMPACT_AUTH_TOKEN`, `IMPACT_TICKETEK_CATALOG_ID`) or a partner feed (`TICKETEK_FEED_URL`, `TICKETEK_FEED_AUTH`). Images only if `TICKETEK_IMAGES_ALLOWED=1`. Get tickets links stay the plain Ticketek or organiser URL. There is no affiliate click tracking.
 - **Ticket availability is never set from feeds or shown as live.** JSON-LD never includes availability.
 
 ### 4.3 Home board, map, saved (`app/(board)` + `components/home-client.tsx`)
@@ -198,7 +198,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 - Set today: `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `TICKETMASTER_API_KEY`, `OZTIX_ALGOLIA_KEY`, `AWS_PROFILE`, `AWS_REGION`, `AWS_BUCKET_NAME`, `AWS_FOLDER_PREFIX`.
 - AI Gateway: `AI_GATEWAY_API_KEY` for local/non-Vercel calls. Vercel deploys use `VERCEL_OIDC_TOKEN`. Optional `AI_GATEWAY_MODEL` (a `provider/model` id). There is no `ABACUSAI_API_KEY` or `WEB_APP_ID`.
 - Email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and optional `EMAIL_FROM` (falls back to `SMTP_USER`). Yahoo SMTP is the sender when host, user and password are set. `RESEND_API_KEY` is the fallback once a domain is verified and SMTP is unset. Optional `RESEND_FROM_EMAIL` (default `VibePeep <onboarding@resend.dev>`, which can only mail the Resend account owner). Do not send from `@outza.app`.
-- Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (set in Vercel production; locally, cron endpoints only work for ADMIN sessions), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars, `NEXT_PUBLIC_TICKETEK_AFFILIATE_LINK`.
+- Read by code but **not set** in `.env`: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (→ payments run in test mode), `CRON_SECRET` (set in Vercel production; locally, cron endpoints only work for ADMIN sessions), `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `INTEL_ENC_KEY`, Ticketek/impact vars.
 - `NEXT_PUBLIC_SITE_URL` is the public origin override. Do not set it to an Abacus host.
 
 ---
@@ -225,7 +225,7 @@ Every route that touches user data calls `auth()` / `getSessionUser()` and deriv
 5. **Copy is fun, energetic, witty.** Legal/trust copy stays plain (Acknowledgement of Country, disclaimer, privacy, listing rules, Sponsored labels, payment/test-mode notices, invoices, "confirm with organiser"). Witty copy never claims sell-outs, popularity numbers or guaranteed results, and avoids slang borrowed from First Nations culture (e.g. "walkabout").
 6. **No map/board shortcut buttons** in the toolbar (switch via navbar tabs only) and **no "Your next great night out" card** (its questions live in Ask VibePeep). Itinerary button sits next to Save.
 7. **Promoter data anonymised:** grouped stats only, groups under 10 hidden, never exact ages, birthdays, postcodes or addresses.
-8. **Ticketek only via lawful partner/affiliate feeds.** No loopholes, no scraping, no bypassing blocks. Same spirit for every source: official APIs/feeds only.
+8. **Ticketek only via a lawful licensed feed.** No affiliate click tracking, no scraping, no bypassing blocks. Same spirit for every source: official APIs/feeds only.
 9. **Preserve existing branding, functionality, dashboard, auth, payments and UX. No full redesigns.** Make the smallest change that does the job.
 10. **Never show events dated before today** (in the event's city timezone), and **restore the user's last scroll position** when coming back from an event.
 

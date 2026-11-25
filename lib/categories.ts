@@ -119,7 +119,7 @@ export function classifyCategory(title: string, description: string, genres: str
   if (category === 'Community' && best < 1) {
     const band = text.replace(/\bband clubs?\b/g, ' ').replace(/\brubber bands?\b/g, ' ')
     if (/\b(concert|gig|singer|dj|music|festival)\b/.test(band) || /\bband\b/.test(band)) category = 'Music'
-    else if (/\b(sport|rugby|cricket|football|tennis|nrl|afl)\b/.test(text)) category = 'Sports'
+    else if (/\b(sport|rugby|cricket|football|tennis|nrl|afl|darts?|drag[\s-]?racing)\b/.test(text)) category = 'Sports'
     else if (/\b(theatre|theater|comedy|dance|art|exhibition|gallery|opera|film)\b/.test(text)) category = 'Arts & Culture'
     else if (/\b(food|wine|beer|cocktail|dining|brunch)\b/.test(text)) category = 'Food & Drink'
     else if (/\b(melbourne cup|horse racing|racing carnival)\b/.test(text)) category = 'Sports'
@@ -147,7 +147,11 @@ export function classifyCategory(title: string, description: string, genres: str
   if (category === 'Family' && /\bplaygroup\b/i.test(title) && !subTags.includes('Kids Activities')) subTags.push('Kids Activities')
   if (category === 'Arts & Culture' && /\bdance class/i.test(title) && !subTags.includes('Dance')) subTags.push('Dance')
   const own = CATEGORIES.find((c) => c.name === category)?.subTags ?? []
-  const filtered = [...new Set(subTags)].filter((t) => own.includes(t))
+  let filtered = [...new Set(subTags)].filter((t) => own.includes(t))
+  // A source label does not override a keyword guard. Darts, "running times" and "run to the final" are not Running.
+  if (filtered.includes('Running') && proseEvidence('Running', proseText) === 'misleading') {
+    filtered = filtered.filter((tag) => tag !== 'Running')
+  }
   return { category, subTags: dropBroadTheatre(filtered, proseText) }
 }
 

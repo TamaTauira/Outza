@@ -2,6 +2,31 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bccEventPageUrl, eventOutbound, humanitixEventUrl, isGenericCouncilLanding, normalizeListingUrls, repairKnownListingUrl, rewriteCouncilListingUrl, sourceSearchUrl, usableUrl } from './listing-link'
 
+test('get tickets is the plain ticketing url, with affiliate parameters removed', () => {
+  const ticketek = eventOutbound({
+    title: 'Show',
+    source: 'ticketek',
+    ticketUrl: 'https://premier.ticketek.com.au/shows/show.aspx?s=ABC&irclickid=abc&aff=partner',
+  })
+  assert.equal(ticketek.label, 'Get tickets')
+  assert.equal(ticketek.href, 'https://premier.ticketek.com.au/shows/show.aspx?s=ABC')
+  assert.doesNotMatch(ticketek.href, /aff=|irclickid=|affiliate|clickid=|[?&]u=/)
+
+  const eventbrite = eventOutbound({
+    title: 'Paint and sip',
+    source: 'cityofsydney',
+    ticketUrl: 'https://www.eventbrite.com.au/e/paint-and-sip-tickets-1991353979358?aff=oddtdtcreator',
+  })
+  assert.equal(eventbrite.label, 'Get tickets')
+  assert.equal(eventbrite.href, 'https://www.eventbrite.com.au/e/paint-and-sip-tickets-1991353979358')
+
+  const stored = normalizeListingUrls({
+    source: 'moshtix',
+    ticketUrl: 'https://www.moshtix.com.au/v2/event/swing-west/193808?ref=RSS_Lazybones&skin=lazybones',
+  })
+  assert.equal(stored.ticketUrl, 'https://www.moshtix.com.au/v2/event/swing-west/193808?skin=lazybones')
+})
+
 test('ticket link wins, then source, organiser, then a search on the source site', () => {
   const tickets = eventOutbound({ title: 'Late show', source: 'ticketmaster', ticketUrl: 'https://www.ticketmaster.com.au/event/abc', sourceUrl: 'https://example.com/listing', organiserUrl: 'https://venue.example' })
   assert.equal(tickets.label, 'Get tickets')

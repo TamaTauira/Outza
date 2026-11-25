@@ -3,9 +3,38 @@
  * Ticket URL, then the source listing, then the organiser, then a search on that source's site.
  * "Get tickets" only when the chosen URL is a ticket link. Everything else is "More info".
  */
-import { ticketHref } from '@/lib/affiliate'
 import { SOURCES } from '@/lib/quality'
 import { eventPath } from '@/lib/seo'
+
+/** Campaign and affiliate parameters. Event, session and product ids stay. */
+const TRACKING_PARAMS = new Set([
+  'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+  'fbclid', 'gclid', 'gclsrc', 'dclid', 'mc_cid', 'mc_eid', 'igshid', 'yclid',
+  '_ga', '_gl', 'mkt_tok', 'fb_action_ids', 'fb_action_types', 'fb_source',
+  'vero_id', '_hsenc', '_hsmi', 'hsa_cam', 'hsa_grp', 'hsa_mt', 'hsa_src',
+  'hsa_ad', 'hsa_acc', 'hsa_net', 'hsa_kw', 'hsa_ver',
+  'aff', 'affiliate', 'ref', 'referral', 'cmp', 'irclickid', 'clickid', 'dicbo',
+])
+
+export function isTrackingParam(key: string): boolean {
+  const name = key.toLowerCase()
+  return TRACKING_PARAMS.has(name) || name.startsWith('utm_') || name.startsWith('utm-')
+}
+
+/** The organiser or ticketing URL with affiliate and campaign parameters removed. */
+export function stripTrackingParams(raw?: string | null): string | null {
+  const url = usableUrl(raw)
+  if (!url) return null
+  let parsed: URL
+  try { parsed = new URL(url) } catch { return url }
+  let changed = false
+  for (const key of [...parsed.searchParams.keys()]) {
+    if (!isTrackingParam(key)) continue
+    parsed.searchParams.delete(key)
+    changed = true
+  }
+  return changed ? parsed.toString() : url
+}
 
 const TICKET_HOST = /(^|\.)(ticketmaster|ticketek|eventbrite|humanitix|moshtix|oztix|tixr|trybooking|stickytickets|eventfinda|tixel|dice)\./i
 
@@ -193,10 +222,11 @@ export function eventOutbound(ev: {
     if (ev.source === 'community' && ev.id) return { href: eventPath({ id: ev.id, title: ev.title }), label: 'More info', kind: 'source' }
     return { href: sourceSearchUrl(ev.source, ev.title), label: 'More info', kind: 'search' }
   }
+  const href = stripTrackingParams(chosen.href) ?? chosen.href
   if (isTicketLink(chosen.href, ev.source, chosen.field)) {
-    return { href: ticketHref(chosen.href) ?? chosen.href, label: 'Get tickets', kind: 'ticket' }
+    return { href, label: 'Get tickets', kind: 'ticket' }
   }
-  return { href: chosen.href, label: 'More info', kind: chosen.kind }
+  return { href, label: 'More info', kind: chosen.kind }
 }
 
 /** Normalise URLs before they are stored. A non-ticket URL is kept as the source page, not as a ticket link. */
@@ -206,9 +236,9 @@ export function normalizeListingUrls(input: {
   sourceUrl?: string | null
   organiserUrl?: string | null
 }): { ticketUrl: string | null; sourceUrl: string | null; organiserUrl: string | null } {
-  let ticket = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(input.ticketUrl, input.source)))
-  let source = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(input.sourceUrl, input.source)))
-  const organiserUrl = usableUrl(input.organiserUrl)
+  let ticket = stripTrackingParams(rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(input.ticketUrl, input.source))))
+  let source = stripTrackingParams(rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(input.sourceUrl, input.source))))
+  const organiserUrl = stripTrackingParams(usableUrl(input.organiserUrl))
   if (ticket && !isTicketLink(ticket, input.source, 'ticket')) {
     if (!source) source = ticket
     ticket = null
