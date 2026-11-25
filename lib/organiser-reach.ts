@@ -3,6 +3,7 @@
  * No database, no person identifiers, and no invented comparisons.
  * ProductMetric (lib/product-metrics.ts) is the shared first-party stream.
  */
+import { emailLink, emailStatTable } from '@/lib/email-brand'
 
 export const MIN_COHORT = 10
 export const MIN_PEERS = 8
@@ -260,13 +261,12 @@ export function recapFragment(input: {
   benchmark: string | null
   unsubUrl: string
 }): { html: string; text: string } {
-  const cell = (label: string, value: string) => `<td style="padding:8px 10px;border:1px solid #e7e2d6"><div style="font-size:11px;color:#5c615c">${label}</div><div style="font-size:18px;font-weight:700">${value}</div></td>`
   const n = (value: number | null) => value == null ? 'Locked' : value.toLocaleString('en-AU')
-  const html = `<h2 style="font-size:15px;margin:24px 0 8px">This week on VibePeep</h2>
-<table style="width:100%;border-collapse:collapse"><tr>${cell('Opens', n(input.opened))}${cell('Get tickets', n(input.ticket))}${cell('Saves', n(input.saves))}${cell('Reactions', n(input.reactions))}</tr></table>
-${input.benchmark ? `<p style="font-size:13px;margin:12px 0 0">${escapeHtml(input.benchmark)}</p>` : ''}
-${input.tip ? `<p style="font-size:13px;margin:8px 0 0"><strong>A nudge:</strong> ${escapeHtml(input.tip)}</p>` : ''}
-<p style="font-size:12px;margin:16px 0 0"><a href="${escapeHtml(input.unsubUrl)}">Unsubscribe from these weekly recaps</a>. Your newsletter choice stays as it is.</p>`
+  const html = `<h2 class="tx" style="font-size:15px;margin:24px 0 8px">This week on VibePeep</h2>
+${emailStatTable(['Opens', 'Get tickets', 'Saves', 'Reactions'], [[n(input.opened), n(input.ticket), n(input.saves), n(input.reactions)]])}
+${input.benchmark ? `<p class="tx" style="font-size:13px;margin:12px 0 0">${escapeHtml(input.benchmark)}</p>` : ''}
+${input.tip ? `<p class="tx" style="font-size:13px;margin:8px 0 0"><strong>A nudge:</strong> ${escapeHtml(input.tip)}</p>` : ''}
+<p style="font-size:14px;margin:16px 0 0">${emailLink(input.unsubUrl, 'Unsubscribe from these weekly recaps')}. Your newsletter choice stays as it is.</p>`
   const text = [
     'This week on VibePeep',
     `Opens: ${n(input.opened)}`,

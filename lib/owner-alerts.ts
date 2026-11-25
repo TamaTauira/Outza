@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
-import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument, emailPanel } from '@/lib/email-brand'
 import { TRANSIENT_WINDOW_MS, foldTransientSessions } from '@/lib/network-fault'
 
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
@@ -208,22 +208,20 @@ export async function reportFault(opts: FaultReport) {
     const home = siteUrl()
     const html = emailDocument({
       title: 'VibePeep fault detected',
-      preheader: title,
+      preheader: `${opts.area}: open the note for the route and the stack.`,
       manageHref: `${home}/admin`,
+      manageLabel: 'Admin',
       banner: 'owner-fault',
       homeHref: home,
       reason: 'Repeats of this same fault are bundled: at most one email every 6 hours.',
-      rows: emailBodyCell(`<h2 style="color:#d92d20;margin:0 0 8px;font-size:20px;">VibePeep fault detected</h2>
-    <p style="margin:0 0 12px;">${escapeHtml(title)}</p>
-    <div class="card" style="background:#fff4f2;border-left:4px solid #d92d20;padding:14px 16px;border-radius:6px;">
-      <p style="margin:0 0 6px;"><strong>Area:</strong> ${escapeHtml(opts.area)}</p>
-      <p style="margin:0 0 6px;"><strong>Seen:</strong> ${row.count} time${row.count === 1 ? '' : 's'} since ${escapeHtml(seen)}</p>
-      <p style="margin:0 0 6px;"><strong>Latest:</strong> ${escapeHtml(latest)}</p>
-      ${route ? `<p style="margin:0;"><strong>Route:</strong> ${escapeHtml(route)}</p>` : ''}
-    </div>
-    ${detail ? `<pre class="card" style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(detail)}</pre>` : ''}
-    <pre data-vibepeep-fault="1" class="card" style="background:#f6f6f6;padding:12px;border-radius:6px;white-space:pre-wrap;font-size:12px;">${escapeHtml(block)}</pre>
-    <p class="mu" style="color:${EMAIL_C.muted};font-size:12px;">Site: ${escapeHtml(home)}.</p>`),
+      rows: emailBodyCell(`<h2 class="danger" style="color:${EMAIL_C.danger};margin:0 0 8px;font-size:20px;line-height:1.25;">VibePeep fault detected</h2>
+    <p class="tx" style="margin:0 0 12px;color:${EMAIL_C.ink};">${escapeHtml(title)}</p>
+    ${emailPanel(`<p class="tx" style="margin:0 0 6px;color:${EMAIL_C.ink};"><strong>Area:</strong> ${escapeHtml(opts.area)}</p>
+      <p class="tx" style="margin:0 0 6px;color:${EMAIL_C.ink};"><strong>Seen:</strong> ${row.count} time${row.count === 1 ? '' : 's'} since ${escapeHtml(seen)}</p>
+      <p class="tx" style="margin:0 0 6px;color:${EMAIL_C.ink};"><strong>Latest:</strong> ${escapeHtml(latest)}</p>
+      ${route ? `<p class="tx" style="margin:0;color:${EMAIL_C.ink};"><strong>Route:</strong> ${escapeHtml(route)}</p>` : ''}`, 'danger')}
+    ${detail ? emailPanel(`<pre class="tx" style="margin:0;white-space:pre-wrap;font-size:12px;color:${EMAIL_C.ink};">${escapeHtml(detail)}</pre>`) : ''}
+    ${emailPanel(`<pre data-vibepeep-fault="1" class="tx" style="margin:0;white-space:pre-wrap;font-size:12px;color:${EMAIL_C.ink};">${escapeHtml(block)}</pre>`)}`),
     })
     const text = `${title}\n\nArea: ${opts.area}\nSeen: ${row.count} since ${seen}\nLatest: ${latest}${route ? `\nRoute: ${route}` : ''}${detail ? `\n\n${detail}` : ''}\n\n${block}`
     const subject = `[VibePeep fault] ${title.slice(0, 90)}`

@@ -1,4 +1,5 @@
-import { EMAIL_ADDRESS, emailBodyCell, emailButton, emailDocument, emailEscape } from '@/lib/email-brand'
+import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
+import { EMAIL_ADDRESS, EMAIL_C, emailBodyCell, emailButton, emailCode, emailDocument, emailEscape, emailLink, emailSentence, emailSenderLine, emailVenueName } from '@/lib/email-brand'
 import { listUnsubscribeHeaders, type MailKind } from '@/lib/email'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { sampleWatchEmail } from '@/lib/email-preview'
@@ -32,6 +33,8 @@ export type MailData = {
   href?: string
   manageHref?: string
   posterHref?: string
+  /** Signed page link for the footer. The one-click header is separate. */
+  unsubscribeHref?: string
   who?: string
   plan?: string
   code?: string
@@ -123,7 +126,7 @@ const SPECS: Spec[] = [
   account('A1', {
     name: 'Verify email', priority: 'launch-must', wired: true, needsNewBanner: false,
     subject: 'Confirm it’s you, then come peep', title: 'Confirm your email', cta: 'Confirm email',
-    paragraphs: ['Open the link in the next day to publish events and use organiser tools. Browsing and saving work either way.'],
+    paragraphs: ['Open the link in the next day so we know this inbox is yours. Saving events and your account work once it’s confirmed.'],
     ctaOf: (d) => ({ href: d.href || `${HOME}/verify-email`, label: 'Confirm email' }),
   }),
   account('A2', {
@@ -301,9 +304,9 @@ const SPECS: Spec[] = [
     banner: 'community', needsNewBanner: false, cta: 'Confirm the listing',
     subject: 'Your VibePeep code is in', title: 'Your code is in',
     reason: 'The code is only for you. VibePeep won’t show your email on the listing.',
-    paragraphs: ['Your listing “{event}” is one code away from the neighbourhood. The code is {code}. It expires in 30 minutes.'],
+    paragraphs: ['Your listing “{event}” is one code away from the neighbourhood. Enter the code, or use the button. It expires in 30 minutes.'],
     subjectOf: () => 'Your VibePeep code is in',
-    paragraphsOf: (d) => [fill('Your listing “{event}” is one code away from the neighbourhood. The code is {code}. It expires in 30 minutes.', d)],
+    paragraphsOf: (d) => [fill('Your listing “{event}” is one code away from the neighbourhood. Enter the code, or use the button. It expires in 30 minutes.', d)],
     ctaOf: (d) => ({ href: d.href || `${HOME}/local/verify`, label: 'Confirm the listing' }),
   }),
   spec({
@@ -371,9 +374,9 @@ const SPECS: Spec[] = [
     banner: 'needs-changes', needsNewBanner: false, cta: 'Learn how claims work',
     subject: 'We couldn’t approve the claim for {event}', title: 'We couldn’t approve this claim',
     reason: 'Your organiser claim was reviewed.',
-    paragraphs: ['We couldn’t match this claim for {event} to the organiser. {reason}. If you have a work email or a bit more evidence, you can try again.'],
+    paragraphs: ['We couldn’t match this claim for {event} to the organiser. Reason: {reason}. If you have a work email or a bit more evidence, you can try again.'],
     subjectOf: (d) => fill('We couldn’t approve the claim for {event}', d),
-    paragraphsOf: (d) => [fill('We couldn’t match this claim for {event} to the organiser. {reason}. If you have a work email or a bit more evidence, you can try again.', d)],
+    paragraphsOf: (d) => [`We couldn’t match this claim for ${d.event || 'this event'} to the organiser. Reason: ${emailSentence(d.reason)}. If you have a work email or a bit more evidence, you can try again.`],
     ctaOf: (d) => ({ href: d.href || `${HOME}/promoter`, label: 'Learn how claims work' }),
   }),
   spec({
@@ -381,9 +384,9 @@ const SPECS: Spec[] = [
     banner: 'venue-code', needsNewBanner: false, cta: 'Confirm this inbox',
     subject: 'Your VibePeep code for {venue}', title: 'Your venue code',
     reason: 'Proving the inbox is not always enough to approve a venue claim.',
-    paragraphs: ['Your code for {venue} is {code}. The link expires in 30 minutes and works once. Opening it shows you can read this inbox. It does not by itself decide ownership.'],
+    paragraphs: ['Use the code below to show you can read mail for {venue}. The link works once. Opening it does not by itself decide ownership.'],
     subjectOf: (d) => fill('Your VibePeep code for {venue}', d),
-    paragraphsOf: (d) => [fill('Your code for {venue} is {code}. The link expires in 30 minutes and works once. Opening it shows you can read this inbox. It does not by itself decide ownership.', d)],
+    paragraphsOf: (d) => [fill('Use the code below to show you can read mail for {venue}. The link works once. Opening it does not by itself decide ownership.', d)],
     ctaOf: (d) => ({ href: d.href || `${HOME}/venues/verify`, label: 'Confirm this inbox' }),
   }),
   spec({
@@ -391,9 +394,9 @@ const SPECS: Spec[] = [
     banner: 'claim-approved', needsNewBanner: false, cta: 'Open the venue dashboard',
     subject: '{venue} is yours to manage on VibePeep', title: 'You can manage {venue}',
     reason: 'Your venue claim was approved.',
-    paragraphs: ['Your claim is in. You can edit the {venue} page, check listings tied to it, and add staff.'],
+    paragraphs: ['Your claim is in. You can edit the venue page, check listings tied to it, and add staff.'],
     subjectOf: (d) => fill('{venue} is yours to manage on VibePeep', d),
-    paragraphsOf: (d) => [fill('Your claim is in. You can edit the {venue} page, check listings tied to it, and add staff.', d)],
+    paragraphsOf: (d) => [`Your claim is in. You can edit ${emailVenueName(d.venue)} page, check listings tied to it, and add staff.`],
     ctaOf: (d) => ({ href: d.href || `${HOME}/venue`, label: 'Open the venue dashboard' }),
   }),
   spec({
@@ -401,9 +404,9 @@ const SPECS: Spec[] = [
     banner: 'needs-changes', needsNewBanner: false, cta: 'Learn how venue claims work',
     subject: 'We couldn’t approve the claim for {venue}', title: 'We couldn’t approve this claim',
     reason: 'Your venue claim was reviewed.',
-    paragraphs: ['We couldn’t approve the claim for {venue}. {reason}. If you can prove you manage this venue, you’re welcome to try again.'],
+    paragraphs: ['We couldn’t approve the claim for {venue}. Reason: {reason}. If you can prove you manage this venue, you’re welcome to try again.'],
     subjectOf: (d) => fill('We couldn’t approve the claim for {venue}', d),
-    paragraphsOf: (d) => [fill('We couldn’t approve the claim for {venue}. {reason}. If you can prove you manage this venue, you’re welcome to try again.', d)],
+    paragraphsOf: (d) => [`We couldn’t approve the claim for ${emailVenueName(d.venue)}. Reason: ${emailSentence(d.reason)}. If you can prove you manage this venue, you’re welcome to try again.`],
     ctaOf: (d) => ({ href: d.href || `${HOME}/venue`, label: 'Learn how venue claims work' }),
   }),
   spec({
@@ -449,10 +452,10 @@ const SPECS: Spec[] = [
   spec({
     id: 'P16', name: 'Venue monthly stats', group: 'Promoter', priority: 'soon', kind: 'report', wired: true,
     banner: 'venue-monthly', needsNewBanner: false, cta: 'Open the venue dashboard',
-    subject: 'Your venue month', title: 'Your venue month',
+    subject: 'Your month at {venue}: views, saves and clicks', title: 'Your venue month',
     reason: 'You manage a venue. Turning this note off does not change your newsletter.',
     paragraphs: ['Here’s the last 30 days for {venue}. Figures are the ones on record. We don’t fill gaps with estimates.'],
-    subjectOf: () => 'Your venue month',
+    subjectOf: (d) => fill('Your month at {venue}: views, saves and clicks', d),
     paragraphsOf: (d) => [fill('Here’s the last 30 days for {venue}. Figures are the ones on record. We don’t fill gaps with estimates.', d)],
     ctaOf: (d) => ({ href: d.href || `${HOME}/venue`, label: 'Open the venue dashboard' }),
   }),
@@ -487,7 +490,7 @@ const SPECS: Spec[] = [
     ctaOf: (d) => ({ href: d.href || `${HOME}/promoter`, label: 'Open billing' }),
   }),
   spec({
-    id: 'S1', name: 'Query received', group: 'Support', priority: 'launch-must', kind: 'transactional', wired: false,
+    id: 'S1', name: 'Query received', group: 'Support', priority: 'launch-must', kind: 'transactional', wired: true,
     banner: 'support', needsNewBanner: false, cta: 'Visit VibePeep',
     subject: 'We’ve got your note', title: 'We’ve got your note',
     reason: 'You wrote to us from this email. This isn’t a newsletter.',
@@ -501,9 +504,9 @@ const SPECS: Spec[] = [
     banner: 'support', needsNewBanner: false, cta: 'Visit VibePeep',
     subject: 'That’s sorted on our side', title: 'That’s sorted',
     reason: 'You wrote to us from this email.',
-    paragraphs: ['We’ve closed your note. {reason}. If something’s still stuck, reply to the thread.'],
+    paragraphs: ['We’ve closed your note. Reason: {reason}. If something’s still stuck, reply to the thread.'],
     subjectOf: () => 'That’s sorted on our side',
-    paragraphsOf: (d) => [fill('We’ve closed your note. {reason}. If something’s still stuck, reply to the thread.', d)],
+    paragraphsOf: (d) => [`We’ve closed your note. Reason: ${emailSentence(d.reason)}. If something’s still stuck, reply to the thread.`],
     ctaOf: () => ({ href: HOME, label: 'Visit VibePeep' }),
   }),
   spec({
@@ -593,24 +596,96 @@ function merged(data?: MailData): MailData {
   return { ...SAMPLE_MAIL, ...data, name: name || 'there' }
 }
 
+const PREHEADER: Record<TemplateId, string> = {
+  A1: 'One link, good for a day, confirms this inbox is yours.',
+  A2: 'One-time sign-in. Ignore it if you didn’t ask for a link.',
+  A3: 'One link, good for an hour, to choose a new password.',
+  A4: 'If you didn’t change it, reset the password from here.',
+  A5: 'If you didn’t change the email, contact us straight away.',
+  A6: 'If this sign-in wasn’t you, reset your password.',
+  A7: 'The account is closed. Saved events on this inbox are gone.',
+  A8: 'Your export is ready. The download link is inside.',
+  L1: 'The terms changed. The short version is in this note.',
+  L2: 'The privacy policy changed. Here’s what that means for you.',
+  L3: 'A small change to how cookies work on VibePeep.',
+  C1: 'Your account is ready. Go find something good tonight.',
+  C2: 'A short list of what’s on, picked for your city.',
+  C3: 'Saved events, plus new listings in the cities you follow.',
+  C4: 'One of your saved events is coming up soon.',
+  C5: 'The time on a saved event moved. The new one is inside.',
+  C6: 'A saved event was cancelled. The details are inside.',
+  C7: 'A saved event has a new date. The details are inside.',
+  C8: 'A stop on your Itinerary is happening tonight.',
+  C9: 'Someone invited you onto a plan. Open it when you’re free.',
+  C10: 'Your group is waiting on a vote for this plan.',
+  C11: 'It’s been a while. There’s a fresh shortlist when you want it.',
+  P1: 'The six-digit code for your listing is inside this note.',
+  P2: 'A person will check the listing before it goes public.',
+  P3: 'Neighbours can peep the listing now.',
+  P4: 'It needs a change before it can go on VibePeep.',
+  P5: 'The listing is no longer on VibePeep.',
+  P6: 'We’ve got the claim. You’ll hear when it’s decided.',
+  P7: 'You can update the listing from your promoter tools.',
+  P8: 'The claim didn’t go through. The reason is inside.',
+  P9: 'The six-digit code for this venue is inside this note.',
+  P10: 'You can edit the page, check listings and add staff.',
+  P11: 'The venue claim didn’t go through. The reason is inside.',
+  P12: 'You’ve been added as staff. The dashboard link is inside.',
+  P13: 'The listing stays up while we check the venue report.',
+  P14: 'The tick means you manage the listing. It isn’t a check of the event.',
+  P15: 'Views, clicks and saves from the week, as we recorded them.',
+  P16: 'Views, saves, itinerary adds and ticket clicks, as recorded.',
+  P17: 'Spotlight is on. This note is the purchase record.',
+  P18: 'Pro is active. This note is the purchase record.',
+  P19: 'The free month ends soon. Cancel from billing if you want to.',
+  S1: 'It arrived. We’ll reply in this thread if a straight answer will do.',
+  S2: 'We’ve closed the note. Reply if something’s still stuck.',
+  S3: 'We read ideas monthly. This isn’t a promise to build it.',
+  S4: 'We’ll check the listing. This isn’t a promised outcome.',
+  B1: 'The payment is recorded. This is a receipt, not a tax invoice.',
+  B2: 'The card didn’t go through. Nothing new was switched on.',
+  B3: 'The plan is cancelled. Access runs to the end of the paid period.',
+  B4: 'The refund is on its way back to the original payment method.',
+  B5: 'Update the card before the next renewal so the plan continues.',
+  B6: 'The amount on record. A tax invoice waits for the legal entity.',
+}
+
+function listingExtras(row: Spec, data: MailData): string {
+  if (row.id !== 'P2' && row.id !== 'P3') return ''
+  const listing = data.href || HOME
+  const manage = data.manageHref || `${HOME}/local/manage/sample`
+  const poster = data.posterHref || `${HOME}/local/poster/sample`
+  return `<p style="margin:12px 0 0;">${emailLink(manage, 'Edit, postpone or take it down')}</p>
+<p style="margin:8px 0;">${emailLink(poster, 'Printable poster')}</p>
+<p class="mu" style="margin:0;font-size:14px;color:${EMAIL_C.muted};">Listing: ${emailLink(listing, 'Open the listing page')}</p>`
+}
+
 function shell(row: Spec, data: MailData): { subject: string; html: string; text: string } {
   const subject = row.subjectOf(data)
   const title = fill(row.title, data)
   const paragraphs = row.paragraphsOf(data).filter(Boolean)
   const bullets = row.bulletsOf?.(data) ?? []
   const cta = row.ctaOf?.(data)
-  const unsub = row.kind === 'transactional' ? undefined : `${HOME}/unsubscribe`
-  const manage = row.kind === 'transactional' ? undefined : (data.manageHref || `${HOME}/account`)
+  const unsub = row.kind === 'transactional' ? undefined : (data.unsubscribeHref || `${HOME}/unsubscribe`)
+  const manage = row.kind === 'transactional' ? `${HOME}/account` : (data.manageHref || `${HOME}/account`)
+  const preheader = PREHEADER[row.id]
+  const code = (row.id === 'P1' || row.id === 'P9') && data.code ? emailCode(data.code, 30) : ''
+  const paste = cta && (row.id === 'A1' || row.id === 'A2' || row.id === 'A3')
+    ? `<p class="mu" style="margin:12px 0 0;font-size:14px;line-height:1.45;color:${EMAIL_C.muted};">Or paste this link:<br/>${emailLink(cta.href, cta.href)}</p>`
+    : ''
   const body = [
-    row.kicker ? `<p style="margin:0 0 8px;font-size:12px;letter-spacing:1.2px;font-weight:700;text-transform:uppercase;color:#F05A9D;">${emailEscape(row.kicker)}</p>` : '',
-    `<h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;">${emailEscape(title)}</h1>`,
-    ...paragraphs.map((line) => `<p style="margin:0 0 16px;">${emailEscape(line)}</p>`),
-    bullets.length ? `<ul style="margin:0 0 16px;padding-left:18px;">${bullets.map((item) => `<li style="margin:0 0 8px;">${emailEscape(item)}</li>`).join('')}</ul>` : '',
+    row.kicker ? `<p class="accent" style="margin:0 0 8px;font-size:12px;letter-spacing:0.8px;font-weight:800;text-transform:uppercase;color:${EMAIL_C.accentText};">${emailEscape(row.kicker)}</p>` : '',
+    `<h1 class="tx" style="margin:0 0 16px;font-size:26px;line-height:1.2;font-weight:800;color:${EMAIL_C.ink};">${emailEscape(title)}</h1>`,
+    ...paragraphs.map((line) => `<p class="tx" style="margin:0 0 16px;color:${EMAIL_C.ink};">${emailEscape(line)}</p>`),
+    code,
+    bullets.length ? `<ul style="margin:0 0 16px;padding-left:18px;">${bullets.map((item) => `<li class="tx" style="margin:0 0 8px;color:${EMAIL_C.ink};">${emailEscape(item)}</li>`).join('')}</ul>` : '',
     cta ? emailButton(cta.href, cta.label) : '',
+    paste,
+    listingExtras(row, data),
   ].join('')
   const html = emailDocument({
     title,
-    preheader: paragraphs[0] || title,
+    preheader,
     rows: emailBodyCell(body),
     homeHref: HOME,
     manageHref: manage,
@@ -621,7 +696,10 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
   const text = [
     title,
     '',
+    preheader,
+    '',
     ...paragraphs,
+    code ? `Code: ${data.code}` : '',
     ...bullets.map((item) => `- ${item}`),
     cta ? `${cta.label}: ${cta.href}` : '',
     row.reason || '',
@@ -629,8 +707,10 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
     `Privacy: ${HOME}/privacy`,
     unsub ? `Unsubscribe: ${unsub}` : '',
     manage ? `Manage preferences: ${manage}` : '',
+    `Acknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
+    emailSenderLine(),
     EMAIL_ADDRESS,
-  ].filter((line) => line !== undefined).join('\n')
+  ].filter((line) => line !== undefined && line !== '').join('\n')
   return { subject, html, text }
 }
 
@@ -759,7 +839,12 @@ export function renderTemplate(id: TemplateId, data?: MailData): { subject: stri
 export function templateMailHeaders(id: TemplateId): Record<string, string> {
   const row = SPECS.find((item) => item.id === id)
   if (!row || row.kind === 'transactional') return listUnsubscribeHeaders({ kind: 'transactional' })
-  return listUnsubscribeHeaders({ kind: row.kind, unsubscribeUrl: `${HOME}/unsubscribe` })
+  const path = row.id === 'P16'
+    ? '/api/venues/report/unsubscribe'
+    : row.kind === 'report'
+      ? '/api/promoter/report/unsubscribe'
+      : '/api/nl/unsubscribe'
+  return listUnsubscribeHeaders({ kind: row.kind, unsubscribeUrl: `${HOME}${path}` })
 }
 
 export const CATALOGUE_IDS = SPECS.map((row) => row.id)

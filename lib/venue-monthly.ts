@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl, DEFAULT_FROM_EMAIL, activeMailTransport } from '@/lib/email'
-import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument, emailLink, emailStatTable } from '@/lib/email-brand'
 import { sign } from '@/lib/newsletter/links'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { loadVenueActivity } from '@/lib/venue-activity-load'
@@ -9,6 +9,12 @@ import { venueFollowerCount } from '@/lib/venue-access'
 export function venueReportUnsubscribeUrl(userId: string) {
   const q = new URLSearchParams({ u: userId, k: sign(userId, 'venue-report-unsub') })
   return `${siteUrl()}/unsubscribe/venue?${q}`
+}
+
+/** One-click target. The footer keeps the page link. */
+export function venueReportUnsubscribeApiUrl(userId: string) {
+  const q = new URLSearchParams({ u: userId, k: sign(userId, 'venue-report-unsub') })
+  return `${siteUrl()}/api/venues/report/unsubscribe?${q}`
 }
 
 export type VenueMonthStat = {
@@ -24,14 +30,13 @@ const cell = (value: number | null) => (value == null ? 'Not loaded' : value.toL
 
 /** Plain monthly note. Figures are passed in. Nothing is estimated. */
 export function venueMonthlyLetter(input: { greeting: string; venues: VenueMonthStat[]; unsubUrl: string }) {
-  const rows = input.venues.map((venue) => `<tr>
-    <td style="padding:8px 6px;font-weight:600">${escapeHtml(venue.name)}</td>
-    <td style="padding:8px 6px;text-align:right">${cell(venue.views)}</td>
-    <td style="padding:8px 6px;text-align:right">${cell(venue.saves)}</td>
-    <td style="padding:8px 6px;text-align:right">${cell(venue.itineraryAdds)}</td>
-    <td style="padding:8px 6px;text-align:right">${cell(venue.ticketClicks)}</td>
-    <td style="padding:8px 6px;text-align:right">${venue.followers.toLocaleString('en-AU')}</td>
-  </tr>`).join('')
+  const table = emailStatTable(
+    ['Venue', 'Views', 'Saves', 'Itinerary', 'Ticket clicks', 'Followers'],
+    input.venues.map((venue) => [venue.name, cell(venue.views), cell(venue.saves), cell(venue.itineraryAdds), cell(venue.ticketClicks), venue.followers.toLocaleString('en-AU')]),
+  )
+  const subject = input.venues.length === 1
+    ? `Your month at ${input.venues[0].name}: views, saves and clicks`
+    : 'Your month across your venues: views, saves and clicks'
   const text = [
     `Hi ${input.greeting},`,
     'Here is the last 30 days for your venue.',
@@ -41,19 +46,20 @@ export function venueMonthlyLetter(input: { greeting: string; venues: VenueMonth
     'That does not change your newsletter.',
   ].join('\n')
   const html = emailDocument({
-    title: 'Your venue month',
-    preheader: 'Views, saves, itinerary adds and ticket clicks for your venue.',
+    title: subject,
+    preheader: 'The last 30 days, as recorded. We don’t fill a blank count.',
     manageHref: `${siteUrl()}/venue`,
+    unsubscribeHref: input.unsubUrl,
     banner: 'venue-monthly',
     homeHref: siteUrl(),
     reason: 'You manage a venue. This monthly note can be turned off without changing your newsletter.',
-    rows: emailBodyCell(`<h1 style="font-size:20px;margin:0 0 8px">Your venue month</h1>
-      <p style="font-size:14px;margin:0 0 12px">Hi ${escapeHtml(input.greeting)}, here is the last 30 days. A blank count means it didn’t load. We don’t fill one in.</p>
-      <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr class="mu" style="color:${EMAIL_C.muted};text-align:left"><th style="padding:6px">Venue</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Saves</th><th style="padding:6px;text-align:right">Itinerary</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">Followers</th></tr></thead><tbody>${rows}</tbody></table>
+    rows: emailBodyCell(`<h1 class="tx" style="font-size:20px;margin:0 0 8px;color:${EMAIL_C.ink}">Your venue month</h1>
+      <p class="tx" style="font-size:14px;margin:0 0 12px;color:${EMAIL_C.ink}">Hi ${escapeHtml(input.greeting)}, here is the last 30 days. A blank count means it didn’t load. We don’t fill one in.</p>
+      ${table}
       <p class="mu" style="font-size:12px;color:${EMAIL_C.muted}">Views and clicks are not attendance.</p>
-      <p style="font-size:12px"><a href="${escapeHtml(input.unsubUrl)}">Turn off this monthly note</a>. Your newsletter choice stays as it is.</p>`),
+      <p style="font-size:14px">${emailLink(input.unsubUrl, 'Turn off this monthly note')}. Your newsletter choice stays as it is.</p>`),
   })
-  return { subject: 'Your venue month', html, text }
+  return { subject, html, text }
 }
 
 export async function sendVenueMonthly(userId: string) {
@@ -103,7 +109,7 @@ export async function sendVenueMonthly(userId: string) {
     html: letter.html,
     text: letter.text,
     kind: 'report',
-    unsubscribeUrl: venueReportUnsubscribeUrl(userId),
+    unsubscribeUrl: venueReportUnsubscribeApiUrl(userId),
   })
   if (!sent.ok) return { ok: false as const, error: sent.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastVenueReportAt: new Date() } })

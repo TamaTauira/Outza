@@ -7,7 +7,7 @@ import { sign } from '@/lib/newsletter/links'
 import { metricDay, peakWeekday, reachTips, recapFragment, shiftDay } from '@/lib/organiser-reach'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
 import { AUDIENCE_DISCLAIMER, MIN_GROUP } from '@/lib/profile-shared'
-import { EMAIL_C, emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailButton, emailDocument, emailLink } from '@/lib/email-brand'
 import { isQaAccountEmail } from '@/lib/qa-account'
 
 const n = (v: number) => v.toLocaleString('en-AU')
@@ -15,6 +15,12 @@ const n = (v: number) => v.toLocaleString('en-AU')
 export function reportUnsubscribeUrl(userId: string) {
   const q = new URLSearchParams({ u: userId, k: sign(userId, 'report-unsub') })
   return `${siteUrl()}/unsubscribe/report?${q}`
+}
+
+/** One-click target. The footer keeps the page link. */
+export function reportUnsubscribeApiUrl(userId: string) {
+  const q = new URLSearchParams({ u: userId, k: sign(userId, 'report-unsub') })
+  return `${siteUrl()}/api/promoter/report/unsubscribe?${q}`
 }
 
 /** Link target for a promoter-report event. Hidden, unapproved, removed, and past listings 404, so they are not linked. */
@@ -72,20 +78,16 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     if (href) hrefFor.set(event.id, href)
   }
   const totals: Record<string, number> = {}
-  const titleLink = (id: string, title: string, weight = false) => {
-    const label = escapeHtml(title)
+  const titleLink = (id: string, title: string) => {
     const href = hrefFor.get(id)
-    const style = `color:${EMAIL_C.ink};text-decoration:none;${weight ? 'font-weight:600;' : ''}`
-    return href
-      ? `<a href="${escapeHtml(href)}" class="tx" style="${style}">${label}</a>`
-      : `<span class="tx" style="${style}">${label}</span>`
+    return href ? emailLink(href, title) : `<span class="tx" style="color:${EMAIL_C.ink};font-weight:600;">${escapeHtml(title)}</span>`
   }
   const rows = events.map((e) => {
     const unlocked = pro || e.promotions.length > 0
     if (unlocked) for (const r of e.referrals) totals[r.source] = (totals[r.source] ?? 0) + r.count
     const ctr = unlocked && e.views ? `${((e.ticketClicks / e.views) * 100).toFixed(1)}%` : '-'
     const cell = (v: string) => `<td class="tx" style="padding:8px 6px;text-align:right;font-variant-numeric:tabular-nums;color:${EMAIL_C.ink}">${v}</td>`
-    return `<tr style="border-top:1px solid #eee"><td style="padding:8px 6px">${titleLink(e.id, e.title, true)}<br><span class="mu" style="color:${EMAIL_C.muted};font-size:12px">${e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</span></td>${cell(unlocked ? n(e.views) : 'Locked')}${cell(unlocked ? n(e.ticketClicks) : 'Locked')}${cell(ctr)}${cell(`${e._count.savedBy} / ${e._count.attendees}`)}</tr>`
+    return `<tr style="border-top:1px solid #eee"><td style="padding:8px 6px">${titleLink(e.id, e.title)}<br><span class="mu" style="color:${EMAIL_C.muted};font-size:12px">${e.date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</span></td>${cell(unlocked ? n(e.views) : 'Locked')}${cell(unlocked ? n(e.ticketClicks) : 'Locked')}${cell(ctr)}${cell(`${e._count.savedBy} / ${e._count.attendees}`)}</tr>`
   }).join('')
   const refTotal = Object.values(totals).reduce((s, v) => s + v, 0)
   const refRows = REFERRAL_SOURCES.filter((s) => totals[s]).map((s) => `<tr><td class="tx" style="padding:4px 6px;color:${EMAIL_C.ink}">${REFERRAL_LABELS[s as ReferralSource]}</td><td class="tx" style="padding:4px 6px;text-align:right;color:${EMAIL_C.ink}">${n(totals[s])} (${Math.round((totals[s] / refTotal) * 100)}%)</td></tr>`).join('')
@@ -171,6 +173,7 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     manageHref: `${base}/promoter`,
     banner: 'promoter-report',
     homeHref: base,
+    unsubscribeHref: reportUnsubscribeUrl(userId),
     reason: 'You turned on weekly recaps in the Promoter dashboard. The unsubscribe link in this email turns them off straight away and leaves your newsletter choice alone.',
     rows: emailBodyCell(`<h1 class="tx" style="font-size:20px;margin:0 0 6px;color:${EMAIL_C.ink}">Your event performance report</h1>
   <p class="tx" style="font-size:14px;color:${EMAIL_C.ink};margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's the read on your listings. Figures are totals since each one went live.</p>
@@ -189,7 +192,7 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
     html,
     text: recap.text,
     kind: 'report',
-    unsubscribeUrl: reportUnsubscribeUrl(userId),
+    unsubscribeUrl: reportUnsubscribeApiUrl(userId),
   })
   if (!res.ok) return { ok: false, error: res.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastReportAt: new Date() } })

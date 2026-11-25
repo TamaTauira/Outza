@@ -133,7 +133,7 @@ export async function sendVerification(userId: string, email: string) {
     '/verify-email?token=',
     'Confirm it’s you, then come peep',
     'Confirm your email',
-    'Open the link in the next day to publish events and use organiser tools. Browsing and saving work either way.',
+    'Open the link in the next day so we know this inbox is yours. Saving events and your account work once it’s confirmed.',
     'Confirm email',
     'A1',
   )
@@ -188,16 +188,14 @@ export async function runTrialReminders() {
     if (isQaAccountEmail(row.user.email)) { skipped++; continue }
     const when = row.currentPeriodEnd.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Australia/Sydney' })
     try {
-      const result = await linkMail(
-        row.user.email,
-        'Your VibePeep free month is ending',
-        'Your free month is ending',
-        `The free month on ${row.plan.name} ends on ${when}. Cancel before then from Promoter billing if you do not want the monthly charge.`,
-        `${siteUrl()}/promoter?tab=billing`,
-        'Open billing',
-      )
+      const { sendTemplate } = await import('@/lib/customer-mail')
+      const result = await sendTemplate('P19', row.user.email, {
+        when,
+        href: `${siteUrl()}/promoter?tab=billing`,
+      }, row.userId)
       if (!result.ok) {
-        console.error('[trial] reminder not sent', result.disabled ? 'email is off' : result.error ?? 'unknown')
+        const why = 'disabled' in result && result.disabled ? 'email is off' : 'error' in result && result.error ? result.error : 'unknown'
+        console.error('[trial] reminder not sent', why)
         skipped++
         continue
       }

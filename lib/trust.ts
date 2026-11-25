@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, OWNER_EMAIL, escapeHtml } from '@/lib/email'
-import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument, emailPanel } from '@/lib/email-brand'
 import { siteUrl } from '@/lib/site-url'
 import { ensureOrganiserGrant } from '@/lib/event-overrides'
 
@@ -59,16 +59,16 @@ export async function notifyTrustTeam(subject: string, rows: [string, string | n
   const home = siteUrl()
   const html = emailDocument({
     title: subject,
-    preheader: subject,
+    preheader: 'A trust item is waiting in admin.',
     manageHref: `${home}/admin/trust`,
+    manageLabel: 'Trust queue',
     banner: 'trust',
     homeHref: home,
-    reason: 'Review it in Admin → Trust & listings (/admin/trust).',
-    rows: emailBodyCell(`<h2 style="color:${EMAIL_C.accent};margin:0 0 12px;font-size:20px;">${escapeHtml(subject)}</h2>
-    <div class="card" style="background:#f6f6f6;padding:16px;border-radius:8px;">
-      ${rows.filter(([, v]) => v).map(([k, v]) => `<p style="white-space:pre-wrap;margin:0 0 8px;"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</p>`).join('')}
-    </div>`),
+    reason: 'Review it in Admin, under Trust and listings.',
+    rows: emailBodyCell(`<h2 class="tx" style="color:${EMAIL_C.ink};margin:0 0 12px;font-size:20px;line-height:1.25;">${escapeHtml(subject)}</h2>
+    ${emailPanel(rows.filter(([, v]) => v).map(([k, v]) => `<p class="tx" style="white-space:pre-wrap;margin:0 0 8px;color:${EMAIL_C.ink};"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</p>`).join(''))}`),
   })
-  const sent = await sendEmail({ to: OWNER_EMAIL, subject, html, kind: 'transactional' })
+  const text = [subject, '', ...rows.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`)].join('\n')
+  const sent = await sendEmail({ to: OWNER_EMAIL, subject, html, text, kind: 'transactional' })
   if (!sent.ok) console.error('Trust notification failed:', sent.error)
 }
