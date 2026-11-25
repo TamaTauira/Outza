@@ -5383,7 +5383,7 @@ __metadata:
     sonner: "npm:1.5.0"
     stripe: "npm:18.5.0"
     swr: "npm:2.5.1"
-    tailwind-merge: "npm:2.5.2"
+    tailwind-merge: "npm:3.7.1"
     tailwind-scrollbar-hide: "npm:1.1.7"
     tailwindcss: "npm:3.4.0"
     tailwindcss-animate: "npm:1.0.7"
@@ -13215,10 +13215,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tailwind-merge@npm:2.5.2":
-  version: 2.5.2
-  resolution: "tailwind-merge@npm:2.5.2"
-  checksum: 10c0/e43a9a468f7ba4ed5b4a399558d96d6270a3d8131dca111cccc803e71cc23885060d18d721f312a24fff0a75c567dbb30b2a87c18aba25eb4255df197d8170ab
+"tailwind-merge@npm:3.7.1":
+  version: 3.7.1
+  resolution: "tailwind-merge@npm:3.7.1"
+  checksum: 10c0/ff35907809ab2712a652fc9a9dfa89a215bb0f7a8065071cffc806076d7a143dc2ed8271be84b98d31004984b5dfdca7ec2276d121085322e55abe68b4e80ac5
   languageName: node
   linkType: hard
 
