@@ -1,3 +1,6 @@
+import { hiddenFromPublic, type PublicSession } from '@/lib/listing-visibility'
+import { isPastEvent } from '@/lib/seo'
+
 export type Probe = { name: string; ok: boolean; detail: string }
 
 async function probe(name: string, url: string, fetchImpl: typeof fetch, expect: (res: Response, body: string) => boolean, init: RequestInit = {}): Promise<Probe> {
@@ -46,4 +49,12 @@ function asyncExpect(_res: Response, body: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * First candidate that the public event page will still serve. The page 404s a listing that already finished,
+ * so a same-day event whose end time has passed must not be the one the check probes.
+ */
+export function pickPublicEvent<T extends PublicSession & { date: string | Date; city?: string | null }>(candidates: T[], now = new Date()): T | null {
+  return candidates.find((ev) => !isPastEvent({ date: ev.date, endDate: ev.endDate, city: ev.city }) && !hiddenFromPublic(ev, now)) ?? null
 }

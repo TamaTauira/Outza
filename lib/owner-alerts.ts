@@ -7,9 +7,6 @@ import { TRANSIENT_WINDOW_MS, foldTransientSessions } from '@/lib/network-fault'
 const FAULT_REEMAIL_MS = 6 * 60 * 60 * 1000 // same fault re-emails at most every 6h
 const MAX_FAULT_EMAILS_PER_HOUR = 10
 
-/** Ops inbox that receives every fault alert when FAULT_ALERT_EXTRA_RECIPIENTS is unset. */
-export const DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS = 'outza-tester+faults@mail.grokbot.com'
-
 const EMAIL_TOKEN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const fingerprint = (s: string) => createHash('sha1').update(s).digest('hex').slice(0, 16)
@@ -30,9 +27,9 @@ function clip(value: string | null | undefined, max: number): string | null {
   return trimmed ? trimmed.slice(0, max) : null
 }
 
-/** Comma-separated extra inboxes. Unset uses the ops default. An empty value sends to the owner only. */
+/** Comma-separated extra inboxes. Unset or empty sends to the owner only. */
 export function faultAlertExtraRecipients(raw: string | undefined = process.env.FAULT_ALERT_EXTRA_RECIPIENTS): string[] {
-  const source = raw === undefined ? DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS : raw
+  const source = raw ?? ''
   const seen = new Set<string>()
   const out: string[] = []
   for (const part of source.split(',')) {
