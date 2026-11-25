@@ -5,10 +5,10 @@
 import { cache } from 'react'
 import { createHash, randomBytes, randomInt } from 'crypto'
 import { prisma } from '@/lib/db'
-import { sendEmail, emailSendingEnabled } from '@/lib/email'
-import { emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { sendEmail } from '@/lib/email'
+import { renderTemplate } from '@/lib/email-catalogue'
 import { siteUrl } from '@/lib/site-url'
-import { cityDef, CITIES, ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
+import { cityDef, CITIES } from '@/lib/cities'
 import { eventPath, citySlug, cityToday, addDaysKey } from '@/lib/seo'
 import { makeSeriesKey } from '@/lib/event-store'
 import {
@@ -18,8 +18,6 @@ import {
 } from '@/lib/community-shared'
 
 const CODE_MINUTES = 30
-const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c))
-
 export function communityIpHash(req: Request): string {
   const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown'
   return createHash('sha256').update(`vibepeep-community:${ip}`).digest('hex').slice(0, 32)
@@ -57,22 +55,8 @@ function infoHref(input: Pick<CommunityInput, 'websiteUrl'>, id: string, title: 
 
 async function sendCodeMail(to: string, code: string, token: string, title: string) {
   const link = `${siteUrl()}/local/verify?token=${token}`
-  const home = siteUrl()
-  const html = emailDocument({
-    title: 'Your VibePeep code is in',
-    preheader: `Your code for ${title}`,
-    manageHref: `${home}/account`,
-    banner: 'community',
-    homeHref: home,
-    reason: 'The code is only for you. VibePeep won’t show your email on the listing.',
-    rows: emailBodyCell(`<p style="font-size:18px;margin:0 0 12px;">Your listing “${esc(title)}” is one code away from the neighbourhood.</p>
-    <p style="font-size:32px;letter-spacing:0.2em;font-weight:700;margin:0 0 12px;">${esc(code)}</p>
-    <p style="margin:0 0 12px;"><a href="${esc(link)}">Or tap this link to confirm</a>. It expires in ${CODE_MINUTES} minutes.</p>
-    <p style="font-size:13px;margin:0 0 12px;">The code is only for you. VibePeep won’t show your email on the listing.</p>
-    <p style="font-size:12px;margin:0;"><strong>Acknowledgement of Country.</strong> ${esc(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>`),
-  })
-  const text = `Your VibePeep code is ${code}\n\nConfirm: ${link}\n\nIt expires in ${CODE_MINUTES} minutes. Your email stays off the public listing.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`
-  return sendEmail({ to, subject: 'Your VibePeep code is in', html, text })
+  const mail = renderTemplate('P1', { event: title, code, href: link })
+  return sendEmail({ to, subject: mail.subject, html: mail.html, text: mail.text, kind: 'transactional' })
 }
 
 async function issueCode(eventId: string, email: string, title: string) {
@@ -187,24 +171,18 @@ async function acceptVerification(eventId: string) {
   const managePath = `/local/manage/${manageToken}`
   const link = `${siteUrl()}${managePath}`
   const page = `${siteUrl()}${eventPath(ev)}`
-  const home = siteUrl()
-  const subject = approvalState === 'APPROVED' ? 'Your VibePeep listing is live' : 'VibePeep has your listing'
+  const mail = renderTemplate(approvalState === 'APPROVED' ? 'P3' : 'P2', {
+    event: ev.title,
+    href: page,
+    manageHref: link,
+    posterHref: `${siteUrl()}/local/poster/${ev.id}`,
+  })
   await sendEmail({
     to: ev.contactEmail,
-    subject,
-    html: emailDocument({
-      title: subject,
-      preheader: approvalState === 'APPROVED' ? 'It’s up. Neighbours can peep it now.' : 'A person will check this one before it goes public.',
-      manageHref: link,
-      homeHref: home,
-      banner: 'community-listing',
-      rows: emailBodyCell(`<p style="margin:0 0 12px;">${approvalState === 'APPROVED' ? 'It’s up. Neighbours can peep it now.' : 'Got it. A person will check this one before it goes public.'}</p>
-      <p style="margin:0 0 12px;"><a href="${esc(page)}">Listing page</a></p>
-      <p style="margin:0 0 12px;"><a href="${esc(link)}">Edit, postpone or take it down</a>. Keep this link. It’s the key to the listing.</p>
-      <p style="margin:0 0 12px;"><a href="${esc(home)}/local/poster/${ev.id}">Printable poster</a></p>
-      <p style="font-size:12px;margin:0;"><strong>Acknowledgement of Country.</strong> ${esc(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>`),
-    }),
-    text: `${approvalState === 'APPROVED' ? 'Your listing is live.' : 'A person will check this listing before it goes public.'}\n${page}\nManage: ${link}\nPoster: ${siteUrl()}/local/poster/${ev.id}`,
+    subject: mail.subject,
+    html: mail.html,
+    text: mail.text,
+    kind: 'transactional',
   }).catch(() => null)
   return {
     ok: true as const,

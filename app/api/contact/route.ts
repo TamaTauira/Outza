@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { sendEmail, OWNER_EMAIL, escapeHtml } from '@/lib/email'
+import { EMAIL_C, emailBodyCell, emailDocument, emailPanel } from '@/lib/email-brand'
+import { renderTemplate } from '@/lib/email-catalogue'
+import { siteUrl } from '@/lib/site-url'
 import { prisma } from '@/lib/db'
 import { extractEventId, triageContact, coerceTriage, type ContactTriage } from '@/lib/contact-triage'
 import { llmConfigured, completeJson } from '@/lib/llm'
@@ -65,12 +68,36 @@ export async function POST(req: Request) {
   }).catch((err) => console.error('[contact] store', err instanceof Error ? err.message : err))
 
   const to = process.env.OWNER_EMAIL?.trim() || OWNER_EMAIL
+  const home = siteUrl()
+  const html = emailDocument({
+    title: `VibePeep contact: ${topic}`,
+    preheader: `${triage.category}. Reply goes to the person who wrote in.`,
+    banner: 'support',
+    homeHref: home,
+    manageHref: `${home}/admin`,
+    manageLabel: 'Admin',
+    reason: 'This copy is for the VibePeep owner. Reply-To is the person who wrote in.',
+    rows: emailBodyCell(`<h1 class="tx" style="margin:0 0 12px;font-size:22px;line-height:1.25;color:${EMAIL_C.ink};">${escapeHtml(topic)}</h1>
+      ${emailPanel(`<p class="tx" style="margin:0 0 8px;color:${EMAIL_C.ink};"><strong>From:</strong> ${escapeHtml(email)}</p>
+      <p class="tx" style="margin:0;white-space:pre-wrap;color:${EMAIL_C.ink};">${escapeHtml(message)}</p>`)}
+      <p class="mu" style="margin:12px 0 0;font-size:14px;color:${EMAIL_C.muted};">Sorted as ${escapeHtml(triage.category)} (${escapeHtml(triage.urgency)}). ${escapeHtml(triage.summary)}</p>`),
+  })
   const result = await sendEmail({
     to,
     subject: `VibePeep contact: ${topic}`,
-    html: `<p><strong>${escapeHtml(topic)}</strong> from ${escapeHtml(email)}</p><p>${escapeHtml(message).replace(/\n/g, '<br>')}</p><p>Sorted as ${escapeHtml(triage.category)} (${escapeHtml(triage.urgency)}). ${escapeHtml(triage.summary)}</p>`,
+    html,
     text: `${topic}\nFrom: ${email}\n\n${message}\n\nSorted as ${triage.category} (${triage.urgency}). ${triage.summary}`,
+    replyTo: email,
+    kind: 'transactional',
   })
+  const ack = renderTemplate('S1', { email })
+  await sendEmail({
+    to: email,
+    subject: ack.subject,
+    html: ack.html,
+    text: ack.text,
+    kind: 'transactional',
+  }).catch((err) => console.error('[contact] acknowledgement', err instanceof Error ? err.message : err))
   if (!result.ok && !result.disabled) return NextResponse.json({ error: 'We could not send that. Try again in a minute.' }, { status: 502 })
   return NextResponse.json({ ok: true })
 }

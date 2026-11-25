@@ -1,7 +1,7 @@
 import { createHmac, createHash, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailSendingEnabled, OWNER_EMAIL, escapeHtml, siteUrl } from '@/lib/email'
-import { EMAIL_C, emailBodyCell, emailDocument } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument, emailLink, emailPanel } from '@/lib/email-brand'
 import { llmConfigured, completeJson } from '@/lib/llm'
 
 const DIGEST_KEY = 'ideas-digest'
@@ -158,20 +158,18 @@ export async function runIdeasDigest(opts: { force?: boolean; now?: Date } = {})
   const blocks = themes.map((theme) => {
     const token = signIdea(theme, now.getTime())
     const link = token ? `${home}/api/owner/ideas/approve?token=${encodeURIComponent(token)}` : ''
-    return `<div class="card" style="background:#f6f6f6;padding:12px 14px;border-radius:8px;margin-bottom:10px;">
-      <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:${EMAIL_C.ink};">${escapeHtml(theme.title)} <span style="font-weight:600;color:${EMAIL_C.muted};">(${theme.effort})</span></p>
-      <p style="margin:0 0 8px;color:${EMAIL_C.ink};">${escapeHtml(theme.detail)}</p>
-      ${link ? `<p style="margin:0;font-size:14px;"><a href="${escapeHtml(link)}">Approve this recommendation</a></p>` : ''}
-    </div>`
+    return emailPanel(`<p class="tx" style="margin:0 0 6px;font-size:16px;font-weight:700;color:${EMAIL_C.ink};">${escapeHtml(theme.title)} <span class="mu" style="font-weight:600;color:${EMAIL_C.muted};">(${theme.effort})</span></p>
+      <p class="tx" style="margin:0 0 8px;color:${EMAIL_C.ink};">${escapeHtml(theme.detail)}</p>
+      ${link ? `<p style="margin:0;font-size:14px;">${emailLink(link, 'Approve this recommendation')}</p>` : ''}`)
   }).join('')
   const html = emailDocument({
     title: 'Your monthly ideas summary',
-    preheader: `${themes.length} recommendation${themes.length === 1 ? '' : 's'}`,
+    preheader: 'Suggestions and searches, grouped. Approving only queues an issue.',
     manageHref: `${home}/admin`,
     banner: 'owner-ideas',
     homeHref: home,
     reason: 'This note goes to the VibePeep owner on the 1st. An empty month sends nothing.',
-    rows: emailBodyCell(`<h2 style="color:${EMAIL_C.orange};margin:0 0 8px;font-size:20px;">Your monthly ideas summary</h2>
+    rows: emailBodyCell(`<h2 class="tx" style="color:${EMAIL_C.ink};margin:0 0 8px;font-size:20px;line-height:1.25;">Your monthly ideas summary</h2>
     <p style="margin:0 0 16px;">${ideas.length} suggestion${ideas.length === 1 ? '' : 's'}, ${requests.length} feature request${requests.length === 1 ? '' : 's'}, and ${searchRows.length} search theme${searchRows.length === 1 ? '' : 's'}. Approving queues a GitHub issue. Nothing is built from here.</p>
     ${blocks}`),
   })

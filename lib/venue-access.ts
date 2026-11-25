@@ -4,12 +4,11 @@
  */
 import { randomBytes, randomInt } from 'crypto'
 import { prisma } from '@/lib/db'
-import { sendEmail, escapeHtml } from '@/lib/email'
-import { emailBodyCell, emailButton, emailDocument } from '@/lib/email-brand'
+import { sendEmail } from '@/lib/email'
+import { renderTemplate } from '@/lib/email-catalogue'
 import { notifyTrustTeam } from '@/lib/trust'
 import { queueTrustItem } from '@/lib/ops/queue'
 import { siteUrl } from '@/lib/site-url'
-import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { sydneyToday } from '@/lib/event-store'
 import { venueKey as followKey } from '@/lib/together'
 import {
@@ -221,25 +220,13 @@ async function issueCode(purpose: string, subjectId: string, email: string, labe
     },
   })
   const link = `${siteUrl()}/venues/verify?token=${token}`
-  const home = siteUrl()
-  const html = emailDocument({
-    title: `Your VibePeep code for ${label}`.slice(0, 120),
-    preheader: `Confirm you can manage ${label}`,
-    manageHref: `${home}/account`,
-    banner: 'venue-code',
-    homeHref: home,
-    reason: 'Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.',
-    rows: emailBodyCell(`<p style="margin:0 0 12px;">Confirm you can manage <strong>${escapeHtml(label)}</strong>.</p>
-    <p style="font-size:32px;letter-spacing:0.2em;font-weight:700;margin:0 0 12px;">${escapeHtml(code)}</p>
-    <p style="margin:0 0 12px;"><a href="${escapeHtml(link)}">Or tap this one-time link</a>. It expires in ${CODE_MINUTES} minutes and works once.</p>
-    <p style="font-size:13px;margin:0 0 12px;">Opening the link shows you can read this inbox. It does not by itself decide ownership when a person still needs to review the claim.</p>
-    <p style="font-size:12px;margin:0;"><strong>Acknowledgement of Country.</strong> ${escapeHtml(ACKNOWLEDGEMENT_OF_COUNTRY)}</p>`),
-  })
+  const mail = renderTemplate('P9', { venue: label, code, href: link })
   const sent = await sendEmail({
     to: email,
-    subject: `Your VibePeep code for ${label}`.slice(0, 120),
-    html,
-    text: `Your VibePeep code is ${code}\n\nConfirm: ${link}\n\nIt expires in ${CODE_MINUTES} minutes.\n\nAcknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
+    subject: mail.subject.slice(0, 120),
+    html: mail.html,
+    text: mail.text,
+    kind: 'transactional',
   })
   return { emailSent: sent.ok, emailError: sent.ok ? null : 'We couldn’t send the code just now.' }
 }
@@ -518,18 +505,13 @@ export async function reportVenueEvent(userId: string, venueId: string, body: Re
   })
   await audit(venueId, userId, 'event-report', event.title, reason)
   if (event.promoter?.email) {
+    const mail = renderTemplate('P13', { event: event.title, href: `${siteUrl()}/events/${event.id}` })
     await sendEmail({
       to: event.promoter.email,
-      subject: `A venue asked us to check ${event.title}`.slice(0, 120),
-      html: emailDocument({
-        title: `A venue asked us to check ${event.title}`.slice(0, 120),
-        preheader: 'The listing is unchanged while we check it.',
-        manageHref: `${siteUrl()}/account`,
-        banner: 'venue-check',
-        homeHref: siteUrl(),
-        rows: emailBodyCell(`<p style="margin:0;">A venue representative reported “${escapeHtml(event.title)}”. The listing is unchanged while we check it.</p>`),
-      }),
-      text: `A venue reported “${event.title}”. The listing is unchanged while we check it.`,
+      subject: mail.subject.slice(0, 120),
+      html: mail.html,
+      text: mail.text,
+      kind: 'transactional',
     })
   }
   await queueTrustItem({
@@ -642,24 +624,16 @@ export async function inviteVenueManager(actorId: string, venueId: string, email
   await audit(venueId, actorId, 'team-invite', null, `${person.email} ${status}`)
   const venue = await prisma.venue.findUnique({ where: { id: venueId }, select: { name: true } })
   const venueName = venue?.name?.trim() || 'the venue'
-  const roleLabel = 'Staff'
   const home = siteUrl()
   const dashboard = `${home}/venue/${venueId}`
   try {
+    const mail = renderTemplate('P12', { venue: venueName, href: dashboard })
     const sent = await sendEmail({
       to: person.email,
-      subject: `You’re invited to manage ${venueName} on VibePeep`.slice(0, 120),
+      subject: mail.subject.slice(0, 120),
       kind: 'transactional',
-      html: emailDocument({
-        title: `Manage ${venueName}`,
-        preheader: `You’ve been added as ${roleLabel} at ${venueName}.`,
-        manageHref: `${home}/account`,
-    banner: 'venue-code',
-        homeHref: home,
-        reason: 'A venue administrator added you on VibePeep. This note does not change your newsletter.',
-        rows: emailBodyCell(`<p style="margin:0 0 16px;">You’ve been added as <strong>${escapeHtml(roleLabel)}</strong> at <strong>${escapeHtml(venueName)}</strong>.</p>${emailButton(dashboard, 'Open the venue dashboard')}`),
-      }),
-      text: `You’ve been added as ${roleLabel} at ${venueName}.\nOpen the venue dashboard: ${dashboard}\n`,
+      html: mail.html,
+      text: mail.text,
     })
     if (!sent.ok) console.error('[venue] invite email failed', sent.error)
   } catch (err) {

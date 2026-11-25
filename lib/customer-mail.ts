@@ -1,5 +1,6 @@
 import { sendEmail } from '@/lib/email'
 import { catalogueEntry, renderTemplate, type MailData, type TemplateId } from '@/lib/email-catalogue'
+import { unsubscribeApiUrl, unsubscribeUrl } from '@/lib/newsletter/links'
 import { recordMailDelivery } from '@/lib/mail-log'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { siteUrl } from '@/lib/site-url'
@@ -8,14 +9,19 @@ export async function sendTemplate(id: TemplateId, to: string, data?: MailData, 
   const email = to.trim().toLowerCase()
   if (!email || isQaAccountEmail(email)) return { ok: false as const, skipped: true as const }
   const row = catalogueEntry(id)
-  const mail = renderTemplate(id, { ...data, email: data?.email || email })
+  const marketing = row?.kind === 'marketing'
+  const mail = renderTemplate(id, {
+    ...data,
+    email: data?.email || email,
+    ...(marketing && userId ? { unsubscribeHref: unsubscribeUrl(userId) } : {}),
+  })
   const result = await sendEmail({
     to: email,
     subject: mail.subject.slice(0, 120),
     html: mail.html,
     text: mail.text,
     kind: row?.kind ?? 'transactional',
-    ...(row && row.kind !== 'transactional' ? { unsubscribeUrl: `${siteUrl()}/unsubscribe` } : {}),
+    ...(marketing ? { unsubscribeUrl: userId ? unsubscribeApiUrl(userId) : `${siteUrl()}/api/nl/unsubscribe` } : {}),
   })
   await recordMailDelivery({
     kind: `template-${id}`,

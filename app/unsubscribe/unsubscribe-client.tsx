@@ -23,14 +23,14 @@ export function UnsubscribeClient({ u, k, s }: { u: string; k: string; s: string
     return (
       <>
         <h1 className="mt-4 font-display text-h1">No hard feelings.</h1>
-        <p className="mt-2 text-muted-foreground text-sm">Newsletters are off. Your saved events and account haven’t gone anywhere.</p>
+        <p className="mt-2 text-muted-foreground text-sm">Newsletters, the saved-event digest and reminders are off. They share one switch. Your saved events and account haven’t gone anywhere.</p>
       </>
     )
   }
   return (
     <>
       <h1 className="mt-4 font-display text-h1">Breaking up with our emails?</h1>
-      <p className="mt-2 text-muted-foreground text-sm">You’ll stop receiving the newsletter. You can switch it back on, or just change how often it arrives, in your account.</p>
+      <p className="mt-2 text-muted-foreground text-sm">You’ll stop the newsletter, the saved-event digest and reminders. They share one switch. You can turn that switch back on from your account.</p>
       <Button onClick={go} disabled={state === 'busy'} loading={state === 'busy'} className="mt-6 w-full">Unsubscribe</Button>
       {state === 'error' && <p className="mt-3 text-sm text-destructive">{msg}</p>}
     </>

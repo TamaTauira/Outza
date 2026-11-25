@@ -54,13 +54,18 @@ export type MailKind = 'marketing' | 'report' | 'transactional'
 export function listUnsubscribeHeaders(opts: {
   kind?: MailKind | null
   unsubscribeUrl?: string | null
+  /** Mailto fallback. Omitted when unset, or when the address would show the old product name. */
+  mailto?: string | null
 }): Record<string, string> {
   const url = opts.unsubscribeUrl?.trim() ?? ''
   if (!/^https:\/\/[^\s>]+$/i.test(url)) return {}
   const kind = opts.kind ?? 'transactional'
   if (kind !== 'marketing' && kind !== 'report' && kind !== 'transactional') return {}
+  const mail = opts.mailto?.trim() ?? ''
+  const mailtoOk = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(mail) && !/outza/i.test(mail)
+  const list = mailtoOk ? `<mailto:${mail}?subject=unsubscribe>, <${url}>` : `<${url}>`
   return {
-    'List-Unsubscribe': `<${url}>`,
+    'List-Unsubscribe': list,
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   }
 }
@@ -288,7 +293,7 @@ function getTransport(): Transporter {
   return transport
 }
 
-async function deliverSmtp(opts: { to: string; subject: string; html: string; text?: string; headers?: Record<string, string> }): Promise<SmtpJob> {
+async function deliverSmtp(opts: { to: string; subject: string; html: string; text?: string; headers?: Record<string, string>; replyTo?: string }): Promise<SmtpJob> {
   const day = utcDay()
   if (heldUntilDay === day || (await sendsToday()) >= YAHOO_DAILY_CAP) {
     noteCap(day)
@@ -298,7 +303,7 @@ async function deliverSmtp(opts: { to: string; subject: string; html: string; te
   const message: OutboundMessage = {
     from,
     to: opts.to,
-    replyTo: from,
+    replyTo: opts.replyTo?.trim() || from,
     subject: opts.subject,
     html: opts.html,
     envelope: { from: envTrim('SMTP_USER'), to: opts.to },
@@ -344,7 +349,7 @@ function cleanTags(tags?: MailTag[]): MailTag[] | undefined {
   return out.length ? out : undefined
 }
 
-async function deliverResend(opts: { to: string; subject: string; html: string; text?: string; tags?: MailTag[]; headers?: Record<string, string> }): Promise<SendEmailResult> {
+async function deliverResend(opts: { to: string; subject: string; html: string; text?: string; tags?: MailTag[]; headers?: Record<string, string>; replyTo?: string }): Promise<SendEmailResult> {
   const apiKey = envTrim('RESEND_API_KEY')
   const from = resendFromAddress()
   const tags = cleanTags(opts.tags)
@@ -361,6 +366,7 @@ async function deliverResend(opts: { to: string; subject: string; html: string; 
         subject: opts.subject,
         html: opts.html,
         ...(opts.text ? { text: opts.text } : {}),
+        ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
         ...(tags ? { tags } : {}),
         ...(opts.headers && Object.keys(opts.headers).length ? { headers: opts.headers } : {}),
       }),
@@ -398,6 +404,8 @@ export async function sendEmail(opts: {
   /** Marketing and report mail pass an unsubscribe URL. Verify and reset stay transactional and omit it. */
   kind?: MailKind
   unsubscribeUrl?: string
+  /** Defaults to the From mailbox. Contact mail sets this to the person who wrote in. */
+  replyTo?: string
 }): Promise<SendEmailResult> {
   const to = opts.to?.trim()
   if (!to) return { ok: false, error: 'Missing recipient' }
@@ -408,12 +416,18 @@ export async function sendEmail(opts: {
   }
   const { emailSuppressed } = await import('@/lib/email-suppression')
   if (await emailSuppressed(to)) return { ok: false, error: 'This address is suppressed after a bounce or complaint' }
-  const headers = listUnsubscribeHeaders({ kind: opts.kind, unsubscribeUrl: opts.unsubscribeUrl })
+  const { supportEmail } = await import('@/lib/site')
+  const headers = listUnsubscribeHeaders({
+    kind: opts.kind,
+    unsubscribeUrl: opts.unsubscribeUrl,
+    mailto: supportEmail(),
+  })
   const message = {
     to,
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
+    ...(opts.replyTo?.trim() ? { replyTo: opts.replyTo.trim() } : {}),
     ...(Object.keys(headers).length ? { headers } : {}),
   }
   if (transportName === 'smtp') return enqueueSmtp(() => deliverSmtp(message))

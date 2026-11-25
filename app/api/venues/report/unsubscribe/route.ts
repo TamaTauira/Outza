@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verify } from '@/lib/newsletter/links'
+import { readUnsubscribeFields, verify } from '@/lib/newsletter/links'
 
 export const dynamic = 'force-dynamic'
 
 /** Turns off the monthly venue note. Does not touch the newsletter. */
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({})) as { u?: unknown; k?: unknown }
-  const userId = typeof body.u === 'string' ? body.u : ''
-  const key = typeof body.k === 'string' ? body.k : ''
+  const body = await readUnsubscribeFields(req)
+  const userId = body.u
+  const key = body.k
   if (!userId || !verify(key, userId, 'venue-report-unsub')) {
     return NextResponse.json({ error: 'This unsubscribe link is invalid. You can turn the monthly note off from the venue dashboard.' }, { status: 400 })
   }

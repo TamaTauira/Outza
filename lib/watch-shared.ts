@@ -1,6 +1,5 @@
 import { cityDef, tidyVenueName } from '@/lib/cities'
-import { EMAIL_ADDRESS, EMAIL_C, EMAIL_FONT, emailButton, emailDocument, emailEscape, emailTick } from '@/lib/email-brand'
-import { categoryColor, categoryInk } from '@/lib/categories'
+import { EMAIL_ADDRESS, EMAIL_DISCLAIMER, emailDocument, emailEventCard, emailSectionHeading, emailTick } from '@/lib/email-brand'
 import { dateKeyOf, formatBoardRange, minutesNow, minutesOf, resolveSchedule, scheduleFinished } from '@/lib/listing-window'
 import { formatPrice } from '@/lib/price'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
@@ -17,7 +16,6 @@ export const MAIL_INTERVAL_MS: Record<string, number> = {
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const CLOSED = new Set(['CANCELLED', 'POSTPONED'])
-const T = 'role="presentation" cellpadding="0" cellspacing="0" border="0"'
 
 export function mailDue(last: Date | null | undefined, frequency: string | null | undefined, now = Date.now()): boolean {
   if (!last) return true
@@ -197,47 +195,24 @@ export function emailPrice(ev: Pick<WatchRow, 'isFree' | 'price' | 'priceMin' | 
   return { text, kind: priced.kind }
 }
 
-const DISCLAIMER = 'Times and prices can change. Confirm with the organiser before you go. VibePeep does not sell tickets and does not show live availability.'
-
-function artCell(row: MailEvent): string {
-  if (row.image && /^https:\/\//i.test(row.image)) {
-    const alt = emailEscape(`${row.title} at ${row.venue}`)
-    const src = emailEscape(row.image)
-    return `<img class="thumbimg" src="${src}" alt="${alt}" width="112" height="112" style="display:block;width:112px;height:112px;object-fit:cover;border:0;outline:none;text-decoration:none;border-radius:12px;-ms-interpolation-mode:bicubic;"/>`
-  }
-  const bg = categoryColor(row.category || 'Event')
-  const fg = categoryInk(bg)
-  const label = emailEscape((row.category || 'Event').trim() || 'Event')
-  return `<table ${T} class="thumbBox" width="112" height="112" bgcolor="${bg}" style="width:112px;height:112px;background:${bg};border-radius:12px;"><tr><td align="center" valign="middle" width="112" height="112" bgcolor="${bg}" style="width:112px;height:112px;background:${bg};border-radius:12px;font-family:${EMAIL_FONT};font-size:11px;line-height:1.3;font-weight:800;letter-spacing:0.6px;color:${fg};text-transform:uppercase;padding:8px;">${label}</td></tr></table>`
-}
-
-function priceChip(row: MailEvent): string {
-  if (!row.price || !row.priceKind) return ''
-  const free = row.priceKind === 'free'
-  const bg = free ? EMAIL_C.freeBg : EMAIL_C.priceBg
-  const fg = free ? EMAIL_C.freeInk : EMAIL_C.deep
-  const cls = free ? 'chipFree' : 'chipPaid'
-  return `<table ${T} style="margin-top:8px;"><tr><td class="${cls}" bgcolor="${bg}" style="background:${bg};border-radius:999px;padding:3px 10px;"><span style="font-family:${EMAIL_FONT};font-size:12px;line-height:16px;font-weight:700;color:${fg};">${emailEscape(row.price)}</span></td></tr></table>`
-}
-
 function eventCard(row: MailEvent): string {
-  const tick = row.claimed ? `&nbsp;${emailTick(row.claimed)}` : ''
-  return `<tr><td class="px" style="padding:0 24px 12px;">
-<table ${T} width="100%" class="card stack" bgcolor="${EMAIL_C.card}" style="width:100%;background:${EMAIL_C.card};border:1px solid ${EMAIL_C.line};border-radius:16px;"><tr>
-<td class="thumb" width="112" valign="top" style="width:112px;padding:12px 0 12px 12px;">${artCell(row)}</td>
-<td valign="top" style="padding:14px 16px 16px 14px;">
-<a href="${emailEscape(row.href)}" class="tx" style="font-family:${EMAIL_FONT};font-size:18px;line-height:1.3;font-weight:800;color:${EMAIL_C.ink};text-decoration:none;">${emailEscape(row.title)}</a>
-<div class="mu" style="font-family:${EMAIL_FONT};font-size:14px;line-height:1.45;color:${EMAIL_C.muted};padding-top:6px;">${emailEscape(row.when)}</div>
-<div class="mu" style="font-family:${EMAIL_FONT};font-size:14px;line-height:1.45;color:${EMAIL_C.muted};padding-top:2px;">${emailEscape(row.venue)}${tick}</div>
-${priceChip(row)}
-<div style="padding-top:12px;">${emailButton(row.href, 'View event')}</div>
-</td></tr></table></td></tr>`
+  return emailEventCard({
+    href: row.href,
+    title: row.title,
+    when: row.when,
+    place: row.venue,
+    price: row.price ?? undefined,
+    priceKind: row.priceKind,
+    image: row.image ?? undefined,
+    category: row.category ?? undefined,
+    tickHtml: row.claimed ? emailTick(row.claimed) : '',
+    cta: 'View event',
+  })
 }
 
 function sectionRows(heading: string, rows: MailEvent[]): string {
   if (!rows.length) return ''
-  const head = `<tr><td class="px" style="padding:22px 24px 10px;"><div class="tx" style="font-family:${EMAIL_FONT};font-size:20px;line-height:1.25;font-weight:800;color:${EMAIL_C.ink};">${emailEscape(heading)}</div></td></tr>`
-  return head + rows.map(eventCard).join('')
+  return emailSectionHeading(heading) + rows.map(eventCard).join('')
 }
 
 /** Builds the watchlist email. Returns null when there is nothing upcoming to send. */
@@ -248,14 +223,16 @@ export function composeWatchEmail(input: {
   manageHref?: string
   unsubscribeHref?: string
   homeHref?: string
+  /** City and date line under the banner, when the send knows them. */
+  meta?: string
 }): { subject: string; html: string; text: string } | null {
   if (!input.saved.length && !input.matches.length) return null
   const subject = input.reminders ? 'A keeper is coming up' : 'Your keepers are calling'
   const home = input.homeHref ?? CANONICAL_SITE_URL
   const manage = input.manageHref ?? `${home}/account`
   const unsubscribe = input.unsubscribeHref ?? manage
-  const savedHeading = input.reminders ? 'Your keepers are calling' : 'Don’t forget these'
-  const matchHeading = 'Fresh matches for your vibe'
+  const savedHeading = input.reminders ? 'Coming up on your list' : 'Don’t forget these'
+  const matchHeading = 'New listings for your vibe'
   const text: string[] = [subject, '']
   const push = (heading: string, rows: MailEvent[]) => {
     if (!rows.length) return
@@ -272,7 +249,7 @@ export function composeWatchEmail(input: {
   }
   push(savedHeading, input.saved)
   push(matchHeading, input.matches)
-  text.push(DISCLAIMER)
+  text.push(EMAIL_DISCLAIMER)
   text.push(`Manage preferences: ${manage}`)
   text.push(`Unsubscribe: ${unsubscribe}`)
   text.push(`VibePeep: ${home}`)
@@ -280,12 +257,13 @@ export function composeWatchEmail(input: {
   const rows = [sectionRows(savedHeading, input.saved), sectionRows(matchHeading, input.matches)].join('')
   const html = emailDocument({
     title: subject,
-    preheader: input.reminders ? 'One of your keepers is coming up. Don’t let it slip.' : 'Your keepers are calling, plus new listings in the cities you follow.',
+    preheader: input.reminders ? 'A saved event is close. The time and place are inside.' : 'Saved events, plus new listings in the cities you follow.',
     rows,
+    meta: input.meta,
     manageHref: manage,
     unsubscribeHref: unsubscribe,
     homeHref: home,
-    disclaimer: DISCLAIMER,
+    disclaimer: EMAIL_DISCLAIMER,
     reason: 'You asked for these notes. Turn them off any time from your account.',
     banner: input.reminders ? 'reminder' : 'matches',
   })

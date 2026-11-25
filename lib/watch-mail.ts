@@ -3,7 +3,8 @@ import { emailSendingEnabled, redactEmails, sendEmail, siteUrl } from '@/lib/ema
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { recordMailDelivery } from '@/lib/mail-log'
 import { isQaAccountEmail, liveSubscriberWhere } from '@/lib/qa-account'
-import { unsubscribeUrl } from '@/lib/newsletter/links'
+import { emailDateRange, emailMetaLine } from '@/lib/email-brand'
+import { unsubscribeApiUrl, unsubscribeUrl } from '@/lib/newsletter/links'
 import { eventPath } from '@/lib/seo'
 import {
   composeWatchEmail,
@@ -30,6 +31,14 @@ type Listed = WatchRow & {
   imageUrl: string | null
   imageAsset: { status: string } | null
   venue: { claimStatus: string } | null
+}
+
+function watchMeta(events: { date: Date | string; city?: string | null }[], cities: string[]): string | undefined {
+  const times = events.map((event) => new Date(event.date).getTime()).filter((time) => Number.isFinite(time))
+  if (!times.length) return undefined
+  const city = cities.find(Boolean) || events.find((event) => event.city)?.city || ''
+  if (!city) return undefined
+  return emailMetaLine(city, emailDateRange(new Date(Math.min(...times)), new Date(Math.max(...times) + 86400000)))
 }
 
 function cardImage(ev: { id: string; imageUrl: string | null; imageAsset: { status: string } | null }): string | null {
@@ -132,12 +141,14 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
     ? await matchingNew(saved, user.preferredCategories, user.venueFollows, cities, now)
     : { saved: saved.slice(0, 8), matches: [] as typeof saved }
   const home = siteUrl()
+  const listed = [...picked.saved, ...picked.matches]
   const mail = composeWatchEmail({
     saved: picked.saved.map(toMail),
     matches: picked.matches.map(toMail),
     manageHref: `${home}/account`,
     unsubscribeHref: unsubscribeUrl(user.id),
     homeHref: home,
+    meta: watchMeta(listed, cities),
   })
   if (!mail) return { ok: false as const, skipped: true as const, reason: 'empty' }
   if (!emailSendingEnabled()) {
@@ -151,7 +162,7 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
     html: mail.html,
     text: mail.text,
     kind: 'marketing',
-    unsubscribeUrl: unsubscribeUrl(user.id),
+    unsubscribeUrl: unsubscribeApiUrl(user.id),
   })
   if (!sent.ok) {
     const status = sent.restricted ? 'restricted' : 'failed'
@@ -194,6 +205,7 @@ export async function sendDueReminders() {
       manageHref: `${home}/account`,
       unsubscribeHref: unsubscribeUrl(user.id),
       homeHref: home,
+      meta: watchMeta(fresh, [fresh[0]?.city || '']),
     })
     if (!mail) { skipped++; continue }
     const result = await sendEmail({
@@ -202,7 +214,7 @@ export async function sendDueReminders() {
       html: mail.html,
       text: mail.text,
       kind: 'marketing',
-      unsubscribeUrl: unsubscribeUrl(user.id),
+      unsubscribeUrl: unsubscribeApiUrl(user.id),
     })
     if (!result.ok) {
       failed++

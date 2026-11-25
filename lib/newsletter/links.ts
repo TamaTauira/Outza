@@ -60,4 +60,37 @@ export function unsubscribeUrl(userId: string, sendId?: string) {
   return `${siteUrl()}/unsubscribe?${q}`
 }
 
+/** RFC 8058 target. The token stays in the query so a form POST can unsubscribe. */
+export function unsubscribeApiUrl(userId: string, sendId?: string) {
+  const q = new URLSearchParams({ u: userId, k: sign(userId, 'unsub') })
+  if (sendId) q.set('s', sendId)
+  return `${siteUrl()}/api/nl/unsubscribe?${q}`
+}
+
+/** Query string first, then a JSON or form body. One-click posts the token in the URL. */
+export async function readUnsubscribeFields(req: Request): Promise<{ u: string; k: string; s: string }> {
+  const url = new URL(req.url)
+  let u = url.searchParams.get('u') ?? ''
+  let k = url.searchParams.get('k') ?? ''
+  let s = url.searchParams.get('s') ?? ''
+  const type = req.headers.get('content-type') ?? ''
+  if (!u || !k) {
+    if (type.includes('application/json')) {
+      const body = await req.json().catch(() => ({})) as { u?: unknown; k?: unknown; s?: unknown }
+      if (!u && typeof body.u === 'string') u = body.u
+      if (!k && typeof body.k === 'string') k = body.k
+      if (!s && typeof body.s === 'string') s = body.s
+    } else {
+      const text = await req.text().catch(() => '')
+      if (text) {
+        const params = new URLSearchParams(text)
+        if (!u) u = params.get('u') ?? ''
+        if (!k) k = params.get('k') ?? ''
+        if (!s) s = params.get('s') ?? ''
+      }
+    }
+  }
+  return { u, k, s }
+}
+
 export const exploreUrl = (city: string) => `${siteUrl()}/?city=${encodeURIComponent(city)}`
