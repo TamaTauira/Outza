@@ -18,6 +18,7 @@ function hexAllowed(rel: string) {
     /^components\/vibepeep-/.test(rel) ||
     rel === 'components/peep-icon.tsx' ||
     rel === 'components/footer.tsx' ||
+    rel === 'components/site-footer.tsx' ||
     rel === 'components/google-button.tsx' ||
     rel === 'components/theme-color.tsx' ||
     rel === 'lib/brand.ts' ||
@@ -45,7 +46,7 @@ function hexAllowed(rel: string) {
     rel.startsWith('app/itinerary/') ||
     rel.startsWith('app/local/') ||
     rel.startsWith('public/') ||
-    /^components\/(home-|map-view|saved-board|ai-search-bar|ask-sheet|board-row|event-card|event-list|event-peek|featured-turnstile|itinerary-|local-|community-board|navbar|bottom-nav|filter-bar|hero-card|outing-itinerary|listing-board-card|venue-map|home-discover)/.test(rel)
+    /^components\/(home-|map-view|saved-board|ai-search-bar|ask-sheet|board-row|event-card|event-list|event-peek|featured-turnstile|itinerary-|local-|community-board|navbar|site-header|bottom-nav|filter-bar|hero-card|outing-itinerary|listing-board-card|venue-map|home-discover)/.test(rel)
   )
 }
 

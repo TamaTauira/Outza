@@ -19,3 +19,8 @@
   background: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+/* The hero is a dark band. The page-top gap was a cream stripe under the header. */
+.vp-promoters.vp-page-top {
+  padding-top: 0;
+}

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { auth } from '@/auth'
 import './promoters.css'
-import { Footer } from '@/components/footer'
 import { PromoterSalesHeader } from '@/components/promoter-sales-header'
 import { FaqSection } from './faq-section'
 import { DashboardSection, FinalCta, Hero, HowItWorks, ProBand } from './marketing'
@@ -37,7 +36,6 @@ export default async function PromotersPage() {
         <FaqSection />
         <FinalCta href={primaryHref} label={finalLabel} />
       </main>
-      <Footer lastRefresh={null} />
     </div>
   )
 }

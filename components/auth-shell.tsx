@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { SiteHeader } from '@/components/site-header'
 import { Surface } from '@/components/ui/surface'
 import { BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 
@@ -12,13 +12,12 @@ const ASIDE_LINKS = [
 
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12 lg:block lg:px-0">
-      <div className="w-full max-w-md lg:mx-auto lg:grid lg:min-h-[calc(100vh-6rem)] lg:w-full lg:max-w-none lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-16 vp-wrap lg:px-6 xl:gap-24">
-        <div className="mb-8 lg:mb-0">
-          <Link href="/" className="flex justify-center lg:justify-start" aria-label="VibePeep home">
-            <VibePeepLogo size="md" />
-          </Link>
-          <div className="mt-8 hidden max-w-md lg:block">
+    <div className="min-h-screen bg-background">
+      <SiteHeader variant="auth" />
+      <main className="flex items-center justify-center bg-background px-4 py-10 lg:block lg:px-0">
+      <div className="vp-wrap w-full max-w-md lg:mx-auto lg:grid lg:min-h-[calc(100vh-8rem)] lg:w-full lg:max-w-none lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-16 lg:px-6 xl:gap-24">
+        <div className="mb-8 hidden lg:mb-0 lg:block">
+          <div className="max-w-md">
             <p className="font-display text-h2">{BRAND_TAGLINE}</p>
             <p className="mt-3 text-body text-muted-foreground">{BRAND_SUBLINE}</p>
             <ul className="mt-8 grid grid-cols-2 gap-card text-sm">
@@ -36,11 +35,9 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
             <p className="mb-6 mt-2 text-sm text-muted-foreground">{subtitle}</p>
             {children}
           </Surface>
-          <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground">
-            We acknowledge the Traditional Custodians of the lands across Australia and pay our respects to Elders past and present.
-          </p>
         </div>
       </div>
-    </main>
+      </main>
+    </div>
   )
 }

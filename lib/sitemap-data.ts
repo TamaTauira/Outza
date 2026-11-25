@@ -8,6 +8,7 @@ import { addDaysStr, localPath, occurrences, todayIn, MAX_AHEAD_DAYS } from '@/l
 import { PUBLIC_EVENT_AND } from '@/lib/community-shared'
 import { hiddenFromPublic } from '@/lib/listing-visibility'
 import { communitySitemapPaths } from '@/lib/community'
+import { footerPaths } from '@/lib/site-links'
 
 const PAGE = 2000
 const memory = new Map<string, { at: number; body: string }>()
@@ -80,6 +81,7 @@ export function guidesSitemapXml() {
       { loc: `${origin}/promoters`, lastmod: now },
       { loc: `${origin}/local`, lastmod: now },
       { loc: `${origin}/how-listings-work`, lastmod: now },
+      ...footerPaths().filter((path) => path !== '/how-listings-work' && path !== '/local').map((path) => ({ loc: `${origin}${path}`, lastmod: now })),
     ]
     const [locals, models] = await Promise.all([
       prisma.localListing.findMany({
@@ -116,7 +118,8 @@ export function guidesSitemapXml() {
       if (!occurrences(l, today, addDaysStr(today, MAX_AHEAD_DAYS)).length) continue
       urls.push({ loc: `${origin}${localPath(l)}`, lastmod: l.updatedAt })
     }
-    return urlset(urls)
+    const seen = new Set<string>()
+    return urlset(urls.filter((u) => (seen.has(u.loc) ? false : (seen.add(u.loc), true))))
   })
 }
 

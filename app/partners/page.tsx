@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { Footer } from '@/components/footer'
 import { SiteHeader } from '@/components/site-header'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -31,7 +30,6 @@ export default async function PartnerPage({ searchParams }: Props) {
             action={<Button asChild><Link href="/">Back to events</Link></Button>}
           />
         </main>
-        <Footer lastRefresh={null} />
       </div>
     )
   }
@@ -50,7 +48,6 @@ export default async function PartnerPage({ searchParams }: Props) {
         <main className="vp-wrap vp-page-top px-4 pb-16 sm:px-6">
           <EmptyState title="No source is assigned yet" body="This partner login is active, but it is not linked to a source. An admin adds that from the partner page in admin." />
         </main>
-        <Footer lastRefresh={null} />
       </div>
     )
   }
@@ -64,7 +61,6 @@ export default async function PartnerPage({ searchParams }: Props) {
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <PartnerView overview={overview} list={list} filters={filters} />
-      <Footer lastRefresh={null} />
     </div>
   )
 }

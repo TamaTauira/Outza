@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
 import { Navbar } from '@/components/navbar'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Footer } from '@/components/footer'
 import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
 import { PageMasthead } from '@/components/page-masthead'
@@ -545,7 +544,6 @@ export default function ItineraryPage() {
           </div>
         </section>
       </main>
-      <Footer lastRefresh={null} />
       <AlertDialog open={clearOpen} onOpenChange={setClearOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

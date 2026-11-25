@@ -6,7 +6,6 @@ import { BackLink } from '@/components/back-to-events-link'
 import { ArrowLeft, Bookmark, Building2, Bus, Calendar, Clock, ExternalLink, Flag, Map as MapIcon, MapPin, Repeat, Share2, ShieldCheck, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { EventReactions } from '@/components/event-reactions'
 import { AddToPlanButton } from '@/components/add-to-plan'
@@ -183,7 +182,6 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
           </div>
         </div>
       </main>
-      <Footer lastRefresh={null} />
     </div>
   )
 }

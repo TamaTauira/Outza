@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
-import { Footer } from '@/components/footer'
 import { PromoterAppShell } from '@/components/promoter-shell'
 import { SiteHeader } from '@/components/site-header'
 import { promoterLoginHref } from '@/lib/promoter-nav'
@@ -37,7 +36,6 @@ export default async function PromoterPage({ searchParams }: { searchParams?: Pr
             <Link href="/promoters" className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline">See packages & pricing</Link>
           </aside>
         </main>
-        <Footer lastRefresh={null} />
       </div>
     )
   }

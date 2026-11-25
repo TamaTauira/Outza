@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { auth } from '@/auth'
-import { Footer } from '@/components/footer'
 import { PromoterSalesHeader } from '@/components/promoter-sales-header'
 import { LocalAds } from '@/app/promoters/marketing'
 
@@ -23,7 +22,6 @@ export default async function LocalAdsPage() {
       <main>
         <LocalAds href={href} label={isPromoter ? 'Advertise from the dashboard' : 'Advertise my business'} />
       </main>
-      <Footer lastRefresh={null} />
     </div>
   )
 }

@@ -8,7 +8,6 @@ import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmar
 import { Navbar } from '@/components/navbar'
 import { useSaved } from '@/lib/saved'
 import { cn } from '@/lib/utils'
-import { Footer } from '@/components/footer'
 import { EventCard } from '@/components/event-card'
 import { BRAND_ORANGE } from '@/lib/brand'
 import { CATEGORIES } from '@/lib/categories'
@@ -345,7 +344,6 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
       </main>
 
-      <Footer lastRefresh={null} />
       <div className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden" style={{ bottom: 'var(--vp-bottom-nav-offset, 4.5rem)' }}>
         <div className="mx-auto flex max-w-lg items-center gap-3 pb-[env(safe-area-inset-bottom)]">
           <p className="min-w-0 flex-1 truncate text-sm font-semibold">{price}</p>

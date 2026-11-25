@@ -120,10 +120,12 @@
     overflow: hidden;
   }
 
+  /* The map fills one screen. The shared footer sits after it, so the page can scroll to it. */
   body:has(.vp-map-screen) {
-    height: 100dvh;
-    padding-bottom: 0;
-    overflow: hidden;
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: clip;
+    overflow-y: auto;
   }
 }
 

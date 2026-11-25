@@ -5,7 +5,6 @@ import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { eventPath } from '@/lib/seo'
-import { Footer } from '@/components/footer'
 import { SiteHeader } from '@/components/site-header'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { ClaimedTick } from '@/components/ClaimedTick'
@@ -83,7 +82,6 @@ export default async function OrganiserPage({ params }: Props) {
           </ul>
         )}
       </main>
-      <Footer lastRefresh={null} />
     </div>
   )
 }
