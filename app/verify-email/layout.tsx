@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Confirm your email · VibePeep',
+  title: 'Confirm your email',
+  openGraph: { title: 'Confirm your email · VibePeep' },
   robots: { index: false, follow: false },
 }
 

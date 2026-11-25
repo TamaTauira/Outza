@@ -33,20 +33,20 @@ export async function POST(req: Request) {
   if (!me) return unauthorized()
   const { email } = await req.json().catch(() => ({}))
   const target = typeof email === 'string' ? await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true } }) : null
-  if (!target) return NextResponse.json({ error: 'No member found with that email. Ask them to sign up first!' }, { status: 404 })
+  if (!target) return NextResponse.json({ ok: false, found: false, error: 'No member found with that email. Ask them to sign up first.' })
   if (target.id === me.id) return NextResponse.json({ error: "That's you!" }, { status: 400 })
   const reverse = await prisma.friendship.findUnique({ where: { requesterId_addresseeId: { requesterId: target.id, addresseeId: me.id } } })
   if (reverse) {
     // They already asked you — accept it
     await prisma.friendship.update({ where: { id: reverse.id }, data: { status: 'ACCEPTED' } })
-    return NextResponse.json({ ok: true, status: 'ACCEPTED' })
+    return NextResponse.json({ ok: true, status: 'ACCEPTED', message: 'You’re friends now.' })
   }
   await prisma.friendship.upsert({
     where: { requesterId_addresseeId: { requesterId: me.id, addresseeId: target.id } },
     create: { requesterId: me.id, addresseeId: target.id },
     update: {},
   })
-  return NextResponse.json({ ok: true, status: 'PENDING' })
+  return NextResponse.json({ ok: true, status: 'PENDING', message: 'Friend request sent.' })
 }
 
 /** body: { friendshipId, action: 'accept' | 'decline' | 'remove' } */

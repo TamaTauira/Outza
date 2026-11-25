@@ -805,6 +805,28 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
 .vp-card-grid {
   display: grid;
   gap: var(--vp-card-gap);
+  width: 100%;
+  min-width: 0;
+}
+.vp-card-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.vp-rail-track { min-height: 22rem; }
+.vp-rail-hold {
+  width: min(78vw, 320px);
+  height: 22rem;
+  border-radius: var(--vp-radius-card);
+  background: hsl(var(--card));
+}
+.vp-itin-map,
+.vp-itin-map .leaflet-container { background: var(--vp-bg-elevated); }
+[data-sonner-toaster] {
+  position: fixed !important;
+  top: auto !important;
+  bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  right: 16px !important;
+  left: auto !important;
 }
 
 .vp-display {

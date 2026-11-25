@@ -69,7 +69,7 @@ export function EventReactions({ eventId, signedIn }: { eventId: string; signedI
   return (
     <div className="min-w-0">
       <p className="text-xs font-medium text-muted-foreground mb-1.5">What’s the vibe?</p>
-      <div className="flex w-full min-w-0 gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="group" aria-label="Event reactions">
+      <div className="flex w-full min-w-0 flex-wrap gap-2" role="group" aria-label="Event reactions">
         {REACTION_KINDS.map((kind) => {
           const active = mine.includes(kind)
           const meta = REACTION_LABEL[kind]
@@ -81,7 +81,7 @@ export function EventReactions({ eventId, signedIn }: { eventId: string; signedI
               disabled={busy === kind}
               onClick={() => toggle(kind)}
               className={cn(
-                'shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold',
+                'inline-flex h-11 max-w-full items-center gap-1 rounded-full border px-3 text-sm font-semibold',
                 active ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
               )}
             >

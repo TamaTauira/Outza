@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { fieldClass } from '@/components/ui/input'
 
 export const STOP_CATEGORIES = ['Food and drink', 'Entertainment', 'Transport', 'Activity', 'Other'] as const
 export type StopFormValues = { title: string; date: string; time: string; endTime: string; where: string; note: string; category?: string }
 export const emptyStop: StopFormValues = { title: '', date: '', time: '', endTime: '', where: '', note: '', category: '' }
 
-const field = 'h-10 rounded-md border border-border bg-background px-3 text-sm'
+const field = fieldClass
 
 /** Add / edit form for the visitor's own stops. Start and end times are both required. */
 export function StopForm({ initial, submitLabel, onSubmit, onCancel, keepDate, showCategory = false }: {
@@ -34,28 +35,28 @@ export function StopForm({ initial, submitLabel, onSubmit, onCancel, keepDate, s
   }
 
   return (
-    <form onSubmit={submit} className="grid sm:grid-cols-2 gap-3">
-      <input required value={form.title} onChange={set('title')} placeholder="e.g. Dinner at Chinatown" className={`${field} sm:col-span-2`} aria-label="Stop name" />
-      <label className="text-xs text-muted-foreground">Date<input required type="date" value={form.date} onChange={set('date')} className={`${field} mt-1 w-full text-foreground`} aria-label="Date" /></label>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="text-xs text-muted-foreground">Starts<input required type="time" value={form.time} onChange={set('time')} className={`${field} mt-1 w-full text-foreground`} aria-label="Start time" /></label>
-        <label className="text-xs text-muted-foreground">Ends<input required type="time" value={form.endTime} onChange={set('endTime')} className={`${field} mt-1 w-full text-foreground`} aria-label="End time" /></label>
+    <form onSubmit={submit} className="grid gap-3">
+      <input required value={form.title} onChange={set('title')} placeholder="e.g. Dinner at Chinatown" className={field} aria-label="Stop name" />
+      <label className="text-xs text-muted-foreground">Date<input required type="date" value={form.date} onChange={set('date')} className={`${field} mt-1`} aria-label="Date" /></label>
+      <div className="flex flex-wrap gap-3">
+        <label className="min-w-[8.5rem] flex-1 text-xs text-muted-foreground">Starts<input required type="time" value={form.time} onChange={set('time')} className={`${field} mt-1 min-w-[8.5rem]`} aria-label="Start time" /></label>
+        <label className="min-w-[8.5rem] flex-1 text-xs text-muted-foreground">Ends<input required type="time" value={form.endTime} onChange={set('endTime')} className={`${field} mt-1 min-w-[8.5rem]`} aria-label="End time" /></label>
       </div>
-      {form.time && form.endTime && form.endTime < form.time && <p className="sm:col-span-2 text-xs text-muted-foreground">Ends after midnight? Night owl energy. We&apos;ll count it as finishing the next morning.</p>}
-      {error && <p role="alert" className="sm:col-span-2 text-xs text-destructive">{error}</p>}
-      <input value={form.where} onChange={set('where')} placeholder="Where is it? (so we can guess travel time)" className={`${field} sm:col-span-2`} aria-label="Where" />
+      {form.time && form.endTime && form.endTime < form.time && <p className="text-xs text-muted-foreground">Ends after midnight? Night owl energy. We&apos;ll count it as finishing the next morning.</p>}
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+      <input value={form.where} onChange={set('where')} placeholder="Where is it? (so we can guess travel time)" className={field} aria-label="Where" />
       {showCategory && (
-        <label className="text-xs text-muted-foreground sm:col-span-2">Category, optional
+        <label className="text-xs text-muted-foreground">Category, optional
           <select value={form.category ?? ''} onChange={(e) => setForm({ ...form, category: e.target.value })} className={`${field} mt-1 w-full text-foreground`} aria-label="Category">
             <option value="">Pick a type (optional)</option>
             {STOP_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
           </select>
         </label>
       )}
-      <input value={form.note} onChange={set('note')} placeholder="Who’s coming, meet-up spot… (optional)" className={`${field} sm:col-span-2`} aria-label="Note" />
-      <div className={`sm:col-span-2 grid gap-3 ${onCancel ? 'grid-cols-2' : ''}`}>
-        {onCancel && <button type="button" onClick={onCancel} className="h-10 rounded-md border border-border text-sm font-semibold hover:bg-muted">Cancel</button>}
-        <button type="submit" className="h-10 rounded-md bg-primary text-primary-foreground font-semibold text-sm">{submitLabel}</button>
+      <input value={form.note} onChange={set('note')} placeholder="Who’s coming, meet-up spot… (optional)" className={field} aria-label="Note" />
+      <div className={`grid gap-3 ${onCancel ? 'grid-cols-2' : ''}`}>
+        {onCancel && <button type="button" onClick={onCancel} className="h-11 rounded-full border border-border text-sm font-semibold hover:bg-muted">Cancel</button>}
+        <button type="submit" className="h-11 rounded-full bg-primary text-sm font-semibold text-on-primary">{submitLabel}</button>
       </div>
     </form>
   )

@@ -6,7 +6,7 @@ import { loadManagedListing } from '@/lib/community'
 import { CommunityManageForm } from '../manage-form'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Manage your listing | VibePeep', robots: { index: false, follow: false } }
+export const metadata: Metadata = { title: 'Manage your listing', robots: { index: false, follow: false }, openGraph: { title: 'Manage your listing · VibePeep' } }
 
 export default async function ManageListingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params

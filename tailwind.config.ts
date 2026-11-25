@@ -22,7 +22,7 @@ const config: Config = {
         lead: ['18px', { lineHeight: '28px' }],
         h3: ['clamp(18px, 1rem + 0.4vw, 20px)', { lineHeight: '1.3', fontWeight: '600' }],
         h2: ['clamp(24px, 1.2rem + 1.2vw, 32px)', { lineHeight: '1.15', letterSpacing: '-0.02em', fontWeight: '700' }],
-        h1: ['clamp(32px, 1.4rem + 2.6vw, 52px)', { lineHeight: '1.05', letterSpacing: '-0.025em', fontWeight: '700' }],
+        h1: ['clamp(32px, 0.5rem + 3.4vw, 52px)', { lineHeight: '1.05', letterSpacing: '-0.025em', fontWeight: '700' }],
         display: ['clamp(40px, 1.5rem + 4.5vw, 64px)', { lineHeight: '1', letterSpacing: '-0.03em', fontWeight: '800' }],
       },
       backgroundImage: {

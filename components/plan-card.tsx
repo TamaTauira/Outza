@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
 import { dayLabel } from '@/lib/board'
 import { COPY } from '@/lib/copy'
-import { formatTime } from '@/lib/format'
+import { displayClock } from '@/lib/format'
 import { eventsToIcs } from '@/lib/ics'
 import { eventToItem, useItinerary } from '@/lib/itinerary'
 import { notifyAddedToItinerary, notifyRemovedFromItinerary } from '@/lib/notify'
@@ -20,7 +20,7 @@ function eventStops(plan: PlanView) {
 }
 
 function whenLine(date: string, time: string | null, today?: string | null) {
-  const clock = formatTime(time)
+  const clock = time ? displayClock(time) : ''
   return `${dayLabel(date, today)}${clock ? ` · ${clock}` : ` · ${COPY.timeNotListed}`}`
 }
 

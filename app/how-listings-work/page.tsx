@@ -5,11 +5,13 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
 import { ANALYTICS_DATA } from '@/lib/trust-shared'
 
-export const metadata: Metadata = {
-  title: 'How VibePeep listings work — sources, checks and sponsored content',
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata: Metadata = pageMeta({
+  title: 'How listings work',
   description: 'Where VibePeep event listings come from, how we check and merge them, how sponsored placements are labelled, and exactly what we measure for organisers.',
-  alternates: { canonical: '/how-listings-work' },
-}
+  path: '/how-listings-work',
+})
 
 const SECTIONS: { title: string; body: string[] }[] = [
   { title: 'Where listings come from', body: [

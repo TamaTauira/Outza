@@ -4,16 +4,19 @@ import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
 import { LegalStamp } from '@/components/legal-stamp'
 
-export const metadata = {
-  title: 'Disclaimer — VibePeep',
+import { pageMeta } from '@/lib/page-meta'
+
+export const metadata = pageMeta({
+  title: 'Disclaimer',
   description: 'Why VibePeep exists, what it is (and isn’t), and the limits of our responsibility.',
-}
+  path: '/disclaimer',
+})
 
 const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: '1. Why this site exists',
     body: [
-      'VibePeep was born out of a simple need: there was no easy, single place to see what’s on, sorted by when it starts. This website exists purely to help people find events more easily. It is an independent, non-official listings guide and discovery tool.',
+      'VibePeep was born out of a simple need: there was no easy, single place to see what’s on. This website exists purely to help people find events more easily. It is an independent, non-official listings guide and discovery tool.',
       'VibePeep does not organise, host, run, promote (other than through clearly labelled paid placements), sell tickets for, or have any control over the events shown on this website.',
     ],
   },

@@ -13,7 +13,7 @@ type ChipProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 /** Class for a chip that has to be a link. Pressed is brand orange with near-black ink. */
 export function chipClass(pressed = false) {
   return cn(
-    'inline-flex h-control min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold',
+    'inline-flex h-control min-h-control max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
     pressed ? 'bg-primary text-on-primary' : 'border border-border bg-card text-foreground hover:bg-muted',
   )

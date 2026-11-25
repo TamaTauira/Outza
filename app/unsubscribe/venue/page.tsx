@@ -3,7 +3,7 @@ import { verify } from '@/lib/newsletter/links'
 import { VenueUnsubscribeClient } from './client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Unsubscribe from venue notes — VibePeep', robots: { index: false } }
+export const metadata = { title: 'Unsubscribe from venue notes', robots: { index: false }, openGraph: { title: 'Unsubscribe from venue notes · VibePeep' } }
 
 export default async function VenueUnsubscribePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { u = '', k = '' } = await searchParams

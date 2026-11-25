@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { VenueAdmin } from './venue-admin-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Venue claims — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Venue claims', robots: { index: false }, openGraph: { title: 'Venue claims · VibePeep' } }
 
 export default async function AdminVenuesPage() {
   const session = await auth()

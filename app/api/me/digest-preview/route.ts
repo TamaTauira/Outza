@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sendDigest } from '@/lib/digest'
 import { publicEmailError } from '@/lib/email'
+import { prisma } from '@/lib/db'
 import { getSessionUser, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
@@ -8,6 +9,10 @@ export const dynamic = 'force-dynamic'
 export async function POST() {
   const me = await getSessionUser()
   if (!me) return unauthorized()
+  const prefs = await prisma.user.findUnique({ where: { id: me.id }, select: { preferredCities: true } })
+  if (!prefs?.preferredCities?.length) {
+    return NextResponse.json({ error: 'Pick at least one city under Cities to include, then preview the digest.' }, { status: 422 })
+  }
   const r = await sendDigest(me.id, { test: true })
   if (!r.ok) {
     const skipped = 'skipped' in r && r.skipped

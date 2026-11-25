@@ -129,8 +129,8 @@ function AppHeader({ savedCount }: { savedCount: number }) {
                   ? <DropdownMenuItem asChild><Link href="/partners"><Megaphone className="mr-2 h-4 w-4" />Source partner overview</Link></DropdownMenuItem>
                   : isPromoter
                   ? <DropdownMenuItem asChild><Link href="/promoter"><Megaphone className="mr-2 h-4 w-4" />Promoter dashboard</Link></DropdownMenuItem>
-                  : <DropdownMenuItem asChild><Link href="/promoters"><Megaphone className="mr-2 h-4 w-4" />For promoters</Link></DropdownMenuItem>}
-                {process.env.NEXT_PUBLIC_OWNERSHIP_UI !== '0' && (
+                  : null}
+                {isPromoter && process.env.NEXT_PUBLIC_OWNERSHIP_UI !== '0' && (
                   <DropdownMenuItem asChild><Link href="/venue"><Building2 className="mr-2 h-4 w-4" />My venue</Link></DropdownMenuItem>
                 )}
                 {user.role === 'ADMIN' && (
@@ -144,7 +144,6 @@ function AppHeader({ savedCount }: { savedCount: number }) {
             </DropdownMenu>
           ) : (
             <div className="vp-header-account contents">
-              <Link href="/promoters" className="hidden h-10 items-center gap-1.5 px-3 text-sm text-muted-foreground hover:text-foreground lg:inline-flex"><Megaphone className="h-4 w-4" />For promoters</Link>
               <Link href="/login" className="inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:text-foreground md:hidden" aria-label="Sign in"><User className="h-4 w-4" /></Link>
               <Link href="/login" className="hidden h-11 items-center px-3 text-sm text-muted-foreground hover:text-foreground md:inline-flex">Sign in</Link>
               <Link href="/signup" aria-label="Sign up" className="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90 sm:w-auto sm:px-4">

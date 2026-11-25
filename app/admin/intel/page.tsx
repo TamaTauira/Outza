@@ -3,7 +3,7 @@ import { auth } from '@/auth'
 import { IntelAdminClient } from './intel-admin-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'VibePeep Intelligence data sources — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Intelligence data sources', robots: { index: false }, openGraph: { title: 'Intelligence data sources · VibePeep' } }
 
 export default async function AdminIntelPage() {
   const session = await auth()

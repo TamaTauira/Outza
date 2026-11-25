@@ -1,13 +1,14 @@
 import Link from 'next/link'
 import { Navigation } from 'lucide-react'
-import { dayLabel, formatTime } from '@/lib/board'
+import { dayLabel } from '@/lib/board'
+import { displayClock } from '@/lib/format'
 import type { PlanViewLeg, PlanViewStop } from '@/lib/plan-picks'
 import { eventPath } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 
 function whenLine(date: string, time: string | null, today?: string | null) {
-  const clock = time ? formatTime(time) : null
-  return `${dayLabel(date, today)}${clock ? ` · ${clock.hm}${clock.ampm}` : ' · time not listed'}`
+  const clock = time ? displayClock(time) : ''
+  return `${dayLabel(date, today)}${clock ? ` · ${clock}` : ' · time not listed'}`
 }
 
 /** Stops for a day plan, with a travel line before every stop after the first event. */

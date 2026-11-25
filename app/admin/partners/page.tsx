@@ -4,7 +4,7 @@ import { listPartnerAccounts } from '@/lib/partner-data'
 import { PartnersAdminClient } from './partners-admin-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Source partners — VibePeep admin', robots: { index: false } }
+export const metadata = { title: 'Source partners', robots: { index: false }, openGraph: { title: 'Source partners · VibePeep' } }
 
 export default async function AdminPartnersPage() {
   const session = await auth()

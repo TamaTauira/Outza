@@ -11,7 +11,7 @@ import { PARTNER_ROLE, parsePartnerFilters } from '@/lib/partner-scope'
 import { PartnerView } from './partner-view'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Source partner | VibePeep', robots: { index: false } }
+export const metadata: Metadata = { title: 'Source partner', robots: { index: false }, openGraph: { title: 'Source partner · VibePeep' } }
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 

@@ -5,7 +5,9 @@ import { LocalAds } from '@/app/promoters/marketing'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'Local business ads — VibePeep',
+  title: 'Local business ads',
+  alternates: { canonical: '/local-ads' },
+  openGraph: { title: 'Local business ads · VibePeep', description: 'Put a local business beside an event people are already planning to attend. Always labelled Sponsored.', url: '/local-ads' },
   description: 'Put a local business beside an event people are already planning to attend. Always labelled Sponsored.',
 }
 

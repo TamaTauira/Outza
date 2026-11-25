@@ -40,17 +40,14 @@ export function MenuSheet({
         ...(isPromoter ? [] : [{ href: '/together', label: 'Plan with your crew', Icon: Users }]),
         { href: '/account', label: isPromoter ? 'Promoter settings' : 'Your account', Icon: Settings },
         ...(hasListings ? [{ href: '/local?tab=mine', label: 'Your listings', Icon: List }] : []),
-        isPromoter
-          ? { href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }
-          : { href: '/promoters', label: 'For promoters', Icon: Megaphone },
-        ...(venue ? [{ href: '/venue', label: 'My venue', Icon: Building2 }] : []),
+        ...(isPromoter ? [{ href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }] : []),
+        ...(isPromoter && venue ? [{ href: '/venue', label: 'My venue', Icon: Building2 }] : []),
         ...(isAdmin ? [{ href: '/admin/trust', label: 'Trust & listings', Icon: ShieldCheck, extra: <TrustCount className="ml-auto" /> }] : []),
         { label: 'Sign out', Icon: LogOut, onClick: () => { close(); void signOut({ redirectTo: '/' }) } },
       ]
     : [
         { href: '/login', label: 'Sign in', Icon: User },
         { href: '/signup', label: 'Sign up', Icon: User },
-        { href: '/promoters', label: 'For promoters', Icon: Megaphone },
       ]
 
   return (

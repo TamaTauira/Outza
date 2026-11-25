@@ -14,13 +14,16 @@ import { eventsToIcs, SAVED_ICS_FILENAME } from '@/lib/ics'
 import { eventPath } from '@/lib/seo'
 import { useSaved } from '@/lib/saved'
 import { PasswordField } from '@/components/password-field'
+import { BrandedLoading } from '@/components/branded-loading'
+import { PageHeading } from '@/components/page-heading'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
+import { Input } from '@/components/ui/input'
 
 type Me = { id?: string; name?: string | null; email: string; image?: string | null; role?: string; orgName?: string | null; bio?: string | null; website?: string | null; birthYear?: number | null; homePostcode?: string | null; homeCity?: string | null; vibeProfile?: unknown; preferredCategories: string[]; preferredCities: string[]; emailOptIn: boolean; emailFrequency: string; emailActivityPersonalisation?: boolean; reminderOptIn?: boolean }
 type Person = { friendshipId: string; id: string; name: string | null; email: string }
 
-const card = 'rounded-card border border-border bg-card p-card-lg shadow-vp-sm'
+const card = 'min-w-0 w-full max-w-full rounded-card border border-border bg-card p-card-lg shadow-vp-sm'
 
 export function AccountClient() {
   const [me, setMe] = useState<Me | null>(null)
@@ -100,7 +103,7 @@ export function AccountClient() {
   const friendAction = async (body: object, method = 'PATCH') => {
     const res = await fetch('/api/friends', { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
     const d = await res.json().catch(() => ({}))
-    if (!res.ok) toast.error(d?.error ?? 'Something went wrong'); else toast.success(d?.message ?? 'Done')
+    if (!res.ok || d?.ok === false) toast.error(d?.error ?? 'Something went wrong'); else toast.success(d?.message ?? 'Done')
     load()
   }
   const preview = async () => {
@@ -116,7 +119,7 @@ export function AccountClient() {
     else toast.error(typeof data?.error === 'string' ? data.error : 'Could not send preview')
   }
 
-  if (!me) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>
+  if (!me) return <BrandedLoading label="Getting your account ready" />
 
   const promoter = me.role === 'PROMOTER' || me.role === 'ADMIN'
   const yearRequired = me.role === 'CONSUMER'
@@ -124,13 +127,13 @@ export function AccountClient() {
   const shown = visibleAboutErrors(year, pc, { yearRequired, yearTouched })
 
   return (
-    <main className="vp-wrap vp-page-top px-4 pb-6 sm:px-6 sm:pb-8">
+    <main className="vp-wrap vp-page-top min-w-0 overflow-x-clip px-4 pb-6 sm:px-6 sm:pb-8">
       {promoter ? <Link href="/promoter" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Promoter dashboard</Link> : <BackToEventsLink className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Back to events</BackToEventsLink>}
       <div className="mt-4">
-        <h1 className="font-display text-h1">{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline w-5 h-5 animate-spin text-primary" />}</h1>
+        <PageHeading>{promoter ? 'Promoter settings' : 'Your account'} {saving && <Loader2 className="inline h-5 w-5 animate-spin text-primary" />}</PageHeading>
         <p className="text-sm text-muted-foreground mt-1 break-all">{me.email}</p>
       </div>
-      <div className="vp-card-grid mt-[var(--vp-card-gap)] items-stretch lg:grid-cols-2">
+      <div className="vp-card-grid mt-[var(--vp-card-gap)] min-w-0 items-start lg:grid-cols-2">
 
       {!promoter && <section className={`${card} lg:col-span-2`}>
         <h2 className="font-semibold mb-1">About you</h2>
@@ -189,7 +192,7 @@ export function AccountClient() {
       {!promoter && <section className={card}>
         <h2 className="font-semibold mb-3">Friends</h2>
         <form onSubmit={(e) => { e.preventDefault(); if (friendEmail) { friendAction({ email: friendEmail }, 'POST'); setFriendEmail('') } }} className="flex gap-2">
-          <input type="email" value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} placeholder="Friend's email" className="flex-1 min-w-0 h-10 rounded-md border border-border bg-background px-3 text-sm" />
+          <Input type="email" value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} placeholder="Friend's email" aria-label="Friend's email" className="min-w-0 flex-1" />
           <Button>Add</Button>
         </form>
         {friends.incoming.map((p) => (

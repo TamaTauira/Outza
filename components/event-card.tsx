@@ -13,6 +13,7 @@ import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
 import { displayTitle } from '@/lib/display-public'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
+import { formatVenueLine } from '@/lib/place'
 import { boardClockLine } from '@/lib/listing-window'
 import { MobileEventRow, type BoardEvent } from '@/components/board-row'
 import { useSaved } from '@/lib/saved'
@@ -130,8 +131,7 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                {tidyVenueName(event.venueName, event.venueAddress, event.city)}
-                {suburb && <span className="text-muted-foreground">· {suburb}</span>}
+                {formatVenueLine({ venueName: tidyVenueName(event.venueName, event.venueAddress, event.city), suburb, city: event.city })}
               </span>
             </div>
 
@@ -179,7 +179,7 @@ export function EventCardRow({ event, listingQuery }: { event: EventData; listin
         <span className="line-clamp-2 font-semibold leading-snug">{displayTitle(event.title)}</span>
         <span className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="shrink-0 rounded-md px-1.5 py-0.5 font-semibold" style={{ backgroundColor: `color-mix(in srgb, ${catDef?.color ?? '#FF7A35'} 28%, #151a19)`, color: '#F5F5F2' }}>{event.category}</span>
-          <span className="truncate">{[clock, tidyVenueName(event.venueName, event.venueAddress, event.city), suburb].filter(Boolean).join(' · ')}</span>
+          <span className="truncate">{[clock, formatVenueLine({ venueName: tidyVenueName(event.venueName, event.venueAddress, event.city), suburb, city: event.city })].filter(Boolean).join(' · ')}</span>
         </span>
       </span>
       <span className={cn('shrink-0 text-sm font-semibold tabular-nums', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{priceText}</span>

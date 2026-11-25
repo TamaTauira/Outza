@@ -59,15 +59,15 @@ const loadCombo = cache(async function loadCombo(citySlug: string, a: string, b:
 
 export async function comboMetadata(citySlug: string, segments: string[]): Promise<Metadata> {
   const loaded = await loadCombo(citySlug, segments[0] ?? '', segments[1] ?? '', segments[2])
-  if (!loaded) return { title: 'Page not found | VibePeep', robots: { index: false } }
+  if (!loaded) return { title: 'Page not found', robots: { index: false }, openGraph: { title: 'Page not found · VibePeep' } }
   const { path, copy, index } = loaded
   return {
     title: copy.title,
     description: copy.description,
     alternates: { canonical: path },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title: copy.title, description: copy.description, url: path, images: [BRAND_OG_IMAGE] },
-    twitter: { card: 'summary_large_image', title: copy.title, description: copy.description, images: [BRAND_OG_IMAGE] },
+    openGraph: { title: `${copy.title} · VibePeep`, description: copy.description, url: path, images: [BRAND_OG_IMAGE] },
+    twitter: { card: 'summary_large_image', title: `${copy.title} · VibePeep`, description: copy.description, images: [BRAND_OG_IMAGE] },
   }
 }
 

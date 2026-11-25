@@ -7,6 +7,30 @@ const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 
 export const PRICE_FALLBACK = 'See website'
 export const TIME_UNLISTED = 'Time not listed'
+export const TIME_TBA = 'time TBA'
+
+/**
+ * A missing clock stored as midnight. 00:00–01:00 is the one-hour placeholder
+ * feeds use when they have a date and no start. A real late show keeps its span.
+ */
+export function missingClock(time: string | null | undefined, endTime?: string | null): boolean {
+  if (!time?.trim()) return true
+  if (!/^00:00/.test(time)) return false
+  if (!endTime?.trim()) return true
+  const end = endTime.match(/^(\d{1,2}):(\d{2})/)
+  if (!end) return true
+  const mins = Number(end[1]) * 60 + Number(end[2])
+  return mins === 0 || mins === 60 || mins === 23 * 60 + 59
+}
+
+/** What a visitor should read. Missing clocks say "time TBA", not 12:00 am. */
+export function displayClock(time: string | null | undefined, endTime?: string | null, allDay?: boolean | null): string {
+  if (allDay) return 'All day'
+  if (!time?.trim()) return TIME_TBA
+  if (/^00:00/.test(time) && (!endTime?.trim() || /^00:00/.test(endTime) || /^23:59/.test(endTime))) return 'All day'
+  if (missingClock(time, endTime)) return TIME_TBA
+  return formatTime(time)
+}
 
 /** "7:30 pm". Keeps :00. Empty when the listing has no clock time. */
 export function formatTime(t: string | null | undefined): string {

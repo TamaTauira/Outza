@@ -4,7 +4,7 @@ import { verify } from '@/lib/newsletter/links'
 import { UnsubscribeClient } from './unsubscribe-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Unsubscribe — VibePeep' }
+export const metadata = { title: 'Unsubscribe', openGraph: { title: 'Unsubscribe · VibePeep' } }
 
 export default async function UnsubscribePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { u = '', k = '', s = '' } = await searchParams

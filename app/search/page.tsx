@@ -13,13 +13,15 @@ import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
 import { hintsFromParams, pickedHints } from '@/lib/search-hints'
 import { relaxedSearchArgs, searchFeedArgs } from '@/lib/search-feed'
+import { pageMeta } from '@/lib/page-meta'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Search · VibePeep',
+export const metadata: Metadata = pageMeta({
+  title: 'Search',
   description: 'Search what’s on. The link keeps the words, the city and the dates.',
-}
+  path: '/search',
+})
 
 type Props = { searchParams: Promise<{ q?: string; city?: string; when?: string; budget?: string; vibe?: string; suburb?: string }> }
 

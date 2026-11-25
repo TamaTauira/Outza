@@ -48,21 +48,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { city, topic } = await params
   if (seasonDef(topic)) return seasonMetadata(city, topic)
   const r = await resolve(city, topic)
-  if (!r) return { title: 'Page not found | VibePeep', robots: { index: false } }
+  if (!r) return { title: 'Page not found', robots: { index: false }, openGraph: { title: 'Page not found · VibePeep' } }
   const [data, model] = await Promise.all([landingData(r.city, r.topic, r.suburb ?? undefined, 1), cityGuideModel(r.city)])
   const range = r.topic?.key === 'this-weekend' && data.to ? ` (${formatGuideSpan(data.from, data.to)})` : ''
   const path = r.topic ? cityPath(r.city, r.topic.key) : suburbPath(r.city, r.suburb!)
   const self = model.decisions.find((d) => d.path === path)
   const index = !data.degraded && (model.ok ? !!self?.index : data.total >= MIN_INDEX)
-  const title = `${r.topic?.title?.(r.city.name) ?? headingFor(r)}${range} | VibePeep`
+  const title = `${r.topic?.title?.(r.city.name) ?? headingFor(r)}${range}`
   const description = `${blurbFor(r)} ${data.total ? `${data.total} upcoming listing${data.total === 1 ? '' : 's'}.` : ''}`.trim()
   return {
     title,
     description,
     alternates: { canonical: path },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title, description, url: path, images: [BRAND_OG_IMAGE] },
-    twitter: { card: 'summary_large_image', title, description, images: [BRAND_OG_IMAGE] },
+    openGraph: { title: `${title} · VibePeep`, description, url: path, images: [BRAND_OG_IMAGE] },
+    twitter: { card: 'summary_large_image', title: `${title} · VibePeep`, description, images: [BRAND_OG_IMAGE] },
   }
 }
 

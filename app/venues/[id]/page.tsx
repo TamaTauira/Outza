@@ -23,8 +23,8 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const venue = await publicVenue(id)
-  if (!venue) return { title: 'Venue — VibePeep' }
-  const title = `${venue.name} — VibePeep`
+  if (!venue) return { title: 'Venue', openGraph: { title: 'Venue · VibePeep' } }
+  const title = venue.name
   const description = venue.description?.replace(/\s+/g, ' ').trim()
     ? venue.description.replace(/\s+/g, ' ').trim().slice(0, 200)
     : `What’s on at ${venue.name} in ${venue.city}.`
@@ -34,8 +34,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, type: 'website', images: [image] },
-    twitter: { card: 'summary_large_image', title, description, images: [image] },
+    openGraph: { title: `${title} · VibePeep`, description, url, type: 'website', images: [image] },
+    twitter: { card: 'summary_large_image', title: `${title} · VibePeep`, description, images: [image] },
   }
 }
 

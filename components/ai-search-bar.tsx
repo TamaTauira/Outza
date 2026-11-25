@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, CalendarDays, CalendarRange, MapPin, Search, SlidersHorizontal } from 'lucide-react'
 import { categoryIcon, dayLabel } from '@/lib/board'
 import { COPY } from '@/lib/copy'
-import { formatTime } from '@/lib/format'
+import { displayClock } from '@/lib/format'
+import { formatVenueLine } from '@/lib/place'
 import { matchPlanPick, PLAN_PICKS, type PlanPick, type PlanView } from '@/lib/plan-picks'
 import { eventPath } from '@/lib/seo'
 import { chipQuery, EMPTY_HINTS, hintsToQuery, isNaturalAsk, pickedHints, type SearchHints } from '@/lib/search-hints'
@@ -460,8 +461,8 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
             <ul className="mt-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {data.results.map((e) => {
                 const Icon = categoryIcon(e.category)
-                const clock = formatTime(e.time)
-                const place = `${e.venueName}${e.suburb ? `, ${e.suburb}` : ''}`
+                const clock = e.time ? displayClock(e.time) : ''
+                const place = formatVenueLine({ venueName: e.venueName, suburb: e.suburb, city: e.city })
                 return (
                   <li key={e.id} className="min-w-0">
                     <Link

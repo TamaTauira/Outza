@@ -226,6 +226,10 @@ export function formatBoardRange(ev: SlotInput): BoardRange {
   if (ev.allDay === true || (sched.dropIn && sched.start === 0)) {
     return { hm: 'All day', ampm: '', endLine: null, endNote: null, label: 'All day' }
   }
+  // A one-hour block from midnight is a missing clock, not a show at 12:00 am.
+  if (sched.start === 0 && sched.end != null && (sched.end % 1440) === 60 && !sched.overnight && !sched.multiDay) {
+    return { hm: 'time TBA', ampm: '', endLine: null, endNote: null, label: 'time TBA' }
+  }
   if (sched.start == null) return { hm: '--:--', ampm: '', endLine: null, endNote: null, label: 'Time not listed' }
   const start = clockParts(sched.start)
   const startLabel = `${start.hm} ${start.ampm}`

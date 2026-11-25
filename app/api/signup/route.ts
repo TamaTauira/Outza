@@ -24,8 +24,9 @@ export async function POST(req: Request) {
     // Event-goers give a birth year (anyone without one is asked for it after signing in).
     // The age block runs before the password rules so an under-16 visitor is not asked to invent a stronger password.
     let birthYear: number | undefined
-    if (body.birthYear != null && body.birthYear !== '') {
+    if (role === 'CONSUMER' || (body.birthYear != null && body.birthYear !== '')) {
       const p = parseBirthYear(body.birthYear)
+      if (role === 'CONSUMER' && (p.error || p.year == null)) return NextResponse.json({ error: p.error ?? 'Enter the year you were born' }, { status: 400 })
       if (p.error || p.year == null) return NextResponse.json({ error: p.error ?? 'Enter the year you were born' }, { status: 400 })
       const geo = under16GeoBlock(req.headers.get('x-vercel-ip-country'), p.year)
       if (geo) return NextResponse.json({ error: geo }, { status: 403 })

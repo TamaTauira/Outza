@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
 import { InfoPage } from '@/components/info-page'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata: Metadata = {
-  title: 'FAQ — VibePeep',
+export const metadata: Metadata = pageMeta({
+  title: 'FAQ',
   description: 'Quick answers on VibePeep listings, promotion and your account.',
-}
+  path: '/faq',
+})
 
 export default function FaqPage() {
   return (

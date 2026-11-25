@@ -14,15 +14,15 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<s
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const l = await loadLocalListing((await params).slug)
-  if (!l) return { title: 'Listing not found | VibePeep', robots: { index: false } }
+  if (!l) return { title: 'Listing not found', robots: { index: false }, openGraph: { title: 'Listing not found · VibePeep' } }
   const desc = `${localCategoryLabel(l.category)} in ${l.suburb}, ${l.city} · ${l.schedule}. ${l.description.replace(/\s+/g, ' ').slice(0, 120)}…`
   const image = openGraphImage(l.imageUrl, l.title)
   return {
-    title: `${l.title} · ${l.suburb} | VibePeep Local`,
+    title: `${l.title} · ${l.suburb}`,
     description: desc,
     alternates: { canonical: localPath(l) },
-    openGraph: { title: l.title, description: desc.slice(0, 200), type: 'website', url: localPath(l), images: [image] },
-    twitter: { card: 'summary_large_image', title: l.title, description: desc.slice(0, 200), images: [image] },
+    openGraph: { title: `${l.title} · ${l.suburb} · VibePeep`, description: desc.slice(0, 200), type: 'website', url: localPath(l), images: [image] },
+    twitter: { card: 'summary_large_image', title: `${l.title} · ${l.suburb} · VibePeep`, description: desc.slice(0, 200), images: [image] },
   }
 }
 

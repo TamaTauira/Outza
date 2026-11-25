@@ -8,7 +8,7 @@ import { redactCommunityPublic, sectionByKey } from '@/lib/community-shared'
 import { boardClockLine } from '@/lib/listing-window'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Printable poster | VibePeep', robots: { index: false, follow: false } }
+export const metadata: Metadata = { title: 'Printable poster', robots: { index: false, follow: false }, openGraph: { title: 'Printable poster · VibePeep' } }
 
 export default async function CommunityPosterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

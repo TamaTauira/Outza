@@ -83,6 +83,8 @@ export function bindItineraryUser(userId: string | null) {
   } else window.dispatchEvent(new Event(EVT))
 }
 
+export const ITINERARY_NAME_LIMIT = 80
+
 const labelKey = () => `${storageKey()}:label`
 
 /** The name the visitor gave this plan. Empty means the page should derive one from the stops. */
@@ -99,7 +101,7 @@ export function useItineraryLabel() {
   }, [])
   const save = useCallback((next: string) => {
     try {
-      const clean = next.trim().slice(0, 80)
+      const clean = next.trim().slice(0, ITINERARY_NAME_LIMIT)
       if (clean) localStorage.setItem(labelKey(), clean)
       else localStorage.removeItem(labelKey())
       window.dispatchEvent(new Event(EVT))

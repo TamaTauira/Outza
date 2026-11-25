@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Trash2, AlertTriangle, Plus, MapPin, Clock, Footprints, Car, Navigation, Loader2, Pencil, ExternalLink, ChevronUp, ChevronDown, Share2, CalendarPlus, Search } from 'lucide-react'
-import { CalendarPlusIcon } from '@/components/calendar-plus-icon'
 import { toast } from 'sonner'
 import { eventPath } from '@/lib/seo'
 import { Navbar } from '@/components/navbar'
@@ -13,9 +12,12 @@ import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
 import { PageMasthead } from '@/components/page-masthead'
 import { ViewToggle } from '@/components/view-toggle'
-import { useItinerary, useItineraryLabel, sortItinerary, clashMap, eventToItem, type ItineraryItem } from '@/lib/itinerary'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useItinerary, useItineraryLabel, ITINERARY_NAME_LIMIT, sortItinerary, clashMap, eventToItem, type ItineraryItem } from '@/lib/itinerary'
 import { boardClockLine } from '@/lib/listing-window'
-import { formatTime } from '@/lib/format'
+import { displayClock } from '@/lib/format'
+import { formatAddress, formatVenueLine } from '@/lib/place'
 import { coordsFitCity, directionsUrl, distanceKm, fmtKm, fmtMin, planLeg } from '@/lib/travel'
 import { eventsToIcs, ITINERARY_ICS_FILENAME } from '@/lib/ics'
 import { StopForm, emptyStop, type StopFormValues } from './stop-form'
@@ -30,7 +32,7 @@ const dayLabel = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('e
 const toMin = (t: string | null) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null)
 const believable = (i: ItineraryItem) => i.lat != null && i.lng != null && coordsFitCity(i.lat, i.lng, i.city)
 const needsGeo = (i: ItineraryItem) => !believable(i) && !i.geoFailed && (i.kind === 'event' || !!(i.place || i.venueName))
-const clock = (t: string | null) => formatTime(t) || null
+const clock = (t: string | null, end?: string | null) => (t ? displayClock(t, end) : null)
 const durationLabel = (start: string | null, end: string | null) => {
   const a = toMin(start)
   const b = toMin(end)
@@ -347,15 +349,14 @@ export default function ItineraryPage() {
 
         {!arranged.length ? (
           <div className="mt-[var(--vp-card-gap)]">
-            <div className="rounded-3xl bg-card px-4 py-8 text-center shadow-[var(--vp-shadow-md)] sm:px-8">
-              <CalendarPlusIcon className="mx-auto h-8 w-8 text-primary" aria-hidden />
-              <h2 className="mt-3 font-display text-3xl font-bold">Nothing lined up yet.</h2>
-              <p className="mx-auto mt-2 max-w-lg text-muted-foreground">Spot something worth leaving the house for, add it here, and stack the rest around it.</p>
-              <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved.</p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <button type="button" onClick={() => openPanel('event')} className="inline-flex h-control items-center rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">Add a stop</button>
-                {status !== 'authenticated' && <Link href="/login?next=/itinerary" className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Sign in</Link>}
-              </div>
+            <div className="rounded-card bg-card shadow-vp-md">
+              <EmptyState
+                size="page"
+                title="Nothing lined up yet."
+                body="Spot something worth leaving the house for, add it here, and stack the rest around it. Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved."
+                action={<button type="button" onClick={() => openPanel('event')} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">Add a stop</button>}
+                secondary={status !== 'authenticated' ? { href: '/login?next=/itinerary', label: 'Sign in' } : undefined}
+              />
             </div>
             <aside className="mt-hero rounded-hero bg-card p-card shadow-vp-sm" aria-label="Example itinerary">
               <p className="vp-eyebrow text-muted-foreground">Example only. Not your Itinerary, and not a real listing.</p>
@@ -368,13 +369,17 @@ export default function ItineraryPage() {
           </div>
         ) : (
           <>
-            <section className="mt-6 rounded-3xl border border-border bg-card p-4 sm:p-6">
+            <section className="mt-6 rounded-card border border-border bg-card p-4 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   {naming ? (
-                    <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); saveLabel(nameDraft); setNaming(false) }}>
-                      <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} maxLength={80} aria-label="Itinerary name" className="h-11 min-w-[16rem] rounded-full border border-border bg-background px-4 text-sm" />
-                      <button type="submit" className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Save Name</button>
+                    <form className="flex min-w-0 flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); saveLabel(nameDraft); setNaming(false) }}>
+                      <label className="min-w-0 flex-1">
+                        <span className="sr-only">Itinerary name</span>
+                        <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value.slice(0, ITINERARY_NAME_LIMIT))} maxLength={ITINERARY_NAME_LIMIT} aria-label="Itinerary name" className="h-11 w-full min-w-0 rounded-full border border-border bg-background px-4 text-base" />
+                        <span className="mt-1 block text-right text-xs text-muted-foreground">{nameDraft.length}/{ITINERARY_NAME_LIMIT}</span>
+                      </label>
+                      <button type="submit" className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-on-primary">Save name</button>
                       <button type="button" onClick={() => setNaming(false)} className="h-11 rounded-full border border-border px-4 text-sm">Cancel</button>
                     </form>
                   ) : <h2 className="font-display text-2xl font-bold sm:text-3xl">{title}</h2>}
@@ -388,11 +393,13 @@ export default function ItineraryPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={share} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Share2 className="h-4 w-4" /> Share</button>
-                  <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-control items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename</button>
-                  <details className="relative">
-                    <summary className="flex h-11 cursor-pointer list-none items-center rounded-full border border-border px-4 text-sm font-semibold">More options</summary>
-                    <button type="button" onClick={() => setClearOpen(true)} className="absolute right-0 z-10 mt-2 whitespace-nowrap rounded-xl border border-border bg-popover px-4 py-3 text-sm shadow-lg">Clear all</button>
-                  </details>
+                  {!naming && <button type="button" onClick={() => { setNameDraft(label || title); setNaming(true) }} className="inline-flex h-11 items-center gap-1.5 rounded-full border border-border px-4 text-sm font-semibold"><Pencil className="h-4 w-4" /> Rename</button>}
+                  <Popover>
+                    <PopoverTrigger className="inline-flex h-11 items-center rounded-full border border-border px-4 text-sm font-semibold">More options</PopoverTrigger>
+                    <PopoverContent align="end" className="w-44 p-1">
+                      <button type="button" onClick={() => setClearOpen(true)} className="w-full rounded-lg px-3 py-3 text-left text-sm hover:bg-muted">Clear all</button>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </section>
@@ -415,7 +422,7 @@ export default function ItineraryPage() {
                             <li key={i.id} id={`stop-${i.id}`} className="ml-6">
                               {idx > 0 && <TravelLeg from={dayItems[idx - 1]} to={i} locating={locating} />}
                               {idx > 0 && <RoutePicks picks={legPicks(dayItems[idx - 1], i)} isAdded={(p) => items.some((x) => x.id === pickStopId(p))} onAdd={(p) => addPick(p, dayItems[idx - 1], i)} onOpen={countViews} />}
-                              <div className={`relative rounded-2xl bg-card p-4 shadow-[var(--shadow-md)] ${activeId === i.id ? 'ring-2 ring-primary' : ''}`}>
+                              <div className={`relative rounded-card bg-card p-4 shadow-vp-md ${activeId === i.id ? 'ring-2 ring-primary' : ''}`}>
                                 <span className="absolute -left-[34px] top-5 grid h-7 w-7 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{arranged.findIndex((stop) => stop.id === i.id) + 1}</span>
                                 {editing === i.id ? (
                                   <>
@@ -424,12 +431,12 @@ export default function ItineraryPage() {
                                   </>
                                 ) : (
                                   <>
-                                    <div className="flex items-start justify-between gap-3">
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                       <button type="button" onClick={() => setActiveId(i.id)} className="min-w-0 text-left">
-                                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5" />{boardClockLine(i) ?? 'Time not set'}{duration ? ` · ${duration}` : ''}</p>
+                                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Clock className="h-3.5 w-3.5 shrink-0" />{boardClockLine(i) ?? (i.time ? displayClock(i.time, i.endTime) : 'Time not set')}{duration ? ` · ${duration}` : ''}</p>
                                         {i.kind === 'event' ? <Link href={i.href ?? eventPath(i)} className="font-semibold hover:text-primary">{i.title}</Link> : <p className="font-semibold">{i.title}</p>}
-                                        {i.venueName && <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{i.venueName}{i.suburb ? ` · ${i.suburb}` : ''}</p>}
-                                        {(i.place && i.place !== i.venueName) && <p className="text-sm text-muted-foreground">{i.place}</p>}
+                                        {formatVenueLine(i) && <p className="flex items-start gap-1.5 text-sm text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{formatVenueLine(i)}</p>}
+                                        {/\d/.test(i.place ?? '') && <p className="text-sm text-muted-foreground">{formatAddress({ venueName: i.venueName, venueAddress: i.place, suburb: i.suburb, city: i.city })}</p>}
                                         <p className="mt-1 flex flex-wrap gap-1 text-xs font-semibold text-muted-foreground">
                                           {i.kind === 'custom' && <span className="rounded bg-muted px-1.5 py-0.5">My stop</span>}
                                           {i.stopCategory && <span className="rounded bg-muted px-1.5 py-0.5">{i.stopCategory}</span>}

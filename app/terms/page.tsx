@@ -5,7 +5,9 @@ import { PageShell } from '@/components/page-shell'
 import { LegalStamp } from '@/components/legal-stamp'
 
 export const metadata = {
-  title: 'Terms of use — VibePeep',
+  title: 'Terms of use',
+  alternates: { canonical: '/terms' },
+  openGraph: { title: 'Terms of use · VibePeep', url: '/terms' },
   description: 'The terms for using VibePeep accounts, listings and the events board.',
 }
 

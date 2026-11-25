@@ -14,7 +14,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props) {
   const { doc, version } = await params
   const text = PREVIOUS_LEGAL[`${doc}/${version}`]
-  return { title: text ? `${text.title} (${version}) — VibePeep` : 'Legal archive — VibePeep' }
+  return { title: text ? `${text.title} (${version})` : 'Legal archive', openGraph: { title: text ? `${text.title} (${version}) · VibePeep` : 'Legal archive · VibePeep' } }
 }
 
 export default async function ArchivedLegalPage({ params }: Props) {

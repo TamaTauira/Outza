@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { formatDate, formatPrice, formatTime } from './format'
+import { displayClock, formatDate, formatPrice, formatTime, TIME_TBA } from './format'
 
 test('clock times keep the minutes and a space before am or pm', () => {
   assert.equal(formatTime('19:30'), '7:30 pm')
@@ -8,6 +8,10 @@ test('clock times keep the minutes and a space before am or pm', () => {
   assert.equal(formatTime('00:00'), '12:00 am')
   assert.equal(formatTime('12:05'), '12:05 pm')
   assert.equal(formatTime(null), '')
+  assert.equal(displayClock('00:00', '01:00'), TIME_TBA)
+  assert.equal(displayClock('00:00', '23:59'), 'All day')
+  assert.equal(displayClock(null), TIME_TBA)
+  assert.equal(displayClock('19:30'), '7:30 pm')
 })
 
 test('card dates are short and detail dates spell the day', () => {
