@@ -13,6 +13,8 @@ import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { eventPictureSelect } from '@/lib/images/display-spec'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
+import { priceWhere } from '@/lib/ai-search-query'
+import { isPaidListing } from '@/lib/quality'
 
 export const BOARD_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -34,6 +36,7 @@ export type BoardArgs = {
   subTag: string
   suburb: string
   isFree: boolean
+  maxPrice?: number | null
   isLGBTI: boolean
   dateFrom: string
   dateTo: string
@@ -90,17 +93,8 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
       ],
     })
   }
-  if (a.isFree) {
-    and.push({
-      OR: [
-        { isFree: true },
-        { priceMin: { lte: 0 } },
-        { price: { contains: 'free', mode: 'insensitive' } },
-        { price: { in: ['0', '0.00', '$0', '$0.00'] } },
-      ],
-    })
-    and.push({ OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] })
-  }
+  const price = priceWhere({ isFree: a.isFree, maxPrice: a.maxPrice ?? null })
+  if (price) and.push(price)
   and.push(...PUBLIC_EVENT_AND)
   and.push({ OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] })
   if (a.isLGBTI) where.isLGBTI = true
@@ -111,7 +105,7 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   return where
 }
 
-function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT }>[], city: string, categories: string[], suburb: string) {
+function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT }>[], city: string, categories: string[], suburb: string, isFree = false, maxPrice: number | null = null) {
   let shown = events.map((e) => {
     const opened = redactCommunityPublic(e)
     if (!opened.imageUrl) opened.imageAsset = null
@@ -139,6 +133,13 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
     const want = suburb.toLowerCase()
     shown = shown.filter((e) => (e.suburb ?? '').toLowerCase() === want)
   }
+  if (isFree) shown = shown.filter((e) => !isPaidListing(e))
+  if (maxPrice != null) {
+    shown = shown.filter((e) => {
+      if (e.isFree) return !isPaidListing(e)
+      return typeof e.priceMin === 'number' && e.priceMin <= maxPrice
+    })
+  }
   return shown
 }
 
@@ -156,7 +157,7 @@ async function queryBoard(raw: string) {
     const events = await prisma.event.findMany({ where, orderBy, skip: skip + scanned, take: a.limit, select: BOARD_SELECT })
     scanned += events.length
     fullPage = events.length === a.limit
-    for (const row of shapeBoard(events, a.city, a.categories, a.suburb)) {
+    for (const row of shapeBoard(events, a.city, a.categories, a.suburb, a.isFree, a.maxPrice ?? null)) {
       if (gathered.some((earlier) => earlier.id === row.id || sameShowing(earlier, row))) continue
       gathered.push(row)
       if (gathered.length >= a.limit) break

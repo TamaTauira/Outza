@@ -10,6 +10,7 @@ import { useSession } from 'next-auth/react'
 import { AskSheet } from '@/components/ask-sheet'
 import { MenuSheet } from '@/components/menu-sheet'
 import { navShouldHide, shouldPopSaved } from '@/lib/bottom-nav'
+import type { SearchHints } from '@/lib/search-hints'
 import { navItem } from '@/lib/nav'
 import './bottom-nav.css'
 
@@ -74,6 +75,8 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
   const pathname = usePathname()
   const navRef = useRef<HTMLElement>(null)
   const [askOpen, setAskOpen] = useState(false)
+  const [askRequest, setAskRequest] = useState<{ id: number; text: string; hints?: SearchHints } | null>(null)
+  const askButton = useRef<HTMLButtonElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [askCity, setAskCity] = useState('Sydney')
   const [askToday, setAskToday] = useState('')
@@ -102,7 +105,14 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
   }, [ready, savedCount])
 
   useEffect(() => {
-    const open = () => setAskOpen(true)
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent<{ q?: string; hints?: SearchHints }>).detail
+      const text = detail?.q?.trim() ?? ''
+      setAskCity(pageCity())
+      setAskToday(sydneyToday())
+      if (text) setAskRequest({ id: Date.now(), text, hints: detail?.hints })
+      setAskOpen(true)
+    }
     window.addEventListener('vp-open-ask', open)
     return () => window.removeEventListener('vp-open-ask', open)
   }, [])
@@ -154,13 +164,6 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
   }, [askOpen, menuOpen])
 
   const openAsk = () => {
-    const hero = document.getElementById('ai-search')
-    if (hero instanceof HTMLInputElement && hero.offsetParent !== null && !askOpen) {
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      hero.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' })
-      hero.focus()
-      return
-    }
     setAskCity(pageCity())
     setAskToday(sydneyToday())
     setAskOpen(true)
@@ -199,6 +202,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
         <div className="vp-bottom-nav-inner">
           {LEFT.map(tab)}
           <button
+            ref={askButton}
             type="button"
             className="vp-ask"
             aria-label="Ask: search in your own words"
@@ -235,7 +239,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
           </button>
         </div>
       </nav>
-      <AskSheet open={askOpen} onOpenChange={setAskOpen} city={askCity} today={askToday} />
+      <AskSheet open={askOpen} onOpenChange={setAskOpen} city={askCity} today={askToday} queryRequest={askRequest} returnFocus={() => askButton.current?.focus()} />
       <MenuSheet
         open={menuOpen}
         onOpenChange={setMenuOpen}

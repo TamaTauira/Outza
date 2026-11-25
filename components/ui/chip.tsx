@@ -52,7 +52,7 @@ export function ChipGroup({
         {icon}
         <span>{label}</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label={label}>
+      <div className="flex flex-wrap gap-2" role="group" aria-label={label}>
         {children}
       </div>
     </div>

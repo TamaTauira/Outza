@@ -301,15 +301,36 @@
 .vp-menu-sheet {
   left: 0 !important;
   right: 0 !important;
-  bottom: var(--vp-bottom-nav-offset) !important;
+  bottom: calc(var(--vp-bottom-nav-bar) + env(safe-area-inset-bottom, 0px)) !important;
   z-index: 80 !important;
   width: auto !important;
-  max-height: min(85dvh, calc(100dvh - 4.5rem), 40rem);
+  max-height: min(85dvh, calc(100dvh - var(--vp-bottom-nav-bar) - 1rem), 40rem);
   overflow: auto;
-  border-top-left-radius: 1.25rem;
-  border-top-right-radius: 1.25rem;
-  padding-top: 0.75rem;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 1px solid #e4e0d6;
+  padding-top: 0.5rem;
   padding-bottom: 1.25rem;
+}
+
+.dark .vp-ask-sheet,
+.dark .vp-menu-sheet {
+  border-bottom-color: hsl(var(--border));
+}
+
+/* Ask sits on the nav. The scrim stops at the nav, so the bar stays bright and Ask stays active. */
+html.vp-ask-open:not(.vp-menu-open) .vp-sheet-overlay {
+  bottom: calc(var(--vp-bottom-nav-bar) + env(safe-area-inset-bottom, 0px));
+}
+
+html.vp-ask-open:not(.vp-menu-open) .vp-bottom-nav {
+  z-index: 85;
+}
+
+.vp-ask[aria-expanded='true'] .vp-ask-label {
+  color: hsl(var(--primary));
 }
 
 /* Cover the bar. Sitting above --vp-bottom-nav-offset left a strip beside the raised Ask button. */
@@ -701,5 +722,23 @@ html[data-vp-fold='stack'] .vp-hinge {
   .vp-roam:not([data-ready]),
   .vp-roam-parked {
     bottom: calc(100dvh - env(fold-top) + 1.25rem) !important;
+  }
+}
+
+/* Desktop Ask is a centred panel, not a full-width drawer. */
+@media (min-width: 1024px) and (pointer: fine) {
+  .vp-ask-sheet:not(.vp-menu-sheet) {
+    left: 50% !important;
+    right: auto !important;
+    width: min(40rem, calc(100vw - 3rem)) !important;
+    bottom: 1.5rem !important;
+    transform: translateX(-50%);
+    border-radius: 1.5rem;
+    border-bottom: 0;
+    max-height: min(80dvh, 42rem);
+  }
+
+  html.vp-ask-open:not(.vp-menu-open) .vp-sheet-overlay {
+    bottom: 0;
   }
 }

@@ -15,6 +15,7 @@ test('the mobile list row is one fixed height and each line is clamped', () => {
   assert.match(css, /\.vp-mrow\s*\{[^}]*overflow:\s*hidden/)
   assert.match(css, /\.vp-mrow-title,\s*\.vp-mrow-venue,\s*\.vp-mrow-venue-inline\s*\{[^}]*white-space:\s*nowrap/)
   assert.match(css, /\.vp-mrow-title,\s*\.vp-mrow-venue,\s*\.vp-mrow-venue-inline\s*\{[^}]*text-overflow:\s*ellipsis/)
+  assert.match(css, /\.vp-mrow\.is-title-2 \.vp-mrow-title\s*\{[^}]*-webkit-line-clamp:\s*2/)
   assert.match(css, /\.vp-board-title,\s*\.vp-board-venue\s*\{[^}]*white-space:\s*nowrap/)
   assert.match(css, /\.vp-board-title,\s*\.vp-board-venue\s*\{[^}]*text-overflow:\s*ellipsis/)
   assert.match(css, /\.vp-board-body\s*\{[^}]*max-height:\s*114px/)

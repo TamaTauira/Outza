@@ -473,6 +473,18 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     letter-spacing: -0.011em;
     color: hsl(var(--foreground));
   }
+  /* Local titles get a second line. The shared row stays one line and 92px. */
+  .vp-mrow.is-title-2 {
+    height: auto;
+    max-height: none;
+    grid-template-rows: auto var(--vp-list-line) var(--vp-list-line);
+  }
+  .vp-mrow.is-title-2 .vp-mrow-title {
+    display: -webkit-box;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
   .vp-mrow-title:hover { color: hsl(var(--primary)); }
   .vp-mrow-venue,
   .vp-mrow-venue-inline {

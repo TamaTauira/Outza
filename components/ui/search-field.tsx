@@ -1,7 +1,9 @@
-import type { ReactNode } from 'react'
-import { Search, X } from 'lucide-react'
+'use client'
 
-/** One search field. The list and the map use this, not a one-off input. */
+import type { ReactNode } from 'react'
+import { SearchBar } from '@/components/search-bar'
+
+/** Board and map search. Same bar as the hero, at the 44px control height, with no submit button. */
 export function SearchField({
   id = 'vp-search-field',
   value,
@@ -24,32 +26,21 @@ export function SearchField({
   soft?: boolean
 }) {
   return (
-    <form role="search" className="relative min-w-0" onSubmit={(event) => event.preventDefault()}>
-      <label className="sr-only" htmlFor={id}>{label}</label>
-      <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-primary" aria-hidden />
-      <input
-        id={id}
-        type="search"
-        inputMode="search"
-        enterKeyHint="search"
-        autoComplete="off"
-        value={value}
-        list={list}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape' && onClear) onClear()
-        }}
-        placeholder={placeholder}
-        className={soft
-          ? 'h-11 w-full min-w-0 rounded-full bg-muted pl-12 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:text-sm'
-          : 'h-11 w-full min-w-0 rounded-full border border-input bg-card pl-12 pr-12 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring md:text-sm'}
-      />
-      {value && onClear && (
-        <button type="button" onClick={onClear} aria-label="Clear search" className="absolute right-1 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
-          <X className="h-4 w-4" />
-        </button>
-      )}
-      {trailing}
-    </form>
+    <SearchBar
+      id={id}
+      value={value}
+      onChange={onChange}
+      onSubmit={(event) => event.preventDefault()}
+      placeholder={placeholder}
+      label={label}
+      icon="search"
+      size="md"
+      tone="theme"
+      hideSubmit
+      list={list}
+      onClear={onClear && value ? onClear : undefined}
+      trailing={trailing}
+      className={soft ? 'bg-muted shadow-none ring-0' : undefined}
+    />
   )
 }

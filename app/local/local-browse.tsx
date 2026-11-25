@@ -86,7 +86,7 @@ function MascotFrame({ tile, className }: { tile: LocalTile | null; className?: 
     )
   }
   return (
-    <span className={cn('relative block overflow-hidden bg-white', className)}>
+    <span className={cn('relative block overflow-hidden bg-card', className)}>
       <picture>
         <source srcSet={tile.srcSmall} media="(max-width: 640px)" />
         <img src={tile.src} alt={tile.alt} className="absolute inset-0 h-full w-full object-contain object-center" />
@@ -171,7 +171,7 @@ export function LocalBrowse({
     }
     return picks
   }, [items])
-  const ordered = useMemo(() => days.map(([day, rows]) => [day, sort === 'name' ? [...rows].sort((a, b) => a.title.localeCompare(b.title)) : rows] as [string, LocalItem[]]), [days, sort])
+  const ordered = useMemo(() => days.map(([day, rows]) => [day, sort === 'name' ? [...rows].sort((a, b) => a.title.localeCompare(b.title, 'en', { sensitivity: 'base', ignorePunctuation: true })) : rows] as [string, LocalItem[]]), [days, sort])
 
   const pick = (key: string) => setCategory(category === key ? '' : key)
   const openListing = (href: string) => router.push(href || '/local', { scroll: false })
@@ -189,7 +189,7 @@ export function LocalBrowse({
       >
         <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
           <CityPicker value={city} onChange={setCity} onDark label="City" />
-          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="markets on this weekend" label={`Search names, places, dates and free events in ${city}`} />
+          <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="Markets, weekends" label={`Search names, places, dates and free events in ${city}`} />
         </div>
         <div className="relative mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={onList} className="inline-flex h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
@@ -198,9 +198,9 @@ export function LocalBrowse({
         </div>
       </HeroCard>
 
-      <section className="relative mt-hero" aria-labelledby="local-categories">
+      <section className="relative mt-section" aria-labelledby="local-categories">
         <div className="flex items-end justify-between gap-3">
-          <h2 id="local-categories" className="font-display text-2xl font-bold">What’s your kind of local?</h2>
+          <h2 id="local-categories" className="font-display text-h2">What’s your kind of local?</h2>
         </div>
         <div className="relative mt-4">
           <div className="flex snap-x snap-mandatory gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:none] [mask-image:linear-gradient(to_right,#000_calc(100%-2.5rem),transparent)] min-[1100px]:grid min-[1100px]:snap-none min-[1100px]:grid-cols-10 min-[1100px]:overflow-visible min-[1100px]:[mask-image:none] [&::-webkit-scrollbar]:hidden">
@@ -211,8 +211,8 @@ export function LocalBrowse({
         </div>
       </section>
 
-      <section className="relative mt-10" aria-labelledby="local-finds">
-        <h2 id="local-finds" className="font-display text-2xl font-bold">Little local finds.</h2>
+      <section className="relative mt-section" aria-labelledby="local-finds">
+        <h2 id="local-finds" className="font-display text-h2">Little local finds.</h2>
         <p className="mt-1 text-muted-foreground">Four picks. Swipe across, then the full list is below.</p>
         {!items && !error && <div className="mt-4 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="h-64 w-[78vw] max-w-[280px] shrink-0 animate-pulse rounded-2xl bg-muted" />)}</div>}
         {error && (
@@ -259,10 +259,10 @@ export function LocalBrowse({
         )}
       </section>
 
-      <section id="local-board" className="vp-local-grid mt-12 scroll-mt-24" aria-labelledby="local-board-title">
+      <section id="local-board" className="vp-local-grid mt-section scroll-mt-24" aria-labelledby="local-results">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 id="local-board-title" className="font-display text-2xl font-bold">Your weekend, laid out.</h2>
+            <h2 id="local-results" tabIndex={-1} className="font-display text-h2 outline-none">Your weekend, laid out.</h2>
             <p className="mt-1 text-muted-foreground">Everything happening around you. All in one place.</p>
           </div>
         </div>
@@ -321,7 +321,7 @@ export function LocalBrowse({
             searchLabel="Search local listings"
           />
         </div>
-        <p className="mt-3 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}{searching ? ` · “${searching}”` : ''}</p>
+        <p className="mt-3 text-xs text-muted-foreground" aria-live="polite"><span className="font-semibold text-foreground">{items ? items.length : '…'}</span> listings · {whenLabel}{suburb ? ` · ${suburb}` : ''}{category ? ` · ${localTileFor(category)?.label ?? category}` : ''}{searching ? ` · “${searching}”` : ''}</p>
 
         {mode === 'map' && (
           <div className="mt-3 h-[28rem] sm:h-[36rem]">
@@ -337,6 +337,16 @@ export function LocalBrowse({
         )}
         {mode !== 'map' && !items && !error && <div className="mt-4 space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />)}</div>}
         {mode !== 'map' && items && !items.length && !error && searching && <SearchEmpty query={searching} city={city} onClear={clearQuery} onList={onList} centered />}
+        {mode !== 'map' && items && !items.length && !error && !searching && (
+          <div className="mt-4 rounded-2xl border border-border bg-card p-6">
+            <p className="font-display text-h3">Nothing listed{category ? ` under ${localTileFor(category)?.label ?? 'that'}` : ''} for {city} {whenLabel} yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try a wider window, or be the neighbour who puts the first thing on the noticeboard.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" onClick={() => { setCategory(''); setWhen('30') }} className="h-11 rounded-full bg-muted px-4 text-sm font-semibold">Widen the search</button>
+              <button type="button" onClick={onList} className="h-11 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground">Add yours</button>
+            </div>
+          </div>
+        )}
         {mode !== 'map' && items && !items.length && !error && !searching && (
           <div className="mt-4 rounded-2xl border border-border bg-card p-8 text-center">
             <p className="font-display text-lg font-bold">The noticeboard’s quiet for {city} {whenLabel}.</p>
@@ -389,6 +399,7 @@ export function LocalBrowse({
                           saved={isSaved(localFeedSaveId(ev))}
                           onToggleSave={() => save(ev)}
                           active={hotKey === key || focusKey === key}
+                          wrapTitle
                         />
                       </div>
                     )

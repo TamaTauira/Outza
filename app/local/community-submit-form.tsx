@@ -7,8 +7,31 @@ import { Loader2 } from 'lucide-react'
 import { CITY_NAMES } from '@/lib/cities'
 import { COMMUNITY_PRESETS, COMMUNITY_RECURRENCE, COMMUNITY_SECTIONS, presetByKey } from '@/lib/community-shared'
 
-const field = 'mt-1 h-12 w-full rounded-lg border border-border bg-background px-3 text-base'
+const field = 'mt-1 h-12 w-full scroll-mt-24 rounded-lg border border-border bg-background px-3 text-base'
 const label = 'block text-sm font-semibold'
+
+type FieldKey = 'title' | 'description' | 'startDate' | 'startTime' | 'suburb' | 'organiserName' | 'contactEmail' | 'isPublic' | 'imageRights' | 'imageKidSafe'
+type Errors = Partial<Record<FieldKey, string>>
+
+function listingErrors(f: Fields, imageUrl: string | null): Errors {
+  const errors: Errors = {}
+  if (!f.title.trim()) errors.title = 'Add a title.'
+  if (f.description.trim().length < 20) errors.description = 'Tell people a bit more, at least a sentence.'
+  if (!f.startDate) errors.startDate = 'Pick a date.'
+  if (!f.startTime) errors.startTime = 'Add a start time.'
+  if (!f.suburb.trim()) errors.suburb = 'Add the suburb.'
+  if (!f.organiserName.trim()) errors.organiserName = 'Add the name that should show on the listing.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.contactEmail.trim())) errors.contactEmail = 'Add the email that should get the code.'
+  if (!f.isPublic) errors.isPublic = 'Confirm this is open to the public.'
+  if (imageUrl && !f.imageRights) errors.imageRights = 'Confirm you can publish this photo, or remove it.'
+  if (imageUrl && f.communityKey === 'school-fundraisers' && !f.childrenInImage && !f.imageKidSafe) errors.imageKidSafe = 'Confirm the photo doesn’t show children.'
+  return errors
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null
+  return <p id={id} role="alert" className="mt-1 text-sm font-medium text-destructive">{message}</p>
+}
 
 type Fields = {
   communityKey: string
@@ -41,6 +64,7 @@ type Fields = {
 export function CommunitySubmitForm({ category, preset, email }: { category?: string; preset?: string; email: string }) {
   const startedAt = useRef(0)
   const [busy, setBusy] = useState(false)
+  const [errors, setErrors] = useState<Errors>({})
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [eventId, setEventId] = useState<string | null>(null)
   const [code, setCode] = useState('')
@@ -95,6 +119,15 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
   }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const nextErrors = listingErrors(f, imageUrl)
+    setErrors(nextErrors)
+    const first = (Object.keys(nextErrors) as FieldKey[])[0]
+    if (first) {
+      const node = document.getElementById(`field-${first}`)
+      node?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+      if (node instanceof HTMLElement) node.focus()
+      return
+    }
     setBusy(true)
     try {
       const res = await fetch('/api/community', {
@@ -134,7 +167,7 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
         <h2 className="font-display text-2xl font-bold">{done.approvalState === 'APPROVED' ? 'It’s live. Go on, share it.' : 'Got it. A person will check this one.'}</h2>
         <p className="text-sm text-muted-foreground">School listings, photos of children and anything that looks like spam wait for a human. Everything else can go straight up once the email is confirmed.</p>
         <div className="flex flex-col gap-3">
-          {done.path && <Link href={done.path} className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 font-semibold text-primary-foreground">More Info</Link>}
+          {done.path && <Link href={done.path} className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-5 font-semibold text-primary-foreground">More info</Link>}
           {done.posterPath && <Link href={done.posterPath} className="inline-flex h-12 items-center justify-center rounded-full border border-border px-5 font-semibold">Printable poster</Link>}
           {done.managePath && <Link href={done.managePath} className="text-sm font-semibold text-primary underline">Edit, postpone or cancel</Link>}
         </div>
@@ -159,7 +192,15 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
   }
 
   return (
-    <form onSubmit={submit} className="mt-6 space-y-6">
+    <form noValidate onSubmit={submit} className="mt-6 space-y-6">
+      {Object.keys(errors).length > 0 && (
+        <div role="alert" className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+          <p className="font-semibold">A few bits are missing.</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {Object.values(errors).map((message) => <li key={message}>{message}</li>)}
+          </ul>
+        </div>
+      )}
       <div className="rounded-2xl bg-card p-4 shadow-sm">
         <label className={label}>Start from a template
           <select className={field} value={f.preset} onChange={(e) => applyPreset(e.target.value)}>
@@ -175,7 +216,7 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
         <div className="grid gap-2">
           {COMMUNITY_SECTIONS.map((section) => (
             <label key={section.key} className={`rounded-xl border p-3 text-sm ${f.communityKey === section.key ? 'border-primary bg-primary/5' : 'border-border'}`}>
-              <input type="radio" name="communityKey" value={section.key} checked={f.communityKey === section.key} onChange={set('communityKey')} className="mr-2" />
+              <input type="radio" name="communityKey" value={section.key} checked={f.communityKey === section.key} onChange={set('communityKey')} className="sr-only" />
               <span className="font-semibold">{section.label}</span>
               <span className="mt-0.5 block text-muted-foreground">{section.blurb}</span>
             </label>
@@ -186,17 +227,21 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
       <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
         <label className={label}>
           <span className="flex items-baseline justify-between gap-3">Title <span className="text-xs font-normal text-muted-foreground">{f.title.length}/100</span></span>
-          <input required maxLength={100} value={f.title} onChange={set('title')} className={field} placeholder="Saturday garage sale, Glebe" />
+          <input id="field-title" aria-invalid={!!errors.title} aria-describedby={errors.title ? 'err-title' : undefined} maxLength={100} value={f.title} onChange={set('title')} className={field} placeholder="Saturday garage sale, Glebe" />
+          <FieldError id="err-title" message={errors.title} />
         </label>
         <label className={label}>What’s happening
-          <textarea required minLength={20} maxLength={1500} value={f.description} onChange={set('description')} className={`${field} h-28 py-2`} placeholder="What people will find, what to bring, anything useful." />
+          <textarea id="field-description" aria-invalid={!!errors.description} aria-describedby={errors.description ? 'err-description' : undefined} maxLength={1500} value={f.description} onChange={set('description')} className={`${field} h-28 py-2`} placeholder="What people will find, what to bring, anything useful." />
+          <FieldError id="err-description" message={errors.description} />
         </label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={label}>Date
-            <input required type="date" value={f.startDate} onChange={set('startDate')} className={field} />
+            <input id="field-startDate" aria-invalid={!!errors.startDate} aria-describedby={errors.startDate ? 'err-startDate' : undefined} type="date" value={f.startDate} onChange={set('startDate')} className={field} />
+            <FieldError id="err-startDate" message={errors.startDate} />
           </label>
           <label className={label}>Starts
-            <input required type="time" value={f.startTime} onChange={set('startTime')} className={field} />
+            <input id="field-startTime" aria-invalid={!!errors.startTime} aria-describedby={errors.startTime ? 'err-startTime' : undefined} type="time" value={f.startTime} onChange={set('startTime')} className={field} />
+            <FieldError id="err-startTime" message={errors.startTime} />
           </label>
           <label className={label}>Finishes <span className="font-normal text-muted-foreground">(optional)</span>
             <input type="time" value={f.endTime} onChange={set('endTime')} className={field} />
@@ -222,7 +267,8 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
         <h2 className="font-display text-xl font-bold">Where</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={label}>Suburb
-            <input required value={f.suburb} onChange={set('suburb')} className={field} placeholder="Newtown" autoComplete="address-level2" />
+            <input id="field-suburb" aria-invalid={!!errors.suburb} aria-describedby={errors.suburb ? 'err-suburb' : undefined} value={f.suburb} onChange={set('suburb')} className={field} placeholder="Newtown" autoComplete="address-level2" />
+            <FieldError id="err-suburb" message={errors.suburb} />
           </label>
           <label className={label}>City
             <select value={f.city} onChange={set('city')} className={field}>{CITY_NAMES.map((c) => <option key={c}>{c}</option>)}</select>
@@ -249,10 +295,12 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
       <div className="space-y-4 rounded-2xl bg-card p-4 shadow-sm">
         <h2 className="font-display text-xl font-bold">Who’s running it</h2>
         <label className={label}>Name on the listing
-          <input required value={f.organiserName} onChange={set('organiserName')} className={field} placeholder="Sam, or the Glebe P&C" />
+          <input id="field-organiserName" aria-invalid={!!errors.organiserName} aria-describedby={errors.organiserName ? 'err-organiserName' : undefined} value={f.organiserName} onChange={set('organiserName')} className={field} placeholder="Sam, or the Glebe P&C" />
+          <FieldError id="err-organiserName" message={errors.organiserName} />
         </label>
         <label className={label}>Email for the code <span className="font-normal text-muted-foreground">(kept private)</span>
-          <input required type="email" value={f.contactEmail} onChange={set('contactEmail')} className={field} autoComplete="email" />
+          <input id="field-contactEmail" aria-invalid={!!errors.contactEmail} aria-describedby={errors.contactEmail ? 'err-contactEmail' : undefined} type="email" value={f.contactEmail} onChange={set('contactEmail')} className={field} autoComplete="email" />
+          <FieldError id="err-contactEmail" message={errors.contactEmail} />
         </label>
         <label className={label}>Website or ticket link <span className="font-normal text-muted-foreground">(optional)</span>
           <input value={f.websiteUrl} onChange={set('websiteUrl')} className={field} placeholder="https://" inputMode="url" />
@@ -273,9 +321,10 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
         {imageUrl && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={f.imageRights} onChange={set('imageRights')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
-            <span>I took this photo or I have permission to publish it.</span>
+            <span id="field-imageRights">I took this photo or I have permission to publish it.</span>
           </label>
         )}
+        {errors.imageRights && <FieldError id="err-imageRights" message={errors.imageRights} />}
         {imageUrl && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={f.childrenInImage} onChange={set('childrenInImage')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
@@ -285,14 +334,16 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
         {imageUrl && school && !f.childrenInImage && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={f.imageKidSafe} onChange={set('imageKidSafe')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
-            <span>I confirm this photo does not show students or other children.</span>
+            <span id="field-imageKidSafe">I confirm this photo does not show students or other children.</span>
           </label>
         )}
+        {errors.imageKidSafe && <FieldError id="err-imageKidSafe" message={errors.imageKidSafe} />}
         <input tabIndex={-1} autoComplete="off" aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 opacity-0" value={f.company} onChange={set('company')} name="company" />
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" checked={f.isPublic} onChange={set('isPublic')} className="mt-1 h-4 w-4 accent-[#F05A9D]" />
-          <span>This is open to the public, the details are accurate, and I agree to the <Link href="/disclaimer" className="underline">disclaimer</Link>.</span>
+          <span id="field-isPublic">This is open to the public, the details are accurate, and I agree to the <Link href="/disclaimer" className="underline">disclaimer</Link>.</span>
         </label>
+        <FieldError id="err-isPublic" message={errors.isPublic} />
       </div>
 
       <button type="submit" disabled={busy} className="inline-flex h-12 items-center gap-2 rounded-full bg-primary px-6 text-base font-semibold text-primary-foreground disabled:opacity-60">
