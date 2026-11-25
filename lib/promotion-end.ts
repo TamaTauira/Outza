@@ -1,4 +1,4 @@
-/** Copy after a promoter or admin ends a live campaign. Test mode never implies a refund. */
+/** Copy after a promoter or admin ends a live campaign. Test mode never implies a refund. No Stripe call. */
 export function endCampaignMessage(modes: string[]): string {
   const testOnly = modes.length > 0 && modes.every((mode) => mode === 'test')
   if (testOnly) return 'Campaign ended. Test mode: no card was charged, so nothing is refunded. It leaves the board now.'
