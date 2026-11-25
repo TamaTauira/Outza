@@ -150,10 +150,26 @@ export interface LocalOccurrence { id: string; title: string; category: string; 
  */
 export function localToBoard(o: LocalOccurrence) {
   return {
-    id: `local-${o.id}-${o.date}`, title: o.title, description: (o.description ?? '').slice(0, 400), date: o.date, endDate: null, time: o.startTime, endTime: o.endTime,
+    id: localFeedSaveId({ id: o.id, date: o.date }), title: o.title, description: (o.description ?? '').slice(0, 400), date: o.date, endDate: null, time: o.startTime, endTime: o.endTime,
     venueName: o.address, suburb: o.suburb, category: localCategoryShort(o.category), subTags: [o.schedule], isLGBTI: false,
     isFree: !!o.priceNote && /^free\b/i.test(o.priceNote.trim()), price: o.priceNote ?? 'See listing', ticketUrl: null, city: o.city, href: localPath(o, o.date),
   }
+}
+
+/**
+ * Saved id for one feed row. Community rows are board events. A VibePeep Local
+ * listing is not an event, so its id is per date: local-<listingId>-<YYYY-MM-DD>.
+ */
+export function localFeedSaveId(item: { id: string; date: string; kind?: string | null }) {
+  if (item.kind === 'community') return item.id
+  return `local-${item.id}-${item.date}`
+}
+
+/** Inverse of localFeedSaveId for a Local listing. Community event ids return null. */
+export function parseLocalSaveId(id: string): { listingId: string; date: string } | null {
+  const match = /^local-([A-Za-z0-9]+)-(\d{4}-\d{2}-\d{2})$/.exec(id)
+  if (!match) return null
+  return { listingId: match[1], date: match[2] }
 }
 
 export const fmtDay = (d: string) => toUTC(d).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { savedStorageKey, savesToUpload, visibleSavedCount } from './saved-scope'
+import { keepDeviceLocalSaves, savedStorageKey, savesToUpload, visibleSavedCount } from './saved-scope'
 
 test('saved favourites are empty when signed out and are not shared between accounts', () => {
   assert.equal(savedStorageKey(null), null)
@@ -19,4 +19,11 @@ test('saved favourites are empty when signed out and are not shared between acco
   assert.deepEqual(savesToUpload(null, ['evt-from-someone-else']), [])
   assert.deepEqual(savesToUpload('user-b', []), [])
   assert.deepEqual(savesToUpload('user-b', ['evt-1', 'evt-1', 'evt-2']), ['evt-1', 'evt-2'])
+})
+
+test('a dated local save stays when the account list has only board events', () => {
+  const server = [{ id: 'evt-1' }]
+  const device = [{ id: 'evt-1' }, { id: 'local-abc-2026-11-28' }, { id: 'not-a-local' }]
+  assert.deepEqual(keepDeviceLocalSaves(server, device).map((row) => row.id), ['evt-1', 'local-abc-2026-11-28'])
+  assert.deepEqual(keepDeviceLocalSaves([{ id: 'local-abc-2026-11-28' }], device).map((row) => row.id), ['local-abc-2026-11-28'])
 })

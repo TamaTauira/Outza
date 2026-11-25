@@ -17,7 +17,7 @@ import { categoryIcon, dayLabel } from '@/lib/board'
 import { listPriceLabel } from '@/lib/price'
 import { formatBoardRange } from '@/lib/listing-window'
 import { listPlaceLine } from '@/components/list-clock'
-import { fmtTime } from '@/lib/local-shared'
+import { fmtTime, localFeedSaveId } from '@/lib/local-shared'
 import { EventImage } from '@/components/event-image'
 import { LOCAL_TILES, localTileFor, type LocalTile } from '@/lib/local-tiles'
 import type { PlaceholderSlot } from '@/lib/placeholders'
@@ -247,7 +247,7 @@ export function LocalBrowse({
                     <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                       {priceLine(ev)}
                       <span className="flex shrink-0 items-center">
-                        <SaveButton saved={isSaved(ev.id)} onClick={() => save(ev)} />
+                        <SaveButton saved={isSaved(localFeedSaveId(ev))} onClick={() => save(ev)} />
                         <LocalPlus ev={ev} />
                       </span>
                     </div>
@@ -360,7 +360,7 @@ export function LocalBrowse({
               </button>
               {open && (
                 <div className="vp-board-grid is-local mt-2">
-                  {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} onOpen={() => openListing(ev.href)} />)}
+                  {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(localFeedSaveId(ev))} onSave={() => save(ev)} onOpen={() => openListing(ev.href)} />)}
                 </div>
               )}
               {open && hidden > 0 && <button type="button" onClick={() => setMore((current) => ({ ...current, [day]: true }))} className="mt-2 text-sm font-semibold text-primary">Show {hidden} more {hidden === 1 ? 'event' : 'events'}</button>}
@@ -386,7 +386,7 @@ export function LocalBrowse({
                         <BoardRow
                           ev={board}
                           status={getStatus(board, ev.date, today, nowMinutes)}
-                          saved={isSaved(ev.id)}
+                          saved={isSaved(localFeedSaveId(ev))}
                           onToggleSave={() => save(ev)}
                           active={hotKey === key || focusKey === key}
                         />
@@ -496,7 +496,7 @@ function BoardCard({ ev, hot, onHot, saved, onSave, onOpen }: { ev: LocalItem; h
 
 function SaveButton({ saved, onClick }: { saved: boolean; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} aria-label={saved ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-full', saved ? 'text-primary' : 'text-muted-foreground')}>
+    <button type="button" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onClick() }} aria-pressed={saved} aria-label={saved ? 'Remove from saved' : 'Save'} className={cn('grid h-11 w-11 shrink-0 place-items-center rounded-full', saved ? 'text-primary' : 'text-muted-foreground')}>
       <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} />
     </button>
   )
