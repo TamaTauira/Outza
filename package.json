@@ -34,7 +34,7 @@
     "lighthouse": "^13.6.0",
     "postcss": "8.5.33",
     "prisma": "6.7.0",
-    "tailwind-merge": "2.5.2",
+    "tailwind-merge": "3.7.1",
     "tailwindcss": "3.4.0",
     "tailwindcss-animate": "1.0.7",
     "ts-node": "10.9.2",
