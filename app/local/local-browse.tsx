@@ -399,6 +399,7 @@ export function LocalBrowse({
                           saved={isSaved(localFeedSaveId(ev))}
                           onToggleSave={() => save(ev)}
                           active={hotKey === key || focusKey === key}
+                          wrapTitle
                         />
                       </div>
                     )

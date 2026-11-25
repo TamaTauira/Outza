@@ -98,7 +98,7 @@ interface BoardRowProps {
 const iconBtn = 'relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-md p-0'
 
 /** Portrait list row. Fixed height, one line each for the title, the venue and the chip. */
-export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, active, className }: BoardRowProps & { className?: string }) {
+export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, active, className, wrapTitle = false }: BoardRowProps & { className?: string; wrapTitle?: boolean }) {
   const shownTitle = displayTitle(ev.title)
   const catName = parentCategory(ev.category) || ev.category
   const cat = CATEGORIES.find((c) => c.name === catName)
@@ -127,7 +127,7 @@ export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, a
       data-vp-row="list"
       data-event-id={ev.id}
       data-has-end={hasEnd ? 'true' : 'false'}
-      className={cn('vp-mrow', !hasEnd && 'is-one', done && 'is-done', active && 'is-active', className)}
+      className={cn('vp-mrow', wrapTitle && 'is-title-2', !hasEnd && 'is-one', done && 'is-done', active && 'is-active', className)}
     >
       <span className="sr-only">{listClockLabel(when)}</span>
       <span className="vp-mrow-rail" aria-hidden>
@@ -167,7 +167,7 @@ export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, a
   )
 }
 
-export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active }: BoardRowProps) {
+export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active, wrapTitle = false }: BoardRowProps & { wrapTitle?: boolean }) {
   const shownTitle = displayTitle(ev.title)
   const catName = parentCategory(ev.category) || ev.category
   const cat = CATEGORIES.find((c) => c.name === catName)
@@ -194,7 +194,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
   }
   return (
     <>
-    <MobileEventRow ev={ev} status={status} saved={saved} onToggleSave={onToggleSave} trackSearch={trackSearch} active={active} className="xl:hidden" />
+    <MobileEventRow ev={ev} status={status} saved={saved} onToggleSave={onToggleSave} trackSearch={trackSearch} active={active} wrapTitle={wrapTitle} className="xl:hidden" />
     <div
       onClick={openRow}
       className={cn(

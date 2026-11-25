@@ -8,13 +8,14 @@ const css = readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8')
 const row = readFileSync(new URL('../components/board-row.tsx', import.meta.url), 'utf8')
 const card = readFileSync(new URL('../components/listing-board-card.tsx', import.meta.url), 'utf8')
 
-test('the mobile list row keeps a 92px floor and titles can use two lines', () => {
+test('the mobile list row is one fixed height and each line is clamped', () => {
   assert.match(css, /--vp-list-row-h:\s*92px/)
-  assert.match(css, /\.vp-mrow\s*\{[^}]*min-height:\s*var\(--vp-list-row-h\)/)
-  assert.match(css, /\.vp-mrow\s*\{[^}]*height:\s*auto/)
+  assert.match(css, /\.vp-mrow\s*\{[^}]*height:\s*var\(--vp-list-row-h\)/)
+  assert.match(css, /\.vp-mrow\s*\{[^}]*max-height:\s*var\(--vp-list-row-h\)/)
   assert.match(css, /\.vp-mrow\s*\{[^}]*overflow:\s*hidden/)
-  assert.match(css, /\.vp-mrow-title\s*\{[^}]*-webkit-line-clamp:\s*2/)
+  assert.match(css, /\.vp-mrow-title,\s*\.vp-mrow-venue,\s*\.vp-mrow-venue-inline\s*\{[^}]*white-space:\s*nowrap/)
   assert.match(css, /\.vp-mrow-title,\s*\.vp-mrow-venue,\s*\.vp-mrow-venue-inline\s*\{[^}]*text-overflow:\s*ellipsis/)
+  assert.match(css, /\.vp-mrow\.is-title-2 \.vp-mrow-title\s*\{[^}]*-webkit-line-clamp:\s*2/)
   assert.match(css, /\.vp-board-title,\s*\.vp-board-venue\s*\{[^}]*white-space:\s*nowrap/)
   assert.match(css, /\.vp-board-title,\s*\.vp-board-venue\s*\{[^}]*text-overflow:\s*ellipsis/)
   assert.match(css, /\.vp-board-body\s*\{[^}]*max-height:\s*114px/)
