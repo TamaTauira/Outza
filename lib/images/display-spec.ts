@@ -6,6 +6,7 @@ export const DISPLAY_VERSION = 1
 export interface DisplayManifest {
   v: number
   pending?: boolean
+  failed?: boolean
   attempts?: number
   hash?: string
   base?: string
@@ -70,6 +71,23 @@ export function eventPictureFrom(row: {
     blur: row?.imageBlur ?? null,
     base: manifest.base.replace(/\/$/, ''),
     widths,
+  }
+}
+
+/** Columns written for a finished derivative. The original imageUrl is not one of them. */
+export function displayColumnPatch(input: {
+  width: number
+  height: number
+  color: string
+  blur: string
+  display: DisplayManifest
+}) {
+  return {
+    imageWidth: input.width,
+    imageHeight: input.height,
+    imageColor: input.color,
+    imageBlur: input.blur,
+    imageDisplay: input.display,
   }
 }
 
