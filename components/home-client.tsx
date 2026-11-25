@@ -465,10 +465,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         {view === 'saved' && <SavedBoard today={today} nowMinutes={now?.minutes ?? 0} onBrowse={() => goView('board')} />}
         {view === 'board' && <div ref={boardRef} id="line-up" className="mb-10 scroll-mt-28 overflow-hidden rounded-3xl bg-card shadow-[var(--vp-shadow-md)]">
           {view === 'board' && (
-            <div className="flex items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4">
-              <div className="flex min-w-0 flex-1 items-baseline gap-x-3 max-sm:flex-wrap">
-                <h2 className="shrink-0 font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
-                <p className="min-w-0 flex-1 truncate text-xs leading-tight text-muted-foreground max-sm:basis-full" title={freshLine}>
+            <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
+              <div className="min-w-0">
+                <h2 className="font-display text-lg font-bold leading-tight sm:text-xl">Browse everything</h2>
+                <p className="mt-0.5 text-xs leading-tight text-muted-foreground" title={freshLine}>
                   {freshLine}
                 </p>
               </div>

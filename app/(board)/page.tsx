@@ -6,6 +6,7 @@ import { SITE_SAME_AS } from '@/lib/site-social'
 import { CITY_NAMES } from '@/lib/cities'
 import { siteUrl } from '@/lib/site-url'
 import { brandedTitle } from '@/lib/page-meta'
+import { openGraphImage } from '@/lib/share-image'
 
 export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
@@ -13,10 +14,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const decoded = raw ? decodeURIComponent(raw).trim() : ''
   const city = CITY_NAMES.find((name) => name.toLowerCase() === decoded.toLowerCase()) ?? 'Sydney'
   const title = `What’s on in ${city}: events, gigs and things to do`
+  const branded = brandedTitle(title)
+  const image = openGraphImage(undefined, branded)
   return {
     title,
     alternates: { canonical: '/' },
-    openGraph: { title: brandedTitle(title), url: '/' },
+    openGraph: { title: branded, url: '/', images: [image] },
+    twitter: { card: 'summary_large_image', title: branded, images: [image] },
   }
 }
 

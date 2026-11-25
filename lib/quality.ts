@@ -6,7 +6,7 @@
  * and checks. Do not show it as a Verified badge.
  */
 import { CITIES } from '@/lib/cities'
-import { boardClockLine } from '@/lib/listing-window'
+import { boardClockLine, resolveSchedule } from '@/lib/listing-window'
 import { cityToday } from '@/lib/seo'
 import { readPrice } from '@/lib/price'
 
@@ -299,29 +299,47 @@ export function outzaVerified(ev: VerifiedInput, now = Date.now()): { ok: boolea
   return { ok: missing.length === 0, missing }
 }
 
-const minsOf = (t?: string | null) => {
-  const m = t?.match(/^(\d{1,2}):(\d{2})/)
-  return m ? +m[1] * 60 + +m[2] : null
-}
-
-/** What we can honestly say about the schedule. Missing times stay missing. A finish before the start runs into the next day. */
+/** What we can honestly say about the schedule. A finish earlier than the start is hidden unless it is a real next-morning close. */
 export function scheduleCue(ev: { time?: string | null; endTime?: string | null; endDate?: Date | string | null; date?: Date | string | null }): { label: string; detail: string } {
   const start = ev.time && /^\d{1,2}:\d{2}/.test(ev.time)
   const end = ev.endTime && /^\d{1,2}:\d{2}/.test(ev.endTime)
   const startKey = ev.date ? (typeof ev.date === 'string' ? ev.date : ev.date.toISOString()).slice(0, 10) : ''
   const endKey = ev.endDate ? (typeof ev.endDate === 'string' ? ev.endDate : ev.endDate.toISOString()).slice(0, 10) : ''
-  const multi = !!(startKey && endKey && endKey > startKey)
-  const overnight = !!(start && end && (minsOf(ev.endTime) ?? 0) < (minsOf(ev.time) ?? 0))
+  const sched = resolveSchedule({ date: ev.date ?? (startKey || '1970-01-01'), endDate: ev.endDate, time: ev.time, endTime: ev.endTime }, startKey || '1970-01-01')
   const clock = boardClockLine({ date: ev.date ?? (startKey || '1970-01-01'), endDate: ev.endDate, time: ev.time, endTime: ev.endTime })
-  if (start && end && (overnight || multi)) {
+  if (sched.bogusEnd) {
+    const dates = multiDayRange(startKey, endKey)
+    return { label: 'Finish time looks off', detail: `${clock ?? 'The start is listed'}.${dates} The source finish is earlier than the start, so it is not shown. Confirm the finish with the organiser.` }
+  }
+  const multi = sched.multiDay || !!(startKey && endKey && endKey > startKey)
+  if (start && end && (sched.overnight || multi)) {
     const formatted = clock ?? `${ev.time} – ${ev.endTime}`
-    const tail = overnight && !formatted.includes('until ') ? `${formatted} the next day` : formatted
+    const tail = sched.overnight && !formatted.includes('until ') ? `${formatted} the next day` : formatted
     return { label: multi ? 'More than one day' : 'Runs past midnight', detail: `${tail}. Confirm the finish with the organiser if the time looks off.` }
   }
   if (start && end) return { label: 'Start and finish listed', detail: `${clock ?? `${ev.time} – ${ev.endTime}`}. Confirm with the organiser if the time looks off.` }
-  if (multi) return { label: 'More than one day', detail: `Runs from ${startKey} to ${endKey}.` }
+  if (multi) return { label: 'More than one day', detail: `Runs from ${auDay(startKey)} to ${auDay(endKey)}.` }
   if (start) return { label: 'Start time listed', detail: `${clock ?? ev.time}. A finish time was not on the source listing.` }
   return { label: 'Start time not listed', detail: 'The source did not include a start time. Check the organiser before you go.' }
+}
+
+const AU_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+function auDay(key: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return key
+  const [year, month, day] = key.split('-').map(Number)
+  return `${day} ${AU_MONTHS[month - 1]} ${year}`
+}
+
+function multiDayRange(startKey: string, endKey: string): string {
+  if (!startKey || !endKey || endKey <= startKey) return ''
+  return ` Runs from ${auDay(startKey)} to ${auDay(endKey)}.`
+}
+
+/** A one-day gap is a short run, not an every-day event. "Daily" stays off the public page. */
+export function publicRecurrenceLabel(recurrence: string | null | undefined): string | null {
+  if (!recurrence || recurrence === 'DAILY' || !(recurrence in RECURRENCE_LABEL)) return null
+  return RECURRENCE_LABEL[recurrence as Recurrence]
 }
 
 /**

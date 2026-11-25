@@ -28,14 +28,20 @@ function LinkList({ links, cities = false }: { links: SiteLink[]; cities?: boole
 
 function FootGroup({ title, links, cities = false, open = false }: { title: string; links: SiteLink[]; cities?: boolean; open?: boolean }) {
   return (
-    <details className="vp-foot-acc" {...(open ? { open: true } : {})}>
-      <summary>
-        <span>{title}</span>
-      </summary>
-      <div className="vp-foot-panel">
+    <div className="vp-foot-slot">
+      <details className="vp-foot-acc" {...(open ? { open: true } : {})}>
+        <summary>
+          <span>{title}</span>
+        </summary>
+        <div className="vp-foot-panel">
+          <LinkList links={links} cities={cities} />
+        </div>
+      </details>
+      <div className="vp-foot-static">
+        <p className="vp-foot-label">{title}</p>
         <LinkList links={links} cities={cities} />
       </div>
-    </details>
+    </div>
   )
 }
 

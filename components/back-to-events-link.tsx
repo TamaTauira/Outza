@@ -1,13 +1,33 @@
 'use client'
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import type { MouseEvent, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { returnToPage } from '@/lib/scroll-memory'
 
-/** Plain link home. A prevented click plus history.back() was leaving people on the same page. */
+const PREV_PREFIX = 'outza-prev:'
+
+/**
+ * Back when this tab actually came from the site. A direct, shared or emailed
+ * link has nothing to go back to, so it opens home instead of a no-op history.back().
+ */
 export function BackToEventsLink({ className, children }: { className?: string; children: ReactNode }) {
-  return <Link href="/" className={className}>{children}</Link>
+  const onClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    event.preventDefault()
+    let prev = ''
+    try { prev = sessionStorage.getItem(PREV_PREFIX + window.location.pathname + window.location.search) ?? '' } catch { /* still go home */ }
+    const fromHere = document.referrer.startsWith(window.location.origin)
+    const before = window.location.href
+    if (prev.startsWith('/') && fromHere && window.history.length > 1) {
+      window.history.back()
+      window.setTimeout(() => {
+        if (window.location.href === before) window.location.assign('/')
+      }, 400)
+      return
+    }
+    window.location.assign('/')
+  }
+  return <a href="/" onClick={onClick} className={className}>{children}</a>
 }
 
 /** Back to a specific list (Local, a venue, a city guide) at the scroll position the reader left. */
@@ -18,5 +38,5 @@ export function BackLink({ href, className, children }: { href: string; classNam
     e.preventDefault()
     returnToPage(router, href)
   }
-  return <Link href={href} scroll={false} onClick={onClick} className={className}>{children}</Link>
+  return <a href={href} onClick={onClick} className={className}>{children}</a>
 }

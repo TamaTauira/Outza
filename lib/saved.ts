@@ -202,6 +202,10 @@ export function useSaved() {
   const isSaved = useCallback((id: string) => saved.some((s) => s.id === id), [saved])
 
   const toggle = useCallback((ev: SavedEvent, surface?: string) => {
+    if (status === 'loading') {
+      toast('Still signing you in. Try save again in a moment.')
+      return
+    }
     if (!userId) {
       toast('Sign in to save events', {
         action: { label: 'Sign in', onClick: () => router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`) },
@@ -231,12 +235,16 @@ export function useSaved() {
     }
     writeFor(userId, exists ? list.filter((s) => s.id !== ev.id) : [...list, snapshot])
     void pushToAccount(userId, ev.id, !exists, snapshot, surface).then((result) => {
+      if (result === 'offline') {
+        toast('Saved on this device. It will sync when you are back online.')
+        return
+      }
       if (result !== 'rejected') return
       const now = readFor(userId)
       writeFor(userId, exists ? (now.some((s) => s.id === ev.id) ? now : [...now, snapshot]) : now.filter((s) => s.id !== ev.id))
       toast.error(exists ? 'Could not update saved' : 'Could not save that')
     })
-  }, [userId, router])
+  }, [userId, status, router])
 
   return { saved, isSaved, toggle, signedIn: !!userId }
 }

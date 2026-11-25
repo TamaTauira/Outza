@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   cosDescriptionFromHtml,
+  australianDates,
   descriptionParagraphs,
   descriptionUpdate,
   eventbriteDescriptionFromHtml,
@@ -115,6 +116,11 @@ test('the address opens directions and an online listing does not', () => {
   assert.equal(mapsDirectionsUrl({ venueName: 'Online', venueAddress: 'Online, NSW', latitude: -33.6, longitude: 150.75 }), null)
   const pin = mapsDirectionsUrl({ venueName: 'The Calyx', venueAddress: 'The Calyx', latitude: -33.864, longitude: 151.215, city: 'Sydney' })
   assert.match(decodeURIComponent(pin ?? ''), /-33\.864,151\.215/)
+})
+
+test('US month-first dates in a listing become day month year', () => {
+  assert.equal(australianDates('Dates: June 02, 2026 – July 28, 2026'), 'Dates: 2 June 2026 – 28 July 2026')
+  assert.deepEqual(descriptionParagraphs('Dates: June 02, 2026'), ['Dates: 2 June 2026'])
 })
 
 test('preferDescription skips a dot and keeps the note', () => {

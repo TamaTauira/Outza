@@ -2,15 +2,15 @@ import type { Metadata } from 'next'
 import { auth } from '@/auth'
 import { PromoterSalesHeader } from '@/components/promoter-sales-header'
 import { LocalAds } from '@/app/promoters/marketing'
+import { pageMeta } from '@/lib/page-meta'
 import '../promoters/promoters.css'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Local business ads',
-  alternates: { canonical: '/local-ads' },
-  openGraph: { title: 'Local business ads · VibePeep', description: 'Put a local business beside an event people are already planning to attend. Always labelled Sponsored.', url: '/local-ads' },
+  path: '/local-ads',
   description: 'Put a local business beside an event people are already planning to attend. Always labelled Sponsored.',
-}
+})
 
 export default async function LocalAdsPage() {
   const session = await auth()
@@ -23,7 +23,7 @@ export default async function LocalAdsPage() {
     <div className="min-h-screen bg-background">
       <PromoterSalesHeader accountHref={accountHref} />
       <main className="vp-promoters vp-page-top">
-        <LocalAds href={href} label={isPromoter ? 'Advertise from the dashboard' : 'Advertise my business'} />
+        <LocalAds href={href} label={isPromoter ? 'Advertise from the dashboard' : 'Advertise my business'} heading="h1" />
       </main>
     </div>
   )

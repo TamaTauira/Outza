@@ -10,7 +10,7 @@ import { getSessionUser } from '@/lib/session'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { eventPictureSelect } from '@/lib/images/display-spec'
 import { idFromEventParam, isPastEvent } from '@/lib/seo'
-import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, RECURRENCE_LABEL, type Recurrence } from '@/lib/quality'
+import { activityTitle, priceSummary, scheduleCue, similarity, normalizeTitle, normalizeVenue, statusInfo, sourceLabel, publicRecurrenceLabel } from '@/lib/quality'
 import { queueNearStartRecheck } from '@/lib/verification-pass'
 import { recordReferral, type ReferralSource } from '@/lib/referrals'
 import { recordSignal } from '@/lib/event-signals'
@@ -122,7 +122,7 @@ async function queryEventCore(id: string) {
       quality: {
         status: statusInfo(event.status, event.statusSource),
         price: priceSummary(event),
-        recurrence: event.recurrence ? RECURRENCE_LABEL[event.recurrence as Recurrence] ?? null : null,
+        recurrence: publicRecurrenceLabel(event.recurrence),
         sources: [...new Set([event.source, ...(event.sources ?? [])])].map(sourceLabel),
         checkedAt: (event.lastVerifiedAt ?? event.updatedAt).toISOString(),
         schedule: scheduleCue(event),

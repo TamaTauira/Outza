@@ -201,6 +201,22 @@ const STATE_NAMES: Record<string, string> = {
 export function textMarksAct(text: string | null | undefined): boolean {
   return !!text && /austl\.?\s*cap\.?\s*terr|australian capital territory/i.test(text)
 }
+/**
+ * Towns that are not the catalogue city. A Hobart page must not list a Launceston venue
+ * just because the row was filed under Hobart.
+ */
+const OTHER_TOWN: Record<string, RegExp> = {
+  Hobart: /\b(launceston|devonport|burnie|ulverstone|wynyard|scottsdale|george town|queenstown|strahan|smithton|longford|deloraine|st helens|stanley|penguin|latrobe)\b|\b72(?:[4-9]\d|3\d{2})\b/i,
+}
+
+/** True when the venue text names a different town from the page city. Display only. */
+export function namesAnotherTown(cityName: string, parts: { venueName?: string | null; suburb?: string | null; venueAddress?: string | null }): boolean {
+  const re = OTHER_TOWN[cityName]
+  if (!re) return false
+  const text = [parts.venueName, parts.suburb, parts.venueAddress].filter(Boolean).join(' ')
+  return re.test(text)
+}
+
 /** True when an address clearly names a different state (mis-filed listing). */
 export function addressInOtherState(address: string | null | undefined, city: CityDef): boolean {
   if (textMarksAct(address)) {

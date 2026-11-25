@@ -8,18 +8,18 @@ import { PromotionStudio } from './promotion-studio'
 import { supplySnapshot } from './supply'
 import { TIERS, formatAud } from '@/lib/tiers'
 import { cardPaymentsLive } from '@/lib/payments-mode'
+import { pageMeta } from '@/lib/page-meta'
 
 const boost = TIERS.find((tier) => tier.key === 'SILVER')!
 
 export const dynamic = 'force-dynamic'
 const promoterDescription = `Put your event in front of people planning their weekend. List for free. Boost is ${formatAud(boost.prices[boost.headlineDays])} for ${boost.headlineDays} days.`
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'For promoters',
   description: promoterDescription,
-  alternates: { canonical: '/promoters' },
-  openGraph: { title: 'For promoters · VibePeep', description: promoterDescription, url: '/promoters' },
-}
+  path: '/promoters',
+})
 
 export default async function PromotersPage() {
   const session = await auth()

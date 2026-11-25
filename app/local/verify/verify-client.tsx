@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { PageHeading } from '@/components/page-heading'
+import { Button } from '@/components/ui/button'
 
 function VerifyInner() {
   const params = useSearchParams()
@@ -24,20 +26,24 @@ function VerifyInner() {
     return () => { cancel = true }
   }, [token])
 
+  const title = state === 'ok'
+    ? (result.approvalState === 'APPROVED' ? 'You’re on the board.' : 'Confirmed. A person will take a look.')
+    : 'Confirm your listing'
   return (
-    <main className="vp-page-top mx-auto max-w-xl px-4 pb-10">
-      {state === 'working' && <p className="text-base">Checking that link…</p>}
-      {state === 'bad' && <p className="text-base">{result.error || 'That link has expired. Ask for a fresh code from the listing form.'}</p>}
-      {state === 'ok' && (
-        <div className="space-y-4">
-          <h1 className="font-display text-3xl font-bold">{result.approvalState === 'APPROVED' ? 'You’re on the board.' : 'Confirmed. A person will take a look.'}</h1>
-          <div className="flex flex-col gap-3">
-            {result.path && <Link href={result.path} className="inline-flex h-12 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground">More Info</Link>}
-            {result.posterPath && <Link href={result.posterPath} className="inline-flex h-12 items-center justify-center rounded-full border border-border font-semibold">Printable poster</Link>}
+    <main className="vp-page-top mx-auto max-w-xl px-4 pb-16">
+      <div className="rounded-card border border-border bg-card p-6 shadow-vp-sm">
+        <PageHeading>{title}</PageHeading>
+        {state === 'working' && <p className="mt-3 text-sm text-muted-foreground">Checking that link…</p>}
+        {state === 'bad' && <p className="mt-3 text-sm text-muted-foreground" role="alert">{result.error || 'That link has expired. Ask for a fresh code from the listing form.'}</p>}
+        {state === 'ok' && (
+          <div className="mt-4 flex flex-col gap-3">
+            {result.path && <Button asChild><Link href={result.path}>See the listing</Link></Button>}
+            {result.posterPath && <Button asChild variant="outline"><Link href={result.posterPath}>Printable poster</Link></Button>}
             {result.managePath && <Link href={result.managePath} className="font-semibold text-primary underline">Edit this listing</Link>}
           </div>
-        </div>
-      )}
+        )}
+        <p className="mt-4 text-sm"><Link href="/local" className="font-semibold text-primary underline">Back to Local</Link></p>
+      </div>
     </main>
   )
 }

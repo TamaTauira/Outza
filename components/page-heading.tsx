@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 const LOOK = {
   hero: 'vp-hero-title font-display font-extrabold tracking-tight',
-  page: 'font-display text-h1',
+  page: 'font-display text-h1 font-bold',
   section: 'vp-h2 font-display',
 } as const
 

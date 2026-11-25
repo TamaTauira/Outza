@@ -32,14 +32,14 @@ export function ProfileFields({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <DigitField
           id={`${idPrefix}-year`}
-          name="bday-year"
+          name="birth-year"
           label="Year of birth"
           value={birthYear}
           onValue={onBirthYear}
           onBlur={onBirthYearBlur}
           onEnter={onEnter}
           error={yearError}
-          autoComplete="bday-year"
+          autoComplete="off"
           placeholder="YYYY"
           required={yearRequired}
           minLength={yearRequired ? 4 : undefined}
@@ -47,7 +47,7 @@ export function ProfileFields({
         />
         <DigitField
           id={`${idPrefix}-pc`}
-          name="postal-code"
+          name="home-postcode"
           label="Postcode"
           labelExtra={<span className="text-muted-foreground font-normal"> (optional)</span>}
           value={homePostcode}
@@ -55,7 +55,7 @@ export function ProfileFields({
           onBlur={onPostcodeBlur}
           onEnter={onEnter}
           error={postcodeError}
-          autoComplete="postal-code"
+          autoComplete="off"
           placeholder="4 digits"
           inputRef={postcodeRef}
         />

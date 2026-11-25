@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { EventImage, eventImageSizes } from '@/components/event-image'
 import { eventPictureFrom } from '@/lib/images/display-spec'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, Megaphone, Users, Info, Share2, Repeat, Banknote } from 'lucide-react'
+import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Megaphone, Users, Info, Share2, Repeat, Banknote } from 'lucide-react'
+import { SaveButton } from '@/components/save-button'
 import { Navbar } from '@/components/navbar'
 import { useSaved } from '@/lib/saved'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,7 @@ import { cityDef, displaySuburb } from '@/lib/cities'
 import { cityPath, isPastEvent } from '@/lib/seo'
 import { boardClockLine } from '@/lib/listing-window'
 import { displayTitle } from '@/lib/display-public'
+import { formatDate } from '@/lib/format'
 import { mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { descriptionParagraphs } from '@/lib/description-text'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
@@ -131,8 +133,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
     suburb,
     city: event.city,
   })
-  const dateObj = new Date(event.date)
-  const formattedDate = dateObj.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: city.tz })
+  const formattedDate = formatDate(typeof event.date === 'string' ? event.date : new Date(event.date).toISOString(), 'long')
   const clock = boardClockLine({
     date: event.date,
     endDate: event.endDate,
@@ -222,27 +223,21 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         </Fact>
       </ul>
 
-      {outbound ? sourceLink(`${ticketClass} w-full`) : <p className="text-sm text-muted-foreground">No ticket link yet</p>}
-      <div data-print-hide>
-        <EventReactions eventId={event.id} signedIn={signedIn} />
-      </div>
-      <div data-print-hide className="grid grid-cols-4 gap-2">
-        <button
-          type="button"
-          onClick={() => toggle(event)}
-          aria-label={savedNow ? 'Saved' : 'Save'}
-          className={cn('flex h-10 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition-colors', savedNow ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
-        >
-          <Bookmark className={cn('w-4 h-4', savedNow && 'fill-current')} />
-          Save
-        </button>
-        <ItineraryButton event={event} compact className="h-10 w-full rounded-lg" />
-        <AddToPlanButton eventId={event.id} city={event.city} icon />
+      {outbound && !ended ? sourceLink(`${ticketClass} w-full`) : outbound ? sourceLink('inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary underline underline-offset-2') : <p className="text-sm text-muted-foreground">No ticket link yet</p>}
+      {!ended && (
+        <div data-print-hide>
+          <EventReactions eventId={event.id} signedIn={signedIn} />
+        </div>
+      )}
+      <div data-print-hide className={cn('grid gap-2', ended ? 'grid-cols-1' : 'grid-cols-4')}>
+        {!ended && <SaveButton saved={savedNow} onClick={() => toggle(event)} variant="stack" />}
+        {!ended && <ItineraryButton event={event} compact className="h-11 w-full rounded-xl" />}
+        {!ended && <AddToPlanButton eventId={event.id} city={event.city} icon />}
         <button
           type="button"
           onClick={() => shareEvent(event)}
           aria-label="Share"
-          className="flex h-10 flex-col items-center justify-center rounded-lg border border-border text-xs font-semibold hover:bg-muted"
+          className="flex h-11 flex-col items-center justify-center rounded-xl border border-border text-xs font-semibold hover:bg-muted"
         >
           <Share2 className="w-4 h-4" />Share
         </button>
@@ -317,7 +312,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                 </Link>
               </div>
             )}
-            <h1 className="font-display text-h1">{displayTitle(event?.title)}</h1>
+            <h1 className="font-display text-h1 font-bold">{displayTitle(event?.title)}</h1>
             {event?.provenance && <ListingSources provenance={event.provenance} />}
             {event?.venueUpdate && <OrganiserUpdateNotice notice={event.venueUpdate} kind="venue" />}
             {event?.organiserUpdate && <OrganiserUpdateNotice notice={event.organiserUpdate} />}
@@ -371,12 +366,14 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
       </main>
 
-      <div className="vp-ticket-bar fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          <p className="min-w-0 flex-1 truncate text-sm font-semibold">{price}</p>
-          {outbound ? sourceLink(`${ticketClass} shrink-0`) : <p className="shrink-0 text-sm text-muted-foreground">No ticket link yet</p>}
+      {!ended && (
+        <div className="vp-ticket-bar fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-lg items-center gap-3">
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold">{price}</p>
+            {outbound ? sourceLink(`${ticketClass} shrink-0`) : <p className="shrink-0 text-sm text-muted-foreground">No ticket link yet</p>}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

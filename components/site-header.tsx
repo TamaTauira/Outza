@@ -68,7 +68,7 @@ function AppHeader({ savedCount }: { savedCount: number }) {
             if (key === 'local') {
               return (
                 <Link key="local" href="/local" aria-current={pathname?.startsWith('/local') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 text-xs sm:gap-1.5 sm:px-4 sm:text-sm', pathname?.startsWith('/local') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="VibePeep Local">
-                  <House className="h-4 w-4" /><span className="hidden xl:inline">{navItem('local').label}</span>
+                  <House className="h-4 w-4" /><span className="hidden lg:inline">{navItem('local').label}</span>
                   {pathname?.startsWith('/local') && <span className="absolute -bottom-px left-0 right-0 h-0.5 bg-primary" />}
                 </Link>
               )
@@ -86,7 +86,7 @@ function AppHeader({ savedCount }: { savedCount: number }) {
                 )}
               >
                 <Icon className="h-4 w-4" />
-                <span className="hidden xl:inline">{label}</span>
+                <span className="hidden lg:inline">{label}</span>
                 {key === 'saved' && mounted && savedCount > 0 && (
                   <span className="min-w-[18px] rounded border border-border px-1 py-0.5 text-center font-mono text-xs">{savedCount}</span>
                 )}
@@ -95,12 +95,12 @@ function AppHeader({ savedCount }: { savedCount: number }) {
             )
           })}
           <Link href="/itinerary" aria-current={pathname?.startsWith('/itinerary') ? 'page' : undefined} className={cn('relative flex shrink-0 items-center gap-1 px-2 text-xs sm:gap-1.5 sm:px-4 sm:text-sm', pathname?.startsWith('/itinerary') ? 'text-foreground' : 'text-muted-foreground hover:text-foreground')} aria-label="Itinerary">
-            <CalendarPlusIcon className="h-4 w-4" /><span className="hidden xl:inline">{navItem('itinerary').label}</span>
+            <CalendarPlusIcon className="h-4 w-4" /><span className="hidden lg:inline">{navItem('itinerary').label}</span>
             {pathname?.startsWith('/itinerary') && <span className="absolute -bottom-px left-0 right-0 h-0.5 bg-primary" />}
           </Link>
           <button type="button" className="relative flex shrink-0 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground sm:gap-1.5 sm:px-4 sm:text-sm" aria-label="Ask: search in your own words" onClick={() => window.dispatchEvent(new Event('vp-open-ask'))}>
             <Sparkles className="h-4 w-4" aria-hidden />
-            <span className="hidden xl:inline">{navItem('ask').label}</span>
+            <span className="hidden lg:inline">{navItem('ask').label}</span>
           </button>
         </nav>
         <div className="vp-header-tools ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
@@ -163,23 +163,23 @@ function MarketingHeader({ accountHref }: { accountHref: string }) {
   const user = status === 'authenticated' ? data?.user : null
   const isPromoter = user?.role === 'PROMOTER' || user?.role === 'ADMIN'
   return (
-    <SiteHeaderFrame grow>
+    <SiteHeaderFrame>
       <LogoHomeLink size="md" className="vp-header-brand" />
-      <p className="hidden shrink-0 text-sm font-semibold sm:block">for Promoters</p>
-      <nav className="flex min-w-0 basis-full flex-wrap items-center justify-end gap-x-3 gap-y-2 text-sm sm:basis-auto sm:flex-1" aria-label="Promoters">
+      <p className="hidden shrink-0 text-sm font-semibold lg:block">for Promoters</p>
+      <nav className="ml-auto flex min-w-0 items-center justify-end gap-2 text-sm sm:gap-3" aria-label="Promoters">
         <Link href="/promoters#packages" className="hidden whitespace-nowrap font-medium text-muted-foreground hover:text-foreground sm:inline">Pricing</Link>
         <Link href="/promoters#faq" className="hidden whitespace-nowrap font-medium text-muted-foreground hover:text-foreground md:inline">FAQ</Link>
-        <Link href="/local-ads" className="whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">Local business ads</Link>
+        <Link href="/local-ads" className="hidden whitespace-nowrap font-medium text-muted-foreground hover:text-foreground sm:inline">Local business ads</Link>
         <Link href="/" className="hidden whitespace-nowrap font-medium text-muted-foreground hover:text-foreground lg:inline">Back to events</Link>
         {user ? (
           <>
-            <Link href={isPromoter ? '/promoter' : accountHref} className="whitespace-nowrap font-semibold text-foreground">{isPromoter ? 'Go to dashboard' : 'Open promoter tools'}</Link>
+            <Link href={isPromoter ? '/promoter' : accountHref} className="whitespace-nowrap font-semibold text-foreground">{isPromoter ? 'Dashboard' : 'Promoter tools'}</Link>
             <button type="button" onClick={() => signOut({ redirectTo: '/promoters' })} className="inline-flex min-h-11 items-center whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">Sign out</button>
           </>
         ) : status === 'loading' ? null : (
           <>
-            <Link href="/login?next=/promoter" className="whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">{COPY.signIn}</Link>
-            <Button asChild size="sm"><Link href={accountHref}>Create free account</Link></Button>
+            <Link href="/login?next=/promoter" className="inline-flex min-h-11 items-center whitespace-nowrap font-medium text-muted-foreground hover:text-foreground">{COPY.signIn}</Link>
+            <Button asChild size="sm"><Link href={accountHref}><span className="sm:hidden">Join</span><span className="hidden sm:inline">Create free account</span></Link></Button>
           </>
         )}
       </nav>

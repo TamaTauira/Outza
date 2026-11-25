@@ -49,11 +49,14 @@ export function addDays(key: string, n: number): string {
 }
 export const utcDay = (key: string) => new Date(`${key}T00:00:00Z`)
 
-export function dayLabel(key: string, today?: string | null): string {
+export function dayLabel(key: string, today?: string | null, style: 'full' | 'short' = 'full'): string {
   const d = utcDay(key)
   const year = key.slice(0, 4)
   const showYear = !!today && !today.startsWith(year)
-  const base = `${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${showYear ? ` ${year}` : ''}`
+  const base = style === 'short'
+    ? `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+    : `${WEEKDAYS[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}${showYear ? ` ${year}` : ''}`
+  if (style === 'short') return base
   if (today && key === today) return `Today · ${base}`
   if (today && key === addDays(today, 1)) return `Tomorrow · ${base}`
   return base

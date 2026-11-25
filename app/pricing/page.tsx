@@ -3,16 +3,16 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { PageShell } from '@/components/page-shell'
 import { BOOSTS } from '@/lib/sponsorship'
-import { DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
+import { ADDONS, DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 import { DIGITAL_SERVICE_LINE } from '@/lib/digital-service'
 import { cardPaymentsLive } from '@/lib/payments-mode'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Pricing',
-  alternates: { canonical: '/pricing' },
-  openGraph: { title: 'Pricing · VibePeep', description: 'Boost, Spotlight, Headliner and Promoter Pro. Prices in AUD, GST included. Listing an event stays free.', url: '/pricing' },
+  path: '/pricing',
   description: 'Boost, Spotlight, Headliner and Promoter Pro. Prices in AUD, GST included. Listing an event stays free.',
-}
+})
 
 export default function PricingPage() {
   const cardsLive = cardPaymentsLive()
@@ -21,7 +21,7 @@ export default function PricingPage() {
       <main className="vp-wrap vp-page-top px-4 pb-10 sm:px-6">
         <h1 className="font-display text-h1">What promotion costs</h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">All prices are AUD and include GST. Listing an event is free. Campaigns are a one-off payment for that event. The same packages, at these prices, are on the promoter page and in checkout.</p>
-        {!cardsLive && <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Boost, Spotlight and Headliner activate from the promoter dashboard. While card payments are in test mode, that does not charge a card and the invoice is marked test. Evening and day passes are not on sale until card payments are switched on. The dashboard takes a quote for those and does not charge a card.</p>}
+        {!cardsLive && <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Card payments are not switched on yet. Boost, Spotlight and Headliner are confirmed from the promoter dashboard and do not charge a card. Evening and day passes are not on sale until card payments are switched on. The dashboard takes a quote for those.</p>}
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{DIGITAL_SERVICE_LINE}</p>
 
         <div className="mt-8 grid gap-5 md:grid-cols-3">
@@ -104,7 +104,7 @@ export default function PricingPage() {
             </tbody>
           </table>
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">Placements are labelled Sponsored. Headliner stays in the event’s city. Front-row is the add-on that can show in every city. GST is included in every price above.</p>
+        <p className="mt-4 text-sm text-muted-foreground">Placements are labelled Sponsored. Headliner stays in the event’s city. {ADDONS.find((addon) => addon.key === 'FRONTROW')?.name} is the add-on that can show in every city. GST is included in every price above.</p>
         <p className="mt-6 text-sm"><Link href="/promoters" className="text-primary underline">Promoter packages and add-ons</Link><span className="text-muted-foreground"> · </span><Link href="/terms/promoters" className="text-primary underline">Promoter & Advertising Terms</Link><span className="text-muted-foreground"> · </span><Link href="/refunds" className="text-primary underline">Refunds</Link></p>
       </main>
     </PageShell>

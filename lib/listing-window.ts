@@ -161,11 +161,16 @@ export function resolveSchedule(ev: SlotInput, day: string): ResolvedSchedule {
       bogusEnd = true
       end = null
       endKey = null
-    } else if (intoNextMorning || almostDay || spanDays > 0) {
+    } else if (intoNextMorning || almostDay || spanDays === 1) {
       overnight = true
       const days = spanDays > 0 ? spanDays : 1
       end = endClock + days * 1440
       endKey = spanDays > 0 ? endDateKey : addDaysKey(startKey, 1)
+    } else if (spanDays > 1) {
+      // A later last-date with a clock that runs backwards is a bad finish, not a multi-week overnight.
+      bogusEnd = true
+      end = null
+      endKey = endDateKey
     } else {
       bogusEnd = true
       end = null

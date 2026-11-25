@@ -3,13 +3,13 @@ import { ArrowLeft } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { PageShell } from '@/components/page-shell'
 import { LegalStamp } from '@/components/legal-stamp'
+import { pageMeta } from '@/lib/page-meta'
 
-export const metadata = {
+export const metadata = pageMeta({
   title: 'Terms of use',
-  alternates: { canonical: '/terms' },
-  openGraph: { title: 'Terms of use · VibePeep', url: '/terms' },
+  path: '/terms',
   description: 'The terms for using VibePeep accounts, listings and the events board.',
-}
+})
 
 const SECTIONS: { title: string; body: string[] }[] = [
   {

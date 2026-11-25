@@ -51,15 +51,15 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: 'Short boosts',
     body: [
-      'An evening pass or day pass that has not been shown can be refunded from the dashboard within 48 hours of the start you picked (7 days on Venue Plus). That button is an extra window. It is not the only way to ask.',
+      'An evening pass or day pass that has not been shown can be refunded from the dashboard within 48 hours of the start you picked. That button is an extra window. It is not the only way to ask.',
       'Once a boost has been shown, the self-serve button closes. Write to us if we removed it, the event was cancelled, or it did not appear as described. A quote request is not a charge.',
     ],
   },
   {
     title: 'Monthly plans',
     body: [
-      'Local Pro, Growth and Venue Plus can start with one free month (30 days). The card is charged when that month ends, then the same amount each month until you cancel. Cancel during the free month and you are not charged. One free month per account and per organisation.',
-      'A paid period can also be refunded from billing when it is still inside the plan’s refund window and no short boost has been shown. Upgrades charge the difference then. Downgrades wait for the next renewal. Removing the service for a reason other than your breach refunds the unused part of the period you already paid.',
+      'Monthly organiser plans are not on sale. A plan that is already running renews until you cancel. Cancel before the renewal if you do not want the next period.',
+      'If we stop a plan you have already paid for, for a reason other than your breach, the unused part of that period is refunded. The Australian Consumer Law still applies.',
     ],
   },
   {
@@ -100,7 +100,7 @@ export default function RefundsPage() {
         <h1 className="font-display text-h1 mt-2">Refunds</h1>
         <LegalStamp doc="refunds" />
         <p className="mt-4 max-w-2xl text-muted-foreground leading-relaxed">
-          Multi-day campaigns, Promoter Pro and local recommendations are one-off purchases. A monthly organiser plan can start with one free month, then renews until you cancel. The same rules are in the <Link href="/terms/promoters" className="underline underline-offset-2 hover:text-foreground">Promoter &amp; Advertising Terms</Link>.
+          Boost, Spotlight, Headliner, Promoter Pro and local recommendations are one-off purchases at the prices on the pricing page. A monthly organiser plan is not on sale. A plan that is already running renews until you cancel. The same rules are in the <Link href="/terms/promoters" className="underline underline-offset-2 hover:text-foreground">Promoter &amp; Advertising Terms</Link>.
         </p>
         <p className="mt-4 max-w-2xl rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm leading-relaxed">{ACL}</p>
         <div className="mt-10 max-w-2xl space-y-8">

@@ -227,8 +227,15 @@ export function descriptionUpdate(current: string | null | undefined, incoming: 
   return next
 }
 
+const US_MONTH_DATE = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+0?(\d{1,2}),\s+(\d{4})\b/g
+
+/** "June 02, 2026" is a US listing date. Public copy uses day month year. */
+export function australianDates(text: string): string {
+  return text.replace(US_MONTH_DATE, (_all, month: string, day: string, year: string) => `${Number(day)} ${month} ${year}`)
+}
+
 export function descriptionParagraphs(text: string | null | undefined): string[] {
-  const clean = sanitizeDescription(text)
+  const clean = australianDates(sanitizeDescription(text) ?? '')
   if (!clean) return []
   return clean.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean)
 }
