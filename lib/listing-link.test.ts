@@ -49,6 +49,15 @@ test('ticket link wins, then source, organiser, then a search on the source site
   assert.match(search.href, /Jazz/)
 })
 
+test('a missing link is not a Google search', () => {
+  assert.equal(eventOutbound({ title: 'Harbour Sunset Concert', source: 'curated' }), null)
+  assert.equal(eventOutbound({ title: 'Harbour Sunset Concert', source: 'promoter' }), null)
+  assert.equal(eventOutbound({ title: 'Harbour Sunset Concert' }), null)
+  const real = eventOutbound({ title: 'Harbour Sunset Concert', source: 'curated', sourceUrl: 'https://venue.example/gig' })
+  assert.equal(real?.href, 'https://venue.example/gig')
+  assert.equal(real?.label, 'More info')
+})
+
 test('an info-page URL stored in ticketUrl is More info, and junk URLs are dropped', () => {
   const info = eventOutbound({ title: 'Markets', source: 'cityofsydney', ticketUrl: 'https://whatson.cityofsydney.nsw.gov.au/events/rocks-market' })
   assert.equal(info.label, 'More info')

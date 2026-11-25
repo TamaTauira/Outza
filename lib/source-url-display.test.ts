@@ -36,4 +36,14 @@ test('Oztix drops the resize query so the full file is used', () => {
 test('presigned links are not sent through the image optimiser', () => {
   assert.equal(canOptimizeImage('https://images.humanitix.com/i/abc.png@seo-500.jpg'), true)
   assert.equal(canOptimizeImage('https://bucket.s3.amazonaws.com/a.jpg?X-Amz-Signature=abc'), false)
+  assert.equal(canOptimizeImage('https://s1.ticketm.net/dam/a_TABLET_LANDSCAPE_LARGE_16_9.jpg'), false)
+  assert.equal(canOptimizeImage('http://images.squarespace-cdn.com/a.jpg'), false)
+})
+
+test('http image hosts are loaded over https', () => {
+  assert.equal(
+    displaySourceUrl('http://images.squarespace-cdn.com/content/v1/abc/photo.jpg', 800),
+    'https://images.squarespace-cdn.com/content/v1/abc/photo.jpg',
+  )
+  assert.equal(canOptimizeImage('https://images.squarespace-cdn.com/content/v1/abc/photo.jpg'), true)
 })

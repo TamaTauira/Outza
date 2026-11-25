@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { EventImage } from '@/components/event-image'
+import { EventImage, eventImageSizes } from '@/components/event-image'
 import { eventPictureFrom } from '@/lib/images/display-spec'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Bookmark, Megaphone, Users, Info, Share2, Repeat, Banknote } from 'lucide-react'
@@ -24,6 +24,7 @@ import { FollowPromoterButton } from '@/components/follow-promoter-button'
 import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
+import { cityPath, isPastEvent } from '@/lib/seo'
 import { boardClockLine } from '@/lib/listing-window'
 import { displayTitle } from '@/lib/display-public'
 import { mapsDirectionsUrl, placeLine } from '@/lib/place'
@@ -149,7 +150,16 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
   const outbound = eventOutbound(event)
-  const sourceLink = (className: string) => (
+  const ended = isPastEvent({
+    date: event.date,
+    endDate: event.endDate,
+    time: event.time,
+    endTime: event.endTime,
+    endsAt: event.endsAt,
+    allDay: event.allDay,
+    city: event.city,
+  })
+  const sourceLink = (className: string) => outbound && (
     <a
       href={outbound.href}
       onClick={() => {
@@ -208,13 +218,15 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
         <Fact icon={Banknote}>
           <span className="font-semibold">{price}</span>
-          {event.quality?.price?.fees && <span className="block text-xs font-normal text-muted-foreground">{event.quality.price.fees}</span>}
+          {outbound?.kind === 'ticket' && event.quality?.price?.fees && <span className="block text-xs font-normal text-muted-foreground">{event.quality.price.fees}</span>}
         </Fact>
       </ul>
 
-      {sourceLink(`${ticketClass} w-full`)}
-      <EventReactions eventId={event.id} signedIn={signedIn} />
-      <div className="grid grid-cols-4 gap-2">
+      {outbound ? sourceLink(`${ticketClass} w-full`) : <p className="text-sm text-muted-foreground">No ticket link yet</p>}
+      <div data-print-hide>
+        <EventReactions eventId={event.id} signedIn={signedIn} />
+      </div>
+      <div data-print-hide className="grid grid-cols-4 gap-2">
         <button
           type="button"
           onClick={() => toggle(event)}
@@ -250,7 +262,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         <div className="flex flex-col gap-[var(--vp-card-gap)] lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-[var(--vp-card-gap)]">
           <header className="min-w-0 space-y-3 lg:col-start-1">
             <EventGallery event={event}>
-              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) && !storedPhotoIsLowQuality(event.imageWidth, event.imageHeight) && !declaredPhotoIsLowQuality(event.imageUrl) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border bg-black')}>
+              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) && !storedPhotoIsLowQuality(event.imageWidth, event.imageHeight) && !declaredPhotoIsLowQuality(event.imageUrl) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border')}>
                 <EventImage
                   key={event.id}
                   image={event.imageAsset}
@@ -260,7 +272,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
                   sourceHeight={event.imageHeight}
                   kind="hero"
                   alt={event?.title ?? 'Event'}
-                  sizes="(max-width: 1024px) calc(100vw - 2rem), 1100px"
+                  sizes={eventImageSizes('page')}
                   priority
                   category={event.communityKey || event.category}
                   slot="hero"
@@ -294,6 +306,17 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             )}
 
             <StatusBanner status={event.quality?.status ?? null} />
+            {ended && (
+              <div className="rounded-xl border border-border bg-card px-4 py-3" role="status">
+                <p className="font-display text-lg font-bold">This event has ended</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  It was on {formattedDate}{where ? ` · ${where}` : ''}. This page stays up, so a link from a message, a calendar or a share still opens.
+                </p>
+                <Link href={cityPath(city)} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline underline-offset-2">
+                  See what’s on in {city.name}
+                </Link>
+              </div>
+            )}
             <h1 className="font-display text-h1">{displayTitle(event?.title)}</h1>
             {event?.provenance && <ListingSources provenance={event.provenance} />}
             {event?.venueUpdate && <OrganiserUpdateNotice notice={event.venueUpdate} kind="venue" />}
@@ -326,15 +349,19 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <div className="min-w-0 space-y-4 lg:col-start-1">
             {event?.description ? <Lowdown text={event.description} /> : null}
             <EventExtras event={event} />
-            <ListingTrustActions event={event} />
+            <div data-print-hide>
+              <ListingTrustActions event={event} />
+            </div>
           </div>
         </div>
 
-        <LocalRecommendations eventId={event.id} eventTitle={event.title} venue={event.venueName} />
+        <div data-print-hide>
+          <LocalRecommendations eventId={event.id} eventTitle={event.title} venue={event.venueName} />
+        </div>
 
         {(related?.length ?? 0) > 0 && (
-          <div className="mt-8">
-            <h2 className="font-display text-xl font-bold mb-4">If you like this, you’ll love…</h2>
+          <div className="mt-8" data-print-hide>
+            <h2 className="font-display text-xl font-bold mb-4">{ended ? 'Similar events coming up' : 'If you like this, you’ll love…'}</h2>
             <div className="grid grid-cols-1 items-stretch gap-[var(--vp-card-gap)] md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {(related ?? []).slice(0, 6).map((ev: any, i: number) => (
                 <EventCard key={ev?.id ?? i} event={ev} index={i} />
@@ -344,10 +371,10 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         )}
       </main>
 
-      <div className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden" style={{ bottom: 'var(--vp-bottom-nav-offset, 4.5rem)' }}>
-        <div className="mx-auto flex max-w-lg items-center gap-3 pb-[env(safe-area-inset-bottom)]">
+      <div className="vp-ticket-bar fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-lg items-center gap-3">
           <p className="min-w-0 flex-1 truncate text-sm font-semibold">{price}</p>
-          {sourceLink(`${ticketClass} shrink-0`)}
+          {outbound ? sourceLink(`${ticketClass} shrink-0`) : <p className="shrink-0 text-sm text-muted-foreground">No ticket link yet</p>}
         </div>
       </div>
     </div>

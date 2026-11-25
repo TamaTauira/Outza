@@ -9,7 +9,7 @@ import { eventPath } from '@/lib/seo'
 import { formatPrice, formatTime } from '@/lib/board'
 import { displayPriceValue, displayTitle, parentCategory } from '@/lib/display-public'
 import { tierDef } from '@/lib/tiers'
-import { EventImage } from '@/components/event-image'
+import { EventImage, eventImageSizes } from '@/components/event-image'
 import { ReachBeacon } from '@/components/reach-beacon'
 import type { ClientImage } from '@/lib/images/spec'
 import { eventPictureFrom } from '@/lib/images/display-spec'
@@ -78,8 +78,8 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   return (
     <article aria-hidden={hidden} className="relative w-[78vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card shadow-md lg:w-auto lg:max-w-none">
       <Link href={eventPath(it)} tabIndex={hidden ? -1 : undefined} className="block">
-        <div className="relative aspect-[4/5] overflow-hidden bg-black sm:aspect-[4/3]">
-          <EventImage image={it.imageAsset} picture={eventPictureFrom(it)} src={it.imageUrl} sourceWidth={it.imageWidth} sourceHeight={it.imageHeight} kind="featured" alt={title} sizes="(max-width: 1023px) min(78vw, 320px), 320px" category={category} slot="featured" />
+        <div className="relative aspect-[4/5] overflow-hidden bg-card sm:aspect-[4/3]">
+          <EventImage image={it.imageAsset} picture={eventPictureFrom(it)} src={it.imageUrl} sourceWidth={it.imageWidth} sourceHeight={it.imageHeight} kind="featured" alt={title} sizes={eventImageSizes('featured')} category={category} slot="featured" />
           {badge && <span title={`${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>{badge.label}</span>}
           <span className="vp-media-chip absolute bottom-3 left-3 z-10 rounded-full px-2 py-0.5 text-xs font-semibold">{category}</span>
           <span className="vp-media-chip absolute bottom-3 right-3 z-10 rounded-full px-2 py-0.5 font-mono text-xs">{priceText}</span>

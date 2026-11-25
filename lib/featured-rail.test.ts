@@ -330,3 +330,15 @@ test('recent heat outranks lifetime saves and paid cards ignore heat', () => {
   assert.equal(paidRows[0]?.tier, 'GOLD')
   assert.ok(paidRows.length / mixed.length <= 1 / 3 + 1e-9)
 })
+
+test('a show that runs past midnight stays on the rail until it finishes', () => {
+  const items = rail({
+    nowMinutes: 30,
+    day: '2026-11-01',
+    today: [
+      card({ id: 'late', date: '2026-10-31T00:00:00.000Z', time: '21:00', endTime: '01:00' }),
+      card({ id: 'done', date: '2026-10-31T00:00:00.000Z', time: '18:00', endTime: '20:00' }),
+    ],
+  })
+  assert.deepEqual(ids(items), ['late'])
+})

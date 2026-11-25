@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
 import { SheetHandle, sheetCloseClass } from '@/components/ui/sheet'
 import { AddToPlanButton } from '@/components/add-to-plan'
-import { EventImage } from '@/components/event-image'
+import { EventImage, eventImageSizes } from '@/components/event-image'
 import { eventPictureFrom } from '@/lib/images/display-spec'
 import { EventReactions } from '@/components/event-reactions'
 import { ItineraryButton } from '@/components/itinerary-button'
@@ -184,7 +184,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
             <X className="h-5 w-5" />
           </Dialog.Close>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <div className="relative aspect-[16/9] bg-black sm:aspect-[2/1]">
+            <div className="relative aspect-[16/9] bg-background sm:aspect-[2/1]">
               <EventImage
                 image={event.imageAsset as never}
                 picture={eventPictureFrom(event)}
@@ -193,12 +193,12 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 sourceHeight={event.imageHeight}
                 kind="hero"
                 alt={event.title}
-                sizes="(max-width: 640px) 100vw, 720px"
+                sizes={eventImageSizes('sheet')}
                 category={event.communityKey || event.category}
                 slot="hero"
                 wideSlot="hero-wide"
               />
-              {event.isFree && <span className="absolute left-3 top-3 rounded-lg bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white">Free</span>}
+              {event.isFree && <span className="vp-media-chip absolute left-3 top-3 z-10 rounded-lg bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white">Free</span>}
             </div>
             <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
               <div className="flex flex-wrap gap-1.5">
@@ -220,7 +220,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                     <span>
                       <span className="font-medium">{event.venueName}</span>
                       {suburb ? <span className="text-muted-foreground"> · {suburb}</span> : null}
-                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${event.venueName || event.title}`} className="mt-0.5 block text-primary underline underline-offset-2">Directions</a> : null}
+                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${event.venueName || event.title}`} className="mt-1 inline-flex min-h-11 items-center text-primary underline underline-offset-2">Directions</a> : null}
                     </span>
                   </li>
                 )}
@@ -253,19 +253,23 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                   <Share2 className="h-4 w-4 shrink-0" /> Share
                 </button>
               </div>
-              <a
-                href={outbound.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => {
-                  const kind = outbound.kind === 'ticket' ? 'ticket' : 'info'
-                  const body = new Blob([JSON.stringify({ kind })], { type: 'application/json' })
-                  navigator.sendBeacon?.(`/api/events/${event.id}/click`, body)
-                }}
-                className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-base font-semibold text-primary-foreground"
-              >
-                {outbound.label} <ExternalLink className="h-4 w-4" />
-              </a>
+              {outbound ? (
+                <a
+                  href={outbound.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    const kind = outbound.kind === 'ticket' ? 'ticket' : 'info'
+                    const body = new Blob([JSON.stringify({ kind })], { type: 'application/json' })
+                    navigator.sendBeacon?.(`/api/events/${event.id}/click`, body)
+                  }}
+                  className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary text-base font-semibold text-primary-foreground"
+                >
+                  {outbound.label} <ExternalLink className="h-4 w-4" />
+                </a>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground">No ticket link yet</p>
+              )}
               <a
                 href={path}
                 onClick={(click) => {

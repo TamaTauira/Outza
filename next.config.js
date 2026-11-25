@@ -25,6 +25,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'res.cloudinary.com' },
       { protocol: 'https', hostname: '**.moshtix.com.au' },
       { protocol: 'https', hostname: '**.squarespace.com' },
+      { protocol: 'https', hostname: '**.squarespace-cdn.com' },
       { protocol: 'https', hostname: '**.wixstatic.com' },
       { protocol: 'https', hostname: '**.framerusercontent.com' },
       { protocol: 'https', hostname: '**.wsimg.com' },

@@ -102,7 +102,7 @@ export function EventExtras({ event }: { event: any }) {
   return (
     <div className="space-y-4">
       {showMap && (
-        <section>
+        <section data-print-hide>
           <h2 className="font-display font-semibold text-base mb-2 flex items-center gap-1.5"><MapIcon className="w-4 h-4 text-primary" />Where to rock up</h2>
           <div className="relative h-40 sm:h-48 rounded-lg overflow-hidden bg-muted border border-border">
             <VenueMap lat={precise ? event.latitude : null} lng={precise ? event.longitude : null} query={place} city={event.city} letter={event.category?.[0] ?? 'E'} label={event.venueName || event.title} />

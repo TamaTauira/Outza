@@ -3,10 +3,8 @@
  * a different day, and a second copy of the same night at the same venue.
  * Nothing here deletes a row.
  */
-import { CITIES } from '@/lib/cities'
-import { toSydneyParts } from '@/lib/event-store-parts'
 import { normalizeTitle, normalizeVenue, similarity, SOURCES } from '@/lib/quality'
-import { cityToday } from '@/lib/seo'
+import { isPastEvent } from '@/lib/seo'
 
 const MONTHS: Record<string, number> = {
   january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3, april: 4, apr: 4,
@@ -77,35 +75,9 @@ function minutes(value?: string | null): number | null {
   return match ? Number(match[1]) * 60 + Number(match[2]) : null
 }
 
-function addDays(key: string, n: number): string {
-  const d = new Date(`${key}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + n)
-  return d.toISOString().slice(0, 10)
-}
-
-/** The finish instant is already in the past. A session with no finish stays for its calendar day. */
+/** The finish instant is already in the past. Same rule as the event page and the home rails. */
 export function occurrenceEnded(ev: PublicSession, now = new Date()): boolean {
-  if (ev.endsAt) {
-    const end = new Date(ev.endsAt).getTime()
-    if (!Number.isNaN(end)) return end <= now.getTime()
-  }
-  const startKey = sessionDateKey(ev.date)
-  if (!startKey) return false
-  const city = CITIES.find((c) => c.name === ev.city) ?? CITIES[0]
-  const today = cityToday(city, now)
-  const endDateKey = sessionDateKey(ev.endDate)
-  const start = minutes(ev.time)
-  const endClock = minutes(ev.endTime)
-  const overnight = start != null && endClock != null && endClock <= start && start >= 10 * 60 && endClock <= 8 * 60
-  const endKey = endDateKey && endDateKey > startKey ? endDateKey : overnight ? addDays(startKey, 1) : startKey
-  if (endKey < today) return true
-  if (endKey > today) return false
-  if (endClock == null) return false
-  const parts = toSydneyParts(now, city.tz)
-  if (parts.date < endKey) return false
-  if (parts.date > endKey) return true
-  const nowMin = minutes(parts.time)
-  return nowMin != null && nowMin >= endClock
+  return isPastEvent(ev, now)
 }
 
 /** Hide from every public surface. Saved rows the visitor already chose are left to the date check. */

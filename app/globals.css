@@ -707,29 +707,53 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   }
 }
 
-/* Option B card photo. Blurred cover behind, contained original on top, black melt at the bottom. */
+/* Option B. Sharp photo on a blurred copy. The blur eases into the host colour on every side. */
 .vp-photo {
+  --vp-surface: hsl(var(--card));
   position: absolute;
   inset: 0;
   display: block;
   overflow: hidden;
-  background: #000;
+  background: var(--vp-surface);
   container-type: size;
+  isolation: isolate;
 }
+.bg-background .vp-photo { --vp-surface: hsl(var(--background)); }
+.bg-card .vp-photo,
+.vp-board-card .vp-photo { --vp-surface: hsl(var(--card)); }
 .vp-photo.is-pending { opacity: 0; }
 .vp-photo-blur {
   position: absolute;
-  inset: -48px;
+  inset: -28px;
 }
 .vp-photo-blur-img {
-  filter: blur(38px) brightness(0.6);
+  filter: blur(32px) saturate(1.12) brightness(0.92);
+  transform: translateZ(0);
+}
+.dark .vp-photo-blur-img {
+  filter: blur(32px) saturate(1.15) brightness(0.62);
 }
 .vp-photo-shade {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 52%, #000 78%, #000 90%, hsl(var(--card)) 100%);
+  background-image:
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--vp-surface) 0%, transparent) 0%,
+      color-mix(in srgb, var(--vp-surface) 0%, transparent) 36%,
+      color-mix(in srgb, var(--vp-surface) 10%, transparent) 52%,
+      color-mix(in srgb, var(--vp-surface) 28%, transparent) 66%,
+      color-mix(in srgb, var(--vp-surface) 52%, transparent) 78%,
+      color-mix(in srgb, var(--vp-surface) 78%, transparent) 90%,
+      var(--vp-surface) 100%),
+    linear-gradient(to right,
+      var(--vp-surface) 0%,
+      color-mix(in srgb, var(--vp-surface) 42%, transparent) 10%,
+      color-mix(in srgb, var(--vp-surface) 0%, transparent) 24%,
+      color-mix(in srgb, var(--vp-surface) 0%, transparent) 76%,
+      color-mix(in srgb, var(--vp-surface) 42%, transparent) 90%,
+      var(--vp-surface) 100%);
 }
 .vp-photo-fit {
   position: absolute;
@@ -740,6 +764,16 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   height: min(100cqh, calc(100cqw / var(--vp-ratio, 1)));
   transform: translate(-50%, -50%);
 }
+.vp-photo[data-modest='true'] .vp-photo-fit {
+  width: min(100cqw, calc(100cqh * var(--vp-ratio, 1)), calc(var(--vp-nat) * var(--vp-dpr-cap, 1) * 1px));
+  height: min(100cqh, calc(100cqw / var(--vp-ratio, 1)), calc(var(--vp-nat) / var(--vp-ratio, 1) * var(--vp-dpr-cap, 1) * 1px));
+}
+@media (min-resolution: 2dppx) {
+  .vp-photo { --vp-dpr-cap: 0.5; }
+}
+@media (min-resolution: 3dppx) {
+  .vp-photo { --vp-dpr-cap: 0.34; }
+}
 .vp-photo-fit.is-open {
   inset: 0;
   left: 0;
@@ -749,12 +783,13 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   transform: none;
 }
 .vp-photo-feather {
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
+  -webkit-mask-image: none;
+  mask-image: none;
+  border-radius: var(--vp-radius-md);
+  box-shadow: 0 10px 28px rgba(22, 26, 24, 0.16);
+}
+.dark .vp-photo-feather {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.32);
 }
 .vp-media-chip {
   background: rgba(0, 0, 0, 0.62);
@@ -1070,12 +1105,35 @@ input[type="checkbox"]:focus-visible {
 
 .vp-print-logo { display: none; }
 
+/* Toasts sit on the viewport. A bad offset used to leave top/bottom auto, so desktop pinned them to the document bottom. */
+[data-sonner-toaster] {
+  position: fixed !important;
+  top: auto !important;
+  right: max(16px, env(safe-area-inset-right)) !important;
+  bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: 60;
+  height: auto !important;
+}
+[data-sonner-toaster] [data-button] {
+  border-radius: 999px !important;
+  background: var(--vp-brand-orange) !important;
+  color: var(--vp-on-primary) !important;
+  height: 2rem;
+  padding: 0 0.85rem !important;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
 @media print {
   .vp-site-header,
   .vp-bottom-nav,
   footer,
   .vp-ask,
   .vp-menu,
+  .vp-ticket-bar,
+  [data-sonner-toaster],
   [data-print-hide] {
     display: none !important;
   }
@@ -1083,8 +1141,24 @@ input[type="checkbox"]:focus-visible {
     display: block;
     padding: 0 0 16px;
   }
-  html, body, .bg-background, .min-h-screen {
+  html, body, .bg-background, .min-h-screen, .bg-card, .bg-muted, aside, .vp-photo {
     background: #fff !important;
+    color: #161a18 !important;
+    box-shadow: none !important;
+  }
+  .vp-photo-blur,
+  .vp-photo-shade {
+    display: none !important;
+  }
+  .vp-photo-feather,
+  img {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    box-shadow: none !important;
+  }
+  .text-muted-foreground,
+  .text-foreground,
+  p, li, h1, h2, h3, span {
     color: #161a18 !important;
   }
   main {
@@ -1096,6 +1170,6 @@ input[type="checkbox"]:focus-visible {
     -webkit-text-fill-color: #9a3412;
     background: none !important;
   }
-  a { text-decoration: underline; }
+  a { color: #9a3412 !important; text-decoration: underline; }
   .vp-wrap { max-width: none; }
 }

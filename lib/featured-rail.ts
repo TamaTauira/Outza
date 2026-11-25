@@ -74,6 +74,11 @@ function featuredEnded(ev: SlotInput, day: string, nowMinutes: number): boolean 
   const start = dateKeyOf(ev.date)
   const end = dateKeyOf(ev.endDate) || start
   if (!start) return true
+  const sched = resolveSchedule(ev, start)
+  if (sched.overnight && sched.endKey) {
+    if (sched.endKey > day) return false
+    if (sched.endKey === day) return nowMinutes >= ((sched.end ?? 0) % 1440)
+  }
   if (end < day) return true
   if (start > day) return false
   // A run that continues past today is still on, even after today's clock.
@@ -181,6 +186,12 @@ function runEndKey(ev: SlotInput): string {
 function occurrenceOver(ev: SlotInput, day: string, nowMinutes: number): boolean {
   if (ev.duplicateOfId) return true
   if (ev.status && BLOCKED_STATUS.has(ev.status)) return true
+  const start = dateKeyOf(ev.date)
+  const sched = start ? resolveSchedule(ev, start) : null
+  if (sched?.overnight && sched.endKey) {
+    if (sched.endKey > day) return false
+    if (sched.endKey === day) return nowMinutes >= ((sched.end ?? 0) % 1440)
+  }
   const end = runEndKey(ev)
   if (!end || end < day) return true
   if (end > day) return false

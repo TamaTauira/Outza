@@ -23,7 +23,7 @@ import { contributedFieldSources } from '@/lib/source-record'
 import { areaForPostcode, includeInAudience } from '@/lib/profile-shared'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { presentListing } from '@/lib/categories'
-import { hiddenFromPublic } from '@/lib/listing-visibility'
+import { hiddenFromPublic, sessionDateKey, titleAgreesWithSession } from '@/lib/listing-visibility'
 
 const RELATED_SELECT = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true,
@@ -70,7 +70,9 @@ async function queryEventCore(id: string) {
     where: { id },
     include: { promoter: { select: { id: true, name: true, orgName: true, proUntil: true } }, _count: { select: { attendees: true } }, imageAsset: { select: imageAssetSelect } },
   })
-  if (!event || isPastEvent(event) || hiddenFromPublic(event) || event.deletedAt) return null
+  if (!event || event.deletedAt) return null
+  const sessionKey = sessionDateKey(event.date)
+  if (event.title && sessionKey && !titleAgreesWithSession(event.title, sessionKey)) return null
   if (event.approvalState && event.approvalState !== 'APPROVED') return null
   if (isHiddenFromPublic(event)) return null
   const redacted = redactCommunityPublic(event)
@@ -153,11 +155,11 @@ async function queryEventCore(id: string) {
   return JSON.parse(JSON.stringify(payload)) as typeof payload
 }
 
-const cachedCore = unstable_cache(queryEventCore, ['event-core-v11'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
+const cachedCore = unstable_cache(queryEventCore, ['event-core-v12'], { revalidate: 900, tags: [PUBLIC_EVENT_TAG] })
 
 export type PublicEvent = NonNullable<Awaited<ReturnType<typeof queryEventCore>>>
 
-/** Shared by the event page and its metadata. Null when the listing is missing or already over. */
+/** Shared by the event page and its metadata. Null when the listing is missing. A finished listing is still returned. */
 export async function getPublicEvent(idOrParam: string): Promise<PublicEvent | null> {
   try {
     const id = await cachedResolve(idOrParam)

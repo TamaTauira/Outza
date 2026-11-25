@@ -18,7 +18,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id: param } = await params
   const data = await getPublicEvent(param)
   const ev = data?.event
-  if (!ev || isPast(ev)) return { title: 'Event not found | VibePeep', robots: { index: false } }
+  if (!ev) return { title: 'Event not found | VibePeep', robots: { index: false } }
+  const ended = isPast(ev)
   const canonicalTarget = data.duplicateTarget
   const dateLabel = new Date(ev.date).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   const where = [ev.venueName, ev.suburb && ev.suburb !== ev.city ? ev.suburb : null, ev.city].filter(Boolean).join(', ')
@@ -29,10 +30,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const origin = siteUrl()
   const image = openGraphImage(eventImageUrl(ev, origin), name)
   return {
-    title: `${status}${name} · ${dateLabel} · ${ev.city} · VibePeep`,
+    title: ended ? `${name} has ended · ${ev.city} · VibePeep` : `${status}${name} · ${dateLabel} · ${ev.city} · VibePeep`,
     description: desc.slice(0, 300),
     alternates: { canonical: eventPath(canonicalTarget ?? ev) },
-    robots: ev.duplicateOfId ? { index: false, follow: true } : undefined,
+    robots: ended || ev.duplicateOfId ? { index: false, follow: true } : undefined,
     openGraph: { title: name, description: desc.slice(0, 200), type: 'website', url: eventPath(ev), images: [image] },
     twitter: {
       card: 'summary_large_image',
@@ -76,7 +77,8 @@ export default async function EventPage({ params, searchParams }: Props) {
 
   const origin = siteUrl()
   const ev = data.event
-  const ld = !ev.duplicateOfId ? eventJsonLd(ev, origin) : null
+  const ended = isPast(ev)
+  const ld = !ev.duplicateOfId && !ended ? eventJsonLd(ev, origin) : null
   const initial = JSON.parse(JSON.stringify(data))
 
   return (

@@ -8,7 +8,7 @@ import { eventPath } from '@/lib/seo'
 import { areasForCity } from '@/lib/categories'
 import { addDays, formatPrice, formatTime } from '@/lib/board'
 import { minutesNow, orderedWindow } from '@/lib/listing-window'
-import { EventImage } from '@/components/event-image'
+import { EventImage, eventImageSizes } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
 import { eventPictureFrom } from '@/lib/images/display-spec'
 
@@ -228,8 +228,8 @@ function RailCard({ ev }: { ev: RailEvent }) {
   const time = formatTime(ev.time)
   return (
     <Link href={eventPath(ev)} scroll={false} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
-      <div className="relative aspect-[4/3] bg-black">
-        <EventImage image={ev.imageAsset} picture={eventPictureFrom(ev)} src={ev.imageUrl} sourceWidth={ev.imageWidth} sourceHeight={ev.imageHeight} kind="card" alt="" sizes="(min-width: 1280px) 220px, 200px" category={ev.category} slot="card" />
+      <div className="relative aspect-[4/3] bg-card">
+        <EventImage image={ev.imageAsset} picture={eventPictureFrom(ev)} src={ev.imageUrl} sourceWidth={ev.imageWidth} sourceHeight={ev.imageHeight} kind="card" alt="" sizes={eventImageSizes('rail')} category={ev.category} slot="card" />
         {ev.sponsored && <span className="vp-media-chip absolute left-2 top-2 rounded-full px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide">Sponsored</span>}
         <span className="vp-media-chip absolute bottom-2 right-2 rounded-full px-1.5 py-0.5 font-mono text-xs">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
       </div>

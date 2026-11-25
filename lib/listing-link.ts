@@ -206,7 +206,7 @@ export function eventOutbound(ev: {
   sourceUrl?: string | null
   organiserUrl?: string | null
   source?: string | null
-}): OutboundLink {
+}): OutboundLink | null {
   const ticket = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(ev.ticketUrl, ev.source)))
   const source = rewriteCouncilListingUrl(usableUrl(repairKnownListingUrl(ev.sourceUrl, ev.source)))
   const org = usableUrl(ev.organiserUrl)
@@ -220,7 +220,10 @@ export function eventOutbound(ev: {
   if (chosen && isGenericCouncilLanding(chosen.href)) chosen = null
   if (!chosen) {
     if (ev.source === 'community' && ev.id) return { href: eventPath({ id: ev.id, title: ev.title }), label: 'More info', kind: 'source' }
-    return { href: sourceSearchUrl(ev.source, ev.title), label: 'More info', kind: 'search' }
+    const href = sourceSearchUrl(ev.source, ev.title)
+    // A web search is not a ticket page. Callers hide the button instead of sending people to Google.
+    if (/google\.com\/search/i.test(href)) return null
+    return { href, label: 'More info', kind: 'search' }
   }
   const href = stripTrackingParams(chosen.href) ?? chosen.href
   if (isTicketLink(chosen.href, ev.source, chosen.field)) {
