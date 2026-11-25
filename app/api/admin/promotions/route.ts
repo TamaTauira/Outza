@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { endActivePromotions, endCampaignMessage } from '@/lib/promotion-end'
+import { endCampaignMessage } from '@/lib/promotion-end'
+import { endActivePromotions } from '@/lib/promotion-end-server'
 import { forbidden, getSessionUser, unauthorized } from '@/lib/session'
 import { productName } from '@/lib/tiers'
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { endActivePromotions, endCampaignMessage } from '@/lib/promotion-end'
+import { endCampaignMessage } from '@/lib/promotion-end'
+import { endActivePromotions } from '@/lib/promotion-end-server'
 import { forbidden, getSessionUser, isPromoter, unauthorized } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'

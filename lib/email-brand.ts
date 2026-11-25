@@ -162,7 +162,7 @@ export function emailSenderLine(): string {
   return `${who}. Questions go through the contact page on this site.`
 }
 
-/** HTML footer line. "contact page" is a real link, and the URL is printed beside it. */
+/** HTML footer line. "contact page" is a real link. The host stays in the href, not in the sentence. */
 export function emailSenderHtml(home: string): string {
   const line = emailSenderLine()
   const href = `${home.replace(/\/$/, '')}/contact`
@@ -170,7 +170,7 @@ export function emailSenderHtml(home: string): string {
   const at = line.indexOf(needle)
   if (at === -1) return emailEscape(line)
   const link = `<a class="lk" href="${emailEscape(href)}" style="color:${EMAIL_C.orangeText};font-family:${EMAIL_FONT};font-weight:700;text-decoration:underline;">${needle}</a>`
-  return `${emailEscape(line.slice(0, at))}${link}${emailEscape(line.slice(at + needle.length))} (${emailEscape(href)})`
+  return `${emailEscape(line.slice(0, at))}${link}${emailEscape(line.slice(at + needle.length))}`
 }
 
 /** Plain-text footer shared with the HTML footer: acknowledgement plus the contact URL. */
