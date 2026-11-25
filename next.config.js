@@ -31,6 +31,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.oztix.com.au' },
       { protocol: 'https', hostname: 'whatson.cityofsydney.nsw.gov.au' },
       { protocol: 'https', hostname: '**.amazonaws.com' },
+      { protocol: 'https', hostname: '**.r2.dev' },
       { protocol: 'https', hostname: '**.public.blob.vercel-storage.com' },
     ],
   },

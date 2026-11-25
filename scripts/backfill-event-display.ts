@@ -9,18 +9,28 @@
  *
  * Apply, in batches of 50. Stop it and run it again: finished rows are skipped.
  * Take a Neon snapshot first. This needs the same store env ingest uses.
+ * AWS_BUCKET_NAME is required. Also set AWS_REGION for AWS S3, or
+ * AWS_ENDPOINT_URL_S3 (S3_ENDPOINT is the fallback name) for an S3-compatible
+ * store such as Cloudflare R2. AWS_FOLDER_PREFIX should end with a slash.
+ * Set S3_PUBLIC_BASE_URL (no trailing slash) when objects are served from a
+ * public origin other than amazonaws.com. Apply prints the target bucket and
+ * the endpoint host. It never prints credentials.
  *
  *   DATABASE_URL=... \
- *   AWS_REGION=... \
  *   AWS_BUCKET_NAME=... \
+ *   AWS_REGION=... \
  *   AWS_FOLDER_PREFIX=... \
  *   AWS_ACCESS_KEY_ID=... \
  *   AWS_SECRET_ACCESS_KEY=... \
  *   npx tsx scripts/backfill-event-display.ts --apply
  *
+ * For Cloudflare R2, set AWS_ENDPOINT_URL_S3 and S3_PUBLIC_BASE_URL. AWS_REGION
+ * may be omitted; the client then uses auto.
+ *
  * Optional: --batch 50 (1–200).
  * Times are Australia/Sydney.
  */
+import { storageApplyTarget } from '../lib/aws-config'
 import { prisma } from '../lib/prisma'
 import { estimateDisplayStorage } from '../lib/images/display-spec'
 import { prepareEventDisplay } from '../lib/images/display-store'
@@ -81,10 +91,13 @@ async function report(today: Date) {
 }
 
 async function apply(today: Date, batch: number) {
-  if (!process.env.AWS_BUCKET_NAME || !process.env.AWS_REGION) {
-    console.error('Set AWS_REGION and AWS_BUCKET_NAME (and AWS_FOLDER_PREFIX plus AWS credentials) so files land in the same store as ingest.')
+  const target = storageApplyTarget()
+  if (!target.ok) {
+    console.error(target.message)
     process.exit(1)
   }
+  console.log(`Target bucket: ${target.bucket}`)
+  console.log(`Endpoint host: ${target.endpointHost}`)
   let stored = 0
   let skipped = 0
   let failed = 0
