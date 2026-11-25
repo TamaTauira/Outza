@@ -10,7 +10,7 @@ import { ctaClass, sectionPad } from './styles'
 const HEADER: Record<string, string> = {
   SILVER: 'var(--vp-brand-orange-ink)',
   BRONZE: 'var(--vp-brand-pink)',
-  GOLD: 'linear-gradient(105deg, #9a3412 0%, #9d174d 100%)',
+  GOLD: 'linear-gradient(105deg, var(--vp-brand-orange-ink) 0%, var(--vp-brand-pink-ink) 100%)',
 }
 const HEADER_INK: Record<string, string> = {
   SILVER: 'text-white',
