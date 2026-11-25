@@ -19,10 +19,9 @@ import { PasswordField } from '@/components/password-field'
 import { PASSWORD_RULES } from '@/lib/passwords'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
 
-function SignupForm() {
+function SignupForm({ role, setRole }: { role: 'CONSUMER' | 'PROMOTER'; setRole: (role: 'CONSUMER' | 'PROMOTER') => void }) {
   const router = useRouter()
   const params = useSearchParams()
-  const [role, setRole] = useState<'CONSUMER' | 'PROMOTER'>(params.get('role') === 'promoter' ? 'PROMOTER' : 'CONSUMER')
   const [name, setName] = useState('')
   const [orgName, setOrgName] = useState('')
   const [email, setEmail] = useState('')
@@ -94,10 +93,11 @@ function SignupForm() {
           </button>
         ))}
       </div>
+      {role === 'PROMOTER' && <PromoterTermsCheck id="signup-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} />}
       {role === 'PROMOTER' ? (
         agreePromoterTerms
           ? <GoogleButton redirectTo="/promoter" intent="PROMOTER" label="Sign up with Google" />
-          : <p className="text-xs text-muted-foreground">Tick the Promoter Terms before signing up with Google.</p>
+          : <p className="text-xs text-muted-foreground">Tick the Promoter Terms above before signing up with Google.</p>
       ) : <GoogleButton redirectTo="/account" label="Sign up with Google" />}
       <div className="space-y-1.5">
         <Label htmlFor="name">Your name</Label>
@@ -126,7 +126,6 @@ function SignupForm() {
         </select>
       </div>
       {role === 'CONSUMER' && <ProfileFields birthYear={birthYear} homePostcode={homePostcode} onBirthYear={setBirthYear} onPostcode={setHomePostcode} />}
-      {role === 'PROMOTER' && <PromoterTermsCheck id="signup-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} />}
       {notice && <p className="text-sm text-foreground" role="status">{notice}</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <Button type="submit" className="w-full h-11" disabled={loading}>
@@ -142,10 +141,18 @@ function SignupForm() {
   )
 }
 
+function SignupScreen() {
+  const params = useSearchParams()
+  const [role, setRole] = useState<'CONSUMER' | 'PROMOTER'>(params.get('role') === 'promoter' ? 'PROMOTER' : 'CONSUMER')
+  return (
+    <AuthShell aside={role === 'PROMOTER' ? 'promoter' : 'consumer'} title="Get amongst it" subtitle="Free for event-goers. Promoters, step right up.">
+      <SignupForm role={role} setRole={setRole} />
+    </AuthShell>
+  )
+}
+
 export default function SignupPage() {
   return (
-    <AuthShell title="Get amongst it" subtitle="Free for event-goers. Promoters, step right up.">
-      <Suspense fallback={null}><SignupForm /></Suspense>
-    </AuthShell>
+    <Suspense fallback={null}><SignupScreen /></Suspense>
   )
 }

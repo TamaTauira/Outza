@@ -15,12 +15,10 @@ import { PasswordField } from '@/components/password-field'
 import { Button } from '@/components/ui/button'
 import { GoogleButton } from '@/components/google-button'
 
-function LoginForm() {
+function LoginForm({ mode, setMode }: { mode: 'CONSUMER' | 'PROMOTER' | 'PARTNER'; setMode: (mode: 'CONSUMER' | 'PROMOTER' | 'PARTNER') => void }) {
   const router = useRouter()
   const params = useSearchParams()
   const requested = requestedNext(params.get('next'), params.get('callbackUrl'))
-  const partnerEntry = params.get('as') === 'partner' || requested?.startsWith('/partners')
-  const [mode, setMode] = useState<'CONSUMER' | 'PROMOTER' | 'PARTNER'>(partnerEntry ? 'PARTNER' : params.get('as') === 'promoter' || requested?.startsWith('/promoter') ? 'PROMOTER' : 'CONSUMER')
   const next = safeNextPath(requested, mode === 'PARTNER' ? '/partners' : mode === 'PROMOTER' ? '/promoter' : '/')
   const [email, setEmail] = useState(() => params.get('email') ?? '')
   const [password, setPassword] = useState('')
@@ -126,10 +124,21 @@ function LoginForm() {
   )
 }
 
+function LoginScreen() {
+  const params = useSearchParams()
+  const requested = requestedNext(params.get('next'), params.get('callbackUrl'))
+  const partnerEntry = params.get('as') === 'partner' || requested?.startsWith('/partners')
+  const promoterEntry = params.get('as') === 'promoter' || !!requested?.startsWith('/promoter') || !!requested?.startsWith('/venue')
+  const [mode, setMode] = useState<'CONSUMER' | 'PROMOTER' | 'PARTNER'>(partnerEntry ? 'PARTNER' : promoterEntry ? 'PROMOTER' : 'CONSUMER')
+  return (
+    <AuthShell aside={mode === 'PROMOTER' ? 'promoter' : mode === 'PARTNER' ? 'none' : 'consumer'} title="Back for more?" subtitle="Sign in and pick up where you left off.">
+      <LoginForm mode={mode} setMode={setMode} />
+    </AuthShell>
+  )
+}
+
 export default function LoginPage() {
   return (
-    <AuthShell title="Back for more?" subtitle="Sign in and pick up where you left off.">
-      <Suspense fallback={null}><LoginForm /></Suspense>
-    </AuthShell>
+    <Suspense fallback={null}><LoginScreen /></Suspense>
   )
 }

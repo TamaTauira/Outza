@@ -1,14 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
 
+function promoterSurface(pathname: string): boolean {
+  return pathname.startsWith('/promoter') || pathname.startsWith('/venue') || /\/events\/[^/]+\/manage/.test(pathname)
+}
+
 /** Shown to a signed-in person until their email is verified. Browsing stays open. */
-export function VerifyEmailBanner() {
+export function VerifyEmailBanner({ embed = false }: { embed?: boolean }) {
+  const pathname = usePathname() || ''
   const { data, status } = useSession()
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState('')
+  const onPromoter = promoterSurface(pathname)
+  if (onPromoter !== embed) return null
   if (status !== 'authenticated' || !data?.user?.id || data.user.verified) return null
 
   async function resend() {

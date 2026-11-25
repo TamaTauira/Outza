@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { sendEmail, emailSendingEnabled, escapeHtml, siteUrl, DEFAULT_FROM_EMAIL, activeMailTransport } from '@/lib/email'
-import { EMAIL_C, emailBodyCell, emailDocument, emailLink, emailStatTable } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailDocument, emailLink, emailPlainFooter, emailStatTable } from '@/lib/email-brand'
 import { sign } from '@/lib/newsletter/links'
 import { isQaAccountEmail } from '@/lib/qa-account'
 import { loadVenueActivity } from '@/lib/venue-activity-load'
@@ -44,6 +44,7 @@ export function venueMonthlyLetter(input: { greeting: string; venues: VenueMonth
     'Views and clicks are not attendance. Home areas are not in this note.',
     `Turn this note off: ${input.unsubUrl}`,
     'That does not change your newsletter.',
+    emailPlainFooter(siteUrl()),
   ].join('\n')
   const html = emailDocument({
     title: subject,
@@ -114,6 +115,18 @@ export async function sendVenueMonthly(userId: string) {
   if (!sent.ok) return { ok: false as const, error: sent.error ?? 'Email failed' }
   await prisma.user.update({ where: { id: userId }, data: { lastVenueReportAt: new Date() } })
   return { ok: true as const, venues: venues.length }
+}
+
+/** The admin preview uses the same letter as a real monthly send. */
+export function previewVenueMonthly() {
+  return venueMonthlyLetter({
+    greeting: 'Sam',
+    unsubUrl: `${siteUrl()}/unsubscribe/venue?u=preview`,
+    venues: [
+      { name: 'The Imperial', followers: 12, views: 340, saves: 18, itineraryAdds: 4, ticketClicks: 22 },
+      { name: 'Enmore Theatre', followers: 40, views: 900, saves: 60, itineraryAdds: 11, ticketClicks: 70 },
+    ],
+  })
 }
 
 /** Monthly owner notes. One pass, capped, outside the hourly refresh minute. */

@@ -1,9 +1,11 @@
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
-import { EMAIL_ADDRESS, EMAIL_C, emailBodyCell, emailButton, emailCode, emailDocument, emailEscape, emailLink, emailSentence, emailSenderLine, emailVenueName } from '@/lib/email-brand'
+import { EMAIL_ACK_SHORT, EMAIL_ADDRESS, EMAIL_C, emailBodyCell, emailButton, emailCode, emailDocument, emailEscape, emailLink, emailPasteLink, emailPlainFooter, emailSentence, emailVenueName } from '@/lib/email-brand'
 import { listUnsubscribeHeaders, type MailKind } from '@/lib/email'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { sampleWatchEmail } from '@/lib/email-preview'
 import { composeWatchEmail } from '@/lib/watch-shared'
+import { previewPromoterReport } from '@/lib/promoter-report'
+import { previewVenueMonthly } from '@/lib/venue-monthly'
 import { renderHtml, type RenderInput, type Slot } from '@/lib/newsletter/render'
 import type { NlEvent } from '@/lib/newsletter/rank'
 
@@ -96,6 +98,14 @@ export const SAMPLE_MAIL: MailData = {
   ],
 }
 
+/** Drop a second "at {venue}" when the title already names that venue. */
+function placeClause(data: MailData): string {
+  const venue = (data.venue || '').trim()
+  const event = (data.event || '').trim()
+  if (!venue || event.toLowerCase().includes(venue.toLowerCase())) return ''
+  return ` at ${venue}`
+}
+
 function fill(template: string, data: MailData): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => {
     const value = data[key as keyof MailData]
@@ -127,18 +137,19 @@ const SPECS: Spec[] = [
     name: 'Verify email', priority: 'launch-must', wired: true, needsNewBanner: false,
     subject: 'Confirm it’s you, then come peep', title: 'Confirm your email', cta: 'Confirm email',
     paragraphs: ['Open the link in the next day so we know this inbox is yours. Saving events and your account work once it’s confirmed.'],
-    ctaOf: (d) => ({ href: d.href || `${HOME}/verify-email`, label: 'Confirm email' }),
+    ctaOf: (d) => ({ href: d.href || `${HOME}/verify-email?token=${'a'.repeat(43)}`, label: 'Confirm email' }),
   }),
   account('A2', {
     name: 'Magic link', priority: 'later', wired: false, needsNewBanner: false, banner: 'account-security',
     subject: 'Your VibePeep sign-in link', title: 'Your sign-in link', cta: 'Sign in',
     paragraphs: ['This link signs you in once and then stops working. If you didn’t ask for it, you can ignore this email.'],
+    ctaOf: (d) => ({ href: d.href || `${HOME}/login?token=${'c'.repeat(43)}`, label: 'Sign in' }),
   }),
   account('A3', {
     name: 'Password reset', priority: 'launch-must', wired: true, needsNewBanner: false, banner: 'account-security',
     subject: 'Reset your VibePeep password', title: 'Reset your password', cta: 'Choose a new password',
     paragraphs: ['Use this link once in the next hour to choose a new password. If you didn’t ask for this, you can ignore it — your password stays as it is.'],
-    ctaOf: (d) => ({ href: d.href || `${HOME}/reset-password`, label: 'Choose a new password' }),
+    ctaOf: (d) => ({ href: d.href || `${HOME}/reset-password?token=${'b'.repeat(43)}`, label: 'Choose a new password' }),
   }),
   account('A4', {
     name: 'Password changed', priority: 'launch-must', wired: true, needsNewBanner: false, banner: 'account-security',
@@ -206,9 +217,9 @@ const SPECS: Spec[] = [
   spec({
     id: 'C2', name: 'Newsletter', group: 'Consumer', priority: 'launch-must', kind: 'marketing', wired: true,
     banner: 'daily-drop', needsNewBanner: false, composer: 'newsletter',
-    subject: 'Your couch can wait. Sydney can\'t.', title: 'The Daily Drop',
+    subject: 'Your couch can wait. Sydney can’t.', title: 'The Daily Drop',
     paragraphs: ['The live edition uses the tightened masthead: logo and edition, the orange-to-pink rule, then the banner, city and greeting.'],
-    subjectOf: () => 'Your couch can wait. Sydney can\'t.',
+    subjectOf: () => 'Your couch can wait. Sydney can’t.',
     paragraphsOf: () => [],
   }),
   spec({
@@ -232,9 +243,9 @@ const SPECS: Spec[] = [
     banner: 'event-update', needsNewBanner: false, cta: 'View the listing',
     subject: 'A time change on {event}', title: 'A detail changed',
     reason: 'You saved this event or added it to an Itinerary. This is a service update, not a newsletter.',
-    paragraphs: ['{event} has a new time. It was {oldTime}. It’s now {time} at {venue}. Have another look before you go.'],
+    paragraphs: ['{event} has a new time. It was {oldTime}. It’s now {time}. Have another look before you go.'],
     subjectOf: (d) => fill('A time change on {event}', d),
-    paragraphsOf: (d) => [fill('{event} has a new time. It was {oldTime}. It’s now {time} at {venue}. Have another look before you go.', d)],
+    paragraphsOf: (d) => [`${d.event || 'This event'} has a new time. It was ${d.oldTime || 'the old time'}. It’s now ${d.time || 'a new time'}${placeClause(d)}. Have another look before you go.`],
     ctaOf: (d) => ({ href: d.href || HOME, label: 'View the listing' }),
   }),
   spec({
@@ -242,9 +253,9 @@ const SPECS: Spec[] = [
     banner: 'event-update', needsNewBanner: false, cta: 'View the listing', kicker: 'Listing update',
     subject: 'A keeper has been cancelled: {event}', title: 'This event has been cancelled',
     reason: 'You saved this event or added it to an Itinerary. This is a service update, not a newsletter.',
-    paragraphs: ['{event}, listed for {date} at {time} at {venue}, has been cancelled. It’s off your Saved list and any Itinerary it was on. If you already bought tickets, contact the organiser or ticket site about a refund — VibePeep doesn’t sell tickets.'],
+    paragraphs: ['{event}, listed for {date} at {time}, has been cancelled. It’s off your Saved list and any Itinerary it was on. If you already bought tickets, contact the organiser or ticket site about a refund — VibePeep doesn’t sell tickets.'],
     subjectOf: (d) => fill('A keeper has been cancelled: {event}', d),
-    paragraphsOf: (d) => [fill('{event}, listed for {date} at {time} at {venue}, has been cancelled. It’s off your Saved list and any Itinerary it was on. If you already bought tickets, contact the organiser or ticket site about a refund — VibePeep doesn’t sell tickets.', d)],
+    paragraphsOf: (d) => [`${d.event || 'This event'}, listed for ${d.date || 'the listed day'} at ${d.time || 'the listed time'}${placeClause(d)}, has been cancelled. It’s off your Saved list and any Itinerary it was on. If you already bought tickets, contact the organiser or ticket site about a refund — VibePeep doesn’t sell tickets.`],
     ctaOf: (d) => ({ href: d.href || HOME, label: 'View the listing' }),
   }),
   spec({
@@ -252,11 +263,11 @@ const SPECS: Spec[] = [
     banner: 'event-update', needsNewBanner: false, cta: 'View the new details',
     subject: '{event} has a new date', title: 'This event has been rescheduled',
     reason: 'You saved this event or added it to an Itinerary. This is a service update, not a newsletter.',
-    paragraphs: ['{event} has moved. It was {oldDate} at {oldTime}. It’s now {newDate} at {newTime} at {venue}. We’ve updated it on your Saved list and any Itinerary it was on. Double-check the new details before you go.'],
+    paragraphs: ['{event} has moved. It was {oldDate} at {oldTime}. It’s now {newDate} at {newTime}. We’ve updated it on your Saved list and any Itinerary it was on. Double-check the new details before you go.'],
     subjectOf: (d) => d.newDate ? fill('{event} has a new date', d) : fill('{event} has been postponed', d),
     paragraphsOf: (d) => [d.newDate
-      ? fill('{event} has moved. It was {oldDate} at {oldTime}. It’s now {newDate} at {newTime} at {venue}. We’ve updated it on your Saved list and any Itinerary it was on. Double-check the new details before you go.', d)
-      : fill('{event} has been postponed. It was listed for {oldDate} at {oldTime} at {venue}. The listing will show the new date when it’s set.', d)],
+      ? `${d.event || 'This event'} has moved. It was ${d.oldDate || 'the old day'} at ${d.oldTime || 'the old time'}. It’s now ${d.newDate} at ${d.newTime || 'the new time'}${placeClause(d)}. We’ve updated it on your Saved list and any Itinerary it was on. Double-check the new details before you go.`
+      : `${d.event || 'This event'} has been postponed. It was listed for ${d.oldDate || 'the old day'} at ${d.oldTime || 'the old time'}${placeClause(d)}. The listing will show the new date when it’s set.`],
     ctaOf: (d) => ({ href: d.href || HOME, label: 'View the new details' }),
   }),
   spec({
@@ -670,9 +681,8 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
   const manage = row.kind === 'transactional' ? `${HOME}/account` : (data.manageHref || `${HOME}/account`)
   const preheader = PREHEADER[row.id]
   const code = (row.id === 'P1' || row.id === 'P9') && data.code ? emailCode(data.code, 30) : ''
-  const paste = cta && (row.id === 'A1' || row.id === 'A2' || row.id === 'A3')
-    ? `<p class="mu" style="margin:12px 0 0;font-size:14px;line-height:1.45;color:${EMAIL_C.muted};">Or paste this link:<br/>${emailLink(cta.href, cta.href)}</p>`
-    : ''
+  const paste = cta && (row.id === 'A1' || row.id === 'A2' || row.id === 'A3') ? emailPasteLink(cta.href) : ''
+  const shortAck = /^[ALBS]/.test(row.id)
   const body = [
     row.kicker ? `<p class="accent" style="margin:0 0 8px;font-size:12px;letter-spacing:0.8px;font-weight:800;text-transform:uppercase;color:${EMAIL_C.accentText};">${emailEscape(row.kicker)}</p>` : '',
     `<h1 class="tx" style="margin:0 0 16px;font-size:26px;line-height:1.2;font-weight:800;color:${EMAIL_C.ink};">${emailEscape(title)}</h1>`,
@@ -692,6 +702,7 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
     unsubscribeHref: unsub,
     reason: row.reason,
     banner: row.banner,
+    acknowledgement: shortAck ? EMAIL_ACK_SHORT : undefined,
   })
   const text = [
     title,
@@ -707,8 +718,7 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
     `Privacy: ${HOME}/privacy`,
     unsub ? `Unsubscribe: ${unsub}` : '',
     manage ? `Manage preferences: ${manage}` : '',
-    `Acknowledgement of Country. ${ACKNOWLEDGEMENT_OF_COUNTRY}`,
-    emailSenderLine(),
+    emailPlainFooter(HOME, shortAck ? EMAIL_ACK_SHORT : ACKNOWLEDGEMENT_OF_COUNTRY),
     EMAIL_ADDRESS,
   ].filter((line) => line !== undefined && line !== '').join('\n')
   return { subject, html, text }
@@ -831,6 +841,8 @@ export function renderTemplate(id: TemplateId, data?: MailData): { subject: stri
   if (row.composer === 'newsletter') return sampleNewsletter()
   if (row.composer === 'watch') return sampleWatchEmail()
   if (row.composer === 'reminder') return sampleReminder()
+  if (id === 'P15') return previewPromoterReport()
+  if (id === 'P16') return previewVenueMonthly()
   const filled = merged(data)
   if (id === 'C1' && !data?.name) filled.name = 'there'
   return shell(row, filled)

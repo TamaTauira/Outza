@@ -7,7 +7,7 @@ import { sign } from '@/lib/newsletter/links'
 import { metricDay, peakWeekday, reachTips, recapFragment, shiftDay } from '@/lib/organiser-reach'
 import { getAudienceInsights, type Share, type TopEvent } from '@/lib/audience-insights'
 import { AUDIENCE_DISCLAIMER, MIN_GROUP } from '@/lib/profile-shared'
-import { EMAIL_C, emailBodyCell, emailButton, emailDocument, emailLink } from '@/lib/email-brand'
+import { EMAIL_C, emailBodyCell, emailButton, emailDocument, emailLink, emailPlainFooter } from '@/lib/email-brand'
 import { isQaAccountEmail } from '@/lib/qa-account'
 
 const n = (v: number) => v.toLocaleString('en-AU')
@@ -21,6 +21,63 @@ export function reportUnsubscribeUrl(userId: string) {
 export function reportUnsubscribeApiUrl(userId: string) {
   const q = new URLSearchParams({ u: userId, k: sign(userId, 'report-unsub') })
   return `${siteUrl()}/api/promoter/report/unsubscribe?${q}`
+}
+
+/** One document for the weekly report. The send path and the admin preview both call this. */
+export function assemblePromoterReport(input: {
+  greeting: string
+  rowsHtml: string
+  referralBlock: string
+  recapHtml: string
+  recapText: string
+  audience: string
+  pro: boolean
+  home: string
+  unsub: string
+}): { subject: string; html: string; text: string } {
+  const subject = 'Your VibePeep week, in one note'
+  const html = emailDocument({
+    title: 'Your VibePeep event performance report',
+    preheader: 'How your listings are tracking on VibePeep.',
+    manageHref: `${input.home}/promoter`,
+    banner: 'promoter-report',
+    homeHref: input.home,
+    unsubscribeHref: input.unsub,
+    reason: 'You turned on weekly recaps in the Promoter dashboard. The unsubscribe link in this email turns them off straight away and leaves your newsletter choice alone.',
+    rows: emailBodyCell(`<h1 class="tx" style="font-size:20px;margin:0 0 6px;color:${EMAIL_C.ink}">Your event performance report</h1>
+  <p class="tx" style="font-size:14px;color:${EMAIL_C.ink};margin:0 0 16px">Hi ${escapeHtml(input.greeting)}, here's the read on your listings. Figures are totals since each one went live.</p>
+  <table class="stats" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr class="mu" style="color:${EMAIL_C.muted};font-size:12px;text-align:left"><th style="padding:6px">Event</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">CTR</th><th style="padding:6px;text-align:right">Saves / going</th></tr></thead><tbody>${input.rowsHtml}</tbody></table>
+  ${input.referralBlock}
+  ${input.recapHtml}
+  ${input.audience}
+  ${input.pro ? '' : `<p class="mu" style="font-size:12px;color:${EMAIL_C.muted};margin-top:12px">"Locked" figures unlock when an event is promoted, or for every event with Promoter Pro.</p>`}
+  <div style="margin:24px 0">${emailButton(`${input.home}/promoter`, 'Open Promoter Dashboard')}</div>
+  `),
+  })
+  const text = [
+    'Your event performance report',
+    `Hi ${input.greeting}, here's the read on your listings. Figures are totals since each one went live.`,
+    input.recapText,
+    emailPlainFooter(input.home),
+  ].join('\n\n')
+  return { subject, html, text }
+}
+
+/** Fixture of the real weekly report, so the admin catalogue matches a send. */
+export function previewPromoterReport() {
+  const home = siteUrl()
+  const row = `<tr><td style="padding:8px 6px">Friday night<br><span class="mu" style="color:${EMAIL_C.muted};font-size:12px">7 Nov 2026</span></td><td class="tx" style="padding:8px 6px;text-align:right;color:${EMAIL_C.ink}">120</td><td class="tx" style="padding:8px 6px;text-align:right;color:${EMAIL_C.ink}">14</td><td class="tx" style="padding:8px 6px;text-align:right;color:${EMAIL_C.ink}">11.7%</td><td class="tx" style="padding:8px 6px;text-align:right;color:${EMAIL_C.ink}">8 / 3</td></tr>`
+  return assemblePromoterReport({
+    greeting: 'Sam',
+    rowsHtml: row,
+    referralBlock: `<p class="mu" style="font-size:13px;margin:24px 0 0;color:${EMAIL_C.muted}">No tracked visits yet.</p>`,
+    recapHtml: `<h2 class="tx" style="font-size:15px;margin:24px 0 8px">This week on VibePeep</h2><p class="tx" style="font-size:13px;margin:0">Opens 40. Get tickets 6. Saves 8. Reactions 2.</p>`,
+    recapText: 'This week on VibePeep\nOpens: 40\nGet tickets: 6\nSaves: 8\nReactions: 2',
+    audience: '',
+    pro: true,
+    home,
+    unsub: `${home}/unsubscribe/report?u=preview`,
+  })
 }
 
 /** Link target for a promoter-report event. Hidden, unapproved, removed, and past listings 404, so they are not linked. */
@@ -167,30 +224,23 @@ export async function sendPromoterReport(userId: string): Promise<{ ok: boolean;
   ${topRows('Most saved', ins.topSaved, 'saves')}${topRows('Most shared', ins.topShared, 'shares')}${topRows('Most added to itineraries', ins.topItinerary, 'adds')}
   <p class="mu" style="font-size:11px;color:${EMAIL_C.muted};margin-top:10px">${escapeHtml(AUDIENCE_DISCLAIMER)}</p>`
 
-  const html = emailDocument({
-    title: 'Your VibePeep event performance report',
-    preheader: 'How your listings are tracking on VibePeep.',
-    manageHref: `${base}/promoter`,
-    banner: 'promoter-report',
-    homeHref: base,
-    unsubscribeHref: reportUnsubscribeUrl(userId),
-    reason: 'You turned on weekly recaps in the Promoter dashboard. The unsubscribe link in this email turns them off straight away and leaves your newsletter choice alone.',
-    rows: emailBodyCell(`<h1 class="tx" style="font-size:20px;margin:0 0 6px;color:${EMAIL_C.ink}">Your event performance report</h1>
-  <p class="tx" style="font-size:14px;color:${EMAIL_C.ink};margin:0 0 16px">Hi ${escapeHtml(user.orgName || user.name || 'there')}, here's the read on your listings. Figures are totals since each one went live.</p>
-  <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr class="mu" style="color:${EMAIL_C.muted};font-size:12px;text-align:left"><th style="padding:6px">Event</th><th style="padding:6px;text-align:right">Views</th><th style="padding:6px;text-align:right">Ticket clicks</th><th style="padding:6px;text-align:right">CTR</th><th style="padding:6px;text-align:right">Saves / going</th></tr></thead><tbody>${rows}</tbody></table>
-  ${referralBlock}
-  ${recap.html}
-  ${audience}
-  ${pro ? '' : `<p class="mu" style="font-size:12px;color:${EMAIL_C.muted};margin-top:12px">"Locked" figures unlock when an event is promoted, or for every event with Promoter Pro.</p>`}
-  <div style="margin:24px 0">${emailButton(`${base}/promoter`, 'Open Promoter Dashboard')}</div>
-  `),
+  const letter = assemblePromoterReport({
+    greeting: user.orgName || user.name || 'there',
+    rowsHtml: rows,
+    referralBlock,
+    recapHtml: recap.html,
+    recapText: recap.text,
+    audience,
+    pro,
+    home: base,
+    unsub: reportUnsubscribeUrl(userId),
   })
 
   const res = await sendEmail({
     to: user.email,
-    subject: 'Your VibePeep week, in one note',
-    html,
-    text: recap.text,
+    subject: letter.subject,
+    html: letter.html,
+    text: letter.text,
     kind: 'report',
     unsubscribeUrl: reportUnsubscribeApiUrl(userId),
   })

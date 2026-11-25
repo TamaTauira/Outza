@@ -295,6 +295,29 @@
   letter-spacing: -0.04em;
 }
 
+/* Promoter phone bar: one 12px label, and the longest word stays inside the cell. */
+.vp-promoter-tabbar a,
+.vp-promoter-tabbar button {
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  font-size: 12px;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.vp-promoter-tabbar .vp-tab-label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 1.15;
+}
+
 .vp-menu-initial {
   display: grid;
   width: 1.35rem;

@@ -48,7 +48,12 @@ export function ManageEvent({ eventId }: { eventId: string }) {
     }).catch(() => {})
   }, [eventId])
 
-  if (error) return <p className="text-sm">{error}</p>
+  if (error) return (
+    <section className="max-w-xl rounded-xl border border-border bg-card p-5">
+      <h1 className="font-display text-h1">{/not found/i.test(error) ? 'Event not found' : 'Can’t open this event'}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+    </section>
+  )
   if (!data) return <p className="text-sm text-muted-foreground">Loading the listing…</p>
 
   const goDirect = async () => {

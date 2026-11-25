@@ -2,7 +2,7 @@ import { siteUrl } from '@/lib/email'
 import { displayClock, formatDate } from '@/lib/format'
 import { formatAddress } from '@/lib/place'
 import { priceSummary } from '@/lib/quality'
-import { EMAIL_ADDRESS, EMAIL_C, EMAIL_DISCLAIMER, EMAIL_FONT, emailBodyCell, emailButton, emailDateRange, emailDocument, emailEscape, emailEventCard, emailMetaLine, emailSectionHeading } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_C, EMAIL_DISCLAIMER, EMAIL_FONT, emailBodyCell, emailButton, emailDateRange, emailDocument, emailEscape, emailEventCard, emailMetaLine, emailPlainFooter, emailSectionHeading } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
@@ -108,7 +108,7 @@ function section(r: RenderInput, slots: Slot[], placement: Placement, title: str
 
 function sponsoredBlock(r: RenderInput) {
   if (!r.sponsored.length) return ''
-  const label = `<tr><td class="px" style="padding:0 20px 12px;"><span class="tx" style="display:inline-block;font-family:${EMAIL_FONT};font-size:12px;letter-spacing:1.4px;font-weight:800;color:${EMAIL_C.ink};background:#f0e4d4;border-radius:999px;padding:4px 10px;">SPONSORED</span>
+  const label = `<tr><td class="px" style="padding:0 20px 12px;"><span class="sponsor" style="display:inline-block;font-family:${EMAIL_FONT};font-size:12px;letter-spacing:1.4px;font-weight:800;color:#1A1408;background:#F3E6D4;border-radius:999px;padding:4px 10px;">SPONSORED</span>
 <span class="mu" style="font-family:${EMAIL_FONT};font-size:13px;color:${EMAIL_C.muted};padding-left:8px;">Paid placement from the organiser</span></td></tr>`
   return `${emailSectionHeading('From a promoter')}${label}${r.sponsored.map((s) => card(r, s, 'sponsored', CTA_VARIANTS[r.cta].card, 'row')).join('')}`
 }
@@ -176,6 +176,7 @@ export function renderText(r: RenderInput): string {
     r.sponsoredPos === 'end' && r.sponsored.length && `FROM A PROMOTER - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
     `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${go(r, 'explore', 'explore')}`,
     `See you out there.\nManage preferences: ${go(r, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy: ${siteUrl()}/privacy\n${EMAIL_ADDRESS}\n${EMAIL_DISCLAIMER}\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled.`,
+    emailPlainFooter(siteUrl()),
   ]
   return parts.filter(Boolean).join('\n\n')
 }

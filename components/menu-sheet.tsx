@@ -38,7 +38,7 @@ export function MenuSheet({
   const items: Item[] = signedIn
     ? [
         ...(isPromoter ? [] : [{ href: '/together', label: 'Plan with your crew', Icon: Users }]),
-        { href: '/account', label: isPromoter ? 'Promoter settings' : 'Your account', Icon: Settings },
+        { href: isPromoter ? '/promoter/settings' : '/account', label: isPromoter ? 'Promoter settings' : 'Your account', Icon: Settings },
         ...(hasListings ? [{ href: '/local?tab=mine', label: 'Your listings', Icon: List }] : []),
         ...(isPromoter ? [{ href: '/promoter', label: 'Promoter dashboard', Icon: Megaphone }] : []),
         ...(isPromoter && venue ? [{ href: '/venue', label: 'My venue', Icon: Building2 }] : []),

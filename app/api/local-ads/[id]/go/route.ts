@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   let dest: URL
   try { dest = new URL(ad.url) } catch { return NextResponse.redirect(new URL(`/events/${ad.eventId}`, req.url)) }
   if (!dest.searchParams.has('utm_source')) {
-    dest.searchParams.set('utm_source', 'outza')
+    dest.searchParams.set('utm_source', 'vibepeep')
     dest.searchParams.set('utm_medium', 'referral')
     dest.searchParams.set('utm_campaign', 'local_recommendation')
   }
