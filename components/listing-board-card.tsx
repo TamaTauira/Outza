@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react'
 import { EventImage } from '@/components/event-image'
 import { ListClock } from '@/components/list-clock'
 import { cardPhoto } from '@/lib/card-photo'
+import { eventPictureFrom } from '@/lib/images/display-spec'
 import type { BoardRange } from '@/lib/listing-window'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +20,11 @@ export function ListingBoardCard({
   href,
   imageUrl,
   imageCategory,
+  imageWidth,
+  imageHeight,
+  imageColor,
+  imageBlur,
+  imageDisplay,
   venue,
   tag,
   accent,
@@ -36,6 +42,11 @@ export function ListingBoardCard({
   href: string
   imageUrl?: string | null
   imageCategory?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
+  imageColor?: string | null
+  imageBlur?: string | null
+  imageDisplay?: unknown
   venue: string
   tag: string
   accent: string
@@ -61,8 +72,18 @@ export function ListingBoardCard({
       } : undefined}
       className={cn('vp-board-card', hot && 'bg-primary/10', onOpen && 'cursor-pointer')}
     >
-      <span className="vp-board-media" style={{ background: accent }}>
-        <EventImage src={photo} category={imageCategory} slot="featured" kind="featured" crop={!!photo} alt="" sizes="(min-width: 1280px) 30vw, 100vw" />
+      <span className="vp-board-media">
+        <EventImage
+          src={photo}
+          picture={eventPictureFrom({ imageWidth, imageHeight, imageColor, imageBlur, imageDisplay })}
+          sourceWidth={imageWidth}
+          sourceHeight={imageHeight}
+          category={imageCategory}
+          slot="featured"
+          kind="featured"
+          alt=""
+          sizes="(min-width: 1280px) 30vw, 100vw"
+        />
       </span>
       <div className="vp-board-body">
         <div className="vp-board-line">

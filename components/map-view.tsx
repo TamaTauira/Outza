@@ -22,6 +22,7 @@ import { VibePeepMascot } from '@/components/vibepeep-mascot'
 import { eventPictureSrc, type PlaceholderSlot } from '@/lib/placeholders'
 import { variantUrl, type ClientImage, type VariantKind } from '@/lib/images/spec'
 import { displaySourceUrl } from '@/lib/images/source-url-client'
+import { declaredPhotoIsLowQuality, storedPhotoIsLowQuality } from '@/lib/images/listing-photo'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
@@ -43,7 +44,8 @@ interface MapViewProps {
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 
-function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null }, slot: PlaceholderSlot) {
+function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; category?: string | null; imageWidth?: number | null; imageHeight?: number | null }, slot: PlaceholderSlot) {
+  if (declaredPhotoIsLowQuality(e.imageUrl) || storedPhotoIsLowQuality(e.imageWidth, e.imageHeight)) return eventPictureSrc(null, e.category, slot)
   const kind: VariantKind = slot === 'marker' || slot === 'square' ? 'square' : 'card'
   const m = e.imageAsset?.variants
   const widths = m?.sizes?.[kind]
@@ -52,9 +54,10 @@ function pictureSrc(e: { imageUrl?: string | null; imageAsset?: ClientImage | nu
   return sized || eventPictureSrc(e.imageUrl, e.category, slot)
 }
 
-function holdingPicture(e: { imageUrl?: string | null; imageAsset?: ClientImage | null }, slot: PlaceholderSlot) {
+function holdingPicture(e: { imageUrl?: string | null; imageAsset?: ClientImage | null; imageWidth?: number | null; imageHeight?: number | null }, slot: PlaceholderSlot) {
   const kind: VariantKind = slot === 'marker' || slot === 'square' ? 'square' : 'card'
   const widths = e.imageAsset?.variants?.sizes?.[kind]
+  if (declaredPhotoIsLowQuality(e.imageUrl) || storedPhotoIsLowQuality(e.imageWidth, e.imageHeight)) return true
   if (widths?.length) return false
   return !(e.imageUrl && /^https?:\/\//i.test(e.imageUrl))
 }

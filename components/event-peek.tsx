@@ -44,6 +44,11 @@ type PeekEvent = {
   isLGBTI?: boolean | null
   price?: string | null
   imageUrl?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
+  imageColor?: string | null
+  imageBlur?: string | null
+  imageDisplay?: unknown
   imageAsset?: unknown
   latitude?: number | null
   longitude?: number | null
@@ -181,16 +186,16 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
             <X className="h-5 w-5" />
           </Dialog.Close>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <div className="relative aspect-[16/9] bg-[#110e16] sm:aspect-[2/1]">
+            <div className="relative aspect-[16/9] bg-black sm:aspect-[2/1]">
               <EventImage
                 image={event.imageAsset as never}
                 picture={eventPictureFrom(event)}
                 src={event.imageUrl}
+                sourceWidth={event.imageWidth}
+                sourceHeight={event.imageHeight}
                 kind="hero"
                 alt={event.title}
                 sizes="(max-width: 640px) 100vw, 720px"
-                crop
-                accent={cat?.color}
                 category={event.communityKey || event.category}
                 slot="hero"
                 wideSlot="hero-wide"

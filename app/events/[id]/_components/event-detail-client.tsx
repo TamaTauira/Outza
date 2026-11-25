@@ -17,6 +17,7 @@ import { LocalRecommendations } from '@/components/local-recommendations'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { EventExtras, EventGallery, HERO_FRAME, HERO_HOLD, shareEvent } from './event-extras'
 import { hasListingPhoto } from '@/lib/placeholders'
+import { declaredPhotoIsLowQuality, storedPhotoIsLowQuality } from '@/lib/images/listing-photo'
 import { ListingTrustActions } from '@/components/listing-trust-actions'
 import { eventOutbound } from '@/lib/listing-link'
 import { BackToEventsLink } from '@/components/back-to-events-link'
@@ -250,18 +251,18 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         <div className="flex flex-col gap-[var(--vp-card-gap)] lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-[var(--vp-card-gap)]">
           <header className="min-w-0 space-y-3 lg:col-start-1">
             <EventGallery event={event}>
-              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border')}>
+              <div className={cn(hasListingPhoto(event.imageUrl, event.imageAsset?.variants) && !storedPhotoIsLowQuality(event.imageWidth, event.imageHeight, eventPictureFrom(event)?.lowQuality) && !declaredPhotoIsLowQuality(event.imageUrl) ? HERO_FRAME : HERO_HOLD, 'rounded-xl border border-border bg-black')}>
                 <EventImage
                   key={event.id}
                   image={event.imageAsset}
                   picture={eventPictureFrom(event)}
                   src={event.imageUrl}
+                  sourceWidth={event.imageWidth}
+                  sourceHeight={event.imageHeight}
                   kind="hero"
                   alt={event?.title ?? 'Event'}
                   sizes="(max-width: 1024px) calc(100vw - 2rem), 1100px"
                   priority
-                  crop
-                  accent={catDef?.color}
                   category={event.communityKey || event.category}
                   slot="hero"
                   wideSlot="hero-wide"

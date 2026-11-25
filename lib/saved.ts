@@ -49,6 +49,11 @@ export interface SavedEvent {
   /** Detail link for non-board items (e.g. VibePeep Local listings); defaults to the event page. */
   href?: string
   imageUrl?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
+  imageColor?: string | null
+  imageBlur?: string | null
+  imageDisplay?: unknown
 }
 
 const EVT = 'sydney-events-saved-change'

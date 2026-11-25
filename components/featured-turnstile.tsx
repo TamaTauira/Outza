@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Bookmark, Megaphone } from 'lucide-react'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventPath } from '@/lib/seo'
-import { CATEGORIES } from '@/lib/categories'
 import { formatPrice, formatTime } from '@/lib/board'
 import { displayPriceValue, displayTitle, parentCategory } from '@/lib/display-public'
 import { tierDef } from '@/lib/tiers'
@@ -63,7 +62,6 @@ export function FeaturedTurnstile({ city }: { city: string }) {
 function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   const { isSaved, toggle } = useSaved()
   const category = parentCategory(it.category) || it.category
-  const color = CATEGORIES.find((c) => c.name === category)?.color ?? '#FF7A35'
   const title = displayTitle(it.title)
   const t = tierDef(it.tier)
   const badge = it.sponsored ? { label: 'SPONSORED', bg: t?.color ?? '#C0C7D1', fg: '#000000' } : null
@@ -80,12 +78,11 @@ function FeaturedCard({ it, hidden }: { it: FeaturedItem; hidden?: boolean }) {
   return (
     <article aria-hidden={hidden} className="relative w-[78vw] max-w-[320px] shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card shadow-md lg:w-auto lg:max-w-none">
       <Link href={eventPath(it)} tabIndex={hidden ? -1 : undefined} className="block">
-        <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[4/3]" style={{ background: `linear-gradient(135deg, ${color}, ${color}55)` }}>
-          <EventImage image={it.imageAsset} picture={eventPictureFrom(it)} src={it.imageUrl} kind="featured" alt={title} sizes="(max-width: 1023px) min(78vw, 320px), 320px" crop accent={color} category={category} slot="featured" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+        <div className="relative aspect-[4/5] overflow-hidden bg-black sm:aspect-[4/3]">
+          <EventImage image={it.imageAsset} picture={eventPictureFrom(it)} src={it.imageUrl} sourceWidth={it.imageWidth} sourceHeight={it.imageHeight} kind="featured" alt={title} sizes="(max-width: 1023px) min(78vw, 320px), 320px" category={category} slot="featured" />
           {badge && <span title={`${t?.name ?? 'Sponsored'} placement`} className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-bold shadow-md" style={{ backgroundColor: badge.bg, color: badge.fg }}>{badge.label}</span>}
-          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white">{category}</span>
-          <span className="absolute bottom-3 right-3 z-10 rounded bg-black/70 px-2 py-0.5 font-mono text-xs text-white">{priceText}</span>
+          <span className="vp-media-chip absolute bottom-3 left-3 z-10 rounded-full px-2 py-0.5 text-xs font-semibold">{category}</span>
+          <span className="vp-media-chip absolute bottom-3 right-3 z-10 rounded-full px-2 py-0.5 font-mono text-xs">{priceText}</span>
         </div>
         <div className="p-3">
           <p className="truncate font-semibold" title={title}>{title}</p>

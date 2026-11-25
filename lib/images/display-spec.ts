@@ -1,5 +1,7 @@
 /** Client-safe display-image contract. Derivatives are 480/960/1440, never upscaled. */
 
+import { storedPhotoIsLowQuality } from './listing-photo'
+
 export const DISPLAY_WIDTHS = [480, 960, 1440] as const
 export const DISPLAY_VERSION = 1
 
@@ -11,6 +13,8 @@ export interface DisplayManifest {
   hash?: string
   base?: string
   widths?: number[]
+  /** Source artwork is below the card minimum. The page shows holding art instead. */
+  lowQuality?: boolean
 }
 
 export interface EventPicture {
@@ -20,6 +24,8 @@ export interface EventPicture {
   blur: string | null
   base: string
   widths: number[]
+  /** True when the stored source is too small to show on a card. */
+  lowQuality: boolean
 }
 
 /** Marks a row whose source image just changed. The resize cron picks these up and ignores older rows. */
@@ -64,13 +70,16 @@ export function eventPictureFrom(row: {
   const manifest = parseDisplayManifest(row?.imageDisplay)
   const widths = (manifest?.widths ?? []).filter((w) => Number.isFinite(w) && w > 0)
   if (!manifest || manifest.pending || !manifest.base || !widths.length) return null
+  const width = row?.imageWidth ?? null
+  const height = row?.imageHeight ?? null
   return {
-    width: row?.imageWidth ?? null,
-    height: row?.imageHeight ?? null,
+    width,
+    height,
     color: row?.imageColor ?? null,
     blur: row?.imageBlur ?? null,
     base: manifest.base.replace(/\/$/, ''),
     widths,
+    lowQuality: storedPhotoIsLowQuality(width, height, manifest.lowQuality),
   }
 }
 
