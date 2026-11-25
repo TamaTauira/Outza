@@ -10,7 +10,7 @@ import { kindLabel } from '@/lib/local-ads-shared'
 type Ad = { id: string; kind: string; businessName: string; blurb: string; status: string; amountCents: number; paymentMode: string; endsAt: string | null; views: number; clicks: number; createdAt: string; event: { id: string; title: string; date: string; venueName: string } }
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' }) : '')
 
-export function LocalAdsTab() {
+export function LocalAdsTab({ cardsLive }: { cardsLive: boolean }) {
   const [ads, setAds] = useState<Ad[] | null>(null)
   const load = () => {
     fetch('/api/local-ads/mine')
@@ -38,7 +38,7 @@ export function LocalAdsTab() {
             <ol className="mt-3 text-sm space-y-1 list-decimal list-inside text-muted-foreground">
               <li>Find the event your customers are heading to on the <Link href="/" className="text-primary underline">event board</Link>.</li>
               <li>Open it and choose <span className="font-medium text-foreground">Recommend your business here</span>.</li>
-              <li>Pick Dinner, Bar, Parking, Experience or Service, add your details and pay {formatAud(LOCAL_AD.priceCents)}.</li>
+              <li>Pick Dinner, Bar, Parking, Experience or Service, add your details and {cardsLive ? `pay ${formatAud(LOCAL_AD.priceCents)}` : `activate it in test mode. No card is charged, and the invoice is marked test`}.</li>
             </ol>
           </div>
         </div>

@@ -8,7 +8,8 @@ import { PRO_PLAN, formatAudCents, productName } from '@/lib/tiers'
 import { formatInvoiceNumber, invoiceNumberFor, proDiscountLine } from '@/lib/invoice'
 import { sponsorshipInvoice } from '@/lib/sponsorship-store'
 import { PromoterAppShell } from '@/components/promoter-shell'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { Logo } from '@/components/logo'
+import { businessAbn } from '@/lib/site'
 import { PrintButton } from './print-button'
 
 export const dynamic = 'force-dynamic'
@@ -80,7 +81,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   const total = lines.reduce((s, l) => s + l.cents, 0)
   const gst = Math.round(total / 11)
-  const abn = (process.env.BUSINESS_ABN ?? '').replace(/\s+/g, '')
+  const abn = (businessAbn() ?? '').replace(/\s+/g, '')
   const abnLabel = /^\d{11}$/.test(abn) ? `ABN ${abn.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')}` : ''
   const seq = await invoiceNumberFor(id)
   const number = seq != null ? formatInvoiceNumber(seq) : `VIBEPEEP-${(issued ?? new Date()).toISOString().slice(0, 10).replace(/-/g, '')}-${id.slice(-6).toUpperCase()}`
@@ -94,18 +95,18 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       </div>
       <article className="mt-6 rounded-xl bg-white text-neutral-900 shadow-sm border border-neutral-200 p-8 print:shadow-none print:border-0 print:mt-0">
         <header className="flex flex-wrap items-start justify-between gap-6">
-          <VibePeepLogo tone="on-light" />
+          <Logo tone="on-light" />
           <div className="text-right">
             <p className="text-2xl font-bold">Tax invoice</p>
             <p className="text-sm text-neutral-600 mt-1">No. {number}</p>
             <p className="text-sm text-neutral-600">Issued {issued ? fmt(issued) : ''}</p>
-            <p className="mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold bg-neutral-100">{status}</p>
+            <p className="mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold bg-neutral-100">{test ? `Test · ${status}` : status}</p>
           </div>
         </header>
         {test && <p className="mt-6 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-900">Test-mode purchase: no card was charged. This document is for your records only.</p>}
-        <section className="mt-8 grid sm:grid-cols-2 gap-6 text-sm">
-          <div><p className="text-xs uppercase tracking-wider text-neutral-500">From</p><p className="font-semibold mt-1">VibePeep</p><p className="text-neutral-600">Event promotion services</p>{abnLabel ? <p className="text-neutral-600">{abnLabel}</p> : <p className="text-neutral-500">Supplier ABN is published once BUSINESS_ABN is set for this site.</p>}</div>
-          <div><p className="text-xs uppercase tracking-wider text-neutral-500">Billed to</p><p className="font-semibold mt-1">{buyer.name || buyer.email}</p>{buyer.name && <p className="text-neutral-600">{buyer.email}</p>}</div>
+        <section className="mt-8 grid gap-6 text-sm sm:grid-cols-2">
+          <div className="min-w-0"><p className="text-xs uppercase tracking-wider text-neutral-500">From</p><p className="font-semibold mt-1">VibePeep</p><p className="text-neutral-600">Event promotion services</p>{abnLabel ? <p className="text-neutral-600">{abnLabel}</p> : null}</div>
+          <div className="min-w-0"><p className="text-xs uppercase tracking-wider text-neutral-500">Billed to</p><p className="mt-1 font-semibold break-words">{buyer.name || buyer.email}</p>{buyer.name && buyer.email ? <p className="break-all text-neutral-600">{buyer.email}</p> : null}</div>
         </section>
         <table className="mt-8 w-full text-sm">
           <thead><tr className="text-left text-xs uppercase tracking-wider text-neutral-500 border-b border-neutral-200"><th className="py-2 font-medium">Item</th><th className="py-2 font-medium text-right">Amount (AUD)</th></tr></thead>

@@ -23,7 +23,7 @@ export function LayoutSample() {
         onEventChange={() => {}}
         onDone={() => {}}
       />
-      <BoostStudio events={sample} pro={false} />
+      <BoostStudio events={sample} pro={false} cardsLive={false} />
     </>
   )
 }

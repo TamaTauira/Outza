@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { interpretQuery } from './ai-search-parse'
 import { publicEmailError } from './email'
 import { isHiddenFromPublic } from './community-shared'
-import { applyListingField, campaignEndsBeforeEvent, campaignScheduleNote, listingHiddenOnCreate, listingPayloadPrice, parsePromoterListing } from './promoter-listing'
+import { applyListingField, campaignEndsBeforeEvent, campaignScheduleNote, finishTimeError, listingHiddenOnCreate, listingPayloadPrice, parsePromoterListing } from './promoter-listing'
 import { outzaVerified, priceSummary, scheduleCue } from './quality'
 import { extractPostcode, pinIsCityDump, placeFromText } from './venue-place'
 
@@ -59,6 +59,14 @@ test('promoter listing keeps price, rejects bad dates and treats free text as fr
   assert.equal(parsePromoterListing({ title: 'X', date: '2026-12-02', endDate: '2026-12-01', venueName: 'Hall', city: 'Sydney' }, NOW).ok, false)
   assert.match(parsePromoterListing({ title: 'X', date: '2026-12-01', venueName: 'Hall', city: 'Sydney', price: '-$10' }, NOW).ok ? '' : 'negative', /negative|Price/)
   assert.equal(parsePromoterListing({ title: 'X', date: '2026-12-01', venueName: 'Hall', city: 'Sydney', ticketUrl: 'not a url' }, NOW).ok, false)
+  const early = parsePromoterListing({ title: 'X', date: '2026-12-01', time: '19:00', endTime: '18:00', venueName: 'Hall', city: 'Sydney' }, NOW)
+  assert.equal(early.ok, false)
+  if (!early.ok) assert.match(early.error, /Finish time needs to be after the start time/)
+  assert.equal(finishTimeError({ startDate: '01/12/2026', endDate: '', time: '19:00', endTime: '18:00' }), 'Finish time needs to be after the start time.')
+  assert.equal(finishTimeError({ startDate: '2026-12-01', endDate: '2026-12-02', time: '19:00', endTime: '18:00' }), null)
+  const nextDay = parsePromoterListing({ title: 'X', date: '2026-12-01', endDate: '2026-12-02', time: '19:00', endTime: '18:00', venueName: 'Hall', city: 'Sydney' }, NOW)
+  assert.equal(nextDay.ok, true)
+  if (nextDay.ok) assert.equal(nextDay.listing.overnight, true)
   assert.equal(priceSummary({ isFree: false, price: 'Free entry', priceMin: null, priceMax: null }).fees, null)
   assert.equal(priceSummary({ isFree: false, price: '0', priceMin: 0, priceMax: 0 }).range, 'Free')
 })

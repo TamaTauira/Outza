@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { BadgeCheck, BarChart3, Building2, CalendarPlus, Car, Compass, LineChart, Megaphone, SlidersHorizontal, Ticket, Utensils, Wine } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
-import { BUSINESS_PLANS, LOCAL_AD, PRO_PLAN, formatAud } from '@/lib/tiers'
+import { BOOSTS } from '@/lib/sponsorship'
+import { BUSINESS_PLANS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 import { DIGITAL_SERVICE_LINE } from '@/lib/digital-service'
 import { DashboardPreview } from './dashboard-preview'
 import { HeroStage } from './hero-stage'
@@ -45,8 +46,14 @@ const PLAN_POINTS: Record<string, string[]> = {
   VENUE_PLUS: ['Forty short boosts', 'Pause the lot', 'A 7-day refund window when a boost has not been shown'],
 }
 
-export function Hero({ primaryHref, primaryLabel, showSignIn, supply }: { primaryHref: string; primaryLabel: string; showSignIn: boolean; supply?: { events: number; cities: number; sources: number; updated: string | null } | null }) {
-  const updated = supply?.updated ? new Date(supply.updated).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null
+const boost = TIERS.find((tier) => tier.key === 'SILVER')!
+
+export function Hero({ primaryHref, primaryLabel, showSignIn, cardsLive = false, supply }: { primaryHref: string; primaryLabel: string; showSignIn: boolean; cardsLive?: boolean; supply?: { events: number; cities: number; sources: number; updated: string | null } | null }) {
+  const updated = supply?.updated ? new Date(supply.updated).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : null
+  const boostLine = `Boost is ${formatAud(boost.prices[boost.headlineDays])} for ${boost.headlineDays} days.`
+  const passLine = cardsLive
+    ? `An evening pass is ${formatAud(BOOSTS.EVENING.priceCents)}. ${boostLine}`
+    : `${boostLine} Evening and day passes are quoted until card payments are switched on.`
   return (
     <section className="overflow-x-clip bg-[var(--vp-banner)] text-white">
       <div className={`${sectionPad} grid items-center gap-10 pb-8 sm:pb-12 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:pb-14`}>
@@ -58,7 +65,7 @@ export function Hero({ primaryHref, primaryLabel, showSignIn, supply }: { primar
           <h1 className="mt-3 font-display text-display">
             Put your event in front of people planning their weekend.
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. An evening pass is $9. Boost is $19 for a week. We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
+          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. {passLine} We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
           <p className="mt-3"><Link href="/local-ads" className="text-sm font-semibold text-[var(--vp-brand-orange)] underline underline-offset-4">Running a restaurant, bar or local business? See local ads.</Link></p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href={primaryHref} className={ctaClass}>{primaryLabel}</Link>
@@ -123,13 +130,16 @@ export function PathCards() {
   )
 }
 
-export function HowItWorks() {
+export function HowItWorks({ cardsLive = false }: { cardsLive?: boolean }) {
+  const steps = STEPS.map((step) => step.n === '02' && !cardsLive
+    ? { ...step, body: 'Pick Boost, Spotlight or Headliner and confirm it in the dashboard. While card payments are in test mode, confirming does not charge a card and the invoice is marked test.' }
+    : step)
   return (
     <section id="how" className="scroll-mt-24 border-y border-border bg-card/50 py-10 sm:py-12">
       <div className={sectionPad}>
         <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
         <ol className="mt-6 grid items-stretch gap-[var(--vp-card-gap)] md:grid-cols-3">
-          {STEPS.map((step) => (
+          {steps.map((step) => (
             <li key={step.n} className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--vp-banner)] font-mono text-xs font-bold text-white">{step.n}</span>
@@ -210,7 +220,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
           <figcaption className="mt-3 text-xs text-muted-foreground">Illustrative. This event and business are not real listings.</figcaption>
         </figure>
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-[var(--vp-brand-orange-ink)]">For restaurants, bars, parking and experiences</p>
+          <p className="vp-ink-orange text-xs font-semibold">For restaurants, bars, parking and experiences</p>
           <h2 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">Get recommended. Get noticed.</h2>
           <p className="mt-2 text-muted-foreground">Your next customers might already be deciding where to go.</p>
           <p className="mt-4 font-display text-4xl font-bold tabular-nums" data-testid="local-price">
@@ -222,7 +232,7 @@ export function LocalAds({ href, label }: { href: string; label: string }) {
           <ul className="mt-4 flex flex-wrap gap-2 text-sm">
             {[[Utensils, 'Pre-show dining'], [Wine, 'Nearby bars'], [Car, 'Parking'], [Compass, 'Experiences']].map(([Icon, name]) => {
               const ItemIcon = Icon as typeof Car
-              return <li key={name as string} className="inline-flex items-center gap-1.5 rounded-full bg-[var(--vp-brand-orange-ink)]/10 px-3 py-1 font-medium text-[var(--vp-brand-orange-ink)]"><ItemIcon className="h-4 w-4" aria-hidden />{name as string}</li>
+              return <li key={name as string} className="vp-ink-orange inline-flex items-center gap-1.5 rounded-full bg-[var(--vp-brand-orange-ink)]/10 px-3 py-1 font-medium"><ItemIcon className="h-4 w-4" aria-hidden />{name as string}</li>
             })}
           </ul>
           <p className="mt-4 text-sm text-muted-foreground">The ad runs until the event ends. Up to 6 businesses per event. Sign in as a promoter, open an upcoming event and choose “Recommend your business here”. Always labelled Sponsored.</p>

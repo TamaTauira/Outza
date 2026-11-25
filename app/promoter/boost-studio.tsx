@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Loader2, Megaphone } from 'lucide-react'
 import { BOOSTS, type BoostId, ATTRIBUTION_NOTE } from '@/lib/sponsorship'
+import { PAYMENTS_COPY } from '@/lib/payments-mode'
 import { formatAud, formatAudCents } from '@/lib/tiers'
 import { clickRate, costPerClick, returnEstimate } from '@/lib/organiser-reach'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
@@ -41,9 +42,9 @@ const localValue = (date: Date) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
+export function BoostStudio({ events, pro, cardsLive }: { events: Ev[]; pro: boolean; cardsLive: boolean }) {
   const [boosts, setBoosts] = useState<CatalogBoost[]>(Object.values(BOOSTS))
-  const [paymentsOn, setPaymentsOn] = useState<boolean | null>(null)
+  const [paymentsOn, setPaymentsOn] = useState<boolean | null>(cardsLive ? null : false)
   const [rows, setRows] = useState<CampaignRow[]>([])
   const [exportGate, setExportGate] = useState<'loading' | 'on' | 'off'>('loading')
   const [canPause, setCanPause] = useState(false)
@@ -248,8 +249,8 @@ export function BoostStudio({ events, pro }: { events: Ev[]; pro: boolean }) {
             <p className="text-xs text-muted-foreground">Spend cap {formatAud(price)}. One charge. It does not renew.</p>
             {paymentsOn === false ? (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium">Card payments are not switched on</p>
-                <p className="text-xs text-muted-foreground">Leave a quote request. This does not charge a card and does not put the boost live.</p>
+                <p className="text-sm font-medium">{PAYMENTS_COPY.boostsOffTitle}</p>
+                <p className="text-xs text-muted-foreground">{PAYMENTS_COPY.boostsOffBody}</p>
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@venue.com" className={field} aria-label="Email for the quote" />
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Which night, which room" rows={3} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
                 <button type="button" onClick={quote} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border text-sm font-semibold disabled:opacity-60">

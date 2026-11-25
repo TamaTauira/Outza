@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/session'
 import { MAX_ADS_PER_EVENT, activeAdWhere } from '@/lib/local-ads'
+import { cardPaymentsLive } from '@/lib/payments-mode'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,5 +22,6 @@ export async function GET(req: Request) {
     ads: ads.map(({ promoterId, url, ...a }) => ({ ...a, host: (() => { try { return new URL(url).hostname.replace(/^www\./, '') } catch { return '' } })(), mine: !!me && me.id === promoterId })),
     slotsLeft: Math.max(0, MAX_ADS_PER_EVENT - ads.length),
     youHaveOne: !!me && ads.some((a) => a.promoterId === me.id),
+    testMode: !cardPaymentsLive(),
   })
 }

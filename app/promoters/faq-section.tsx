@@ -6,7 +6,7 @@ import { ctaClass, sectionPad } from './styles'
 
 const proPayback = formatAud(Math.ceil(PRO_PLAN.priceCents / (PRO_PLAN.discountPct / 100) / 100) * 100)
 
-export function FaqSection() {
+export function FaqSection({ cardsLive = false }: { cardsLive?: boolean }) {
   const items: { q: string; a: ReactNode }[] = [
     {
       q: 'Is listing free?',
@@ -14,7 +14,9 @@ export function FaqSection() {
     },
     {
       q: 'When does my campaign start?',
-      a: 'Straight away, as soon as payment is confirmed. If you buy again for the same event, the new time is added on to the end.',
+      a: cardsLive
+        ? 'Straight away, as soon as payment is confirmed. If you buy again for the same event, the new time is added on to the end.'
+        : 'From the dashboard, as soon as you confirm it. While card payments are in test mode, that does not charge a card and the invoice is marked test. Buying again for the same event adds the new time on to the end.',
     },
     {
       q: 'Where does my event appear?',
@@ -50,7 +52,9 @@ export function FaqSection() {
     },
     {
       q: 'What is a short boost?',
-      a: 'The evening and day passes are priced in the row under the packages. Each is a Sponsored card in Coming up next for your event’s city, bought from the promoter dashboard. A boost that has not been shown can be refunded from the dashboard within 48 hours of the start you picked.',
+      a: cardsLive
+        ? 'The evening and day passes are priced in the row under the packages. Each is a Sponsored card in Coming up next for your event’s city, bought from the promoter dashboard. A boost that has not been shown can be refunded from the dashboard within 48 hours of the start you picked.'
+        : 'The evening and day passes are priced in the row under the packages, but they are not on sale until card payments are switched on. The dashboard takes a quote and does not charge a card or put the boost live.',
     },
     {
       q: 'How do local recommendations work?',

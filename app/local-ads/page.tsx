@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { auth } from '@/auth'
 import { PromoterSalesHeader } from '@/components/promoter-sales-header'
 import { LocalAds } from '@/app/promoters/marketing'
+import '../promoters/promoters.css'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default async function LocalAdsPage() {
   return (
     <div className="min-h-screen bg-background">
       <PromoterSalesHeader accountHref={accountHref} />
-      <main>
+      <main className="vp-promoters vp-page-top">
         <LocalAds href={href} label={isPromoter ? 'Advertise from the dashboard' : 'Advertise my business'} />
       </main>
     </div>

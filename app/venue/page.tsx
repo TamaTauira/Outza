@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import { ownershipUiEnabled } from '@/lib/ownership'
 import { managedVenueIds } from '@/lib/venue-access'
+import { PromoterAppShell } from '@/components/promoter-shell'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,8 +18,10 @@ export default async function VenueHome() {
   if (ids.length === 1) redirect(`/venue/${ids[0]}`)
   const venues = ids.length ? await prisma.venue.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, city: true } }) : []
   return (
+    <PromoterAppShell>
     <main className="vp-page-top mx-auto max-w-xl px-4 pb-8">
-      <h1 className="font-display text-h1">Your venues</h1>
+      <p className="text-xs font-semibold text-primary">Promoter</p>
+      <h1 className="mt-1 font-display text-h1">Your venues</h1>
       {venues.length ? (
         <ul className="mt-4 space-y-2">
           {venues.map((venue) => (
@@ -29,5 +32,6 @@ export default async function VenueHome() {
         <p className="mt-3 text-sm text-muted-foreground">No venue yet. Open a venue page and choose Manage this Venue. It’s free. Once the claim is approved, past and future listings at that venue stay linked to this account.</p>
       )}
     </main>
+    </PromoterAppShell>
   )
 }

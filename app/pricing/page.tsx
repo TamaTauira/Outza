@@ -5,6 +5,7 @@ import { PageShell } from '@/components/page-shell'
 import { BOOSTS } from '@/lib/sponsorship'
 import { DURATIONS, LOCAL_AD, PRO_PLAN, TIERS, formatAud } from '@/lib/tiers'
 import { DIGITAL_SERVICE_LINE } from '@/lib/digital-service'
+import { cardPaymentsLive } from '@/lib/payments-mode'
 
 export const metadata: Metadata = {
   title: 'Pricing',
@@ -14,11 +15,13 @@ export const metadata: Metadata = {
 }
 
 export default function PricingPage() {
+  const cardsLive = cardPaymentsLive()
   return (
     <PageShell>
       <main className="vp-wrap vp-page-top px-4 pb-10 sm:px-6">
         <h1 className="font-display text-h1">What promotion costs</h1>
-        <p className="mt-3 max-w-2xl text-muted-foreground">All prices are AUD and include GST. Listing an event is free. Campaigns are a one-off payment for that event. The same packages are on the promoter page.</p>
+        <p className="mt-3 max-w-2xl text-muted-foreground">All prices are AUD and include GST. Listing an event is free. Campaigns are a one-off payment for that event. The same packages, at these prices, are on the promoter page and in checkout.</p>
+        {!cardsLive && <p className="mt-3 max-w-2xl text-sm text-muted-foreground">Boost, Spotlight and Headliner activate from the promoter dashboard. While card payments are in test mode, that does not charge a card and the invoice is marked test. Evening and day passes are not on sale until card payments are switched on. The dashboard takes a quote for those and does not charge a card.</p>}
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">{DIGITAL_SERVICE_LINE}</p>
 
         <div className="mt-8 grid gap-5 md:grid-cols-3">

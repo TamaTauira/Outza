@@ -16,8 +16,10 @@
   --vp-text-muted: #5c6761;
   --vp-brand-orange: #ff7a35;
   --vp-brand-pink: #f05a9d;
+  /* Darker pink so white type on a Headliner band clears AA. Brand pink stays #f05a9d. */
   --vp-brand-amber: #ffc078;
   --vp-brand-orange-ink: #9a3412;
+  --vp-brand-pink-ink: #9d174d;
   --vp-radius-sm: 8px;
   --vp-radius-md: 12px;
   --vp-radius-lg: 16px;

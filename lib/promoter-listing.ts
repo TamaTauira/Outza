@@ -83,8 +83,9 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
 
   const time = TIME.test(String(b.time ?? '')) ? String(b.time) : null
   const endTime = TIME.test(String(b.endTime ?? '')) ? String(b.endTime) : null
-  const overnight = !!(time && endTime && endTime < time)
-  if (time && endTime && endTime === time) return { ok: false, error: 'Finish time needs to be different from the start time' }
+  const finishError = finishTimeError({ startDate: date, endDate: endDate ?? '', time: time ?? '', endTime: endTime ?? '' })
+  if (finishError) return { ok: false, error: finishError }
+  const overnight = !!(time && endTime && endTime < time && endDate && endDate > date)
 
   const category = CATEGORIES.some((c) => c.name === b.category) ? String(b.category) : 'Community'
   const allowed = new Set(CATEGORIES.find((c) => c.name === category)?.subTags ?? [])
@@ -159,6 +160,15 @@ export function parsePromoterListing(b: Record<string, unknown>, now = new Date(
       capacity,
     },
   }
+}
+
+/** Same-day finish must be later than the start. A later end date may finish earlier in the clock. */
+export function finishTimeError(input: { startDate: string; endDate: string; time: string; endTime: string }): string | null {
+  if (!TIME.test(input.time) || !TIME.test(input.endTime)) return null
+  const end = input.endDate.trim()
+  const sameDay = !end || end === input.startDate.trim()
+  if (sameDay && input.endTime <= input.time) return 'Finish time needs to be after the start time.'
+  return null
 }
 
 /** Checking Free clears a typed price before it is saved. */

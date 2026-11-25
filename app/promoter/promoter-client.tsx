@@ -9,6 +9,8 @@ import { auToIso } from '@/lib/au-date'
 import { applyListingField, listingPayloadPrice } from '@/lib/promoter-listing'
 import { PROMOTER_NAV_EVENT, promoterTabHref } from '@/lib/promoter-nav'
 import { PRO_PLAN, TIER_KEYS, formatAud, isDuration, productName, tierDef, type Duration } from '@/lib/tiers'
+import { PAYMENTS_COPY } from '@/lib/payments-mode'
+import { finishTimeError } from '@/lib/promoter-listing'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
 import { BRAND_ORANGE } from '@/lib/brand'
@@ -39,7 +41,7 @@ type Tab = 'overview' | 'insights' | 'intel' | 'promote' | 'boosts' | 'events' |
 
 const card = 'rounded-xl bg-card border border-border p-5 shadow-sm'
 const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base'
-const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '')
+const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Australia/Sydney' }) : '')
 const isLive = (p: Promo) => p.status === 'ACTIVE' && !!p.endsAt && new Date(p.endsAt) > new Date()
 
 const TABS: { key: Tab; label: string; Icon: typeof Rocket }[] = [
@@ -90,6 +92,10 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     if (isDuration(days)) setPromoteDays(days)
   }, [load])
   useEffect(() => {
+    const label = TABS.find((item) => item.key === tab)?.label ?? 'Dashboard'
+    document.title = `${label} · VibePeep`
+  }, [tab])
+  useEffect(() => {
     const sync = () => {
       const p = new URLSearchParams(window.location.search)
       const t = p.get('tab') as Tab | null
@@ -131,7 +137,10 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
 
   const startPromote = (id?: string) => { if (id) setPromoteId(id); selectTab('promote'); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const buyPro = async () => {
-    const label = account.pro ? `Extend Promoter Pro for ${formatAud(PRO_PLAN.priceCents)}? This is charged now.` : `Go Pro for ${formatAud(PRO_PLAN.priceCents)}? This is charged now.`
+    const price = formatAud(PRO_PLAN.priceCents)
+    const label = stripeEnabled
+      ? (account.pro ? `Extend Promoter Pro for ${price}? This is charged now.` : `Go Pro for ${price}? This is charged now.`)
+      : `${account.pro ? 'Extend' : 'Activate'} Promoter Pro for ${price}? Test mode: no card is charged. The invoice is marked test.`
     if (!window.confirm(label)) return
     setProBusy(true)
     try {
@@ -139,7 +148,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d?.error ?? 'Checkout failed')
       if (d.url) { window.location.href = d.url; return }
-      toast.success(`${PRO_PLAN.name} activated (test mode — no card charged)`); load()
+      toast.success(stripeEnabled ? `${PRO_PLAN.name} is on.` : PAYMENTS_COPY.proActivated); load()
     } catch (err) { console.error('Pro checkout failed:', err); toast.error(err instanceof Error ? err.message : 'Checkout failed') } finally { setProBusy(false) }
   }
 
@@ -147,22 +156,21 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
     <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
       <div>
         <p className="text-xs font-semibold text-primary">Promoter dashboard</p>
-        <h1 className="font-display text-h1 mt-1">
-          {account.displayName ? account.displayName : 'Promoter dashboard'}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Your events, your campaigns, your results.</p>
+        <h1 className="font-display text-h1 mt-1">{TABS.find((item) => item.key === tab)?.label ?? 'Dashboard'}</h1>
+        {account.displayName ? <p className="mt-1 text-sm text-muted-foreground">{account.displayName}</p> : null}
+        {tab === 'overview' ? <p className="mt-1 text-sm text-muted-foreground">Your events, your campaigns, your results.</p> : null}
       </div>
-      {!stripeEnabled && <div className="mt-5 rounded-lg border border-primary/60 px-4 py-3 text-sm text-primary">Payments are in test mode — campaigns and Pro activate instantly without charging a card.</div>}
+      {!stripeEnabled && <div className="mt-5 rounded-lg border border-primary/60 px-4 py-3 text-sm text-primary">{PAYMENTS_COPY.testBanner}</div>}
 
       <div className="mt-6">
       <div>
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
-            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} goEvents={() => selectTab('events')} goInsights={() => selectTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
+            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} cardsLive={stripeEnabled} goEvents={() => selectTab('events')} goInsights={() => selectTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
             {tab === 'insights' && <InsightsPanel />}
             {tab === 'boosts' && (
               <section className={card}>
-                <BoostStudio events={events} pro={account.pro} />
+                <BoostStudio events={events} pro={account.pro} cardsLive={stripeEnabled} />
               </section>
             )}
             {tab === 'promote' && (
@@ -172,8 +180,8 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
             )}
             {tab === 'events' && <EventsTab events={events} claims={claims} pro={account.pro} homeCity={account.homeCity || 'Sydney'} onPromote={startPromote} reload={load} />}
             {tab === 'intel' && <IntelTab events={events} />}
-            {tab === 'local' && <LocalAdsTab />}
-            {tab === 'billing' && <Billing events={events} passes={passes} ads={ads} account={account} onPro={buyPro} proBusy={proBusy} onEnded={load} />}
+            {tab === 'local' && <LocalAdsTab cardsLive={stripeEnabled} />}
+            {tab === 'billing' && <Billing events={events} passes={passes} ads={ads} account={account} onPro={buyPro} proBusy={proBusy} cardsLive={stripeEnabled} onEnded={load} />}
           </>
         )}
       </div>
@@ -193,7 +201,7 @@ function Kpi({ Icon, label, value, window, definition }: { Icon: typeof Eye; lab
   )
 }
 
-function ProCard({ account, onPro, proBusy, className }: { account: Account; onPro: () => void; proBusy: boolean; className?: string }) {
+function ProCard({ account, onPro, proBusy, cardsLive, className }: { account: Account; onPro: () => void; proBusy: boolean; cardsLive: boolean; className?: string }) {
   const [terms, setTerms] = useState(false)
   return (
     <div className={cn('flex h-full flex-col rounded-xl border border-primary/40 bg-gradient-to-br from-primary/20 via-card to-card p-5 shadow-sm', className)}>
@@ -206,8 +214,8 @@ function ProCard({ account, onPro, proBusy, className }: { account: Account; onP
       <ul className="mt-3 space-y-1.5">{PRO_PLAN.perks.map((p) => <li key={p} className="flex gap-1.5 text-xs text-muted-foreground"><BadgeCheck className="mt-px h-3.5 w-3.5 shrink-0 text-primary" />{p}</li>)}</ul>
       <div className="mt-auto flex flex-col gap-4 pt-4">
         <PromoterTermsCheck id="pro-promoter-terms" checked={terms} onChange={setTerms} />
-        <button onClick={onPro} disabled={proBusy || !terms} className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-primary-foreground disabled:opacity-60">
-          {proBusy && <Loader2 className="h-4 w-4 animate-spin" />}{account.pro ? 'Extend 30 days' : 'Go Pro'}
+        <button onClick={onPro} disabled={proBusy || !terms} className="flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100">
+          {proBusy && <Loader2 className="h-4 w-4 animate-spin" />}{account.pro ? 'Extend 30 days' : cardsLive ? 'Go Pro' : 'Go Pro (test mode, no charge)'}
         </button>
       </div>
     </div>
@@ -323,9 +331,9 @@ function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onP
   )
 }
 
-function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents, goInsights, onAccount }: {
+function Overview({ stats, account, events, onPromote, onPro, proBusy, cardsLive, goEvents, goInsights, onAccount }: {
   stats: { live: number; views: number; clicks: number; fans: number; spend: number }; account: Account; events: MyEvent[]
-  onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; goEvents: () => void; goInsights: () => void; onAccount: (a: Partial<Account>) => void
+  onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; cardsLive: boolean; goEvents: () => void; goInsights: () => void; onAccount: (a: Partial<Account>) => void
 }) {
   const referrals = events.filter((e) => unlockedFor(e, account.pro)).flatMap((e) => e.referrals ?? [])
   const anyUnlocked = events.some((e) => unlockedFor(e, account.pro))
@@ -357,7 +365,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
           ))}
         </ol>
       </section>
-      <div className="vp-card-grid items-stretch lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="vp-card-grid items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="vp-stack h-full">
           {!events.length && (
             <section className={card}>
@@ -394,7 +402,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, goEvents,
           </section>
         </div>
         <div className="flex h-full flex-col gap-[var(--vp-card-gap)]">
-          <ProCard account={account} onPro={onPro} proBusy={proBusy} className="min-h-0 flex-1" />
+          <ProCard account={account} onPro={onPro} proBusy={proBusy} cardsLive={cardsLive} className="min-h-0 flex-1" />
           <ReportsCard account={account} onAccount={onAccount} />
         </div>
       </div>
@@ -471,6 +479,8 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
     const endDate = form.endDate.trim() ? auToIso(form.endDate) : ''
     if (!date) { toast.error('Enter the start date as dd/mm/yyyy'); return }
     if (form.endDate.trim() && !endDate) { toast.error('Enter the end date as dd/mm/yyyy'); return }
+    const timeError = finishTimeError({ startDate: form.date, endDate: form.endDate, time: form.time, endTime: form.endTime })
+    if (timeError) { toast.error(timeError); return }
     setCreating(true)
     try {
       const res = await fetch('/api/promoter/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, date, endDate: endDate || '', price: listingPayloadPrice(form.isFree, form.price), subTags: form.subTag ? [form.subTag] : [], publish }) })
@@ -558,7 +568,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
         )}
       </section>
 
-      <div className="vp-card-grid items-stretch lg:grid-cols-2">
+      <div className="vp-card-grid items-start lg:grid-cols-2">
         <section className={`${card} h-full`}>
           <h2 className="font-semibold mb-1">Already listed? Claim it</h2>
           <p className="text-xs text-muted-foreground mb-3">We list thousands of events automatically. Find yours and add it to your dashboard.</p>
@@ -618,7 +628,8 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                 <textarea value={form.transportInfo} onChange={set('transportInfo')} placeholder="Getting there e.g. nearest station, parking, drop-off" rows={2} className="sm:col-span-2 rounded-md border border-border bg-background px-3 py-2 text-sm" />
               </div>
             </details>
-            <p className="sm:col-span-2 text-xs text-muted-foreground">Include the suburb and postcode in the address so the map pin and Intelligence use that suburb, not the city centre. A finish time earlier than the start is treated as the next day.</p>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">Include the suburb and postcode in the address so the map pin and Intelligence use that suburb, not the city centre. On the same day, the finish time has to be later than the start.</p>
+            {finishTimeError({ startDate: form.date, endDate: form.endDate, time: form.time, endTime: form.endTime }) && <p className="sm:col-span-2 text-sm text-destructive" role="alert">{finishTimeError({ startDate: form.date, endDate: form.endDate, time: form.time, endTime: form.endTime })}</p>}
             <div className="sm:col-span-2 flex flex-wrap gap-2">
               <button type="submit" value="draft" disabled={creating} className="h-10 rounded-md border border-border px-4 text-sm font-semibold disabled:opacity-60">{creating ? 'Saving…' : 'Save draft'}</button>
               <button type="submit" value="publish" disabled={creating} className="h-10 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-60">{creating ? 'Saving…' : 'Publish'}</button>
@@ -630,7 +641,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
   )
 }
 
-function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { events: MyEvent[]; passes: Pass[]; ads: AdSpend[]; account: Account; onPro: () => void; proBusy: boolean; onEnded: () => void }) {
+function Billing({ events, passes, ads, account, onPro, proBusy, cardsLive, onEnded }: { events: MyEvent[]; passes: Pass[]; ads: AdSpend[]; account: Account; onPro: () => void; proBusy: boolean; cardsLive: boolean; onEnded: () => void }) {
   const rows = useMemo(() => {
     const orders = new Map<string, { id: string; date: string; title: string; items: string[]; cents: number; status: string; test: boolean; endsAt?: string | null }>()
     for (const e of events) for (const p of e.promotions ?? []) {
@@ -649,8 +660,8 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
 
   return (
     <div className="vp-stack">
-      <OrganiserPlans />
-      <div className="vp-card-grid items-stretch lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <OrganiserPlans cardsLive={cardsLive} />
+      <div className="vp-card-grid items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
       <section className={card}>
         <h2 className="font-semibold mb-4">Billing history</h2>
         {!rows.length ? <p className="text-sm text-muted-foreground">No purchases yet.</p> : (
@@ -674,7 +685,7 @@ function Billing({ events, passes, ads, account, onPro, proBusy, onEnded }: { ev
         <p className="text-xs text-muted-foreground mt-4">Prices in AUD, GST inclusive. Open any invoice to print it or save it as a PDF. A purchase is not refunded automatically just because a campaign ends. See the <Link href="/refunds" className="underline">refund policy</Link>, including your rights under the Australian Consumer Law.</p>
         {account.pro && <button type="button" onClick={async () => { if (!window.confirm('End Promoter Pro now? Days already used are not automatically refunded. The refunds page still applies.')) return; const res = await fetch('/api/promoter/pro/cancel', { method: 'POST' }); if (res.ok) { toast.success('Pro ended'); onEnded() } else toast.error('Could not end Pro') }} className="mt-3 text-xs text-muted-foreground underline">End Pro</button>}
       </section>
-      <ProCard account={account} onPro={onPro} proBusy={proBusy} />
+      <ProCard account={account} onPro={onPro} proBusy={proBusy} cardsLive={cardsLive} />
       </div>
     </div>
   )
