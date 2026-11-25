@@ -69,16 +69,16 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
       <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="block h-full group">
         <div className="flex h-full flex-col overflow-hidden rounded-[var(--vp-radius-lg)] border border-border bg-card transition-colors duration-300 group-hover:border-[var(--vp-border-default)]">
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden" style={{ background: `linear-gradient(145deg, ${catDef?.color ?? '#FF7A35'}, #1a120c)` }}>
+          <div className="relative aspect-[4/3] overflow-hidden bg-black">
             <EventImage
               image={event.imageAsset}
               picture={eventPictureFrom(event)}
               src={event.imageUrl}
+              sourceWidth={event.imageWidth}
+              sourceHeight={event.imageHeight}
               kind="card"
               alt={title}
               sizes="(max-width: 767px) 100vw, (max-width: 1279px) 46vw, 400px"
-              crop
-              accent={catDef?.color}
               category={event.communityKey || event.category}
               slot="card"
             />

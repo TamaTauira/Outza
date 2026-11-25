@@ -582,7 +582,7 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     flex: none;
     aspect-ratio: 16 / 10;
     overflow: hidden;
-    background: var(--vp-brand-orange);
+    background: #000;
   }
   .vp-board-body {
     box-sizing: border-box;
@@ -688,6 +688,60 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     .vp-guide-rows { display: block; }
     .vp-guide-cards { display: none; }
   }
+}
+
+/* Option B card photo. Blurred cover behind, contained original on top, black melt at the bottom. */
+.vp-photo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  background: #000;
+  container-type: size;
+}
+.vp-photo.is-pending { opacity: 0; }
+.vp-photo-blur {
+  position: absolute;
+  inset: -48px;
+}
+.vp-photo-blur-img {
+  filter: blur(38px) brightness(0.6);
+}
+.vp-photo-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 52%, #000 78%, #000 90%, hsl(var(--card)) 100%);
+}
+.vp-photo-fit {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: min(100cqw, calc(100cqh * var(--vp-ratio, 1)));
+  height: min(100cqh, calc(100cqw / var(--vp-ratio, 1)));
+  transform: translate(-50%, -50%);
+}
+.vp-photo-fit.is-open {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+.vp-photo-feather {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+.vp-media-chip {
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
 }
 
 .vp-stack {

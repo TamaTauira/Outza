@@ -5,7 +5,7 @@ import { holdScrollRestore } from '@/lib/scroll-memory'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import Link from 'next/link'
 import { eventPath } from '@/lib/seo'
-import { areasForCity, CATEGORIES } from '@/lib/categories'
+import { areasForCity } from '@/lib/categories'
 import { addDays, formatPrice, formatTime } from '@/lib/board'
 import { minutesNow, orderedWindow } from '@/lib/listing-window'
 import { EventImage } from '@/components/event-image'
@@ -224,15 +224,14 @@ function Shown({ ids, onShown }: { ids: string[]; onShown?: (ids: string[]) => v
 }
 
 function RailCard({ ev }: { ev: RailEvent }) {
-  const color = CATEGORIES.find((c) => c.name === ev.category)?.color ?? '#FF7A35'
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
   const time = formatTime(ev.time)
   return (
     <Link href={eventPath(ev)} scroll={false} className="w-[200px] shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md lg:w-auto">
-      <div className="relative aspect-[4/3]" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={ev.imageAsset} picture={eventPictureFrom(ev)} src={ev.imageUrl} kind="card" alt="" sizes="(min-width: 1280px) 220px, 200px" compact crop accent={color} category={ev.category} slot="card" />
-        {ev.sponsored && <span className="absolute left-2 top-2 rounded bg-black/75 px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-white">Sponsored</span>}
-        <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 font-mono text-xs text-white">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
+      <div className="relative aspect-[4/3] bg-black">
+        <EventImage image={ev.imageAsset} picture={eventPictureFrom(ev)} src={ev.imageUrl} sourceWidth={ev.imageWidth} sourceHeight={ev.imageHeight} kind="card" alt="" sizes="(min-width: 1280px) 220px, 200px" category={ev.category} slot="card" />
+        {ev.sponsored && <span className="vp-media-chip absolute left-2 top-2 rounded-full px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide">Sponsored</span>}
+        <span className="vp-media-chip absolute bottom-2 right-2 rounded-full px-1.5 py-0.5 font-mono text-xs">{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
       </div>
       <div className="p-2.5">
         <p className="truncate text-sm font-semibold">{ev.title}</p>

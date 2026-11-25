@@ -367,6 +367,11 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
               href={ev.href ?? eventPath(ev)}
               imageUrl={ev.imageUrl}
               imageCategory={ev.category}
+              imageWidth={ev.imageWidth}
+              imageHeight={ev.imageHeight}
+              imageColor={ev.imageColor}
+              imageBlur={ev.imageBlur}
+              imageDisplay={ev.imageDisplay}
               venue={place}
               tag={catName}
               accent={cat?.color ?? '#FF7A35'}

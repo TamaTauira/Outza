@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { EventImage } from '@/components/event-image'
 import { displaySuburb } from '@/lib/cities'
 import { addDays, formatPrice } from '@/lib/board'
 import { eventPath } from '@/lib/seo'
-import { categoryColor } from '@/lib/categories'
 
 type NearbyEvent = {
   id: string
@@ -102,34 +102,8 @@ const MOODS: { title: string; category: string; rank: (ev: NearbyEvent) => numbe
   },
 ]
 
-function TilePhoto({ src, tint, fit = 'cover' }: { src: string | null; tint: string; fit?: 'cover' | 'contain' }) {
-  const imgRef = useRef<HTMLImageElement>(null)
-  const [readySrc, setReadySrc] = useState<string | null>(null)
-  const [failedSrc, setFailedSrc] = useState<string | null>(null)
-  const show = !!src && readySrc === src && failedSrc !== src
-
-  useLayoutEffect(() => {
-    const node = imgRef.current
-    if (src && node?.complete && node.naturalWidth > 0) setReadySrc(src)
-  }, [src])
-
-  return (
-    <>
-      <span className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${tint} 0%, #14120f 78%)` }} aria-hidden />
-      {src && failedSrc !== src ? (
-        <img
-          ref={imgRef}
-          src={src}
-          alt=""
-          loading="eager"
-          decoding="sync"
-          className={`absolute inset-0 h-full w-full ${fit === 'contain' ? 'object-contain' : 'object-cover'} transition duration-300 group-hover:scale-105 ${show ? 'opacity-100' : 'opacity-0'}`}
-          onLoad={() => setReadySrc(src)}
-          onError={() => setFailedSrc(src)}
-        />
-      ) : null}
-    </>
-  )
+function TilePhoto({ src, category, slot = 'card' }: { src: string | null; category: string; slot?: 'card' | 'featured' }) {
+  return <EventImage src={src} category={category} kind={slot} slot={slot} alt="" sizes="(min-width: 1280px) 30vw, 45vw" />
 }
 
 export function HomeDiscover({
@@ -203,7 +177,7 @@ export function HomeDiscover({
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {MOODS.map((mood, index) => (
             <button key={mood.title} type="button" data-photo-tile="mood" onClick={() => onMood(mood.action)} className="group relative aspect-[4/3] overflow-hidden rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-              <TilePhoto src={moodPhotos[index]} tint={categoryColor(mood.category)} />
+              <TilePhoto src={moodPhotos[index]} category={mood.category} />
               <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
               <span className="absolute inset-x-0 bottom-0 p-3 font-display text-base font-bold leading-snug text-white drop-shadow-sm">{mood.title}</span>
             </button>
@@ -223,7 +197,7 @@ export function HomeDiscover({
                 <article key={row.suburb} data-photo-tile="nearby" className="overflow-hidden rounded-2xl border border-border bg-card">
                   <button type="button" onClick={() => onSuburb(row.suburb)} className="group block w-full text-left">
                     <div className="relative aspect-[16/9]">
-                      <TilePhoto src={photo} tint={categoryColor(row.sample.category)} />
+                      <TilePhoto src={photo} category={row.sample.category} slot="featured" />
                     </div>
                     <div className="flex items-end justify-between gap-3 p-4">
                       <div>

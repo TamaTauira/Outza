@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { putObject, publicUrl, storagePath } from '@/lib/s3'
 import { buildDisplayFromBuffer } from './display-build'
 import { DISPLAY_VERSION, displayColumnPatch, parseDisplayManifest } from './display-spec'
+import { storedPhotoIsLowQuality } from './listing-photo'
 
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
 
@@ -64,6 +65,7 @@ export async function prepareEventDisplay(eventId: string, opts: { force?: boole
           base: publicUrl(folder),
           widths: built.widths,
           attempts: (manifest?.attempts ?? 0) + 1,
+          lowQuality: storedPhotoIsLowQuality(built.width, built.height),
         },
       }),
     })
