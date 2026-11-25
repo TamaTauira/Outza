@@ -7,7 +7,6 @@ import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { ChevronDown, ShieldCheck, Trash2 } from 'lucide-react'
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { type LocalMapPin } from '@/components/local-neighbourhood-map'
 import { LocalBrowse, type LocalItem } from './local-browse'
 import { useSaved } from '@/lib/saved'
@@ -325,7 +324,6 @@ export function LocalClient() {
           </section>
         )}
       </main>
-      <Footer lastRefresh={null} />
     </div>
   )
 }

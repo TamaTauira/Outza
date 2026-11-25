@@ -10,7 +10,8 @@ import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { DeploymentFetchPin } from '@/components/deployment-fetch-pin'
 import { Providers } from '@/components/providers'
 import { BRAND_APPLE_TOUCH, BRAND_FAVICON, BRAND_ICON_192, BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { Logo } from '@/components/logo'
+import { SiteFooter } from '@/components/site-footer'
 import { DEFAULT_OG_ALT, openGraphImage } from '@/lib/share-image'
 import { siteUrl } from '@/lib/site-url'
 import { MASCOT_DESKTOP_WIDTH, MASCOT_PHONE_WIDTH } from '@/lib/mascot-size'
@@ -93,8 +94,8 @@ export default function RootLayout({
         <style>{`:root{--vp-size-phone:${MASCOT_PHONE_WIDTH};--vp-size-desktop:${MASCOT_DESKTOP_WIDTH}}`}</style>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
+          defaultTheme="system"
+          enableSystem
           disableTransitionOnChange
         >
           <ThemeColor />
@@ -103,10 +104,11 @@ export default function RootLayout({
           <Providers>
             <div id="content">
               <div className="vp-print-logo vp-wrap px-4 sm:px-6">
-                <VibePeepLogo size="sm" tone="on-light" />
+                <Logo size="sm" tone="on-light" />
               </div>
               {children}
               {modal}
+              <SiteFooter />
             </div>
           </Providers>
           <Toaster />

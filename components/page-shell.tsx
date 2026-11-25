@@ -1,7 +1,6 @@
 'use client'
 
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { useSaved } from '@/lib/saved'
 
 /** Navbar + footer wrapper for server-rendered content pages (city landing pages etc.). */
@@ -11,7 +10,6 @@ export function PageShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background overflow-x-clip">
       <Navbar savedCount={saved.length} />
       {children}
-      <Footer lastRefresh={null} />
     </div>
   )
 }

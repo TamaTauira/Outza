@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { jsonLdString } from '@/lib/seo-server'
 import { BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
+import { SITE_SAME_AS } from '@/lib/site-social'
 import { CITY_NAMES } from '@/lib/cities'
 import { siteUrl } from '@/lib/site-url'
 
@@ -33,8 +34,9 @@ export default function Page() {
         '@type': 'Organization',
         name: BRAND_NAME,
         url: `${origin}/`,
-        logo: `${origin}${BRAND_ICON_512}`,
+        logo: `${origin}${BRAND_ICON_512.split('?')[0]}`,
         slogan: BRAND_TAGLINE,
+        sameAs: [...SITE_SAME_AS],
       },
     ],
   }

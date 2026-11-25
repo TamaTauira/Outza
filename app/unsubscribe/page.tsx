@@ -1,7 +1,7 @@
 import Link from 'next/link'
+import { SiteHeader } from '@/components/site-header'
 import { verify } from '@/lib/newsletter/links'
 import { UnsubscribeClient } from './unsubscribe-client'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Unsubscribe — VibePeep' }
@@ -10,9 +10,10 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
   const { u = '', k = '', s = '' } = await searchParams
   const valid = !!u && verify(k, u, 'unsub')
   return (
-    <main className="min-h-[70vh] flex items-center justify-center px-4 py-16">
-      <div className="max-w-md w-full rounded-2xl bg-card shadow-lg p-8 text-center">
-        <Link href="/" aria-label="VibePeep home" className="inline-flex"><VibePeepLogo size="md" /></Link>
+    <div className="min-h-screen bg-background">
+    <SiteHeader variant="auth" />
+    <main className="flex min-h-[70vh] items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md rounded-2xl bg-card p-8 text-center shadow-lg">
         {valid ? (
           <UnsubscribeClient u={u} k={k} s={s} />
         ) : (
@@ -24,5 +25,6 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
         <Link href="/account" className="mt-6 inline-block text-sm text-primary underline underline-offset-2">Manage email preferences</Link>
       </div>
     </main>
+    </div>
   )
 }

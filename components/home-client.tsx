@@ -8,7 +8,6 @@ import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
 import { EventList, type BoardSeed } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
-import { Footer } from '@/components/footer';
 import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
@@ -300,13 +299,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     setResultsViewState(next);
     try { sessionStorage.setItem('vp-results-view', next); } catch {}
   };
-  const goBoard = (fn: () => void) => () => {
-    fn();
-    setWindowPinned(true);
-    rememberView('list');
-    if (view !== 'board') goView('board');
-    requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
   const ask = (text: string) => {
     askSeq.current += 1;
     setAskRequest({ id: askSeq.current, text });
@@ -380,17 +372,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     { key: 'weekend', label: 'This weekend', detail: weekend ? `${shortDate(weekend.from)} – ${shortDate(weekend.to)}` : 'Fri – Sun' },
     { key: 'next', label: 'Next week', detail: nextWeek ? `${shortDate(nextWeek.from)} – ${shortDate(nextWeek.to)}` : 'Next week' },
   ] : [];
-  const boardPicked = knownCategories(Array.isArray(filters.categories) ? filters.categories : filters.category ? [filters.category] : []);
-  const noType = boardPicked.length === 0
-  const quickLinks = [
-  { label: 'Today', active: day === today && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('all'); setFilters(EMPTY_FILTERS); }) },
-  { label: 'Tonight', active: day === today && timeWindow === 'evening' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { setDay(today); pinWindow('evening'); setFilters(EMPTY_FILTERS); }) },
-  { label: 'This weekend', active: !!weekend && filters.dateFrom === weekend.from && filters.dateTo === weekend.to && timeWindow === 'all' && !filters.isFree && !filters.isLGBTI && noType, onClick: goBoard(() => { if (!weekend) return; setDay(weekend.from); pinWindow('all'); setFilters({ ...EMPTY_FILTERS, dateFrom: weekend.from, dateTo: weekend.to }); }) },
-  { label: 'Free events', active: filters.isFree, onClick: goBoard(() => setFilters((f) => ({ ...f, isFree: !f.isFree }))) },
-  { label: 'LGBTIQ+ events', active: filters.isLGBTI, onClick: goBoard(() => setFilters((f) => ({ ...f, isLGBTI: !f.isLGBTI }))) },
-  { label: 'Live music', active: boardPicked.length === 1 && boardPicked[0] === 'Music', onClick: goBoard(() => setFilters((f) => withCategories(f, boardPicked.length === 1 && boardPicked[0] === 'Music' ? [] : ['Music']))) }];
-
-
   return (
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
       <Navbar savedCount={saved.length} />
@@ -629,7 +610,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         </div>
       }
 
-      {view !== 'map' && <Footer lastRefresh={lastRefresh} quickLinks={view === 'board' ? [] : quickLinks} city={city} />}
       {view !== 'map' && <SuggestionButton />}
     </div>);
 

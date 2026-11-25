@@ -34,8 +34,8 @@ export const BRAND_MASCOT_EMAIL_WIDTH = 280
 export const BRAND_MASCOT_EMAIL_HEIGHT = 283
 
 /** Replaced in place, so references carry a cache-buster. */
-export const BRAND_FAVICON = '/favicon.ico?v=3'
-export const BRAND_ICON_192 = '/icon-192.png?v=3'
-export const BRAND_ICON_512 = '/icon-512.png?v=3'
-export const BRAND_APPLE_TOUCH = '/apple-touch-icon.png?v=3'
-export const BRAND_OG_IMAGE = '/og-image.png?v=3'
+export const BRAND_FAVICON = '/favicon.ico?v=4'
+export const BRAND_ICON_192 = '/icon-192.png?v=4'
+export const BRAND_ICON_512 = '/icon-512.png?v=4'
+export const BRAND_APPLE_TOUCH = '/apple-touch-icon.png?v=4'
+export const BRAND_OG_IMAGE = '/og-image.png?v=4'

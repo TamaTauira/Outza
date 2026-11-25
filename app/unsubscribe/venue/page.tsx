@@ -1,6 +1,5 @@
-import Link from 'next/link'
+import { SiteHeader } from '@/components/site-header'
 import { verify } from '@/lib/newsletter/links'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
 import { VenueUnsubscribeClient } from './client'
 
 export const dynamic = 'force-dynamic'
@@ -10,9 +9,10 @@ export default async function VenueUnsubscribePage({ searchParams }: { searchPar
   const { u = '', k = '' } = await searchParams
   const valid = !!u && verify(k, u, 'venue-report-unsub')
   return (
+    <div className="min-h-screen bg-background">
+    <SiteHeader variant="auth" />
     <main className="flex min-h-[70vh] items-center justify-center px-4 py-16">
       <div className="w-full max-w-md rounded-2xl bg-card p-8 text-center shadow-lg">
-        <Link href="/" aria-label="VibePeep home" className="inline-flex"><VibePeepLogo size="md" /></Link>
         {valid ? <VenueUnsubscribeClient u={u} k={k} /> : (
           <>
             <h1 className="mt-4 font-display text-h1">Link not recognised</h1>
@@ -21,5 +21,6 @@ export default async function VenueUnsubscribePage({ searchParams }: { searchPar
         )}
       </div>
     </main>
+    </div>
   )
 }

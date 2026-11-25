@@ -3,7 +3,6 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { EventImage } from '@/components/event-image'
 import { Navbar } from '@/components/navbar'
-import { Footer } from '@/components/footer'
 import { CITIES } from '@/lib/cities'
 import { loadCommunityPage, pageKindFor, recordCommunityEntrance } from '@/lib/community'
 import {
@@ -190,7 +189,6 @@ export async function CommunityBoard({
           </nav>
         )}
       </main>
-      <Footer lastRefresh={null} city={city?.name} />
     </div>
   )
 }

@@ -299,6 +299,11 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   padding-top: var(--vp-page-top);
 }
 
+/* Promoters hero is a dark band. The page-top token was a cream stripe under the header. */
+.vp-site-header ~ main.vp-promoters.vp-page-top {
+  padding-top: 0;
+}
+
 /* List time column. Hairline from the start dot to the finish ring. */
 .vp-time {
   --lh: 20px;
@@ -807,116 +812,140 @@ a[class*="w-9"] {
   min-height: 44px;
 }
 
-/* Shared lockup. 1em is the icon. Cap height is 0.56em of the wordmark artwork. */
+/* Shared lockup. The image is the icon and the wordmark, already centred on each other. */
 .vp-header-bar {
   container-type: inline-size;
   container-name: vpheader;
 }
 
-.vp-lockup-slot {
+.vp-logo-link {
   display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
   min-width: max-content;
+  line-height: 0;
 }
 
-.vp-lockup {
+.vp-logo {
   display: inline-flex;
   flex: 0 0 auto;
-  align-items: flex-start;
-  gap: 0.22em;
-  height: 1em;
+  align-items: center;
+  height: var(--vp-logo-md);
   min-width: max-content;
-  line-height: 1;
+  line-height: 0;
 }
 
-.vp-header-lockup { font-size: clamp(2rem, 8cqi, 2.5rem); }
+.vp-logo-sm { height: var(--vp-logo-sm); }
 
-.vp-lockup-mark {
+.vp-logo picture,
+.vp-logo img {
   display: block;
-  width: 1em;
-  height: 1em;
-  min-width: 1em;
-  max-width: none;
-  flex: 0 0 auto;
-}
-
-.vp-lockup-copy {
-  position: relative;
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  justify-content: flex-end;
-  height: 1em;
-  /* The wordmark is out of flow. Reserve its width or the nav paints over the name. */
-  width: calc(0.56em * 9276 / 1440);
-  min-width: max-content;
-}
-
-.vp-lockup-word {
-  position: absolute;
-  left: 0;
-  top: calc(42 / 1440 * -0.56em);
-  display: block;
-  width: calc(0.56em * 9276 / 1440);
-  height: calc(0.56em * 1974 / 1440);
-  min-width: calc(0.56em * 9276 / 1440);
-}
-
-.vp-lockup-word img {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
   height: 100%;
+  width: auto;
   max-width: none;
 }
 
-html.dark .vp-lockup:not(.is-on-light) .vp-word-light { display: none; }
-html:not(.dark) .vp-lockup:not(.is-on-dark) .vp-word-dark { display: none; }
-.vp-lockup.is-on-dark .vp-word-light { display: none; }
-.vp-lockup.is-on-light .vp-word-dark { display: none; }
+html.dark .vp-logo:not(.is-on-light) .vp-logo-light { display: none; }
+html:not(.dark) .vp-logo:not(.is-on-dark) .vp-logo-dark { display: none; }
+.vp-logo.is-on-dark .vp-logo-light,
+.vp-logo.is-on-light .vp-logo-dark { display: none; }
+.vp-logo.is-on-dark .vp-logo-dark,
+.vp-logo.is-on-light .vp-logo-light { display: block; }
 
-.vp-lockup-tag {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  font-size: 0.3em;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
+.vp-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
   color: hsl(var(--muted-foreground));
-  transform: translateY(0.22em);
 }
-
-.vp-lockup.is-compact .vp-lockup-tag { display: none; }
-
-.vp-lockup.is-compact .vp-lockup-copy {
-  width: calc(0.72em * 9276 / 1920);
-  min-width: calc(0.72em * 9276 / 1920);
+.vp-social:hover,
+.vp-social:focus-visible {
+  color: var(--vp-social, hsl(var(--foreground)));
+  background: color-mix(in srgb, var(--vp-social, hsl(var(--foreground))) 16%, transparent);
 }
+.vp-social-instagram { --vp-social: #E1306C; }
+.vp-social-tiktok { --vp-social: #FE2C55; }
+.vp-social-threads { --vp-social: hsl(var(--foreground)); }
+.vp-social-youtube { --vp-social: #FF0033; }
+.vp-social-x { --vp-social: hsl(var(--foreground)); }
+.vp-social-facebook { --vp-social: #1877F2; }
+.vp-social-linkedin { --vp-social: #0A66C2; }
 
-.vp-lockup.is-compact .vp-lockup-word {
-  top: 50%;
-  width: calc(0.72em * 9276 / 1920);
-  height: calc(0.72em * 1974 / 1920);
-  min-width: calc(0.72em * 9276 / 1920);
-  transform: translateY(-50%);
+.vp-foot-grid {
+  display: grid;
+  gap: 0;
 }
+.vp-foot-brand { margin-bottom: 0.5rem; }
+.vp-foot-acc {
+  border-top: 1px solid hsl(var(--border));
+}
+.vp-foot-acc summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.75rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.vp-foot-acc summary::-webkit-details-marker { display: none; }
+.vp-foot-acc summary::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-right: 0.35rem;
+}
+.vp-foot-acc[open] summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.vp-foot-panel { padding-bottom: 0.75rem; }
+.vp-foot-list,
+.vp-foot-cities { margin: 0; padding: 0; list-style: none; }
+.vp-foot-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font-size: 0.9375rem;
+  color: hsl(var(--foreground));
+}
+.vp-foot-link:hover { color: hsl(var(--primary)); }
+.vp-foot-cities { display: flex; flex-wrap: wrap; column-gap: 1rem; }
 
-@media (max-width: 1279px) {
-  .vp-lockup-tag { display: none; }
-  .vp-lockup-copy {
-    width: calc(0.72em * 9276 / 1920);
-    min-width: calc(0.72em * 9276 / 1920);
+@media (min-width: 1024px) {
+  .vp-foot-grid {
+    grid-template-columns: minmax(22.5rem, 1.35fr) minmax(0, 0.8fr) minmax(13rem, 1.45fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
+    gap: 2rem;
+    align-items: start;
   }
-  .vp-lockup-word {
-    top: 50%;
-    width: calc(0.72em * 9276 / 1920);
-    height: calc(0.72em * 1974 / 1920);
-    min-width: calc(0.72em * 9276 / 1920);
-    transform: translateY(-50%);
+  .vp-foot-brand { margin-bottom: 0; }
+  .vp-foot-acc { border-top: 0; }
+  .vp-foot-acc summary {
+    min-height: 0;
+    margin-bottom: 0.75rem;
+    pointer-events: none;
+    cursor: default;
   }
+  .vp-foot-acc summary::after { display: none; }
+  .vp-foot-acc > .vp-foot-panel { display: block !important; padding-bottom: 0; }
+  .vp-foot-list .vp-foot-link { min-height: 2rem; font-size: 0.875rem; }
+  .vp-foot-cities {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 1.5rem;
+  }
+  .vp-foot-cities .vp-foot-link { min-height: 2rem; font-size: 0.875rem; }
+}
+
+@media (max-width: 1023px) {
+  body:has(.vp-promoter-tabbar) { padding-bottom: 4.5rem; }
 }
 
 @container vpheader (max-width: 17.5rem) {

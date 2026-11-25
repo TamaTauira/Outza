@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BarChart3, Brain, CalendarDays, LayoutDashboard, Megaphone, Menu, Receipt, Rocket, Store } from 'lucide-react'
-import { VibePeepLogo } from '@/components/vibepeep-logo'
+import { Logo } from '@/components/logo'
 import { VP_COLOUR } from '@/lib/design-tokens'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { PROMOTER_NAV_EVENT } from '@/lib/promoter-nav'
@@ -99,11 +99,16 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
 
   return (
     <div className="min-h-screen print:bg-white" style={{ backgroundColor: VP_COLOUR.bgCanvas }}>
+      <div className="sticky top-0 z-40 flex h-14 items-center border-b border-white/10 px-4 print:hidden lg:hidden" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
+        <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="VibePeep promoter dashboard" className="inline-flex items-center">
+          <Logo size="sm" tone="on-dark" decorative />
+        </Link>
+      </div>
       <div className="lg:grid lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="sticky top-0 hidden h-screen w-[240px] flex-col text-white print:hidden lg:flex" style={{ backgroundColor: VP_COLOUR.bgSurface }}>
           <div className="vp-page-top px-4 pb-2">
-            <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="Promoter dashboard" className="block w-full">
-              <VibePeepLogo size="sm" tone="on-dark" showTagline={false} />
+            <Link href="/promoter?tab=overview" onClick={(event) => onPromoterClick(event, '/promoter?tab=overview')} aria-label="VibePeep promoter dashboard" className="block w-full">
+              <Logo size="sm" tone="on-dark" decorative />
             </Link>
             <p className="mt-2 text-xs text-white/60">Promoter</p>
           </div>
@@ -141,7 +146,7 @@ export function PromoterAppShell({ children, backHref, backLabel = 'My events' }
           {children}
         </div>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 text-white print:hidden lg:hidden" style={{ backgroundColor: VP_COLOUR.bgSurface, paddingBottom: 'env(safe-area-inset-bottom)' }} aria-label="Promoter">
+      <nav className="vp-promoter-tabbar fixed inset-x-0 bottom-0 z-40 border-t border-white/10 text-white print:hidden lg:hidden" style={{ backgroundColor: VP_COLOUR.bgSurface, paddingBottom: 'env(safe-area-inset-bottom)' }} aria-label="Promoter">
         <div className="grid grid-cols-5">
           {MOBILE.map((item) => (
             <Link
