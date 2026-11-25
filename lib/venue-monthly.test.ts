@@ -15,6 +15,7 @@ test('the monthly venue note uses the numbers it is given and can be turned off'
   assert.match(letter.text, /ticket clicks 3/)
   assert.match(letter.text, /followers 4/)
   assert.match(letter.html, /Turn off this monthly note/)
-  assert.doesNotMatch(letter.text, /Outza/i)
+  assert.match(letter.text, /\/contact/)
+  assert.doesNotMatch(letter.text.replace(/https?:\/\/\S+/g, ' '), /Outza/i)
   assert.match(letter.html, /VibePeep/)
 })

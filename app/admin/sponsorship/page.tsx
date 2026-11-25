@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { sponsorshipMetrics } from '@/lib/sponsorship-metrics'
 import { formatAudCents } from '@/lib/tiers'
+import { LiveCampaigns } from './live-campaigns'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Sponsorship — Admin', robots: { index: false } }
@@ -55,6 +56,7 @@ export default async function SponsorshipAdminPage() {
         </ul>
       )}
       {metrics && <p className="mt-4 text-xs text-muted-foreground">{metrics.quoteRequests} quote request{metrics.quoteRequests === 1 ? '' : 's'} saved. A quote is not a charge.</p>}
+      <LiveCampaigns />
     </main>
   )
 }

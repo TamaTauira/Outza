@@ -1,5 +1,5 @@
 import { cityDef, tidyVenueName } from '@/lib/cities'
-import { EMAIL_ADDRESS, EMAIL_DISCLAIMER, emailDocument, emailEventCard, emailSectionHeading, emailTick } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_DISCLAIMER, emailBodyCell, emailDocument, emailEventCard, emailPlainFooter, emailSectionHeading, emailTick } from '@/lib/email-brand'
 import { dateKeyOf, formatBoardRange, minutesNow, minutesOf, resolveSchedule, scheduleFinished } from '@/lib/listing-window'
 import { formatPrice } from '@/lib/price'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
@@ -233,7 +233,10 @@ export function composeWatchEmail(input: {
   const unsubscribe = input.unsubscribeHref ?? manage
   const savedHeading = input.reminders ? 'Coming up on your list' : 'Don’t forget these'
   const matchHeading = 'New listings for your vibe'
-  const text: string[] = [subject, '']
+  const opener = input.reminders
+    ? 'One you saved is close. The time and the place are below.'
+    : 'Here’s what you saved, plus new listings that match your vibe.'
+  const text: string[] = [opener, '']
   const push = (heading: string, rows: MailEvent[]) => {
     if (!rows.length) return
     text.push(heading)
@@ -254,7 +257,12 @@ export function composeWatchEmail(input: {
   text.push(`Unsubscribe: ${unsubscribe}`)
   text.push(`VibePeep: ${home}`)
   text.push(EMAIL_ADDRESS)
-  const rows = [sectionRows(savedHeading, input.saved), sectionRows(matchHeading, input.matches)].join('')
+  text.push(emailPlainFooter(home))
+  const rows = [
+    emailBodyCell(`<p class="tx" style="margin:0;font-size:16px;line-height:1.5;">${opener}</p>`),
+    sectionRows(savedHeading, input.saved),
+    sectionRows(matchHeading, input.matches),
+  ].join('')
   const html = emailDocument({
     title: subject,
     preheader: input.reminders ? 'A saved event is close. The time and place are inside.' : 'Saved events, plus new listings in the cities you follow.',

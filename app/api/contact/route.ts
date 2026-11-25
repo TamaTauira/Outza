@@ -6,6 +6,7 @@ import { siteUrl } from '@/lib/site-url'
 import { prisma } from '@/lib/db'
 import { extractEventId, triageContact, coerceTriage, type ContactTriage } from '@/lib/contact-triage'
 import { llmConfigured, completeJson } from '@/lib/llm'
+import { clientIp, contactAddressDecision, takeIpSlot, turnstileConfigured, verifyTurnstile, CONTACT_HOUR_MS, CONTACT_ACK_WINDOW_MS } from '@/lib/contact-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,6 +40,23 @@ export async function POST(req: Request) {
   if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ error: 'Enter a valid email so we can reply.' }, { status: 400 })
   if (message.length < 8) return NextResponse.json({ error: 'Tell us a little more than that.' }, { status: 400 })
   if (message.length > 4000) return NextResponse.json({ error: 'That message is too long. Keep it under 4,000 characters.' }, { status: 400 })
+
+  const ip = clientIp(req)
+  const sinceHour = new Date(Date.now() - CONTACT_HOUR_MS)
+  const sinceDay = new Date(Date.now() - CONTACT_ACK_WINDOW_MS)
+  const [inLastHour, inLastDay] = await Promise.all([
+    prisma.contactMessage.count({ where: { email, createdAt: { gt: sinceHour } } }).catch(() => 0),
+    prisma.contactMessage.count({ where: { email, createdAt: { gt: sinceDay } } }).catch(() => 0),
+  ])
+  const limits = contactAddressDecision({ inLastHour, inLastDay })
+  if (!limits.allow) return NextResponse.json({ error: 'That’s a lot of notes from this address. Try again in an hour.' }, { status: 429 })
+
+  const turnstileOn = turnstileConfigured()
+  const token = typeof body.turnstileToken === 'string' ? body.turnstileToken : ''
+  if (turnstileOn && !(await verifyTurnstile(token, ip))) {
+    return NextResponse.json({ error: 'The check didn’t come through. Tick it and send again.' }, { status: 400 })
+  }
+  if (!takeIpSlot(ip)) return NextResponse.json({ error: 'That’s a lot of notes from this connection. Try again in an hour.' }, { status: 429 })
 
   const triage = await refine(topic, message, triageContact({ topic, message }))
   let status = triage.status
@@ -82,22 +100,27 @@ export async function POST(req: Request) {
       <p class="tx" style="margin:0;white-space:pre-wrap;color:${EMAIL_C.ink};">${escapeHtml(message)}</p>`)}
       <p class="mu" style="margin:12px 0 0;font-size:14px;color:${EMAIL_C.muted};">Sorted as ${escapeHtml(triage.category)} (${escapeHtml(triage.urgency)}). ${escapeHtml(triage.summary)}</p>`),
   })
-  const result = await sendEmail({
-    to,
-    subject: `VibePeep contact: ${topic}`,
-    html,
-    text: `${topic}\nFrom: ${email}\n\n${message}\n\nSorted as ${triage.category} (${triage.urgency}). ${triage.summary}`,
-    replyTo: email,
-    kind: 'transactional',
-  })
-  const ack = renderTemplate('S1', { email })
-  await sendEmail({
-    to: email,
-    subject: ack.subject,
-    html: ack.html,
-    text: ack.text,
-    kind: 'transactional',
-  }).catch((err) => console.error('[contact] acknowledgement', err instanceof Error ? err.message : err))
-  if (!result.ok && !result.disabled) return NextResponse.json({ error: 'We could not send that. Try again in a minute.' }, { status: 502 })
+  const suspicious = triage.category === 'spam' || (turnstileOn && !token)
+  if (!suspicious) {
+    const result = await sendEmail({
+      to,
+      subject: `VibePeep contact: ${topic}`,
+      html,
+      text: `${topic}\nFrom: ${email}\n\n${message}\n\nSorted as ${triage.category} (${triage.urgency}). ${triage.summary}`,
+      replyTo: email,
+      kind: 'transactional',
+    })
+    if (limits.sendAck) {
+      const ack = renderTemplate('S1', { email })
+      await sendEmail({
+        to: email,
+        subject: ack.subject,
+        html: ack.html,
+        text: ack.text,
+        kind: 'transactional',
+      }).catch((err) => console.error('[contact] acknowledgement', err instanceof Error ? err.message : err))
+    }
+    if (!result.ok && !result.disabled) return NextResponse.json({ error: 'We could not send that. Try again in a minute.' }, { status: 502 })
+  }
   return NextResponse.json({ ok: true })
 }

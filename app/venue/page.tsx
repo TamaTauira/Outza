@@ -19,7 +19,7 @@ export default async function VenueHome() {
   const venues = ids.length ? await prisma.venue.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, city: true } }) : []
   return (
     <PromoterAppShell>
-    <main className="vp-page-top mx-auto max-w-xl px-4 pb-8">
+    <main className="vp-wrap vp-page-top vp-stack px-4 pb-16 sm:px-6">
       <p className="text-xs font-semibold text-primary">Promoter</p>
       <h1 className="mt-1 font-display text-h1">Your venues</h1>
       {venues.length ? (

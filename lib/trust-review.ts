@@ -31,10 +31,11 @@ async function applyOne(kind: QueueKind, id: string, action: QueueAction) {
       if (!approved) return false
     } else {
       const claim = await prisma.eventClaim.findUnique({ where: { id }, select: { user: { select: { email: true } }, event: { select: { title: true } } } })
-      await prisma.eventClaim.update({ where: { id }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: 'Dismissed by an admin' } })
+      const customerReason = 'The details on the claim don’t match the organiser'
+      await prisma.eventClaim.update({ where: { id }, data: { status: 'REJECTED', reviewedAt: new Date(), reviewNote: customerReason } })
       if (claim?.user.email) {
         const { sendEventClaimRejected } = await import('@/lib/customer-mail')
-        await sendEventClaimRejected(claim.user.email, claim.event.title, 'The details on the claim don’t match the organiser').catch((err) => console.error('[email] claim rejected', err instanceof Error ? err.message : err))
+        await sendEventClaimRejected(claim.user.email, claim.event.title, customerReason).catch((err) => console.error('[email] claim rejected', err instanceof Error ? err.message : err))
       }
     }
     await audit(claim.eventId, action, `${decision.status} organiser claim ${id}`)

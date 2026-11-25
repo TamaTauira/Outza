@@ -30,15 +30,39 @@ export function categoryColor(name: string): string {
   return CATEGORIES.find((c) => c.name.toLowerCase() === key)?.color ?? BRAND_ORANGE
 }
 
-/** Ink that stays readable on a category fill. */
+const INK_DARK = '#1A1408'
+const INK_LIGHT = '#ffffff'
+
+function hexChannels(bg: string): [number, number, number] | null {
+  const raw = bg.trim().replace('#', '')
+  const full = raw.length === 3 ? raw.split('').map((part) => part + part).join('') : raw
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null
+  return [parseInt(full.slice(0, 2), 16), parseInt(full.slice(2, 4), 16), parseInt(full.slice(4, 6), 16)]
+}
+
+function channelLuma(channel: number): number {
+  const s = channel / 255
+  return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+}
+
+function relativeLuma(r: number, g: number, b: number): number {
+  return 0.2126 * channelLuma(r) + 0.7152 * channelLuma(g) + 0.0722 * channelLuma(b)
+}
+
+function contrastRatio(a: number, b: number): number {
+  const [hi, lo] = a > b ? [a, b] : [b, a]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** Ink that stays at AA (4.5:1) on a category fill. Orange no longer falls back to white. */
 export function categoryInk(bg: string): string {
-  const h = bg.replace('#', '')
-  if (h.length < 6) return '#ffffff'
-  const r = parseInt(h.slice(0, 2), 16)
-  const g = parseInt(h.slice(2, 4), 16)
-  const b = parseInt(h.slice(4, 6), 16)
-  const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luma > 0.64 ? '#1c1c1e' : '#ffffff'
+  const rgb = hexChannels(bg)
+  if (!rgb) return INK_DARK
+  const luma = relativeLuma(rgb[0], rgb[1], rgb[2])
+  const onWhite = contrastRatio(luma, 1)
+  const onDark = contrastRatio(luma, relativeLuma(0x1a, 0x14, 0x08))
+  if (onWhite >= 4.5 && onWhite >= onDark) return INK_LIGHT
+  return INK_DARK
 }
 
 export const SYDNEY_SUBURBS = [

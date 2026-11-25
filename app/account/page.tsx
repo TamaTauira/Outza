@@ -17,6 +17,7 @@ export const metadata: Metadata = pageMeta({
 export default async function AccountPage() {
   const session = await auth()
   if (!session?.user) redirect('/login?next=/account')
+  if ((session.user as { role?: string }).role === 'PROMOTER') redirect('/promoter/settings')
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />

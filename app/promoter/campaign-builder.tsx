@@ -164,10 +164,11 @@ export function CampaignBuilder({ events, pro, stripeEnabled, eventId, initialTi
         {scheduleNote && <p className="mt-3 text-xs text-muted-foreground" role="status">{scheduleNote}</p>}
         <div className="mt-4"><PromoterTermsCheck id="campaign-promoter-terms" checked={agreePromoterTerms} onChange={setAgreePromoterTerms} /></div>
         {placed && <p className="mt-3 text-sm" role="status">That campaign is live. Choose another package only if you mean to buy a second one.</p>}
-        <button onClick={checkout} disabled={busy || !selected} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-xl bg-primary px-3 py-2 text-center text-sm font-semibold text-on-primary disabled:bg-muted disabled:text-muted-foreground">
+        <button onClick={checkout} disabled={busy || !selected} aria-describedby={selected ? undefined : 'campaign-activate-why'} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 whitespace-normal rounded-xl bg-primary px-3 py-2 text-center text-sm font-semibold text-on-primary disabled:bg-muted disabled:text-muted-foreground">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
           {review ? campaignConfirmLabel(formatAud(q.total), stripeEnabled) : 'Review campaign'}
         </button>
+        {!selected && <p id="campaign-activate-why" className="mt-2 text-xs text-muted-foreground">{events.length ? 'Pick an event above. The button stays off until one is selected.' : 'Add or claim an event first. Test mode can activate a campaign once a listing is on your dashboard, and it does not charge a card.'}</p>}
         {blocked && <p className="mt-2 text-xs text-muted-foreground">{blocked}</p>}
         {review && <button type="button" onClick={() => setReview(false)} className="mt-2 w-full text-xs text-muted-foreground underline">Back to the package</button>}
         {!pro && (

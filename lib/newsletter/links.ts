@@ -2,7 +2,15 @@ import crypto from 'crypto'
 import { siteUrl } from '@/lib/email'
 import { stripTrackingParams } from '@/lib/listing-link'
 
-const secret = () => process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || 'outza'
+/** Signing key for email links. Production refuses a missing secret instead of a brand-name fallback. */
+export function emailLinkSecret(): string {
+  const value = (process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '').trim()
+  if (value) return value
+  if (process.env.NODE_ENV === 'production') throw new Error('NEXTAUTH_SECRET is required to sign email links')
+  return 'vibepeep-dev-link-secret'
+}
+
+const secret = () => emailLinkSecret()
 
 export function sign(...parts: string[]) {
   return crypto.createHmac('sha256', secret()).update(parts.join('|')).digest('base64url').slice(0, 22)
@@ -23,7 +31,7 @@ export interface UtmCtx { sendId: string; edition: string; issueDate: string; ci
 export function utm(url: string, ctx: UtmCtx, placement: string) {
   try {
     const u = new URL(url)
-    u.searchParams.set('utm_source', 'outza')
+    u.searchParams.set('utm_source', 'vibepeep')
     u.searchParams.set('utm_medium', 'email')
     u.searchParams.set('utm_campaign', `${ctx.edition}-${ctx.issueDate}-${ctx.city.toLowerCase().replace(/\s+/g, '-')}`)
     u.searchParams.set('utm_content', placement)

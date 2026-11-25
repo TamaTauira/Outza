@@ -25,6 +25,7 @@ import { BoostStudio } from './boost-studio'
 import { OrganiserPlans } from './organiser-plans'
 import { InsightsPanel } from './insights-panel'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
+import { endCampaignConfirm } from '@/lib/promotion-end'
 
 type Promo = { id: string; tier: string; days?: number | null; orderId?: string | null; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
 type MyEvent = {
@@ -166,7 +167,7 @@ export function PromoterClient({ stripeEnabled }: { stripeEnabled: boolean }) {
       <div>
         {loading ? <div className="py-16 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div> : (
           <>
-            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} cardsLive={stripeEnabled} goEvents={() => selectTab('events')} goInsights={() => selectTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} />}
+            {tab === 'overview' && <Overview stats={stats} account={account} events={events} onPromote={startPromote} onPro={buyPro} proBusy={proBusy} cardsLive={stripeEnabled} goEvents={() => selectTab('events')} goInsights={() => selectTab('insights')} onAccount={(a) => setAccount({ ...account, ...a })} onEnded={load} />}
             {tab === 'insights' && <InsightsPanel />}
             {tab === 'boosts' && (
               <section className={card}>
@@ -203,6 +204,12 @@ function Kpi({ Icon, label, value, window, definition }: { Icon: typeof Eye; lab
 
 function ProCard({ account, onPro, proBusy, cardsLive, className }: { account: Account; onPro: () => void; proBusy: boolean; cardsLive: boolean; className?: string }) {
   const [terms, setTerms] = useState(false)
+  const action = account.pro ? 'Extend 30 days' : cardsLive ? 'Go Pro' : 'Go Pro (test mode, no charge)'
+  const why = !terms
+    ? `Tick the Promoter Terms to turn on ${action}. Nothing is charged until you do.`
+    : cardsLive
+      ? 'Ticking the terms turns the button on. The charge happens when you confirm.'
+      : 'Test mode is on. Ticking the terms turns the button on. Confirming activates Promoter Pro without charging a card, and the invoice is marked test.'
   return (
     <div className={cn('flex h-full flex-col rounded-xl border border-primary/40 bg-gradient-to-br from-primary/20 via-card to-card p-5 shadow-sm', className)}>
       <div className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /><p className="font-semibold">{PRO_PLAN.name}</p></div>
@@ -214,12 +221,37 @@ function ProCard({ account, onPro, proBusy, cardsLive, className }: { account: A
       <ul className="mt-3 space-y-1.5">{PRO_PLAN.perks.map((p) => <li key={p} className="flex gap-1.5 text-xs text-muted-foreground"><BadgeCheck className="mt-px h-3.5 w-3.5 shrink-0 text-primary" />{p}</li>)}</ul>
       <div className="mt-auto flex flex-col gap-4 pt-4">
         <PromoterTermsCheck id="pro-promoter-terms" checked={terms} onChange={setTerms} />
-        <button onClick={onPro} disabled={proBusy || !terms} className="flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100">
-          {proBusy && <Loader2 className="h-4 w-4 animate-spin" />}{account.pro ? 'Extend 30 days' : cardsLive ? 'Go Pro' : 'Go Pro (test mode, no charge)'}
+        <p id="pro-go-why" className="text-xs text-muted-foreground">{why}</p>
+        <button onClick={onPro} disabled={proBusy || !terms} aria-describedby="pro-go-why" className="flex min-h-10 w-full items-center justify-center gap-2 whitespace-normal rounded-md bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100">
+          {proBusy && <Loader2 className="h-4 w-4 animate-spin" />}{action}
         </button>
       </div>
     </div>
   )
+}
+
+function EndCampaignButton({ eventId, label, test, onEnded }: { eventId: string; label: string; test: boolean; onEnded: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const end = async () => {
+    if (!window.confirm(endCampaignConfirm(label, test))) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/promoter/promotions/end', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ eventId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error ?? 'Could not end that campaign')
+      toast.success(typeof data.message === 'string' ? data.message : 'Campaign ended')
+      onEnded()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not end that campaign')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return <button type="button" onClick={end} disabled={busy} className="h-8 shrink-0 rounded-md border border-border px-3 text-xs font-semibold hover:bg-muted disabled:opacity-60">End campaign</button>
 }
 
 const unlockedFor = (e: MyEvent, pro: boolean) => pro || !!e.promotions?.some((p) => p.status === 'ACTIVE' || p.status === 'EXPIRED')
@@ -331,9 +363,9 @@ function ListingHealth({ events, onPromote, goEvents }: { events: MyEvent[]; onP
   )
 }
 
-function Overview({ stats, account, events, onPromote, onPro, proBusy, cardsLive, goEvents, goInsights, onAccount }: {
+function Overview({ stats, account, events, onPromote, onPro, proBusy, cardsLive, goEvents, goInsights, onAccount, onEnded }: {
   stats: { live: number; views: number; clicks: number; fans: number; spend: number }; account: Account; events: MyEvent[]
-  onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; cardsLive: boolean; goEvents: () => void; goInsights: () => void; onAccount: (a: Partial<Account>) => void
+  onPromote: (id?: string) => void; onPro: () => void; proBusy: boolean; cardsLive: boolean; goEvents: () => void; goInsights: () => void; onAccount: (a: Partial<Account>) => void; onEnded: () => void
 }) {
   const referrals = events.filter((e) => unlockedFor(e, account.pro)).flatMap((e) => e.referrals ?? [])
   const anyUnlocked = events.some((e) => unlockedFor(e, account.pro))
@@ -366,7 +398,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, cardsLive
         </ol>
       </section>
       <div className="vp-card-grid items-start lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="vp-stack h-full">
+        <div className="vp-stack">
           {!events.length && (
             <section className={card}>
               <p className="font-medium">Nothing on your board yet</p>
@@ -378,7 +410,7 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, cardsLive
               <ListingHealth events={events} onPromote={onPromote} goEvents={goEvents} />
             </div>
           )}
-          <section className={`${card} flex flex-1 flex-col gap-4`}>
+          <section className={`${card} flex flex-col gap-4`}>
             {events.length > 0 && (
               <div>
                 <h3 className="mb-2 text-sm font-semibold">Your next events</h3>
@@ -388,14 +420,19 @@ function Overview({ stats, account, events, onPromote, onPro, proBusy, cardsLive
                     return (
                       <div key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                         <span className="min-w-0 truncate">{e.hidden ? <span className="font-medium">{e.title}</span> : <Link href={`/events/${e.id}`} className="font-medium hover:text-primary">{e.title}</Link>} <span className="text-xs text-muted-foreground">· {fmt(e.date)}{e.hidden ? ' · Draft' : ''}</span></span>
-                        {live ? <TierBadge tier={live.tier} /> : <button onClick={() => onPromote(e.id)} className="shrink-0 text-xs font-semibold text-primary hover:underline">Promote</button>}
+                        {live ? (
+                          <span className="flex shrink-0 items-center gap-2">
+                            <TierBadge tier={live.tier} />
+                            <EndCampaignButton eventId={e.id} label={productName(live.tier)} test={live.paymentMode === 'test'} onEnded={onEnded} />
+                          </span>
+                        ) : <button onClick={() => onPromote(e.id)} className="shrink-0 text-xs font-semibold text-primary hover:underline">Promote</button>}
                       </div>
                     )
                   })}
                 </div>
               </div>
             )}
-            <div className={events.length > 0 ? 'mt-auto' : ''}>
+            <div>
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Share2 className="h-4 w-4 text-primary" />Where your visitors come from</h3>
               {anyUnlocked ? <ReferralBars referrals={referrals} /> : <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" />Traffic sources unlock for promoted events, or for every event with {PRO_PLAN.name}.</p>}
             </div>
@@ -555,6 +592,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
                           {promoterCanEditEvent(ev.source) ? <button onClick={() => setEditing(editing === ev.id ? null : ev.id)} className="h-8 px-3 rounded-md border border-border text-xs font-medium flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</button> : <Link href={`/events/${ev.id}/manage`} className="h-8 px-3 rounded-md border border-border text-xs font-medium inline-flex items-center gap-1 hover:bg-muted"><Pencil className="w-3.5 h-3.5" />Edit</Link>}
                           {promoterCanEditEvent(ev.source) && ev.status !== 'CANCELLED' && <button onClick={async () => { if (!window.confirm(`Unpublish “${ev.title}”? It leaves the public board. Purchases stay in billing.`)) return; const res = await fetch(`/api/promoter/events/${ev.id}`, { method: 'DELETE' }); if (res.ok) { toast.success('Listing unpublished'); reload() } else toast.error('Could not unpublish') }} className="h-8 px-2 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted" aria-label={`Unpublish ${ev.title}`}><Trash2 className="w-3.5 h-3.5" /></button>}
                           {!past && ev.status !== 'CANCELLED' && <button onClick={() => onPromote(ev.id)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold">{liveTier ? productName(liveTier.tier) : 'Promote'}</button>}
+                          {liveTier && <EndCampaignButton eventId={ev.id} label={productName(liveTier.tier)} test={liveTier.paymentMode === 'test'} onEnded={reload} />}
                         </div>
                       </td>
                     </tr>
@@ -569,13 +607,13 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
       </section>
 
       <div className="vp-card-grid items-start lg:grid-cols-2">
-        <section className={`${card} h-full`}>
+        <section className={card}>
           <h2 className="font-semibold mb-1">Already listed? Claim it</h2>
           <p className="text-xs text-muted-foreground mb-3">We list thousands of events automatically. Find yours and add it to your dashboard.</p>
-          <form onSubmit={search} className="flex flex-col gap-2 sm:flex-row">
-            <select value={claimCity} onChange={(e) => setClaimCity(e.target.value)} className={`${field} sm:w-40 sm:shrink-0`} aria-label="City to search">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Event name or venue" className={`${field} min-w-0 flex-1`} aria-label="Search listings" />
-            <button className="flex h-11 items-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search</button>
+          <form onSubmit={search} className="grid gap-2">
+            <select value={claimCity} onChange={(e) => setClaimCity(e.target.value)} className={field} aria-label="City to search">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Event name or venue" className={field} aria-label="Search listings" />
+            <button className="flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search</button>
           </form>
           {claimNote && <p className="mt-2 text-sm text-destructive" role="alert">{claimNote}</p>}
           {!!results.length && <p className="mt-3 text-xs text-muted-foreground">{results.length} {results.length === 1 ? 'match' : 'matches'}</p>}
@@ -596,7 +634,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
           {results.length > 10 && <button type="button" onClick={() => setShowAllClaims((on) => !on)} className="mt-2 text-sm font-semibold text-primary">{showAllClaims ? 'Show fewer' : `Show all ${results.length}`}</button>}
         </section>
 
-        <section id="create" className={`${card} h-full scroll-mt-24`}>
+        <section id="create" className={`${card} scroll-mt-24`}>
           <h2 className="font-semibold mb-1">Create a new event</h2>
           <p className="text-xs text-muted-foreground mb-3">This saves a draft. It stays off the public board until you press Publish.</p>
           <form onSubmit={create} className="grid gap-3 sm:grid-cols-2">
@@ -643,17 +681,17 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
 
 function Billing({ events, passes, ads, account, onPro, proBusy, cardsLive, onEnded }: { events: MyEvent[]; passes: Pass[]; ads: AdSpend[]; account: Account; onPro: () => void; proBusy: boolean; cardsLive: boolean; onEnded: () => void }) {
   const rows = useMemo(() => {
-    const orders = new Map<string, { id: string; date: string; title: string; items: string[]; cents: number; status: string; test: boolean; endsAt?: string | null }>()
+    const orders = new Map<string, { id: string; eventId: string | null; date: string; title: string; items: string[]; cents: number; status: string; test: boolean; endsAt?: string | null; kind: 'campaign' | 'pass' | 'ad' }>()
     for (const e of events) for (const p of e.promotions ?? []) {
       if (p.status === 'PENDING') continue
       const key = p.orderId ?? p.id
-      const o = orders.get(key) ?? { id: key, date: p.createdAt, title: e.title, items: [], cents: 0, status: p.status, test: p.paymentMode === 'test', endsAt: p.endsAt }
+      const o = orders.get(key) ?? { id: key, eventId: e.id, date: p.createdAt, title: e.title, items: [], cents: 0, status: p.status, test: p.paymentMode === 'test', endsAt: p.endsAt, kind: 'campaign' as const }
       o.items.push(`${productName(p.tier)}${p.days ? ` · ${p.days}d` : ''}`); o.cents += p.amountCents
       if (tierDef(p.tier)) { o.status = p.status; o.endsAt = p.endsAt }
       orders.set(key, o)
     }
-    for (const p of passes) orders.set(p.id, { id: p.id, date: p.createdAt, title: PRO_PLAN.name, items: ['30-day membership'], cents: p.amountCents, status: p.status, test: p.paymentMode === 'test', endsAt: p.endsAt })
-    for (const a of ads) orders.set(a.id, { id: a.id, date: a.createdAt, title: a.businessName, items: [`Local recommendation${a.event?.title ? ` · ${a.event.title}` : ''}`], cents: a.amountCents, status: a.status, test: a.paymentMode === 'test', endsAt: a.endsAt })
+    for (const p of passes) orders.set(p.id, { id: p.id, eventId: null, date: p.createdAt, title: PRO_PLAN.name, items: ['30-day membership'], cents: p.amountCents, status: p.status, test: p.paymentMode === 'test', endsAt: p.endsAt, kind: 'pass' })
+    for (const a of ads) orders.set(a.id, { id: a.id, eventId: null, date: a.createdAt, title: a.businessName, items: [`Local recommendation${a.event?.title ? ` · ${a.event.title}` : ''}`], cents: a.amountCents, status: a.status, test: a.paymentMode === 'test', endsAt: a.endsAt, kind: 'ad' })
     return [...orders.values()].sort((a, b) => +new Date(b.date) - +new Date(a.date))
   }, [events, passes, ads])
   const statusLabel = (r: (typeof rows)[number]) => (r.status === 'CANCELLED' ? 'Cancelled' : r.endsAt && new Date(r.endsAt) > new Date() ? 'Active' : 'Completed')
@@ -675,7 +713,12 @@ function Billing({ events, passes, ads, account, onPro, proBusy, cardsLive, onEn
                     <td className="px-3 py-3"><p className="font-medium">{r.title}</p><p className="text-xs text-muted-foreground">{r.items.join(' + ')}</p></td>
                     <td className="px-3 py-3"><span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', statusLabel(r) === 'Active' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>{statusLabel(r)}</span>{r.test && <span className="ml-1.5 text-xs text-muted-foreground">test</span>}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-medium">{formatAud(r.cents)}</td>
-                    <td className="px-5 py-3 text-right"><Link href={`/promoter/invoice/${encodeURIComponent(r.id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><FileText className="w-3.5 h-3.5" />View</Link></td>
+                    <td className="px-5 py-3 text-right">
+                      <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                        {r.kind === 'campaign' && r.eventId && statusLabel(r) === 'Active' && <EndCampaignButton eventId={r.eventId} label={r.items[0] || 'this campaign'} test={r.test} onEnded={onEnded} />}
+                        <Link href={`/promoter/invoice/${encodeURIComponent(r.id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"><FileText className="w-3.5 h-3.5" />View</Link>
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

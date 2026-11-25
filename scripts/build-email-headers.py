@@ -65,7 +65,8 @@ def ondark_logo() -> Image.Image:
     if not bbox:
         raise SystemExit('logo has no pixels')
     cropped = out.crop(bbox)
-    target_h = 48
+    # About 1.6× the old 48px lockup, so a 375px phone still shows a readable wordmark.
+    target_h = 76
     target_w = max(1, round(cropped.width * target_h / cropped.height))
     return cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
@@ -138,7 +139,7 @@ def build_one(kind: str, headline: str, logo: Image.Image, bar: Image.Image) -> 
         x = W - mascot.width - 8
         y = H - mascot.height - 4
         canvas.paste(mascot, (x, y), mascot)
-    canvas.paste(logo, (48, 28), logo)
+    canvas.paste(logo, (48, 18), logo)
     canvas.paste(bar, (48, 186))
     draw_headline(canvas, headline)
     return canvas

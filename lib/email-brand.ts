@@ -144,6 +144,10 @@ export function emailSentence(value: string | null | undefined): string {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
 }
 
+/** Shorter acknowledgement for mail that does not list events (password reset, receipts). */
+export const EMAIL_ACK_SHORT =
+  'We acknowledge the Traditional Custodians of the lands across Australia, and pay our respects to Elders past and present. Always was, always will be Aboriginal land.'
+
 /** Name, Australia, and a contact only when one is already configured. No invented ABN or address. */
 export function emailSenderLine(): string {
   const entity = legalEntity()
@@ -156,6 +160,24 @@ export function emailSenderLine(): string {
   const who = [name, abn, place].filter(Boolean).join(', ')
   if (contact) return `${who}. Questions: ${contact}.`
   return `${who}. Questions go through the contact page on this site.`
+}
+
+/** HTML footer line. "contact page" is a real link, and the URL is printed beside it. */
+export function emailSenderHtml(home: string): string {
+  const line = emailSenderLine()
+  const href = `${home.replace(/\/$/, '')}/contact`
+  const needle = 'contact page'
+  const at = line.indexOf(needle)
+  if (at === -1) return emailEscape(line)
+  const link = `<a class="lk" href="${emailEscape(href)}" style="color:${EMAIL_C.orangeText};font-family:${EMAIL_FONT};font-weight:700;text-decoration:underline;">${needle}</a>`
+  return `${emailEscape(line.slice(0, at))}${link}${emailEscape(line.slice(at + needle.length))} (${emailEscape(href)})`
+}
+
+/** Plain-text footer shared with the HTML footer: acknowledgement plus the contact URL. */
+export function emailPlainFooter(home: string, acknowledgement = ACKNOWLEDGEMENT_OF_COUNTRY): string {
+  const href = `${home.replace(/\/$/, '')}/contact`
+  const who = emailSenderLine().replace('the contact page on this site.', `the contact page: ${href}`)
+  return `Acknowledgement of Country. ${acknowledgement}\n${who}`
 }
 
 function img(src: string, alt: string, w: number, h: number): string {
@@ -224,9 +246,16 @@ export function emailButtonColorLock(scope = ''): string {
   return `${target}{background-color:${EMAIL_BUTTON}!important;color:${EMAIL_BUTTON_INK}!important}`
 }
 
-/** Every text link. Colour is pinned so Apple dark mode does not fall back to blue. */
-export function emailLink(href: string, label: string): string {
-  return `<a class="lk" href="${emailEscape(href)}" style="color:${EMAIL_C.orangeText};font-weight:700;text-decoration:underline;">${emailEscape(label)}</a>`
+/** Every text link. Colour and the shared font are pinned so Apple dark mode does not fall back to blue or a serif. */
+export function emailLink(href: string, label: string, opts?: { wrap?: boolean }): string {
+  const wrap = opts?.wrap ? 'overflow-wrap:anywhere;word-break:break-all;' : ''
+  const cls = opts?.wrap ? 'lk paste' : 'lk'
+  return `<a class="${cls}" href="${emailEscape(href)}" style="color:${EMAIL_C.orangeText};font-family:${EMAIL_FONT};font-weight:700;text-decoration:underline;${wrap}">${emailEscape(label)}</a>`
+}
+
+/** The raw URL under a confirm, sign-in or reset button. It wraps inside the phone padding. */
+export function emailPasteLink(href: string): string {
+  return `<p class="mu paste" style="margin:12px 0 0;font-family:${EMAIL_FONT};font-size:14px;line-height:1.45;color:${EMAIL_C.muted};overflow-wrap:anywhere;word-break:break-word;">Or paste this link:<br/>${emailLink(href, href, { wrap: true })}</p>`
 }
 
 /**
@@ -238,8 +267,8 @@ export function emailHeader(opts: { kind?: string | null; homeHref: string }): s
   const kind = HEADER_HEADLINES[raw] ? raw : 'general'
   const headline = HEADER_HEADLINES[kind] || 'VibePeep'
   const alt = `VibePeep: ${headline}`
-  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="600" height="120" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
-  return `<a href="${emailEscape(opts.homeHref)}" style="text-decoration:none;color:#F7F7F7;">${inner}</a>`
+  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="600" height="120" style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px 0 0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
+  return `<a href="${emailEscape(opts.homeHref)}" style="text-decoration:none;color:#F7F7F7;font-family:${EMAIL_FONT};">${inner}</a>`
 }
 
 /** @deprecated The shell uses emailHeader. Kept so a missing call site still compiles. */
@@ -271,7 +300,13 @@ export function emailCode(code: string, expiresMinutes = 30): string {
 export function emailStatTable(headers: string[], rows: string[][]): string {
   const head = headers.map((label, index) => `<th class="mu" style="padding:8px 6px;font-family:${EMAIL_FONT};font-size:12px;line-height:1.3;font-weight:700;color:${EMAIL_C.muted};text-align:${index === 0 ? 'left' : 'right'};border-bottom:1px solid ${EMAIL_C.line};">${emailEscape(label)}</th>`).join('')
   const body = rows.map((row) => `<tr>${row.map((cell, index) => `<td class="tx" style="padding:8px 6px;font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.small}px;line-height:1.4;color:${EMAIL_C.ink};text-align:${index === 0 ? 'left' : 'right'};border-bottom:1px solid ${EMAIL_C.line};${index === 0 ? 'font-weight:700;' : ''}">${emailEscape(cell)}</td>`).join('')}</tr>`).join('')
-  return `<table class="stats" ${T} width="100%" style="width:100%;border-collapse:collapse;margin:0 0 12px;"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
+  const table = `<table class="stats" ${T} width="100%" style="width:100%;border-collapse:collapse;margin:0 0 12px;"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
+  const cards = rows.map((row) => {
+    const title = emailEscape(row[0] ?? '')
+    const facts = headers.slice(1).map((label, index) => `<div style="padding:3px 0;font-family:${EMAIL_FONT};font-size:14px;line-height:1.4;"><span class="mu" style="color:${EMAIL_C.muted};">${emailEscape(label)}: </span><span class="tx" style="color:${EMAIL_C.ink};font-weight:700;">${emailEscape(row[index + 1] ?? '')}</span></div>`).join('')
+    return `<div class="statCard card" style="border:1px solid ${EMAIL_C.line};border-radius:${EMAIL_RADIUS.card}px;padding:12px;margin:0 0 10px;"><div class="tx" style="font-family:${EMAIL_FONT};font-size:15px;line-height:1.3;font-weight:800;color:${EMAIL_C.ink};">${title}</div>${facts}</div>`
+  }).join('')
+  return `<div class="statsWide">${table}</div><!--[if !mso]><!--><div class="statsStack">${cards}</div><!--<![endif]-->`
 }
 
 export type EmailCardInput = {
@@ -362,7 +397,7 @@ ${cta}${tickets}
   return `<tr><td class="px" style="padding:0 ${EMAIL_SPACE.lg}px 12px;">
 <table ${T} width="100%" class="card" bgcolor="${EMAIL_C.card}" style="width:100%;background:${EMAIL_C.card};border:1px solid ${EMAIL_C.line};border-radius:${EMAIL_RADIUS.card}px;"><tr>
 <td class="thumb" width="112" valign="top" style="width:112px;padding:12px 0 12px 12px;">${artBlock(row, 112, 112, 'row')}</td>
-<td valign="top" style="padding:14px 16px 16px 14px;">
+<td class="copy" valign="top" style="padding:14px 16px 16px 14px;">
 ${eyebrow}
 <a href="${emailEscape(row.href)}" class="tx" style="font-family:${EMAIL_FONT};font-size:18px;line-height:1.3;font-weight:800;color:${EMAIL_C.ink};text-decoration:none;">${emailEscape(row.title)}</a>
 ${when}${place}${chip}${whyBlock(row.why, row.travel)}${note}${blurb}${cta}${tickets}
@@ -376,12 +411,21 @@ function footerLink(href: string, label: string): string {
 function shellCss(): string {
   return `body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 :root{color-scheme:light dark;supported-color-schemes:light dark;}
+.statsStack{display:none;max-height:0;overflow:hidden;mso-hide:all;}
+.paste,.paste a{overflow-wrap:anywhere!important;word-break:break-word!important;}
+.sponsor{background-color:#F3E6D4!important;color:#1A1408!important;}
 @media (max-width:620px){
   .w100{width:100%!important;max-width:600px!important}
   .px{padding-left:16px!important;padding-right:16px!important}
   .heroBox,.heroimg{width:100%!important;max-width:100%!important;height:auto!important}
   .flink{display:block!important;padding:3px 0!important}
   .fdot{display:none!important}
+  .thumb,.copy{display:block!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;}
+  .thumb{padding:12px 12px 0 12px!important;}
+  .thumb .thumbBox,.thumb table{width:100%!important;max-width:100%!important;height:140px!important;}
+  .why{display:block!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;}
+  .statsWide{display:none!important;}
+  .statsStack{display:block!important;max-height:none!important;overflow:visible!important;}
 }
 @media (prefers-color-scheme: dark){
   .bg{background-color:${EMAIL_C.darkPage}!important}
@@ -400,6 +444,7 @@ function shellCss(): string {
   .chipPaid span{color:${EMAIL_C.darkPriceInk}!important}
   .chipFree{background-color:${EMAIL_C.darkFreeBg}!important}
   .chipFree span{color:${EMAIL_C.darkFreeInk}!important}
+  .sponsor{background-color:#3A2418!important;color:#F6E6D4!important}
   .email-btn-sec{border-color:${EMAIL_C.onDark}!important}
   .email-btn-sec a{color:${EMAIL_C.onDark}!important}
   ${emailButtonColorLock()}
@@ -412,6 +457,7 @@ function shellCss(): string {
 [data-ogsc] .why,[data-ogsb] .why{background-color:#2a211c!important}
 [data-ogsc] .panel,[data-ogsb] .panel{background-color:${EMAIL_C.darkCard}!important}
 [data-ogsc] .panelDanger,[data-ogsb] .panelDanger{background-color:${EMAIL_C.darkDangerBg}!important}
+[data-ogsc] .sponsor,[data-ogsb] .sponsor{background-color:#3A2418!important;color:#F6E6D4!important}
 ${emailButtonColorLock('[data-ogsc]')}
 ${emailButtonColorLock('[data-ogsb]')}
 [data-ogsb] .bg{background-color:${EMAIL_C.darkPage}!important}
@@ -435,6 +481,8 @@ export function emailDocument(opts: {
   manageLabel?: string
   /** Markup after the document, such as an open pixel. */
   after?: string
+  /** Replaces the event acknowledgement in mail that lists no events. */
+  acknowledgement?: string
 }): string {
   const home = opts.homeHref ?? CANONICAL_SITE_URL
   const privacy = `${home.replace(/\/$/, '')}/privacy`
@@ -477,8 +525,8 @@ ${opts.rows}
 ${disclaimer}
 <div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.7;padding-top:14px;">${links}</div>
 ${reason}
-<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:12px;"><strong class="tx" style="color:${EMAIL_C.ink};">Acknowledgement of Country.</strong> ${emailEscape(ACKNOWLEDGEMENT_OF_COUNTRY)}</div>
-<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:10px;">${emailEscape(emailSenderLine())}</div>
+<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:12px;"><strong class="tx" style="color:${EMAIL_C.ink};">Acknowledgement of Country.</strong> ${emailEscape(opts.acknowledgement || ACKNOWLEDGEMENT_OF_COUNTRY)}</div>
+<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:10px;">${emailSenderHtml(home)}</div>
 </td></tr>
 </table></td></tr></table>
 ${opts.after ?? ''}
