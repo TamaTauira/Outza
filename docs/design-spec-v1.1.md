@@ -162,11 +162,11 @@ Respect ownership: venue-owned information, organiser-owned event content and pl
 Show pending, approved, rejected and edit-request states clearly.
 8. TummerBot visual rules
 TummerBot is a core brand asset. The approved reference renders take precedence over generated variations.
-Matte charcoal-black rounded/oval body with established proportions.
+Glossy black rounded/oval body with established proportions.
 Single spherical antenna.
 Connected oversized eye surrounds: orange viewer-left, pink viewer-right.
 Large glossy black-and-white eyes; small expressive open mouth; rounded arms and hands.
-Do not change eye placement/colour, silhouette, antenna, proportions or material finish.
+Do not change eye placement/colour, silhouette, antenna, proportions or the glossy black material finish.
 
 Use canonical production assets (SVG/PNG/WebP/Lottie/3D render) if available. Do not recreate Tummer from text prompts for production UI. Record the asset version.
 9. Accessibility, content and data presentation

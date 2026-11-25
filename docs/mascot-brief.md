@@ -42,7 +42,7 @@ For: the mascot designer (coding agent) and the mascot reviewer. Repo `TamaTauir
 ## 1. His look in detail (from the sheet)
 
 ### Overall build and proportions (ref 11, 17, 07)
-- Glossy-matte soft black vinyl toy, 3D-rendered, rounded everywhere. No hard corners, no flat cartoon outlines.
+- Glossy black vinyl toy, 3D-rendered, rounded everywhere. No hard corners, no flat cartoon outlines. The body finish stays glossy black. Do not change it to matte.
 - Total height (antenna tip to boot sole) is about 1.0. Antenna (ball and stem) is about 0.13, body about 0.62, legs and boots about 0.25.
 - Body: an upright egg or bean, a bit wider at the bottom, about 0.78 as wide as it is tall. Smooth domed top.
 - The face mask sits in the upper half of the body. The eyes' centre line is about 42% down from the top of the body.
