@@ -38,6 +38,9 @@ test('a named thumbnail URL is low quality and a full original is not', () => {
 test('a resized next/image file is not treated as the source size', () => {
   const resized = 'https://outza-outza.vercel.app/_next/image?url=https%3A%2F%2Fcdn.example%2Fa.jpg&w=640&q=75'
   assert.equal(bitmapIsLowQuality({ naturalWidth: 640, naturalHeight: 360, currentSrc: resized }), false)
+  // A phone slot asks for 480 and the decoded file is a little under that. The master is still large.
+  assert.equal(bitmapIsLowQuality({ naturalWidth: 400, naturalHeight: 200, currentSrc: 'https://x/_next/image?url=a&w=480&q=75' }), false)
+  assert.equal(bitmapIsLowQuality({ naturalWidth: 358, naturalHeight: 179, currentSrc: 'https://x/_next/image?url=a&w=384&q=75' }), false)
   const tiny = 'https://outza-outza.vercel.app/_next/image?url=https%3A%2F%2Fstatic.moshtix.com.au%2Fa&w=640&q=75'
   assert.equal(bitmapIsLowQuality({ naturalWidth: 140, naturalHeight: 140, currentSrc: tiny }), true)
   assert.equal(bitmapIsLowQuality({ naturalWidth: 472, naturalHeight: 315, currentSrc: 'https://x/_next/image?url=a&w=828&q=75' }), true)

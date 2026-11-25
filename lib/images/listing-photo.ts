@@ -65,7 +65,11 @@ export function bitmapIsLowQuality(img: {
   if (src.includes('/_next/image')) {
     try {
       const requested = Number(new URL(src, 'https://vibepeep.local').searchParams.get('w') || 0)
-      if (requested > 0 && width + 1 >= requested) return false
+      // next/image does not enlarge. A bitmap close to the requested width was
+      // scaled down from a larger master, so its height is not the source height
+      // (a phone can report a 1088px photo as about 360×180). Only a file well
+      // under the request is the source itself.
+      if (requested > 0 && width >= requested * 0.8) return false
       if (requested > 0) return storedPhotoIsLowQuality(width, height)
     } catch {
       return storedPhotoIsLowQuality(width, height)
