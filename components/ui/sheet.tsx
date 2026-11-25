@@ -51,22 +51,39 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  handle?: boolean
+}
+
+/** Grab handle shared by Ask, Menu and the event sheet. */
+export function SheetHandle({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn('mx-auto flex h-6 w-full shrink-0 cursor-grab touch-none items-center justify-center', className)} {...props}>
+      <span className="h-1.5 w-12 rounded-full bg-muted-foreground/40" aria-hidden />
+      <span className="sr-only">Drag down to close</span>
+    </div>
+  )
+}
+
+/** 44×44 close. Ask, Menu and the event sheet use this hit area. */
+export const sheetCloseClass =
+  'absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full text-foreground ring-offset-background hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none'
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'right', className, children, ...props }, ref) => (
+>(({ side = 'right', className, children, handle = false, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className="vp-sheet-overlay" />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >
+      {handle ? <SheetHandle /> : null}
       {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
+      <SheetPrimitive.Close className={sheetCloseClass}>
+        <X className="h-5 w-5" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
     </SheetPrimitive.Content>
@@ -80,7 +97,7 @@ const SheetHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      'flex flex-col space-y-2 text-center sm:text-left',
+      'flex flex-col space-y-2 text-left',
       className
     )}
     {...props}
@@ -108,7 +125,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn('text-lg font-semibold text-foreground', className)}
+    className={cn('font-display text-lg font-semibold text-foreground', className)}
     {...props}
   />
 ));

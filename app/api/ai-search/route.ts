@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
-import { addDays, sydneyNow, toMinutes } from '@/lib/board'
+import { sydneyNow, toMinutes } from '@/lib/board'
 import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, keywordRelaxAllowed, type AiFilters } from '@/lib/ai-search-parse'
-import { askCandidateTake, askDateBounds, askTextWhere } from '@/lib/ai-search-query'
+import { askCandidateTake, askDateBounds, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
+import { applyHints } from '@/lib/search-hints'
 import { rankAskRows, relaxedKeywords, ASK_LIMIT } from '@/lib/ai-search-rank'
 import { isPaidListing } from '@/lib/quality'
 import { nearestCity } from '@/lib/travel'
@@ -20,26 +21,6 @@ const CAT_NAMES = CATEGORIES.map((c) => c.name)
 function clockMinute(mins: number): string {
   const clamped = Math.max(0, Math.min(mins, 23 * 60 + 59))
   return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`
-}
-
-function weekend(today: string): [string, string] {
-  const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
-  if (dow === 0) return [today, today]
-  if (dow === 6) return [today, addDays(today, 1)]
-  return [addDays(today, 6 - dow), addDays(today, 7 - dow)]
-}
-
-/** Quick-question picks from the search bar. They override whatever the text implies. */
-function applyHints(f: AiFilters, h: any, today: string) {
-  if (h?.when === 'soon') { f.dateFrom = f.dateTo = today; f.timeOfDay = 'any'; f.soon = true }
-  else if (h?.when === 'tonight') { f.dateFrom = f.dateTo = today; f.timeOfDay = 'evening' }
-  else if (h?.when === 'weekend') { [f.dateFrom, f.dateTo] = weekend(today); f.timeOfDay = 'any' }
-  if (h?.budget === 'free') { f.isFree = true; f.maxPrice = null }
-  else if (h?.budget === '30' || h?.budget === '75') { f.isFree = false; f.maxPrice = Number(h.budget) }
-  if (CAT_NAMES.includes(h?.category)) { f.category = h.category; f.categoryStrict = true }
-  const area = clean(h?.area)
-  if (area) f.suburb = area
-  return f
 }
 
 const clean = (s: unknown, n = 40) => (typeof s === 'string' ? s.replace(/[^\p{L}\p{N} '&-]/gu, '').trim().slice(0, n) : '')
@@ -79,11 +60,15 @@ export async function POST(req: NextRequest) {
     const city = CITY_NAMES.includes(body?.city) ? body.city : ''
     const hints = body?.hints && typeof body.hints === 'object' ? body.hints : null
     const hasHints = !!hints && ['when', 'budget', 'category', 'area'].some((k) => typeof hints[k] === 'string' && hints[k].trim())
-    if (q.length < 2 && !hasHints) return NextResponse.json({ error: 'Tell us what you feel like doing' }, { status: 400 })
+    const chipPrice = Number(body?.maxPrice)
+    const chipTag = clean(body?.subTag, 40)
+    if (q.length < 2 && !hasHints && !(chipPrice > 0)) return NextResponse.json({ error: 'Tell us what you feel like doing' }, { status: 400 })
 
     const today = sydneyToday().toISOString().slice(0, 10)
     const parsed = q.length >= 2 ? await aiParse(q, today, city) : null
     const filters = applyHints(interpretQuery(q, today, parsed), hints, today)
+    if (Number.isFinite(chipPrice) && chipPrice > 0) filters.maxPrice = Math.min(chipPrice, 2000)
+    if (chipTag) filters.subTag = chipTag
     const lat = Number(body?.lat)
     const lng = Number(body?.lng)
     let searchCity = filters.city || city
@@ -97,17 +82,20 @@ export async function POST(req: NextRequest) {
     }
     const now = sydneyNow()
 
+    const price = priceWhere(filters)
     const narrowed: Prisma.EventWhereInput[] = [
-      ...(filters.isFree ? [{ OR: [{ isFree: true }, { priceMin: { lte: 0 } }, { price: { contains: 'free', mode: 'insensitive' as const } }] }, { OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] }] : []),
+      ...(price ? [price] : []),
       ...(filters.paidOnly ? [{ NOT: { OR: [{ price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] } }] : []),
       ...(filters.suburb ? [{ OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueName: { contains: filters.suburb, mode: 'insensitive' as const } }] }] : []),
     ]
+    const musicIntent = filters.category === 'Music' || /\b(live music|gigs?|concerts?)\b/i.test(q)
     const base: Prisma.EventWhereInput = {
       date: askDateBounds(filters.dateFrom, filters.dateTo),
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
       ...(searchCity ? { city: searchCity } : {}),
-      ...((filters.category && (filters.categoryStrict || filters.isFree || filters.timeOfDay !== 'any' || filters.soon)) ? { category: filters.category } : {}),
+      ...(shouldFilterCategory(filters, q) ? { category: filters.category } : {}),
+      ...(filters.subTag ? { subTags: { has: filters.subTag } } : {}),
       ...(filters.timeOfDay === 'morning' ? { time: { gte: '05:00', lt: '12:00' } } : {}),
       ...(filters.timeOfDay === 'afternoon' ? { time: { gte: '12:00', lt: '17:00' } } : {}),
       ...(filters.timeOfDay === 'evening' ? { time: { gte: '17:00' } } : {}),
@@ -119,7 +107,6 @@ export async function POST(req: NextRequest) {
       id: true, title: true, description: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,
       isLGBTI: true, isFree: true, price: true, priceMin: true, views: true, _count: { select: { savedBy: true, attendees: true } },
     } as const
-    const musicIntent = filters.category === 'Music' || /\b(live music|gigs?|concerts?)\b/i.test(q)
     const focusMusic = <T extends { title: string; description?: string | null; category: string; subTags?: string[] | null }>(list: T[]) => {
       if (!musicIntent) return list
       return list.filter((e) => e.category === 'Music' && !conflictsWithMusicIntent(e.title, e.description ?? '', e.subTags ?? []))

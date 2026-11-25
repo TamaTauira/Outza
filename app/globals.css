@@ -382,14 +382,14 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     box-sizing: border-box;
     display: grid;
     grid-template-columns: 10px auto minmax(0, 1fr) auto;
-    grid-template-rows: var(--vp-list-line) var(--vp-list-line) var(--vp-list-line);
+    grid-template-rows: auto var(--vp-list-line) var(--vp-list-line);
     column-gap: 8px;
     row-gap: var(--vp-list-gap);
     align-items: baseline;
     width: 100%;
-    height: var(--vp-list-row-h);
+    height: auto;
     min-height: var(--vp-list-row-h);
-    max-height: var(--vp-list-row-h);
+    max-height: none;
     padding: 10px 4px 10px 12px;
     overflow: hidden;
     box-shadow: inset 0 -1px 0 hsl(var(--border));
@@ -465,8 +465,12 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     white-space: nowrap;
   }
   .vp-mrow-title {
-    display: block;
+    display: -webkit-box;
     min-width: 0;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     font-size: 15px;
     font-weight: 600;
     line-height: 20px;
@@ -550,6 +554,11 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .vp-mrow .vp-mrow-chip span {
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
   }
   .vp-price {
     flex: none;

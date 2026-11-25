@@ -1,6 +1,53 @@
 import type { Prisma } from '@prisma/client'
+import type { AiFilters } from './ai-search-parse'
 import { tagForms } from './ai-search-rank'
 import { LGBTI_NEEDLES, isLgbtiTerm, searchSpellings } from './search-fold'
+
+/** Equality matches. A `contains` scan of every price string times out on a two-week window. */
+const FREE_PRICES = ['Free', 'free', 'FREE', '$0', '$0.00', '0', '0.00', 'Complimentary']
+
+/**
+ * Price constraint that belongs in the SQL `where`, before `take`.
+ * Filtering the first page in memory made Free / Under $30 / Under $75 return nothing
+ * whenever the earliest rows were paid.
+ */
+export function priceWhere(filters: Pick<AiFilters, 'isFree' | 'maxPrice'>): Prisma.EventWhereInput | null {
+  if (filters.isFree) {
+    return {
+      OR: [
+        { isFree: true, OR: [{ priceMin: null }, { priceMin: { lte: 0 } }] },
+        { priceMin: { lte: 0 } },
+        { price: { in: FREE_PRICES } },
+      ],
+    }
+  }
+  if (filters.maxPrice != null) {
+    return {
+      OR: [
+        { isFree: true },
+        { priceMin: { lte: filters.maxPrice } },
+        { price: { in: FREE_PRICES } },
+      ],
+    }
+  }
+  return null
+}
+
+/**
+ * A category inferred from the words has to reach SQL when those words were
+ * stripped as generic ("live music") or the person picked the vibe themselves.
+ * Otherwise the first page is every category and the music filter finds nothing.
+ */
+export function shouldFilterCategory(
+  filters: Pick<AiFilters, 'category' | 'categoryStrict' | 'isFree' | 'timeOfDay' | 'soon' | 'keywords'>,
+  q: string,
+): boolean {
+  if (!filters.category) return false
+  if (filters.categoryStrict || filters.isFree || filters.timeOfDay !== 'any' || filters.soon) return true
+  if (!filters.keywords.length) return true
+  if (filters.category === 'Music' && /\b(live music|gigs?|concerts?)\b/i.test(q)) return true
+  return false
+}
 
 const mode = 'insensitive' as const
 

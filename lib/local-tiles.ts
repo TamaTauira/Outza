@@ -20,7 +20,7 @@ const art = (file: string) => ({
 })
 
 export const LOCAL_TILES: LocalTile[] = [
-  { key: 'garage-sales', label: 'Garage Sales', primary: true, alt: 'VibePeep’s mascot jogging over with a box of garage-sale finds.', ...art('garage-sale') },
+  { key: 'garage-sales', label: 'Garage sales', primary: true, alt: 'VibePeep’s mascot jogging over with a box of garage-sale finds.', ...art('garage-sale') },
   { key: 'farmers-markets', label: 'Markets', primary: true, alt: 'VibePeep’s mascot waving with a basket of market vegetables.', ...art('farmers-market') },
   { key: 'school-fundraisers', label: 'School fetes', primary: true, alt: 'VibePeep’s mascot bringing a tray of bake-sale cupcakes.', ...art('school-fundraiser') },
   { key: 'charity-events', label: 'Charity events', primary: true, alt: 'VibePeep’s mascot beside a donation jar at a charity stall.', src: '/local-tiles/charity-events-hq.webp', srcSmall: '/local-tiles/charity-events-hq.webp' },

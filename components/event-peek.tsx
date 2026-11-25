@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
 import { Bookmark, Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
+import { SheetHandle, sheetCloseClass } from '@/components/ui/sheet'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { EventImage } from '@/components/event-image'
 import { eventPictureFrom } from '@/lib/images/display-spec'
@@ -165,24 +166,21 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
           }}
           className={cn(
             'fixed z-[80] flex flex-col overflow-hidden bg-background text-foreground shadow-2xl outline-none',
-            'inset-x-0 bottom-0 top-10 rounded-t-3xl',
+            'vp-bottom-sheet inset-x-0 bottom-0 top-10 rounded-t-3xl',
             'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom data-[state=closed]:duration-200 data-[state=open]:duration-300',
             'sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-auto sm:max-h-[min(88dvh,860px)] sm:w-[min(56rem,calc(100vw-3rem))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl',
             'sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0',
           )}
         >
-          <div
-            className="flex shrink-0 cursor-grab touch-none justify-center py-2 sm:hidden"
+          <SheetHandle
+            className="sm:hidden"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
-          >
-            <span className="h-1.5 w-12 rounded-full bg-muted-foreground/40" aria-hidden />
-            <span className="sr-only">Drag down to close</span>
-          </div>
-          <Dialog.Close className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/70 text-white hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:right-4 sm:top-4" aria-label="Close">
+          />
+          <Dialog.Close className={cn(sheetCloseClass, 'bg-black/70 text-white hover:bg-black sm:right-4 sm:top-4')} aria-label="Close">
             <X className="h-5 w-5" />
           </Dialog.Close>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -211,7 +209,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                   <span key={tag} className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"><Tag className="mr-1 inline h-3 w-3" />{tag}</span>
                 ))}
               </div>
-              <Dialog.Title className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{event.title}</Dialog.Title>
+              <Dialog.Title className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{event.title}</Dialog.Title>
               <p id="event-peek-summary" className="sr-only">{[dateLabel, clock, where].filter(Boolean).join('. ')}</p>
               <ul className="grid gap-2 text-sm">
                 <li className="flex items-start gap-2"><Calendar className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden /><span>{dateLabel}</span></li>

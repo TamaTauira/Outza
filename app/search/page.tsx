@@ -8,8 +8,10 @@ import { COPY } from '@/lib/copy'
 import { CITY_NAMES, cityDef, DEFAULT_CITY } from '@/lib/cities'
 import { cityToday } from '@/lib/seo'
 import { EventCardRow } from '@/components/event-card'
+import { SearchPageForm } from '@/components/search-page-form'
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
+import { hintsFromParams, pickedHints } from '@/lib/search-hints'
 import { relaxedSearchArgs, searchFeedArgs } from '@/lib/search-feed'
 
 export const dynamic = 'force-dynamic'
@@ -19,19 +21,21 @@ export const metadata: Metadata = {
   description: 'Search what’s on. The link keeps the words, the city and the dates.',
 }
 
-type Props = { searchParams: Promise<{ q?: string; city?: string }> }
+type Props = { searchParams: Promise<{ q?: string; city?: string; when?: string; budget?: string; vibe?: string; suburb?: string }> }
 
 export default async function SearchPage({ searchParams }: Props) {
   const sp = await searchParams
   const q = (sp.q ?? '').trim().slice(0, 200)
+  const hints = hintsFromParams(sp)
   const requested = sp.city && CITY_NAMES.includes(sp.city) ? sp.city : ''
   const cityName = requested || DEFAULT_CITY
   const today = cityToday(cityDef(cityName))
+  const hasPicks = pickedHints(hints)
   let note = ''
   let events: Awaited<ReturnType<typeof getBoardFeed>>['events'] = []
-  if (q) {
+  if (q || hasPicks) {
     try {
-      let args = searchFeedArgs(q, cityName, today)
+      let args = searchFeedArgs(q, cityName, today, hints)
       let feed = await getBoardFeed(args)
       if (feed.events.length === 0) {
         const relaxed = relaxedSearchArgs(args)
@@ -53,35 +57,23 @@ export default async function SearchPage({ searchParams }: Props) {
       <main>
       <Page className="pb-8">
         <PageHeader title="Search" lede="Search what’s on. The link keeps your words, so you can send it." />
-        <form role="search" action="/search" method="get" className="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
-          <label className="sr-only" htmlFor="search-q">Search events</label>
-          <input
-            id="search-q"
-            name="q"
-            type="search"
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            defaultValue={q}
-            placeholder='Try "jazz this Friday"'
-            className="h-control min-w-0 flex-1 rounded-full border border-input bg-card px-5 text-base focus:outline-none focus:ring-2 focus:ring-ring sm:h-control-lg"
-          />
-          <input type="hidden" name="city" value={cityName} />
-          <Button type="submit" size="lg">Find events</Button>
-        </form>
-        {q && (
+        <SearchPageForm city={cityName} query={q} hints={hints} />
+        {(q || hasPicks) && events.length > 0 && (
           <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
-            {events.length === 0 ? 'Nothing matched that yet.' : `${events.length} ${events.length === 1 ? 'event' : 'events'} in ${cityName}.`}
+            {`${events.length} ${events.length === 1 ? 'event' : 'events'} in ${cityName}.`}
             {note ? ` ${note}` : ''}
           </p>
         )}
-        {q && events.length === 0 && (
+        {!q && !hasPicks && (
+          <p className="mt-4 text-sm text-muted-foreground">Try a word, a night, or a budget. The link keeps what you picked.</p>
+        )}
+        {(q || hasPicks) && events.length === 0 && (
           <Surface tone="dashed" pad="lg" className="mt-6">
             <p className="font-display text-h3">Nothing matched those words.</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a suburb, a kind of night, or a shorter phrase.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button asChild><Link href="/">{COPY.browse}</Link></Button>
-              <Button variant="outline" asChild><Link href={`/search?city=${encodeURIComponent(cityName)}`}>Clear search</Link></Button>
+              <Button variant="outline" asChild><Link href={`/search?city=${encodeURIComponent(cityName)}`}>{COPY.startFresh}</Link></Button>
             </div>
           </Surface>
         )}

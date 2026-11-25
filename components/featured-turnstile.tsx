@@ -48,7 +48,7 @@ export function FeaturedTurnstile({ city }: { city: string }) {
       <ReachBeacon surface="hot" ids={items.map((item) => item.id)} spotlightIds={spotlightIds} />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Coming up next</h2>
+          <h2 className="font-display text-h2">Coming up next</h2>
         </div>
         <Link href="/promoters" className="text-sm font-semibold text-primary hover:underline">Put your gig up here</Link>
       </div>

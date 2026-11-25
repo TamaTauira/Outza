@@ -180,7 +180,7 @@ export function HomeRails({
         if (rail.items.length === 0 && offline) {
           return (
             <section key={rail.key} aria-label={rail.label}>
-              <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{rail.label}</h2>
+              <h2 className="font-display text-h2">{rail.label}</h2>
               <p className="mt-2 text-sm text-muted-foreground" role="status">The connection dropped. <button type="button" onClick={() => setReloadKey((n) => n + 1)} className="font-semibold text-primary">Try again</button></p>
             </section>
           )
@@ -190,7 +190,7 @@ export function HomeRails({
         return (
         <section key={rail.key} aria-label={rail.label} data-peep-rail={index === 0 ? '1' : undefined}>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{rail.label}</h2>
+            <h2 className="font-display text-h2">{rail.label}</h2>
             {rail.items.length >= 4 && <button type="button" onClick={() => onSeeAll(rail.key)} className="text-sm font-semibold text-primary hover:underline">See all</button>}
           </div>
           <div className="flex gap-[var(--vp-card-gap)] overflow-x-auto pb-1 [scrollbar-width:thin] lg:grid lg:grid-cols-5 lg:overflow-visible">
@@ -201,7 +201,7 @@ export function HomeRails({
       })}
       {neighbourhoods.length > 0 && (
         <section id="neighbourhoods" aria-label="A peep around the neighbourhoods">
-          <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">A peep around the neighbourhoods</h2>
+          <h2 className="font-display text-h2">A peep around the neighbourhoods</h2>
           <p className="mt-1 text-sm text-muted-foreground">Tap a suburb to filter the list. No extra posters.</p>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {neighbourhoods.map(([name, count]) => (

@@ -38,7 +38,20 @@ export function LocalClient() {
   const { saved, isSaved, toggle } = useSaved()
   const { data: session } = useSession() || {}
   const tab = (TAB_KEYS.find((key) => key === params.get('tab')) ?? 'browse')
-  const setTab = (t: string) => router.replace(t === 'browse' ? '/local' : `/local?tab=${t}`, { scroll: false })
+  const pendingScroll = useRef(false)
+  const writeLocal = (next: { tab?: string; q?: string; category?: string; when?: string }) => {
+    const sp = new URLSearchParams()
+    const tabValue = next.tab ?? tab
+    if (tabValue && tabValue !== 'browse') sp.set('tab', tabValue)
+    const qValue = next.q !== undefined ? next.q : (params.get('q') ?? '')
+    const cat = next.category !== undefined ? next.category : category
+    const whenValue = next.when !== undefined ? next.when : when
+    if (qValue) sp.set('q', qValue)
+    if (cat) sp.set('category', cat)
+    if (whenValue && whenValue !== 'weekend') sp.set('when', whenValue)
+    router.push(sp.toString() ? `/local?${sp}` : '/local', { scroll: false })
+  }
+  const setTab = (t: string) => writeLocal({ tab: t })
 
   const [city, setCityState] = useState(DEFAULT_CITY)
   const setCity = (c: string) => { setCityState(c); writeCity(c) }
@@ -57,6 +70,16 @@ export function LocalClient() {
   const [hotKey, setHotKey] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
   const [howOpen, setHowOpen] = useState(params.get('tab') === 'how')
+  const paramQ = params.get('q') ?? ''
+  const paramCategory = params.get('category') ?? ''
+  const paramWhen = params.get('when') ?? 'weekend'
+
+  useEffect(() => {
+    setCategory(paramCategory)
+    setQuery(paramQ)
+    setQueryText(paramQ)
+    setWhen(paramWhen)
+  }, [paramQ, paramCategory, paramWhen])
 
   useEffect(() => {
     const tick = () => setNow(nowIn(cityDef(city).tz))
@@ -117,15 +140,28 @@ export function LocalClient() {
   }, [])
   useEffect(() => { if (session?.user) loadMine() }, [session?.user, loadMine])
 
+  const view = data?.key === requestKey ? data : null
+  const error = loadError?.key === requestKey ? loadError.message : null
+
+  useEffect(() => {
+    if (!pendingScroll.current || tab === 'submit' || tab === 'mine' || !view) return
+    pendingScroll.current = false
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const id = window.setTimeout(() => {
+      const heading = document.getElementById('local-results')
+      if (!(heading instanceof HTMLElement)) return
+      heading.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' })
+      heading.focus({ preventScroll: true })
+    }, 60)
+    return () => window.clearTimeout(id)
+  }, [view, tab])
+
   useEffect(() => {
     if (tab !== 'how') return
     setHowOpen(true)
     const id = window.setTimeout(() => document.getElementById('local-how')?.scrollIntoView({ block: 'start' }), 60)
     return () => window.clearTimeout(id)
   }, [tab])
-
-  const view = data?.key === requestKey ? data : null
-  const error = loadError?.key === requestKey ? loadError.message : null
 
   const days = useMemo(() => {
     const m = new Map<string, Item[]>()
@@ -196,12 +232,22 @@ export function LocalClient() {
             setCity={setCity}
             query={query}
             setQuery={setQuery}
-            applyQuery={(value) => { setQuery(value); setQueryText(value) }}
+            applyQuery={(value) => {
+              const next = value.replace(/\s+/g, ' ').trim().slice(0, 200)
+              setQuery(next)
+              setQueryText(next)
+              pendingScroll.current = true
+              writeLocal({ q: next, tab: 'browse' })
+            }}
             appliedQuery={sentQuery}
             suburb={suburb}
             setSuburb={setSuburb}
             category={category}
-            setCategory={setCategory}
+            setCategory={(key) => {
+              setCategory(key)
+              pendingScroll.current = true
+              writeLocal({ category: key, tab: 'browse' })
+            }}
             when={when}
             setWhen={setWhen}
             items={view ? view.items : null}

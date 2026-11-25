@@ -6,7 +6,7 @@ import { Building2, List, LogOut, Megaphone, Settings, ShieldCheck, User, Users 
 import { signOut } from 'next-auth/react'
 import { TrustCount } from '@/components/admin-nav'
 import { useHasLocalListings } from '@/components/use-has-local-listings'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
 
 type Item = {
   href?: string
@@ -54,12 +54,15 @@ export function MenuSheet({
       ]
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" id="vp-menu-sheet" className="vp-ask-sheet vp-menu-sheet">
-        <SheetHeader className="shrink-0 space-y-1 pr-8 text-left">
-          <SheetTitle className="font-display">{signedIn ? name : 'Menu'}</SheetTitle>
-          <SheetDescription className="sr-only">Account and site links</SheetDescription>
-        </SheetHeader>
+    <BottomSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      id="vp-menu-sheet"
+      title={signedIn ? name : 'Menu'}
+      description="Account and site links"
+      descriptionClassName="sr-only"
+      className="vp-ask-sheet vp-menu-sheet"
+    >
         <ul className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-1">
           {items.map((item) => {
             const { Icon } = item
@@ -82,7 +85,6 @@ export function MenuSheet({
             )
           })}
         </ul>
-      </SheetContent>
-    </Sheet>
+    </BottomSheet>
   )
 }

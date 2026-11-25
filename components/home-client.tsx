@@ -13,6 +13,7 @@ import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWi
 import { useSaved } from '@/lib/saved';
 import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, SlidersHorizontal, Ticket } from 'lucide-react';
 import { SearchField } from '@/components/ui/search-field';
+import { Chip } from '@/components/ui/chip';
 import { FilterBar, filterChipClass } from '@/components/filter-bar';
 import { cn } from '@/lib/utils';
 import { CITIES, cityDef, DEFAULT_CITY } from '@/lib/cities';
@@ -383,14 +384,14 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             priority
             image={cityHeroSrc(city)}
             title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span></>}
-            lede={<><p>Gigs, markets, shows and free things, sorted by start time. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p><p className="mt-2 text-sm font-semibold text-white/85">Your city’s calling. Answer it.</p></>}
+            lede={<><p>Gigs, markets, shows and free things, picked for today. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p><p className="mt-2 text-sm font-semibold text-white/85">Your city’s calling. Answer it.</p></>}
           >
             <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
               <CityPicker value={city || DEFAULT_CITY} onChange={setCity} onDark />
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz Friday" queryRequest={askRequest} chips={false} goToPage />
             </div>
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-xs text-white/80">Describe a vibe, a date, a place or a budget. Try “plan my Saturday” and I’ll line the night up in Ask.</p>
-            <div className="vp-chip-row relative mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="vp-chip-row relative mt-4 flex flex-wrap gap-2">
               {[
                 { label: 'Tonight', run: () => applyPlan('tonight') },
                 { label: 'This weekend', run: () => applyPlan('weekend') },
@@ -400,7 +401,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
                 { label: 'Date night', run: () => { if (!today) return; setDay(today); pinWindow('evening'); setFilters((f) => ({ ...withCategories(f, ['Food & Drink', 'Music', 'Arts & Culture', 'Nightlife']), dateFrom: '', dateTo: '' })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Family', run: () => { setFilters((f) => withCategories(f, ['Family'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
               ].map((chip) => (
-                <button key={chip.label} type="button" onClick={chip.run} className="h-11 shrink-0 rounded-full bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20">{chip.label}</button>
+                <Chip key={chip.label} onDark onClick={chip.run}>{chip.label}</Chip>
               ))}
             </div>
           </HeroCard>

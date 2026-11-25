@@ -1,13 +1,10 @@
 import type { ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { Chip, chipClass } from '@/components/ui/chip'
 import { SearchField } from '@/components/ui/search-field'
 
 /** Date chips and the search field share one height, radius and gap on every page. */
 export function filterChipClass(pressed: boolean) {
-  return cn(
-    'inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-semibold',
-    pressed ? 'bg-primary text-[#1a1408]' : 'border border-border bg-background text-foreground hover:bg-muted',
-  )
+  return chipClass(pressed)
 }
 
 export function FilterBar({
@@ -38,11 +35,9 @@ export function FilterBar({
   return (
     <div className="px-3 sm:px-4">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-        <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] lg:shrink-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="When">
+        <div className="flex flex-wrap gap-2 lg:shrink-0" role="group" aria-label="When">
           {dates.map((chip) => (
-            <button key={chip.key} type="button" aria-pressed={chip.pressed} onClick={chip.onClick} className={filterChipClass(chip.pressed)}>
-              {chip.label}
-            </button>
+            <Chip key={chip.key} pressed={chip.pressed} onClick={chip.onClick}>{chip.label}</Chip>
           ))}
           {picker}
         </div>

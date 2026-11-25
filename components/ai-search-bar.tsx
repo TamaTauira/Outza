@@ -1,44 +1,33 @@
 'use client'
 
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CalendarDays, CalendarRange, ChevronDown, Loader2, MapPin, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowRight, CalendarDays, CalendarRange, MapPin, Search, SlidersHorizontal } from 'lucide-react'
 import { categoryIcon, dayLabel } from '@/lib/board'
+import { COPY } from '@/lib/copy'
 import { formatTime } from '@/lib/format'
-import { CATEGORIES } from '@/lib/categories'
 import { matchPlanPick, PLAN_PICKS, type PlanPick, type PlanView } from '@/lib/plan-picks'
 import { eventPath } from '@/lib/seo'
-import { cn } from '@/lib/utils'
+import { chipQuery, EMPTY_HINTS, hintsToQuery, isNaturalAsk, pickedHints, type SearchHints } from '@/lib/search-hints'
+import { isLgbtiTerm } from '@/lib/search-fold'
 import { Button } from '@/components/ui/button'
 import { Chip, ChipGroup } from '@/components/ui/chip'
 import { IconButton } from '@/components/ui/icon-button'
+import { FilterPicks } from '@/components/filter-picks'
 import { PlanCard } from '@/components/plan-card'
-import { isLgbtiTerm } from '@/lib/search-fold'
+import { SearchBar } from '@/components/search-bar'
 export interface AiSearchFilters {
   dateFrom: string; dateTo: string; category: string; isFree: boolean; maxPrice: number | null
   lgbtiq: boolean; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'any'; suburb: string; subTag?: string; paidOnly?: boolean; keywords: string[]; soon: boolean; city?: string; nearMe?: boolean
 }
-type When = '' | 'soon' | 'tonight' | 'weekend'
-type Budget = '' | 'free' | '30' | '75'
-interface Hints { when: When; budget: Budget; category: string; area: string }
-const NO_HINTS: Hints = { when: '', budget: '', category: '', area: '' }
-const WHEN_OPTS: { key: Exclude<When, ''>; label: string; hint: string }[] = [
-  { key: 'soon', label: 'Soon', hint: 'Starting in the next 3 hours' },
-  { key: 'tonight', label: 'Tonight', hint: 'From 5pm today' },
-  { key: 'weekend', label: 'Weekend', hint: 'Saturday and Sunday' },
-]
-const BUDGET_OPTS: { key: Exclude<Budget, ''>; label: string }[] = [
-  { key: 'free', label: 'Free' }, { key: '30', label: 'Under $30' }, { key: '75', label: 'Under $75' },
-]
+type Hints = SearchHints
+const NO_HINTS: Hints = EMPTY_HINTS
 interface AiResult { id: string; title: string; date: string; time: string | null; venueName: string; suburb: string | null; city: string; category: string; isFree: boolean; price: string | null }
 interface AiResponse { filters: AiSearchFilters; ai: boolean; relaxed: boolean; total: number; results: AiResult[] }
 
 const PLAN_SUGGESTIONS = ['Saturday date night', 'Family Sunday', 'Free afternoon', 'Family day out']
 const SEARCH_SUGGESTIONS = ['Live music', 'Comedy under $40', 'LGBTIQ+ this week']
-
-function pickedHints(h: Hints) {
-  return !!(h.when || h.budget || h.category || h.area.trim())
-}
 
 function understood(f: AiSearchFilters, today: string | null): string[] {
   const when = f.dateFrom === f.dateTo ? dayLabel(f.dateFrom, today) : `${dayLabel(f.dateFrom, today)} – ${dayLabel(f.dateTo, today)}`
@@ -54,10 +43,8 @@ function understood(f: AiSearchFilters, today: string | null): string[] {
   ].filter(Boolean)
 }
 
-const fieldClass = 'h-control w-full rounded-full border border-border bg-[var(--vp-on-light-fill)] px-3.5 text-sm font-semibold text-[var(--vp-on-light)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary'
-
-/** Hero search. A plan-shaped ask shows a ready-made outing. Everything else stays a listing search. */
-export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; placeholder?: string; queryRequest?: { id: number; text: string } | null; chips?: boolean; inputId?: string; goToPage?: boolean }) {
+/** Hero search and the Ask sheet. A plan-shaped ask shows a ready-made outing. */
+export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; onResult?: () => void; placeholder?: string; queryRequest?: { id: number; text: string; hints?: Hints } | null; chips?: boolean; inputId?: string; goToPage?: boolean }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -69,6 +56,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
   const [plan, setPlan] = useState<PlanView | null>(null)
   const [planHistory, setPlanHistory] = useState<PlanView[]>([])
   const [planFallback, setPlanFallback] = useState('')
+  const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -120,7 +108,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
     }
   }
 
-  const search = async (query: string, h: Hints = hints, closeOnSend = false, coords?: { lat: number; lng: number }) => {
+  const search = async (query: string, h: Hints = hints, closeOnSend = false, coords?: { lat: number; lng: number }, extra?: { maxPrice?: number; subTag?: string }) => {
     const text = query.trim()
     const picked = pickedHints(h)
     if (text.length < 2 && !picked) {
@@ -144,7 +132,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
     const id = ++reqId.current
     setQ(text); setBusy(true); setError('')
     try {
-      const res = await fetch('/api/ai-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: text.length >= 2 ? text : '', city, hints: h, ...(coords ?? {}) }) })
+      const res = await fetch('/api/ai-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ q: text.length >= 2 ? text : '', city, hints: h, ...(extra?.maxPrice ? { maxPrice: extra.maxPrice } : {}), ...(extra?.subTag ? { subTag: extra.subTag } : {}), ...(coords ?? {}) }) })
       if (id !== reqId.current) return
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { setError(d?.error ?? 'Can’t search just now. Give it another go in a tick.'); setData(null); return }
@@ -200,8 +188,10 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
   useEffect(() => {
     if (!queryRequest || queryRequest.id === asked.current) return
     asked.current = queryRequest.id
+    const nextHints = queryRequest.hints ?? NO_HINTS
     setQ(queryRequest.text)
-    void search(queryRequest.text, NO_HINTS, false)
+    setHints(nextHints)
+    void search(queryRequest.text, nextHints, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run only when a new prompt is requested
   }, [queryRequest])
 
@@ -254,13 +244,6 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
     setOpen(true)
     setTimeout(() => panelRef.current?.querySelector<HTMLElement>('button, select, input')?.focus(), 0)
   }
-  const setHint = <K extends keyof Hints>(k: K, v: Hints[K]) => {
-    setHints((h) => {
-      const next = { ...h, [k]: h[k] === v && k !== 'area' ? '' : v } as Hints
-      if (!pickedHints(next) && q.trim().length < 2) queueMicrotask(() => setData(null))
-      return next
-    })
-  }
   const clearHints = () => {
     setHints(NO_HINTS)
     if (q.trim().length < 2) setData(null)
@@ -308,63 +291,104 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
     setPlanHistory((history) => history.slice(0, -1))
   }
 
+  const submitBar = (event: FormEvent<HTMLFormElement>) => {
+    const text = q.trim()
+    if (goToPage) {
+      if (!text && !hasHints) {
+        event.preventDefault()
+        setError('Tell us what you feel like doing, or pick a time, budget or idea.')
+        inputRef.current?.focus()
+        return
+      }
+      if (text && isNaturalAsk(text)) {
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent('vp-open-ask', { detail: { q: text, hints } }))
+        return
+      }
+      event.preventDefault()
+      router.push(`/search?${hintsToQuery(hints, { q: text, city })}`)
+      return
+    }
+    event.preventDefault()
+    void search(q, hints, true)
+  }
+
+  const runSuggestion = (label: string) => {
+    const mapped = chipQuery(label)
+    if (!mapped) {
+      void search(label, hints, true)
+      return
+    }
+    const next = { ...hints, when: mapped.hints.when ?? hints.when, budget: mapped.hints.budget ?? hints.budget, category: mapped.hints.category ?? hints.category, area: mapped.hints.area ?? hints.area }
+    setHints(next)
+    void search(mapped.q, next, true, undefined, { maxPrice: mapped.maxPrice, subTag: mapped.subTag })
+  }
+
   const errorEl = error
     ? <p role="alert" className={open ? 'mb-3 text-sm font-medium text-red-700' : 'mt-hero rounded-card border border-border bg-card p-card text-sm font-medium text-foreground'}>{error}</p>
     : null
 
   return (
     <div className="flex-1 min-w-0">
-      <div ref={rootRef} className="overflow-hidden rounded-hero bg-white text-[var(--vp-on-light)] ring-2 ring-primary/50 focus-within:ring-primary shadow-vp-md">
-        <form role="search" action={goToPage ? '/search' : undefined} method={goToPage ? 'get' : undefined} onSubmit={(e) => { if (goToPage) return; e.preventDefault(); void search(q, hints, true) }} className="flex h-control-lg items-center gap-2 pl-4 pr-1.5">
-          <Sparkles className="w-5 h-5 text-primary shrink-0" aria-hidden />
-          {goToPage && <input type="hidden" name="city" value={city} />}
-          <label htmlFor={inputId} className="sr-only">Tell us your vibe</label>
-          <input
-            id={inputId} ref={inputRef} name={goToPage ? 'q' : undefined} type="search" value={q} maxLength={200} autoComplete="off" enterKeyHint="search" inputMode="search"
-            aria-describedby={`${inputId}-help`}
-            onFocus={reveal}
-            onClick={reveal}
-            onKeyDown={(e) => {
-              if (e.key !== 'ArrowDown') return
-              e.preventDefault()
-              focusPanel()
-            }}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={placeholder ?? 'Ask for a vibe…'}
-            className="min-w-0 flex-1 bg-transparent text-base text-[var(--vp-on-light)] placeholder:text-[var(--vp-text-muted)] focus:outline-none" />
-          <p id={`${inputId}-help`} className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
-          {q && !working && (
-            <IconButton type="button" variant="ghost" label="Clear search" onClick={clearBar} className="text-[var(--vp-on-light)]"><X className="h-4 w-4" /></IconButton>
+      <div ref={rootRef} className="overflow-hidden rounded-hero bg-white text-[var(--vp-on-light)] shadow-vp-md ring-2 ring-primary/50 focus-within:ring-primary">
+        <p id={`${inputId}-help`} className="sr-only">Tell us your vibe, or open filters for time, budget, suburb and suggestions.</p>
+        <SearchBar
+          ref={inputRef}
+          id={inputId}
+          embedded
+          icon="spark"
+          name={goToPage ? 'q' : undefined}
+          action={goToPage ? '/search' : undefined}
+          value={q}
+          onChange={setQ}
+          onSubmit={submitBar}
+          placeholder={placeholder ?? 'Ask for a vibe'}
+          label="Tell us your vibe"
+          busy={working}
+          describedBy={`${inputId}-help`}
+          onFocus={reveal}
+          onClick={reveal}
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowDown') return
+            event.preventDefault()
+            focusPanel()
+          }}
+          onClear={q && !working ? clearBar : undefined}
+          hidden={goToPage ? [
+            { name: 'city', value: city },
+            { name: 'when', value: hints.when },
+            { name: 'budget', value: hints.budget },
+            { name: 'vibe', value: hints.category },
+            { name: 'suburb', value: hints.area },
+          ] : undefined}
+          trailing={(
+            <IconButton
+              type="button"
+              variant="ghost"
+              aria-expanded={open}
+              aria-controls={`${inputId}-panel`}
+              label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
+              onClick={() => setOpen((v) => !v)}
+              className={open ? 'relative bg-primary/15 text-primary' : 'relative text-[var(--vp-on-light)]'}
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden />
+              {hintCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-xs font-bold leading-none text-on-primary" aria-hidden>{hintCount}</span>
+              )}
+            </IconButton>
           )}
-          <IconButton
-            type="button"
-            variant="ghost"
-            aria-expanded={open}
-            aria-controls={`${inputId}-panel`}
-            label={hintCount ? `Filters, ${hintCount} on` : 'Filters'}
-            onClick={() => setOpen((v) => !v)}
-            className="relative text-[var(--vp-on-light)]"
-          >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            {hintCount > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-xs font-bold leading-none text-on-primary" aria-hidden>{hintCount}</span>
-            )}
-          </IconButton>
-          <Button type="submit" size="md" disabled={working} aria-label="Find events" className="shrink-0">
-            {working ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRight className="h-4 w-4 sm:hidden" aria-hidden /><span className="hidden sm:inline">Find events</span></>}
-          </Button>
-        </form>
+        />
 
         {chips && (
-          <div className="grid gap-3 px-3 pb-3">
+          <div className="grid gap-4 px-3 pb-3 pt-3">
             <ChipGroup onLight label="Plan my..." icon={<CalendarRange className="h-3.5 w-3.5" aria-hidden />}>
               {PLAN_SUGGESTIONS.map((s) => (
-                <Chip key={s} onLight type="button" onClick={() => search(s, hints, true)} disabled={busy}>{s}</Chip>
+                <Chip key={s} onLight type="button" onClick={() => runSuggestion(s)} disabled={busy}>{s}</Chip>
               ))}
             </ChipGroup>
             <ChipGroup onLight label="Search" icon={<Search className="h-3.5 w-3.5" aria-hidden />}>
               {SEARCH_SUGGESTIONS.map((s) => (
-                <Chip key={s} onLight type="button" onClick={() => search(s, hints, true)} disabled={busy}>{s}</Chip>
+                <Chip key={s} onLight type="button" onClick={() => runSuggestion(s)} disabled={busy}>{s}</Chip>
               ))}
             </ChipGroup>
           </div>
@@ -380,48 +404,15 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
             className="px-3 pb-3 sm:max-h-[min(28rem,70vh)] sm:overflow-y-auto overscroll-contain"
           >
             {errorEl}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div role="group" aria-label="When" className="min-w-0">
-                <div className="vp-eyebrow mb-2 text-[var(--vp-on-light)]">When</div>
-                <div className="flex flex-wrap gap-2">
-                  {WHEN_OPTS.map((o) => (
-                    <Chip key={o.key} onLight title={o.hint} pressed={hints.when === o.key} onClick={() => setHint('when', o.key)}>{o.label}</Chip>
-                  ))}
-                </div>
-              </div>
-              <div role="group" aria-label="Budget" className="min-w-0">
-                <div className="vp-eyebrow mb-2 text-[var(--vp-on-light)]">Budget</div>
-                <div className="flex flex-wrap gap-2">
-                  {BUDGET_OPTS.map((o) => (
-                    <Chip key={o.key} onLight pressed={hints.budget === o.key} onClick={() => setHint('budget', o.key)}>{o.label}</Chip>
-                  ))}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <label htmlFor="ai-search-category" className="vp-eyebrow mb-2 block text-[var(--vp-on-light)]">Vibe</label>
-                <span className="relative block">
-                  <select id="ai-search-category" value={hints.category} onChange={(e) => setHint('category', e.target.value)} aria-label="Vibe"
-                    className={cn(fieldClass, 'appearance-none pr-8 text-left', hints.category && 'bg-primary text-on-primary')}>
-                    <option value="">Any vibe</option>
-                    {CATEGORIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-80" />
-                </span>
-              </div>
-              <div className="min-w-0">
-                <label htmlFor="ai-search-suburb" className="vp-eyebrow mb-2 block text-[var(--vp-on-light)]">Suburb</label>
-                <span className="relative block">
-                  <MapPin className={cn('pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2', hints.area.trim() ? 'text-on-primary' : 'text-[var(--vp-on-light)]')} />
-                  <input id="ai-search-suburb" value={hints.area} onChange={(e) => setHint('area', e.target.value)} maxLength={40} autoComplete="off"
-                    placeholder="Any suburb" className={cn(fieldClass, 'pl-9', hints.area.trim() && 'bg-primary text-on-primary placeholder:text-on-primary/70')} />
-                </span>
-              </div>
-              {hasHints && (
-                <div className="flex justify-end sm:col-span-2">
-                  <button type="button" onClick={clearHints} className="inline-flex h-control items-center rounded-full px-3 text-sm font-semibold text-[var(--vp-on-light)] underline-offset-2 hover:underline">Clear picks</button>
-                </div>
-              )}
-            </div>
+            <FilterPicks
+              idPrefix={inputId}
+              hints={hints}
+              onChange={(next) => {
+                setHints(next)
+                if (!pickedHints(next) && q.trim().length < 2) setData(null)
+              }}
+              onClear={clearHints}
+            />
           </div>
         )}
       </div>
@@ -453,30 +444,37 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
       )}
 
       {data && !planReady && (
-        <div className="mt-hero rounded-card border border-border bg-card p-card text-card-foreground shadow-vp-sm" aria-live="polite">
+        <div className="mt-hero min-w-0 overflow-hidden rounded-card border border-border bg-card p-card text-card-foreground shadow-vp-sm" aria-live="polite">
           {planFallback && <p className="mb-3 text-sm text-foreground">{planFallback}</p>}
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
             <span className="font-semibold text-foreground">{data.ai ? 'Got it:' : 'Searching for:'}</span>
-            {understood(data.filters, today).map((c) => <span key={c} className="inline-flex min-h-6 items-center rounded-full bg-muted px-2.5 py-1 text-sm font-semibold text-foreground">{c}</span>)}
+            {understood(data.filters, today).map((c) => (
+              <span key={c} title={c} className="inline-flex h-11 max-w-full min-w-0 items-center rounded-full bg-muted px-3.5 text-sm font-semibold text-foreground">
+                <span className="truncate">{c}</span>
+              </span>
+            ))}
           </div>
           {data.relaxed && <p className="mt-2 text-sm text-muted-foreground">Couldn’t nail every word, but these tick most of your boxes.</p>}
 
           {data.results.length ? (
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="mt-3 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {data.results.map((e) => {
                 const Icon = categoryIcon(e.category)
                 const clock = formatTime(e.time)
+                const place = `${e.venueName}${e.suburb ? `, ${e.suburb}` : ''}`
                 return (
-                  <li key={e.id} className="flex">
-                    <Link href={eventPath(e)} className="group flex min-h-control w-full gap-3 rounded-control border border-border bg-background p-3 text-foreground hover:bg-muted">
-                      <span className="mt-0.5 grid h-control w-control shrink-0 place-items-center rounded-control bg-primary/15 text-primary"><Icon className="h-4 w-4" /></span>
+                  <li key={e.id} className="min-w-0">
+                    <Link
+                      href={eventPath(e)}
+                      onClick={() => onResult?.()}
+                      className="group grid min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] gap-3 overflow-hidden rounded-control border border-border bg-background p-3 text-foreground hover:bg-muted"
+                    >
+                      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-control bg-primary/15 text-primary"><Icon className="h-4 w-4" /></span>
                       <span className="min-w-0">
-                        <span className="block font-semibold leading-snug line-clamp-2 group-hover:underline">{e.title}</span>
-                        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-foreground">
-                          <span className="inline-flex items-center gap-1"><CalendarDays className="h-4 w-4" />{dayLabel(e.date, today)}{clock ? ` · ${clock}` : ''}</span>
-                          <span className="inline-flex min-w-0 items-center gap-1"><MapPin className="h-4 w-4 shrink-0" /><span className="truncate">{e.venueName}{e.suburb ? `, ${e.suburb}` : ''}</span></span>
-                          {e.isFree && <span className="rounded-full bg-[hsl(var(--free))] px-2 py-0.5 text-xs font-semibold text-white">Free</span>}
-                        </span>
+                        <span className="block min-w-0 font-semibold leading-snug line-clamp-2 group-hover:underline">{e.title}</span>
+                        <span className="mt-1 flex min-w-0 items-center gap-1 text-sm text-foreground"><CalendarDays className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{dayLabel(e.date, today)}{clock ? ` · ${clock}` : ''}</span></span>
+                        <span className="mt-0.5 flex min-w-0 items-center gap-1 text-sm text-foreground"><MapPin className="h-4 w-4 shrink-0" /><span className="min-w-0 truncate">{place}</span></span>
+                        {e.isFree && <span className="mt-1 inline-flex rounded-full bg-emerald-800 px-2 py-0.5 text-xs font-semibold text-white">Free</span>}
                       </span>
                     </Link>
                   </li>
@@ -490,7 +488,7 @@ export function AiSearchBar({ city, today, onShowAll, placeholder, queryRequest,
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">Real events only. We read your ask. We don’t invent listings.</p>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="ghost" size="md" onClick={() => { reqId.current++; planReq.current += 1; setBusy(false); setPlanBusy(false); setData(null); setPlan(null); setPlanHistory([]); setQ(''); setHints(NO_HINTS); setError(''); setPlanError(''); inputRef.current?.focus() }}>Start Fresh</Button>
+              <Button type="button" variant="ghost" size="md" onClick={() => { reqId.current++; planReq.current += 1; setBusy(false); setPlanBusy(false); setData(null); setPlan(null); setPlanHistory([]); setQ(''); setHints(NO_HINTS); setError(''); setPlanError(''); inputRef.current?.focus() }}>{COPY.startFresh}</Button>
               {data.total > 0 && (
                 <Button type="button" variant="outline" size="md" onClick={() => onShowAll(data.filters)}>
                   {data.total > data.results.length ? `See all ${data.total} on the board` : 'Open on the board'}<ArrowRight className="h-4 w-4" />

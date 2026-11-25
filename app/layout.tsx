@@ -22,7 +22,7 @@ const manrope = Manrope({ subsets: ['latin'], variable: '--font-display' })
 
 const theme = '#0c0f0e'
 const defaultTitle = `${BRAND_NAME} — ${BRAND_TAGLINE}`
-const defaultDescription = `${BRAND_SUBLINE} The friend who knows what's on: gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, sorted by start time. Save what looks good, follow venues, and get a nudge when it’s on.`
+const defaultDescription = `${BRAND_SUBLINE} The friend who knows what's on: gigs, shows, markets and things to do in Sydney, Melbourne, Brisbane, Perth, Adelaide and beyond, picked for today. Save what looks good, follow venues, and get a nudge when it’s on.`
 const defaultOgImage = openGraphImage(undefined, DEFAULT_OG_ALT)
 
 export const metadata = {
