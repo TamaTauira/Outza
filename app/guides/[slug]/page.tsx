@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PageShell } from '@/components/page-shell'
 import { LandingViewBeacon } from '@/components/landing-beacon'
-import { EventCard, GuideEventRow } from '@/components/event-card'
+import { EventCard, GuideEventList } from '@/components/event-card'
 import { chipClass } from '@/components/ui/chip'
 import { assessEditorial, editorialFacts, editorialGuide, editorialPath, EDITORIAL_GUIDES } from '@/lib/editorial'
 import { cityPath, topicDef } from '@/lib/seo'
@@ -142,10 +142,10 @@ export default async function EditorialGuidePage({ params }: Props) {
         {events.length > 0 && (
           <section className="mt-10" aria-labelledby="sample">
             <h2 id="sample" className="font-display text-xl font-bold mb-4">On soon</h2>
-            <div className="divide-y overflow-hidden rounded-xl border border-border bg-card md:hidden">
-              {events.map((e) => <GuideEventRow key={e.id} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as never }} />)}
+            <div className="vp-guide-rows overflow-hidden rounded-xl border border-border bg-card">
+              <GuideEventList listingQuery={listingQuery} events={events.map((e) => ({ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as never }))} />
             </div>
-            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-card">
+            <div className="vp-guide-cards md:grid-cols-2 lg:grid-cols-3 gap-card">
               {events.map((e, i) => <EventCard key={e.id} index={i} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as never }} />)}
             </div>
           </section>

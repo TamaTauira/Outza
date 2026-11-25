@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { formatPrice, readPrice } from './price'
+import { formatPrice, listPriceLabel, readPrice } from './price'
 
 test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice('$25').price, '$25')
@@ -18,6 +18,10 @@ test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice('$1,250').min, 1250)
   assert.equal(readPrice('TBA').price, null)
   assert.equal(formatPrice(false, null).value, 'See website')
+  assert.equal(listPriceLabel(true, null).text, 'Free')
+  assert.equal(listPriceLabel(true, null).kind, 'free')
+  assert.equal(listPriceLabel(false, null).text, 'See website')
+  assert.equal(listPriceLabel(false, null, 51, 62).text, '$51–$62')
   assert.equal(formatPrice(false, null, 30, 45).value, '$30–$45')
   assert.equal(readPrice({ major_value: '25.00' }).price, '$25')
   const cents = readPrice({ currency: 'AUD', value: 2500 })

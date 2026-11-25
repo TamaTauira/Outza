@@ -7,6 +7,8 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
 import { categoryIcon, checkedAgo, formatPrice, latestIso } from '@/lib/board'
+import { listPriceLabel } from '@/lib/price'
+import { ListClock, listClockLabel, listPlaceLine } from '@/components/list-clock'
 import { formatBoardRange, liveStatus, type BoardRange } from '@/lib/listing-window'
 import type { SavedEvent } from '@/lib/saved'
 import { cn } from '@/lib/utils'
@@ -93,6 +95,78 @@ interface BoardRowProps {
   active?: boolean
 }
 
+const iconBtn = 'relative z-20 grid h-11 w-11 shrink-0 place-items-center rounded-md p-0'
+
+/** Portrait list row. Fixed height, one line each for the title, the venue and the chip. */
+export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, active, className }: BoardRowProps & { className?: string }) {
+  const shownTitle = displayTitle(ev.title)
+  const catName = parentCategory(ev.category) || ev.category
+  const cat = CATEGORIES.find((c) => c.name === catName)
+  const color = cat?.color ?? '#FF7A35'
+  const Icon = categoryIcon(catName)
+  const when = formatBoardRange(ev)
+  const price = listPriceLabel(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
+  const done = status.tone === 'done'
+  const suburb = displaySuburb(ev.suburb, ev.venueAddress, ev.city)
+  const venue = tidyVenueName(ev.venueName, ev.venueAddress, ev.city)
+  const place = listPlaceLine([venue, suburb].filter(Boolean).join(' · '), when.endNote)
+  const router = useRouter()
+  const href = ev.href ?? eventPath(ev)
+  const hasEnd = !!when.endLine
+  const noteSearch = () => {
+    if (trackSearch) navigator.sendBeacon?.('/api/analytics/search-click')
+  }
+  const openRow = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('a,button,input,select,label')) return
+    if (e.metaKey || e.ctrlKey) { window.open(href, '_blank', 'noopener'); return }
+    router.push(href, { scroll: false })
+  }
+  return (
+    <div
+      onClick={openRow}
+      data-vp-row="list"
+      data-event-id={ev.id}
+      data-has-end={hasEnd ? 'true' : 'false'}
+      className={cn('vp-mrow', !hasEnd && 'is-one', done && 'is-done', active && 'is-active', className)}
+    >
+      <span className="sr-only">{listClockLabel(when)}</span>
+      <span className="vp-mrow-rail" aria-hidden>
+        <span className="vp-mrow-dot" />
+        {hasEnd ? <span className="vp-mrow-line" /> : null}
+        {hasEnd ? <span className="vp-mrow-ring" /> : null}
+      </span>
+      <span className="vp-mrow-start" title={when.label}>
+        <ListClock when={when} part="start" />
+      </span>
+      {hasEnd ? (
+        <span className="vp-mrow-end" title={when.label}>
+          <ListClock when={when} part="end" />
+        </span>
+      ) : null}
+      <span className="vp-mrow-line1">
+        <Link href={href} scroll={false} onClick={noteSearch} className="vp-mrow-title after:absolute after:inset-0 after:z-0 after:content-[''] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary">
+          {shownTitle}
+        </Link>
+        {place ? <span className="vp-mrow-venue-inline">{place}</span> : null}
+      </span>
+      <span className="vp-mrow-venue">{place}</span>
+      <span className="vp-mrow-meta">
+        <span className="vp-chip vp-mrow-chip" style={{ backgroundColor: `color-mix(in srgb, ${color} 28%, #151a19)`, color: '#F5F5F2' }}>
+          <Icon className="h-3 w-3 shrink-0" aria-hidden />
+          <span>{catName}</span>
+        </span>
+        <span className={cn('vp-price', price.kind === 'free' && 'is-free')}>{price.text}</span>
+      </span>
+      <span className="vp-mrow-actions">
+        <button type="button" onClick={() => onToggleSave(ev)} className={cn(iconBtn, saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
+          <Bookmark className={cn('h-4 w-4', saved && 'fill-current')} />
+        </button>
+        <ItineraryButton lineup event={ev} className={iconBtn} />
+      </span>
+    </div>
+  )
+}
+
 export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active }: BoardRowProps) {
   const shownTitle = displayTitle(ev.title)
   const catName = parentCategory(ev.category) || ev.category
@@ -101,7 +175,6 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
   const Icon = categoryIcon(ev.category)
   const when = formatBoardRange(ev)
   const price = formatPrice(ev.isFree, ev.price, ev.priceMin, ev.priceMax)
-  const priceValue = [price.prefix, displayPriceValue(price.value, price.kind)].filter(Boolean).join(' ')
   const checked = checkedAgo(latestIso(ev.lastVerifiedAt, ev.updatedAt))
   const done = status.tone === 'done'
   const type = ev.subTags?.[0] ?? catName
@@ -119,32 +192,9 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active 
     if (e.metaKey || e.ctrlKey) { window.open(href, '_blank', 'noopener'); return }
     router.push(href, { scroll: false })
   }
-  const meta = [venue, suburb].filter(Boolean).join(' · ')
   return (
     <>
-    <div
-      onClick={openRow}
-      className={cn(
-        'xl:hidden group relative cursor-pointer grid grid-cols-[4.875rem_minmax(0,1fr)_auto] items-center gap-x-2 border-b border-border px-3 py-1.5 hover:bg-muted/60',
-        done && 'opacity-75',
-        active && 'bg-primary/10',
-      )}
-      data-event-id={ev.id}
-    >
-      <div className="min-w-0" title={when.label}>
-        <TimeStack when={when} />
-      </div>
-      <div className="min-w-0">
-        <Link href={href} scroll={false} onClick={noteSearch} className="block truncate font-semibold leading-tight hover:text-primary after:absolute after:inset-0 after:content-['']">{shownTitle}</Link>
-        <p className="truncate text-xs leading-tight text-muted-foreground">{meta}{meta ? ' · ' : ''}{priceValue} · {status.label}</p>
-      </div>
-      <div className="relative z-20 flex items-center">
-        <button onClick={() => onToggleSave(ev)} className={cn('grid h-11 w-11 place-items-center rounded-md', saved ? 'text-primary' : 'text-muted-foreground')} aria-label={saved ? 'Remove from saved' : 'Save event'}>
-          <Bookmark className={cn('w-4 h-4', saved && 'fill-current')} />
-        </button>
-        <ItineraryButton lineup event={ev} />
-      </div>
-    </div>
+    <MobileEventRow ev={ev} status={status} saved={saved} onToggleSave={onToggleSave} trackSearch={trackSearch} active={active} className="xl:hidden" />
     <div
       onClick={openRow}
       className={cn(

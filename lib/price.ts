@@ -157,3 +157,16 @@ export function formatPrice(
   if (min === 0) return { prefix: 'free –', value: moneyText(max), kind: 'paid' }
   return { prefix: '', value: `${moneyText(min)}–${moneyText(max)}`, kind: 'paid' }
 }
+
+/** One line for a list row or board card. Missing prices stay “See website”. */
+export function listPriceLabel(
+  isFree: boolean,
+  price: string | null,
+  priceMin?: number | null,
+  priceMax?: number | null,
+): { text: string; kind: 'free' | 'paid' | 'unknown' } {
+  const parsed = formatPrice(isFree, price, priceMin, priceMax)
+  if (parsed.kind === 'free') return { text: 'Free', kind: 'free' }
+  if (parsed.kind === 'unknown') return { text: 'See website', kind: 'unknown' }
+  return { text: [parsed.prefix, parsed.value].filter(Boolean).join(' '), kind: 'paid' }
+}

@@ -14,6 +14,8 @@ import { formatPrice } from '@/lib/board'
 import { displayTitle } from '@/lib/display-public'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { boardClockLine } from '@/lib/listing-window'
+import { MobileEventRow, type BoardEvent } from '@/components/board-row'
+import { useSaved } from '@/lib/saved'
 interface EventData {
   id: string
   title: string
@@ -43,6 +45,8 @@ interface EventData {
   source?: string | null
   communityKey?: string | null
   availabilityKind?: 'possibly'
+  endTime?: string | null
+  endDate?: string | Date | null
 }
 
 export function EventCard({ event, index, listingQuery }: { event: EventData; index: number; listingQuery?: string }) {
@@ -183,25 +187,56 @@ export function EventCardRow({ event, listingQuery }: { event: EventData; listin
   )
 }
 
-/** Two-line city-guide row used under the desktop card breakpoint. */
+function dayKey(value: string | Date | null | undefined): string | null {
+  if (!value) return null
+  const text = value instanceof Date ? value.toISOString() : String(value)
+  return text.slice(0, 10)
+}
+
+function guideToBoard(event: EventData, listingQuery?: string): BoardEvent {
+  const quiet = event.availabilityKind === 'possibly'
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description ?? null,
+    date: dayKey(event.date) ?? '',
+    endDate: dayKey(event.endDate),
+    time: quiet ? null : event.time,
+    endTime: quiet ? null : event.endTime ?? null,
+    venueName: event.venueName,
+    suburb: event.suburb,
+    category: event.category,
+    subTags: event.subTags ?? [],
+    isLGBTI: event.isLGBTI,
+    isFree: event.isFree,
+    price: event.price,
+    priceMin: event.priceMin,
+    priceMax: event.priceMax,
+    venueAddress: event.venueAddress,
+    ticketUrl: event.ticketUrl,
+    organiserUrl: event.organiserUrl,
+    source: event.source,
+    city: event.city ?? undefined,
+    imageUrl: event.imageUrl,
+    href: listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event),
+  }
+}
+
+/** City and guide pages use the same fixed-height list row as Explore. */
+export function GuideEventList({ events, listingQuery }: { events: EventData[]; listingQuery?: string }) {
+  const { isSaved, toggle } = useSaved()
+  return events.map((event) => (
+    <MobileEventRow
+      key={event.id}
+      ev={guideToBoard(event, listingQuery)}
+      status={{ label: event.availabilityKind === 'possibly' ? 'Time not listed' : 'Upcoming', tone: event.availabilityKind === 'possibly' ? 'tbc' : 'upcoming' }}
+      saved={isSaved(event.id)}
+      onToggleSave={toggle}
+    />
+  ))
+}
+
+/** One city-guide row. Prefer GuideEventList when rendering several, so save state is read once. */
 export function GuideEventRow({ event, listingQuery }: { event: EventData; listingQuery?: string }) {
-  const catDef = CATEGORIES.find((c) => c.name === event.category)
-  const color = catDef?.color ?? '#FF7A35'
-  const price = formatPrice(event.isFree, event.price, event.priceMin, event.priceMax)
-  const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
-  const clock = boardClockLine(event)
-  return (
-    <Link href={listingQuery ? `${eventPath(event)}?${listingQuery}` : eventPath(event)} scroll={false} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/60">
-      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md" style={{ background: `linear-gradient(145deg, ${color}, #1a120c)` }}>
-        <EventImage image={event.imageAsset} picture={eventPictureFrom(event)} src={event.imageUrl} kind="square" alt="" sizes="64px" crop accent={color} category={event.communityKey || event.category} slot="square" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold leading-snug">{displayTitle(event.title)}</p>
-        <p className="truncate text-sm text-muted-foreground">
-          {event.availabilityKind === 'possibly' ? 'Time not listed' : (clock ?? 'All day')} · {tidyVenueName(event.venueName, event.venueAddress, event.city)}{suburb ? ` · ${suburb}` : ''}
-        </p>
-      </div>
-      <span className={cn('shrink-0 font-mono text-sm', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{[price.prefix, price.value].filter(Boolean).join(' ')}</span>
-    </Link>
-  )
+  return <GuideEventList events={[event]} listingQuery={listingQuery} />
 }

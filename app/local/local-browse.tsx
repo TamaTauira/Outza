@@ -13,7 +13,10 @@ import { CityPicker } from '@/components/city-picker'
 import { SearchBar } from '@/components/search-bar'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { sectionByKey } from '@/lib/community-shared'
-import { dayLabel } from '@/lib/board'
+import { categoryIcon, dayLabel } from '@/lib/board'
+import { listPriceLabel } from '@/lib/price'
+import { formatBoardRange } from '@/lib/listing-window'
+import { listPlaceLine } from '@/components/list-clock'
 import { fmtTime } from '@/lib/local-shared'
 import { EventImage } from '@/components/event-image'
 import { LOCAL_TILES, localTileFor, type LocalTile } from '@/lib/local-tiles'
@@ -356,7 +359,7 @@ export function LocalBrowse({
                 <ChevronDown className={cn('ml-auto h-4 w-4 text-primary transition-transform', !open && '-rotate-90')} />
               </button>
               {open && (
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="vp-board-grid is-local mt-2">
                   {shown.map((ev) => <BoardCard key={rowKey(ev)} ev={ev} hot={hotKey === rowKey(ev) || focusKey === rowKey(ev)} onHot={setHotKey} saved={isSaved(ev.id)} onSave={() => save(ev)} onOpen={() => openListing(ev.href)} />)}
                 </div>
               )}
@@ -459,7 +462,11 @@ function toBoardEvent(ev: LocalItem): BoardEvent {
 }
 
 function BoardCard({ ev, hot, onHot, saved, onSave, onOpen }: { ev: LocalItem; hot: boolean; onHot: (key: string | null) => void; saved: boolean; onSave: () => void; onOpen: () => void }) {
+  const section = sectionByKey(ev.section)
   const status = ev.status === 'CANCELLED' ? 'Cancelled' : ev.status === 'POSTPONED' ? 'Postponed' : ''
+  const when = formatBoardRange({ date: ev.date, time: ev.time, endTime: ev.endTime, city: ev.city })
+  const price = listPriceLabel(ev.isFree, ev.price)
+  const place = listPlaceLine([ev.suburb, status].filter(Boolean).join(' · '), when.endNote)
   return (
     <ListingBoardCard
       rowId={rowKey(ev)}
@@ -467,10 +474,13 @@ function BoardCard({ ev, hot, onHot, saved, onSave, onOpen }: { ev: LocalItem; h
       href={ev.href || '/local'}
       imageUrl={ev.imageUrl}
       imageCategory={ev.section}
-      meta={[ev.suburb, clock(ev.time), status].filter(Boolean).join(' · ')}
-      tag={sectionByKey(ev.section)?.short ?? 'Local'}
+      venue={place}
+      tag={section?.short ?? 'Local'}
       accent={ACCENT[ev.section] ?? '#ea580c'}
-      price={priceLine(ev)}
+      priceText={price.text}
+      priceKind={price.kind}
+      when={when}
+      icon={categoryIcon(section?.boardCategory ?? 'Community')}
       hot={hot}
       onHot={(on) => onHot(on ? rowKey(ev) : null)}
       onOpen={onOpen}
