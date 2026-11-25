@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { OWNER_EMAIL } from './email'
 import {
-  DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS,
   faultAlertCopyRecipients,
   faultAlertExtraRecipients,
   faultErrorParts,
@@ -25,11 +24,10 @@ function withEnv(value: string | undefined, run: () => void) {
   }
 }
 
-test('fault copies default to the ops inbox when the env var is unset', () => {
+test('fault copies go to the owner only when the env var is unset', () => {
   withEnv(undefined, () => {
-    assert.deepEqual(faultAlertExtraRecipients(), [DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS])
-    assert.equal(DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS, 'outza-tester+faults@mail.grokbot.com')
-    assert.deepEqual(faultAlertCopyRecipients(), [DEFAULT_FAULT_ALERT_EXTRA_RECIPIENTS])
+    assert.deepEqual(faultAlertExtraRecipients(), [])
+    assert.deepEqual(faultAlertCopyRecipients(), [])
   })
 })
 

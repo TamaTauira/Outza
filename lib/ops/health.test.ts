@@ -4,7 +4,7 @@ import { nextSourcePause, sourceShouldRun, SOURCE_PAUSE_FAULT_MS, SOURCE_RETRY_M
 import { isMajorBump } from './deps'
 import { lateHeartbeats } from './watchdog'
 import { opsReadAuthorized } from './read-auth'
-import { runSyntheticChecks } from './synthetic'
+import { pickPublicEvent, runSyntheticChecks } from './synthetic'
 
 const hour = 60 * 60 * 1000
 
@@ -71,4 +71,15 @@ test('synthetic checks treat a healthy page as ok and a 500 as a fault', async (
   assert.equal(byName.sitemap, true)
   assert.equal(byName.og, true)
   assert.equal(byName.ask, true)
+})
+
+test('synthetic event pick skips a same-day listing that already finished', () => {
+  const now = new Date('2026-11-25T10:30:00.000Z') // 9:30pm AEDT on 25 Nov
+  const today = new Date('2026-11-25T00:00:00.000Z')
+  const ended = { id: 'a', city: 'Sydney', date: today, endDate: null, time: '18:00', endTime: '20:30', title: 'Done' }
+  const running = { id: 'b', city: 'Sydney', date: today, endDate: null, time: '18:00', endTime: '23:30', title: 'Still on' }
+  const later = { id: 'c', city: 'Sydney', date: new Date('2026-11-26T00:00:00.000Z'), endDate: null, time: '10:00', endTime: null, title: 'Tomorrow' }
+  assert.equal(pickPublicEvent([ended, running, later], now)?.id, 'b')
+  assert.equal(pickPublicEvent([ended, later], now)?.id, 'c')
+  assert.equal(pickPublicEvent([ended], now), null)
 })
