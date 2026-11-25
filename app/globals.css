@@ -464,30 +464,6 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  @media (max-width: 767px) {
-    .vp-mrow {
-      --vp-list-row-h: auto;
-      grid-template-rows: auto var(--vp-list-line) var(--vp-list-line);
-      height: auto;
-      max-height: none;
-      min-height: 92px;
-    }
-    .vp-mrow-title {
-      display: -webkit-box;
-      white-space: normal;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-height: 20px;
-      max-height: 40px;
-    }
-    .vp-mrow-chip,
-    .vp-mrow-chip span {
-      overflow: visible;
-      text-overflow: clip;
-      flex: 0 0 auto;
-    }
-    .vp-mrow-meta { flex-wrap: wrap; height: auto; }
-  }
   .vp-mrow-title {
     display: block;
     min-width: 0;
