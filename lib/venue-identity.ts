@@ -18,6 +18,11 @@ export type CanonicalVenue = {
   officialName: string
   city: string
   aliases: string[]
+  /**
+   * Short names that may match as a prefix or a suffix.
+   * Ordinary aliases ignore a prefix shorter than 10 characters.
+   */
+  prefixAliases?: string[]
   rooms: VenueRoom[]
 }
 
@@ -32,7 +37,12 @@ export const CANONICAL_VENUES: CanonicalVenue[] = [
     id: 'sydney-opera-house',
     officialName: 'Sydney Opera House',
     city: 'Sydney',
-    aliases: ['Sydney Opera House', 'Opera House'],
+    aliases: [
+      'Sydney Opera House',
+      'Opera House',
+      'Steps of Sydney Opera House',
+      'On The Steps at Sydney Opera House',
+    ],
     rooms: [
       { id: 'concert-hall', names: ['Concert Hall'] },
       { id: 'joan-sutherland', names: ['Joan Sutherland Theatre'], distinctive: true },
@@ -62,6 +72,7 @@ export const CANONICAL_VENUES: CanonicalVenue[] = [
     officialName: 'ICC Sydney',
     city: 'Sydney',
     aliases: ['ICC Sydney', 'International Convention Centre Sydney', 'International Convention Centre'],
+    prefixAliases: ['ICC Sydney'],
     rooms: [
       { id: 'darling-harbour-theatre', names: ['Darling Harbour Theatre'] },
       { id: 'pyrmont-theatre', names: ['Pyrmont Theatre'] },
@@ -153,13 +164,14 @@ export type VenueIdentity = {
   roomId: string | null
 }
 
-function aliasHit(name: string, alias: string): boolean {
+function aliasHit(name: string, alias: string, prefix = false): boolean {
   const left = normalizeVenue(name)
   const right = normalizeVenue(alias)
   if (!left || !right) return false
   if (left === right) return true
-  if (right.length < 10) return false
-  return left.startsWith(`${right} `)
+  if (!prefix && right.length < 10) return false
+  if (left.startsWith(`${right} `)) return true
+  return prefix && left.endsWith(` ${right}`)
 }
 
 function cityOk(venueCity: string, eventCity?: string | null): boolean {
@@ -187,8 +199,12 @@ export function resolveVenueIdentity(name: string | null | undefined, city?: str
   let best: { venue: CanonicalVenue; aliasLength: number } | null = null
   for (const venue of CANONICAL_VENUES) {
     if (!cityOk(venue.city, city)) continue
-    for (const alias of venue.aliases) {
-      if (!aliasHit(raw, alias)) continue
+    const names = [
+      ...venue.aliases.map((alias) => ({ alias, prefix: false })),
+      ...(venue.prefixAliases ?? []).map((alias) => ({ alias, prefix: true })),
+    ]
+    for (const { alias, prefix } of names) {
+      if (!aliasHit(raw, alias, prefix)) continue
       const aliasLength = normalizeVenue(alias).length
       if (!best || aliasLength > best.aliasLength) best = { venue, aliasLength }
     }
