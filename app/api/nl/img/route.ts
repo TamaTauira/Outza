@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { displayMasterUrl, eventPictureFrom } from '@/lib/images/display-spec'
 import { assertPublicImageUrl, categoryFillJpeg, renderEmailImage, sourceForEmail, type EmailKind } from '@/lib/newsletter/images'
 
 export const dynamic = 'force-dynamic'
@@ -25,11 +26,26 @@ export async function GET(req: NextRequest) {
   try {
     const event = await prisma.event.findUnique({
       where: { id },
-      select: { id: true, category: true, imageUrl: true, imageAsset: { select: { sourceUrl: true, status: true } } },
+      select: {
+        id: true,
+        category: true,
+        imageUrl: true,
+        imageColor: true,
+        imageWidth: true,
+        imageHeight: true,
+        imageDisplay: true,
+        imageAsset: { select: { sourceUrl: true, status: true } },
+      },
     })
-    const src = event ? assertPublicImageUrl(sourceForEmail(event)) : null
+    const picture = event ? eventPictureFrom(event) : null
+    const fromDisplay = picture ? assertPublicImageUrl(displayMasterUrl(picture, 'webp')) : null
+    const fromSource = event ? assertPublicImageUrl(sourceForEmail(event)) : null
+    const src = fromDisplay || fromSource
     if (!src) return placeholder(event?.category ?? 'Event', kind)
-    const rendered = await renderEmailImage(src, kind)
+    let rendered = await renderEmailImage(src, kind, event?.imageColor)
+    if (!rendered && fromDisplay && fromSource && fromSource !== fromDisplay) {
+      rendered = await renderEmailImage(fromSource, kind, event?.imageColor)
+    }
     if (!rendered) return placeholder(event?.category ?? 'Event', kind)
     return new NextResponse(new Uint8Array(rendered.body), {
       headers: {

@@ -1,8 +1,8 @@
 import { siteUrl } from '@/lib/email'
 import { displayClock, formatDate } from '@/lib/format'
-import { formatAddress } from '@/lib/place'
+import { formatAddress, mapsDirectionsUrl } from '@/lib/place'
 import { priceSummary } from '@/lib/quality'
-import { EMAIL_ADDRESS, EMAIL_C, EMAIL_DISCLAIMER, EMAIL_FONT, emailBodyCell, emailButton, emailDateRange, emailDocument, emailEscape, emailEventCard, emailMetaLine, emailPlainFooter, emailSectionHeading } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_C, EMAIL_FONT, EMAIL_OPT_OUT_LINE, emailBodyCell, emailButton, emailDateRange, emailDocument, emailEscape, emailEventCard, emailMetaLine, emailSectionHeading } from '@/lib/email-brand'
 import type { NlEvent } from './rank'
 import { openPixelUrl, plainEmailUrl, trackUrl, unsubscribeUrl, type Placement, type Target, type UtmCtx } from './links'
 import { trustLine } from './taste'
@@ -90,6 +90,15 @@ function card(r: RenderInput, s: Slot, placement: Placement, ctaLabel: string, v
     price: priced?.text,
     priceKind: priced?.kind ?? null,
     image: s.img,
+    imageColor: s.ev.imageColor,
+    directionsHref: mapsDirectionsUrl({
+      latitude: s.ev.latitude,
+      longitude: s.ev.longitude,
+      venueAddress: s.ev.venueAddress,
+      venueName: s.ev.venueName,
+      suburb: s.ev.suburb,
+      city: s.ev.city,
+    }),
     category: s.ev.category,
     blurb: s.blurb,
     why: s.ev.whyLine || undefined,
@@ -114,7 +123,6 @@ function sponsoredBlock(r: RenderInput) {
 }
 
 export function renderHtml(r: RenderInput): string {
-  const ed = EDITION_NAME[r.editionKey] ?? 'The Weekender'
   const prefs = go(r, 'footer', 'prefs')
   const unsub = unsubscribeUrl(r.userId, r.ctx.sendId)
   const cta = CTA_VARIANTS[r.cta]
@@ -146,8 +154,6 @@ ${emailButton(go(r, 'explore', 'explore'), `Explore what’s on in ${r.city}`)}
     homeHref: home,
     manageHref: prefs,
     unsubscribeHref: unsub,
-    disclaimer: EMAIL_DISCLAIMER,
-    reason: `You’re receiving ${ed} because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled.`,
     after: r.trackOpens ? `<img src="${emailEscape(openPixelUrl(r.ctx.sendId))}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;"/>` : '',
   })
 }
@@ -175,8 +181,7 @@ export function renderText(r: RenderInput): string {
     chunk(`HOT PICKS IN ${r.city.toUpperCase()}`, r.popular, 'popular'),
     r.sponsoredPos === 'end' && r.sponsored.length && `FROM A PROMOTER - SPONSORED (paid placement)\n\n${r.sponsored.map((s) => block(s, 'sponsored')).join('\n\n')}`,
     `Still got room in your calendar? There's plenty more happening.\nExplore what's on in ${r.city}: ${go(r, 'explore', 'explore')}`,
-    `See you out there.\nManage preferences: ${go(r, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy: ${siteUrl()}/privacy\n${EMAIL_ADDRESS}\n${EMAIL_DISCLAIMER}\nYou're receiving this because you opted in to VibePeep emails as ${r.email}. Sponsored placements are paid and always labelled.`,
-    emailPlainFooter(siteUrl()),
+    `See you out there.\nManage preferences: ${go(r, 'footer', 'prefs')}\nUnsubscribe: ${unsubscribeUrl(r.userId, r.ctx.sendId)}\nPrivacy: ${siteUrl()}/privacy\n${EMAIL_OPT_OUT_LINE}\n${EMAIL_ADDRESS}`,
   ]
   return parts.filter(Boolean).join('\n\n')
 }

@@ -1,5 +1,6 @@
 import { cityDef, tidyVenueName } from '@/lib/cities'
-import { EMAIL_ADDRESS, EMAIL_DISCLAIMER, emailBodyCell, emailDocument, emailEventCard, emailPlainFooter, emailSectionHeading, emailTick } from '@/lib/email-brand'
+import { EMAIL_OPT_OUT_LINE, emailBodyCell, emailDocument, emailEventCard, emailPlainFooter, emailSectionHeading, emailTick } from '@/lib/email-brand'
+import { mapsDirectionsUrl } from '@/lib/place'
 import { dateKeyOf, formatBoardRange, minutesNow, minutesOf, resolveSchedule, scheduleFinished } from '@/lib/listing-window'
 import { formatPrice } from '@/lib/price'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
@@ -48,6 +49,8 @@ export type MailEvent = {
   priceKind?: 'free' | 'paid' | null
   category?: string | null
   claimed?: keyof typeof CLAIMED_TICK_COPY | null
+  directionsHref?: string | null
+  imageColor?: string | null
 }
 
 export type WatchRow = {
@@ -70,6 +73,9 @@ export type WatchRow = {
   priceMin?: number | null
   priceMax?: number | null
   allDay?: boolean | null
+  latitude?: number | null
+  longitude?: number | null
+  imageColor?: string | null
 }
 
 export type FollowTarget = {
@@ -204,6 +210,8 @@ function eventCard(row: MailEvent): string {
     price: row.price ?? undefined,
     priceKind: row.priceKind,
     image: row.image ?? undefined,
+    imageColor: row.imageColor,
+    directionsHref: row.directionsHref,
     category: row.category ?? undefined,
     tickHtml: row.claimed ? emailTick(row.claimed) : '',
     cta: 'View event',
@@ -252,11 +260,10 @@ export function composeWatchEmail(input: {
   }
   push(savedHeading, input.saved)
   push(matchHeading, input.matches)
-  text.push(EMAIL_DISCLAIMER)
   text.push(`Manage preferences: ${manage}`)
   text.push(`Unsubscribe: ${unsubscribe}`)
   text.push(`VibePeep: ${home}`)
-  text.push(EMAIL_ADDRESS)
+  text.push(EMAIL_OPT_OUT_LINE)
   text.push(emailPlainFooter(home))
   const rows = [
     emailBodyCell(`<p class="tx" style="margin:0;font-size:16px;line-height:1.5;">${opener}</p>`),
@@ -271,8 +278,6 @@ export function composeWatchEmail(input: {
     manageHref: manage,
     unsubscribeHref: unsubscribe,
     homeHref: home,
-    disclaimer: EMAIL_DISCLAIMER,
-    reason: 'You asked for these notes. Turn them off any time from your account.',
     banner: input.reminders ? 'reminder' : 'matches',
   })
   return { subject, html, text: text.join('\n') }

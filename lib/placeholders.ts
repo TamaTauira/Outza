@@ -43,7 +43,7 @@ export const PLACEHOLDER_SLOTS = {
   card: { w: 1600, h: 1200 },
   /** Hot right now. 16:9. */
   featured: { w: 1920, h: 1080 },
-  /** Guide rows and email thumbs. 1:1. */
+  /** Guide rows. 1:1. Email row thumbs use the 4:3 card slot. */
   square: { w: 1000, h: 1000 },
   /** Round map pins. 1:1, composed inside the circle. */
   marker: { w: 512, h: 512 },

@@ -1,9 +1,9 @@
 import { BRAND_ICON_512, BRAND_TAGLINE, BRAND_WORDMARK_DARK_SRC, BRAND_WORDMARK_HEIGHT, BRAND_WORDMARK_SRC, BRAND_WORDMARK_WIDTH } from '@/lib/brand'
-import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { categoryColor, categoryInk } from '@/lib/categories'
 import headerCopy from '@/lib/email-header-copy.json'
 import { CLAIMED_TICK_COPY } from '@/lib/ownership'
-import { businessAbn, legalEntity, supportEmail } from '@/lib/site'
+import { businessAbn, legalEntity } from '@/lib/site'
+import { SITE_SOCIAL } from '@/lib/site-social'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 
 /**
@@ -25,7 +25,16 @@ export const EMAIL_ADDRESS = 'VibePeep, Australia'
 export const EMAIL_DISCLAIMER = 'Times and prices can change. Confirm with the organiser before you go. VibePeep does not sell tickets and does not show live availability.'
 
 export const EMAIL_SPACE = { xs: 8, sm: 12, md: 16, lg: 20, xl: 24 } as const
-export const EMAIL_RADIUS = { container: 12, card: 12, panel: 12, pill: 999 } as const
+export const EMAIL_RADIUS = { container: 12, card: 16, panel: 12, pill: 999 } as const
+/** Letterbox behind contained artwork when the listing has no imageColor. */
+export const EMAIL_IMAGE_FILL = '#141414'
+/** Shown under the footer links on mail that can be turned off. */
+export const EMAIL_OPT_OUT_LINE = 'Opted in · Unsubscribe anytime'
+export const EMAIL_HEADER_W = 600
+export const EMAIL_HEADER_H = 280
+/** 16:9 hero and 4:3 row, matching the site frames. */
+export const EMAIL_HERO = { w: 560, h: 315 } as const
+export const EMAIL_THUMB = { w: 168, h: 126 } as const
 export const EMAIL_TYPE = { h1: 26, h2: 20, body: 16, small: 14, meta: 12 } as const
 
 export const EMAIL_C = {
@@ -148,36 +157,24 @@ export function emailSentence(value: string | null | undefined): string {
 export const EMAIL_ACK_SHORT =
   'We acknowledge the Traditional Custodians of the lands across Australia, and pay our respects to Elders past and present. Always was, always will be Aboriginal land.'
 
-/** Name, Australia, and a contact only when one is already configured. No invented ABN or address. */
+/** Minimal sender line for the Spam Act. An ABN is included only when one is configured. */
 export function emailSenderLine(): string {
   const entity = legalEntity()
   const abnRaw = (businessAbn() ?? '').replace(/\s+/g, '')
   const abn = /^\d{11}$/.test(abnRaw) ? `ABN ${abnRaw.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4')}` : ''
-  const support = supportEmail()
-  const contact = support && !/outza/i.test(support) ? support : ''
-  const name = entity || 'VibePeep'
-  const place = EMAIL_ADDRESS.replace(/^VibePeep,\s*/i, '') || 'Australia'
-  const who = [name, abn, place].filter(Boolean).join(', ')
-  if (contact) return `${who}. Questions: ${contact}.`
-  return `${who}. Questions go through the contact page on this site.`
+  const name = entity && !/outza/i.test(entity) ? entity : 'VibePeep'
+  if (!abn && name === 'VibePeep') return EMAIL_ADDRESS
+  return [name, abn, 'Australia'].filter(Boolean).join(', ')
 }
 
-/** HTML footer line. "contact page" is a real link. The host stays in the href, not in the sentence. */
-export function emailSenderHtml(home: string): string {
-  const line = emailSenderLine()
-  const href = `${home.replace(/\/$/, '')}/contact`
-  const needle = 'contact page'
-  const at = line.indexOf(needle)
-  if (at === -1) return emailEscape(line)
-  const link = `<a class="lk" href="${emailEscape(href)}" style="color:${EMAIL_C.orangeText};font-family:${EMAIL_FONT};font-weight:700;text-decoration:underline;">${needle}</a>`
-  return `${emailEscape(line.slice(0, at))}${link}${emailEscape(line.slice(at + needle.length))}`
+/** @deprecated The footer prints emailSenderLine. Kept so older callers still compile. */
+export function emailSenderHtml(_home?: string): string {
+  return emailEscape(emailSenderLine())
 }
 
-/** Plain-text footer shared with the HTML footer: acknowledgement plus the contact URL. */
-export function emailPlainFooter(home: string, acknowledgement = ACKNOWLEDGEMENT_OF_COUNTRY): string {
-  const href = `${home.replace(/\/$/, '')}/contact`
-  const who = emailSenderLine().replace('the contact page on this site.', `the contact page: ${href}`)
-  return `Acknowledgement of Country. ${acknowledgement}\n${who}`
+/** Plain-text sender line. The acknowledgement stays on the website, not in mail. */
+export function emailPlainFooter(_home?: string, _acknowledgement?: string): string {
+  return emailSenderLine()
 }
 
 function img(src: string, alt: string, w: number, h: number): string {
@@ -267,7 +264,7 @@ export function emailHeader(opts: { kind?: string | null; homeHref: string }): s
   const kind = HEADER_HEADLINES[raw] ? raw : 'general'
   const headline = HEADER_HEADLINES[kind] || 'VibePeep'
   const alt = `VibePeep: ${headline}`
-  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="600" height="120" style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px 0 0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
+  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="${EMAIL_HEADER_W}" height="${EMAIL_HEADER_H}" style="display:block;width:100%;max-width:${EMAIL_HEADER_W}px;height:auto;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
   return `<a href="${emailEscape(opts.homeHref)}" style="text-decoration:none;color:#F7F7F7;font-family:${EMAIL_FONT};">${inner}</a>`
 }
 
@@ -326,28 +323,54 @@ export type EmailCardInput = {
   tickHtml?: string
   cta?: string
   ticketHref?: string
+  /** Listing imageColor. Artwork is contained on this, or on a dark fill. */
+  imageColor?: string | null
+  /** Google Maps directions for the venue line. */
+  directionsHref?: string | null
   variant?: 'row' | 'hero'
 }
 
-function priceChip(text: string, kind: 'free' | 'paid'): string {
-  const free = kind === 'free'
-  const bg = free ? EMAIL_C.freeBg : EMAIL_C.priceBg
-  const fg = free ? EMAIL_C.freeInk : EMAIL_C.deep
-  const cls = free ? 'chipFree' : 'chipPaid'
-  return `<table ${T} style="margin-top:8px;"><tr><td class="${cls}" bgcolor="${bg}" style="background:${bg};border-radius:999px;padding:3px 10px;"><span style="font-family:${EMAIL_FONT};font-size:12px;line-height:16px;font-weight:700;color:${fg};">${emailEscape(text)}</span></td></tr></table>`
+function imageFill(color: string | null | undefined): string {
+  return /^#[0-9a-fA-F]{6}$/.test(color || '') ? String(color) : EMAIL_IMAGE_FILL
+}
+
+function splitWhen(when: string): { date: string; time: string } {
+  const parts = when.split(' · ')
+  if (parts.length < 2) return { date: when, time: '' }
+  return { date: parts[0] ?? when, time: parts.slice(1).join(' · ') }
+}
+
+const FACT_ICONS = {
+  calendar: { file: '/email-icons/calendar.png', alt: 'Date' },
+  clock: { file: '/email-icons/clock.png', alt: 'Time' },
+  banknote: { file: '/email-icons/banknote.png', alt: 'Price' },
+  mappin: { file: '/email-icons/map-pin.png', alt: 'Place' },
+} as const
+
+function factIcon(name: keyof typeof FACT_ICONS): string {
+  const icon = FACT_ICONS[name]
+  return img(emailAssetUrl(icon.file), icon.alt, 16, 16)
+}
+
+function factRow(name: keyof typeof FACT_ICONS, inner: string): string {
+  if (!inner) return ''
+  return `<table ${T} width="100%" style="width:100%;margin-top:6px;"><tr>
+<td width="16" valign="middle" style="width:16px;padding:0 8px 0 0;line-height:0;font-size:0;">${factIcon(name)}</td>
+<td valign="middle" class="mu" style="font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.small}px;line-height:1.45;color:${EMAIL_C.muted};">${inner}</td>
+</tr></table>`
 }
 
 function artBlock(row: EmailCardInput, w: number, h: number, kind: 'row' | 'hero'): string {
   const alt = emailEscape(`${row.title}${row.place ? ` at ${row.place}` : ''}`)
   const radius = EMAIL_RADIUS.card
+  const fill = imageFill(row.imageColor)
   if (row.image && /^https:\/\//i.test(row.image)) {
     const src = emailEscape(row.image)
     const cls = kind === 'hero' ? 'heroimg' : 'thumbimg'
-    const box = kind === 'hero' ? 'heroBox' : 'thumbBox'
-    return `<a href="${emailEscape(row.href)}" style="text-decoration:none;">
-<div class="${box}" style="width:${w}px;max-width:100%;height:${h}px;background-color:${EMAIL_C.line};background-image:url('${src}');background-repeat:no-repeat;background-position:center center;background-size:cover;border-radius:${radius}px;overflow:hidden;font-size:0;line-height:0;">
-<img class="${cls}" src="${src}" alt="${alt}" width="${w}" height="${h}" style="display:block;width:${w}px;max-width:100%;height:${h}px;object-fit:cover;border:0;border-radius:${radius}px;-ms-interpolation-mode:bicubic;"/>
-</div></a>`
+    const curve = kind === 'hero' ? `${radius}px ${radius}px 0 0` : `${radius}px`
+    // One image. The JPEG from /api/nl/img is already letterboxed, so Outlook
+    // (which ignores object-fit) still shows the artwork contained.
+    return `<a href="${emailEscape(row.href)}" style="text-decoration:none;"><img class="${cls}" src="${src}" alt="${alt}" width="${w}" height="${h}" style="display:block;width:${w}px;max-width:100%;height:auto;object-fit:contain;background-color:${fill};border:0;border-radius:${curve};-ms-interpolation-mode:bicubic;"/></a>`
   }
   const raw = categoryColor(row.category || 'Event')
   const bg = raw.toUpperCase() === '#FF5A3C' ? EMAIL_ORANGE : raw
@@ -371,46 +394,95 @@ function whyBlock(why?: string, travel?: string): string {
   return `<div style="padding-top:10px;">${reason}${trip}</div>`
 }
 
+function cardFacts(row: EmailCardInput): string {
+  const when = splitWhen(row.when)
+  const date = when.date ? factRow('calendar', emailEscape(when.date)) : ''
+  const time = when.time ? factRow('clock', emailEscape(when.time)) : ''
+  const price = row.price ? factRow('banknote', `<span class="tx" style="font-weight:700;color:${EMAIL_C.ink};">${emailEscape(row.price)}</span>`) : ''
+  const directions = row.directionsHref ? `&nbsp;·&nbsp;${emailLink(row.directionsHref, 'Directions')}` : ''
+  const place = row.place ? factRow('mappin', `${emailEscape(row.place)}${row.tickHtml ? `&nbsp;${row.tickHtml}` : ''}${directions}`) : ''
+  return `${date}${time}${price}${place}`
+}
+
 /** One event card. `row` keeps the thumb beside the copy. `hero` is the large top pick. */
 export function emailEventCard(row: EmailCardInput): string {
   const variant = row.variant ?? 'row'
-  const when = `<div class="mu" style="font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.small}px;line-height:1.45;color:${EMAIL_C.muted};padding-top:6px;">${emailEscape(row.when)}</div>`
-  const place = `<div class="mu" style="font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.small}px;line-height:1.45;color:${EMAIL_C.muted};padding-top:2px;">${emailEscape(row.place)}${row.tickHtml ? `&nbsp;${row.tickHtml}` : ''}</div>`
-  const chip = row.price && row.priceKind ? priceChip(row.price, row.priceKind) : ''
   const blurb = row.blurb ? `<div class="tx" style="font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.small}px;line-height:1.5;color:${EMAIL_C.ink};padding-top:8px;">${emailEscape(row.blurb)}</div>` : ''
   const note = row.note ? `<div class="mu" style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.4;color:${EMAIL_C.muted};padding-top:6px;">${emailEscape(row.note)}</div>` : ''
   const cta = row.cta ? `<div style="padding-top:12px;">${emailButton(row.href, row.cta)}</div>` : ''
   const tickets = row.ticketHref ? `<div style="padding-top:8px;">${emailLink(row.ticketHref, 'Tickets and info')}</div>` : ''
   const eyebrow = row.category ? `<div class="accent" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.3;letter-spacing:0.8px;font-weight:800;color:${EMAIL_C.accentText};text-transform:uppercase;">${emailEscape(row.category)}</div>` : ''
+  const facts = cardFacts(row)
   if (variant === 'hero') {
     return `<tr><td class="px" style="padding:0 ${EMAIL_SPACE.lg}px 12px;">
 <table ${T} width="100%" class="card" bgcolor="${EMAIL_C.card}" style="width:100%;background:${EMAIL_C.card};border:1px solid ${EMAIL_C.line};border-radius:${EMAIL_RADIUS.card}px;">
-<tr><td style="padding:0;font-size:0;line-height:0;">${artBlock(row, 552, 311, 'hero')}</td></tr>
+<tr><td style="padding:0;font-size:0;line-height:0;">${artBlock(row, EMAIL_HERO.w, EMAIL_HERO.h, 'hero')}</td></tr>
 <tr><td style="padding:16px 20px 20px;">
 ${eyebrow}
 <a href="${emailEscape(row.href)}" class="tx" style="font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.h1}px;line-height:1.2;font-weight:800;color:${EMAIL_C.ink};text-decoration:none;">${emailEscape(row.title)}</a>
-${when}${place}${chip}${whyBlock(row.why, row.travel)}${note}
+${facts}${whyBlock(row.why, row.travel)}${note}
 ${blurb ? `<div class="tx" style="font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.body}px;line-height:1.5;color:${EMAIL_C.ink};padding-top:12px;">${emailEscape(row.blurb)}</div>` : ''}
 ${cta}${tickets}
 </td></tr></table></td></tr>`
   }
   return `<tr><td class="px" style="padding:0 ${EMAIL_SPACE.lg}px 12px;">
 <table ${T} width="100%" class="card" bgcolor="${EMAIL_C.card}" style="width:100%;background:${EMAIL_C.card};border:1px solid ${EMAIL_C.line};border-radius:${EMAIL_RADIUS.card}px;"><tr>
-<td class="thumb" width="112" valign="top" style="width:112px;padding:12px 0 12px 12px;">${artBlock(row, 112, 112, 'row')}</td>
+<td class="thumb" width="${EMAIL_THUMB.w}" valign="top" style="width:${EMAIL_THUMB.w}px;padding:12px 0 12px 12px;">${artBlock(row, EMAIL_THUMB.w, EMAIL_THUMB.h, 'row')}</td>
 <td class="copy" valign="top" style="padding:14px 16px 16px 14px;">
 ${eyebrow}
 <a href="${emailEscape(row.href)}" class="tx" style="font-family:${EMAIL_FONT};font-size:18px;line-height:1.3;font-weight:800;color:${EMAIL_C.ink};text-decoration:none;">${emailEscape(row.title)}</a>
-${when}${place}${chip}${whyBlock(row.why, row.travel)}${note}${blurb}${cta}${tickets}
+${facts}${whyBlock(row.why, row.travel)}${note}${blurb}${cta}${tickets}
 </td></tr></table></td></tr>`
 }
 
 function footerLink(href: string, label: string): string {
-  return `<a class="flink lk" href="${emailEscape(href)}" style="color:${EMAIL_C.orangeText};text-decoration:underline;">${emailEscape(label)}</a>`
+  return `<a class="flink" href="${emailEscape(href)}" style="color:#FFB088;font-family:${EMAIL_FONT};font-weight:700;text-decoration:underline;">${emailEscape(label)}</a>`
+}
+
+function socialRow(): string {
+  const cells = SITE_SOCIAL.map((item) => {
+    const src = emailAssetUrl(`/email-icons/${item.id}.png`)
+    return `<td style="padding:0 5px;"><a href="${emailEscape(item.href)}" style="text-decoration:none;"><img src="${emailEscape(src)}" alt="${emailEscape(item.label)}" width="24" height="24" style="display:block;width:24px;height:24px;border:0;outline:none;text-decoration:none;"/></a></td>`
+  }).join('')
+  return `<table ${T} align="center" style="margin:14px auto 0;"><tr>${cells}</tr></table>`
+}
+
+function emailFooter(opts: { home: string; manageHref?: string; unsubscribeHref?: string; manageLabel?: string }): string {
+  const glow = emailAssetUrl('/email-footer/glow.png')
+  const logo = emailAssetUrl('/brand/vibepeep-lockup-dark@3x.png')
+  const privacy = `${opts.home.replace(/\/$/, '')}/privacy`
+  const links = [
+    footerLink(privacy, 'Privacy'),
+    opts.manageHref ? footerLink(opts.manageHref, opts.manageLabel || 'Manage preferences') : '',
+    opts.unsubscribeHref ? footerLink(opts.unsubscribeHref, 'Unsubscribe') : '',
+  ].filter(Boolean).join('<span class="fdot" style="color:rgba(255,255,255,0.55);"> · </span>')
+  const opt = opts.unsubscribeHref
+    ? `<div class="ft" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.5;color:rgba(255,255,255,0.78);padding-top:10px;">${emailEscape(EMAIL_OPT_OUT_LINE)}</div>`
+    : ''
+  const inner = `<table ${T} width="100%" style="width:100%;"><tr><td align="center" style="padding:26px 20px 22px;">
+<img src="${emailEscape(logo)}" alt="VibePeep" width="168" height="44" style="display:block;width:168px;height:44px;border:0;margin:0 auto;"/>
+${socialRow()}
+<div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.6;padding-top:14px;text-align:center;">${links}</div>
+${opt}
+<div class="ft" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.5;color:rgba(255,255,255,0.78);padding-top:8px;">${emailEscape(emailSenderLine())}</div>
+</td></tr></table>`
+  return `<tr><td class="footbg" background="${emailEscape(glow)}" bgcolor="#000000" valign="top" style="background-color:#000000;background-image:url('${emailEscape(glow)}');background-repeat:no-repeat;background-position:center center;background-size:cover;border-radius:0 0 ${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px;">
+<!--[if gte mso 9]>
+<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:260px;">
+<v:fill type="frame" src="${emailEscape(glow)}" color="#000000"/>
+<v:textbox inset="0,0,0,0">
+<![endif]-->
+${inner}
+<!--[if gte mso 9]></v:textbox></v:rect><![endif]-->
+</td></tr>`
 }
 
 function shellCss(): string {
   return `body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 :root{color-scheme:light dark;supported-color-schemes:light dark;}
+.footbg,.band{background-color:#000000!important}
+.ft,.bandtxt{color:rgba(255,255,255,0.82)!important}
+.flink{color:#FFB088!important}
 .statsStack{display:none;max-height:0;overflow:hidden;mso-hide:all;}
 .paste,.paste a{overflow-wrap:anywhere!important;word-break:break-word!important;}
 .sponsor{background-color:#F3E6D4!important;color:#1A1408!important;}
@@ -418,11 +490,9 @@ function shellCss(): string {
   .w100{width:100%!important;max-width:600px!important}
   .px{padding-left:16px!important;padding-right:16px!important}
   .heroBox,.heroimg{width:100%!important;max-width:100%!important;height:auto!important}
-  .flink{display:block!important;padding:3px 0!important}
-  .fdot{display:none!important}
   .thumb,.copy{display:block!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;}
   .thumb{padding:12px 12px 0 12px!important;}
-  .thumb .thumbBox,.thumb table{width:100%!important;max-width:100%!important;height:140px!important;}
+  .thumb .thumbBox,.thumb table,.thumbimg{width:100%!important;max-width:100%!important;height:auto!important;}
   .why{display:block!important;width:auto!important;max-width:100%!important;box-sizing:border-box!important;}
   .statsWide{display:none!important;}
   .statsStack{display:block!important;max-height:none!important;overflow:visible!important;}
@@ -440,13 +510,14 @@ function shellCss(): string {
   .panelDanger{background-color:${EMAIL_C.darkDangerBg}!important;border-color:${EMAIL_C.darkDanger}!important}
   .why{background-color:#2a211c!important}
   .whyTx{color:${EMAIL_C.darkInk}!important}
-  .chipPaid{background-color:${EMAIL_C.darkPriceBg}!important}
-  .chipPaid span{color:${EMAIL_C.darkPriceInk}!important}
-  .chipFree{background-color:${EMAIL_C.darkFreeBg}!important}
-  .chipFree span{color:${EMAIL_C.darkFreeInk}!important}
   .sponsor{background-color:#3A2418!important;color:#F6E6D4!important}
   .email-btn-sec{border-color:${EMAIL_C.onDark}!important}
   .email-btn-sec a{color:${EMAIL_C.onDark}!important}
+  .band{background-color:#000000!important}
+  .bandtxt{color:rgba(255,255,255,0.82)!important}
+  .footbg{background-color:#000000!important}
+  .ft{color:rgba(255,255,255,0.78)!important}
+  .flink{color:#FFB088!important}
   ${emailButtonColorLock()}
 }
 [data-ogsc] .tx,[data-ogsb] .tx{color:${EMAIL_C.darkInk}!important}
@@ -458,6 +529,9 @@ function shellCss(): string {
 [data-ogsc] .panel,[data-ogsb] .panel{background-color:${EMAIL_C.darkCard}!important}
 [data-ogsc] .panelDanger,[data-ogsb] .panelDanger{background-color:${EMAIL_C.darkDangerBg}!important}
 [data-ogsc] .sponsor,[data-ogsb] .sponsor{background-color:#3A2418!important;color:#F6E6D4!important}
+[data-ogsc] .footbg,[data-ogsb] .footbg,[data-ogsc] .band,[data-ogsb] .band{background-color:#000000!important}
+[data-ogsc] .ft,[data-ogsb] .ft,[data-ogsc] .bandtxt,[data-ogsb] .bandtxt{color:rgba(255,255,255,0.82)!important}
+[data-ogsc] .flink,[data-ogsb] .flink{color:#FFB088!important}
 ${emailButtonColorLock('[data-ogsc]')}
 ${emailButtonColorLock('[data-ogsb]')}
 [data-ogsb] .bg{background-color:${EMAIL_C.darkPage}!important}
@@ -472,37 +546,26 @@ export function emailDocument(opts: {
   /** Visible footer link. The one-click header is a separate API URL. */
   unsubscribeHref?: string
   homeHref?: string
+  /** Kept for callers. The shared footer no longer prints a ticket disclaimer. */
   disclaimer?: string
+  /** Kept for callers. The shared footer no longer prints a receiving paragraph. */
   reason?: string
   /** File stem under public/email-headers/. Null leaves the banner out. */
   banner?: string | null
-  /** City and date line, directly under the banner. */
+  /** City and date line, on the black band under the header. */
   meta?: string
   manageLabel?: string
   /** Markup after the document, such as an open pixel. */
   after?: string
-  /** Replaces the event acknowledgement in mail that lists no events. */
+  /** Kept for callers. The acknowledgement stays on the website, not in mail. */
   acknowledgement?: string
 }): string {
   const home = opts.homeHref ?? CANONICAL_SITE_URL
-  const privacy = `${home.replace(/\/$/, '')}/privacy`
-  const links = [
-    footerLink(home, 'Home'),
-    footerLink(privacy, 'Privacy'),
-    opts.manageHref ? footerLink(opts.manageHref, opts.manageLabel || 'Manage preferences') : '',
-    opts.unsubscribeHref ? footerLink(opts.unsubscribeHref, 'Unsubscribe') : '',
-  ].filter(Boolean).join('<span class="fdot"> · </span>')
   const pre = opts.preheader
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${emailEscape(opts.preheader)}${'&#8204;&nbsp;'.repeat(24)}</div>`
     : ''
-  const disclaimer = opts.disclaimer
-    ? `<div class="mu" style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.55;color:${EMAIL_C.muted};padding-top:4px;">${emailEscape(opts.disclaimer)}</div>`
-    : ''
-  const reason = opts.reason
-    ? `<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:10px;">${emailEscape(opts.reason)}</div>`
-    : ''
   const meta = opts.meta
-    ? `<tr><td class="px meta mu" style="padding:${EMAIL_SPACE.lg}px ${EMAIL_SPACE.lg}px 0;font-family:${EMAIL_FONT};font-size:${EMAIL_TYPE.small}px;line-height:1.4;letter-spacing:0.6px;font-weight:700;color:${EMAIL_C.muted};text-transform:uppercase;">${emailEscape(opts.meta)}</td></tr>`
+    ? `<tr><td class="band px" bgcolor="#000000" style="background:#000000;padding:4px 28px 20px;"><div class="bandtxt" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.3;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.82);">${emailEscape(opts.meta)}</div></td></tr>`
     : ''
   const header = opts.banner === null
     ? ''
@@ -521,13 +584,7 @@ ${pre}
 ${header}
 ${meta}
 ${opts.rows}
-<tr><td class="px foot bg" bgcolor="${EMAIL_C.page}" style="background:${EMAIL_C.page};border-radius:0 0 ${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px;padding:8px ${EMAIL_SPACE.lg}px 22px;">
-${disclaimer}
-<div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.7;padding-top:14px;">${links}</div>
-${reason}
-<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:12px;"><strong class="tx" style="color:${EMAIL_C.ink};">Acknowledgement of Country.</strong> ${emailEscape(opts.acknowledgement || ACKNOWLEDGEMENT_OF_COUNTRY)}</div>
-<div class="mu" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.55;color:${EMAIL_C.muted};padding-top:10px;">${emailSenderHtml(home)}</div>
-</td></tr>
+${emailFooter({ home, manageHref: opts.manageHref, unsubscribeHref: opts.unsubscribeHref, manageLabel: opts.manageLabel })}
 </table></td></tr></table>
 ${opts.after ?? ''}
 </body></html>`

@@ -1,5 +1,4 @@
-import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
-import { EMAIL_ACK_SHORT, EMAIL_ADDRESS, EMAIL_C, emailBodyCell, emailButton, emailCode, emailDocument, emailEscape, emailLink, emailPasteLink, emailPlainFooter, emailSentence, emailVenueName } from '@/lib/email-brand'
+import { EMAIL_ADDRESS, EMAIL_C, EMAIL_OPT_OUT_LINE, emailBodyCell, emailButton, emailCode, emailDocument, emailEscape, emailLink, emailPasteLink, emailPlainFooter, emailSentence, emailVenueName } from '@/lib/email-brand'
 import { listUnsubscribeHeaders, type MailKind } from '@/lib/email'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
 import { sampleWatchEmail } from '@/lib/email-preview'
@@ -682,7 +681,6 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
   const preheader = PREHEADER[row.id]
   const code = (row.id === 'P1' || row.id === 'P9') && data.code ? emailCode(data.code, 30) : ''
   const paste = cta && (row.id === 'A1' || row.id === 'A2' || row.id === 'A3') ? emailPasteLink(cta.href) : ''
-  const shortAck = /^[ALBS]/.test(row.id)
   const body = [
     row.kicker ? `<p class="accent" style="margin:0 0 8px;font-size:12px;letter-spacing:0.8px;font-weight:800;text-transform:uppercase;color:${EMAIL_C.accentText};">${emailEscape(row.kicker)}</p>` : '',
     `<h1 class="tx" style="margin:0 0 16px;font-size:26px;line-height:1.2;font-weight:800;color:${EMAIL_C.ink};">${emailEscape(title)}</h1>`,
@@ -700,9 +698,7 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
     homeHref: HOME,
     manageHref: manage,
     unsubscribeHref: unsub,
-    reason: row.reason,
     banner: row.banner,
-    acknowledgement: shortAck ? EMAIL_ACK_SHORT : undefined,
   })
   const text = [
     title,
@@ -714,12 +710,11 @@ function shell(row: Spec, data: MailData): { subject: string; html: string; text
     ...bullets.map((item) => `- ${item}`),
     cta ? `${cta.label}: ${cta.href}` : '',
     row.reason || '',
-    `Home: ${HOME}`,
     `Privacy: ${HOME}/privacy`,
     unsub ? `Unsubscribe: ${unsub}` : '',
     manage ? `Manage preferences: ${manage}` : '',
-    emailPlainFooter(HOME, shortAck ? EMAIL_ACK_SHORT : ACKNOWLEDGEMENT_OF_COUNTRY),
-    EMAIL_ADDRESS,
+    unsub ? EMAIL_OPT_OUT_LINE : '',
+    emailPlainFooter(HOME),
   ].filter((line) => line !== undefined && line !== '').join('\n')
   return { subject, html, text }
 }
@@ -773,7 +768,7 @@ function sampleEvent(over: Partial<NlEvent> & { id: string; title: string }): Nl
 
 function sampleNewsletter(): { subject: string; html: string; text: string } {
   const hero = sampleEvent({ id: 'hero1', title: 'Friday night at The Imperial', price: '$28', priceMin: 28, priceMax: 28 })
-  const slot = (ev: NlEvent): Slot => ({ ev, img: null, blurb: `${ev.category} at ${ev.venueName}.` })
+  const slot = (ev: NlEvent, img: string | null = null): Slot => ({ ev, img, blurb: `${ev.category} at ${ev.venueName}.` })
   const input: RenderInput = {
     ctx: { sendId: 'preview', edition: 'daily', issueDate: '2026-11-07', city: 'Sydney' },
     userId: 'preview',
@@ -790,11 +785,11 @@ function sampleNewsletter(): { subject: string; html: string; text: string } {
     nearTitle: 'On tonight',
     becauseTitle: null,
     reminderOptIn: true,
-    hero: slot(hero),
+    hero: slot(hero, `${HOME}/placeholders/music/hero.webp`),
     weekend: [],
     because: [],
     saved: [],
-    free: [slot(sampleEvent({ id: 'free1', title: 'Late market', category: 'Community', isFree: true, price: 'Free', priceMin: 0 }))],
+    free: [slot(sampleEvent({ id: 'free1', title: 'Late market', category: 'Community', isFree: true, price: 'Free', priceMin: 0 }), `${HOME}/placeholders/community/card.webp`)],
     popular: [],
     sponsored: [],
     sponsoredPos: 'end',

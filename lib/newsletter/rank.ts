@@ -16,7 +16,7 @@ export const MAX_SPONSORED = 2
 export const nlEventSelect = {
   id: true, title: true, description: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true,
   suburb: true, city: true, category: true, subTags: true, isFree: true, isLGBTI: true, price: true, priceMin: true, priceMax: true, feesIncluded: true,
-  imageUrl: true, ticketUrl: true, source: true, sources: true, status: true, statusSource: true, lastVerifiedAt: true, updatedAt: true,
+  imageUrl: true, imageColor: true, ticketUrl: true, source: true, sources: true, status: true, statusSource: true, lastVerifiedAt: true, updatedAt: true,
   createdAt: true, latitude: true, longitude: true, ageRestriction: true, recurrence: true, duplicateOfId: true, views: true, ticketClicks: true,
   imageAsset: { select: { id: true, originalPath: true, sourceUrl: true, isPublic: true, status: true } },
   _count: { select: { savedBy: true, attendees: true } },
