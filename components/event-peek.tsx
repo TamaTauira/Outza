@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useRouter } from 'next/navigation'
-import { Calendar, Clock, ExternalLink, MapPin, Share2, Tag, X } from 'lucide-react'
+import { ExternalLink, Share2, Tag, X } from 'lucide-react'
+import { EventActionButton, eventActionRowClass } from '@/components/event-action-button'
+import { EventDetails } from '@/components/event-details'
 import { SaveButton } from '@/components/save-button'
 import { SheetHandle, sheetCloseClass } from '@/components/ui/sheet'
 import { AddToPlanButton } from '@/components/add-to-plan'
@@ -17,8 +19,9 @@ import { CATEGORIES, categoryInk } from '@/lib/categories'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { descriptionParagraphs } from '@/lib/description-text'
 import { eventOutbound } from '@/lib/listing-link'
+import { eventDetailPrice } from '@/lib/event-facts'
 import { boardClockLine } from '@/lib/listing-window'
-import { mapsDirectionsUrl, placeLine } from '@/lib/place'
+import { addressBesideVenue, mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { formatDate } from '@/lib/format'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { fullPageNavigation } from '@/lib/full-page-nav'
@@ -60,7 +63,7 @@ type PeekEvent = {
   organiserUrl?: string | null
   source?: string | null
   communityKey?: string | null
-  quality?: { price?: { range?: string | null } | null } | null
+  quality?: { price?: { range?: string | null; fees?: string | null } | null } | null
 }
 
 /** Event opened over the page you were on. The address is the real event URL. */
@@ -112,10 +115,18 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
   const city = cityDef(event.city)
   const suburb = displaySuburb(event.suburb, event.venueAddress, event.city)
   const where = placeLine({ ...event, suburb })
+  const addressText = (event.venueAddress ?? '').trim()
+  const venueLabel = (event.venueName ?? '').trim()
+  const addressLine = addressBesideVenue(addressText, venueLabel)
+  const placeTitle = venueLabel || where
   const dateLabel = formatDate(typeof event.date === 'string' ? event.date : new Date(event.date).toISOString(), 'long')
   const clock = boardClockLine(event)
   const cat = CATEGORIES.find((item) => item.name === event.category)
-  const price = event.quality?.price?.range ?? (event.isFree ? 'Free' : (event.price || 'See website'))
+  const priced = eventDetailPrice({
+    isFree: event.isFree,
+    price: event.price,
+    range: event.quality?.price?.range,
+  })
   const tags = event.subTags ?? []
   const paragraphs = descriptionParagraphs(event.description)
   const outbound = eventOutbound(event)
@@ -210,22 +221,23 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 ))}
               </div>
               <Dialog.Title className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{event.title}</Dialog.Title>
-              <p id="event-peek-summary" className="sr-only">{[dateLabel, clock, where].filter(Boolean).join('. ')}</p>
-              <ul className="grid gap-2 text-sm">
-                <li className="flex items-start gap-2"><Calendar className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden /><span>{dateLabel}</span></li>
-                <li className="flex items-start gap-2"><Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden /><span>{clock || 'Time not listed'}{city.name ? ` · ${city.name} time` : ''}</span></li>
-                {(where || event.venueName) && (
-                  <li className="flex items-start gap-2">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-                    <span className="min-w-0">
-                      <span className="font-medium">{event.venueName}</span>
-                      {suburb && suburb.toLowerCase() !== (event.venueName ?? '').trim().toLowerCase() ? <span className="text-muted-foreground"> · {suburb}</span> : null}
-                      {mapsHref ? <a href={mapsHref} target="_blank" rel="noopener noreferrer" aria-label={`Directions to ${event.venueName || event.title}`} className="mt-1 flex min-h-11 items-center text-primary underline underline-offset-2">Directions</a> : null}
-                    </span>
-                  </li>
-                )}
-                <li className="font-semibold">{price}</li>
-              </ul>
+              <p id="event-peek-summary" className="sr-only">{[dateLabel, clock, priced.label, where].filter(Boolean).join('. ')}</p>
+              <EventDetails
+                date={dateLabel}
+                time={clock}
+                timeZoneLabel={city.name}
+                price={priced.label}
+                priceNote={priced.kind === 'paid' ? event.quality?.price?.fees : null}
+                venue={placeTitle ? (
+                  <>
+                    <span className="font-medium">{placeTitle}</span>
+                    {!addressLine && suburb && suburb.toLowerCase() !== placeTitle.toLowerCase() ? <span className="text-muted-foreground"> · {suburb}</span> : null}
+                  </>
+                ) : null}
+                address={addressLine || null}
+                directionsHref={placeTitle ? mapsHref : null}
+                directionsLabel={`Directions to ${placeTitle || event.title}`}
+              />
               {paragraphs.length > 0 && (
                 <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
                   {paragraphs.slice(0, 4).map((paragraph) => <p key={paragraph.slice(0, 32)} className="whitespace-pre-line">{paragraph}</p>)}
@@ -243,13 +255,11 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 />
               </div>
               <EventReactions eventId={event.id} signedIn={signedIn} />
-              <div className="grid grid-cols-4 gap-1.5">
-                <SaveButton saved={saved} onClick={() => toggle(savedEvent, surface)} variant="stack" className="w-full" />
-                <ItineraryButton event={savedEvent} compact surface={surface} className="h-11 w-full rounded-xl" />
-                <AddToPlanButton eventId={event.id} city={event.city} icon surface={surface} className="h-11 w-full min-w-0 rounded-xl" />
-                <button type="button" onClick={() => shareEvent(event, surface)} aria-label="Share" className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-border px-1 text-xs font-semibold sm:text-xs">
-                  <Share2 className="h-4 w-4 shrink-0" /> Share
-                </button>
+              <div className={eventActionRowClass()}>
+                <SaveButton saved={saved} onClick={() => toggle(savedEvent, surface)} variant="stack" />
+                <ItineraryButton event={savedEvent} stack surface={surface} />
+                <AddToPlanButton eventId={event.id} city={event.city} icon surface={surface} className="min-w-0" />
+                <EventActionButton icon={Share2} label="Share" onClick={() => shareEvent(event, surface)} />
               </div>
               {outbound ? (
                 <a

@@ -3,10 +3,13 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { BackLink } from '@/components/back-to-events-link'
-import { ArrowLeft, Bookmark, Building2, Bus, Calendar, Clock, ExternalLink, Flag, Map as MapIcon, MapPin, Repeat, Share2, ShieldCheck, Tag } from 'lucide-react'
+import { ArrowLeft, Building2, Bus, ExternalLink, Flag, Map as MapIcon, Repeat, Share2, ShieldCheck, Tag } from 'lucide-react'
 import { toast } from 'sonner'
 import { Navbar } from '@/components/navbar'
+import { EventActionButton, eventActionRowClass } from '@/components/event-action-button'
+import { EventDetails } from '@/components/event-details'
 import { ItineraryButton } from '@/components/itinerary-button'
+import { SaveButton } from '@/components/save-button'
 import { EventReactions } from '@/components/event-reactions'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { shareEvent } from '@/app/events/[id]/_components/event-extras'
@@ -14,7 +17,9 @@ const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mo
 import { EventImage } from '@/components/event-image'
 import type { ClientImage } from '@/lib/images/spec'
 import { useSaved } from '@/lib/saved'
-import { cn } from '@/lib/utils'
+import { cityDef } from '@/lib/cities'
+import { eventDetailPrice } from '@/lib/event-facts'
+import { formatDate } from '@/lib/format'
 import { fmtDay, fmtTime, localCategoryLabel, localPath, localToBoard } from '@/lib/local-shared'
 import { TRANSIT } from '@/app/events/[id]/_components/event-extras'
 
@@ -33,6 +38,8 @@ const CAT_COLOR: Record<string, string> = { GARAGE: '#b45309', WAREHOUSE: '#4755
 
 export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; date: string }) {
   const { saved, isSaved, toggle, signedIn } = useSaved()
+  const priced = eventDetailPrice({ price: l.priceNote, isFree: !!l.priceNote && /^free\b/i.test(l.priceNote.trim()) })
+  const city = cityDef(l.city)
   const ev = localToBoard({ ...l, date })
   const stop = { ...ev, venueAddress: `${l.suburb} ${l.postcode}`, lat: l.lat, lng: l.lng, imageUrl: l.imageUrl }
   const place = `${l.address}, ${l.suburb} ${l.postcode}`
@@ -83,52 +90,31 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
               <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-4 h-4" />{l.sourceName ? `From a public listing on ${l.sourceName} · confirm details on the original page` : 'Listed by the organiser · checked automatically before publishing'}</span>
             </div>
 
-            <div className="grid min-w-0 md:grid-cols-2 gap-6 mb-6">
-              <div className="min-w-0 space-y-3">
-                <div className="flex items-center gap-3 text-muted-foreground"><Calendar className="w-5 h-5 text-primary" /><span>{fmtDay(date)}</span></div>
-                <div className="flex items-center gap-3 text-muted-foreground"><Clock className="w-5 h-5 text-primary" /><span>{fmtTime(l.startTime)} – {fmtTime(l.endTime)}</span></div>
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  <div>
-                    <span className="font-medium text-foreground">{l.address}</span>
-                    <p className="text-sm">{l.suburb} {l.postcode}</p>
-                    {!l.addressVerified && <p className="text-xs">{l.sourceName ? 'Address from the original listing and not checked on a map.' : 'Address supplied by the organiser and not checked on a map.'}</p>}
-                  </div>
-                </div>
-              </div>
+            <div className="mb-6 grid min-w-0 gap-6 md:grid-cols-2">
+              <EventDetails
+                date={formatDate(date, 'long')}
+                time={l.startTime ? `${fmtTime(l.startTime)} – ${fmtTime(l.endTime)}` : null}
+                timeZoneLabel={city.name}
+                price={priced.label}
+                venue={<span className="font-medium">{l.address}</span>}
+                address={[l.suburb, l.postcode, city.state].filter(Boolean).join(', ')}
+                directionsHref={dir('driving')}
+                directionsLabel={`Directions to ${l.title}`}
+                placeNote={!l.addressVerified ? (l.sourceName ? 'Address from the original listing and not checked on a map.' : 'Address supplied by the organiser and not checked on a map.') : null}
+              />
 
               <div className="min-w-0 space-y-4">
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground mb-1">Price</p>
-                  <p className="text-2xl font-bold text-foreground">{l.priceNote ?? 'Ask the organiser'}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{l.sourceName ? 'Price as shown on the original listing. Check there for current details.' : 'No tickets needed. Pay the organiser on the day, if anything.'}</p>
-                </div>
                 {l.websiteUrl && (
                   <a href={l.websiteUrl} target="_blank" rel="noopener noreferrer nofollow" className="flex items-center justify-center gap-2 w-full py-3 bg-primary text-primary-foreground hover:opacity-90 font-semibold rounded-lg transition-all">
                     {l.sourceName ? 'Original listing' : <>Organiser&apos;s page</>} <ExternalLink className="w-4 h-4" />
                   </a>
                 )}
                 <EventReactions eventId={ev.id} signedIn={signedIn} />
-                <div className="grid min-w-0 grid-cols-4 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => toggle(ev, 'local')}
-                    aria-label={isSaved(ev.id) ? 'Saved' : 'Save'}
-                    className={cn('flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border text-xs font-semibold transition-colors', isSaved(ev.id) ? 'border-primary text-primary' : 'border-border hover:bg-muted')}
-                  >
-                    <Bookmark className={cn('w-4 h-4', isSaved(ev.id) && 'fill-current')} />
-                    Save
-                  </button>
-                  <ItineraryButton event={stop} compact surface="local" className="h-10 w-full min-w-0 rounded-lg shadow-none" />
+                <div className={eventActionRowClass()}>
+                  <SaveButton saved={isSaved(ev.id)} onClick={() => toggle(ev, 'local')} variant="stack" />
+                  <ItineraryButton event={stop} stack surface="local" />
                   <AddToPlanButton eventId={ev.id} city={l.city} icon surface="local" className="min-w-0" />
-                  <button
-                    type="button"
-                    onClick={() => shareEvent({ id: ev.id, title: l.title }, 'local')}
-                    aria-label="Share"
-                    className="flex h-10 min-w-0 flex-col items-center justify-center rounded-lg border border-border text-xs font-semibold hover:bg-muted"
-                  >
-                    <Share2 className="w-4 h-4" />Share
-                  </button>
+                  <EventActionButton icon={Share2} label="Share" onClick={() => shareEvent({ id: ev.id, title: l.title }, 'local')} />
                 </div>
               </div>
             </div>

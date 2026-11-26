@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
+import { EventActionButton } from '@/components/event-action-button'
 import { cn } from '@/lib/utils'
 
 type PlanRow = { token: string; name: string; city: string | null; items: number }
@@ -58,9 +59,13 @@ export function AddToPlanButton({ eventId, city, className, icon = false, surfac
 
   return (
     <div className={cn(icon && 'relative', className)}>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Add to a plan" className={icon ? 'flex h-10 w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted' : 'flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-border font-semibold hover:bg-muted'}>
-        <Users className="w-4 h-4" />{icon ? 'Plan' : (open ? 'Close Plan' : 'Add to a Plan')}
-      </button>
+      {icon ? (
+        <EventActionButton icon={Users} label="Plan" ariaLabel="Add to a plan" pressed={open} onClick={() => setOpen((v) => !v)} />
+      ) : (
+        <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Add to a plan" className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-3 font-semibold hover:bg-muted">
+          <Users className="h-4 w-4" />{open ? 'Close Plan' : 'Add to a Plan'}
+        </button>
+      )}
       {open && (
         <div className={cn('rounded-lg border border-border bg-card p-3 space-y-3 shadow-lg', icon ? 'absolute right-0 top-12 z-30 w-72' : 'mt-3 bg-muted/40')}>
           <p className="text-sm text-muted-foreground">Shortlist it with friends. They open your link and vote. No friend list required.</p>

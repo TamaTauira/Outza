@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { collapseRepeatedWords, formatAddress, formatVenueLine, placeLine } from './place'
+import { addressBesideVenue, collapseRepeatedWords, formatAddress, formatVenueLine, placeLine } from './place'
 
 test('venue and suburb are not repeated', () => {
   assert.equal(formatVenueLine({ venueName: 'The Rocks', suburb: 'The Rocks', city: 'Sydney' }), 'The Rocks')
@@ -27,6 +27,13 @@ test('an address that already starts with the venue drops the copy', () => {
     }),
     'The Rocks, 1 Hickson Rd, Dawes Point NSW 2000, Sydney',
   )
+})
+
+test('a detail address does not repeat the venue already shown', () => {
+  assert.equal(addressBesideVenue('57 Denison St, Camperdown NSW 2050, Australia', '57 Denison St'), 'Camperdown NSW 2050, Australia')
+  assert.equal(addressBesideVenue("St Joseph's College, Mark Street, Hunters Hill, 2110, NSW", "St Joseph's College, Mark Street"), 'Hunters Hill, 2110, NSW')
+  assert.equal(addressBesideVenue('2/10 Brompton St, Marrickville NSW 2042', 'Heaps Normal Health Club'), '2/10 Brompton St, Marrickville NSW 2042')
+  assert.equal(addressBesideVenue('Heaps Normal Health Club', 'Heaps Normal Health Club'), '')
 })
 
 test('a doubled city token in a venue name collapses', () => {

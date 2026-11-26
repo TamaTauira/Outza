@@ -72,6 +72,18 @@ export function placeLine(parts: PlaceParts): string {
   return formatAddress(parts)
 }
 
+/** The street line under a venue name. A copy of that name at the start is dropped. */
+export function addressBesideVenue(address?: string | null, venue?: string | null): string {
+  const line = tidy(address)
+  const name = tidy(venue)
+  if (!line || !name) return line
+  if (same(line, name)) return ''
+  if (line.toLowerCase().startsWith(name.toLowerCase())) {
+    return tidy(line.slice(name.length).replace(/^[\s,·\-–]+/, ''))
+  }
+  return line
+}
+
 const NOT_A_PLACE = /^(?:online|virtual|zoom|livestream|live[\s-]?stream|webinar|tba|tbc|to be announced|to be confirmed)(?:\b|[,])/i
 const STREETISH = /\d|\b(?:st|street|rd|road|ave|avenue|dr|drive|ln|lane|pl|place|pde|parade|way|hwy|highway|cct|circuit|tce|terrace|cres|crescent|court|ct|blvd|boulevard|esplanade|wharf|pier|square)\b/i
 

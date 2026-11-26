@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { EventImage, eventImageSizes } from '@/components/event-image'
 import { eventPictureFrom } from '@/lib/images/display-spec'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Clock, Calendar, ExternalLink, Tag, Loader2, Megaphone, Users, Info, Share2, Repeat, Banknote } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Tag, Loader2, Megaphone, Users, Info, Share2, Repeat } from 'lucide-react'
+import { EventActionButton, eventActionRowClass } from '@/components/event-action-button'
+import { EventDetailRow, EventDetails } from '@/components/event-details'
 import { SaveButton } from '@/components/save-button'
 import { Navbar } from '@/components/navbar'
 import { useSaved } from '@/lib/saved'
@@ -26,10 +28,11 @@ import { FollowListing } from '@/components/follow-listing'
 import { AddToPlanButton } from '@/components/add-to-plan'
 import { cityDef, displaySuburb } from '@/lib/cities'
 import { cityPath, isPastEvent } from '@/lib/seo'
+import { eventDetailPrice } from '@/lib/event-facts'
 import { boardClockLine } from '@/lib/listing-window'
 import { displayTitle } from '@/lib/display-public'
 import { formatDate } from '@/lib/format'
-import { mapsDirectionsUrl, placeLine } from '@/lib/place'
+import { addressBesideVenue, mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { descriptionParagraphs } from '@/lib/description-text'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 import { ClaimedTick } from '@/components/ClaimedTick'
@@ -37,20 +40,6 @@ import { EventReactions } from '@/components/event-reactions'
 import { ListingSources } from '@/components/listing-sources'
 
 const REDUNDANT_SCHEDULE = new Set(['Start time listed', 'Start and finish listed'])
-
-function AddressLink({ href, children }: { href: string | null; children: string }) {
-  if (!href) return <span className="mt-0.5 block">{children}</span>
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="mt-1 block min-h-11 py-2 underline decoration-primary/50 underline-offset-2 hover:text-primary sm:min-h-0 sm:py-0.5"
-    >
-      {children}
-    </a>
-  )
-}
 
 function Lowdown({ text }: { text: string }) {
   const paragraphs = descriptionParagraphs(text)
@@ -64,15 +53,6 @@ function Lowdown({ text }: { text: string }) {
         ))}
       </div>
     </section>
-  )
-}
-
-function Fact({ icon: Icon, children }: { icon: typeof Calendar; children: React.ReactNode }) {
-  return (
-    <li className="flex items-start gap-2 min-w-0">
-      <Icon className="w-4 h-4 mt-0.5 shrink-0 text-primary" aria-hidden />
-      <span className="min-w-0">{children}</span>
-    </li>
   )
 }
 
@@ -123,7 +103,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const where = placeLine({ ...event, suburb })
   const addressText = typeof event.venueAddress === 'string' ? event.venueAddress.trim() : ''
   const venueLabel = typeof event.venueName === 'string' ? event.venueName.trim() : ''
-  const showAddress = !!addressText && addressText !== venueLabel
+  const addressLine = addressBesideVenue(addressText, venueLabel)
+  const showAddress = !!addressLine
   const nameLabel = venueLabel || (showAddress ? '' : where)
   const mapsHref = mapsDirectionsUrl({
     latitude: event.latitude,
@@ -147,7 +128,14 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const catDef = CATEGORIES.find((c) => c.name === event?.category)
   const schedule = event.quality?.schedule
   const scheduleNote = schedule && !REDUNDANT_SCHEDULE.has(schedule.label) && schedule.label !== 'Start time not listed' ? schedule : null
-  const price = event.quality?.price?.range ?? (event?.isFree ? 'Free' : (event?.price ?? 'See website'))
+  const priced = eventDetailPrice({
+    isFree: event?.isFree,
+    price: event?.price,
+    priceMin: event?.priceMin,
+    priceMax: event?.priceMax,
+    range: event.quality?.price?.range,
+  })
+  const price = priced.label
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
   const outbound = eventOutbound(event)
@@ -179,49 +167,34 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
 
   const card = (
     <aside className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-3">
-      <ul className="grid gap-2 text-sm text-foreground">
-        <Fact icon={Calendar}>
-          <span>{formattedDate}</span>
-          {scheduleNote && <span className="block text-xs text-muted-foreground mt-0.5">{scheduleNote.label}. {scheduleNote.detail}</span>}
-        </Fact>
-        {clock ? (
-          <Fact icon={Clock}>
-            {clock}
-            <span className="text-xs text-muted-foreground"> · {city.name} time</span>
-          </Fact>
-        ) : (
-          <Fact icon={Clock}>
-            <span className="text-muted-foreground">No start time listed yet</span>
-            <span className="block text-xs text-muted-foreground">Time not listed</span>
-          </Fact>
+      <EventDetails
+        date={formattedDate}
+        dateNote={scheduleNote ? `${scheduleNote.label}. ${scheduleNote.detail}` : null}
+        time={clock}
+        timeZoneLabel={clock ? city.name : null}
+        price={price}
+        priceNote={priced.kind === 'paid' && outbound?.kind === 'ticket' && event.quality?.price?.fees ? event.quality.price.fees : null}
+        venue={nameLabel ? (
+          <span className="inline-flex flex-wrap items-center gap-1">
+            {event?.venueId ? (
+              <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{nameLabel}</Link>
+            ) : (
+              <span className="font-medium">{nameLabel}</span>
+            )}
+            {event?.venueManagedLabel ? <ClaimedTick kind="venue" /> : null}
+          </span>
+        ) : null}
+        address={showAddress ? addressLine : null}
+        directionsHref={(where || event?.venueName) ? mapsHref : null}
+        directionsLabel={`Directions to ${nameLabel || event.title}`}
+        placeNote={event?.venueManagedLabel || null}
+        trailing={(
+          <>
+            {event?.capacity > 0 ? <EventDetailRow icon={Users}>Capacity {Number(event.capacity).toLocaleString('en-AU')}</EventDetailRow> : null}
+            {event.quality?.recurrence ? <EventDetailRow icon={Repeat}>{event.quality.recurrence}</EventDetailRow> : null}
+          </>
         )}
-        {(where || event?.venueName) && (
-          <Fact icon={MapPin}>
-            {nameLabel ? (
-              <span className="inline-flex items-center gap-1 flex-wrap">
-                {event?.venueId ? (
-                  <Link href={`/venues/${event.venueId}`} className="font-medium underline underline-offset-2">{nameLabel}</Link>
-                ) : (
-                  <span className="font-medium">{nameLabel}</span>
-                )}
-                {event?.venueManagedLabel && <ClaimedTick kind="venue" />}
-              </span>
-            ) : null}
-            {showAddress ? <AddressLink href={mapsHref}>{addressText}</AddressLink> : null}
-            {event?.venueManagedLabel && <span className="block text-xs text-muted-foreground">{event.venueManagedLabel}</span>}
-          </Fact>
-        )}
-        {event?.capacity > 0 && (
-          <Fact icon={Users}>Capacity {Number(event.capacity).toLocaleString('en-AU')}</Fact>
-        )}
-        {event.quality?.recurrence && (
-          <Fact icon={Repeat}>{event.quality.recurrence}</Fact>
-        )}
-        <Fact icon={Banknote}>
-          <span className="font-semibold">{price}</span>
-          {outbound?.kind === 'ticket' && event.quality?.price?.fees && <span className="block text-xs font-normal text-muted-foreground">{event.quality.price.fees}</span>}
-        </Fact>
-      </ul>
+      />
 
       {outbound && !ended ? sourceLink(`${ticketClass} w-full`) : outbound ? sourceLink('inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary underline underline-offset-2') : <p className="text-sm text-muted-foreground">No ticket link yet</p>}
       {!ended && (
@@ -229,18 +202,11 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
           <EventReactions eventId={event.id} signedIn={signedIn} />
         </div>
       )}
-      <div data-print-hide className={cn('grid gap-2', ended ? 'grid-cols-1' : 'grid-cols-4')}>
+      <div data-print-hide className={eventActionRowClass(ended)}>
         {!ended && <SaveButton saved={savedNow} onClick={() => toggle(event)} variant="stack" />}
-        {!ended && <ItineraryButton event={event} compact className="h-11 w-full rounded-xl" />}
-        {!ended && <AddToPlanButton eventId={event.id} city={event.city} icon />}
-        <button
-          type="button"
-          onClick={() => shareEvent(event)}
-          aria-label="Share"
-          className="flex h-11 flex-col items-center justify-center rounded-xl border border-border text-xs font-semibold hover:bg-muted"
-        >
-          <Share2 className="w-4 h-4" />Share
-        </button>
+        {!ended && <ItineraryButton event={event} stack />}
+        {!ended && <AddToPlanButton eventId={event.id} city={event.city} icon className="min-w-0" />}
+        <EventActionButton icon={Share2} label="Share" onClick={() => shareEvent(event)} />
       </div>
     </aside>
   )
