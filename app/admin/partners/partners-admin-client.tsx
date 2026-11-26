@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { SOURCE_REGISTER } from '@/lib/sources/register'
+import { partnerSourceChoices } from '@/lib/sources/register'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,7 +16,7 @@ type PartnerRow = {
   createdAt: string
 }
 
-const CHOICES = SOURCE_REGISTER.filter((row) => row.status === 'integrated' || row.status === 'partial' || row.status === 'queued')
+const CHOICES = partnerSourceChoices()
 
 export function PartnersAdminClient({ initial }: { initial: PartnerRow[] }) {
   const [partners, setPartners] = useState(initial)

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { duplicateSpikeAlert, emptyFeedAlert, parseFailureAlert, retireOnEmpty, sourceVolumeSignal, sweepRunFromLog, venueGapAlert, volumeAlert, volumeDropDetail, type SweepRun } from './source-health'
-import { SOURCE_REGISTER, registerByStatus } from './sources/register'
+import { SOURCE_REGISTER, partnerSourceChoices, registerByStatus } from './sources/register'
 import { parseBccRecord, parseBccRecords, brisbaneWall, bccExternalId, type BccRecord } from './sources/brisbane-council'
 
 test('an empty or shrinking source alerts and never retires listings', () => {
@@ -181,9 +181,26 @@ test('the register keeps current connectors and does not invent unmeasured count
     assert.ok(ids.includes(id), id)
   }
   assert.equal(registerByStatus('integrated').some((row) => row.id === 'brisbanecouncil'), true)
-  assert.equal(registerByStatus('permission').some((row) => row.id === 'sydney-opera-house'), true)
-  assert.equal(registerByStatus('permission').some((row) => row.id === 'afterpay-arena'), true)
-  assert.equal(registerByStatus('permission').some((row) => row.id === 'tiktok-entertainment-centre'), true)
+  assert.equal(registerByStatus('partial').some((row) => row.id === 'sydney-opera-house'), true)
+  for (const id of ['accor-stadium', 'allianz-stadium', 'scg', 'commbank-stadium', 'mcdonald-jones', 'state-theatre', 'factory-theatre']) {
+    assert.equal(SOURCE_REGISTER.find((row) => row.id === id)?.status, 'partial', id)
+  }
+  for (const id of ['enmore-theatre', 'icc-sydney', 'tiktok-entertainment-centre', 'afterpay-arena']) {
+    assert.equal(SOURCE_REGISTER.find((row) => row.id === id)?.status, 'permission', id)
+  }
+  for (const id of ['win-stadium', 'win-entertainment-centre']) {
+    assert.equal(SOURCE_REGISTER.find((row) => row.id === id)?.status, 'queued', id)
+  }
+  assert.match(SOURCE_REGISTER.find((row) => row.id === 'win-stadium')?.method ?? '', /157281/)
+  assert.match(SOURCE_REGISTER.find((row) => row.id === 'win-entertainment-centre')?.method ?? '', /157282/)
+  assert.match(SOURCE_REGISTER.find((row) => row.id === 'ticketmaster')?.reason ?? '', /Area query per city/)
+  assert.match(SOURCE_REGISTER.find((row) => row.id === 'ticketek')?.reason ?? '', /Afterpay Arena/)
+  assert.match(SOURCE_REGISTER.find((row) => row.id === 'ticketek')?.reason ?? '', /Enmore/)
+  const partnerIds = partnerSourceChoices().map((row) => row.id)
+  assert.ok(partnerIds.includes('ticketmaster'))
+  assert.ok(partnerIds.includes('ticketek'))
+  assert.equal(partnerIds.includes('accor-stadium'), false)
+  assert.equal(partnerIds.includes('win-stadium'), false)
   for (const row of SOURCE_REGISTER) {
     if (row.measuredFeedRows == null) assert.equal(row.measuredOn, null)
   }

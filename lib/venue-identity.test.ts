@@ -48,6 +48,23 @@ test('Enmore and Factory are different venues', () => {
   assert.equal(sameVenueIdentity(enmore, factory), false)
 })
 
+test('Opera House steps and ICC rooms resolve without swallowing a different centre', () => {
+  assert.equal(resolveVenueIdentity('Steps of Sydney Opera House', 'Sydney')?.id, 'sydney-opera-house')
+  assert.equal(resolveVenueIdentity('On The Steps at Sydney Opera House Forecourt', 'Sydney')?.id, 'sydney-opera-house')
+  assert.equal(resolveVenueIdentity('ICC Sydney - Grand Ballroom', 'Sydney')?.id, 'icc-sydney')
+  assert.equal(resolveVenueIdentity('Grand Ballroom, ICC Sydney', 'Sydney')?.id, 'icc-sydney')
+  assert.equal(resolveVenueIdentity('ICC Sydney. Level 4 Foyer, outside Room 4.5', 'Sydney')?.id, 'icc-sydney')
+  assert.equal(resolveVenueIdentity('Royal International Convention Centre', 'Brisbane'), null)
+  assert.equal(resolveVenueIdentity('Royal International Convention Centre', 'Sydney'), null)
+  assert.equal(
+    sameVenueIdentity(
+      resolveVenueIdentity('ICC Sydney', 'Sydney'),
+      resolveVenueIdentity('TikTok Entertainment Centre', 'Sydney'),
+    ),
+    false,
+  )
+})
+
 test('Newcastle stadium keeps its former names', () => {
   const current = resolveVenueIdentity('McDonald Jones Stadium', 'Newcastle')
   const former = resolveVenueIdentity('Hunter Stadium', 'Newcastle')
