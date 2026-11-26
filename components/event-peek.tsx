@@ -21,7 +21,7 @@ import { descriptionParagraphs } from '@/lib/description-text'
 import { eventOutbound } from '@/lib/listing-link'
 import { eventDetailPrice } from '@/lib/event-facts'
 import { boardClockLine } from '@/lib/listing-window'
-import { mapsDirectionsUrl, placeLine } from '@/lib/place'
+import { addressBesideVenue, mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { formatDate } from '@/lib/format'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { fullPageNavigation } from '@/lib/full-page-nav'
@@ -117,7 +117,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
   const where = placeLine({ ...event, suburb })
   const addressText = (event.venueAddress ?? '').trim()
   const venueLabel = (event.venueName ?? '').trim()
-  const showAddress = !!addressText && addressText.toLowerCase() !== venueLabel.toLowerCase()
+  const addressLine = addressBesideVenue(addressText, venueLabel)
   const placeTitle = venueLabel || where
   const dateLabel = formatDate(typeof event.date === 'string' ? event.date : new Date(event.date).toISOString(), 'long')
   const clock = boardClockLine(event)
@@ -231,10 +231,10 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 venue={placeTitle ? (
                   <>
                     <span className="font-medium">{placeTitle}</span>
-                    {!showAddress && suburb && suburb.toLowerCase() !== placeTitle.toLowerCase() ? <span className="text-muted-foreground"> · {suburb}</span> : null}
+                    {!addressLine && suburb && suburb.toLowerCase() !== placeTitle.toLowerCase() ? <span className="text-muted-foreground"> · {suburb}</span> : null}
                   </>
                 ) : null}
-                address={showAddress ? addressText : null}
+                address={addressLine || null}
                 directionsHref={placeTitle ? mapsHref : null}
                 directionsLabel={`Directions to ${placeTitle || event.title}`}
               />

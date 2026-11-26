@@ -32,7 +32,7 @@ import { eventDetailPrice } from '@/lib/event-facts'
 import { boardClockLine } from '@/lib/listing-window'
 import { displayTitle } from '@/lib/display-public'
 import { formatDate } from '@/lib/format'
-import { mapsDirectionsUrl, placeLine } from '@/lib/place'
+import { addressBesideVenue, mapsDirectionsUrl, placeLine } from '@/lib/place'
 import { descriptionParagraphs } from '@/lib/description-text'
 import { OrganiserUpdateNotice } from '@/components/organiser-update-notice'
 import { ClaimedTick } from '@/components/ClaimedTick'
@@ -103,7 +103,8 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const where = placeLine({ ...event, suburb })
   const addressText = typeof event.venueAddress === 'string' ? event.venueAddress.trim() : ''
   const venueLabel = typeof event.venueName === 'string' ? event.venueName.trim() : ''
-  const showAddress = !!addressText && addressText !== venueLabel
+  const addressLine = addressBesideVenue(addressText, venueLabel)
+  const showAddress = !!addressLine
   const nameLabel = venueLabel || (showAddress ? '' : where)
   const mapsHref = mapsDirectionsUrl({
     latitude: event.latitude,
@@ -183,7 +184,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
             {event?.venueManagedLabel ? <ClaimedTick kind="venue" /> : null}
           </span>
         ) : null}
-        address={showAddress ? addressText : null}
+        address={showAddress ? addressLine : null}
         directionsHref={(where || event?.venueName) ? mapsHref : null}
         directionsLabel={`Directions to ${nameLabel || event.title}`}
         placeNote={event?.venueManagedLabel || null}
