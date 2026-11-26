@@ -714,6 +714,7 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   inset: 0;
   display: block;
   overflow: hidden;
+  contain: paint;
   background: var(--vp-surface);
   container-type: size;
   isolation: isolate;
@@ -728,7 +729,6 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
 }
 .vp-photo-blur-img {
   filter: blur(32px) saturate(1.1) brightness(0.9);
-  transform: translateZ(0);
 }
 .dark .vp-photo-blur-img {
   filter: blur(32px) saturate(1.15) brightness(0.62);
@@ -865,6 +865,20 @@ a[class*="w-8"],
 a[class*="w-9"] {
   min-width: 44px;
   min-height: 44px;
+}
+
+/* Frosted header fill. contain: paint clips the blur kernel so it cannot
+   paint a white fringe past the viewport. overflow on html/body does not. */
+.vp-decorative-glow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: paint;
+  pointer-events: none;
+}
+.vp-site-header {
+  overflow: clip;
+  contain: paint;
 }
 
 /* Shared lockup. The image is the icon and the wordmark, already centred on each other. */

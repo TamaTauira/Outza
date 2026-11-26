@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bookmark, Building2, House, List, LogOut, MapPin, Megaphone, Monitor, Moon, Settings, ShieldCheck, Sparkles, Sun, User, Users } from 'lucide-react'
+import { Bookmark, Building2, Contrast, House, List, LogOut, MapPin, Megaphone, Monitor, Moon, Settings, ShieldCheck, Sparkles, Sun, User, Users } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
@@ -15,7 +15,7 @@ import { PeepIcon } from '@/components/peep-icon'
 import { SiteHeaderFrame } from '@/components/site-header-bar'
 import { useHasLocalListings } from '@/components/use-has-local-listings'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { CITY_NAMES } from '@/lib/cities'
@@ -43,14 +43,33 @@ export function viewForPath(pathname: string | null): AppView | null {
   return null
 }
 
+function AppearanceMenu() {
+  const { theme, setTheme } = useTheme()
+  const mounted = useMounted()
+  const value = theme === 'light' || theme === 'dark' ? theme : 'system'
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-10 sm:w-10"
+          aria-label="Appearance"
+        >
+          <Contrast className="h-4 w-4" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40" collisionPadding={8}>
+        <DropdownMenuRadioGroup aria-label="Appearance" value={mounted ? value : undefined} onValueChange={setTheme}>
+          <DropdownMenuRadioItem value="light"><Sun className="mr-2 h-4 w-4" aria-hidden />Light</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark"><Moon className="mr-2 h-4 w-4" aria-hidden />Dark</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system"><Monitor className="mr-2 h-4 w-4" aria-hidden />Auto</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 function AppHeader({ savedCount }: { savedCount: number }) {
-  const { theme, resolvedTheme, setTheme } = useTheme()
-  const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
-  const themeLabel = theme === 'system'
-    ? 'Using the system theme. Switch to light.'
-    : theme === 'light'
-      ? 'Using light. Switch to dark.'
-      : 'Using dark. Switch to the system theme.'
   const mounted = useMounted()
   const pathname = usePathname()
   const view = viewForPath(pathname)
@@ -104,13 +123,7 @@ function AppHeader({ savedCount }: { savedCount: number }) {
           </button>
         </nav>
         <div className="vp-header-tools ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <button
-            onClick={() => setTheme(nextTheme)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-10 sm:w-10"
-            aria-label={mounted ? themeLabel : 'Switch theme'}
-          >
-            {mounted && theme === 'system' ? <Monitor className="h-4 w-4" /> : mounted && resolvedTheme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </button>
+          <AppearanceMenu />
           {mounted && status !== 'loading' && (user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

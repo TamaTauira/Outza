@@ -29,6 +29,7 @@ import { SuggestionButton } from '@/components/suggestion-button';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { HeroCard, cityHeroSrc } from '@/components/hero-card';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
+import { COPY } from '@/lib/copy';
 import { displayTitle } from '@/lib/display-public';
 import { useBackState } from '@/lib/scroll-memory';
 import { lineupView } from '@/lib/lineup-view';
@@ -364,7 +365,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             ? 'weekend'
             : '';
   const customDate = !!day && planKey !== 'today' && planKey !== 'tonight' && planKey !== 'weekend';
-  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${city || DEFAULT_CITY} · Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix`;
+  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${city || DEFAULT_CITY}`;
   const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string; detail: string }[] = today ? [
     { key: 'today', label: 'Today', detail: shortDate(today) },
@@ -384,7 +385,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             priority
             image={cityHeroSrc(city)}
             title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span></>}
-            lede={<><p>Gigs, markets, shows and free things, picked for today. Aggregated from Ticketmaster, Moshtix, Oztix, Eventbrite and more.</p><p className="mt-2 text-sm font-semibold text-white/85">Your city’s calling. Answer it.</p></>}
+            lede={<p>{COPY.homeHero}</p>}
           >
             <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
               <CityPicker value={city || DEFAULT_CITY} onChange={setCity} onDark />
