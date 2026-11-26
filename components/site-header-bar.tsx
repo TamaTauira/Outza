@@ -20,7 +20,7 @@ export function SiteHeaderFrame({ children, grow = false }: { children: ReactNod
           {children}
         </div>
       </header>
-      <div className={cn('vp-header-spacer', grow ? 'min-h-14 sm:min-h-16' : 'h-14 sm:h-16')} aria-hidden />
+      <div className={cn('vp-header-spacer', grow ? 'min-h-[var(--vp-header-offset)]' : 'h-[var(--vp-header-offset)]')} aria-hidden />
     </>
   )
 }

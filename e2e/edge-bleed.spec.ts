@@ -72,6 +72,74 @@ test('appearance opens Light, Dark and Auto from the keyboard', async ({ page })
   await expect(page.locator('[role="menuitemradio"]:focus')).toHaveCount(1)
 })
 
+test('raised Ask face is fully visible above the bar at 390px', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  const face = page.locator('.vp-ask-face')
+  await expect(face).toBeVisible()
+  const report = await face.evaluate((el) => {
+    const rect = el.getBoundingClientRect()
+    const nav = el.closest('.vp-bottom-nav')
+    const inner = el.closest('.vp-bottom-nav-inner')
+    const navBox = nav?.getBoundingClientRect()
+    const innerTop = inner?.getBoundingClientRect().top ?? null
+    const navStyle = nav ? getComputedStyle(nav) : null
+    const clips: string[] = []
+    let node: HTMLElement | null = el.parentElement
+    while (node && node !== document.documentElement) {
+      const cs = getComputedStyle(node)
+      const contain = cs.contain || ''
+      const clipsY = contain.includes('paint') || contain.includes('strict')
+        || cs.overflowY === 'hidden' || cs.overflowY === 'clip'
+        || cs.overflowY === 'auto' || cs.overflowY === 'scroll'
+      if (clipsY) {
+        const box = node.getBoundingClientRect()
+        if (rect.top < box.top - 0.5 || rect.bottom > box.bottom + 0.5 || rect.left < box.left - 0.5 || rect.right > box.right + 0.5) {
+          const name = typeof node.className === 'string' && node.className ? node.className : node.tagName
+          clips.push(`${name.slice(0, 80)}`)
+        }
+      }
+      node = node.parentElement
+    }
+    const inside = (x: number, y: number) => {
+      const hit = document.elementFromPoint(x, y)
+      return !!hit && (hit === el || el.contains(hit) || !!hit.closest('.vp-ask'))
+    }
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    const inset = Math.min(rect.width, rect.height) * 0.18
+    return {
+      top: rect.top,
+      height: rect.height,
+      width: rect.width,
+      navTop: navBox?.top ?? null,
+      innerTop,
+      raised: innerTop != null ? rect.top < innerTop - 1 : false,
+      insideNav: navBox ? rect.top >= navBox.top - 0.5 && rect.bottom <= navBox.bottom + 0.5 : false,
+      overflowX: navStyle?.overflowX ?? '',
+      overflowY: navStyle?.overflowY ?? '',
+      contain: navStyle?.contain ?? '',
+      clips,
+      points: {
+        top: inside(cx, rect.top + inset),
+        bottom: inside(cx, rect.bottom - inset),
+        left: inside(rect.left + inset, cy),
+        right: inside(rect.right - inset, cy),
+        center: inside(cx, cy),
+      },
+    }
+  })
+  expect(report.clips, JSON.stringify(report)).toEqual([])
+  expect(report.raised, JSON.stringify(report)).toBe(true)
+  expect(report.insideNav, JSON.stringify(report)).toBe(true)
+  expect(report.overflowY, JSON.stringify(report)).toBe('visible')
+  expect(report.overflowX, JSON.stringify(report)).toBe('clip')
+  expect(report.contain, JSON.stringify(report)).not.toContain('paint')
+  expect(report.top, JSON.stringify(report)).toBeGreaterThanOrEqual(0)
+  expect(report.height, JSON.stringify(report)).toBeGreaterThan(32)
+  expect(Math.abs(report.width - report.height), JSON.stringify(report)).toBeLessThan(1)
+  expect(report.points, JSON.stringify(report)).toEqual({ top: true, bottom: true, left: true, right: true, center: true })
+})
+
 test('homepage hero does not name ticket brands', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/', { waitUntil: 'domcontentloaded' })

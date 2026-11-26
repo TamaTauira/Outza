@@ -378,7 +378,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     <div className={view === 'map' ? 'vp-map-screen min-h-screen bg-background text-foreground overflow-x-clip' : 'min-h-screen bg-background text-foreground overflow-x-clip'}>
       <Navbar savedCount={saved.length} />
 
-      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-3.5rem-var(--vp-bottom-nav-offset))] min-h-0 flex-col sm:h-[calc(100dvh-4rem-var(--vp-bottom-nav-offset))]' : ''}>
+      <main className={view === 'map' ? 'vp-map-main relative flex h-[calc(100dvh-var(--vp-header-offset)-var(--vp-bottom-nav-offset))] min-h-0 flex-col' : ''}>
         {view === 'board' ? (
           <div className="vp-wrap vp-page-top px-4 sm:px-6">
           <HeroCard
