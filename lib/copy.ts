@@ -24,4 +24,6 @@ export const COPY = {
   sharePlan: 'Share plan',
   calendarPlan: 'Add to calendar',
   undo: 'Undo',
+  /** Homepage hero subtext. The only source for this line. */
+  homeHero: 'Gigs, markets, shows and free things, picked for today. Every listing in one place.',
 } as const

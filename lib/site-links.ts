@@ -35,7 +35,7 @@ export const FOOTER_CITY_LINKS: SiteLink[] = CITIES.map((city) => ({
 }))
 
 export const LISTING_SOURCES_LINE =
-  'Listings from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring and City of Sydney. Always check times and prices with the organiser.'
+  'Listings come from public event pages and from organisers. Always check times and prices with the organiser.'
 
 export const SITE_DISCLAIMER =
   'VibePeep is an independent listings guide — information only, no warranties.'

@@ -42,11 +42,21 @@
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
     background: hsl(var(--background) / 0.9);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    overflow: clip;
+    contain: paint;
     border-top: 1px solid hsl(var(--border));
     transition: transform 220ms ease;
     will-change: transform;
+  }
+
+  .vp-bottom-nav::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: hsl(var(--background) / 0.9);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 
   .vp-bottom-nav.is-away {
@@ -71,9 +81,21 @@
     padding-top: 0;
   }
 
+  /* Safe area stays on the row, not the frosted layer, so the blur still
+     covers the full width and does not leave a clear strip at the edge. */
   .vp-site-header {
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .vp-header-bar {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+  @media (min-width: 640px) {
+    .vp-header-bar {
+      padding-left: max(1.5rem, env(safe-area-inset-left, 0px));
+      padding-right: max(1.5rem, env(safe-area-inset-right, 0px));
+    }
   }
 
   /* Keep the header on screen while the bottom bar handles the destinations. */
@@ -607,9 +629,18 @@ html[data-vp-fold='side'] .vp-bottom-nav {
   width: calc((100% - 24px) / 2);
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: hsl(var(--background) / 0.9);
+  overflow: clip;
+  contain: paint;
+  border-top: 1px solid hsl(var(--border));
+}
+html[data-vp-fold='side'] .vp-bottom-nav::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: hsl(var(--background) / 0.9);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  border-top: 1px solid hsl(var(--border));
 }
 
 html[data-vp-fold='side'] .vp-ticket-bar,

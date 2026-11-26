@@ -126,4 +126,4 @@ jobs:
             echo "https proxy did not become ready" >&2
             exit 1
           fi
-          corepack yarn exec playwright test e2e/public.spec.ts e2e/signed-in.spec.ts e2e/mascot-collision.spec.ts e2e/list-row.spec.ts --workers=2
+          corepack yarn exec playwright test e2e/public.spec.ts e2e/signed-in.spec.ts e2e/mascot-collision.spec.ts e2e/list-row.spec.ts e2e/edge-bleed.spec.ts --workers=2

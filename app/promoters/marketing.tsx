@@ -65,7 +65,7 @@ export function Hero({ primaryHref, primaryLabel, showSignIn, cardsLive = false,
           <h1 className="mt-3 font-display text-display">
             Put your event in front of people planning their weekend.
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. {passLine} We already index Moshtix, Oztix, Eventbrite, Humanitix and Ticketmaster.</p>
+          <p className="mt-4 max-w-xl text-lg text-white/90">List for free. {passLine} Public listings and organiser pages already sit in one place.</p>
           <p className="mt-3"><Link href="/local-ads" className="text-sm font-semibold text-[var(--vp-brand-orange)] underline underline-offset-4">Running a restaurant, bar or local business? See local ads.</Link></p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href={primaryHref} className={ctaClass}>{primaryLabel}</Link>
