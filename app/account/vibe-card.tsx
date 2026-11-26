@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AccountCardHeader } from '@/components/settings-section'
 import { Chip } from '@/components/ui/chip'
 import { Surface } from '@/components/ui/surface'
 import { VIBE_BIO_MAX, VIBE_QUESTIONS, asVibe, cleanVibe, vibeProgress, type VibeKey, type VibeProfile } from '@/lib/vibe-shared'
@@ -37,15 +37,13 @@ export function VibeCard({ initial, onSaved }: { initial: unknown; onSaved: (v: 
 
   return (
     <Surface id="vibe" pad="lg" className="scroll-mt-24">
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Your vibe</h2>
-        <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Optional</span>
-      </div>
-      <p className="text-sm text-muted-foreground mt-1">
-        All optional. Answer what you like. The more we get your vibe, the sharper your picks.
-      </p>
+      <AccountCardHeader
+        title="Your vibe"
+        lede="All optional. Answer what you like. The more we get your vibe, the sharper your picks."
+        aside={<span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Optional</span>}
+      />
 
-      <div className="mt-4">
+      <div className="mt-1">
         <div className="flex justify-between text-xs text-muted-foreground mb-1"><span>{done} of {total} answered</span>{done === total && <span className="text-primary font-semibold">Full vibe unlocked</span>}</div>
         <div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${Math.round((done / total) * 100)}%` }} /></div>
       </div>

@@ -12,8 +12,8 @@ import { CtaBanner } from '@/components/cta-banner'
 import { AddToCollection, CollectionsPanel, collectionEventFrom } from '@/components/collections-panel'
 import { SaveButton } from '@/components/save-button'
 import { EventImage } from '@/components/event-image'
-import { VibePeepMascot } from '@/components/vibepeep-mascot'
-import { PageMasthead } from '@/components/page-masthead'
+import { PageHero } from '@/components/page-hero'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useSaved, type SavedEvent } from '@/lib/saved'
 import { eventToItem, useItinerary } from '@/lib/itinerary'
 import { addDays, formatPrice } from '@/lib/board'
@@ -85,18 +85,15 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
   if (!signedIn) {
     return (
       <div className="mb-10">
-        <PageMasthead variant="saved" />
-        <div className="mt-[var(--vp-card-gap)] grid items-center gap-6 rounded-3xl bg-card px-5 py-8 shadow-[var(--vp-shadow-md)] sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
-          <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
-          <div className="text-center lg:text-left">
-            <h2 className="font-display text-3xl font-bold sm:text-4xl">Sign in to save events</h2>
-            <p className="mt-2 max-w-xl text-muted-foreground">Saved events live on your account. Browse what’s on, then save the ones you want.</p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-              <Button asChild size="md"><Link href="/login?next=/saved">{COPY.signIn}</Link></Button>
-              <Button type="button" variant="outline" size="md" onClick={onBrowse}>{COPY.browse}</Button>
-            </div>
-          </div>
-        </div>
+        <PageHero variant="saved" />
+        <EmptyState
+          className="mt-[var(--vp-card-gap)]"
+          size="page"
+          title="Sign in to save events"
+          body="Saved events live on your account. Browse what’s on, then save the ones you want."
+          action={{ href: '/login?next=/saved', label: COPY.signIn }}
+          secondary={{ label: COPY.browse, onClick: onBrowse }}
+        />
         <CollectionsPanel />
         <CtaBanner
           tone="card"
@@ -110,7 +107,7 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
 
   return (
     <div className="mb-10">
-      <PageMasthead variant="saved">
+      <PageHero variant="saved">
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Saved">
             {tabs.map((item) => (
@@ -121,29 +118,20 @@ export function SavedBoard({ today, nowMinutes, onBrowse }: { today: string | nu
           </div>
           <SegmentedControl value={resultsView} onChange={chooseView} label="List or map" className="bg-white/90" options={[{ key: 'list', text: 'List', Icon: LayoutList }, { key: 'map', text: 'Map', Icon: MapIcon }]} />
         </div>
-      </PageMasthead>
+      </PageHero>
 
       {!signedIn || saved.length === 0 || visible.length === 0 ? (
         resultsView === 'map' ? (
-          <p className="mt-[var(--vp-card-gap)] rounded-3xl bg-card px-4 py-6 text-sm text-muted-foreground shadow-[var(--vp-shadow-md)]">{signedIn ? 'Nothing with a pin yet. Save a night out and we’ll drop it on the map.' : 'Sign in and your keepers with a pin will land on the map.'}</p>
+          <p className="mt-[var(--vp-card-gap)] rounded-card bg-card px-5 py-6 text-sm text-muted-foreground shadow-vp-md">{signedIn ? 'Nothing with a pin yet. Save a night out and we’ll drop it on the map.' : 'Sign in and your keepers with a pin will land on the map.'}</p>
         ) : (
-        <div className="mt-[var(--vp-card-gap)] grid items-center gap-6 rounded-3xl bg-card px-5 py-8 shadow-[var(--vp-shadow-md)] sm:px-10 lg:grid-cols-[9rem_minmax(0,1fr)] lg:py-12">
-          <VibePeepMascot className="mx-auto w-28 sm:w-32" alt="VibePeep" />
-          <div className="text-center lg:text-left">
-          <h2 className="font-display text-3xl font-bold sm:text-4xl">{saved.length && visible.length === 0 ? 'Nothing in this set.' : 'Nothing saved. Yet.'}</h2>
-          <p className="mt-2 max-w-xl text-muted-foreground">{saved.length && visible.length === 0 ? 'None of your saved events fall in this window. Try All saved, or come back when the weekend lands.' : signedIn ? 'See something you love? Tap the bookmark and we’ll keep it here for you.' : 'Your saved events live on your account. Sign in and we’ll keep them safe.'}</p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-            {signedIn ? (
-              <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Find something good.</button>
-            ) : (
-              <>
-                <Link href="/login?next=/saved" className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground">Sign in</Link>
-                <button type="button" onClick={onBrowse} className="inline-flex h-11 items-center rounded-full border border-border px-5 text-sm font-semibold">Find something good.</button>
-              </>
-            )}
-          </div>
-          </div>
-        </div>
+          <EmptyState
+            className="mt-[var(--vp-card-gap)]"
+            size="page"
+            title={saved.length && visible.length === 0 ? 'Nothing in this set.' : 'Nothing saved. Yet.'}
+            body={saved.length && visible.length === 0 ? 'None of your saved events fall in this window. Try All saved, or come back when the weekend lands.' : signedIn ? 'See something you love? Tap the bookmark and we’ll keep it here for you.' : 'Your saved events live on your account. Sign in and we’ll keep them safe.'}
+            action={signedIn ? <Button type="button" onClick={onBrowse}>Find something good.</Button> : { href: '/login?next=/saved', label: COPY.signIn }}
+            secondary={signedIn ? undefined : { label: 'Find something good.', onClick: onBrowse }}
+          />
         )
       ) : (
         <>
