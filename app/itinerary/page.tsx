@@ -10,8 +10,9 @@ import { Navbar } from '@/components/navbar'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { useSession } from 'next-auth/react'
 import { useSaved } from '@/lib/saved'
-import { PageMasthead } from '@/components/page-masthead'
+import { PageHero } from '@/components/page-hero'
 import { ViewToggle } from '@/components/view-toggle'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useItinerary, useItineraryLabel, ITINERARY_NAME_LIMIT, sortItinerary, clashMap, eventToItem, type ItineraryItem } from '@/lib/itinerary'
@@ -333,7 +334,7 @@ export default function ItineraryPage() {
     <div className="min-h-screen bg-background">
       <Navbar savedCount={saved.length} />
       <main className="vp-wrap vp-page-top px-4 pb-8 sm:px-6">
-        <PageMasthead variant="itinerary" />
+        <PageHero variant="itinerary" />
 
         {shared.length > 0 && (
           <section className="mt-hero rounded-card border border-border bg-card p-card" aria-label="Shared Itinerary">
@@ -349,16 +350,14 @@ export default function ItineraryPage() {
 
         {!arranged.length ? (
           <div className="mt-[var(--vp-card-gap)]">
-            <div className="rounded-card bg-card shadow-vp-md">
-              <EmptyState
-                size="page"
-                title="Nothing lined up yet."
-                body="Spot something worth leaving the house for, add it here, and stack the rest around it. Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved."
-                action={<button type="button" onClick={() => openPanel('event')} className="inline-flex h-11 items-center rounded-full bg-primary px-5 text-sm font-semibold text-on-primary">Add a stop</button>}
-                secondary={status !== 'authenticated' ? { href: '/login?next=/itinerary', label: 'Sign in' } : undefined}
-              />
-            </div>
-            <aside className="mt-hero rounded-hero bg-card p-card shadow-vp-sm" aria-label="Example itinerary">
+            <EmptyState
+              size="page"
+              title="Nothing lined up yet."
+              body="Spot something worth leaving the house for, add it here, and stack the rest around it. Stays on this device while you’re signed in. Clears when you sign out. Separate from Saved."
+              action={<Button type="button" onClick={() => openPanel('event')}>Add a stop</Button>}
+              secondary={status !== 'authenticated' ? { href: '/login?next=/itinerary', label: 'Sign in' } : undefined}
+            />
+            <aside className="mt-hero rounded-card bg-card p-card shadow-vp-sm" aria-label="Example itinerary">
               <p className="vp-eyebrow text-muted-foreground">Example only. Not your Itinerary, and not a real listing.</p>
               <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
                 <li>Evening · A gig</li>

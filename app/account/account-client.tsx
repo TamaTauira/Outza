@@ -3,16 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, Calendar, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { CATEGORIES } from '@/lib/categories'
 import { CITIES } from '@/lib/cities'
 import { ProfileFields } from '@/components/profile-fields'
 import { aboutYouStatus, profileDigits, visibleAboutErrors } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
-import { eventsToIcs, SAVED_ICS_FILENAME } from '@/lib/ics'
-import { eventPath } from '@/lib/seo'
-import { useSaved } from '@/lib/saved'
+import { AccountCardHeader, SettingsSection } from '@/components/settings-section'
 import { PasswordField } from '@/components/password-field'
 import { BrandedLoading } from '@/components/branded-loading'
 import { PageHeading } from '@/components/page-heading'
@@ -136,8 +134,7 @@ export function AccountClient() {
       <div className="vp-card-grid mt-[var(--vp-card-gap)] min-w-0 items-start lg:grid-cols-2">
 
       {!promoter && <section className={`${card} lg:col-span-2`}>
-        <h2 className="font-semibold mb-1">About you</h2>
-        <p className="text-xs text-muted-foreground mb-3">{yearRequired ? 'Year of birth keeps things fair for event-goers. We don’t store the day. Postcode is your call.' : 'Optional for promoter accounts.'}</p>
+        <AccountCardHeader title="About you" lede={yearRequired ? 'Year of birth keeps things fair for event-goers. We don’t store the day. Postcode is your call.' : 'Optional for promoter accounts.'} />
         <form noValidate onSubmit={(e) => { e.preventDefault(); void saveAbout() }}>
           <ProfileFields idPrefix="acct" birthYear={year} homePostcode={pc} onBirthYear={setYear} onPostcode={setPc} showNote={false} yearRequired={yearRequired} yearError={shown.yearError} postcodeError={shown.postcodeError} onBirthYearBlur={() => setYearTouched(true)} onEnter={() => { void saveAbout() }} yearRef={yearRef} postcodeRef={pcRef} />
           {/* pointer-events-none while disabled lets the same tap read the inputs. iOS can commit the last digit on blur after the button has already ignored the click. */}
@@ -156,18 +153,16 @@ export function AccountClient() {
         <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-control w-full rounded-control border border-border bg-background px-3 text-base sm:w-auto">
           {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
         </select>
-        <h2 className="font-semibold mt-5 mb-1">What’s your thing?</h2>
-        <p className="text-xs text-muted-foreground mb-3">We’ll use this when we write to you.</p>
+        <AccountCardHeader className="mt-5" title="What’s your thing?" lede="We’ll use this when we write to you." />
         <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <Chip key={c.name} pressed={(me.preferredCategories ?? []).includes(c.name)} onClick={() => save({ preferredCategories: toggleIn(me.preferredCategories ?? [], c.name) })}>{c.name}</Chip>)}</div>
-        <h2 className="font-semibold mt-5 mb-3">Cities to include</h2>
+        <AccountCardHeader className="mt-5" title="Cities to include" />
         <div className="flex flex-wrap gap-2">{CITIES.map((c) => <Chip key={c.name} pressed={(me.preferredCities ?? []).includes(c.name)} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })}>{c.name}</Chip>)}</div>
       </section>}
 
       {!promoter && <FollowsCard />}
 
       {!promoter && <section id="inbox" className={card}>
-        <h2 className="font-semibold mb-1">Email</h2>
-        <p className="mb-3 text-sm text-muted-foreground">One place for the daily note, the day-before nudge, and a preview. Nothing is sent until you tick a box.</p>
+        <AccountCardHeader title="Email" lede="One place for the daily note, the day-before nudge, and a preview. Nothing is sent until you tick a box." />
         <label className="flex items-start gap-3 text-sm cursor-pointer">
           <input type="checkbox" checked={me.emailOptIn} onChange={(e) => save({ emailOptIn: e.target.checked })} className="mt-1 w-4 h-4 accent-[hsl(var(--primary))]" />
           <span>Send me a note ({(me.emailFrequency || 'weekly').toLowerCase()}). I’ll round up upcoming keepers and new events at venues you follow.</span>
@@ -190,7 +185,7 @@ export function AccountClient() {
       </section>}
 
       {!promoter && <section className={card}>
-        <h2 className="font-semibold mb-3">Friends</h2>
+        <AccountCardHeader title="Friends" />
         <form onSubmit={(e) => { e.preventDefault(); if (friendEmail) { friendAction({ email: friendEmail }, 'POST'); setFriendEmail('') } }} className="flex gap-2">
           <Input type="email" value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} placeholder="Friend's email" aria-label="Friend's email" className="min-w-0 flex-1" />
           <Button>Add</Button>
@@ -239,8 +234,7 @@ function PromoterProfile({ me, onSaved }: { me: Me; onSaved: (patch: Partial<Me>
   }
   return (
     <section className={card}>
-      <h2 className="font-semibold mb-1">Promoter profile</h2>
-      <p className="text-xs text-muted-foreground mb-3">This is what people see on your public organiser page.</p>
+      <AccountCardHeader title="Promoter profile" lede="This is what people see on your public organiser page." />
       <form onSubmit={save} className="space-y-3">
         <input value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="Organisation name" aria-label="Organisation name" className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm" />
         <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Short bio" aria-label="Bio" rows={3} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm" />
@@ -254,7 +248,6 @@ function PromoterProfile({ me, onSaved }: { me: Me; onSaved: (patch: Partial<Me>
 }
 
 function FollowsCard() {
-  const { saved } = useSaved()
   const [tags, setTags] = useState<string[]>([])
   const [venues, setVenues] = useState<{ venueKey: string; venueName: string; city: string | null }[]>([])
   const [loading, setLoading] = useState(true)
@@ -279,36 +272,12 @@ function FollowsCard() {
     if (res.ok) setVenues((list) => list.filter((item) => item.venueKey !== venue.venueKey))
     else toast.error('Could not unfollow that')
   }
-  const download = async () => {
-    const res = await fetch('/api/me/calendar')
-    const body = res.ok ? await res.text() : eventsToIcs(saved.map((ev) => ({
-      id: ev.id, title: ev.title, date: ev.date, endDate: ev.endDate, time: ev.time, endTime: ev.endTime,
-      venueName: ev.venueName, city: ev.city,
-      url: ev.href?.startsWith('http') ? ev.href : `${window.location.origin}${ev.href ?? eventPath(ev)}`,
-    })), { calendarName: 'VibePeep' })
-    if (!body) { toast.error('The calendar didn’t land. Give it another go.'); return }
-    const blob = new Blob([body], { type: 'text/calendar' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = SAVED_ICS_FILENAME
-    a.click()
-    URL.revokeObjectURL(url)
-  }
 
   return (
     <section id="following" className={`${card} lg:col-span-2`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-semibold">Following</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Interests and venues you follow. Saved events stay on <Link href="/saved" className="text-primary underline">Saved</Link>.</p>
-        </div>
-        <button type="button" onClick={() => { void download() }} className="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm hover:bg-muted">
-          <Calendar className="h-4 w-4" />Add to my calendar
-        </button>
-      </div>
-      {loading ? <Loader2 className="mt-3 h-5 w-5 animate-spin text-primary" /> : (
-        <div className="mt-4 grid gap-5 sm:grid-cols-2">
+      <AccountCardHeader title="Following" lede={<>Interests and venues you follow. Saved events stay on <Link href="/saved" className="text-primary underline">Saved</Link>.</>} />
+      {loading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : (
+        <div className="grid gap-5 sm:grid-cols-2">
           <div>
             <h3 className="text-sm font-semibold">Interests</h3>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -365,18 +334,19 @@ function SecurityCard({ email }: { email: string }) {
   }
   return (
     <section className={card}>
-      <h2 className="font-semibold mb-3">Password</h2>
-      <form onSubmit={change} className="space-y-2">
-        <PasswordField value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Current password" aria-label="Current password" autoComplete="current-password" className="h-10" />
-        <PasswordField value={next} onChange={(e) => setNext(e.target.value)} placeholder="New password" aria-label="New password" autoComplete="new-password" className="h-10" />
-        <button disabled={busy} className="h-9 px-4 rounded-md border border-border text-sm font-semibold hover:bg-muted disabled:opacity-60">Change password</button>
-      </form>
-      <h2 className="font-semibold mt-6 mb-1">Close account</h2>
-      <p className="text-xs text-muted-foreground mb-2">Type {email} to permanently delete this login. Closing the account does not by itself refund a purchase. Refund rights are on the <Link href="/refunds" className="underline">refunds page</Link>, including under the Australian Consumer Law.</p>
-      <form onSubmit={close} className="flex flex-col sm:flex-row gap-2">
-        <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={email} aria-label="Confirm email to close account" className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm" />
-        <button disabled={busy || confirm.trim().toLowerCase() !== email.toLowerCase()} className="h-10 px-4 rounded-md border border-destructive text-destructive text-sm font-semibold disabled:opacity-40">Close account</button>
-      </form>
+      <SettingsSection title="Password">
+        <form onSubmit={change} className="space-y-2">
+          <PasswordField value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Current password" aria-label="Current password" autoComplete="current-password" />
+          <PasswordField value={next} onChange={(e) => setNext(e.target.value)} placeholder="New password" aria-label="New password" autoComplete="new-password" />
+          <button disabled={busy} className="h-control rounded-control border border-border px-4 text-sm font-semibold hover:bg-muted disabled:opacity-60">Change password</button>
+        </form>
+      </SettingsSection>
+      <SettingsSection className="mt-6" title="Close account" lede={<>Type {email} to permanently delete this login. Closing the account does not by itself refund a purchase. Refund rights are on the <Link href="/refunds" className="underline">refunds page</Link>, including under the Australian Consumer Law.</>}>
+        <form onSubmit={close} className="flex flex-col gap-2 sm:flex-row">
+          <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={email} aria-label="Confirm email to close account" autoComplete="off" className="min-w-0 flex-1" />
+          <button disabled={busy || confirm.trim().toLowerCase() !== email.toLowerCase()} className="h-control rounded-control border border-destructive px-4 text-sm font-semibold text-destructive disabled:opacity-40">Close account</button>
+        </form>
+      </SettingsSection>
     </section>
   )
 }
