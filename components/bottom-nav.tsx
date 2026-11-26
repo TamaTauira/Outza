@@ -8,6 +8,7 @@ import { PeepIcon } from '@/components/peep-icon'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { AskSheet } from '@/components/ask-sheet'
+import { DecorativeGlow } from '@/components/decorative-glow'
 import { MenuSheet } from '@/components/menu-sheet'
 import { navShouldHide, shouldPopSaved } from '@/lib/bottom-nav'
 import type { SearchHints } from '@/lib/search-hints'
@@ -200,6 +201,7 @@ export function BottomNav({ savedCount, ready = true }: { savedCount: number; re
   return (
     <>
       <nav ref={navRef} className="vp-bottom-nav" aria-label="Primary">
+        <DecorativeGlow />
         <div className="vp-bottom-nav-inner">
           {LEFT.map(tab)}
           <button

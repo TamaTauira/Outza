@@ -107,7 +107,7 @@ export function GuideLanding(props: {
           )}
         </header>
 
-        <div className="sticky top-14 z-30 -mx-4 mt-6 space-y-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:top-16 sm:-mx-6 sm:px-6">
+        <div className="sticky top-[var(--vp-header-offset)] z-30 -mx-4 mt-6 space-y-2 border-b border-border bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
         <nav aria-label={`${city.name} guides`} className="flex gap-2 overflow-x-auto [scrollbar-width:thin]">
           {guides.map((t) => {
             const active = activeGuide === t.key

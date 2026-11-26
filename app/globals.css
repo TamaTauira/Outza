@@ -263,22 +263,16 @@
 
 .vp-quick-search {
   position: sticky;
-  top: 3.5rem;
+  top: var(--vp-header-offset);
   z-index: 30;
   background: hsl(var(--card));
 }
+.vp-day-head { top: calc(var(--vp-header-offset) + 4.75rem); }
 @media (min-width: 640px) {
-  .vp-quick-search { top: 4rem; }
-}
-.vp-day-head { top: calc(3.5rem + 4.75rem); }
-@media (min-width: 640px) {
-  .vp-day-head { top: calc(4rem + 5.25rem); }
+  .vp-day-head { top: calc(var(--vp-header-offset) + 5.25rem); }
 }
 /* Local list has no sticky search bar, so the day head sits under the site header. */
-.vp-day-head-page { top: 3.5rem; }
-@media (min-width: 640px) {
-  .vp-day-head-page { top: 4rem; }
-}
+.vp-day-head-page { top: var(--vp-header-offset); }
 
 /* Fluid shell. Full width up to the spec cap. Prose can sit inside --vp-container-prose. */
 .vp-wrap {
@@ -868,7 +862,17 @@ a[class*="w-9"] {
 }
 
 /* Frosted header fill. contain: paint clips the blur kernel so it cannot
-   paint a white fringe past the viewport. overflow on html/body does not. */
+   paint a white fringe past the viewport. overflow on html/body does not.
+   viewport-fit=cover draws under the status bar, so the bar keeps the top inset
+   and the offset used by the spacer and sticky heads includes it. */
+:root {
+  --vp-safe-top: env(safe-area-inset-top, 0px);
+  --vp-header-bar: 3.5rem;
+  --vp-header-offset: calc(var(--vp-header-bar) + var(--vp-safe-top));
+}
+@media (min-width: 640px) {
+  :root { --vp-header-bar: 4rem; }
+}
 .vp-decorative-glow {
   position: absolute;
   inset: 0;
@@ -879,6 +883,7 @@ a[class*="w-9"] {
 .vp-site-header {
   overflow: clip;
   contain: paint;
+  padding-top: var(--vp-safe-top);
 }
 
 /* Shared lockup. The image is the icon and the wordmark, already centred on each other. */

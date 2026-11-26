@@ -11,6 +11,13 @@
   display: none;
 }
 
+/* The frost stays on the bar. The raised Ask face lives in the padding above it,
+   inside the nav box, so a horizontal clip cannot cut the circle or its clicks. */
+.vp-bottom-nav .vp-decorative-glow {
+  top: var(--vp-ask-raise, 0px);
+  border-top: 1px solid hsl(var(--border));
+}
+
 /* An inner .vp-page-top is the only gap under the header.
    main.vp-page-top is that gap itself (Local, Itinerary, promoter), so it keeps the token.
    Zeroing it here used to win over globals.css because this file loads later. */
@@ -38,25 +45,16 @@
     left: 0;
     right: 0;
     bottom: 0;
+    padding-top: var(--vp-ask-raise);
     padding-bottom: env(safe-area-inset-bottom, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
-    background: hsl(var(--background) / 0.9);
-    overflow: clip;
-    contain: paint;
-    border-top: 1px solid hsl(var(--border));
+    /* Clip sideways only. The Ask face sits in the padding above the bar,
+       so this does not slice the circle. Paint containment would. */
+    overflow-x: clip;
+    overflow-y: visible;
     transition: transform 220ms ease;
     will-change: transform;
-  }
-
-  .vp-bottom-nav::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: hsl(var(--background) / 0.9);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
   }
 
   .vp-bottom-nav.is-away {
@@ -162,6 +160,8 @@
 
 
 .vp-bottom-nav-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
@@ -557,7 +557,7 @@ html.vp-ask-open [data-state='open'].fixed.inset-0 {
   }
 
   .vp-map-main {
-    height: calc(env(viewport-segment-height 0 0) - 3.5rem) !important;
+    height: calc(env(viewport-segment-height 0 0) - var(--vp-header-offset)) !important;
   }
 
   .vp-menu-sheet,
@@ -580,12 +580,6 @@ html.vp-ask-open [data-state='open'].fixed.inset-0 {
   .vp-roam:not([data-ready]),
   .vp-roam-parked {
     bottom: calc(100dvh - env(viewport-segment-bottom 0 0) + 1.25rem) !important;
-  }
-}
-
-@media (min-width: 640px) and (vertical-viewport-segments: 2) {
-  .vp-map-main {
-    height: calc(env(viewport-segment-height 0 0) - 4rem) !important;
   }
 }
 
@@ -627,20 +621,10 @@ html[data-vp-fold='side'] .vp-bottom-nav {
   right: auto;
   bottom: 0;
   width: calc((100% - 24px) / 2);
+  padding-top: var(--vp-ask-raise);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: hsl(var(--background) / 0.9);
-  overflow: clip;
-  contain: paint;
-  border-top: 1px solid hsl(var(--border));
-}
-html[data-vp-fold='side'] .vp-bottom-nav::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: hsl(var(--background) / 0.9);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 html[data-vp-fold='side'] .vp-ticket-bar,
