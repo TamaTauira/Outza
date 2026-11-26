@@ -6,8 +6,8 @@ public/email-headers/. The plate is a black field, a soft orange-to-pink
 glow, the dark VibePeep lockup, that kind's title, and that kind's approved
 Tummer from assets/email-header-source/<kind>.png (props included).
 
-A kind with no plate yet uses PLATE_FALLBACK. Dropping the real file in
-later (for example big-month.png) wins on the next run without a code change.
+Every kind has its own plate. A missing file stops the build.
+Tummer's hands stay rounded mittens. Plates with fingers or a thumbs-up are not used.
 
 The same run writes the footer glow and the small orange fact icons
 (Calendar, Clock, Banknote, MapPin) plus the white social marks.
@@ -25,11 +25,6 @@ ROOT = Path(__file__).resolve().parents[1]
 COPY = ROOT / 'lib' / 'email-header-copy.json'
 SOURCE = ROOT / 'assets' / 'email-header-source'
 LOCKUP = ROOT / 'public' / 'brand' / 'vibepeep-lockup-dark@3x.png'
-# Only when assets/email-header-source/<kind>.png is missing.
-# big-month and general have their own plates. A later file still wins on its own.
-PLATE_FALLBACK = {
-    'ops-digest': 'owner-ideas',
-}
 # Eyes land on this point, at this spacing, unless a prop would leave the frame.
 TARGET_EYE = (900, 248)
 TARGET_EYE_DIST = 148
@@ -78,18 +73,12 @@ def glow_field(width: int, height: int, scale: float = 1.0) -> Image.Image:
     return Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), 'RGB')
 
 
-def resolve_plate(kind: str) -> tuple[Path, str | None]:
-    """Own plate wins. Missing files use PLATE_FALLBACK until the art lands."""
+def resolve_plate(kind: str) -> Path:
+    """Each email type uses its own approved plate. Nothing is borrowed."""
     own = SOURCE / f'{kind}.png'
-    if own.exists():
-        return own, None
-    fallback = PLATE_FALLBACK.get(kind)
-    if not fallback:
-        raise SystemExit(f'no approved plate for {kind}')
-    path = SOURCE / f'{fallback}.png'
-    if not path.exists():
-        raise SystemExit(f'{kind} falls back to {fallback}, but {path.name} is missing')
-    return path, fallback
+    if not own.exists():
+        raise SystemExit(f'no approved plate for {kind}: {own}')
+    return own
 
 
 def _flood(gate: np.ndarray) -> np.ndarray:
@@ -425,14 +414,13 @@ def main() -> None:
     HEADERS.mkdir(parents=True, exist_ok=True)
     cache: dict[str, tuple[Image.Image, tuple[float, float] | None, float | None]] = {}
     for kind, headline in headlines.items():
-        plate, fallback = resolve_plate(kind)
+        plate = resolve_plate(kind)
         if plate.name not in cache:
             cache[plate.name] = extract_mascot(plate)
         art, eye_xy, eye_dist = cache[plate.name]
         image = build_header(headline, art, eye_xy, eye_dist, lockup, face)
         save_png(HEADERS / f'{kind}.png', image)
-        via = f' via {fallback}' if fallback else ''
-        print(f'{kind}: {headline}{via}')
+        print(f'{kind}: {headline}')
     save_png(FOOTER, glow_field(1200, 480, scale=1.15))
     icons = {
         'calendar.png': fact_calendar(),
