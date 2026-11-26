@@ -2,16 +2,20 @@
 
 import { notifyAddedToItinerary, notifyRemovedFromItinerary } from '@/lib/notify'
 import { CalendarCheckIcon, CalendarPlusIcon } from '@/components/calendar-plus-icon'
+import { EventActionButton } from '@/components/event-action-button'
 import { useItinerary, eventToItem } from '@/lib/itinerary'
+import { navItem } from '@/lib/nav'
+import { COPY } from '@/lib/copy'
 import { cn } from '@/lib/utils'
 
 type Ev = Parameters<typeof eventToItem>[0]
 
-const ADD_LABEL = 'Add to Itinerary'
-const ADDED_LABEL = 'On your Itinerary'
+const ADD_LABEL = COPY.addToItinerary
+const ADDED_LABEL = COPY.onItinerary
+const STACK_LABEL = navItem('itinerary').label
 
-/** Add to the itinerary. `compact` and `lineup` are icon-only; the default button includes the words. */
-export function ItineraryButton({ event, compact = false, lineup = false, outline = false, surface, className }: { event: Ev; compact?: boolean; lineup?: boolean; outline?: boolean; surface?: string; className?: string }) {
+/** Add to the itinerary. `compact` and `lineup` are icon-only. `stack` matches Save, Plan and Share. */
+export function ItineraryButton({ event, compact = false, lineup = false, outline = false, stack = false, surface, className }: { event: Ev; compact?: boolean; lineup?: boolean; outline?: boolean; stack?: boolean; surface?: string; className?: string }) {
   const { has, add, remove } = useItinerary()
   const inIt = has(event.id)
   const onClick = (e: React.MouseEvent) => {
@@ -27,6 +31,19 @@ export function ItineraryButton({ event, compact = false, lineup = false, outlin
   }
   const iconLabel = inIt ? ADDED_LABEL : ADD_LABEL
   const Icon = inIt ? CalendarCheckIcon : CalendarPlusIcon
+
+  if (stack) {
+    return (
+      <EventActionButton
+        icon={Icon}
+        label={STACK_LABEL}
+        ariaLabel={iconLabel}
+        pressed={inIt}
+        onClick={onClick}
+        className={className}
+      />
+    )
+  }
 
   if (lineup || compact) {
     return (
@@ -51,9 +68,8 @@ export function ItineraryButton({ event, compact = false, lineup = false, outlin
     )
   }
 
-  const label = inIt ? 'On your Itinerary' : 'Add to Itinerary'
+  const label = inIt ? ADDED_LABEL : ADD_LABEL
   if (outline) {
-    const short = inIt ? 'On your Itinerary' : 'Add to Itinerary'
     return (
       <button
         type="button"
@@ -66,7 +82,7 @@ export function ItineraryButton({ event, compact = false, lineup = false, outlin
         aria-pressed={inIt}
       >
         <Icon className="h-4 w-4 shrink-0" aria-hidden />
-        {short}
+        {label}
       </button>
     )
   }
