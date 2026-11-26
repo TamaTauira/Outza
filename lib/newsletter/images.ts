@@ -8,10 +8,12 @@ import { placeholderAbsolute, type PlaceholderSlot } from '@/lib/placeholders'
 
 /**
  * Email images are absolute https URLs on the canonical host.
- * Source photos are resized to JPEG. A listing with no photo uses its genre placeholder WebP, unchanged.
+ * Source photos are letterboxed to JPEG (16:9 hero, 4:3 thumb), never cropped.
+ * A listing with no photo uses its genre placeholder at that same frame.
  * Nothing is inlined as a data URI.
  */
-export const EMAIL_SIZES = { hero: { w: 1200, h: 675 }, thumb: { w: 360, h: 360 } } as const
+export const EMAIL_SIZES = { hero: { w: 1200, h: 675 }, thumb: { w: 960, h: 720 } } as const
+export const EMAIL_IMAGE_FILL = '#141414'
 export type EmailKind = keyof typeof EMAIL_SIZES
 
 /** Mascot PNG on the canonical host. One sign-off in the digest, never an event thumbnail. A listing with no photo uses genre placeholder art instead. */
@@ -26,7 +28,7 @@ export function emailImageSrc(ev: ImgSource, kind: EmailKind): string {
     const q = new URLSearchParams({ e: ev.id, k: kind })
     return `${CANONICAL_SITE_URL}/api/nl/img?${q}`
   }
-  const slot: PlaceholderSlot = kind === 'thumb' ? 'square' : 'hero'
+  const slot: PlaceholderSlot = kind === 'thumb' ? 'card' : 'hero'
   return placeholderAbsolute(ev.category, slot, CANONICAL_SITE_URL)
 }
 
@@ -103,14 +105,25 @@ export async function categoryFillJpeg(label: string, kind: EmailKind): Promise<
   }
 }
 
-/** JPEG rendition for the public email-image route. */
-export async function renderEmailImage(src: string, kind: EmailKind): Promise<{ body: Buffer; contentType: string } | null> {
+export function emailFillColor(color: string | null | undefined): { r: number; g: number; b: number } {
+  const match = /^#?([0-9a-fA-F]{6})$/.exec((color ?? '').trim())
+  if (!match) return { r: 0x14, g: 0x14, b: 0x14 }
+  const n = parseInt(match[1], 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+
+/**
+ * JPEG for the public email-image route.
+ * Artwork is contained on imageColor (or a dark fill). Outlook ignores
+ * object-fit, so the letterbox is baked into this file.
+ */
+export async function renderEmailImage(src: string, kind: EmailKind, color?: string | null): Promise<{ body: Buffer; contentType: string } | null> {
   const buf = await fetchBytes(src)
   if (buf.subarray(0, 300).toString('utf8').toLowerCase().includes('<svg')) return null
   const sharp = await loadSharp()
   if (!sharp) return null
   const { w, h } = EMAIL_SIZES[kind]
-  const jpg = await sharp(buf).rotate().resize(w, h, { fit: 'cover', position: 'centre' }).jpeg({ quality: 82 }).toBuffer()
+  const jpg = await sharp(buf).rotate().resize(w, h, { fit: 'contain', background: emailFillColor(color), position: 'centre' }).jpeg({ quality: 82 }).toBuffer()
   return { body: jpg, contentType: 'image/jpeg' }
 }
 

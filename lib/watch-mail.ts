@@ -6,6 +6,7 @@ import { isQaAccountEmail, liveSubscriberWhere } from '@/lib/qa-account'
 import { emailDateRange, emailMetaLine } from '@/lib/email-brand'
 import { unsubscribeApiUrl, unsubscribeUrl } from '@/lib/newsletter/links'
 import { eventPath } from '@/lib/seo'
+import { mapsDirectionsUrl } from '@/lib/place'
 import {
   composeWatchEmail,
   emailPlace,
@@ -22,7 +23,8 @@ import {
 const eventBits = {
   id: true, title: true, date: true, endDate: true, time: true, endTime: true, venueName: true, venueAddress: true,
   city: true, category: true, suburb: true, seriesKey: true, status: true, duplicateOfId: true, isFree: true,
-  price: true, priceMin: true, priceMax: true, allDay: true, imageUrl: true,
+  price: true, priceMin: true, priceMax: true, allDay: true, imageUrl: true, imageColor: true,
+  latitude: true, longitude: true,
   imageAsset: { select: { status: true } },
   venue: { select: { claimStatus: true } },
 } as const
@@ -59,6 +61,15 @@ function toMail(ev: Listed): MailEvent {
     price: price?.text ?? null,
     priceKind: price?.kind ?? null,
     category: ev.category,
+    imageColor: ev.imageColor,
+    directionsHref: mapsDirectionsUrl({
+      latitude: ev.latitude,
+      longitude: ev.longitude,
+      venueAddress: ev.venueAddress,
+      venueName: ev.venueName,
+      suburb: ev.suburb,
+      city: ev.city,
+    }),
     claimed: ev.venue?.claimStatus === 'CLAIMED' ? 'venue' : null,
   }
 }
