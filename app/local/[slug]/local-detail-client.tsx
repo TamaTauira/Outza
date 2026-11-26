@@ -19,6 +19,7 @@ import type { ClientImage } from '@/lib/images/spec'
 import { useSaved } from '@/lib/saved'
 import { cityDef } from '@/lib/cities'
 import { eventDetailPrice } from '@/lib/event-facts'
+import { formatDate } from '@/lib/format'
 import { fmtDay, fmtTime, localCategoryLabel, localPath, localToBoard } from '@/lib/local-shared'
 import { TRANSIT } from '@/app/events/[id]/_components/event-extras'
 
@@ -38,7 +39,7 @@ const CAT_COLOR: Record<string, string> = { GARAGE: '#b45309', WAREHOUSE: '#4755
 export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; date: string }) {
   const { saved, isSaved, toggle, signedIn } = useSaved()
   const priced = eventDetailPrice({ price: l.priceNote, isFree: !!l.priceNote && /^free\b/i.test(l.priceNote.trim()) })
-  const cityName = cityDef(l.city).name
+  const city = cityDef(l.city)
   const ev = localToBoard({ ...l, date })
   const stop = { ...ev, venueAddress: `${l.suburb} ${l.postcode}`, lat: l.lat, lng: l.lng, imageUrl: l.imageUrl }
   const place = `${l.address}, ${l.suburb} ${l.postcode}`
@@ -91,12 +92,12 @@ export function LocalDetailClient({ listing: l, date }: { listing: LocalDetail; 
 
             <div className="mb-6 grid min-w-0 gap-6 md:grid-cols-2">
               <EventDetails
-                date={fmtDay(date)}
+                date={formatDate(date, 'long')}
                 time={l.startTime ? `${fmtTime(l.startTime)} – ${fmtTime(l.endTime)}` : null}
-                timeZoneLabel={cityName}
+                timeZoneLabel={city.name}
                 price={priced.label}
                 venue={<span className="font-medium">{l.address}</span>}
-                address={`${l.suburb} ${l.postcode}`.trim()}
+                address={[l.suburb, l.postcode, city.state].filter(Boolean).join(', ')}
                 directionsHref={dir('driving')}
                 directionsLabel={`Directions to ${l.title}`}
                 placeNote={!l.addressVerified ? (l.sourceName ? 'Address from the original listing and not checked on a map.' : 'Address supplied by the organiser and not checked on a map.') : null}
