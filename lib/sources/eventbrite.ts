@@ -6,6 +6,7 @@ import { preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
 import { distanceKm } from '@/lib/travel'
 import { addressInTasmania, coordsInTasmania } from '@/lib/tas-retag'
+import { INGEST_RADIUS_SLACK_KM, cityForIngest } from '@/lib/venue-city'
 
 function parseServerData(html: string): any | null {
   const marker = 'window.__SERVER_DATA__ = '
@@ -109,11 +110,9 @@ function listingTruncated(page: ListingPage): boolean {
 function filedCity(search: CityDef, lat: number, lng: number, address?: string | null): string | null {
   const has = Number.isFinite(lat) && Number.isFinite(lng) && !!(lat || lng)
   if (has && coordsInTasmania(lat, lng)) return 'Hobart'
-  if (addressInTasmania(address) && (!has || distanceKm({ lat, lng }, search) > search.radiusKm + 40)) return 'Hobart'
+  if (addressInTasmania(address) && (!has || distanceKm({ lat, lng }, search) > search.radiusKm + INGEST_RADIUS_SLACK_KM)) return 'Hobart'
   if (!has) return search.name
-  if (distanceKm({ lat, lng }, search) <= search.radiusKm + 40) return search.name
-  const nearer = CITIES.find((c) => distanceKm({ lat, lng }, c) <= c.radiusKm)
-  return nearer?.name ?? null
+  return cityForIngest(lat, lng)?.name ?? null
 }
 
 async function storeResults(city: CityDef, results: any[], forceFree: boolean): Promise<number> {

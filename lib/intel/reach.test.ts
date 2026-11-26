@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { checkLGBTI } from '../categories'
+import { CITIES } from '../cities'
 import {
   buildCatalogueSnapshot, composeInsights, insightText, listedPrice, priceBand, queerPromoLinks, reachGoal, shareSum, weekdayMedians,
   type AreaSignals, type CatalogueSnapshot, type EventFacts,
@@ -181,7 +182,7 @@ test('a pinned venue with no ABS rows says the profile needs an import', () => {
 })
 
 test('queer listings get an VibePeep line plus real channels, and no made-up audience size', () => {
-  const cities = ['Sydney', 'Melbourne', 'Brisbane', 'Gold Coast', 'Perth', 'Adelaide', 'Canberra', 'Hobart', 'Darwin', 'Newcastle'] as const
+  const cities = CITIES.map((city) => city.name)
   const must: Record<string, string[]> = {
     Sydney: ['starobserver.com.au', 'mardigras.org.au', 'stonewallnewtown.com.au', '/sydney/lgbtiq'],
     Melbourne: ['joy.org.au', 'midsumma.org.au', '/melbourne/lgbtiq'],
@@ -193,7 +194,9 @@ test('queer listings get an VibePeep line plus real channels, and no made-up aud
     Hobart: ['taspride.com', '/hobart/lgbtiq'],
     Darwin: ['topendpride.com.au', '/darwin/lgbtiq'],
     Newcastle: ['starobserver.com.au', 'newcastlepride.com.au', '/newcastle/lgbtiq'],
+    Wollongong: ['starobserver.com.au', 'dnamagazine.com.au', '/wollongong/lgbtiq'],
   }
+  assert.deepEqual([...cities].sort(), Object.keys(must).sort())
   for (const city of cities) {
     const links = queerPromoLinks(city, 'Music')
     const urls = links.map((l) => l.url).join(' ')

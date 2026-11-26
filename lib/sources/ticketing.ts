@@ -21,7 +21,7 @@ import { moshtixListingDescription, preferDescription } from '@/lib/description-
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
 import { oztixGenreLabels } from '@/lib/oztix-labels'
-import { cityFromPlace } from '@/lib/venue-city'
+import { cityForIngest, cityFromPlace } from '@/lib/venue-city'
 
 const UA = () => `VibePeepEventsBot/1.0 (+${siteUrl()})`
 
@@ -349,7 +349,11 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
       if (seen.has(e.objectID) || e.HasEventDatePassed) continue
       seen.add(e.objectID)
       const v = e.Venue ?? {}
-      const tz = v.Timezone || city.tz
+      const pinLat = Number(e._geoloc?.lat)
+      const pinLng = Number(e._geoloc?.lng)
+      const filed = Number.isFinite(pinLat) && Number.isFinite(pinLng) ? cityForIngest(pinLat, pinLng) : city
+      if (!filed) continue
+      const tz = v.Timezone || filed.tz
       const s = toSydneyParts(new Date(e.DateStartUnix * 1000), tz)
       const en = e.DateEndUnix > e.DateStartUnix ? toSydneyParts(new Date(e.DateEndUnix * 1000), tz) : null
       const from = moneyNumber(e.PriceFrom ?? e.MinPrice)
@@ -377,7 +381,7 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
         longitude: e._geoloc?.lng ?? null,
         status,
         source: 'oztix',
-        city: city.name,
+        city: filed.name,
       })
       if (ok) saved++
     } catch (err: any) {

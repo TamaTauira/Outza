@@ -4,7 +4,7 @@
  * A Fitzroy or Glebe address must not inherit the CBD pin.
  */
 import { areasForCity, guessSuburb } from '@/lib/categories'
-import { cityDef, suburbFromAddress } from '@/lib/cities'
+import { CITIES, cityDef, isGenericSuburbName, requireEveryCity, suburbFromAddress } from '@/lib/cities'
 import { locateAddress } from '@/lib/geocode'
 import { distanceKm } from '@/lib/travel'
 
@@ -27,6 +27,7 @@ const CBD_POSTCODE: Record<string, string> = {
   Adelaide: '5000',
   Canberra: '2601',
   Newcastle: '2300',
+  Wollongong: '2500',
   Hobart: '7000',
   Darwin: '0800',
 }
@@ -80,7 +81,10 @@ const POSTCODE: Record<string, Centroid> = {
   '7000': { lat: -42.8821, lng: 147.3272, suburb: 'Hobart', city: 'Hobart' },
   '2601': { lat: -35.281, lng: 149.129, suburb: 'Canberra', city: 'Canberra' },
   '0800': { lat: -12.4634, lng: 130.8456, suburb: 'Darwin City', city: 'Darwin' },
+  '2500': { lat: -34.4278, lng: 150.8931, suburb: 'Wollongong', city: 'Wollongong' },
 }
+
+requireEveryCity('CBD postcodes', Object.keys(CBD_POSTCODE))
 
 /** Suburb names that share a postcode, or that the area list uses, with their own pin. */
 const SUBURB: Record<string, { lat: number; lng: number; postcode: string }> = {
@@ -111,7 +115,7 @@ const SUBURB: Record<string, { lat: number; lng: number; postcode: string }> = {
   'Adelaide|North Adelaide': { lat: -34.908, lng: 138.595, postcode: '5006' },
 }
 
-const GENERIC_SUBURB = /^(australia|cbd|city|inner city|online|virtual|sydney|melbourne|brisbane|perth|adelaide|hobart|canberra|darwin|gold coast|newcastle)$/i
+const CITY_NAME_RE = new RegExp(CITIES.map((city) => city.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '\\s+')).join('|'), 'i')
 
 export function extractPostcode(address: string | null | undefined): string | null {
   if (!address) return null
@@ -153,10 +157,10 @@ export function placeFromText(input: {
   const postcode = extractPostcode(address)
   let suburb = suburbNamedIn(blob, city) ?? suburbFromAddress(address)
   if (city === 'Sydney') suburb = suburbNamedIn(blob, city) ?? guessSuburb(input.venueName ?? '', address) ?? suburbFromAddress(address)
-  if (suburb && (GENERIC_SUBURB.test(suburb) || suburb.toLowerCase() === city.toLowerCase())) suburb = suburbNamedIn(blob, city)
-  if (suburb && GENERIC_SUBURB.test(suburb)) suburb = null
+  if (suburb && (isGenericSuburbName(suburb) || suburb.toLowerCase() === city.toLowerCase())) suburb = suburbNamedIn(blob, city)
+  if (suburb && isGenericSuburbName(suburb)) suburb = null
   const stored = input.suburb?.trim() || ''
-  if (!suburb && stored && !GENERIC_SUBURB.test(stored) && stored.toLowerCase() !== city.toLowerCase()) suburb = stored
+  if (!suburb && stored && !isGenericSuburbName(stored) && stored.toLowerCase() !== city.toLowerCase()) suburb = stored
 
   const byPost = postcode ? POSTCODE[postcode] ?? POSTCODE[postcode.replace(/^0/, '')] : undefined
   const byName = suburb ? SUBURB[`${city}|${suburb}`] : undefined
@@ -164,7 +168,7 @@ export function placeFromText(input: {
     return { suburb, postcode: postcode ?? byName.postcode, lat: byName.lat, lng: byName.lng, precise: true }
   }
   if (byPost && (!city || byPost.city === city)) {
-    const named = suburb && suburb.toLowerCase() !== city.toLowerCase() ? suburb : (/sydney|melbourne|brisbane|perth|adelaide|hobart|canberra|darwin/i.test(byPost.suburb) ? null : byPost.suburb)
+    const named = suburb && suburb.toLowerCase() !== city.toLowerCase() ? suburb : (CITY_NAME_RE.test(byPost.suburb) ? null : byPost.suburb)
     return { suburb: named ?? suburb, postcode: postcode ?? null, lat: byPost.lat, lng: byPost.lng, precise: true }
   }
   if (byPost && byPost.city !== city) {

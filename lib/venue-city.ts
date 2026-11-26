@@ -5,7 +5,7 @@
  * fall back to this alias list. A postcode or pin is used when the feed has one.
  * Two different cities in one string is left unresolved.
  */
-import { CITIES, type CityDef } from '@/lib/cities'
+import { CITIES, requireEveryCity, type CityDef } from '@/lib/cities'
 
 export type PlaceCityInput = {
   name?: string | null
@@ -24,6 +24,7 @@ export type PlaceCityInput = {
 export const CITY_POSTCODES: Record<string, [number, number][]> = {
   Sydney: [[2000, 2249], [2555, 2574], [2740, 2786]],
   Newcastle: [[2280, 2310], [2318, 2324]],
+  Wollongong: [[2500, 2534]],
   Canberra: [[2600, 2620], [2900, 2914]],
   Melbourne: [[3000, 3210], [3335, 3341], [3427, 3438], [3750, 3810], [3910, 3944], [3975, 3978]],
   Brisbane: [[4000, 4207], [4300, 4306], [4500, 4521]],
@@ -207,6 +208,14 @@ export const VENUE_CITY_ALIASES: VenueCityAlias[] = [
     ],
   },
   {
+    city: 'Wollongong',
+    names: [
+      'WIN Stadium',
+      'WIN Entertainment Centre',
+      'Wollongong Stadium',
+    ],
+  },
+  {
     city: 'Canberra',
     names: [
       'GIO Stadium',
@@ -296,12 +305,36 @@ export function cityFromPostcode(postcode: string | number | null | undefined): 
   return name ? CITIES.find((c) => c.name === name) ?? null : null
 }
 
+function nearestCity(lat: number, lng: number, accept: (city: CityDef, distanceKm: number) => boolean): CityDef | null {
+  let best: { city: CityDef; distanceKm: number } | null = null
+  for (const city of CITIES) {
+    const distanceKm = km(lat, lng, city.lat, city.lng)
+    if (!accept(city, distanceKm)) continue
+    if (!best || distanceKm < best.distanceKm) best = { city, distanceKm }
+  }
+  return best?.city ?? null
+}
+
+/** The nearest catalogue city whose radius contains the pin. One pin is one city. */
 export function cityFromCoords(lat: unknown, lng: unknown): CityDef | null {
   const a = numberOrNull(lat)
   const b = numberOrNull(lng)
   if (a == null || b == null || !(a || b)) return null
-  return CITIES.find((c) => km(a, b, c.lat, c.lng) <= c.radiusKm) ?? null
+  return nearestCity(a, b, (city, distanceKm) => distanceKm <= city.radiusKm)
 }
+
+/**
+ * Feeds keep a listing that sits just outside the query radius.
+ * When two queries could both see it, the nearer centre wins, so it is not stored twice.
+ */
+export const INGEST_RADIUS_SLACK_KM = 40
+
+export function cityForIngest(lat: number, lng: number): CityDef | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !(lat || lng)) return null
+  return cityFromCoords(lat, lng) ?? nearestCity(lat, lng, (city, distanceKm) => distanceKm <= city.radiusKm + INGEST_RADIUS_SLACK_KM)
+}
+
+requireEveryCity('postcode ranges', Object.keys(CITY_POSTCODES))
 
 function labelledPostcode(text: string): string | null {
   const matches = [...text.matchAll(/\b(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\s+(0?\d{3,4})\b/gi)]

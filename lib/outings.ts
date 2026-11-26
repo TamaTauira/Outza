@@ -3,6 +3,7 @@
  * Dining and transport are text plus a link. VibePeep does not book restaurants or tickets.
  */
 import { cityDef } from '@/lib/cities'
+import { CITY_TRANSIT } from '@/lib/city-transit'
 import { isPaidListing } from '@/lib/quality'
 import { togetherLeg } from '@/lib/together'
 import { distanceKm, estimateLeg } from '@/lib/travel'
@@ -45,18 +46,7 @@ export type OutingTemplate = {
   stops: number
 }
 
-export const TRIP_PLANNERS: Record<string, { name: string; url: string }> = {
-  Sydney: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
-  Newcastle: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
-  Melbourne: { name: 'PTV', url: 'https://www.ptv.vic.gov.au/journey' },
-  Brisbane: { name: 'Translink', url: 'https://jp.translink.com.au/plan-your-journey/journey-planner' },
-  'Gold Coast': { name: 'Translink', url: 'https://jp.translink.com.au/plan-your-journey/journey-planner' },
-  Perth: { name: 'Transperth', url: 'https://www.transperth.wa.gov.au/Journey-Planner' },
-  Adelaide: { name: 'Adelaide Metro', url: 'https://www.adelaidemetro.com.au/planner' },
-  Canberra: { name: 'Transport Canberra', url: 'https://www.transport.act.gov.au/' },
-  Hobart: { name: 'Metro Tasmania', url: 'https://www.metrotas.com.au/' },
-  Darwin: { name: 'Darwinbus', url: 'https://nt.gov.au/driving/public-transport-cycling/public-buses' },
-}
+export const TRIP_PLANNERS = CITY_TRANSIT
 
 export const OUTING_TEMPLATES: OutingTemplate[] = [
   {

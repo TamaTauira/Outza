@@ -153,7 +153,7 @@ const AREAS: [number, number, string][] = [
   [2190, 2200, 'Canterbury-Bankstown'], [2205, 2224, 'St George'], [2225, 2234, 'Sutherland Shire'],
   [2555, 2574, 'Macarthur'], [2745, 2759, 'Penrith & Hawkesbury'], [2760, 2770, 'Blacktown & Mount Druitt'],
   [2773, 2786, 'Blue Mountains'], [2250, 2263, 'Central Coast'], [2264, 2310, 'Newcastle & Lake Macquarie'],
-  [2500, 2530, 'Wollongong & Illawarra'], [2600, 2620, 'Canberra'], [2900, 2914, 'Canberra'],
+  [2500, 2534, 'Wollongong & Illawarra'], [2600, 2620, 'Canberra'], [2900, 2914, 'Canberra'],
   [2000, 2999, 'Regional NSW'],
   // Melbourne & VIC
   [3000, 3008, 'Melbourne CBD & Docklands'], [3051, 3058, 'Inner north Melbourne'], [3065, 3068, 'Inner north Melbourne'],

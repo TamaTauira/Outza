@@ -47,7 +47,7 @@ What can improve without a new connector: Ticketek still needs its licensed feed
 
 Priority venues were checked for an official site and a licence to reuse the calendar. None of the commercial venues published an open-data feed. Sydney Opera House `robots.txt` disallows `/` and then allows `/whats-on` for crawlers. That is not permission to copy the calendar. ICC Sydney disallows `/feed`. Those sites were not scraped.
 
-Ticketed events at the Venues NSW stadiums in Sydney and Newcastle, at State Theatre Sydney, and at Factory Theatre already arrive through Ticketmaster, and Factory Theatre also through Moshtix. WIN Stadium (Ticketmaster venue id 157281) and WIN Entertainment Centre (157282) are Ticketmaster venues too, and stay queued until a Wollongong city decision. No Wollongong city was added, and nothing new is ingested for them.
+Ticketed events at the Venues NSW stadiums in Sydney and Newcastle, at State Theatre Sydney, and at Factory Theatre already arrive through Ticketmaster, and Factory Theatre also through Moshtix. WIN Stadium (Ticketmaster venue id 157281) and WIN Entertainment Centre (157282) are Ticketmaster venues too, and are covered by the Wollongong area query (20km). The venue sites are not scraped.
 
 | Source | Coverage | Access | Licence | Value |
 | --- | --- | --- | --- | --- |
@@ -63,8 +63,8 @@ Ticketed events at the Venues NSW stadiums in Sydney and Newcastle, at State The
 | Sydney Cricket Ground | Moore Park | Ticketmaster Discovery API (area query, Sydney) | Ticketmaster developer terms | Not Allianz Stadium. Venue site not scraped |
 | CommBank Stadium | Parramatta | Ticketmaster Discovery API (area query, Sydney) | Ticketmaster developer terms | Former names Bankwest Stadium, Western Sydney Stadium |
 | McDonald Jones Stadium | Newcastle | Ticketmaster Discovery API (area query, Newcastle) | Ticketmaster developer terms | Former names Hunter, EnergyAustralia, Ausgrid |
-| WIN Stadium | Wollongong | Ticketmaster Discovery by venue id 157281 once Wollongong exists | Ticketmaster developer terms. Queued on a city decision | About 68km from the Sydney centre, outside the 60km query. Not WIN Entertainment Centre |
-| WIN Entertainment Centre | Wollongong | Ticketmaster Discovery by venue id 157282 once Wollongong exists | Ticketmaster developer terms. Queued on a city decision | Separate building from WIN Stadium. No city was added |
+| WIN Stadium | Wollongong | Ticketmaster Discovery API (area query, Wollongong, venue id 157281) | Ticketmaster developer terms | About 68km from the Sydney centre, outside the 60km Sydney query. Covered by the Wollongong city. Not WIN Entertainment Centre |
+| WIN Entertainment Centre | Wollongong | Ticketmaster Discovery API (area query, Wollongong, venue id 157282) | Ticketmaster developer terms | Separate building from WIN Stadium. Covered by the Wollongong city |
 | State Theatre Sydney | Sydney CBD | Ticketmaster Discovery API (area query, Sydney) | Ticketmaster developer terms | Ticketmaster is the venue's exclusive agent. Not a State Theatre in another city |
 | City of Melbourne bookable venues | Melbourne | Open data, CC BY 4.0 | Open data | Rooms for hire, not a calendar |
 | City of Melbourne planned works | Melbourne | Open data | Open data | Mixes road works with permit windows. Dates are ranges, not session times |
@@ -83,7 +83,7 @@ Ticketed events at the Venues NSW stadiums in Sydney and Newcastle, at State The
 | Sydney Opera House | Partly covered via Ticketmaster | Events Ticketmaster is authorised to sell are covered. Events sold only by the Opera House stay on permission. The venue site was not scraped |
 | Enmore Theatre | Requires permission | Seller not confirmed. The venue box office is the seller; Ticketek is mentioned on the booking page |
 | ICC Sydney, TikTok Entertainment Centre, Afterpay Arena | Requires a Ticketek feed | Live shows are sold by Ticketek only. Conferences and exhibitions at ICC Sydney already arrive through Eventbrite and Humanitix. Sites were not scraped |
-| WIN Stadium, WIN Entertainment Centre | Queued: city decision | Ticketmaster venue ids 157281 and 157282. Wollongong is outside the Sydney query. No city was added and nothing new is ingested |
+| WIN Stadium, WIN Entertainment Centre | Covered via Ticketmaster | Ticketmaster venue ids 157281 and 157282. Wollongong is a catalogue city with a 20km radius, so these are not filed under Sydney |
 | City of Melbourne bookable venues | Rejected | Not events |
 | City of Melbourne planned works | Deferred | Would create wrong dates |
 | Melbourne Conversations | Rejected | Historical only |
@@ -163,7 +163,7 @@ Brisbane City Council runs inside the existing `curated` cron (minute 50), with 
 
 Tests run: `lib/event-identity.test.ts`, `lib/venue-identity.test.ts`, `lib/source-expansion.test.ts`, `lib/refresh-plan.test.ts`, `lib/event-redirect.test.ts`, `lib/listing-window.test.ts`, `lib/ownership.test.ts`.
 
-Deployment: code is ready to merge. The Brisbane importer will not persist source ids until the SQL file is applied. Photos stay off. Ticketmaster-covered venues stay on the existing connector. Ticketek venues and Opera House box-office-only events stay off until a licence or permission exists. WIN Stadium and WIN Entertainment Centre stay queued until a Wollongong city decision. No city was added.
+Deployment: code is ready to merge. The Brisbane importer will not persist source ids until the SQL file is applied. Photos stay off. Ticketmaster-covered venues stay on the existing connector. Ticketek venues and Opera House box-office-only events stay off until a licence or permission exists. Wollongong is a catalogue city. WIN Stadium and WIN Entertainment Centre are covered by its Ticketmaster area query.
 
 ## F. National coverage opportunities
 
@@ -176,7 +176,7 @@ Next sources worth a licence, in order:
 1. Ticketek’s licensed feed. The NSW stadiums, the SCG, CommBank Stadium, McDonald Jones Stadium, WIN Stadium, WIN Entertainment Centre and State Theatre are Ticketmaster venues. Ticketek is needed for Afterpay Arena, TikTok Entertainment Centre, the ICC Darling Harbour Theatre, and probably Enmore Theatre.
 2. Sydney Opera House events sold only at the Opera House box office, and Enmore Theatre, under a written reuse permission. State Theatre and Factory Theatre do not need that permission: they are already covered by Ticketmaster, and Factory Theatre also by Moshtix. A direct Opera House feed is for the sessions those Ticketmaster rows miss, not a second copy.
 3. A council open-data calendar for Melbourne, Adelaide, Perth, Hobart, Darwin, or Canberra that is actually an event list under an open licence. The Melbourne files checked here were rooms, works permits, or a finished series.
-4. Wollongong (WIN Stadium, Ticketmaster venue id 157281, and WIN Entertainment Centre, 157282) only after a city decision. It is outside the current city radius. No city was added in this change.
+4. Wollongong is now a catalogue city (20km radius, Ticketmaster venue ids 157281 and 157282). Events inside that radius are filed under Wollongong, not Sydney.
 
 ## Risks
 

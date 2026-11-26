@@ -5,22 +5,12 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { Accessibility, Baby, Bus, Building2, ExternalLink, Map as MapIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { CITY_TRANSIT } from '@/lib/city-transit'
 import { placeLine } from '@/lib/place'
 import { cn } from '@/lib/utils'
 const VenueMap = dynamic(() => import('@/components/venue-map').then((mod) => mod.VenueMap), { ssr: false })
 
-export const TRANSIT: Record<string, { name: string; url: string }> = {
-  Sydney: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
-  Newcastle: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
-  Melbourne: { name: 'PTV', url: 'https://www.ptv.vic.gov.au/journey' },
-  Brisbane: { name: 'Translink', url: 'https://jp.translink.com.au/plan-your-journey/journey-planner' },
-  'Gold Coast': { name: 'Translink', url: 'https://jp.translink.com.au/plan-your-journey/journey-planner' },
-  Perth: { name: 'Transperth', url: 'https://www.transperth.wa.gov.au/Journey-Planner' },
-  Adelaide: { name: 'Adelaide Metro', url: 'https://www.adelaidemetro.com.au/planner' },
-  Canberra: { name: 'Transport Canberra', url: 'https://www.transport.act.gov.au/' },
-  Hobart: { name: 'Metro Tasmania', url: 'https://www.metrotas.com.au/' },
-  Darwin: { name: 'Darwinbus', url: 'https://nt.gov.au/driving/public-transport-cycling/public-buses' },
-}
+export const TRANSIT = CITY_TRANSIT
 
 /** Finds a sentence in the listing's own description that mentions the topic. Quoted verbatim, never inferred. */
 function quote(desc: string | null | undefined, re: RegExp): string | null {
