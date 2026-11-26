@@ -3,8 +3,11 @@
 
 Each kind in lib/email-header-copy.json becomes one 1200x560 PNG under
 public/email-headers/. The plate is a black field, a soft orange-to-pink
-glow, the dark VibePeep lockup, the kind's title, and the approved
-newspaper-reading Tummer cut from assets/email-header-source/daily-drop.png.
+glow, the dark VibePeep lockup, that kind's title, and that kind's approved
+Tummer from assets/email-header-source/<kind>.png (props included).
+
+A kind with no plate yet uses PLATE_FALLBACK. Dropping the real file in
+later (for example big-month.png) wins on the next run without a code change.
 
 The same run writes the footer glow and the small orange fact icons
 (Calendar, Clock, Banknote, MapPin) plus the white social marks.
@@ -12,6 +15,7 @@ The same run writes the footer glow and the small orange fact icons
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -19,8 +23,17 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 COPY = ROOT / 'lib' / 'email-header-copy.json'
-MASCOT_SRC = ROOT / 'assets' / 'email-header-source' / 'daily-drop.png'
+SOURCE = ROOT / 'assets' / 'email-header-source'
 LOCKUP = ROOT / 'public' / 'brand' / 'vibepeep-lockup-dark@3x.png'
+# Only when assets/email-header-source/<kind>.png is missing.
+# big-month and general have their own plates. A later file still wins on its own.
+PLATE_FALLBACK = {
+    'ops-digest': 'owner-ideas',
+}
+# Eyes land on this point, at this spacing, unless a prop would leave the frame.
+TARGET_EYE = (900, 248)
+TARGET_EYE_DIST = 148
+CONTENT_BOX = (530, 4, 1196, 554)
 HEADERS = ROOT / 'public' / 'email-headers'
 ICONS = ROOT / 'public' / 'email-icons'
 FOOTER = ROOT / 'public' / 'email-footer' / 'glow.png'
@@ -65,18 +78,27 @@ def glow_field(width: int, height: int, scale: float = 1.0) -> Image.Image:
     return Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), 'RGB')
 
 
-def extract_mascot() -> Image.Image:
-    src = Image.open(MASCOT_SRC).convert('RGB')
-    pixels = np.array(src)
-    lum = pixels.max(axis=2)
-    height, width = lum.shape
+def resolve_plate(kind: str) -> tuple[Path, str | None]:
+    """Own plate wins. Missing files use PLATE_FALLBACK until the art lands."""
+    own = SOURCE / f'{kind}.png'
+    if own.exists():
+        return own, None
+    fallback = PLATE_FALLBACK.get(kind)
+    if not fallback:
+        raise SystemExit(f'no approved plate for {kind}')
+    path = SOURCE / f'{fallback}.png'
+    if not path.exists():
+        raise SystemExit(f'{kind} falls back to {fallback}, but {path.name} is missing')
+    return path, fallback
+
+
+def _flood(gate: np.ndarray) -> np.ndarray:
+    height, width = gate.shape
     seen = np.zeros((height, width), dtype=bool)
     stack: list[tuple[int, int]] = []
 
     def push(x: int, y: int) -> None:
-        if x < 0 or y < 0 or x >= width or y >= height or seen[y, x]:
-            return
-        if lum[y, x] > 22:
+        if x < 0 or y < 0 or x >= width or y >= height or seen[y, x] or not gate[y, x]:
             return
         seen[y, x] = True
         stack.append((x, y))
@@ -93,27 +115,133 @@ def extract_mascot() -> Image.Image:
         push(x - 1, y)
         push(x, y + 1)
         push(x, y - 1)
-    alpha = np.where(seen, 0, 255).astype(np.uint8)
-    # Ease the cut so a near-black rim does not halo on the glow.
-    rim = (lum < 36) & ~seen
-    alpha = np.where(rim, np.clip((lum.astype(np.int16) - 22) * 18, 0, 255).astype(np.uint8), alpha)
-    rgba = np.dstack([pixels, alpha])
-    ys, xs = np.where(alpha > 8)
+    return seen
+
+
+def _white_blobs(rgb: np.ndarray) -> list[tuple[float, float, int, int]]:
+    lum = rgb.max(axis=2)
+    sat = lum.astype(np.int16) - rgb.min(axis=2).astype(np.int16)
+    mask = (lum > 205) & (sat < 45)
+    mask[:, :480] = False
+    height, width = mask.shape
+    seen = np.zeros((height, width), dtype=bool)
+    blobs: list[tuple[float, float, int, int]] = []
+    ys, xs = np.where(mask)
+    for y0, x0 in zip(ys.tolist(), xs.tolist()):
+        if seen[y0, x0]:
+            continue
+        stack = [(int(x0), int(y0))]
+        seen[y0, x0] = True
+        count = 0
+        sx = sy = 0
+        minx = maxx = int(x0)
+        miny = maxy = int(y0)
+        while stack:
+            x, y = stack.pop()
+            count += 1
+            sx += x
+            sy += y
+            minx, maxx = min(minx, x), max(maxx, x)
+            miny, maxy = min(miny, y), max(maxy, y)
+            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                if 0 <= nx < width and 0 <= ny < height and mask[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    stack.append((nx, ny))
+        bw, bh = maxx - minx + 1, maxy - miny + 1
+        if count >= 70 and bw > 34 and bh > 32 and 0.5 <= bw / bh <= 1.7:
+            blobs.append((sx / count, sy / count, bw, bh))
+    return blobs
+
+
+def _eye_pair(blobs: list[tuple[float, float, int, int]]) -> tuple[float, float, float] | None:
+    best: tuple[float, float, float, float] | None = None
+    for i, left in enumerate(blobs):
+        for right in blobs[i + 1:]:
+            dx = abs(left[0] - right[0])
+            dy = abs(left[1] - right[1])
+            if not (85 <= dx <= 220 and dy <= 55):
+                continue
+            ratio = max(left[2], right[2]) / max(1, min(left[2], right[2]))
+            if ratio > 1.7:
+                continue
+            score = dy * 3 + abs(dx - 145) + (left[1] + right[1]) * 0.05
+            if best is None or score < best[0]:
+                best = (score, (left[0] + right[0]) / 2, (left[1] + right[1]) / 2, math.hypot(dx, dy))
+    if best is None:
+        return None
+    return best[1], best[2], best[3]
+
+
+def extract_mascot(path: Path) -> tuple[Image.Image, tuple[float, float] | None, float | None]:
+    """Cut Tummer and his props off the plate. Eyes are in crop coordinates."""
+    rgb = np.array(Image.open(path).convert('RGB'))
+    height, width = rgb.shape[:2]
+    ground = np.median(rgb[:, :100].reshape(-1, 3), axis=0)
+    dist = np.abs(rgb.astype(np.int16) - ground.astype(np.int16)).max(axis=2)
+    sat = rgb.max(axis=2).astype(np.int16) - rgb.min(axis=2).astype(np.int16)
+    cleared = _flood((dist <= 14) & (sat <= 16))
+    alpha = np.where(cleared, 0, 255).astype(np.uint8)
+    # Neutral pixels just off the ground fade out, so the plate glow meets ours.
+    rim = (~cleared) & (dist <= 28) & (sat <= 22)
+    alpha = np.where(rim, np.clip((dist - 10) * 14, 0, 255).astype(np.uint8), alpha)
+    ys, xs = np.where(alpha > 12)
     if len(xs) == 0:
-        raise SystemExit(f'no mascot pixels in {MASCOT_SRC}')
-    crop = rgba[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-    # The source plate cuts the glow in a straight line. Fade that edge so it
-    # meets the generated bloom instead of showing a seam.
-    fade = 36
-    ramp = np.linspace(0, 1, fade, dtype=np.float32)
-    crop[:fade, :, 3] = (crop[:fade, :, 3].astype(np.float32) * ramp[:, None]).astype(np.uint8)
-    crop[:, -fade:, 3] = (crop[:, -fade:, 3].astype(np.float32) * ramp[::-1][None, :]).astype(np.uint8)
-    return Image.fromarray(crop, 'RGBA')
+        raise SystemExit(f'no mascot pixels in {path.name}')
+    pad = 2
+    x0, y0 = max(0, int(xs.min()) - pad), max(0, int(ys.min()) - pad)
+    x1, y1 = min(width, int(xs.max()) + 1 + pad), min(height, int(ys.max()) + 1 + pad)
+    crop = np.dstack([rgb, alpha])[y0:y1, x0:x1].copy()
+    fade = 18
+    band = np.linspace(0, 1, fade, dtype=np.float32)
+    edge = crop[:, :, 3].astype(np.float32)
+    # Fade only the sides the original plate actually cut, so a prop inset from
+    # the edge stays whole and a cut edge does not draw a hard line.
+    if int(ys.min()) <= 2:
+        edge[:fade] *= band[:, None]
+    if int(ys.max()) >= height - 3:
+        edge[-fade:] *= band[::-1][:, None]
+    if int(xs.min()) <= 2:
+        edge[:, :fade] *= band[None, :]
+    if int(xs.max()) >= width - 3:
+        edge[:, -fade:] *= band[::-1][None, :]
+    crop[:, :, 3] = np.clip(edge, 0, 255).astype(np.uint8)
+    eyes = _eye_pair(_white_blobs(rgb))
+    eye_xy = None
+    eye_dist = None
+    if eyes is not None:
+        eye_xy = (eyes[0] - x0, eyes[1] - y0)
+        eye_dist = eyes[2]
+    return Image.fromarray(crop, 'RGBA'), eye_xy, eye_dist
+
+
+def paste_mascot(canvas: Image.Image, art: Image.Image, eye_xy: tuple[float, float] | None, eye_dist: float | None) -> None:
+    """One size and one eye position, shrunk only when a prop would leave the frame."""
+    if eye_xy and eye_dist and eye_dist > 40:
+        scale = TARGET_EYE_DIST / eye_dist
+    else:
+        scale = 520 / art.height
+    left, top, right, bottom = CONTENT_BOX
+    slot_w, slot_h = right - left, bottom - top
+    fit = min(slot_w / art.width, slot_h / art.height, scale)
+    scale = max(0.7, min(scale, fit))
+    placed = art.resize((max(1, int(art.width * scale)), max(1, int(art.height * scale))), Image.Resampling.LANCZOS)
+    if eye_xy:
+        anchor_x = eye_xy[0] * scale
+        anchor_y = eye_xy[1] * scale
+        origin_x = int(TARGET_EYE[0] - anchor_x)
+        origin_y = int(TARGET_EYE[1] - anchor_y)
+    else:
+        origin_x = right - placed.width
+        origin_y = bottom - placed.height
+    # Keep every prop inside the right-hand frame. The title owns the left.
+    origin_x = min(max(origin_x, left), right - placed.width)
+    origin_y = min(max(origin_y, top), bottom - placed.height)
+    canvas.paste(placed, (origin_x, origin_y), placed)
 
 
 def fit_title(text: str, face: str) -> tuple[ImageFont.FreeTypeFont, str, int]:
     """One line when it fits. Otherwise the split that keeps the largest type."""
-    max_w = 500
+    max_w = 460
     for size in range(76, 43, -2):
         font = ImageFont.truetype(face, size)
         if font.getlength(text) <= max_w:
@@ -144,14 +272,9 @@ def gradient_bar(width: int) -> Image.Image:
     return bar
 
 
-def build_header(headline: str, mascot: Image.Image, lockup: Image.Image, face: str) -> Image.Image:
+def build_header(headline: str, art: Image.Image, eye_xy: tuple[float, float] | None, eye_dist: float | None, lockup: Image.Image, face: str) -> Image.Image:
     canvas = glow_field(W, H)
-    target_w = 720
-    scale = target_w / mascot.width
-    placed = mascot.resize((target_w, max(1, int(mascot.height * scale))), Image.Resampling.LANCZOS)
-    x = W - placed.width + 8
-    y = 78
-    canvas.paste(placed, (x, y), placed)
+    paste_mascot(canvas, art, eye_xy, eye_dist)
     logo = lockup.resize((277, 72), Image.Resampling.LANCZOS)
     canvas.paste(logo, (64, 72), logo)
     font, laid, size = fit_title(headline, face)
@@ -298,13 +421,18 @@ def save_png(path: Path, image: Image.Image) -> None:
 def main() -> None:
     face = font_path()
     headlines: dict[str, str] = json.loads(COPY.read_text())
-    mascot = extract_mascot()
     lockup = Image.open(LOCKUP).convert('RGBA')
     HEADERS.mkdir(parents=True, exist_ok=True)
+    cache: dict[str, tuple[Image.Image, tuple[float, float] | None, float | None]] = {}
     for kind, headline in headlines.items():
-        image = build_header(headline, mascot, lockup, face)
+        plate, fallback = resolve_plate(kind)
+        if plate.name not in cache:
+            cache[plate.name] = extract_mascot(plate)
+        art, eye_xy, eye_dist = cache[plate.name]
+        image = build_header(headline, art, eye_xy, eye_dist, lockup, face)
         save_png(HEADERS / f'{kind}.png', image)
-        print(f'{kind}: {image.size[0]}x{image.size[1]} {headline}')
+        via = f' via {fallback}' if fallback else ''
+        print(f'{kind}: {headline}{via}')
     save_png(FOOTER, glow_field(1200, 480, scale=1.15))
     icons = {
         'calendar.png': fact_calendar(),
