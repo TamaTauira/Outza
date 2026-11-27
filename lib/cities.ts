@@ -21,11 +21,6 @@ export const CITIES: CityDef[] = [
   { name: 'Perth', state: 'WA', lat: -31.9523, lng: 115.8613, tz: 'Australia/Perth', radiusKm: 50, eventbrite: 'australia--perth', humanitix: 'au--wa--perth', match: /perth|boorloo|fremantle/i, custodians: 'Whadjuk Noongar people' },
   { name: 'Adelaide', state: 'SA', lat: -34.9285, lng: 138.6007, tz: 'Australia/Adelaide', radiusKm: 40, eventbrite: 'australia--adelaide', humanitix: 'au--sa--adelaide', match: /adelaide|tarntanya/i, custodians: 'Kaurna people' },
   { name: 'Canberra', state: 'ACT', lat: -35.2809, lng: 149.13, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--canberra', humanitix: 'au--act--canberra', match: /canberra|austl\.?\s*cap\.?\s*terr|australian capital territory/i, custodians: 'Ngunnawal and Ngambri peoples' },
-  { name: 'Newcastle', state: 'NSW', lat: -32.9283, lng: 151.7817, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--newcastle', humanitix: 'au--nsw--newcastle', match: /newcastle/i, custodians: 'Awabakal and Worimi peoples' },
-  // 20km keeps Helensburgh and Stanwell Park in Sydney. A wider radius would share those suburbs.
-  // Centre is the Wollongong CBD. Custodians: Wollongong City Council acknowledgement, Dharawal Country.
-  // "Illawarra Rd" is a Sydney street, so the region word does not match when a road suffix follows.
-  { name: 'Wollongong', state: 'NSW', lat: -34.4278, lng: 150.8931, tz: 'Australia/Sydney', radiusKm: 20, eventbrite: 'australia--wollongong', humanitix: 'au--nsw--wollongong', match: /\bwollongong\b|\billawarra\b(?!\s+(?:rd|road|st|street|hwy|highway|pde|parade|dr|drive)\b)/i, custodians: 'Dharawal people' },
   { name: 'Hobart', state: 'TAS', lat: -42.8821, lng: 147.3272, tz: 'Australia/Hobart', radiusKm: 35, eventbrite: 'australia--hobart', humanitix: 'au--tas--hobart', match: /hobart|nipaluna/i, custodians: 'muwinina people of lutruwita (Tasmania)' },
   { name: 'Darwin', state: 'NT', lat: -12.4634, lng: 130.8456, tz: 'Australia/Darwin', radiusKm: 35, eventbrite: 'australia--darwin', humanitix: 'au--nt--darwin', match: /darwin|garramilla/i, custodians: 'Larrakia people' },
 ]
