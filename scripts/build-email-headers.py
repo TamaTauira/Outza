@@ -1,21 +1,33 @@
 #!/usr/bin/env python3
-"""Bake the option-5 email art once. Nothing here runs at send time.
+"""Bake the shared email header and footer assets once. Nothing here runs at send time.
 
-Each kind in lib/email-header-copy.json becomes one 1200x560 PNG under
-public/email-headers/. The plate is a black field, a soft orange-to-pink
-glow, the dark VibePeep lockup, that kind's title, and that kind's approved
-Tummer from assets/email-header-source/<kind>.png (props included).
+Headers (design approved by the owner 26 Nov 2026, handover 3.13):
+each kind in lib/email-header-copy.json becomes one slim black banner,
+1200x234 (600x117 at 1x), colour #141414, flat edge to edge. Left: the
+VibePeep lockup, the kind's title and a short orange-to-pink gradient
+underline. Right: the kind's approved Tummer plate from
+assets/email-header-source/<kind>.png, baked into the same black with no
+frame, border, seam or halo: the art is contained to the header height,
+right-aligned, every RGB channel is floored at #141414 (plate black becomes
+banner black, brighter art untouched) and a 60px smoothstep fade runs at
+the panel's left edge. Both a 2x master (<kind>.png) and a 1x copy
+(<kind>-1x.png) are written to public/email-headers/. No WebP in mail.
 
 Every kind has its own plate. A missing file stops the build.
-Tummer's hands stay rounded mittens. Plates with fingers or a thumbs-up are not used.
+Tummer's hands stay rounded mittens, a single thumb lobe is fine. Do not
+add a plate with separate fingers.
 
-The same run writes the footer glow and the small orange fact icons
-(Calendar, Clock, Banknote, MapPin) plus the white social marks.
+Footer icons (handover 3.14): each social mark in SITE_SOCIAL order is
+baked as one 72px PNG (36px at 1x) in public/email-icons/: a #2c2c2e
+circle with the official Simple Icons glyph in #F5F5F7 at 36px, from the
+source SVGs in assets/email-social-icons/. Rendering the SVGs needs
+cairosvg (pip install cairosvg). The same run writes the small orange fact
+icons (Calendar, Clock, Banknote, MapPin).
 """
 from __future__ import annotations
 
 import json
-import math
+import re
 from pathlib import Path
 
 import numpy as np
@@ -24,215 +36,153 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 COPY = ROOT / 'lib' / 'email-header-copy.json'
 SOURCE = ROOT / 'assets' / 'email-header-source'
+SOCIAL_SOURCE = ROOT / 'assets' / 'email-social-icons'
 LOCKUP = ROOT / 'public' / 'brand' / 'vibepeep-lockup-dark@3x.png'
-# Eyes land on this point, at this spacing, unless a prop would leave the frame.
-TARGET_EYE = (900, 248)
-TARGET_EYE_DIST = 148
-CONTENT_BOX = (530, 4, 1196, 554)
 HEADERS = ROOT / 'public' / 'email-headers'
 ICONS = ROOT / 'public' / 'email-icons'
-FOOTER = ROOT / 'public' / 'email-footer' / 'glow.png'
 
-W, H = 1200, 560
-ORANGE = (255, 122, 53, 255)
-PINK = (240, 90, 157, 255)
-WHITE = (247, 247, 247, 255)
-INK = (255, 255, 255, 255)
+# Slim bake: 117px at 600px email width, 234px at 2x. Logo 24px at 600 = 48px here.
+W, H = 1200, 234
+PAD = 48
+LOGO_H = 48
+TEXT_MAX_W = 440
+BANNER = (20, 20, 20)  # #141414
+ORANGE = (255, 122, 53, 255)  # #FF7A35
+PINK = (240, 90, 157, 255)  # #F05A9D
+INK = (247, 247, 247, 255)
+FACT_ORANGE = ORANGE
+
+SOCIAL_ORDER = ['instagram', 'tiktok', 'threads', 'youtube', 'x', 'facebook', 'linkedin']
+ICON_CIRCLE = '#2c2c2e'
+ICON_GLYPH = '#F5F5F7'
 
 FONT_CANDIDATES = [
-    '/usr/share/fonts/truetype/macos/Inter-Bold.ttf',
-    '/usr/share/fonts/truetype/inter/Inter-Bold.ttf',
-    '/usr/share/fonts/opentype/inter/Inter-Bold.otf',
-    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    # Inter variable (design environment): optical size 14, weight set per call.
+    ('/usr/share/fonts/truetype/sand-box/google/Inter/Inter-VariableFont_opsz,wght.ttf', True),
+    ('/usr/share/fonts/truetype/macos/Inter-Bold.ttf', False),
+    ('/usr/share/fonts/truetype/inter/Inter-Bold.ttf', False),
+    ('/usr/share/fonts/opentype/inter/Inter-Bold.otf', False),
+    ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', False),
 ]
 
 
-def font_path() -> str:
-    for path in FONT_CANDIDATES:
+def _font_face() -> tuple[str, bool]:
+    for path, variable in FONT_CANDIDATES:
         if Path(path).exists():
-            return path
+            return path, variable
     raise SystemExit('No bold sans font found for email headers')
 
 
-def add_glow(canvas: np.ndarray, cx: float, cy: float, radius: float, color: tuple[int, int, int], peak: float) -> None:
-    height, width = canvas.shape[:2]
-    ys, xs = np.mgrid[0:height, 0:width]
-    fall = np.clip(1 - np.sqrt((xs - cx) ** 2 + (ys - cy) ** 2) / radius, 0, 1) ** 1.55
-    canvas += fall[..., None] * np.array(color, dtype=np.float32) * peak
+def load_font(size: int, weight: int = 700) -> ImageFont.FreeTypeFont:
+    path, variable = _font_face()
+    font = ImageFont.truetype(path, size)
+    if variable:
+        font.set_variation_by_axes([14, weight])
+    return font
 
 
-def glow_field(width: int, height: int, scale: float = 1.0) -> Image.Image:
-    canvas = np.zeros((height, width, 3), dtype=np.float32)
-    sx, sy = width / W, height / H
-    add_glow(canvas, 860 * sx, 80 * sy, 640 * scale, (255, 112, 36), 0.55)
-    add_glow(canvas, 1020 * sx, 220 * sy, 420 * scale, (255, 86, 34), 0.28)
-    add_glow(canvas, 1160 * sx, 160 * sy, 280 * scale, (240, 90, 157), 0.22)
-    add_glow(canvas, 1100 * sx, 500 * sy, 380 * scale, (240, 90, 157), 0.42)
-    add_glow(canvas, 700 * sx, 640 * sy, 500 * scale, (255, 122, 53), 0.16)
-    add_glow(canvas, 240 * sx, 600 * sy, 360 * scale, (140, 48, 22), 0.12)
-    return Image.fromarray(np.clip(canvas, 0, 255).astype(np.uint8), 'RGB')
+class Plate:
+    """An approved source plate: its RGB pixels and the subject bounding box."""
+
+    def __init__(self, kind: str):
+        self.kind = kind
+        self.path = SOURCE / f'{kind}.png'
+        if not self.path.exists():
+            raise SystemExit(f'no approved plate for {kind}: {self.path}')
+        self.rgb = np.array(Image.open(self.path).convert('RGB'))
+        self.h, self.w = self.rgb.shape[:2]
+        lum = self.rgb.max(axis=2).astype(np.int16)
+        self.lum = lum
+        self.sat = lum - self.rgb.min(axis=2).astype(np.int16)
+        ys, xs = np.where((lum > 16) | (self.sat > 12))
+        self.bbox = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
 
 
-def resolve_plate(kind: str) -> Path:
-    """Each email type uses its own approved plate. Nothing is borrowed."""
-    own = SOURCE / f'{kind}.png'
-    if not own.exists():
-        raise SystemExit(f'no approved plate for {kind}: {own}')
-    return own
+def art_natural_size(plate: Plate, th: int, atmosphere: int = 36) -> tuple[int, int, int, int, float]:
+    """Source window (x0, y0, x1, y1) and scale that shows the full figure at height th.
+
+    `atmosphere` adds a little of the plate's own glow to the left of the
+    bbox so the subject is not hard-cropped on its left.
+    """
+    bx0, by0, bx1, by1 = plate.bbox
+    pad = 8
+    by0 = max(0, by0 - pad)
+    by1 = min(plate.h, by1 + pad)
+    bh = by1 - by0
+    scale = th / bh
+    ax0 = max(0, bx0 - atmosphere)
+    ax1 = min(plate.w, bx1 + pad)
+    return ax0, by0, ax1, by1, scale
 
 
-def _flood(gate: np.ndarray) -> np.ndarray:
-    height, width = gate.shape
-    seen = np.zeros((height, width), dtype=bool)
-    stack: list[tuple[int, int]] = []
+def art_panel_width(plate: Plate, th: int, atmosphere: int = 36, min_w: int = 300, max_w: int = 600) -> int:
+    ax0, by0, ax1, by1, scale = art_natural_size(plate, th, atmosphere)
+    natural = int(round((ax1 - ax0) * scale))
+    return max(min_w, min(max_w, natural))
 
-    def push(x: int, y: int) -> None:
-        if x < 0 or y < 0 or x >= width or y >= height or seen[y, x] or not gate[y, x]:
-            return
-        seen[y, x] = True
-        stack.append((x, y))
 
+def flatten_empty_black(art: Image.Image, ground: tuple[int, int, int], subj_x: int, fade: int = 28) -> Image.Image:
+    """Match empty plate-black to the banner so no rectangle edge shows.
+
+    Only the field to the left of the subject is remapped. Tummer's
+    near-black body, and any sparkles, hearts or confetti, stay as approved.
+    """
+    arr = np.array(art).astype(np.float32)
+    h, w, _ = arr.shape
+    lum = arr.max(axis=2)
+    sat = lum - arr.min(axis=2)
+    sparkle = (lum > 40) | (sat > 25)
+
+    xs = np.arange(w, dtype=np.float32)[None, :].repeat(h, axis=0)
+    t = np.clip((xs - (subj_x - fade)) / max(1, fade), 0, 1)
+    t = t * t * (3 - 2 * t)  # smoothstep
+    alpha = np.where(sparkle, 1.0, t)
+
+    g = np.array(ground, dtype=np.float32)
+    out = arr * alpha[..., None] + g * (1.0 - alpha[..., None])
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), 'RGB')
+
+
+def panel_art_on_ground(plate: Plate, tw: int, th: int, ground: tuple[int, int, int], atmosphere: int = 36) -> Image.Image:
+    """Contain-to-height, right-align, flatten empty left black into `ground`."""
+    ax0, by0, ax1, by1, scale = art_natural_size(plate, th, atmosphere)
+    src = Image.fromarray(plate.rgb, 'RGB')
+    crop = src.crop((ax0, by0, ax1, by1))
+    nw = max(1, int(round(crop.width * scale)))
+    resized = crop.resize((nw, th), Image.Resampling.LANCZOS)
+
+    bx0 = plate.bbox[0]
+    if resized.width >= tw:
+        cut = resized.width - tw
+        resized = resized.crop((cut, 0, resized.width, th))
+        src_x0 = ax0 + cut / scale
+        ox = 0
+    else:
+        src_x0 = ax0
+        ox = tw - resized.width
+
+    canvas = Image.new('RGB', (tw, th), ground)
+    canvas.paste(resized, (ox, 0))
+    subj_x = int(round(ox + max(0, bx0 - src_x0) * scale))
+    return flatten_empty_black(canvas, ground, subj_x)
+
+
+def gradient_bar(width: int, height: int = 4) -> Image.Image:
+    bar = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    px = bar.load()
     for x in range(width):
-        push(x, 0)
-        push(x, height - 1)
-    for y in range(height):
-        push(0, y)
-        push(width - 1, y)
-    while stack:
-        x, y = stack.pop()
-        push(x + 1, y)
-        push(x - 1, y)
-        push(x, y + 1)
-        push(x, y - 1)
-    return seen
+        t = x / max(1, width - 1)
+        color = tuple(int(ORANGE[i] * (1 - t) + PINK[i] * t) for i in range(3)) + (255,)
+        for y in range(height):
+            px[x, y] = color
+    return bar
 
 
-def _white_blobs(rgb: np.ndarray) -> list[tuple[float, float, int, int]]:
-    lum = rgb.max(axis=2)
-    sat = lum.astype(np.int16) - rgb.min(axis=2).astype(np.int16)
-    mask = (lum > 205) & (sat < 45)
-    mask[:, :480] = False
-    height, width = mask.shape
-    seen = np.zeros((height, width), dtype=bool)
-    blobs: list[tuple[float, float, int, int]] = []
-    ys, xs = np.where(mask)
-    for y0, x0 in zip(ys.tolist(), xs.tolist()):
-        if seen[y0, x0]:
-            continue
-        stack = [(int(x0), int(y0))]
-        seen[y0, x0] = True
-        count = 0
-        sx = sy = 0
-        minx = maxx = int(x0)
-        miny = maxy = int(y0)
-        while stack:
-            x, y = stack.pop()
-            count += 1
-            sx += x
-            sy += y
-            minx, maxx = min(minx, x), max(maxx, x)
-            miny, maxy = min(miny, y), max(maxy, y)
-            for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-                if 0 <= nx < width and 0 <= ny < height and mask[ny, nx] and not seen[ny, nx]:
-                    seen[ny, nx] = True
-                    stack.append((nx, ny))
-        bw, bh = maxx - minx + 1, maxy - miny + 1
-        if count >= 70 and bw > 34 and bh > 32 and 0.5 <= bw / bh <= 1.7:
-            blobs.append((sx / count, sy / count, bw, bh))
-    return blobs
-
-
-def _eye_pair(blobs: list[tuple[float, float, int, int]]) -> tuple[float, float, float] | None:
-    best: tuple[float, float, float, float] | None = None
-    for i, left in enumerate(blobs):
-        for right in blobs[i + 1:]:
-            dx = abs(left[0] - right[0])
-            dy = abs(left[1] - right[1])
-            if not (85 <= dx <= 220 and dy <= 55):
-                continue
-            ratio = max(left[2], right[2]) / max(1, min(left[2], right[2]))
-            if ratio > 1.7:
-                continue
-            score = dy * 3 + abs(dx - 145) + (left[1] + right[1]) * 0.05
-            if best is None or score < best[0]:
-                best = (score, (left[0] + right[0]) / 2, (left[1] + right[1]) / 2, math.hypot(dx, dy))
-    if best is None:
-        return None
-    return best[1], best[2], best[3]
-
-
-def extract_mascot(path: Path) -> tuple[Image.Image, tuple[float, float] | None, float | None]:
-    """Cut Tummer and his props off the plate. Eyes are in crop coordinates."""
-    rgb = np.array(Image.open(path).convert('RGB'))
-    height, width = rgb.shape[:2]
-    ground = np.median(rgb[:, :100].reshape(-1, 3), axis=0)
-    dist = np.abs(rgb.astype(np.int16) - ground.astype(np.int16)).max(axis=2)
-    sat = rgb.max(axis=2).astype(np.int16) - rgb.min(axis=2).astype(np.int16)
-    cleared = _flood((dist <= 14) & (sat <= 16))
-    alpha = np.where(cleared, 0, 255).astype(np.uint8)
-    # Neutral pixels just off the ground fade out, so the plate glow meets ours.
-    rim = (~cleared) & (dist <= 28) & (sat <= 22)
-    alpha = np.where(rim, np.clip((dist - 10) * 14, 0, 255).astype(np.uint8), alpha)
-    ys, xs = np.where(alpha > 12)
-    if len(xs) == 0:
-        raise SystemExit(f'no mascot pixels in {path.name}')
-    pad = 2
-    x0, y0 = max(0, int(xs.min()) - pad), max(0, int(ys.min()) - pad)
-    x1, y1 = min(width, int(xs.max()) + 1 + pad), min(height, int(ys.max()) + 1 + pad)
-    crop = np.dstack([rgb, alpha])[y0:y1, x0:x1].copy()
-    fade = 18
-    band = np.linspace(0, 1, fade, dtype=np.float32)
-    edge = crop[:, :, 3].astype(np.float32)
-    # Fade only the sides the original plate actually cut, so a prop inset from
-    # the edge stays whole and a cut edge does not draw a hard line.
-    if int(ys.min()) <= 2:
-        edge[:fade] *= band[:, None]
-    if int(ys.max()) >= height - 3:
-        edge[-fade:] *= band[::-1][:, None]
-    if int(xs.min()) <= 2:
-        edge[:, :fade] *= band[None, :]
-    if int(xs.max()) >= width - 3:
-        edge[:, -fade:] *= band[::-1][None, :]
-    crop[:, :, 3] = np.clip(edge, 0, 255).astype(np.uint8)
-    eyes = _eye_pair(_white_blobs(rgb))
-    eye_xy = None
-    eye_dist = None
-    if eyes is not None:
-        eye_xy = (eyes[0] - x0, eyes[1] - y0)
-        eye_dist = eyes[2]
-    return Image.fromarray(crop, 'RGBA'), eye_xy, eye_dist
-
-
-def paste_mascot(canvas: Image.Image, art: Image.Image, eye_xy: tuple[float, float] | None, eye_dist: float | None) -> None:
-    """One size and one eye position, shrunk only when a prop would leave the frame."""
-    if eye_xy and eye_dist and eye_dist > 40:
-        scale = TARGET_EYE_DIST / eye_dist
-    else:
-        scale = 520 / art.height
-    left, top, right, bottom = CONTENT_BOX
-    slot_w, slot_h = right - left, bottom - top
-    fit = min(slot_w / art.width, slot_h / art.height, scale)
-    scale = max(0.7, min(scale, fit))
-    placed = art.resize((max(1, int(art.width * scale)), max(1, int(art.height * scale))), Image.Resampling.LANCZOS)
-    if eye_xy:
-        anchor_x = eye_xy[0] * scale
-        anchor_y = eye_xy[1] * scale
-        origin_x = int(TARGET_EYE[0] - anchor_x)
-        origin_y = int(TARGET_EYE[1] - anchor_y)
-    else:
-        origin_x = right - placed.width
-        origin_y = bottom - placed.height
-    # Keep every prop inside the right-hand frame. The title owns the left.
-    origin_x = min(max(origin_x, left), right - placed.width)
-    origin_y = min(max(origin_y, top), bottom - placed.height)
-    canvas.paste(placed, (origin_x, origin_y), placed)
-
-
-def fit_title(text: str, face: str) -> tuple[ImageFont.FreeTypeFont, str, int]:
+def fit_title(text: str) -> tuple[ImageFont.FreeTypeFont, str, int]:
     """One line when it fits. Otherwise the split that keeps the largest type."""
-    max_w = 460
-    for size in range(76, 43, -2):
-        font = ImageFont.truetype(face, size)
+    max_w = TEXT_MAX_W
+    for size in range(48, 31, -2):
+        font = load_font(size, 700)
         if font.getlength(text) <= max_w:
             return font, text, size
         words = text.split(' ')
@@ -246,39 +196,87 @@ def fit_title(text: str, face: str) -> tuple[ImageFont.FreeTypeFont, str, int]:
                 best = (longest, '\n'.join(lines))
         if best:
             return font, best[1], size
-    font = ImageFont.truetype(face, 44)
-    return font, text, 44
+    font = load_font(32, 700)
+    return font, text, 32
 
 
-def gradient_bar(width: int) -> Image.Image:
-    bar = Image.new('RGBA', (width, 6), (0, 0, 0, 0))
-    px = bar.load()
-    for x in range(width):
-        t = x / max(1, width - 1)
-        color = tuple(int(ORANGE[i] * (1 - t) + PINK[i] * t) for i in range(3)) + (255,)
-        for y in range(6):
-            px[x, y] = color
-    return bar
-
-
-def build_header(headline: str, art: Image.Image, eye_xy: tuple[float, float] | None, eye_dist: float | None, lockup: Image.Image, face: str) -> Image.Image:
-    canvas = glow_field(W, H)
-    paste_mascot(canvas, art, eye_xy, eye_dist)
-    logo = lockup.resize((277, 72), Image.Resampling.LANCZOS)
-    canvas.paste(logo, (64, 72), logo)
-    font, laid, size = fit_title(headline, face)
-    draw = ImageDraw.Draw(canvas)
-    title_top = 236
-    spacing = 4
-    draw.multiline_text((64, title_top), laid, font=font, fill=INK, spacing=spacing)
-    lines = laid.split('\n')
-    longest = max(font.getlength(line) for line in lines)
+def left_stack(headline: str, lockup: Image.Image) -> tuple[Image.Image, int]:
+    """Lockup + title + gradient underline, vertically packed."""
+    logo_w = int(round(LOGO_H * (lockup.width / lockup.height)))
+    logo = lockup.resize((logo_w, LOGO_H), Image.Resampling.LANCZOS)
+    font, laid, size = fit_title(headline)
     ascent, descent = font.getmetrics()
-    block = len(lines) * (ascent + descent) + spacing * (len(lines) - 1)
-    bar_w = max(148, min(336, int(longest * 0.72)))
-    bar_y = title_top + block + (10 if size >= 64 else 12)
-    canvas.paste(gradient_bar(bar_w), (64, bar_y), gradient_bar(bar_w))
-    return canvas
+    lines = laid.split('\n')
+    spacing = 2
+    line_h = ascent + descent
+    title_h = len(lines) * line_h + spacing * (len(lines) - 1)
+    longest = max(font.getlength(line) for line in lines)
+    bar_w = max(96, min(220, int(longest * 0.72)))
+    bar_h = 4
+    gap_logo = 12
+    gap_bar = 8
+    block_h = LOGO_H + gap_logo + title_h + gap_bar + bar_h
+    block_w = max(logo_w, int(longest) + 4, bar_w)
+    block = Image.new('RGBA', (block_w, block_h), (0, 0, 0, 0))
+    block.paste(logo, (0, 0), logo)
+    draw = ImageDraw.Draw(block)
+    draw.multiline_text((0, LOGO_H + gap_logo), laid, font=font, fill=INK, spacing=spacing)
+    bar_y = LOGO_H + gap_logo + title_h + gap_bar
+    block.paste(gradient_bar(bar_w, bar_h), (0, bar_y), gradient_bar(bar_w, bar_h))
+    return block, block_h
+
+
+def paste_left(canvas: Image.Image, headline: str, lockup: Image.Image) -> None:
+    block, block_h = left_stack(headline, lockup)
+    top = max(PAD // 2, (H - block_h) // 2)
+    if canvas.mode == 'RGB':
+        canvas.paste(block.convert('RGB'), (PAD, top), block)
+    else:
+        canvas.paste(block, (PAD, top), block)
+
+
+def build_header(plate: Plate, headline: str, lockup: Image.Image) -> Image.Image:
+    """The approved seamless bake: header and art in one PNG on #141414."""
+    canvas = Image.new('RGBA', (W, H), BANNER + (255,))
+    max_w = W - (PAD + TEXT_MAX_W + 24)
+    pw = art_panel_width(plate, H, atmosphere=36, min_w=300, max_w=min(600, max_w))
+    filled = panel_art_on_ground(plate, pw, H, BANNER, atmosphere=36)
+    a = np.array(filled).astype(np.int16)
+    g = np.array(BANNER, dtype=np.int16)
+    # Floor every channel at the banner black: plate #000 becomes the
+    # banner, brighter art untouched.
+    a = np.maximum(a, g)
+    # Soft fade at the panel's left edge so no vertical seam can exist.
+    fade = 60
+    t = np.clip(np.arange(pw) / fade, 0, 1)
+    t = t * t * (3 - 2 * t)
+    a = (a * t[None, :, None] + g * (1 - t[None, :, None])).astype(np.uint8)
+    canvas.paste(Image.fromarray(a, 'RGB'), (W - pw, 0))
+    paste_left(canvas, headline, lockup)
+    return canvas.convert('RGB')
+
+
+def social_icon(name: str) -> Image.Image:
+    """One footer social icon: a 72px #2c2c2e circle, official glyph at 36px."""
+    try:
+        import cairosvg
+    except ImportError as exc:
+        raise SystemExit('cairosvg is required to bake the social icons: pip install cairosvg') from exc
+    source = SOCIAL_SOURCE / f'{name}.svg'
+    if not source.exists():
+        raise SystemExit(f'no Simple Icons source for {name}: {source}')
+    text = source.read_text()
+    match = re.search(r'<path d="([^"]+)"', text)
+    if not match:
+        raise SystemExit(f'no path found in {source}')
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">'
+        f'<circle cx="36" cy="36" r="36" fill="{ICON_CIRCLE}"/>'
+        f'<g transform="translate(18 18) scale(1.5)"><path d="{match.group(1)}" fill="{ICON_GLYPH}"/></g>'
+        '</svg>'
+    )
+    png = cairosvg.svg2png(bytestring=svg.encode(), output_width=72, output_height=72)
+    return Image.open(__import__('io').BytesIO(png)).convert('RGBA')
 
 
 def rounded_stroke(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], radius: int, width: int, color: tuple[int, int, int, int]) -> None:
@@ -303,102 +301,39 @@ def s(n: float) -> float:
 def fact_calendar() -> Image.Image:
     im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(im)
-    rounded_stroke(draw, (int(s(3)), int(s(4)), int(s(21)), int(s(22))), int(s(2)), 5, ORANGE)
-    line(draw, (s(3.4), s(10)), (s(20.6), s(10)), 5, ORANGE)
-    line(draw, (s(8), s(2)), (s(8), s(6)), 5, ORANGE)
-    line(draw, (s(16), s(2)), (s(16), s(6)), 5, ORANGE)
+    rounded_stroke(draw, (int(s(3)), int(s(4)), int(s(21)), int(s(22))), int(s(2)), 5, FACT_ORANGE)
+    line(draw, (s(3.4), s(10)), (s(20.6), s(10)), 5, FACT_ORANGE)
+    line(draw, (s(8), s(2)), (s(8), s(6)), 5, FACT_ORANGE)
+    line(draw, (s(16), s(2)), (s(16), s(6)), 5, FACT_ORANGE)
     return im
 
 
 def fact_clock() -> Image.Image:
     im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(im)
-    draw.ellipse((s(2), s(2), s(22), s(22)), outline=ORANGE, width=5)
-    line(draw, (s(12), s(12)), (s(12), s(7)), 5, ORANGE)
-    line(draw, (s(12), s(12)), (s(16), s(14.2)), 5, ORANGE)
+    draw.ellipse((s(2), s(2), s(22), s(22)), outline=FACT_ORANGE, width=5)
+    line(draw, (s(12), s(12)), (s(12), s(7)), 5, FACT_ORANGE)
+    line(draw, (s(12), s(12)), (s(16), s(14.2)), 5, FACT_ORANGE)
     return im
 
 
 def fact_banknote() -> Image.Image:
     im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(im)
-    rounded_stroke(draw, (int(s(2)), int(s(6)), int(s(22)), int(s(18))), int(s(2)), 5, ORANGE)
-    draw.ellipse((s(10), s(10), s(14), s(14)), outline=ORANGE, width=4)
-    cap(draw, (s(6), s(12)), 5, ORANGE)
-    cap(draw, (s(18), s(12)), 5, ORANGE)
+    rounded_stroke(draw, (int(s(2)), int(s(6)), int(s(22)), int(s(18))), int(s(2)), 5, FACT_ORANGE)
+    draw.ellipse((s(10), s(10), s(14), s(14)), outline=FACT_ORANGE, width=4)
+    cap(draw, (s(6), s(12)), 5, FACT_ORANGE)
+    cap(draw, (s(18), s(12)), 5, FACT_ORANGE)
     return im
 
 
 def fact_pin() -> Image.Image:
     im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
     draw = ImageDraw.Draw(im)
-    draw.ellipse((s(4), s(2), s(20), s(18)), outline=ORANGE, width=5)
-    line(draw, (s(6.2), s(14.2)), (s(12), s(22)), 5, ORANGE)
-    line(draw, (s(17.8), s(14.2)), (s(12), s(22)), 5, ORANGE)
-    draw.ellipse((s(9), s(7), s(15), s(13)), outline=ORANGE, width=4)
-    return im
-
-
-def social_instagram() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    rounded_stroke(draw, (8, 8, 56, 56), 14, 5, WHITE)
-    draw.ellipse((20, 20, 44, 44), outline=WHITE, width=5)
-    cap(draw, (46, 18), 6, WHITE)
-    return im
-
-
-def social_tiktok() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    # A note: stem, flag, and the round head.
-    line(draw, (28, 50), (28, 16), 6, WHITE)
-    draw.polygon([(28, 16), (48, 22), (46, 30), (28, 24)], fill=WHITE)
-    draw.ellipse((16, 40, 34, 56), outline=WHITE, width=5)
-    return im
-
-
-def social_threads() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    draw.arc((12, 10, 52, 54), 20, 340, fill=WHITE, width=5)
-    draw.arc((22, 22, 44, 46), 200, 40, fill=WHITE, width=5)
-    return im
-
-
-def social_youtube() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    rounded_stroke(draw, (6, 16, 58, 48), 12, 5, WHITE)
-    draw.polygon([(28, 24), (28, 40), (42, 32)], fill=WHITE)
-    return im
-
-
-def social_x() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    line(draw, (16, 16), (48, 48), 6, WHITE)
-    line(draw, (48, 16), (16, 48), 6, WHITE)
-    return im
-
-
-def social_facebook() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    line(draw, (38, 14), (38, 50), 6, WHITE)
-    line(draw, (24, 26), (46, 26), 6, WHITE)
-    draw.arc((22, 12, 40, 30), 180, 360, fill=WHITE, width=6)
-    return im
-
-
-def social_linkedin() -> Image.Image:
-    im = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(im)
-    cap(draw, (18, 16), 8, WHITE)
-    line(draw, (18, 26), (18, 50), 6, WHITE)
-    line(draw, (30, 50), (30, 34), 6, WHITE)
-    draw.arc((30, 26, 48, 42), 200, 20, fill=WHITE, width=6)
-    line(draw, (46, 34), (46, 50), 6, WHITE)
+    draw.ellipse((s(4), s(2), s(20), s(18)), outline=FACT_ORANGE, width=5)
+    line(draw, (s(6.2), s(14.2)), (s(12), s(22)), 5, FACT_ORANGE)
+    line(draw, (s(17.8), s(14.2)), (s(12), s(22)), 5, FACT_ORANGE)
+    draw.ellipse((s(9), s(7), s(15), s(13)), outline=FACT_ORANGE, width=4)
     return im
 
 
@@ -408,36 +343,26 @@ def save_png(path: Path, image: Image.Image) -> None:
 
 
 def main() -> None:
-    face = font_path()
     headlines: dict[str, str] = json.loads(COPY.read_text())
     lockup = Image.open(LOCKUP).convert('RGBA')
     HEADERS.mkdir(parents=True, exist_ok=True)
-    cache: dict[str, tuple[Image.Image, tuple[float, float] | None, float | None]] = {}
     for kind, headline in headlines.items():
-        plate = resolve_plate(kind)
-        if plate.name not in cache:
-            cache[plate.name] = extract_mascot(plate)
-        art, eye_xy, eye_dist = cache[plate.name]
-        image = build_header(headline, art, eye_xy, eye_dist, lockup, face)
+        plate = Plate(kind)
+        image = build_header(plate, headline, lockup)
         save_png(HEADERS / f'{kind}.png', image)
+        save_png(HEADERS / f'{kind}-1x.png', image.resize((600, 117), Image.Resampling.LANCZOS))
         print(f'{kind}: {headline}')
-    save_png(FOOTER, glow_field(1200, 480, scale=1.15))
     icons = {
         'calendar.png': fact_calendar(),
         'clock.png': fact_clock(),
         'banknote.png': fact_banknote(),
         'map-pin.png': fact_pin(),
-        'instagram.png': social_instagram(),
-        'tiktok.png': social_tiktok(),
-        'threads.png': social_threads(),
-        'youtube.png': social_youtube(),
-        'x.png': social_x(),
-        'facebook.png': social_facebook(),
-        'linkedin.png': social_linkedin(),
     }
+    for name in SOCIAL_ORDER:
+        icons[f'{name}.png'] = social_icon(name)
     for name, image in icons.items():
         save_png(ICONS / name, image)
-    print(f'footer {FOOTER.name}, {len(icons)} icons')
+    print(f'{len(headlines)} headers (2x + 1x), {len(icons)} icons')
 
 
 if __name__ == '__main__':
