@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { chipClass } from '@/components/ui/chip'
 import { ChevronRight } from 'lucide-react'
-import { CITY_NAMES, type CityDef } from '@/lib/cities'
+import { boardDisplayName, CITY_NAMES, type CityDef } from '@/lib/cities'
 import { formatGuideDay, whenPhrase } from '@/lib/local-seo'
 import { cityPath, suburbPath, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
 import { guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
@@ -47,6 +47,9 @@ export function GuideLanding(props: {
   seasons?: { href: string; title: string }[]
 }) {
   const { city, topic, suburb, when, heading, blurb, coverage, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
+  // Counts name the place the total covers: the suburb when one is selected,
+  // otherwise the board's display name (Sydney's is its NSW Coast region name).
+  const placeName = suburb ?? boardDisplayName(city.name)
   const listingQuery = isLandingPath(path) ? `lp=${encodeURIComponent(path)}` : undefined
   const here = events.filter((event) => {
     const name = (event.venueName || '').toLowerCase()
@@ -98,7 +101,7 @@ export function GuideLanding(props: {
                 <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}. Listings without a start time are marked time not listed and sit after the timed ones. Morning-only times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
               ) : (
                 <>Right now there {total === 1 ? 'is' : 'are'} <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
-                {suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
+                {` in ${placeName}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
               )}
               {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` Plenty of ${list(cats).toLowerCase()} if that’s your thing.`}
               {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} of the events shown here ${freeShown === 1 ? 'is' : 'are'} listed as free.`}
@@ -169,7 +172,7 @@ export function GuideLanding(props: {
                 {topic?.key === 'tonight' || when === 'tonight' ? (
                   <>Tonight covers 5pm onwards in {city.name}. Untimed listings are marked time not listed.</>
                 ) : (
-                  <>{total} upcoming {total === 1 ? 'event' : 'events'}{suburb ? ` in ${suburb}` : ` in ${city.name}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
+                  <>{total} upcoming {total === 1 ? 'event' : 'events'}{` in ${placeName}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
                 )}
                 {cats.length > 0 && topic?.key !== 'live-music' && topic?.key !== 'tonight' && when !== 'tonight' && ` Most common: ${list(cats).toLowerCase()}.`}
                 {freeShown > 0 && topic?.key !== 'free-events' && ` ${freeShown} listed as free.`}

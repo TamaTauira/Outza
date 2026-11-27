@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 import { FilterState } from '@/components/filter-panel'
-import { CATEGORIES, knownCategories } from '@/lib/categories'
+import { areaGroupFor, CATEGORIES, knownCategories } from '@/lib/categories'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent, type Status } from '@/components/board-row'
 import { ListingBoardCard } from '@/components/listing-board-card'
 import { ItineraryButton } from '@/components/itinerary-button'
@@ -394,6 +394,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   }
 
   const firstLoad = loading && events.length === 0
+  // The summary names the selected area group when one is picked (e.g.
+  // 'Newcastle & the Hunter' on the Sydney board), else the board city.
+  const selectedArea = city ? areaGroupFor(city, filters.suburb) : undefined
+  const placeName = selectedArea ? selectedArea.label : (city || 'Australia')
   return (
     <div>
       <ReachBeacon surface={searchQuery ? 'search' : 'board'} ids={events.map((event) => event.id)} term={searchQuery} />
@@ -406,7 +410,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {city || 'Australia'}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
+        <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
         {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (

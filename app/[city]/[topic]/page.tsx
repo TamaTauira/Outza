@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { CITIES, CITY_LABELS, type CityDef } from '@/lib/cities'
+import { boardDisplayName, CITIES, CITY_LABELS, type CityDef } from '@/lib/cities'
 import { GuideLanding } from '@/components/guide-landing'
 import { formatGuideDay, formatGuideSpan, relatedGuides } from '@/lib/local-seo'
 import { cityEditorial } from '@/lib/editorial'
@@ -35,7 +35,10 @@ async function resolve(citySlug: string, topicSlug: string): Promise<Resolved | 
 }
 
 function headingFor(r: Resolved) {
-  return r.topic ? r.topic.heading(r.city.name) : `Events in ${r.suburb}, ${r.city.name}`
+  if (!r.topic) return `Events in ${r.suburb}, ${r.city.name}`
+  // The events guide heading carries the board's display name, so Sydney's
+  // names the NSW Coast region its board covers.
+  return r.topic.heading(r.topic.key === 'events' ? boardDisplayName(r.city.name) : r.city.name)
 }
 
 function blurbFor(r: Resolved) {
