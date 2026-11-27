@@ -58,8 +58,13 @@ export function AccountClient() {
     if (!me) return
     const nextYear = me.birthYear == null ? '' : String(me.birthYear)
     const nextPc = me.homePostcode ?? ''
-    setYear((cur) => (cur === loadedAbout.current.year ? nextYear : cur))
-    setPc((cur) => (cur === loadedAbout.current.pc ? nextPc : cur))
+    // Snapshot the previously loaded values BEFORE updating the ref: the
+    // functional updates below run after this effect finishes, so reading
+    // loadedAbout.current inside them would compare against the new values
+    // and the fields would never seed.
+    const prev = loadedAbout.current
+    setYear((cur) => (cur === prev.year ? nextYear : cur))
+    setPc((cur) => (cur === prev.pc ? nextPc : cur))
     loadedAbout.current = { year: nextYear, pc: nextPc }
   }, [me])
   const saveAbout = async () => {
