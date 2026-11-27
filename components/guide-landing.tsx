@@ -26,6 +26,8 @@ export function GuideLanding(props: {
   when: WhenKey | null
   heading: string
   blurb: string
+  /** Region coverage line under the heading (e.g. Sydney's NSW Coast coverage). */
+  coverage?: string | null
   path: string
   origin: string
   events: LandingEvent[]
@@ -44,7 +46,7 @@ export function GuideLanding(props: {
   editorial?: { paragraphs: string[]; more?: { href: string; label: string } } | null
   seasons?: { href: string; title: string }[]
 }) {
-  const { city, topic, suburb, when, heading, blurb, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
+  const { city, topic, suburb, when, heading, blurb, coverage, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
   const listingQuery = isLandingPath(path) ? `lp=${encodeURIComponent(path)}` : undefined
   const here = events.filter((event) => {
     const name = (event.venueName || '').toLowerCase()
@@ -79,6 +81,9 @@ export function GuideLanding(props: {
           <h1 className="font-display text-h1">{heading}</h1>
           {showRange && (
             <p className="mt-2 text-primary font-semibold">{formatGuideDay(from)}{from !== to ? ` – ${formatGuideDay(to!)}` : ''}</p>
+          )}
+          {coverage && (
+            <p className="mt-2 text-base font-medium text-muted-foreground">{coverage}</p>
           )}
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed line-clamp-3 md:line-clamp-none">{blurb}</p>
           {editorial && editorial.paragraphs.length > 0 && (

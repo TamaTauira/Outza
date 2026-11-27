@@ -1,11 +1,12 @@
 /**
- * Which catalogue city a venue string belongs to.
+ * Which city a venue string files to: a catalogue city, or an ingest-only place
+ * (Newcastle) whose events surface on its region board.
  * City words ("Sydney", "Fremantle", "Naarm") win when the feed states them.
  * Venues whose names leave the city out (Afterpay Arena, Riverstage, Optus Stadium)
  * fall back to this alias list. A postcode or pin is used when the feed has one.
  * Two different cities in one string is left unresolved.
  */
-import { CITIES, requireEveryCity, type CityDef } from '@/lib/cities'
+import { INGEST_CITIES, requireEveryCity, type CityDef } from '@/lib/cities'
 
 export type PlaceCityInput = {
   name?: string | null
@@ -23,6 +24,7 @@ export type PlaceCityInput = {
  */
 export const CITY_POSTCODES: Record<string, [number, number][]> = {
   Sydney: [[2000, 2249], [2500, 2534], [2555, 2574], [2740, 2786]],
+  Newcastle: [[2280, 2310], [2318, 2324]],
   Canberra: [[2600, 2620], [2900, 2914]],
   Melbourne: [[3000, 3210], [3335, 3341], [3427, 3438], [3750, 3810], [3910, 3944], [3975, 3978]],
   Brisbane: [[4000, 4207], [4300, 4306], [4500, 4521]],
@@ -204,6 +206,16 @@ export const VENUE_CITY_ALIASES: VenueCityAlias[] = [
     ],
   },
   {
+    city: 'Newcastle',
+    names: [
+      'McDonald Jones Stadium',
+      'Hunter Stadium',
+      'EnergyAustralia Stadium',
+      'Ausgrid Stadium',
+      'King Street Bandroom',
+    ],
+  },
+  {
     city: 'Canberra',
     names: [
       'GIO Stadium',
@@ -275,7 +287,7 @@ export function cityMentioned(text: string | null | undefined): CityDef | null {
   const hay = clean(text)
   if (!hay) return null
   let best: { city: CityDef; at: number } | null = null
-  for (const city of CITIES) {
+  for (const city of INGEST_CITIES) {
     const found = hay.match(city.match)
     if (!found || found.index == null) continue
     if (!best || found.index >= best.at) best = { city, at: found.index }
@@ -290,12 +302,12 @@ export function cityFromPostcode(postcode: string | number | null | undefined): 
   const pc = parseInt(match[1], 10)
   if (!Number.isFinite(pc)) return null
   const name = Object.keys(CITY_POSTCODES).find((city) => CITY_POSTCODES[city].some(([a, b]) => pc >= a && pc <= b))
-  return name ? CITIES.find((c) => c.name === name) ?? null : null
+  return name ? INGEST_CITIES.find((c) => c.name === name) ?? null : null
 }
 
 function nearestCity(lat: number, lng: number, accept: (city: CityDef, distanceKm: number) => boolean): CityDef | null {
   let best: { city: CityDef; distanceKm: number } | null = null
-  for (const city of CITIES) {
+  for (const city of INGEST_CITIES) {
     const distanceKm = km(lat, lng, city.lat, city.lng)
     if (!accept(city, distanceKm)) continue
     if (!best || distanceKm < best.distanceKm) best = { city, distanceKm }
@@ -303,7 +315,7 @@ function nearestCity(lat: number, lng: number, accept: (city: CityDef, distanceK
   return best?.city ?? null
 }
 
-/** The nearest catalogue city whose radius contains the pin. One pin is one city. */
+/** The nearest filed city (catalogue or ingest-only) whose radius contains the pin. One pin is one city. */
 export function cityFromCoords(lat: unknown, lng: unknown): CityDef | null {
   const a = numberOrNull(lat)
   const b = numberOrNull(lng)
@@ -341,7 +353,8 @@ export function aliasCities(text: string | null | undefined): string[] {
 }
 
 /**
- * Resolve a feed place to a catalogue city.
+ * Resolve a feed place to the city it files under (a catalogue city, or an
+ * ingest-only place such as Newcastle).
  * Order matches the ticket feeds: pin, then postcode, then a stated city, then the venue alias.
  * A stated city beats an alias, so "Hordern Pavilion, Melbourne" stays Melbourne.
  */
@@ -359,5 +372,5 @@ export function cityFromPlace(input: PlaceCityInput = {}): CityDef | null {
   if (stated) return stated
   const aliased = aliasCities([name, address, locality, region].filter(Boolean).join(' '))
   if (aliased.length !== 1) return null
-  return CITIES.find((c) => c.name === aliased[0]) ?? null
+  return INGEST_CITIES.find((c) => c.name === aliased[0]) ?? null
 }

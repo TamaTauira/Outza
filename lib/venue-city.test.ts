@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
-import { CITIES } from './cities'
+import { CITIES, INGEST_CITIES } from './cities'
 import { aliasCities, cityForIngest, cityFromPlace, cityFromPostcode, VENUE_CITY_ALIASES } from './venue-city'
 
 const GENERIC = /^(arena|stadium|theatre|theater|park|hotel|hall|oval|centre|center|pavilion|house|garden|gardens|bowl|civic|star|gov)$/
 
-test('every venue alias maps to one catalogue city and is not a generic word', () => {
+test('every venue alias maps to one filed city and is not a generic word', () => {
   const seen = new Map<string, string>()
   for (const group of VENUE_CITY_ALIASES) {
-    assert.ok(CITIES.some((city) => city.name === group.city), group.city)
+    assert.ok(INGEST_CITIES.some((city) => city.name === group.city), group.city)
     for (const name of group.names) {
       const key = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
       assert.equal(GENERIC.test(key), false, name)
@@ -171,7 +171,7 @@ test('address, locality and postcode fields identify the city when the venue nam
   assert.equal(cityFromPostcode('4207')?.name, 'Brisbane')
   assert.equal(cityFromPostcode('4208')?.name, 'Gold Coast')
   assert.equal(cityFromPostcode('4217')?.name, 'Gold Coast')
-  assert.equal(cityFromPostcode('2300'), null)
+  assert.equal(cityFromPostcode('2300')?.name, 'Newcastle')
   assert.equal(cityFromPostcode('0800')?.name, 'Darwin')
   assert.equal(cityFromPostcode('800')?.name, 'Darwin')
   assert.equal(cityFromPostcode('6000')?.name, 'Perth')
@@ -245,4 +245,26 @@ test('Wollongong is not a catalogue city and its listings fold into Sydney', () 
     ),
   )
   assert.deepEqual(ranges, ['Sydney', 'Sydney', 'Sydney', 'Sydney', 'Sydney'])
+})
+
+test('Newcastle files again as an ingest-only city, never a catalogue city', () => {
+  assert.equal(CITIES.some((city) => city.name === 'Newcastle'), false)
+  assert.equal(INGEST_CITIES.some((city) => city.name === 'Newcastle'), true)
+  // Its stadiums and rooms file without the word Newcastle.
+  for (const name of ['McDonald Jones Stadium', 'Hunter Stadium', 'EnergyAustralia Stadium', 'Ausgrid Stadium', 'King Street Bandroom']) {
+    assert.equal(cityFromPlace({ name })?.name, 'Newcastle', name)
+  }
+  // Its postcode ranges are its own again; the gap between them stays unresolved.
+  assert.equal(cityFromPostcode('2280')?.name, 'Newcastle')
+  assert.equal(cityFromPostcode('2292')?.name, 'Newcastle')
+  assert.equal(cityFromPostcode('2310')?.name, 'Newcastle')
+  assert.equal(cityFromPostcode('2311'), null)
+  assert.equal(cityFromPostcode('2318')?.name, 'Newcastle')
+  assert.equal(cityFromPostcode('2324')?.name, 'Newcastle')
+  // The stated word and a CBD pin file it too.
+  assert.equal(cityFromPlace({ name: 'Gig', locality: 'Newcastle' })?.name, 'Newcastle')
+  assert.equal(cityFromPlace({ name: 'Hall', lat: -32.9267, lng: 151.7789 })?.name, 'Newcastle')
+  assert.equal(cityForIngest(-32.9267, 151.7789)?.name, 'Newcastle')
+  // A Newcastle pin is far outside Sydney's ingest slack, so it never falls back there.
+  assert.notEqual(cityForIngest(-32.9267, 151.7789)?.name, 'Sydney')
 })

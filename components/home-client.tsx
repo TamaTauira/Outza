@@ -8,7 +8,7 @@ import { Navbar, viewForPath } from '@/components/navbar';
 import { FilterPanel, FilterState } from '@/components/filter-panel';
 import { EventList, type BoardSeed } from '@/components/event-list';
 import { SavedBoard } from '@/components/saved-board';
-import { CATEGORIES, areasForCity, knownCategories, withCategories } from '@/lib/categories';
+import { CATEGORIES, areaGroupLabels, filterAreasForCity, knownCategories, withCategories } from '@/lib/categories';
 import { addDays, categoryIcon, listSpan, sydneyNow, type SydneyNow, type TimeWindow } from '@/lib/board';
 import { useSaved } from '@/lib/saved';
 import { CalendarDays, Check, LayoutGrid, LayoutList, MapPin, SlidersHorizontal, Ticket } from 'lucide-react';
@@ -94,8 +94,8 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     writeCity(c);
     writeUserCity(userId, c);
     // Drop an area preset from the city we're leaving. Keep a free-text suburb Ask VibePeep set.
-    const nextAreas = new Set(areasForCity(c));
-    const previousAreas = new Set(areasForCity(city));
+    const nextAreas = new Set(filterAreasForCity(c));
+    const previousAreas = new Set(filterAreasForCity(city));
     const keep = (f: FilterState): FilterState => {
       if (!f.suburb || nextAreas.has(f.suburb) || !previousAreas.has(f.suburb)) return f;
       return { ...f, suburb: '' };
@@ -596,7 +596,8 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
               onChange={setFilters}
               onClose={() => setShowFilters(false)}
               isMobile
-              areas={areasForCity(city)}
+              areas={filterAreasForCity(city)}
+              groups={areaGroupLabels(city)}
               when={day === today ? timeWindow : ''}
               onWhen={(w) => {
                 if (!today) return;

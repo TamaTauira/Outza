@@ -3,7 +3,7 @@ import { cache } from 'react'
 import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS } from '@/lib/http-cache'
 import type { Prisma } from '@prisma/client'
 import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
-import { CITIES, cityDef, type CityDef } from '@/lib/cities'
+import { CITIES, REGION_MEMBERS, boardCitiesFor, cityDef, type CityDef } from '@/lib/cities'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { eventPictureSelect } from '@/lib/images/display-spec'
 import { placeholderAbsolute } from '@/lib/placeholders'
@@ -48,7 +48,8 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   const today = cityToday(city)
   let from = today
   let to: string | null = null
-  const where: Prisma.EventWhereInput = { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, AND: [...PUBLIC_EVENT_AND] }
+  // Region boards read their member cities too: Sydney's guide carries Newcastle-filed events.
+  const where: Prisma.EventWhereInput = { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, AND: [...PUBLIC_EVENT_AND] }
   if (opts.range) {
     from = opts.range.from
     to = opts.range.to
@@ -109,7 +110,7 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
   const from = opts.from ?? today
   const to = opts.to ?? addDaysStr(today, 60)
   const rows = await withStatementTimeout(8_000, (tx) => tx.localListing.findMany({
-    where: { city: city.name, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(opts.ownOnly ? { sourceName: null } : {}), ...(topic?.local ? { category: topic.local } : {}), ...(opts.suburb ? { suburb: { equals: opts.suburb, mode: 'insensitive' } } : {}) },
+    where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(opts.ownOnly ? { sourceName: null } : {}), ...(topic?.local ? { category: topic.local } : {}), ...(opts.suburb ? { suburb: { equals: opts.suburb, mode: 'insensitive' } } : {}) },
     select: { id: true, title: true, category: true, description: true, suburb: true, address: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true },
     take: 400,
   })).catch((err) => {
@@ -166,7 +167,7 @@ export const topicTotal = cache(async function topicTotal(city: CityDef, topic: 
   const events = (await landingEvents(city, { topic: topic.key }, 1)).total
   const local = topic.local
     ? await withStatementTimeout(8_000, (tx) => tx.localListing.count({
-        where: { city: city.name, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, category: topic.local },
+        where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, category: topic.local },
       })).catch(() => 0)
     : 0
   const n = events + local
@@ -190,6 +191,15 @@ export const cityEventCounts = cache(async function cityEventCounts(): Promise<R
   })).catch(() => [])
   const out: Record<string, number> = {}
   for (const r of rows) out[r.city] = r._count._all
+  // Region members count towards their board's city: Newcastle's events are Sydney board events.
+  for (const [home, members] of Object.entries(REGION_MEMBERS)) {
+    for (const member of members) {
+      if (out[member]) {
+        out[home] = (out[home] ?? 0) + out[member]
+        delete out[member]
+      }
+    }
+  }
   return out
 })
 
@@ -203,7 +213,7 @@ type SuburbCount = { name: string; slug: string; count: number }
 
 async function queryCitySuburbs(city: CityDef, today: string, min: number): Promise<SuburbCount[]> {
   const rows = await withStatementTimeout(8_000, (tx) => tx.event.findMany({
-    where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
+    where: { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
     select: { suburb: true, venueAddress: true },
   }))
   const counts = new Map<string, { name: string; count: number }>()
@@ -340,14 +350,14 @@ async function queryGuideRows(city: CityDef, today: string): Promise<InvRow[]> {
   // other page queries, to fill the interactive pool of 10.
   const [events, locals] = await withStatementTimeout(8_000, (tx) => Promise.all([
     tx.event.findMany({
-      where: { city: city.name, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) }, AND: [...PUBLIC_EVENT_AND] },
+      where: { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(until) }, AND: [...PUBLIC_EVENT_AND] },
       select: {
         id: true, title: true, date: true, endDate: true, time: true, endTime: true, endsAt: true, venueName: true, venueAddress: true, suburb: true,
         category: true, subTags: true, isFree: true, isLGBTI: true,
       },
     }),
     tx.localListing.findMany({
-      where: { city: city.name, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() } },
+      where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() } },
       select: { id: true, title: true, description: true, category: true, suburb: true, address: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, sourceName: true },
     }),
   ]))

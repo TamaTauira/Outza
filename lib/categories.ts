@@ -1,5 +1,6 @@
 import { BRAND_ORANGE } from '@/lib/brand'
 import { requireEveryCity, suburbFromAddress, tidyVenueName } from '@/lib/cities'
+import { coordsFitCity } from '@/lib/travel'
 import { readPrice } from '@/lib/price'
 import { foldSearchText } from '@/lib/search-fold'
 import { dropBroadTheatre, listingText, lgbtiFromSources, proseEvidence, retagLgbti, sportSignal, tagsFromGenreLabels } from '@/lib/tag-evidence'
@@ -434,3 +435,107 @@ export function areasForCity(city: string): string[] {
 }
 
 requireEveryCity('area filters', ['Sydney', ...Object.keys(CITY_AREAS)])
+
+/**
+ * Area groupings above the suburb level, for boards that cover more than one
+ * place. Sydney's board is the NSW Coast region board: its filter offers the
+ * three areas first, then the suburb list, so a Newcastle or Wollongong user
+ * can narrow to their area in one tap. Group labels are filter values only —
+ * they are never matched against venue text (areasForCity stays the reconcile
+ * list) and never stored on an event.
+ */
+export interface BoardAreaGroup {
+  label: string
+  /** Stored city names that belong to the area outright (the region member). */
+  storedCities: string[]
+  /** Suburbs and localities in the area. 'CBD' is left out: it names every city's centre. */
+  suburbs: string[]
+  /** Place whose centre the area's pins are measured against, or null. */
+  centre: string | null
+}
+
+const ILLAWARRA_SUBURBS = [
+  'Wollongong', 'North Wollongong', 'West Wollongong', 'Fairy Meadow', 'Keiraville', 'Figtree', 'Port Kembla', 'Dapto', 'Thirroul',
+  'Bulli', 'Woonona', 'Corrimal', 'Austinmer', 'Coledale', 'Scarborough', 'Stanwell Park', 'Helensburgh', 'Unanderra', 'Coniston',
+  'Gwynneville', 'Warrawong', 'Berkeley', 'Lake Illawarra', 'Shellharbour', 'Albion Park', 'Oak Flats', 'Kiama', 'Gerringong',
+  'Mount Keira', 'Balgownie', 'Tarrawanna', 'Horsley', 'Kembla Grange', 'Windang', 'Primbee', 'Barrack Heights', 'Mount Warrigal',
+  'Warilla', 'Blackbutt',
+]
+
+const NEWCASTLE_AREA_SUBURBS = [
+  'Newcastle', 'Newcastle East', 'Newcastle West', 'The Hill', 'Cooks Hill', 'Hamilton', 'Hamilton South', 'The Junction',
+  'Merewether', 'Bar Beach', 'Darby Street', 'Adamstown', 'Broadmeadow', 'New Lambton', 'Lambton', 'Georgetown', 'Waratah',
+  'Mayfield', 'Carrington', 'Stockton', 'Wallsend', 'Jesmond', 'Kotara', 'Charlestown', 'Maitland', 'East Maitland',
+  'Rutherford', 'Thornton', 'Beresfield', 'Cardiff', 'Glendale', 'Warners Bay', 'Speers Point', 'Belmont', 'Swansea',
+  'Toronto', 'Valentine', 'Eleebana', 'Mount Hutton', 'Cessnock', 'Kurri Kurri', 'Raymond Terrace', 'Medowie', 'Hexham',
+  'Sandgate', 'Warabrook', 'Tarro', 'Heatherbrae', 'Largs', 'Metford', 'Ashtonfield', 'Chisholm', 'Booragul', 'Marmong Point',
+]
+
+export const BOARD_AREA_GROUPS: Record<string, BoardAreaGroup[]> = {
+  Sydney: [
+    { label: 'Sydney', storedCities: ['Sydney'], suburbs: [], centre: 'Sydney' },
+    { label: 'Wollongong & the Illawarra', storedCities: [], suburbs: ILLAWARRA_SUBURBS, centre: 'Wollongong' },
+    { label: 'Newcastle & the Hunter', storedCities: ['Newcastle'], suburbs: NEWCASTLE_AREA_SUBURBS, centre: 'Newcastle' },
+  ],
+}
+
+/** The area groupings a board's filter offers, in display order. Empty for single-city boards. */
+export function areaGroupsFor(city: string): BoardAreaGroup[] {
+  return BOARD_AREA_GROUPS[city] ?? []
+}
+
+/** Just the group labels, for the filter's grouped option list. */
+export function areaGroupLabels(city: string): string[] {
+  return areaGroupsFor(city).map((g) => g.label)
+}
+
+/** The group a filter value names on this board, if it names one. */
+export function areaGroupFor(city: string, value: string | null | undefined): BoardAreaGroup | undefined {
+  if (!value) return undefined
+  return areaGroupsFor(city).find((g) => g.label === value)
+}
+
+/**
+ * Area choices for the filter UI: the group labels first, then every suburb the
+ * board's events can carry, including the folded-in areas' suburbs.
+ */
+export function filterAreasForCity(city: string): string[] {
+  const groups = areaGroupsFor(city)
+  if (!groups.length) return areasForCity(city)
+  const seen = new Set<string>()
+  const out: string[] = []
+  const push = (s: string) => {
+    const key = s.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    out.push(s)
+  }
+  for (const g of groups) push(g.label)
+  for (const s of areasForCity(city)) push(s)
+  for (const g of groups) for (const s of g.suburbs) push(s)
+  return out
+}
+
+type AreaEvent = { city?: string | null; suburb?: string | null; latitude?: number | null; longitude?: number | null }
+
+function inAreaGroup(e: AreaEvent, g: BoardAreaGroup): boolean {
+  if (e.city && g.storedCities.includes(e.city)) return true
+  const suburb = (e.suburb ?? '').trim().toLowerCase()
+  if (suburb && g.suburbs.some((s) => s.toLowerCase() === suburb)) return true
+  if (g.centre && e.latitude != null && e.longitude != null && coordsFitCity(e.latitude, e.longitude, g.centre)) return true
+  return false
+}
+
+/**
+ * Whether an event belongs to one of a board's area groups. Membership follows
+ * the suburb facet's semantics — where the event physically is (its filed city,
+ * its suburb, or its pin) — not just the city it is filed under. The board's
+ * home group is what is left once the folded-in areas are taken out, so a
+ * Sydney-filed event physically in the Illawarra counts as Illawarra, not Sydney.
+ */
+export function matchesAreaGroup(e: AreaEvent, boardCity: string, group: BoardAreaGroup): boolean {
+  if (group.storedCities.includes(boardCity)) {
+    return !areaGroupsFor(boardCity).some((g) => g !== group && inAreaGroup(e, g))
+  }
+  return inAreaGroup(e, group)
+}

@@ -3,7 +3,7 @@
  * Facts come from the page (structured data, source markup, then a location line).
  * Nothing here invents a street, a suburb, or a pin.
  */
-import { cityDef, suburbFromAddress } from '@/lib/cities'
+import { knownCityDef, suburbFromAddress } from '@/lib/cities'
 import { distanceKm } from '@/lib/travel'
 import { pinIsCityDump, placeFromText } from '@/lib/venue-place'
 
@@ -105,7 +105,9 @@ export function pinFitsCity(lat: number, lng: number, city: string, address?: st
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false
   if (Math.abs(lat) < 0.01 && Math.abs(lng) < 0.01) return false
   if (isOnlineSentinel(lat, lng)) return false
-  const def = cityDef(city)
+  // Known places include ingest-only Newcastle: its events keep their pins even
+  // though it is not a selectable city.
+  const def = knownCityDef(city)
   if (!def || def.name !== city) return false
   if (distanceKm({ lat, lng }, { lat: def.lat, lng: def.lng }) > def.radiusKm + 20) return false
   const place = placeFromText({ venueAddress: address, suburb, city })

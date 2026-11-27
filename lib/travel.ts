@@ -1,4 +1,4 @@
-import { CITIES, cityDef } from '@/lib/cities'
+import { CITIES, KNOWN_CITY_DEFS, knownCityDef } from '@/lib/cities'
 
 /** Straight-line travel estimates between itinerary stops (client-safe, no external calls). Always shown as approximate. */
 
@@ -69,9 +69,11 @@ export function coordsFitCity(lat: number, lng: number, city?: string | null): b
   if (lat < -44.5 || lat > -9 || lng < 112 || lng > 154.5) return false
   const name = cityName(city)
   if (!name) return true
-  const known = CITIES.some((c) => c.name.toLowerCase() === name.toLowerCase())
+  // Known places include the ingest-only ones (Newcastle, Wollongong): an event
+  // filed there is measured against its own centre, not the catalogue fallback.
+  const known = KNOWN_CITY_DEFS.some((c) => c.name.toLowerCase() === name.toLowerCase())
   if (!known) return true
-  const centre = cityDef(name)
+  const centre = knownCityDef(name)
   // A bit wider than the catalogue radius so greater-metro events stay, and a Tasmanian town does not land on Hobart.
   return distanceKm({ lat, lng }, { lat: centre.lat, lng: centre.lng }) <= centre.radiusKm * 1.6
 }
