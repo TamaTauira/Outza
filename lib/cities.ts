@@ -35,12 +35,65 @@ export const cityDef = (name: string | null | undefined): CityDef =>
 
 export const cityLabel = (name: string) => (name ? name : 'All of Australia')
 
+/**
+ * Places the product knows how to file that are NOT selectable cities: they have
+ * no route, no picker entry of their own, no footer link and no home-city option.
+ * Newcastle is ingest-only: feeds collect it again and its events are filed as
+ * 'Newcastle', but they surface on the Sydney board, which is the NSW Coast
+ * region board (see REGION_MEMBERS). Wollongong is area-only: since the city
+ * removal its listings file to Sydney, so the def survives purely as the centre
+ * of the Illawarra area filter on that board.
+ */
+const NEWCASTLE_DEF: CityDef = { name: 'Newcastle', state: 'NSW', lat: -32.9283, lng: 151.7817, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--newcastle', humanitix: 'au--nsw--newcastle', match: /newcastle/i, custodians: 'Awabakal and Worimi peoples' }
+const WOLLONGONG_DEF: CityDef = { name: 'Wollongong', state: 'NSW', lat: -34.4278, lng: 150.8931, tz: 'Australia/Sydney', radiusKm: 20, eventbrite: 'australia--wollongong', humanitix: 'au--nsw--wollongong', match: /\bwollongong\b|\billawarra\b(?!\s+(?:rd|road|st|street|hwy|highway|pde|parade|dr|drive)\b)/i, custodians: 'Dharawal people' }
+
+/** Non-catalogue places whose listings are collected and filed under their own name. */
+export const INGEST_ONLY_CITIES: CityDef[] = [NEWCASTLE_DEF]
+/** Non-catalogue places kept only as the centre of a board area filter. */
+export const AREA_ONLY_CITIES: CityDef[] = [WOLLONGONG_DEF]
+/** Every place feeds iterate: the catalogue plus the ingest-only places. */
+export const INGEST_CITIES: CityDef[] = [...CITIES, ...INGEST_ONLY_CITIES]
+/** Every place def the product can name, catalogue or not. */
+export const KNOWN_CITY_DEFS: CityDef[] = [...INGEST_CITIES, ...AREA_ONLY_CITIES]
+
+/** Def for any filed city name, catalogue or not. Falls back to Sydney like cityDef. */
+export const knownCityDef = (name: string | null | undefined): CityDef =>
+  KNOWN_CITY_DEFS.find((c) => c.name === name) ?? CITIES[0]
+
+/**
+ * Region boards: a selectable city whose board also carries events filed under
+ * the listed ingest-only cities. Sydney's board is the NSW Coast region board.
+ */
+export const REGION_MEMBERS: Record<string, string[]> = { Sydney: ['Newcastle'] }
+
+/** The stored city names a city's board covers: itself plus its region members. */
+export const boardCitiesFor = (cityName: string): string[] => [cityName, ...(REGION_MEMBERS[cityName] ?? [])]
+
+/** Picker wording for one catalogue city: state eyebrow, display label, optional coverage line. */
+export interface CityLabel {
+  eyebrow: string
+  label: string
+  coverage?: string
+}
+
+export const CITY_LABELS: Record<string, CityLabel> = {
+  Sydney: { eyebrow: 'NSW · THE HARBOUR STATE', label: 'Sydney & the NSW Coast', coverage: 'Includes Wollongong, the Illawarra, Newcastle & the Hunter' },
+  Melbourne: { eyebrow: 'VIC · THE GARDEN STATE', label: 'Melbourne' },
+  Brisbane: { eyebrow: 'QLD · THE SUNSHINE STATE', label: 'Brisbane' },
+  'Gold Coast': { eyebrow: 'QLD · THE SUNSHINE STATE', label: 'Gold Coast' },
+  Perth: { eyebrow: 'WA · THE WILDFLOWER STATE', label: 'Perth' },
+  Adelaide: { eyebrow: 'SA · THE FESTIVAL STATE', label: 'Adelaide' },
+  Canberra: { eyebrow: 'ACT · THE BUSH CAPITAL', label: 'Canberra' },
+  Hobart: { eyebrow: 'TAS · THE APPLE ISLE', label: 'Hobart' },
+  Darwin: { eyebrow: 'NT · THE TOP END', label: 'Darwin' },
+}
+
 export const ACKNOWLEDGEMENT_OF_COUNTRY =
   'We acknowledge the Traditional Custodians of the lands across Australia on which the events listed here take place, and pay our respects to Elders past and present. Always was, always will be Aboriginal land.'
 
 /** Short acknowledgement for a single city, or a national one when no city is selected. */
 export function custodiansLine(name: string | null | undefined): string {
-  const c = name ? CITIES.find((x) => x.name === name) : undefined
+  const c = name ? KNOWN_CITY_DEFS.find((x) => x.name === name) : undefined
   return c
     ? `${c.name} events take place on the lands of the ${c.custodians}, the Traditional Custodians. We pay our respects to their Elders past and present.`
     : 'Events across Australia take place on the lands of many Aboriginal and Torres Strait Islander nations. We pay our respects to their Elders past and present.'

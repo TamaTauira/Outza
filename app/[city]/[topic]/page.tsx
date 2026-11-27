@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { CITIES, type CityDef } from '@/lib/cities'
+import { CITIES, CITY_LABELS, type CityDef } from '@/lib/cities'
 import { GuideLanding } from '@/components/guide-landing'
 import { formatGuideDay, formatGuideSpan, relatedGuides } from '@/lib/local-seo'
 import { cityEditorial } from '@/lib/editorial'
@@ -123,6 +123,7 @@ export default async function LandingPage({ params }: Props) {
       when={null}
       heading={heading}
       blurb={blurbFor(r)}
+      coverage={!suburb ? (CITY_LABELS[city.name]?.coverage ?? null) : null}
       path={path}
       origin={origin}
       events={events}

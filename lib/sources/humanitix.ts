@@ -2,7 +2,7 @@ import { saveEvent, extractNextData, sleep, toSydneyParts, BROWSER_UA, type RawE
 import { readJobMark, writeJobCursor } from '@/lib/job-watermark'
 import { attachSweepProgress } from '@/lib/refresh-plan'
 import { isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
-import { CITIES, type CityDef } from '@/lib/cities'
+import { INGEST_CITIES, type CityDef } from '@/lib/cities'
 import { cityFromPlace } from '@/lib/venue-city'
 import { humanitixEventUrl } from '@/lib/listing-link'
 import { moneyNumber, priceFromAmounts } from '@/lib/price'
@@ -35,7 +35,7 @@ function sydneyToday(): string {
 
 function featuredPages(): { city: CityDef; path: '' | '/music' }[] {
   const pages: { city: CityDef; path: '' | '/music' }[] = []
-  for (const city of CITIES) for (const path of ['', '/music'] as const) pages.push({ city, path })
+  for (const city of INGEST_CITIES) for (const path of ['', '/music'] as const) pages.push({ city, path })
   return pages
 }
 

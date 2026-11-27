@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { sydneyToday } from '@/lib/event-store'
 import { activeTierMap } from '@/lib/promotions'
-import { CITY_NAMES, cityDef } from '@/lib/cities'
-import { knownCategories, presentListing } from '@/lib/categories'
+import { CITY_NAMES, boardCitiesFor, cityDef } from '@/lib/cities'
+import { areaGroupFor, knownCategories, matchesAreaGroup, presentListing } from '@/lib/categories'
 import { addressInOtherState, isPastEvent, namesAnotherTown } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
 import { collapseShowings, hiddenFromPublic, sameShowing } from '@/lib/listing-visibility'
@@ -63,7 +63,11 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   if (a.city === 'Canberra') {
     where.OR = [{ city: 'Canberra' }, { AND: [{ city: 'Sydney' }, actMisfile] }]
   } else if (a.city && CITY_NAMES.includes(a.city)) {
-    where.city = a.city
+    // A region board (Sydney, the NSW Coast) also carries its member cities'
+    // events — Newcastle files under its own name but shows here.
+    const members = boardCitiesFor(a.city)
+    if (members.length > 1) where.OR = members.map((name) => ({ city: name }))
+    else where.city = a.city
     if (a.city === 'Sydney') where.NOT = actMisfile
   }
   if (a.promoterId) where.promoterId = a.promoterId
@@ -83,7 +87,12 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   }
   if (a.categories.length) where.category = { in: a.categories }
   if (a.subTag) where.subTags = { has: a.subTag }
-  if (a.suburb) {
+  // An area group label is a location predicate, not a suburb string. The folded-in
+  // groups narrow in SQL by filed city and suburb so a full page of them can be
+  // gathered; shapeBoard still applies the full predicate (pins included). The
+  // home group is what is left over, so it cannot narrow and is shaped only.
+  const areaGroup = a.suburb ? areaGroupFor(a.city, a.suburb) : undefined
+  if (a.suburb && !areaGroup) {
     and.push({
       OR: [
         { suburb: a.suburb },
@@ -91,6 +100,11 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
         { venueName: { contains: a.suburb, mode: 'insensitive' } },
       ],
     })
+  } else if (areaGroup && !areaGroup.storedCities.includes(a.city)) {
+    const or: Prisma.EventWhereInput[] = []
+    if (areaGroup.storedCities.length) or.push({ city: { in: areaGroup.storedCities } })
+    if (areaGroup.suburbs.length) or.push({ suburb: { in: areaGroup.suburbs, mode: 'insensitive' } })
+    if (or.length) and.push({ OR: or })
   }
   const price = priceWhere({ isFree: a.isFree, maxPrice: a.maxPrice ?? null })
   if (price) and.push(price)
@@ -126,7 +140,10 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
       if (isPastEvent(e) || hiddenFromPublic(e)) return false
       const blob = [e.venueAddress, e.venueName, e.suburb].filter(Boolean).join(' ')
       if (addressInOtherState(blob, def) || namesAnotherTown(city, e)) return false
-      if (e.latitude != null && e.longitude != null && !coordsFitCity(e.latitude, e.longitude, city)) return false
+      // A region member's event is measured against its own city, not the board's:
+      // a Newcastle pin is 117km from Sydney but right at home in Newcastle.
+      const home = e.city && boardCitiesFor(city).includes(e.city) ? e.city : city
+      if (e.latitude != null && e.longitude != null && !coordsFitCity(e.latitude, e.longitude, home)) return false
       return true
     })
   } else {
@@ -135,8 +152,13 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
   shown = collapseShowings(shown)
   if (categories.length) shown = shown.filter((e) => categories.includes(e.category))
   if (suburb) {
-    const want = suburb.toLowerCase()
-    shown = shown.filter((e) => (e.suburb ?? '').toLowerCase() === want)
+    const group = areaGroupFor(city, suburb)
+    if (group) {
+      shown = shown.filter((e) => matchesAreaGroup(e, city, group))
+    } else {
+      const want = suburb.toLowerCase()
+      shown = shown.filter((e) => (e.suburb ?? '').toLowerCase() === want)
+    }
   }
   if (isFree) shown = shown.filter((e) => !isPaidListing(e))
   if (maxPrice != null) {

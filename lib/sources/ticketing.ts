@@ -15,7 +15,7 @@ import {
 } from '@/lib/moshtix-refresh'
 import { attachSweepProgress, isPartialRefresh, refreshFailure, sourceLogStatus, sweepFlagsFromLog } from '@/lib/refresh-plan'
 import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
-import { CITIES, type CityDef } from '@/lib/cities'
+import { INGEST_CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
 import { moshtixListingDescription, preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
@@ -396,7 +396,7 @@ export async function fetchOztixEvents(): Promise<number> {
   const now = Math.floor(Date.now() / 1000)
   const horizon = now + OZTIX_HORIZON
   let saved = 0
-  for (const city of CITIES) {
+  for (const city of INGEST_CITIES) {
     if (yieldIfBudget('cities')) break
     const seen = new Set<string>()
     for (let a = now; a < horizon; a += OZTIX_WINDOW) {

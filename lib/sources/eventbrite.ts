@@ -1,6 +1,6 @@
 import { fetchHtml, saveEvent, sleep, toSydneyParts } from '@/lib/event-store'
 import { noteSourceSaved, sourceFetchSignal, yieldIfBudget } from '@/lib/source-budget'
-import { CITIES, type CityDef } from '@/lib/cities'
+import { INGEST_CITIES, type CityDef } from '@/lib/cities'
 import { firstListingUrl, joinOriginPath, usableUrl } from '@/lib/listing-link'
 import { preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
@@ -209,7 +209,7 @@ async function scrapeListing(city: CityDef, path: string, forceFree: boolean): P
 
 export async function fetchEventbriteEvents(): Promise<number> {
   let total = 0
-  for (const city of CITIES) {
+  for (const city of INGEST_CITIES) {
     if (yieldIfBudget('cities')) break
     // All-events first. The free listing runs second so its isFree flag is what saveEvent keeps
     // when the same event is in both feeds (a same-source update overwrites isFree).

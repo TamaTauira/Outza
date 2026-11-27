@@ -28,6 +28,8 @@ interface FilterPanelProps {
   onWhen?: (when: TimeWindow) => void
   /** Suburbs for the selected city. Empty hides the area list (never Sydney's list for another city). */
   areas?: string[]
+  /** Area groupings (region boards) listed above the suburbs in their own optgroup. Also present in `areas`. */
+  groups?: string[]
 }
 
 const WHEN_CHOICES: { key: TimeWindow; label: string }[] = [
@@ -37,7 +39,7 @@ const WHEN_CHOICES: { key: TimeWindow; label: string }[] = [
   { key: 'all', label: 'Full day' },
 ]
 
-export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', onWhen, areas = [] }: FilterPanelProps) {
+export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', onWhen, areas = [], groups = [] }: FilterPanelProps) {
   const [expandedCat, setExpandedCat] = useState<string>(filters.category)
 
   const update = (partial: Partial<FilterState>) => {
@@ -239,7 +241,20 @@ export function FilterPanel({ filters, onChange, onClose, isMobile, when = '', o
           className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
         >
           <option value="">All Areas</option>
-          {areas.map((s) => (
+          {groups.length > 0 ? (
+            <>
+              <optgroup label="Areas">
+                {groups.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Suburbs">
+                {areas.filter((s) => !groups.includes(s)).map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </optgroup>
+            </>
+          ) : areas.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>
