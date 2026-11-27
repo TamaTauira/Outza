@@ -387,7 +387,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span></>}
             lede={<p>{COPY.homeHero}</p>}
           >
-            <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+            <div className="mt-5 grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
               <CityPicker value={city || DEFAULT_CITY} onChange={setCity} onDark />
               <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz Friday" queryRequest={askRequest} chips={false} goToPage />
             </div>
@@ -424,7 +424,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           <div className="vp-wrap flex min-h-0 w-full flex-1 flex-col px-4 pb-3 sm:px-6">
             <h1 className="sr-only">Map</h1>
             <div className="vp-map-toolbar flex shrink-0 flex-col gap-[var(--vp-card-gap)] bg-background py-[var(--vp-page-top)] sm:flex-row sm:items-center">
-              <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[220px] lg:w-80 lg:max-w-none">
+              <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[19rem] lg:w-80 lg:max-w-none">
                 <CityPicker value={city || DEFAULT_CITY} onChange={setCity} />
               </div>
               <div className="min-w-0 w-full sm:flex-1">
