@@ -161,6 +161,16 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
       writeCity(next);
       if (signedIn && userId) writeUserCity(userId, next);
     };
+    // The edge (IP) default only ever fills gaps. It is consulted solely when
+    // nothing is stored, and its area only fills an empty area slot, so a
+    // suburb or area the person (or a link) already chose always wins. Once
+    // applied, the city is written back through the same keys a manual pick
+    // uses, so the default persists like a pick and never fights the person
+    // on the next page; a later manual change overwrites it the same way.
+    const applyEdgeArea = (area: unknown) => {
+      if (typeof area !== 'string' || !area) return;
+      setFilters((f) => (f.suburb ? f : { ...f, suburb: area }));
+    };
     const urlChosen = url === '' || (!!url && CITIES.some((c) => c.name === url));
     const guestBefore = readCity();
     if (!signedIn || userCity !== null || urlChosen) {
@@ -170,6 +180,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           if (cancelled || cityTouched.current || typeof d?.city !== 'string' || !d.city) return
           setCityState(d.city)
           writeCity(d.city)
+          applyEdgeArea(d?.area)
         }).catch(() => {})
       }
       return () => { cancelled = true; };
@@ -184,7 +195,21 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           return;
         }
         const home = result.data?.user?.homeCity;
-        apply(typeof home === 'string' ? home : null);
+        if (typeof home === 'string') { apply(home); return; }
+        // Signed in, but nothing stored anywhere: no device pick (this branch
+        // only runs when there is none) and no account home city. Fall back
+        // to the edge (IP) default before the plain Sydney default, like the
+        // guest path. A ?city= link of any kind still wins outright.
+        if (url) { apply(null); return; }
+        fetch('/api/edge-city').then((r) => r.json()).then((d) => {
+          if (cancelled || cityTouched.current) return;
+          if (typeof d?.city === 'string' && d.city) {
+            apply(d.city);
+            applyEdgeArea(d?.area);
+          } else {
+            apply(null);
+          }
+        }).catch(() => { if (!cancelled) apply(null); });
       });
     };
     loadHome();
