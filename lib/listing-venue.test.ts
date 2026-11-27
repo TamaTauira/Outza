@@ -42,7 +42,8 @@ test('Humanitix listing keeps the venue, street and map pin it publishes', () =>
   assert.equal(got.lat, -32.9209905)
   assert.equal(got.lng, 151.7476604)
   assert.equal(got.attendance, 'place')
-  assert.equal(pinFitsCity(got.lat!, got.lng!, 'Newcastle', got.address, 'Hamilton'), true)
+  // Newcastle is no longer a catalogue city, so its pin fits no city now.
+  assert.equal(pinFitsCity(got.lat!, got.lng!, 'Newcastle', got.address, 'Hamilton'), false)
 })
 
 test('City of Sydney pages use addressText, and a venue record when the event address is empty', () => {
