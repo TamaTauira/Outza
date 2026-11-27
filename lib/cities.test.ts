@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CITIES, CITY_LABELS, INGEST_CITIES, INGEST_ONLY_CITIES, boardCitiesFor } from './cities'
+import { boardDisplayName, CITIES, CITY_LABELS, INGEST_CITIES, INGEST_ONLY_CITIES, boardCitiesFor } from './cities'
 import { CITY_TRANSIT } from './city-transit'
 import { MARKETS } from './intel/markets'
 import { areaGroupFor, areaGroupLabels, areasForCity, filterAreasForCity, matchesAreaGroup } from './categories'
@@ -41,6 +41,15 @@ test('picker labels carry the approved eyebrow, label and coverage wording', () 
     assert.equal(CITY_LABELS[city.name].label, city.name, city.name)
     assert.equal(CITY_LABELS[city.name].coverage, undefined, city.name)
   }
+})
+
+test('board display name is the region label for Sydney and the plain name elsewhere', () => {
+  assert.equal(boardDisplayName('Sydney'), 'Sydney & the NSW Coast')
+  for (const city of CITIES) {
+    if (city.name !== 'Sydney') assert.equal(boardDisplayName(city.name), city.name, city.name)
+  }
+  // Places without a picker label fall back to the name they were given.
+  assert.equal(boardDisplayName('Newcastle'), 'Newcastle')
 })
 
 test('Newcastle is ingest-only: collected and on the Sydney board, but never selectable', () => {
