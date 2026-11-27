@@ -88,6 +88,14 @@ export const CITY_LABELS: Record<string, CityLabel> = {
   Darwin: { eyebrow: 'NT · THE TOP END', label: 'Darwin' },
 }
 
+/**
+ * Display name for board and guide headings: the picker's display label for
+ * the city, which for Sydney is its region name ('Sydney & the NSW Coast').
+ * Every other catalogue city's label is its plain name, so only region
+ * boards read differently.
+ */
+export const boardDisplayName = (name: string): string => CITY_LABELS[name]?.label ?? name
+
 export const ACKNOWLEDGEMENT_OF_COUNTRY =
   'We acknowledge the Traditional Custodians of the lands across Australia on which the events listed here take place, and pay our respects to Elders past and present. Always was, always will be Aboriginal land.'
 
