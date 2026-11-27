@@ -6,8 +6,6 @@ import { requireEveryCity } from '@/lib/cities'
  */
 export const CITY_TRANSIT: Record<string, { name: string; url: string }> = {
   Sydney: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
-  Newcastle: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
-  Wollongong: { name: 'Transport NSW', url: 'https://transportnsw.info/trip' },
   Melbourne: { name: 'PTV', url: 'https://www.ptv.vic.gov.au/journey' },
   Brisbane: { name: 'Translink', url: 'https://jp.translink.com.au/plan-your-journey/journey-planner' },
   'Gold Coast': { name: 'Translink', url: 'https://jp.translink.com.au/plan-your-journey/journey-planner' },
