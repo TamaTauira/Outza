@@ -193,8 +193,6 @@ test('queer listings get an VibePeep line plus real channels, and no made-up aud
     Canberra: ['fusemagazine.com.au', 'springout.com.au', '/canberra/lgbtiq'],
     Hobart: ['taspride.com', '/hobart/lgbtiq'],
     Darwin: ['topendpride.com.au', '/darwin/lgbtiq'],
-    Newcastle: ['starobserver.com.au', 'newcastlepride.com.au', '/newcastle/lgbtiq'],
-    Wollongong: ['starobserver.com.au', 'dnamagazine.com.au', '/wollongong/lgbtiq'],
   }
   assert.deepEqual([...cities].sort(), Object.keys(must).sort())
   for (const city of cities) {

@@ -16,7 +16,6 @@ test('footer paths are unique and include the city guides', () => {
   assert.equal(new Set(paths).size, paths.length)
   assert.equal(FOOTER_CITY_LINKS.length, CITIES.length)
   assert.ok(paths.includes('/sydney/events'))
-  assert.ok(paths.includes('/wollongong/events'))
   assert.ok(paths.includes('/darwin/events'))
   assert.ok(paths.includes('/local'))
   assert.ok(paths.includes('/attributions'))

@@ -22,9 +22,7 @@ export type PlaceCityInput = {
  * in the right city. Ranges do not overlap: 4207 is Brisbane, 4208 is the Gold Coast.
  */
 export const CITY_POSTCODES: Record<string, [number, number][]> = {
-  Sydney: [[2000, 2249], [2555, 2574], [2740, 2786]],
-  Newcastle: [[2280, 2310], [2318, 2324]],
-  Wollongong: [[2500, 2534]],
+  Sydney: [[2000, 2249], [2500, 2534], [2555, 2574], [2740, 2786]],
   Canberra: [[2600, 2620], [2900, 2914]],
   Melbourne: [[3000, 3210], [3335, 3341], [3427, 3438], [3750, 3810], [3910, 3944], [3975, 3978]],
   Brisbane: [[4000, 4207], [4300, 4306], [4500, 4521]],
@@ -198,17 +196,7 @@ export const VENUE_CITY_ALIASES: VenueCityAlias[] = [
     ],
   },
   {
-    city: 'Newcastle',
-    names: [
-      'McDonald Jones Stadium',
-      'Hunter Stadium',
-      'EnergyAustralia Stadium',
-      'Ausgrid Stadium',
-      'King Street Bandroom',
-    ],
-  },
-  {
-    city: 'Wollongong',
+    city: 'Sydney',
     names: [
       'WIN Stadium',
       'WIN Entertainment Centre',

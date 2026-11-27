@@ -106,9 +106,6 @@ test('the other capitals match their venues and renamed stadiums', () => {
     ['Home of the Arts', 'Gold Coast'],
     ['Cbus Super Stadium', 'Gold Coast'],
     ['Metricon Stadium', 'Gold Coast'],
-    ['McDonald Jones Stadium', 'Newcastle'],
-    ['Hunter Stadium', 'Newcastle'],
-    ['King Street Bandroom', 'Newcastle'],
     ['GIO Stadium', 'Canberra'],
     ['AIS Arena', 'Canberra'],
     ['The Baso', 'Canberra'],
@@ -174,7 +171,7 @@ test('address, locality and postcode fields identify the city when the venue nam
   assert.equal(cityFromPostcode('4207')?.name, 'Brisbane')
   assert.equal(cityFromPostcode('4208')?.name, 'Gold Coast')
   assert.equal(cityFromPostcode('4217')?.name, 'Gold Coast')
-  assert.equal(cityFromPostcode('2300')?.name, 'Newcastle')
+  assert.equal(cityFromPostcode('2300'), null)
   assert.equal(cityFromPostcode('0800')?.name, 'Darwin')
   assert.equal(cityFromPostcode('800')?.name, 'Darwin')
   assert.equal(cityFromPostcode('6000')?.name, 'Perth')
@@ -184,9 +181,9 @@ test('address, locality and postcode fields identify the city when the venue nam
   assert.equal(cityFromPostcode('3220'), null)
   assert.equal(cityFromPostcode('3350'), null)
   assert.equal(cityFromPostcode('4810'), null)
-  assert.equal(cityFromPostcode('2500')?.name, 'Wollongong')
-  assert.equal(cityFromPostcode('2515')?.name, 'Wollongong')
-  assert.equal(cityFromPostcode('2534')?.name, 'Wollongong')
+  assert.equal(cityFromPostcode('2500')?.name, 'Sydney')
+  assert.equal(cityFromPostcode('2515')?.name, 'Sydney')
+  assert.equal(cityFromPostcode('2534')?.name, 'Sydney')
   assert.equal(cityFromPostcode('2499'), null)
   assert.equal(cityFromPostcode('2535'), null)
   assert.equal(cityFromPlace({ name: 'Afterpay Arena', postcode: '3000' })?.name, 'Melbourne')
@@ -221,28 +218,31 @@ test('ticket and Moshtix feeds use the same place matcher and do not scrape Tick
   assert.match(src, /no licensed feed configured/)
 })
 
-test('Wollongong keeps its own events and does not take Sydney suburbs', () => {
-  const wollongong = CITIES.find((city) => city.name === 'Wollongong')!
-  assert.equal(wollongong.radiusKm, 20)
-  assert.equal(cityFromPlace({ name: 'WIN Stadium' })?.name, 'Wollongong')
-  assert.equal(cityFromPlace({ name: 'WIN Entertainment Centre' })?.name, 'Wollongong')
-  assert.equal(cityFromPlace({ name: 'Hall', locality: 'Wollongong' })?.name, 'Wollongong')
+test('Wollongong is not a catalogue city and its listings fold into Sydney', () => {
+  assert.equal(CITIES.some((city) => city.name === 'Wollongong'), false)
+  assert.equal(CITIES.some((city) => city.name === 'Newcastle'), false)
+  // The WIN venues are aliased to Sydney, so a named Wollongong stadium still files.
+  assert.equal(cityFromPlace({ name: 'WIN Stadium' })?.name, 'Sydney')
+  assert.equal(cityFromPlace({ name: 'WIN Entertainment Centre' })?.name, 'Sydney')
+  // The word Wollongong on its own no longer resolves to a city.
+  assert.equal(cityFromPlace({ name: 'Hall', locality: 'Wollongong' }), null)
   assert.equal(cityFromPlace({ name: 'Hall', address: '12 Illawarra Rd, Marrickville' }), null)
   assert.equal(cityFromPlace({ name: 'Hall', address: '12 Illawarra Rd, Marrickville NSW 2204' })?.name, 'Sydney')
-  // Bulli sits inside both radii. The nearer centre is Wollongong, so Sydney does not also keep it.
-  assert.equal(cityFromPlace({ lat: -34.338, lng: 150.922 })?.name, 'Wollongong')
-  assert.equal(cityForIngest(-34.338, 150.922)?.name, 'Wollongong')
-  // Helensburgh is inside Sydney's 60km and outside Wollongong's 20km.
+  // Bulli sits inside Sydney's 60km radius, so the pin alone now files it to Sydney.
+  assert.equal(cityFromPlace({ lat: -34.338, lng: 150.922 })?.name, 'Sydney')
+  assert.equal(cityForIngest(-34.338, 150.922)?.name, 'Sydney')
+  // Helensburgh is inside Sydney's 60km too.
   assert.equal(cityFromPlace({ lat: -34.178, lng: 150.983 })?.name, 'Sydney')
   assert.equal(cityForIngest(-34.178, 150.983)?.name, 'Sydney')
-  // WIN Stadium is about 68km from the Sydney centre, inside the Wollongong radius only.
-  assert.equal(cityFromPlace({ name: 'Somewhere', lat: -34.4254, lng: 150.9015 })?.name, 'Wollongong')
-  assert.equal(cityForIngest(-34.4254, 150.9015)?.name, 'Wollongong')
+  // The WIN Stadium pin is about 68km from the Sydney centre: outside the strict
+  // radius, so the strict matcher leaves it unresolved, but ingest slack files it to Sydney.
+  assert.equal(cityFromPlace({ name: 'Somewhere', lat: -34.4254, lng: 150.9015 }), null)
+  assert.equal(cityForIngest(-34.4254, 150.9015)?.name, 'Sydney')
   const ranges = Object.values(
     Object.fromEntries(
       // Re-read through the public postcode helper so a shared range fails the test.
       ['2000', '2249', '2500', '2534', '2555'].map((postcode) => [postcode, cityFromPostcode(postcode)?.name ?? '']),
     ),
   )
-  assert.deepEqual(ranges, ['Sydney', 'Sydney', 'Wollongong', 'Wollongong', 'Sydney'])
+  assert.deepEqual(ranges, ['Sydney', 'Sydney', 'Sydney', 'Sydney', 'Sydney'])
 })

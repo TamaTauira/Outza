@@ -90,10 +90,6 @@ export const CURATED: Curated[] = [
   { title: 'Capital Region Farmers Market', city: 'Canberra', venueName: 'Exhibition Park in Canberra (EPIC)', venueAddress: 'Flemington Rd, Mitchell ACT 2911', url: 'https://capitalregionfarmersmarket.com.au/',
     description: 'Canberra’s big Saturday farmers market with 100+ stalls of produce, meat, seafood and baked goods.', slots: [{ days: [6], start: '07:00', end: '11:30' }], isFree: true, genres: ['market', 'food'] },
 
-  // ── Newcastle ──────────────────────────────────────────
-  { title: 'Newcastle City Farmers Market', city: 'Newcastle', venueName: 'Newcastle Showground', venueAddress: 'Griffiths Rd, Broadmeadow NSW 2292', url: 'https://newcastlecityfarmersmarket.com.au/',
-    description: 'Newcastle’s popular Sunday farmers market: local produce, seafood, cheese, wine and food trucks, undercover.', slots: [{ days: [0], start: '07:00', end: '13:00' }], isFree: true, genres: ['market', 'food'] },
-
   // ── Hobart ─────────────────────────────────────────────
   { title: 'Salamanca Market', city: 'Hobart', venueName: 'Salamanca Place', venueAddress: 'Salamanca Pl, Hobart TAS 7000', url: 'https://www.salamancamarket.com.au/',
     description: 'Tasmania’s famous Saturday market: 300+ stalls of Tasmanian art, craft, produce and food among historic sandstone warehouses.', slots: [{ days: [6], start: '08:30', end: '15:00' }], isFree: true, genres: ['market'] },
