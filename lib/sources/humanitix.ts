@@ -142,8 +142,18 @@ async function ingestEventUrl(url: string): Promise<'saved' | 'skip' | 'pause' |
 async function saveVertical(e: any, city: CityDef, path: string): Promise<boolean> {
   const sd = e?.date?.startDate ? new Date(e.date.startDate) : null
   if (!sd || Number.isNaN(sd.getTime())) return false
+  const loc = e?.eventLocation
+  const filed = cityFromPlace({
+    name: loc?.venueName,
+    address: loc?.address,
+    locality: loc?.locality ?? loc?.city,
+    region: loc?.region,
+    postcode: loc?.postcode ?? loc?.postalCode,
+    lat: loc?.lat ?? loc?.latitude ?? loc?.location?.latitude,
+    lng: loc?.lng ?? loc?.longitude ?? loc?.location?.longitude,
+  }) ?? city
   const ed = e?.date?.endDate ? new Date(e.date.endDate) : null
-  const s = toSydneyParts(sd, city.tz)
+  const s = toSydneyParts(sd, filed.tz)
   if (s.date < sydneyToday()) return false
   const en = ed && !Number.isNaN(ed.getTime()) ? toSydneyParts(ed, city.tz) : null
   const min = moneyNumber(e?.pricing?.minimumPrice ?? e?.pricing?.minPrice)
@@ -165,8 +175,8 @@ async function saveVertical(e: any, city: CityDef, path: string): Promise<boolea
     time: s.time,
     endDate: en?.date,
     endTime: en?.time,
-    venueName: e?.eventLocation?.venueName ?? 'TBA',
-    venueAddress: e?.eventLocation?.address ?? null,
+    venueName: loc?.venueName ?? 'TBA',
+    venueAddress: loc?.address ?? null,
     genres: [e?.category, e?.subcategory, path === '/music' ? 'Music' : ''].filter(Boolean),
     price: priced.price,
     isFree: priced.isFree,
@@ -175,7 +185,7 @@ async function saveVertical(e: any, city: CityDef, path: string): Promise<boolea
     ticketUrl: page,
     sourceUrl: page,
     source: 'humanitix',
-    city: city.name,
+    city: filed.name,
   }).catch(() => false)
 }
 

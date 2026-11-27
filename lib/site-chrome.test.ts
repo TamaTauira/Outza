@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { CITIES } from './cities'
 import { footerPaths, FOOTER_CITY_LINKS } from './site-links'
 import { SITE_SAME_AS, SITE_SOCIAL } from './site-social'
 
@@ -13,8 +14,9 @@ test('social profiles are one list, in order, and sameAs matches them', () => {
 test('footer paths are unique and include the city guides', () => {
   const paths = footerPaths()
   assert.equal(new Set(paths).size, paths.length)
-  assert.equal(FOOTER_CITY_LINKS.length, 10)
+  assert.equal(FOOTER_CITY_LINKS.length, CITIES.length)
   assert.ok(paths.includes('/sydney/events'))
+  assert.ok(paths.includes('/wollongong/events'))
   assert.ok(paths.includes('/darwin/events'))
   assert.ok(paths.includes('/local'))
   assert.ok(paths.includes('/attributions'))

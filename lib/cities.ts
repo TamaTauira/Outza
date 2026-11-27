@@ -22,6 +22,10 @@ export const CITIES: CityDef[] = [
   { name: 'Adelaide', state: 'SA', lat: -34.9285, lng: 138.6007, tz: 'Australia/Adelaide', radiusKm: 40, eventbrite: 'australia--adelaide', humanitix: 'au--sa--adelaide', match: /adelaide|tarntanya/i, custodians: 'Kaurna people' },
   { name: 'Canberra', state: 'ACT', lat: -35.2809, lng: 149.13, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--canberra', humanitix: 'au--act--canberra', match: /canberra|austl\.?\s*cap\.?\s*terr|australian capital territory/i, custodians: 'Ngunnawal and Ngambri peoples' },
   { name: 'Newcastle', state: 'NSW', lat: -32.9283, lng: 151.7817, tz: 'Australia/Sydney', radiusKm: 35, eventbrite: 'australia--newcastle', humanitix: 'au--nsw--newcastle', match: /newcastle/i, custodians: 'Awabakal and Worimi peoples' },
+  // 20km keeps Helensburgh and Stanwell Park in Sydney. A wider radius would share those suburbs.
+  // Centre is the Wollongong CBD. Custodians: Wollongong City Council acknowledgement, Dharawal Country.
+  // "Illawarra Rd" is a Sydney street, so the region word does not match when a road suffix follows.
+  { name: 'Wollongong', state: 'NSW', lat: -34.4278, lng: 150.8931, tz: 'Australia/Sydney', radiusKm: 20, eventbrite: 'australia--wollongong', humanitix: 'au--nsw--wollongong', match: /\bwollongong\b|\billawarra\b(?!\s+(?:rd|road|st|street|hwy|highway|pde|parade|dr|drive)\b)/i, custodians: 'Dharawal people' },
   { name: 'Hobart', state: 'TAS', lat: -42.8821, lng: 147.3272, tz: 'Australia/Hobart', radiusKm: 35, eventbrite: 'australia--hobart', humanitix: 'au--tas--hobart', match: /hobart|nipaluna/i, custodians: 'muwinina people of lutruwita (Tasmania)' },
   { name: 'Darwin', state: 'NT', lat: -12.4634, lng: 130.8456, tz: 'Australia/Darwin', radiusKm: 35, eventbrite: 'australia--darwin', humanitix: 'au--nt--darwin', match: /darwin|garramilla/i, custodians: 'Larrakia people' },
 ]
@@ -47,7 +51,31 @@ export function custodiansLine(name: string | null | undefined): string {
     : 'Events across Australia take place on the lands of many Aboriginal and Torres Strait Islander nations. We pay our respects to their Elders past and present.'
 }
 
-const GENERIC_PLACE = /^(australia|cbd|city|inner city|online|virtual|sydney|melbourne|brisbane|perth|adelaide|hobart|canberra|darwin|gold coast|newcastle|nsw|vic|qld|wa|sa|tas|act|nt)$/i
+function placeNamePattern(extra: string[]): RegExp {
+  const words = ['australia', 'cbd', 'city', 'inner city', 'online', 'virtual', ...CITIES.map((c) => c.name.toLowerCase()), ...extra]
+  return new RegExp(`^(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})$`, 'i')
+}
+
+/** A venue or suburb that is only a catalogue city, a state, or a generic word. Built from CITIES. */
+const GENERIC_PLACE = placeNamePattern(['nsw', 'vic', 'qld', 'wa', 'sa', 'tas', 'act', 'nt'])
+const GENERIC_SUBURB = placeNamePattern([])
+
+export function isGenericPlaceName(value: string | null | undefined): boolean {
+  const text = value?.trim() ?? ''
+  return !!text && GENERIC_PLACE.test(text)
+}
+
+export function isGenericSuburbName(value: string | null | undefined): boolean {
+  const text = value?.trim() ?? ''
+  return !!text && GENERIC_SUBURB.test(text)
+}
+
+/** Satellite city maps have to name every catalogue city. A new city fails here until its row exists. */
+export function requireEveryCity(label: string, names: readonly string[]): void {
+  const have = new Set(names)
+  const missing = CITIES.map((city) => city.name).filter((name) => !have.has(name))
+  if (missing.length) throw new Error(`${label} is missing ${missing.join(', ')}`)
+}
 /** True when the text actually points at the Sydney CBD, not merely "somewhere in Sydney". */
 const CBD_EVIDENCE = /\b(cbd|town hall|martin place|wynyard|pitt street mall|hyde park)\b|\b2000\b/i
 const STREET = /\b(st|rd|dr|ave|hwy|pde|ln|lane|cres|cct|blvd|street|road|drive|terrace|place|avenue|parade|way|court|close)\b\.?$/i

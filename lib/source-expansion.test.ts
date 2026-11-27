@@ -189,7 +189,8 @@ test('the register keeps current connectors and does not invent unmeasured count
     assert.equal(SOURCE_REGISTER.find((row) => row.id === id)?.status, 'permission', id)
   }
   for (const id of ['win-stadium', 'win-entertainment-centre']) {
-    assert.equal(SOURCE_REGISTER.find((row) => row.id === id)?.status, 'queued', id)
+    assert.equal(SOURCE_REGISTER.find((row) => row.id === id)?.status, 'partial', id)
+    assert.match(SOURCE_REGISTER.find((row) => row.id === id)?.method ?? '', /Wollongong/)
   }
   assert.match(SOURCE_REGISTER.find((row) => row.id === 'win-stadium')?.method ?? '', /157281/)
   assert.match(SOURCE_REGISTER.find((row) => row.id === 'win-entertainment-centre')?.method ?? '', /157282/)

@@ -5,8 +5,8 @@ import { preferDescription } from '@/lib/description-text'
 import { moneyNumber, priceFromAmounts } from '@/lib/price'
 import { CITIES, type CityDef } from '@/lib/cities'
 import { addressInOtherState } from '@/lib/seo'
-import { distanceKm } from '@/lib/travel'
 import { coordsInTasmania } from '@/lib/tas-retag'
+import { cityForIngest } from '@/lib/venue-city'
 
 const TM_PAGE_SIZE = 200
 /** Discovery rejects page * size >= 1000, so five pages is the most one query can return. */
@@ -194,7 +194,11 @@ async function saveTmEvents(events: any[], city: CityDef): Promise<number> {
       let filed = city
       if (hasPin && coordsInTasmania(lat, lng)) filed = CITIES.find((c) => c.name === 'Hobart') ?? city
       else if (addressInOtherState(stateBits, city)) continue
-      else if (hasPin && distanceKm({ lat, lng }, { lat: city.lat, lng: city.lng }) > city.radiusKm + 40) continue
+      else if (hasPin) {
+        const assigned = cityForIngest(lat, lng)
+        if (!assigned) continue
+        filed = assigned
+      }
       // Gallery: distinct artworks only (TM serves one artwork in many sizes - keep the widest of each)
       const attractionImages: any[] = (ev?._embedded?.attractions ?? []).flatMap((a: any) => a?.images ?? [])
       const byArtwork = new Map<string, { url: string; width: number }>()

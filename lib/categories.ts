@@ -1,5 +1,5 @@
 import { BRAND_ORANGE } from '@/lib/brand'
-import { suburbFromAddress, tidyVenueName } from '@/lib/cities'
+import { requireEveryCity, suburbFromAddress, tidyVenueName } from '@/lib/cities'
 import { readPrice } from '@/lib/price'
 import { foldSearchText } from '@/lib/search-fold'
 import { dropBroadTheatre, listingText, lgbtiFromSources, proseEvidence, retagLgbti, sportSignal, tagsFromGenreLabels } from '@/lib/tag-evidence'
@@ -422,6 +422,7 @@ const CITY_AREAS: Record<string, string[]> = {
   Adelaide: ['CBD', 'North Adelaide', 'Glenelg', 'Norwood', 'Hindley Street', 'Port Adelaide'],
   Canberra: ['Civic', 'Braddon', 'Kingston', 'Manuka', 'Belconnen', 'Woden'],
   Newcastle: ['CBD', 'Hamilton', 'Cooks Hill', 'The Junction', 'Merewether', 'Darby Street'],
+  Wollongong: ['CBD', 'North Wollongong', 'Fairy Meadow', 'Keiraville', 'Figtree', 'Port Kembla', 'Dapto', 'Thirroul'],
   Hobart: ['CBD', 'Salamanca', 'Battery Point', 'North Hobart', 'Sandy Bay'],
   Darwin: ['CBD', 'Stuart Park', 'Parap', 'Fannie Bay', 'Nightcliff'],
 }
@@ -431,3 +432,5 @@ export function areasForCity(city: string): string[] {
   if (city === 'Sydney') return SYDNEY_SUBURBS
   return CITY_AREAS[city] ?? []
 }
+
+requireEveryCity('area filters', ['Sydney', ...Object.keys(CITY_AREAS)])

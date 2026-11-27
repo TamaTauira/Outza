@@ -3,7 +3,7 @@
  * City topic URLs stay canonical. The national pages only exist as hubs and
  * are indexed when more than one city has a distinct share of the listings.
  */
-import type { CityDef } from '@/lib/cities'
+import { requireEveryCity, type CityDef } from '@/lib/cities'
 import { assessIndexability, type IndexabilityDecision } from '@/lib/indexability'
 import type { GuideFact, TopicKey } from '@/lib/seo'
 
@@ -44,8 +44,9 @@ export const editorialPath = (slug: string) => `/guides/${slug}`
 export const editorialForTopic = (topic: TopicKey) => EDITORIAL_GUIDES.find((g) => g.topic === topic)
 
 const CITY_NOTE: Record<string, string> = {
-  Sydney: 'This is Sydney, not the rest of NSW. Newcastle has its own guide.',
+  Sydney: 'This is Sydney, not the rest of NSW. Newcastle and Wollongong have their own guides.',
   Newcastle: 'This is Newcastle, not Sydney. The two cities are not blended.',
+  Wollongong: 'This is Wollongong, not Sydney. The two cities are not blended.',
   Melbourne: 'This is Melbourne, not the rest of Victoria.',
   Brisbane: 'This is Brisbane. The Gold Coast has its own guide.',
   'Gold Coast': 'This is the Gold Coast, not Brisbane.',
@@ -55,6 +56,8 @@ const CITY_NOTE: Record<string, string> = {
   Hobart: 'This is Hobart, not the whole of Tasmania.',
   Darwin: 'This is Darwin, not the whole of the Territory.',
 }
+
+requireEveryCity('city guide notes', Object.keys(CITY_NOTE))
 
 export interface CityEditorial {
   paragraphs: string[]

@@ -137,14 +137,14 @@ export const CANONICAL_VENUES: CanonicalVenue[] = [
   {
     id: 'win-stadium',
     officialName: 'WIN Stadium',
-    city: 'Sydney',
+    city: 'Wollongong',
     aliases: ['WIN Stadium', 'Wollongong Stadium'],
     rooms: [],
   },
   {
     id: 'win-entertainment-centre',
     officialName: 'WIN Entertainment Centre',
-    city: 'Sydney',
+    city: 'Wollongong',
     aliases: ['WIN Entertainment Centre'],
     rooms: [],
   },

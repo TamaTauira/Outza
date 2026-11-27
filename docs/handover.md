@@ -100,7 +100,7 @@ Note: `zz_backfill.ts` in the app root is a one-off image backfill script, not p
 ## 4. Features and where they live
 
 ### 4.1 Cities
-`lib/cities.ts` has `CITIES`: Sydney (default), Melbourne, Brisbane, Gold Coast, Perth, Adelaide, Canberra, Newcastle, Hobart, Darwin. Each has a timezone, radius, feed settings and a `custodians` field. `''` = all of Australia. Dates are always worked out in the **event's city timezone**.
+`lib/cities.ts` has `CITIES`: Sydney (default), Melbourne, Brisbane, Gold Coast, Perth, Adelaide, Canberra, Newcastle, Wollongong, Hobart, Darwin. Each has a timezone, radius, feed settings and a `custodians` field. Wollongong uses a 20km radius so it does not share events with Sydney. `''` = all of Australia. Dates are always worked out in the **event's city timezone**.
 
 ### 4.2 Event ingestion ("refresh")
 - `lib/refresh.ts` → `refreshAllSources()` runs every 2 hours (plus on startup if stale). `SOURCES` includes Ticketmaster (`lib/ticketmaster.ts`, `TICKETMASTER_API_KEY`), Eventbrite + Humanitix (`lib/sources/eventbrite.ts`), City of Sydney and promoter sites (`lib/sources/promoters.ts`), Moshtix (official open GraphQL `api.moshtix.com`), Oztix (public Algolia index, `OZTIX_ALGOLIA_KEY`), Ticketek (**licensed feed only**, see below) and curated regulars (`lib/sources/curated.ts`).
