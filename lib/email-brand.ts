@@ -31,7 +31,7 @@ export const EMAIL_IMAGE_FILL = '#141414'
 /** Shown under the footer links on mail that can be turned off. */
 export const EMAIL_OPT_OUT_LINE = 'Opted in · Unsubscribe anytime'
 export const EMAIL_HEADER_W = 600
-export const EMAIL_HEADER_H = 280
+export const EMAIL_HEADER_H = 117
 /** 16:9 hero and 4:3 row, matching the site frames. */
 export const EMAIL_HERO = { w: 560, h: 315 } as const
 export const EMAIL_THUMB = { w: 168, h: 126 } as const
@@ -256,7 +256,9 @@ export function emailPasteLink(href: string): string {
 }
 
 /**
- * One opaque banner. Logo, headline, mascot and the 160×4 gradient are baked in.
+ * One opaque banner. Lockup, headline, gradient underline and mascot are
+ * baked into the one PNG on #141414, so the banner matches its cell in
+ * light mode, Apple dark and full inversion.
  * With images blocked, the styled alt sits on the dark cell.
  */
 export function emailHeader(opts: { kind?: string | null; homeHref: string }): string {
@@ -436,51 +438,49 @@ ${facts}${whyBlock(row.why, row.travel)}${note}${blurb}${cta}${tickets}
 }
 
 function footerLink(href: string, label: string): string {
-  return `<a class="flink" href="${emailEscape(href)}" style="color:#FFB088;font-family:${EMAIL_FONT};font-weight:700;text-decoration:underline;">${emailEscape(label)}</a>`
+  return `<a class="flink" href="${emailEscape(href)}" style="color:#FFB088;font-family:${EMAIL_FONT};font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;margin:0 8px;">${emailEscape(label)}</a>`
 }
 
 function socialRow(): string {
   const cells = SITE_SOCIAL.map((item) => {
     const src = emailAssetUrl(`/email-icons/${item.id}.png`)
-    return `<td style="padding:0 5px;"><a href="${emailEscape(item.href)}" style="text-decoration:none;"><img src="${emailEscape(src)}" alt="${emailEscape(item.label)}" width="24" height="24" style="display:block;width:24px;height:24px;border:0;outline:none;text-decoration:none;"/></a></td>`
+    return `<td style="padding:0 5px;"><a href="${emailEscape(item.href)}" style="text-decoration:none;"><img src="${emailEscape(src)}" alt="${emailEscape(item.label)}" width="36" height="36" style="display:block;width:36px;height:36px;border:0;outline:none;text-decoration:none;"/></a></td>`
   }).join('')
-  return `<table ${T} align="center" style="margin:14px auto 0;"><tr>${cells}</tr></table>`
+  return `<table ${T} align="center" style="margin:20px auto 0;"><tr>${cells}</tr></table>`
 }
 
+/**
+ * One footer on #141414, continuing the header black. Wordmark and tagline,
+ * the social row, a rule, the links that apply to this mail, the disclaimer
+ * and the sender line. No Home link and no acknowledgement: both stay off
+ * mail by the owner's call (the acknowledgement lives on the website).
+ */
 function emailFooter(opts: { home: string; manageHref?: string; unsubscribeHref?: string; manageLabel?: string }): string {
-  const glow = emailAssetUrl('/email-footer/glow.png')
-  const logo = emailAssetUrl('/brand/vibepeep-lockup-dark@3x.png')
   const privacy = `${opts.home.replace(/\/$/, '')}/privacy`
   const links = [
     footerLink(privacy, 'Privacy'),
     opts.manageHref ? footerLink(opts.manageHref, opts.manageLabel || 'Manage preferences') : '',
     opts.unsubscribeHref ? footerLink(opts.unsubscribeHref, 'Unsubscribe') : '',
-  ].filter(Boolean).join('<span class="fdot" style="color:rgba(255,255,255,0.55);"> · </span>')
-  const opt = opts.unsubscribeHref
-    ? `<div class="ft" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.5;color:rgba(255,255,255,0.78);padding-top:10px;">${emailEscape(EMAIL_OPT_OUT_LINE)}</div>`
-    : ''
-  const inner = `<table ${T} width="100%" style="width:100%;"><tr><td align="center" style="padding:26px 20px 22px;">
-<img src="${emailEscape(logo)}" alt="VibePeep" width="168" height="44" style="display:block;width:168px;height:44px;border:0;margin:0 auto;"/>
+  ].filter(Boolean).join('')
+  const closing = opts.unsubscribeHref ? `${emailSenderLine()} · ${EMAIL_OPT_OUT_LINE}` : emailSenderLine()
+  const inner = `<table ${T} width="100%" style="width:100%;"><tr><td align="center" style="padding:28px 24px 26px;">
+<div style="font-family:${EMAIL_FONT};font-size:17px;line-height:1.2;font-weight:800;letter-spacing:-0.01em;color:#F5F5F7;">Vibe<span style="color:${EMAIL_PINK};background:linear-gradient(90deg,${EMAIL_ORANGE},${EMAIL_PINK});-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">Peep</span></div>
+<div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.4;color:#a1a1a6;padding-top:4px;">${emailEscape(BRAND_TAGLINE)}</div>
 ${socialRow()}
-<div style="font-family:${EMAIL_FONT};font-size:13px;line-height:1.6;padding-top:14px;text-align:center;">${links}</div>
-${opt}
-<div class="ft" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.5;color:rgba(255,255,255,0.78);padding-top:8px;">${emailEscape(emailSenderLine())}</div>
+<table ${T} width="100%" style="width:100%;margin:22px 0 0;"><tr><td height="1" bgcolor="#2c2c2e" style="height:1px;background:#2c2c2e;font-size:0;line-height:1px;">&nbsp;</td></tr></table>
+<div style="font-family:${EMAIL_FONT};font-size:13px;line-height:26px;padding-top:14px;text-align:center;">${links}</div>
+<div style="font-family:${EMAIL_FONT};font-size:12px;line-height:18px;color:#a1a1a6;padding-top:12px;">${emailEscape(EMAIL_DISCLAIMER)}</div>
+<div style="font-family:${EMAIL_FONT};font-size:12px;line-height:18px;color:#8e8e93;padding-top:10px;">${emailEscape(closing)}</div>
 </td></tr></table>`
-  return `<tr><td class="footbg" background="${emailEscape(glow)}" bgcolor="#000000" valign="top" style="background-color:#000000;background-image:url('${emailEscape(glow)}');background-repeat:no-repeat;background-position:center center;background-size:cover;border-radius:0 0 ${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px;">
-<!--[if gte mso 9]>
-<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:260px;">
-<v:fill type="frame" src="${emailEscape(glow)}" color="#000000"/>
-<v:textbox inset="0,0,0,0">
-<![endif]-->
+  return `<tr><td class="footbg" bgcolor="#141414" valign="top" style="background-color:#141414;border-radius:0 0 ${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px;">
 ${inner}
-<!--[if gte mso 9]></v:textbox></v:rect><![endif]-->
 </td></tr>`
 }
 
 function shellCss(): string {
   return `body{margin:0;padding:0;width:100%!important;-webkit-text-size-adjust:100%;}
 :root{color-scheme:light dark;supported-color-schemes:light dark;}
-.footbg,.band{background-color:#000000!important}
+.footbg,.band{background-color:#141414!important}
 .ft,.bandtxt{color:rgba(255,255,255,0.82)!important}
 .flink{color:#FFB088!important}
 .statsStack{display:none;max-height:0;overflow:hidden;mso-hide:all;}
@@ -513,9 +513,9 @@ function shellCss(): string {
   .sponsor{background-color:#3A2418!important;color:#F6E6D4!important}
   .email-btn-sec{border-color:${EMAIL_C.onDark}!important}
   .email-btn-sec a{color:${EMAIL_C.onDark}!important}
-  .band{background-color:#000000!important}
+  .band{background-color:#141414!important}
   .bandtxt{color:rgba(255,255,255,0.82)!important}
-  .footbg{background-color:#000000!important}
+  .footbg{background-color:#141414!important}
   .ft{color:rgba(255,255,255,0.78)!important}
   .flink{color:#FFB088!important}
   ${emailButtonColorLock()}
@@ -529,7 +529,7 @@ function shellCss(): string {
 [data-ogsc] .panel,[data-ogsb] .panel{background-color:${EMAIL_C.darkCard}!important}
 [data-ogsc] .panelDanger,[data-ogsb] .panelDanger{background-color:${EMAIL_C.darkDangerBg}!important}
 [data-ogsc] .sponsor,[data-ogsb] .sponsor{background-color:#3A2418!important;color:#F6E6D4!important}
-[data-ogsc] .footbg,[data-ogsb] .footbg,[data-ogsc] .band,[data-ogsb] .band{background-color:#000000!important}
+[data-ogsc] .footbg,[data-ogsb] .footbg,[data-ogsc] .band,[data-ogsb] .band{background-color:#141414!important}
 [data-ogsc] .ft,[data-ogsb] .ft,[data-ogsc] .bandtxt,[data-ogsb] .bandtxt{color:rgba(255,255,255,0.82)!important}
 [data-ogsc] .flink,[data-ogsb] .flink{color:#FFB088!important}
 ${emailButtonColorLock('[data-ogsc]')}
@@ -546,7 +546,7 @@ export function emailDocument(opts: {
   /** Visible footer link. The one-click header is a separate API URL. */
   unsubscribeHref?: string
   homeHref?: string
-  /** Kept for callers. The shared footer no longer prints a ticket disclaimer. */
+  /** Kept for callers. The shared footer prints the one EMAIL_DISCLAIMER. */
   disclaimer?: string
   /** Kept for callers. The shared footer no longer prints a receiving paragraph. */
   reason?: string
@@ -565,7 +565,7 @@ export function emailDocument(opts: {
     ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">${emailEscape(opts.preheader)}${'&#8204;&nbsp;'.repeat(24)}</div>`
     : ''
   const meta = opts.meta
-    ? `<tr><td class="band px" bgcolor="#000000" style="background:#000000;padding:4px 28px 20px;"><div class="bandtxt" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.3;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.82);">${emailEscape(opts.meta)}</div></td></tr>`
+    ? `<tr><td class="band px" bgcolor="#141414" style="background:#141414;padding:4px 28px 20px;"><div class="bandtxt" style="font-family:${EMAIL_FONT};font-size:12px;line-height:1.3;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.82);">${emailEscape(opts.meta)}</div></td></tr>`
     : ''
   const header = opts.banner === null
     ? ''
