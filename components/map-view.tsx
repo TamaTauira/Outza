@@ -347,7 +347,11 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         if (gen !== locateGenRef.current) return
         setUserPos(null)
         const denied = err.code === err.PERMISSION_DENIED
-        if (denied) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} }
+        // Only a tapped denial is recorded as consent: a silent
+        // (unprompted) refusal persists nothing, so a transient browser
+        // 'no' during the mount check is never stored as the visitor
+        // having declined.
+        if (denied && !silent) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} }
         setLoc(locateStateAfterError({ permissionDenied: denied, silent }))
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },

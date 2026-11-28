@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
   DEFAULT_NEAR_ME_RADIUS_KM,
@@ -94,6 +95,22 @@ test('an unprompted auto-locate never owns an error outcome', () => {
   assert.equal(locateStateAfterError({ permissionDenied: true, silent: true }), 'idle')
   // The same holds for a position failure or a timeout on that call.
   assert.equal(locateStateAfterError({ permissionDenied: false, silent: true }), 'idle')
+})
+
+test('a silent auto-locate refusal never persists a stored decline', () => {
+  // The silent path must be fully side-effect-free: if the unprompted
+  // mount locate is refused, that transient browser answer must not be
+  // written to storage as the visitor's consent — otherwise one stray
+  // refusal would stand in for a deliberate decline on every later
+  // visit (and, where the Permissions API cannot be read, would stop
+  // the auto-locate from ever being offered again). Only a tapped
+  // denial records 'declined'. The write lives in the component, not
+  // in a pure helper, so pin it at source level like the other
+  // placement pins in this repo.
+  const src = readFileSync(new URL('../components/map-view.tsx', import.meta.url), 'utf8')
+  const errCb = src.slice(src.indexOf('(err) => {'), src.indexOf('{ enableHighAccuracy: false'))
+  assert.ok(errCb.includes("if (denied && !silent) { try { localStorage.setItem(LOC_KEY, 'declined') }"), 'the declined consent write fires only for a tapped denial')
+  assert.equal((src.match(/setItem\(LOC_KEY, 'declined'\)/g) ?? []).length, 1, 'the declined write exists exactly once, in the guarded error callback')
 })
 
 test('an area group value jumps to its centre; a plain suburb does not', () => {
