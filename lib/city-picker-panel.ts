@@ -51,3 +51,24 @@ export function cityPickerPanelBox(trigger: CityPickerTriggerRect, viewport: Cit
   const maxHeight = Math.max(0, Math.min(CITY_PICKER_PANEL_MAX_HEIGHT, available))
   return { top, left, width, maxHeight }
 }
+
+/**
+ * Keyboard navigation for the open picker: where the active option moves
+ * for a key, or null when the key is not a navigation key (the caller then
+ * handles Enter/Space/Escape/Tab itself). Movement clamps at both ends
+ * rather than wrapping, matching the picker's behaviour since it shipped.
+ * An out-of-range active index is clamped back into the list, and an
+ * empty list has no active option at all.
+ */
+export function cityPickerActiveAfterKey(active: number, key: string, count: number): number | null {
+  if (count <= 0) return null
+  const last = count - 1
+  const clamp = (n: number) => Math.min(Math.max(n, 0), last)
+  switch (key) {
+    case 'ArrowDown': return clamp(active + 1)
+    case 'ArrowUp': return clamp(active - 1)
+    case 'Home': return 0
+    case 'End': return last
+    default: return null
+  }
+}
