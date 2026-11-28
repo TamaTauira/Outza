@@ -25,7 +25,7 @@ import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
-import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey } from '@/lib/board-query'
+import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey, boardWindowSuffix } from '@/lib/board-query'
 export type BoardSeed = {
   city: string
   from: string
@@ -563,7 +563,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{firstLoad || countGated ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
+        <span className="font-semibold text-foreground">{firstLoad || countGated ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{boardWindowSuffix(effectiveWindow)}
         {span?.spanning && !loading && !staleCity && !staleQuery && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && !staleCity && !staleQuery && !countGated && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && !staleCity && !staleQuery && endedTotal > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
