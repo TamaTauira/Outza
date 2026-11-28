@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boardDataIsStale, boardQueryKey } from './board-query'
+import { boardCountGate, boardDataIsStale, boardQueryKey } from './board-query'
 
 // The board holds rows and a total loaded for one query (span, city,
 // search, filters) while the selection can move to another. Held data
@@ -56,4 +56,30 @@ test('held data is not stale under the key it was loaded under', () => {
 test('an empty hand is never stale', () => {
   assert.equal(boardDataIsStale(boardQueryKey(today), boardQueryKey(weekend), 0), false)
   assert.equal(boardDataIsStale(null, boardQueryKey(weekend), 0), false)
+})
+
+// The count gate: a windowed headline is a sum over the rows the list
+// holds, so it may only be published once the first load has fetched
+// every page of the span — before that it would be a partial sum that
+// grows as appends land. A load stopped by the page ceiling can never
+// complete, so its headline falls back to the server's full-set numbers
+// instead of ever publishing the partial sum.
+
+test('an unwindowed count is always ready to publish', () => {
+  assert.equal(boardCountGate({ windowed: false, heldPages: 1, totalPages: 4, capped: false }), 'ready')
+  assert.equal(boardCountGate({ windowed: false, heldPages: 1, totalPages: 4, capped: true }), 'ready')
+})
+
+test('a windowed count is gated until every page of the span is held', () => {
+  assert.equal(boardCountGate({ windowed: true, heldPages: 1, totalPages: 2, capped: false }), 'gated')
+  assert.equal(boardCountGate({ windowed: true, heldPages: 2, totalPages: 2, capped: false }), 'ready')
+  assert.equal(boardCountGate({ windowed: true, heldPages: 3, totalPages: 2, capped: false }), 'ready')
+  assert.equal(boardCountGate({ windowed: true, heldPages: 1, totalPages: 1, capped: false }), 'ready')
+})
+
+test('a capped windowed load falls back instead of publishing a partial count', () => {
+  assert.equal(boardCountGate({ windowed: true, heldPages: 8, totalPages: 12, capped: true }), 'fallback')
+  // Paging on to the last page completes the set, and the windowed
+  // count takes over from the fallback.
+  assert.equal(boardCountGate({ windowed: true, heldPages: 12, totalPages: 12, capped: true }), 'ready')
 })
