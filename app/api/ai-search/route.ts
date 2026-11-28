@@ -6,7 +6,7 @@ import { sydneyNow, toMinutes } from '@/lib/board'
 import { areaGroupForPlace, CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { boardCitiesFor, boardCityForPlace, CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, keywordFreeFallbackAllowed, type AiFilters } from '@/lib/ai-search-parse'
-import { askCandidateTake, askDateBounds, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
+import { askCandidateTake, askDateBounds, askNotEndedTodayWhere, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
 import { applyHints } from '@/lib/search-hints'
 import { rankAskRows, relaxedKeywords, ASK_LIMIT } from '@/lib/ai-search-rank'
 import { isPaidListing } from '@/lib/quality'
@@ -168,9 +168,15 @@ export async function POST(req: NextRequest) {
     // client can own the failure instead of reporting "nothing matches".
     let degraded = false
     const run = async (where: Prisma.EventWhereInput) => {
+      // The ended-today condition is part of the SQL, before the take:
+      // the candidate set is earliest-first, so the post-filter below
+      // dropping today's finished rows in memory lets a broad ask spend
+      // its whole take on this morning's events and zero out by evening.
+      // The post-filter stays as a backstop — a no-op for admitted rows.
+      const live: Prisma.EventWhereInput = { AND: [where, askNotEndedTodayWhere(today, now.minutes)] }
       const rows = await prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('statement_timeout', '4000', true)`
-        return tx.event.findMany({ where, select, take: askCandidateTake(filters.dateFrom, filters.dateTo), orderBy: [{ date: 'asc' }, { time: 'asc' }] })
+        return tx.event.findMany({ where: live, select, take: askCandidateTake(filters.dateFrom, filters.dateTo), orderBy: [{ date: 'asc' }, { time: 'asc' }] })
       }, { timeout: 6000 }).catch((err) => {
         degraded = true
         console.error('ai-search query timed out or failed', err instanceof Error ? err.message : err)
