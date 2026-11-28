@@ -390,18 +390,27 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     ? (() => {
       const horizon = nowMinutes + 12 * 60
       const dayKey = day ?? ''
+      // The re-admission reads the start the same way rankBoard does —
+      // through resolveSchedule, which derives a start from startsAt
+      // when the listing carries no clock string. Reading ev.time alone
+      // silently dropped that whole storage shape from this band: a
+      // startsAt-only listing starting more than three hours out was in
+      // no 'now' section at all, though the full-day board renders it
+      // with its derived clock. (Drop-ins stay out: they belong to the
+      // All day section, and a midnight-placeholder start of 0 would
+      // otherwise double-count one at the day's first minute.)
       const upcoming = listed.filter((ev) => {
         if (!dayKey || String(ev.date).slice(0, 10) !== dayKey) return false
-        const start = toMinutes(ev.time)
-        if (start == null) return false
-        return start >= nowMinutes && start <= horizon
+        const sched = resolveSchedule(ev, dayKey)
+        if (sched.dropIn || sched.start == null) return false
+        return sched.start >= nowMinutes && sched.start <= horizon
       })
       const seen = new Set<string>()
       const coming = [...windowRank.soon, ...upcoming].filter((ev) => {
         if (seen.has(ev.id)) return false
         seen.add(ev.id)
         return true
-      }).sort((a, b) => (toMinutes(a.time) ?? 0) - (toMinutes(b.time) ?? 0))
+      }).sort((a, b) => (resolveSchedule(a, dayKey).start ?? 0) - (resolveSchedule(b, dayKey).start ?? 0))
       const happening = [...windowRank.lead, ...windowRank.still].filter((ev) => !seen.has(ev.id))
       return [
         { key: 'next', label: 'Coming up', rows: coming.map(rowFor), possibly: false },
