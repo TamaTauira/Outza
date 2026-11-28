@@ -292,7 +292,7 @@ test('suburb link counts come only from the totals read', () => {
   assert.equal(suburbLinkCount({ ok: false, totals: [] }, 'newtown'), null, 'a failed read with nothing kept prints no count')
 })
 
-test('the landing fetch selects endsAt, and only endsAt of the totals-only fields', () => {
+test('the landing fetch selects the totals-only fields: endsAt, allDay and description', () => {
   // Guide pages and the suburb totals read shape their rows with the
   // same core (shapeLandingRows), whose past-ness judgement reads
   // endsAt — but the totals fetch (suburbCountSelect) selected it and
@@ -300,22 +300,25 @@ test('the landing fetch selects endsAt, and only endsAt of the totals-only field
   // linked-fill donor or an overnight extension the page judged it
   // past while the totals read kept it, and the two printed counts
   // differed by a row or two (Newtown 280 vs 279 and Marrickville
-  // 400 vs 399 after #328). Pin the parity at source level: no CI
-  // step type-checks, and the omission is a one-line regression.
-  // allDay and description stay unselected ON PURPOSE: each would
-  // change rendered output — allDay would print an "All day" clock
+  // 400 vs 399 after #328). #329 pinned the endsAt parity at source
+  // level: no CI step type-checks, and the omission is a one-line
+  // regression.
+  // allDay and description were held back at that point ON PURPOSE:
+  // each changes rendered output — allDay prints an "All day" clock
   // label on guide cards, and description feeds the guide JSON-LD
   // and refineStoredCategory's category re-presentation — so adding
-  // them is a display change awaiting the owner's approval, not a
-  // counts-parity fix. If that approval lands, update this pin.
+  // them was a display change awaiting the owner's approval. Tama
+  // approved the guide display alignment on 2026-11-28, so all three
+  // fields are now selected: the guides judge and present rows with
+  // the same fields the board and the totals read use. Pin all three.
   const root = fileURLToPath(new URL('../', import.meta.url))
   const src = readFileSync(join(root, 'lib/seo-server.ts'), 'utf8')
   const start = src.indexOf('const landingSelect')
   assert.notEqual(start, -1, 'seo-server.ts: landingSelect is where this test expects it')
   const block = src.slice(start, src.indexOf('} satisfies Prisma.EventSelect', start))
   assert.match(block, /endsAt: true/, 'the landing fetch selects endsAt, matching the totals fetch')
-  assert.doesNotMatch(block, /allDay: true/, 'allDay stays unselected until the owner approves its display change')
-  assert.doesNotMatch(block, /description: true/, 'description stays unselected until the owner approves its display changes')
+  assert.match(block, /allDay: true/, 'the landing fetch selects allDay, matching the totals fetch (owner-approved display alignment, 2026-11-28)')
+  assert.match(block, /description: true/, 'the landing fetch selects description, matching the totals fetch (owner-approved display alignment, 2026-11-28)')
 })
 
 test('suburb link counts never fall back to the guide model total', () => {

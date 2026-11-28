@@ -21,10 +21,10 @@ import { collapseShowings, hiddenFromPublic } from '@/lib/listing-visibility'
 const day = (key: string) => new Date(`${key}T00:00:00.000Z`)
 
 const landingSelect = {
-  id: true, title: true, date: true, endDate: true, time: true, endTime: true, endsAt: true, venueName: true, venueAddress: true, suburb: true,
+  id: true, title: true, date: true, endDate: true, time: true, endTime: true, endsAt: true, allDay: true, venueName: true, venueAddress: true, suburb: true,
   category: true, subTags: true, isLGBTI: true, isFree: true, price: true, priceMin: true, priceMax: true, imageUrl: true, ticketUrl: true, status: true,
   latitude: true, longitude: true, organiserName: true, organiserUrl: true, city: true,
-  source: true, sources: true, lastVerifiedAt: true, statusSource: true, duplicateOfId: true,
+  source: true, description: true, sources: true, lastVerifiedAt: true, statusSource: true, duplicateOfId: true,
   ...eventPictureSelect,
   imageAsset: { select: imageAssetSelect },
 } satisfies Prisma.EventSelect
