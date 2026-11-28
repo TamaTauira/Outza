@@ -32,3 +32,12 @@ test('free, markets and family copy stays useful and does not invent trust badge
   assert.match(facts[0]!.answer, /8 upcoming listings/)
   assert.equal(editorialPath('markets'), '/guides/markets')
 })
+
+test('the Sydney guide note describes the NSW Coast region board', () => {
+  const sydney = CITIES.find((c) => c.name === 'Sydney')!
+  const editorial = cityEditorial('markets', sydney)
+  assert.ok(editorial)
+  const note = editorial!.facts.find((f) => f.question.startsWith('Does this include'))
+  assert.equal(note?.answer, 'This is Sydney & the NSW Coast: Sydney, plus Wollongong & the Illawarra and Newcastle & the Hunter.')
+  assert.match(editorial!.paragraphs.join(' '), /Sydney & the NSW Coast/)
+})
