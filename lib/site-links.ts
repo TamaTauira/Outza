@@ -1,4 +1,4 @@
-import { CITIES } from '@/lib/cities'
+import { boardDisplayName, CITIES } from '@/lib/cities'
 import { navItem } from '@/lib/nav'
 import { cityPath } from '@/lib/seo'
 
@@ -31,7 +31,7 @@ export const LEGAL_LINKS: SiteLink[] = [
 
 export const FOOTER_CITY_LINKS: SiteLink[] = CITIES.map((city) => ({
   href: cityPath(city),
-  label: city.name,
+  label: boardDisplayName(city.name),
 }))
 
 export const LISTING_SOURCES_LINE =
