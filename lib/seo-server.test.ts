@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { degradedLandingResult, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, suburbCountsFromRows, suburbGuideTotalsFromRows, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, suburbCountsFromRows, suburbGuideTotalsFromRows, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
 import { cityDef } from './cities'
 import { isDbSaturation } from './db-guard'
 import { isLandingSuburb, slugify } from './seo'
@@ -124,6 +127,67 @@ test('suburb counts group exactly the rows the shared shaping core keeps', () =>
   const expected = [...bySlug.values()].filter((c) => c.count >= 1).sort((a, b) => b.count - a.count)
   assert.deepEqual(expected.map((c) => [c.slug, c.count]), [['enmore', 2], ['newtown', 1]], 'the core kept the collapsed Enmore pair plus one, and the Newtown solo')
   assert.deepEqual(suburbCountsFromRows(rows, sydney, 1), expected, 'the count path counts the shared core’s rows, grouped by suburb slug')
+})
+
+test('guide list section: a failed read omits the section instead of claiming an empty city', () => {
+  // The degraded result is what landingEvents returns when the gather is
+  // capped or the DB is saturated: no listings and no total. GuideLanding
+  // must not dress that in the "It's quiet" empty state — a load failure
+  // is not an empty city — so the section is omitted for that render.
+  const r = degradedLandingResult('2027-03-05', null)
+  assert.equal(guideListMode({ events: r.events.length, local: 0, total: r.total, degraded: r.degraded }), 'omitted')
+  assert.equal(guideListMode({ events: 0, local: 0, total: 0, degraded: true }), 'omitted')
+})
+
+test('guide list section: a successful read that found nothing keeps the empty state', () => {
+  assert.equal(guideListMode({ events: 0, local: 0, total: 0, degraded: false }), 'empty')
+  assert.equal(guideListMode({ events: 0, local: 0, total: 0 }), 'empty', 'an absent degraded flag is a successful read')
+})
+
+test('guide list section: any listings render as a list, even if the read also degraded', () => {
+  assert.equal(guideListMode({ events: 3, local: 0, total: 3, degraded: false }), 'list')
+  assert.equal(guideListMode({ events: 0, local: 2, total: 2, degraded: false }), 'list')
+  assert.equal(guideListMode({ events: 3, local: 0, total: 3, degraded: true }), 'list', 'what a degraded read still holds is shown, not hidden')
+})
+
+test('guide list section: a positive total with no listings never renders the empty state', () => {
+  // The headline prints a positive total as an exact count of upcoming
+  // events; the empty state claims there are none. The two must never
+  // share a render, whatever produced the mismatch.
+  assert.equal(guideListMode({ events: 0, local: 0, total: 10131, degraded: false }), 'omitted')
+})
+
+test('every GuideLanding call site passes its read’s degraded flag', () => {
+  // The degraded prop is required by GuideLanding's props type, but no CI
+  // step type-checks (next.config.js sets typescript.ignoreBuildErrors and
+  // ci.yml runs only yarn test and the browser build), so a call site that
+  // omits it still compiles — and renders a failed read as an empty city.
+  // That is exactly how the combo pages slipped through. Pin the caller
+  // set and the prop at source level: a new caller fails here until it
+  // passes a real degraded value and is added to the list below.
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const callers = new Map<string, string>()
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      if (name === 'node_modules' || name.startsWith('.')) continue
+      const abs = join(dir, name)
+      if (statSync(abs).isDirectory()) { walk(abs); continue }
+      if (!/\.tsx?$/.test(name) || /\.(test|spec)\.tsx?$/.test(name) || name.endsWith('.d.ts')) continue
+      const src = readFileSync(abs, 'utf8')
+      if (src.includes('<GuideLanding')) callers.set(relative(root, abs).split('\\').join('/'), src)
+    }
+  }
+  walk(root)
+  assert.deepEqual([...callers.keys()].sort(), [
+    'app/[city]/[topic]/page.tsx',
+    'lib/combo-page.tsx',
+    'lib/season-page.tsx',
+  ], 'the GuideLanding caller set is exactly the topic, combo and season pages')
+  for (const [path, src] of callers) {
+    const start = src.indexOf('<GuideLanding')
+    const block = src.slice(start, src.indexOf('/>', start))
+    assert.match(block, /degraded=\{/, `${path} must pass its read’s degraded flag to GuideLanding`)
+  }
 })
 
 const loc = (over: Partial<LandingLocal> = {}): LandingLocal => ({

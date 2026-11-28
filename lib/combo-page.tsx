@@ -118,6 +118,7 @@ export async function ComboPage({ citySlug, segments }: { citySlug: string; segm
       events={data.events}
       local={data.local}
       total={data.total}
+      degraded={!!data.degraded}
       from={data.from}
       to={data.to}
       suburbs={model.ok ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: suburbTotals.ok ? totalsBySlug.get(d.spec.suburbSlug!) ?? 0 : d.total })) : []}

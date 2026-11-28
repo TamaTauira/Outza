@@ -82,7 +82,7 @@ export default async function LandingPage({ params }: Props) {
     cityEventCounts(),
     citySuburbTotals(city),
   ])
-  const { events, local, total, from, to } = data
+  const { events, local, total, from, to, degraded } = data
   const path = topic ? cityPath(city, topic.key) : suburbPath(city, suburb!)
   const guides = !model.ok
     ? TOPICS
@@ -143,6 +143,7 @@ export default async function LandingPage({ params }: Props) {
       events={events}
       local={local}
       total={total}
+      degraded={!!degraded}
       from={from}
       to={to}
       suburbs={linkSuburbs}
