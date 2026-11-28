@@ -496,6 +496,17 @@ export function areaGroupFor(city: string, value: string | null | undefined): Bo
 }
 
 /**
+ * The group a folded-in place belongs to on this board, named by the place
+ * itself — its centre, or a city filed under the group — rather than by the
+ * group's label. Search parses name the place ("Newcastle"); the board's
+ * area machinery speaks in labels and stored cities, so this is the bridge.
+ */
+export function areaGroupForPlace(city: string, place: string | null | undefined): BoardAreaGroup | undefined {
+  if (!place) return undefined
+  return areaGroupsFor(city).find((g) => g.centre === place || g.storedCities.includes(place))
+}
+
+/**
  * Area choices for the filter UI: the group labels first, then every suburb the
  * board's events can carry, including the folded-in areas' suburbs.
  */

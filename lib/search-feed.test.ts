@@ -28,3 +28,37 @@ test('a miss drops the evening cutoff before it drops the words', () => {
   assert.equal(relaxed?.args.timeFrom, '')
   assert.equal(relaxed?.args.isFree, true)
 })
+
+test('an inferred subTag never hard-gates /search', () => {
+  // "jazz" parses to category Music with an inferred Jazz tag. Explore lists
+  // Adelaide jazz whose stored tags lack exactly 'Jazz', so the tag guess
+  // must not reach boardWhere as a filter — the word and category still do.
+  const args = searchFeedArgs('jazz', 'Adelaide', FRIDAY)
+  assert.equal(args.subTag, '')
+  assert.deepEqual(args.categories, ['Music'])
+  assert.equal(args.search, 'jazz')
+  assert.equal(args.city, 'Adelaide')
+})
+
+test('the searched city is the one the words named, not the URL city', () => {
+  // The /search count line prints args.city; a query naming Sydney while the
+  // link says Brisbane must head its results with the city actually searched.
+  const args = searchFeedArgs('comedy in Sydney', 'Brisbane', FRIDAY)
+  assert.equal(args.city, 'Sydney')
+})
+
+test('a folded-in place becomes its area group on its board', () => {
+  const newcastle = searchFeedArgs('indie gigs in Newcastle', 'Sydney', FRIDAY)
+  assert.equal(newcastle.city, 'Sydney')
+  assert.equal(newcastle.suburb, 'Newcastle & the Hunter')
+  assert.equal(newcastle.search, 'indie gig')
+
+  const wollongong = searchFeedArgs('markets in Wollongong', 'Sydney', FRIDAY)
+  assert.equal(wollongong.city, 'Sydney')
+  assert.equal(wollongong.suburb, 'Wollongong & the Illawarra')
+  assert.equal(wollongong.search, 'market')
+
+  // An ordinary suburb keeps its plain name.
+  const bondi = searchFeedArgs('markets in Bondi', 'Sydney', FRIDAY)
+  assert.equal(bondi.suburb, 'Bondi')
+})

@@ -1,5 +1,7 @@
 import { isPaidListing } from '@/lib/quality'
 import type { AiFilters } from '@/lib/ai-search-parse'
+import { areaGroupForPlace, matchesAreaGroup, type BoardAreaGroup } from '@/lib/categories'
+import { boardCitiesFor, boardCityForPlace, CITY_NAMES } from '@/lib/cities'
 import { foldSearchText, hasLgbtiText, isLgbtiTerm } from '@/lib/search-fold'
 
 export const ASK_LIMIT = 8
@@ -124,14 +126,27 @@ function matchedWordCount(row: AskRow, required: string[]): number {
   return required.filter((word) => wordInRow(row, blobs, word)).length
 }
 
-function inRange(row: AskRow, filters: Pick<AiFilters, 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree'>): boolean {
+function inRange(row: AskRow, filters: Pick<AiFilters, 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree'>, focusGroup?: BoardAreaGroup): boolean {
   const day = dayKey(row.date)
   if (day < filters.dateFrom || day > filters.dateTo) return false
-  if (filters.city && row.city !== filters.city) return false
+  // A region board's rows file under its member cities too (Newcastle files
+  // under its own name on the Sydney board), so the test is membership in
+  // the board's city set — the same set the route's SQL clause reads — not
+  // equality with the board's own name.
+  if (filters.city && !boardCitiesFor(filters.city).includes(row.city)) return false
   if (filters.suburb) {
-    const want = filters.suburb.toLowerCase()
-    const blob = placeBlob(row)
-    if (!blob.includes(want)) return false
+    if (focusGroup) {
+      // A folded-in place focus (Newcastle, Wollongong) is an area, not text
+      // to scan for: membership follows the board's area group — filed city
+      // or suburb — the predicate shapeBoard applies. A contains scan for
+      // the place's name would drop the area's own suburbs (Hamilton,
+      // Dapto), whose listings never have to say the place's name.
+      if (!matchesAreaGroup(row, filters.city, focusGroup)) return false
+    } else {
+      const want = filters.suburb.toLowerCase()
+      const blob = placeBlob(row)
+      if (!blob.includes(want)) return false
+    }
   }
   if (filters.isFree && isPaidListing(row)) return false
   return true
@@ -146,7 +161,12 @@ export function rankAskRows<T extends AskRow>(rows: T[], filters: Pick<AiFilters
   const keywords = filters.keywords.map((word) => word.toLowerCase())
   const required = keywords.filter((word) => !isLgbtiTerm(word))
   const widen = filters.lgbtiq || keywords.some((word) => isLgbtiTerm(word))
-  const pool = rows.filter((row) => inRange(row, filters))
+  // The area group a folded-in place focus names on this board, if any —
+  // resolved exactly as the route resolves it for its SQL narrowing.
+  const focusGroup = filters.city && filters.suburb && !CITY_NAMES.includes(filters.suburb) && boardCityForPlace(filters.suburb) === filters.city
+    ? areaGroupForPlace(filters.city, filters.suburb)
+    : undefined
+  const pool = rows.filter((row) => inRange(row, filters, focusGroup))
   const scored = pool.map((row) => ({ row, strength: strengthFor(row, keywords, widen) }))
   const titles = scored.filter((item) => item.strength === 'title')
   const descriptions = scored.filter((item) => item.strength === 'description')

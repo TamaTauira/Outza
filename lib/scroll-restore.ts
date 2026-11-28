@@ -107,3 +107,50 @@ export function boardPagesToLoad(input: { saved: number | null; totalPages: numb
   if (!input.spanning && input.windowed && input.totalPages > 0) return Math.min(input.totalPages, BOARD_FULL_LOAD_PAGE_CAP)
   return listDepthToLoad(input.saved, input.totalPages)
 }
+
+/**
+ * The page a board already holding rows for its current query should
+ * reach once it is read as windowed. A window switch can make a board
+ * windowed after its first load already ran unwindowed: the plan chips
+ * pin 'all' for Today and 'evening' for Tonight over the same day with
+ * the same cleared filters, so the span and the board query are
+ * identical, the first-load effect (whose deps are the query, not the
+ * window) never re-runs, and the held set stays at the depth the
+ * unwindowed load stopped at — while the count gate reads the board
+ * as windowed over that partial set and holds the headline. The
+ * target is the first load's own decision (boardPagesToLoad) taken
+ * with the held depth as the saved depth, so it inherits the full
+ * load's ceiling and its capped bookkeeping: a windowed board is
+ * aimed at every page, an unwindowed or spanning board at the depth
+ * already held. A target above the held page therefore only ever
+ * occurs for a windowed board that owes more pages, and a board that
+ * reached its target reads the same target again — the top-up that
+ * fetched it cannot re-fire.
+ */
+export function boardTopUpTarget(input: { heldPages: number; totalPages: number; spanning: boolean; windowed: boolean }): number {
+  return boardPagesToLoad({ saved: input.heldPages, totalPages: input.totalPages, spanning: input.spanning, windowed: input.windowed })
+}
+
+/**
+ * Whether a top-up append's null return is a genuine failure of the
+ * attempt, as opposed to the append being superseded or abandoned.
+ * fetchSpan returns null for both: it nulls a fetch a newer one has
+ * superseded (by its own sequence test) and it nulls a fetch that
+ * genuinely failed — an HTTP error, unparseable JSON, a dropped
+ * connection, a throw. Only the genuine failure may consume the
+ * query's one top-up attempt; a superseded append's board is owned by
+ * the newer fetch now, and an abandoned loop (the mirrors no longer
+ * hold: the query moved on, or the board stopped being windowed) is
+ * not a failure either.
+ *
+ * fetchSpan increments the board's fetch sequence on entry,
+ * synchronously, so the append ran under seqBefore + 1, where
+ * seqBefore is the sequence read immediately before the call. The
+ * sequence has moved past that exactly when a newer fetch started
+ * (Show More, a retry, a fresh load) or a load cleanup bumped it —
+ * the supersede case. stillCurrent is the loop's mirror test at the
+ * moment the append resolved.
+ */
+export function boardTopUpAppendFailed(input: { seqBefore: number; seqNow: number; stillCurrent: boolean }): boolean {
+  return input.stillCurrent && input.seqNow === input.seqBefore + 1
+}

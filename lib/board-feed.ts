@@ -14,6 +14,7 @@ import { imageAssetSelect } from '@/lib/images/spec'
 import { eventPictureSelect } from '@/lib/images/display-spec'
 import { PUBLIC_EVENT_AND, redactCommunityPublic } from '@/lib/community-shared'
 import { priceWhere } from '@/lib/ai-search-query'
+import { tagForms } from '@/lib/ai-search-rank'
 import { dateKeyOf, liveStatus, minutesOf } from '@/lib/listing-window'
 import { toSydneyParts } from '@/lib/event-store-parts'
 import { isPaidListing } from '@/lib/quality'
@@ -84,6 +85,13 @@ export function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
           { venueName: { contains: w, mode: 'insensitive' } },
           { suburb: { contains: w, mode: 'insensitive' } },
           { venueAddress: { contains: w, mode: 'insensitive' } },
+          // The catalogue's own tags are a match arm for the person's word,
+          // the way Ask's text clause already treats them: a jazz night the
+          // catalogue tags 'Jazz' matches even when its title never says
+          // the word. A tag here only ever adds a row the word earns — it
+          // is never a gate — so patchy tag coverage limits the gain, not
+          // the result.
+          { subTags: { hasSome: tagForms(w) } },
         ],
       })
     }

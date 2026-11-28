@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { interpretQuery } from './ai-search-parse'
+import { interpretQuery, keywordFreeFallbackAllowed } from './ai-search-parse'
 
 const TODAY = '2026-10-28'
 
@@ -395,6 +395,64 @@ test('an ask with no parseable signal parses to no signal at all', () => {
   assert.deepEqual(interpretQuery('asdfgh', FRIDAY).keywords, ['asdfgh'])
 })
 
+test('folded-in places resolve to their board, and the place is not a keyword', () => {
+  // Newcastle has no board of its own: the ask lands on the Sydney board with
+  // Newcastle kept as the focus, and "newcastle" must not survive as a word
+  // the listings are ANDed against — no listing's text has to say it.
+  const liam = interpretQuery('indie gigs in Newcastle', FRIDAY)
+  assert.equal(liam.city, 'Sydney')
+  assert.equal(liam.suburb, 'Newcastle')
+  assert.equal(liam.category, 'Music')
+  assert.deepEqual(liam.keywords, ['indie', 'gig'])
+
+  // Wollongong files to Sydney the same way.
+  const gong = interpretQuery('markets in Wollongong', FRIDAY)
+  assert.equal(gong.city, 'Sydney')
+  assert.equal(gong.suburb, 'Wollongong')
+  assert.deepEqual(gong.keywords, ['market'])
+
+  // A suburb of a folded-in place names the place's board too.
+  const hamilton = interpretQuery('gigs in Hamilton', FRIDAY)
+  assert.equal(hamilton.city, 'Sydney')
+  assert.equal(hamilton.suburb, 'Hamilton')
+  assert.deepEqual(hamilton.keywords, ['gig'])
+
+  // A catalogue city named outright still wins over a folded-in place.
+  const perth = interpretQuery('gigs in Perth', FRIDAY)
+  assert.equal(perth.city, 'Perth')
+  assert.equal(perth.suburb, '')
+})
+
+test('a model-supplied place word never survives as a keyword when the fallback found none', () => {
+  // "music in Newcastle": every content word is a stop word or the place
+  // itself, so the fallback's keyword list is empty and the merge keeps the
+  // model's keywords. The model cannot name Newcastle as a city (the prompt
+  // offers catalogue cities only), so the place can only arrive as a
+  // keyword — where the route would AND it as a text needle and zero the
+  // ask. The place is the focus filter, never a keyword.
+  const newcastle = interpretQuery('music in Newcastle', FRIDAY, { keywords: ['newcastle'] })
+  assert.equal(newcastle.city, 'Sydney')
+  assert.equal(newcastle.suburb, 'Newcastle')
+  assert.deepEqual(newcastle.keywords, [])
+
+  const gong = interpretQuery('music in Wollongong', FRIDAY, { keywords: ['wollongong'] })
+  assert.equal(gong.city, 'Sydney')
+  assert.equal(gong.suburb, 'Wollongong')
+  assert.deepEqual(gong.keywords, [])
+
+  // The catalogue-city twin: normalise filters model keywords against the
+  // city only, so a suburb focus leaks the same way without the guard.
+  const bondi = interpretQuery('music in Bondi', FRIDAY, { keywords: ['bondi'] })
+  assert.equal(bondi.city, 'Sydney')
+  assert.equal(bondi.suburb, 'Bondi')
+  assert.deepEqual(bondi.keywords, [])
+
+  // A real keyword riding alongside the place word survives; only the
+  // place word is dropped.
+  const mixed = interpretQuery('music in Newcastle', FRIDAY, { keywords: ['newcastle', 'jazz'] })
+  assert.deepEqual(mixed.keywords, ['jazz'])
+})
+
 test('relative dates still resolve when no year is named', () => {
   const tonight = interpretQuery('live music tonight', TODAY)
   assert.equal(tonight.dateFrom, TODAY)
@@ -404,4 +462,27 @@ test('relative dates still resolve when no year is named', () => {
   assert.equal(loose.dateFrom, TODAY)
   assert.equal(loose.dateTo, '2026-11-10')
   assert.equal(loose.keywords.includes('upcoming'), false)
+})
+
+test('the keyword-free fallback needs a real filter, never a keyword count', () => {
+  const bare = { category: '', suburb: '', isFree: false, lgbtiq: false, timeOfDay: 'any' as const, soon: false, nearMe: false }
+  // Gibberish or a bare browse with no filter signal stays an empty result.
+  assert.equal(keywordFreeFallbackAllowed(bare), false)
+  // A real filter is enough on its own — the pass exists for queries whose
+  // words failed, so an empty keyword list cannot disqualify it (the old
+  // route condition required exactly that and the pass never fired).
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, category: 'Music' }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, suburb: 'Newcastle' }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, isFree: true }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, timeOfDay: 'evening' }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, soon: true }), true)
+  // A near-me ask needs the caller's location, not a word-free trawl.
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, category: 'Music', nearMe: true }), false)
+  // End to end: "music in Newcastle" parses to a suburb focus with no
+  // keywords at all, and the fallback is allowed for exactly that shape.
+  const folded = interpretQuery('music in Newcastle', TODAY)
+  assert.deepEqual(folded.keywords, [])
+  assert.equal(keywordFreeFallbackAllowed(folded), true)
+  const gibberish = interpretQuery('asdfgh', TODAY)
+  assert.equal(keywordFreeFallbackAllowed(gibberish), false)
 })
