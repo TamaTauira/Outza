@@ -12,7 +12,7 @@ import { PRO_PLAN, TIER_KEYS, formatAud, isDuration, productName, tierDef, type 
 import { PAYMENTS_COPY } from '@/lib/payments-mode'
 import { finishTimeError } from '@/lib/promoter-listing'
 import { CATEGORIES } from '@/lib/categories'
-import { CITIES } from '@/lib/cities'
+import { boardDisplayName, CITIES } from '@/lib/cities'
 import { BRAND_ORANGE } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 import { CampaignBuilder } from './campaign-builder'
@@ -611,7 +611,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
           <h2 className="font-semibold mb-1">Already listed? Claim it</h2>
           <p className="text-xs text-muted-foreground mb-3">We list thousands of events automatically. Find yours and add it to your dashboard.</p>
           <form onSubmit={search} className="grid gap-2">
-            <select value={claimCity} onChange={(e) => setClaimCity(e.target.value)} className={field} aria-label="City to search">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
+            <select value={claimCity} onChange={(e) => setClaimCity(e.target.value)} className={field} aria-label="City to search">{CITIES.map((c) => <option key={c.name} value={c.name}>{boardDisplayName(c.name)}</option>)}</select>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Event name or venue" className={field} aria-label="Search listings" />
             <button className="flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search</button>
           </form>
@@ -644,7 +644,7 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
             <label className="block text-sm font-medium">End date<input inputMode="numeric" placeholder="dd/mm/yyyy" autoComplete="off" value={form.endDate} onChange={set('endDate')} className={`${field} mt-1 font-normal`} /></label>
             <label className="block text-sm font-medium">Finish time<input type="time" value={form.endTime} onChange={set('endTime')} className={`${field} mt-1 min-w-[9rem] font-normal`} /></label>
             <label className="block text-sm font-medium">Venue<input required value={form.venueName} onChange={set('venueName')} placeholder="Venue name" className={`${field} mt-1 font-normal`} /></label>
-            <label className="block text-sm font-medium">City<select value={form.city} onChange={set('city')} className={`${field} mt-1 font-normal`}>{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select></label>
+            <label className="block text-sm font-medium">City<select value={form.city} onChange={set('city')} className={`${field} mt-1 font-normal`}>{CITIES.map((c) => <option key={c.name} value={c.name}>{boardDisplayName(c.name)}</option>)}</select></label>
             <label className="block text-sm font-medium sm:col-span-2">Address<input value={form.venueAddress} onChange={set('venueAddress')} placeholder="Street, suburb, postcode" className={`${field} mt-1 font-normal`} /></label>
             <label className="block text-sm font-medium">Category<select value={form.category} onChange={set('category')} className={`${field} mt-1 font-normal`}>{CATEGORIES.map((c) => <option key={c.name}>{c.name}</option>)}</select></label>
             <label className="block text-sm font-medium">Subtag<select value={form.subTag} onChange={set('subTag')} className={`${field} mt-1 font-normal`}><option value="">Optional</option>{subTags.map((t) => <option key={t}>{t}</option>)}</select></label>
