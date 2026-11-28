@@ -101,3 +101,20 @@ export function boardCountGate(input: { windowed: boolean; heldPages: number; to
   if (input.heldPages >= input.totalPages) return 'ready'
   return input.capped ? 'fallback' : 'gated'
 }
+
+/**
+ * The words the board summary line appends after the place name for
+ * the window in force — the window's label inside the count line
+ * ("N events in Sydney & the NSW Coast from now"). The landing
+ * window ('now') is "from now": it is not tonight-only (its sections
+ * are Coming up / Happening now / All day / Time not listed), and the
+ * owner gave it its own label rather than borrowing the evening
+ * window's "tonight" (2026-11-28). 'hour' and 'all' add no time
+ * words — the line's other suffixes (the date range, the all-day
+ * count) carry their scope.
+ */
+export function boardWindowSuffix(window: TimeWindow): string {
+  if (window === 'now') return ' from now'
+  if (window === 'evening') return ' tonight'
+  return ''
+}
