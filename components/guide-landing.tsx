@@ -19,6 +19,23 @@ function topCounts(events: LandingEvent[], key: 'category' | 'venueName', n = 3)
 
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`)
 
+/**
+ * The shape the client cards receive. Every server-side reader of a
+ * row's description has already run on the full rows by the time this
+ * is called: the shaping inside landingEvents (collapse scoring,
+ * presentListing's category refinement, matchesTopic) and the JSON-LD
+ * built in this component. No client component reads the field —
+ * EventCard and GuideEventList (via guideToBoard into MobileEventRow)
+ * render none of it — and it is uncapped free text, so it is omitted
+ * here, at the one point the rows cross into client components,
+ * rather than serialised into the page's client payload. allDay
+ * stays: the client clock label reads it.
+ */
+const clientEvent = (e: LandingEvent) => {
+  const { description: _description, ...rest } = e
+  return { ...rest, date: e.date.toISOString(), imageAsset: e.imageAsset as any }
+}
+
 export function GuideLanding(props: {
   city: CityDef
   topic: TopicDef | null
@@ -155,7 +172,7 @@ export function GuideLanding(props: {
         ) : listMode === 'list' ? (
           <div className="mt-10 space-y-10">
             {events.length > 0 && <div className="vp-guide-rows mt-0 overflow-hidden rounded-xl border border-border bg-card">
-              <GuideEventList listingQuery={listingQuery} events={events.map((e) => ({ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }))} />
+              <GuideEventList listingQuery={listingQuery} events={events.map(clientEvent)} />
             </div>}
             {events.length > 0 && <div className="vp-guide-cards md:grid-cols-2 md:items-stretch lg:grid-cols-3 xl:grid-cols-4 gap-card">
               {events.map((e, i) => {
@@ -163,7 +180,7 @@ export function GuideLanding(props: {
                 const first = i === 0 || events[i - 1].date.toISOString().slice(0, 10) !== key
                 return (
                   <div key={e.id} id={first ? `d-${key}` : undefined} className="h-full scroll-mt-32">
-                    <EventCard index={i} listingQuery={listingQuery} event={{ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }} />
+                    <EventCard index={i} listingQuery={listingQuery} event={clientEvent(e)} />
                   </div>
                 )
               })}
