@@ -204,6 +204,41 @@ test('LGBTIQ+ this week is one week, and the identity word is not a second filte
   assert.equal(parsed.keywords.includes('this'), false)
 })
 
+test('ordinary plurals singularise so the search needle can hit a singular title', () => {
+  const zoe = interpretQuery('nightclubs and DJ sets in Sydney this weekend', FRIDAY)
+  assert.deepEqual(zoe.keywords, ['nightclub', 'set'])
+  assert.equal(zoe.city, 'Sydney')
+  assert.equal(zoe.dateFrom, '2026-10-30')
+  assert.equal(zoe.dateTo, '2026-11-01')
+
+  const tom = interpretQuery('classical concerts and theatre in Adelaide this weekend', FRIDAY)
+  assert.deepEqual(tom.keywords, ['classical', 'concert', 'theatre'])
+  assert.equal(tom.city, 'Adelaide')
+
+  assert.deepEqual(interpretQuery('gigs in Sydney', FRIDAY).keywords, ['gig'])
+  assert.deepEqual(interpretQuery('boat parties in Sydney', FRIDAY).keywords, ['boat', 'party'])
+  assert.deepEqual(interpretQuery('dance classes in Sydney', FRIDAY).keywords, ['dance', 'class'])
+  assert.deepEqual(interpretQuery('ladies night in Sydney', FRIDAY).keywords, ['lady'])
+  assert.deepEqual(interpretQuery('workshops in Sydney', FRIDAY).keywords, ['workshop'])
+
+  // Model-supplied keywords are stemmed too, not only the rule-based ones.
+  const model = interpretQuery('in Sydney', FRIDAY, { keywords: ['Nightclubs'] })
+  assert.deepEqual(model.keywords, ['nightclub'])
+})
+
+test('words that merely end in s are not mangled', () => {
+  assert.deepEqual(interpretQuery('jazz in Sydney', FRIDAY).keywords, ['jazz'])
+  assert.deepEqual(interpretQuery('glass in Sydney', FRIDAY).keywords, ['glass'])
+  assert.deepEqual(interpretQuery('bass in Sydney', FRIDAY).keywords, ['bass'])
+  assert.deepEqual(interpretQuery('chorus in Sydney', FRIDAY).keywords, ['chorus'])
+  assert.deepEqual(interpretQuery('paris in Sydney', FRIDAY).keywords, ['paris'])
+  assert.deepEqual(interpretQuery('canvas in Sydney', FRIDAY).keywords, ['canvas'])
+  // A stem that is not a word (movies → movi) would match nothing at all,
+  // so these keep the plural form a title can still carry.
+  assert.deepEqual(interpretQuery('movies in Sydney', FRIDAY).keywords, ['movies'])
+  assert.deepEqual(interpretQuery('galleries in Sydney', FRIDAY).keywords, ['galleries'])
+})
+
 test('relative dates still resolve when no year is named', () => {
   const tonight = interpretQuery('live music tonight', TODAY)
   assert.equal(tonight.dateFrom, TODAY)
