@@ -3,6 +3,7 @@ import { approveClaim, emailMatchesOrganiser } from '@/lib/trust'
 import { queueTrustItem } from '@/lib/ops/queue'
 import { assessEventClaim, claimRateLimited, registrableDomain } from '@/lib/ownership'
 import { verifiedOrganiserDomain } from '@/lib/event-overrides'
+import { unverifiedGate } from '@/lib/account-flow'
 
 type Me = { id: string; role: string; email: string; name: string }
 const clean = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max) || null
@@ -67,4 +68,23 @@ export async function submitClaim(me: Me, eventId: string, b: Record<string, unk
     })
   }
   return { status: 200, body: { ok: true, status: auto ? 'APPROVED' : 'PENDING', created: !existing } }
+}
+
+export type ClaimGate = (userId: string) => Promise<{ status: number; error: string } | null>
+
+/**
+ * The one claim path both surfaces share: the event-page panel and the promoter dashboard
+ * both land here, so the verified-email gate and the claim itself cannot drift apart again.
+ * The gate runs first — an unverified account is refused before any claim is written —
+ * then the same fields (orgName, position, evidenceUrl, message) go to submitClaim.
+ */
+export async function submitGatedClaim(
+  me: Me,
+  eventId: string,
+  b: Record<string, unknown>,
+  deps: { gate?: ClaimGate; submit?: typeof submitClaim } = {},
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const gate = await (deps.gate ?? unverifiedGate)(me.id)
+  if (gate) return { status: gate.status, body: { error: gate.error } }
+  return (deps.submit ?? submitClaim)(me, eventId, b)
 }
