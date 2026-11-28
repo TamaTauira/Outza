@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { cosListedPrice } from './cos-event'
-import { PRICE_ENRICH_BUDGET_MS, groupTargets, resolveEventPrice, type PriceFetch, type PriceResponse } from './price-lookup'
-import { explicitAdmissionPrice, humanitixPayloadPrice, humanitixTicketsHtml, jsonLdPrice, oztixSaysFree, pagePrice, ticketCtas } from './price-read'
+import { PRICE_ENRICH_BUDGET_MS, groupTargets, outcomeRowIds, resolveEventPrice, type PriceFetch, type PriceGroup, type PriceResponse } from './price-lookup'
+import { eventbriteAvailabilityPrice, explicitAdmissionPrice, humanitixPayloadPrice, humanitixTicketsHtml, jsonLdPrice, oztixSaysFree, pagePrice, ticketCtas } from './price-read'
 import { REFRESH_CHUNKS } from './refresh-plan'
 import { priceSummary } from './quality'
 
@@ -162,6 +162,37 @@ test('a source page with no price follows the ticket button, and a blocked page 
   })
   assert.equal(blocked.price, null)
   assert.match(blocked.reason ?? '', /blocked|Moshtix/)
+})
+
+test('an enrich outcome lands only on rows whose own link was read', () => {
+  const page = 'https://events.humanitix.com/a-real-show'
+  const group: PriceGroup = {
+    key: page,
+    sample: { id: 'a', source: 'humanitix', title: 'Show', ticketUrl: page, sourceUrl: page, date: new Date('2026-12-01') },
+    urls: [page, 'https://organiser.example/show'],
+    ids: ['a', 'b', 'c', 'd'],
+  }
+  const ids = outcomeRowIds(group, page, [
+    { id: 'a', ticketUrl: page, sourceUrl: page },
+    // Shares only the group's organiser URL, not the page that was read: the
+    // old expansion priced this row from the sample's listing. It must not.
+    { id: 'b', ticketUrl: 'https://events.humanitix.com/another-show', sourceUrl: 'https://organiser.example/show' },
+    { id: 'c', ticketUrl: `${page}/`, sourceUrl: null },
+    { id: 'd', ticketUrl: null, sourceUrl: page },
+  ])
+  assert.deepEqual([...ids].sort(), ['a', 'c', 'd'])
+})
+
+test('bulk classes stay out of page-read ranges, and bare cents do not slip', () => {
+  const tickets = '{"@type":"Offer",name:"Adult",price:50},{"@type":"Offer",name:"Group of 20",price:4257}'
+  assert.equal(humanitixTicketsHtml(tickets)?.price, '$50')
+  const ld = '<script type="application/ld+json">{"@type":"Event","offers":[{"@type":"Offer","name":"Adult","price":50},{"@type":"Offer","name":"Corporate table of 10","price":7990}]}</script>'
+  assert.equal(jsonLdPrice(ld)?.price, '$50')
+  // Eventbrite money objects whose `value` arrives without a currency are
+  // still minor units: 89900 is $899, not $89,900.
+  const availability = eventbriteAvailabilityPrice({ minimum_ticket_price: { value: 89900 }, maximum_ticket_price: { value: 125000 } })
+  assert.equal(availability?.price, '$899 – $1250')
+  assert.equal(availability?.min, 899)
 })
 
 test('eventbrite pay-on-arrival text is the price, and a zero offer is not free', async () => {

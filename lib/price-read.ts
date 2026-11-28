@@ -5,7 +5,7 @@
  */
 import { cosListedPrice } from '@/lib/cos-event'
 import { humanitixListingsFromJson } from '@/lib/humanitix-refresh'
-import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
+import { isBulkTicketClass, moneyNumber, priceFromAmounts, priceFromTicketClasses, readPrice, type PriceRead, type TicketClassAmount } from '@/lib/price'
 
 const FREE: PriceRead = { price: 'Free', isFree: true, min: 0, max: 0, fromOnly: false }
 
@@ -140,8 +140,8 @@ export function humanitixTicketsHtml(html: string): PriceRead | null {
   const labels = [...html.matchAll(/class="price-label">\s*([^<]+)/g)].map((match) => match[1].trim())
   const shown = [...display, ...labels].map(shownTicketAmount).filter((amount): amount is number => amount != null)
   if (shown.length) return priceFromAmounts(Math.min(...shown), Math.max(...shown))
-  const paid = offers.map((offer) => offer.price).filter((price) => price > 0)
-  if (paid.length) return priceFromAmounts(Math.min(...paid), Math.max(...paid))
+  const paid = offers.filter((offer) => offer.price > 0)
+  if (paid.length) return priceFromTicketClasses(paid.map((offer) => ({ name: offer.name, amount: offer.price })))
   const saysFree = [...display, ...labels].some((text) => /^free$/i.test(text))
     || offers.some((offer) => offer.price === 0 && /\bfree\b/i.test(offer.name))
   if (saysFree) return FREE
@@ -167,12 +167,14 @@ export function cosRecordPrice(record: Record<string, unknown> | null | undefine
 }
 
 /** Hidden, donation and add-on tickets are ignored. Complimentary-only lists are free. */
-export function moshtixTicketsPrice(tickets: { ticketPrice?: unknown; hidden?: boolean; complimentary?: boolean; donation?: boolean; addOn?: boolean }[]): PriceRead | null {
+export function moshtixTicketsPrice(tickets: { ticketPrice?: unknown; name?: string | null; hidden?: boolean; complimentary?: boolean; donation?: boolean; addOn?: boolean }[]): PriceRead | null {
   const visible = tickets.filter((ticket) => !ticket.hidden && !ticket.donation && !ticket.addOn)
-  const nums = visible.map((ticket) => ticket.complimentary ? 0 : moneyNumber(ticket.ticketPrice)).filter((n): n is number => n != null && n >= 0)
-  const paid = nums.filter((n) => n > 0)
-  if (paid.length) return priceFromAmounts(Math.min(...paid), Math.max(...paid))
-  if (visible.some((ticket) => ticket.complimentary) || nums.some((n) => n === 0)) return FREE
+  const classes = visible
+    .map((ticket) => ({ name: ticket.name ?? null, amount: ticket.complimentary ? 0 : moneyNumber(ticket.ticketPrice) }))
+    .filter((cls): cls is TicketClassAmount & { amount: number } => cls.amount != null && cls.amount >= 0)
+  const paid = classes.filter((cls) => cls.amount > 0)
+  if (paid.length) return priceFromTicketClasses(paid)
+  if (visible.some((ticket) => ticket.complimentary) || classes.some((cls) => cls.amount === 0)) return FREE
   return null
 }
 
@@ -260,6 +262,7 @@ function offerPrice(offers: unknown, freeFlag: boolean): PriceRead | null {
   const list = Array.isArray(offers) ? offers : offers && typeof offers === 'object' ? [offers] : []
   const nums: number[] = []
   let fromOnly = false
+  const plain: TicketClassAmount[] = []
   for (const offer of list) {
     if (!offer || typeof offer !== 'object') continue
     const row = offer as Record<string, unknown>
@@ -272,8 +275,14 @@ function offerPrice(offers: unknown, freeFlag: boolean): PriceRead | null {
       if (low != null && low > 0 && (high == null || high <= 0)) fromOnly = true
     } else {
       const n = moneyNumber(row.price)
-      if (n != null && n > 0) nums.push(n)
+      if (n != null && n > 0) plain.push({ name: typeof row.name === 'string' ? row.name : null, amount: n })
     }
+  }
+  // A named bulk/group offer never sets the headline range while a
+  // single-admission offer exists.
+  if (plain.length) {
+    const singles = plain.filter((cls) => !isBulkTicketClass(cls))
+    for (const cls of singles.length ? singles : plain) nums.push(cls.amount)
   }
   if (!nums.length) return freeFlag ? FREE : null
   const distinct = new Set(nums)

@@ -1,4 +1,4 @@
-import { listPriceLabel } from '@/lib/price'
+import { listPriceLabel, readPrice } from '@/lib/price'
 
 /** Shown when a listing has no published amount. Free stays “Free”. */
 export const PRICE_TBA = 'Price TBA'
@@ -29,7 +29,10 @@ export function eventDetailPrice(input: {
   const range = tidy(input.range)
   if (range && !missing(range)) {
     if (/^free$/i.test(range)) return { label: 'Free', kind: 'free' }
-    return { label: range, kind: 'paid' }
+    // A supplied range is a summary computed earlier (and possibly cached);
+    // one that resolves past the sanity bound is not a price, whatever it
+    // claims — fall through to the field resolution, which suppresses it too.
+    if (!readPrice(range).suppressed) return { label: range, kind: 'paid' }
   }
   const formatted = listPriceLabel(!!input.isFree, input.price ?? null, input.priceMin, input.priceMax)
   if (formatted.kind === 'free') return { label: 'Free', kind: 'free' }

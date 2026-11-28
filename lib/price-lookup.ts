@@ -102,6 +102,30 @@ export function groupTargets(rows: PriceTarget[]): PriceGroup[] {
   return [...groups.values()]
 }
 
+export type OutcomeCandidate = { id: string; ticketUrl: string | null; sourceUrl: string | null }
+
+/**
+ * The rows one lookup outcome may land on. The lookup ran for the group's
+ * sample, from the sample's own links, so the sample always qualifies. Any
+ * other row qualifies only when its OWN ticket or source URL is the page the
+ * price was actually read from — never merely because it shares some other
+ * URL with the group. Applying one listing's price to siblings that only
+ * share an organiser or series page is how a price read on one seller's page
+ * once landed on rows whose ticket links pointed somewhere else entirely.
+ */
+export function outcomeRowIds(group: PriceGroup, ticketPage: string | null, candidates: OutcomeCandidate[]): string[] {
+  const readKey = (ticketPage ? lookupKey(ticketPage) : null) ?? group.key
+  const out = new Set<string>()
+  for (const row of candidates) {
+    if (row.id === group.sample.id) {
+      out.add(row.id)
+      continue
+    }
+    if (lookupKey(row.ticketUrl) === readKey || lookupKey(row.sourceUrl) === readKey) out.add(row.id)
+  }
+  return [...out]
+}
+
 async function readHumanitix(url: string, fetch: PriceFetch): Promise<PriceOutcome | null> {
   const dataUrl = humanitixDataUrl(url)
   if (!dataUrl) return null

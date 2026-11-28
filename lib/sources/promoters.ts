@@ -4,7 +4,7 @@ import { cosDescriptionFromRecord, cosHitsFromHtml, cosListedPrice, cosWhen } fr
 import { cosDescriptionFromHtml, preferDescription } from '@/lib/description-text'
 import { extractListingVenue } from '@/lib/listing-venue'
 import { firstListingUrl, isTicketLink, usableUrl } from '@/lib/listing-link'
-import { moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
+import { isBulkTicketClass, moneyNumber, priceFromAmounts, readPrice } from '@/lib/price'
 import { noteSourceSaved, remainingBudgetMs, sourceFetchSignal, sourceOverBudget, yieldIfBudget } from '@/lib/source-budget'
 import { frontierShowsFromHtml } from '@/lib/frontier-shows'
 
@@ -17,13 +17,18 @@ function offerList(raw: unknown): any[] {
 function frontierPrice(it: any) {
   if (it?.isAccessibleForFree === true) return readPrice(null, true)
   const offers = [...offerList(it?.offers), ...offerList(it?.subEvent).flatMap((s) => offerList(s?.offers))]
-  const nums: number[] = []
-  for (const o of offers) {
+  const perOffer = offers.map((o) => {
+    const nums: number[] = []
     for (const k of ['lowPrice', 'highPrice', 'price', 'minPrice', 'maxPrice']) {
       const n = moneyNumber(o?.[k])
       if (n != null) nums.push(n)
     }
-  }
+    return { bulk: isBulkTicketClass({ name: typeof o?.name === 'string' ? o.name : null }), nums }
+  })
+  // A bulk-named offer (a group or corporate total) never sets the range
+  // while a single-admission offer exists.
+  const kept = perOffer.some((o) => !o.bulk && o.nums.length) ? perOffer.filter((o) => !o.bulk) : perOffer
+  const nums = kept.flatMap((o) => o.nums)
   if (!nums.length) return readPrice(null)
   return priceFromAmounts(Math.min(...nums), Math.max(...nums))
 }

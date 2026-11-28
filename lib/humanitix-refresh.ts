@@ -4,6 +4,7 @@
  * event URL. A run walks a saved index, soonest slug-dated events first, and
  * the next hour continues. Pure so the split can be tested without fetching.
  */
+import { isBulkTicketClass } from '@/lib/price'
 
 export const HUMANITIX_SOON_DAYS = 60
 /** Event-page gap. Sitemap shards are fewer and larger, so they wait less. */
@@ -318,18 +319,23 @@ function pricesOf(schema: Record<string, unknown> | null): number[] {
   if (!schema) return []
   const raw = schema.offers
   const offers = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? [raw] : []
-  const nums: number[] = []
+  const perOffer: { bulk: boolean; nums: number[] }[] = []
   for (const offer of offers) {
     if (!offer || typeof offer !== 'object') continue
     const row = offer as Record<string, unknown>
     const type = typeof row['@type'] === 'string' ? row['@type'] : ''
     const keys = type === 'AggregateOffer' ? ['lowPrice', 'highPrice'] : ['price']
+    const nums: number[] = []
     for (const key of keys) {
       const n = typeof row[key] === 'number' ? row[key] : typeof row[key] === 'string' ? Number(row[key]) : NaN
       if (Number.isFinite(n) && n >= 0 && n < 100000) nums.push(Math.round(n * 100) / 100)
     }
+    perOffer.push({ bulk: isBulkTicketClass({ name: typeof row.name === 'string' ? row.name : null }), nums })
   }
-  return nums
+  // A bulk-named offer (a group or corporate tier total) never sets the
+  // range while a single-admission offer exists.
+  const kept = perOffer.some((o) => !o.bulk && o.nums.length) ? perOffer.filter((o) => !o.bulk) : perOffer
+  return kept.flatMap((o) => o.nums)
 }
 
 function imageCandidate(value: unknown): string | null {
