@@ -40,9 +40,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function VenueProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const venue = await publicVenue(id)
+  const { id: routeParam } = await params
+  const venue = await publicVenue(routeParam)
   if (!venue) notFound()
+  const id = venue.id
   const session = await auth()
   const userId = session?.user?.id
   const access = userId ? await canManageVenue(userId, id) : { allowed: false, role: null }
