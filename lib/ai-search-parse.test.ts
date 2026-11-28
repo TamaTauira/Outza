@@ -226,6 +226,25 @@ test('ordinary plurals singularise so the search needle can hit a singular title
   assert.deepEqual(model.keywords, ['nightclub'])
 })
 
+test('-ie plurals stem to the -ie singular, not a -y needle that matches nothing', () => {
+  // foodies → foody would be a substring of neither "Foodie" nor "Foodies",
+  // so this query — which matched titles before stemming existed — would
+  // return a guaranteed zero. The -ie singular hits both forms.
+  assert.deepEqual(interpretQuery('foodies in Sydney', FRIDAY).keywords, ['foodie'])
+  assert.deepEqual(interpretQuery('indies in Sydney', FRIDAY).keywords, ['indie'])
+  assert.deepEqual(interpretQuery('ties in Sydney', FRIDAY).keywords, ['tie'])
+
+  // The -y family the ties/dies rule exists for still converts.
+  assert.deepEqual(interpretQuery('boat parties in Sydney', FRIDAY).keywords, ['boat', 'party'])
+  assert.deepEqual(interpretQuery('ladies night in Sydney', FRIDAY).keywords, ['lady'])
+
+  // Regression shape: the needle produced for a "foodies" keyword must
+  // substring-match titles carrying the word, singular or plural.
+  const [needle] = interpretQuery('foodies in Sydney', FRIDAY).keywords
+  assert.ok('Sydney Foodies Market'.toLowerCase().includes(needle))
+  assert.ok('Foodie Walking Tour'.toLowerCase().includes(needle))
+})
+
 test('words that merely end in s are not mangled', () => {
   assert.deepEqual(interpretQuery('jazz in Sydney', FRIDAY).keywords, ['jazz'])
   assert.deepEqual(interpretQuery('glass in Sydney', FRIDAY).keywords, ['glass'])

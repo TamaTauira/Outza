@@ -254,6 +254,26 @@ function stemKeyword(w: string): string {
 }
 
 /**
+ * -ie bases whose plurals end in the same ties/dies suffix as the -y plurals
+ * (foodies alongside ladies). Suffix rules cannot tell the two families
+ * apart, and the -y conversion mangles these: foodies → foody is a substring
+ * of neither "Foodie" nor "Foodies", so the needle would match nothing at
+ * all. These stem to the -ie singular instead, which titles carry in both
+ * forms. Only words the -y rule actually mangles are listed — groupies,
+ * selfies and hippies miss the ties/dies suffix, keep their plural form, and
+ * their plural needle still hits plural titles.
+ */
+const IE_PLURALS: Record<string, string> = {
+  foodies: 'foodie',
+  indies: 'indie',
+  ties: 'tie',
+  oldies: 'oldie',
+  goodies: 'goodie',
+  besties: 'bestie',
+  tradies: 'tradie',
+}
+
+/**
  * Ordinary plurals: nightclubs → nightclub, sets → set, gigs → gig, concerts → concert.
  * The SQL match is a substring scan, so the needle has to be the singular a title
  * actually carries — "nightclubs" never appears inside "Nightclub".
@@ -265,6 +285,8 @@ function singularise(w: string): string {
   if (w.length <= 3 || !w.endsWith('s')) return w
   if (/(?:ss|us|is|as)$/.test(w)) return w
   if (w.endsWith('ies')) {
+    const ie = IE_PLURALS[w]
+    if (ie) return ie
     if (/(?:ties|dies)$/.test(w)) return `${w.slice(0, -3)}y`
     return w
   }
