@@ -63,3 +63,16 @@ test('a future event is not past, and an after-midnight endsAt still counts', ()
   assert.equal(isPastEvent(lateFinish, justAfterMidnight), false)
   assert.equal(isPastEvent(lateFinish, new Date('2026-11-25T15:30:00.000Z')), true)
 })
+
+test('a finish instant already past is past even while the span is still running', () => {
+  // The listing-visibility suite's case, in isPastEvent terms: an overnight
+  // session whose stored finish instant has already gone is over, even
+  // though its after-midnight span has not run out.
+  const session = {
+    date: '2026-11-21', time: '21:00', endTime: '03:00',
+    endsAt: '2026-11-20T16:00:00.000Z', city: 'Sydney',
+  }
+  assert.equal(isPastEvent(session, new Date('2026-11-20T22:00:00.000Z')), true)
+  const laterFinish = { ...session, endsAt: '2026-11-21T16:00:00.000Z' }
+  assert.equal(isPastEvent(laterFinish, new Date('2026-11-20T22:00:00.000Z')), false)
+})
