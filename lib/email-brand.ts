@@ -5,7 +5,7 @@ import { CLAIMED_TICK_COPY } from '@/lib/ownership'
 import { businessAbn, legalEntity } from '@/lib/site'
 import { SITE_SOCIAL } from '@/lib/site-social'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
-import { boardDisplayName } from '@/lib/cities'
+import { CITY_LABELS, boardDisplayName } from '@/lib/cities'
 
 /**
  * Shared email chrome. Every template uses this header, button, card and footer.
@@ -32,7 +32,7 @@ export const EMAIL_IMAGE_FILL = '#141414'
 /** Shown under the footer links on mail that can be turned off. */
 export const EMAIL_OPT_OUT_LINE = 'Opted in · Unsubscribe anytime'
 export const EMAIL_HEADER_W = 600
-export const EMAIL_HEADER_H = 117
+export const EMAIL_HEADER_H = 200
 /** 16:9 hero and 4:3 row, matching the site frames. */
 export const EMAIL_HERO = { w: 560, h: 315 } as const
 export const EMAIL_THUMB = { w: 168, h: 126 } as const
@@ -262,12 +262,29 @@ export function emailPasteLink(href: string): string {
  * light mode, Apple dark and full inversion.
  * With images blocked, the styled alt sits on the dark cell.
  */
-export function emailHeader(opts: { kind?: string | null; homeHref: string }): string {
+/** Kinds whose send path knows the reader's city. They bake one header per catalogue city, with the area locator under the title. */
+export const EMAIL_HEADER_CITY_KINDS: readonly string[] = ['newsletter', 'daily-drop', 'big-month', 'matches', 'reminder']
+
+/** 'Gold Coast' -> 'gold-coast'. Mirrors city_slug in scripts/build-email-headers.py. */
+export function emailHeaderCitySlug(city: string): string {
+  return city.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+/** The catalogue name for a city value, or null when it is not one of the nine. */
+function catalogueCity(city: string | null | undefined): string | null {
+  const wanted = (city ?? '').trim().toLowerCase()
+  if (!wanted) return null
+  return Object.keys(CITY_LABELS).find((name) => name.toLowerCase() === wanted) ?? null
+}
+
+export function emailHeader(opts: { kind?: string | null; homeHref: string; city?: string | null }): string {
   const raw = (opts.kind || 'general').replace(/[^a-z0-9-]/gi, '') || 'general'
   const kind = HEADER_HEADLINES[raw] ? raw : 'general'
   const headline = HEADER_HEADLINES[kind] || 'VibePeep'
   const alt = `VibePeep: ${headline}`
-  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${kind}.png`))}" alt="${emailEscape(alt)}" width="${EMAIL_HEADER_W}" height="${EMAIL_HEADER_H}" style="display:block;width:100%;max-width:${EMAIL_HEADER_W}px;height:auto;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
+  const city = catalogueCity(opts.city)
+  const file = city && EMAIL_HEADER_CITY_KINDS.includes(kind) ? `${kind}-${emailHeaderCitySlug(city)}` : kind
+  const inner = `<img src="${emailEscape(emailAssetUrl(`/email-headers/${file}.png`))}" alt="${emailEscape(alt)}" width="${EMAIL_HEADER_W}" height="${EMAIL_HEADER_H}" style="display:block;width:100%;max-width:${EMAIL_HEADER_W}px;height:auto;border:0;outline:none;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:24px;font-weight:700;color:#F7F7F7;-ms-interpolation-mode:bicubic;"/>`
   return `<a href="${emailEscape(opts.homeHref)}" style="text-decoration:none;color:#F7F7F7;font-family:${EMAIL_FONT};">${inner}</a>`
 }
 
@@ -553,6 +570,8 @@ export function emailDocument(opts: {
   reason?: string
   /** File stem under public/email-headers/. Null leaves the banner out. */
   banner?: string | null
+  /** Reader's city, when the send knows it. City-baked kinds show that city's header; anything else keeps the plain banner. */
+  bannerCity?: string | null
   /** City and date line, on the black band under the header. */
   meta?: string
   manageLabel?: string
@@ -570,7 +589,7 @@ export function emailDocument(opts: {
     : ''
   const header = opts.banner === null
     ? ''
-    : `<tr><td class="hdr" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px 0 0;padding:0;line-height:0;font-size:0;">${emailHeader({ kind: opts.banner ?? 'general', homeHref: home })}</td></tr>`
+    : `<tr><td class="hdr" bgcolor="${EMAIL_C.head}" style="background:${EMAIL_C.head};border-radius:${EMAIL_RADIUS.container}px ${EMAIL_RADIUS.container}px 0 0;padding:0;line-height:0;font-size:0;">${emailHeader({ kind: opts.banner ?? 'general', homeHref: home, city: opts.bannerCity })}</td></tr>`
 
   return `<!DOCTYPE html><html lang="en-AU" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta name="color-scheme" content="light dark"/><meta name="supported-color-schemes" content="light dark"/><title>${emailEscape(opts.title)}</title>

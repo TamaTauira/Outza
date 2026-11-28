@@ -149,6 +149,7 @@ ${emailButton(go(r, 'explore', 'explore'), `Explore what’s on in ${r.city}`)}
     title: r.subject,
     preheader: r.preview,
     banner: bannerKind(r.editionKey),
+    bannerCity: r.city,
     meta: emailMetaLine(r.city, emailDateRange(r.from, r.to)),
     rows,
     homeHref: home,

@@ -233,6 +233,8 @@ export function composeWatchEmail(input: {
   homeHref?: string
   /** City and date line under the banner, when the send knows them. */
   meta?: string
+  /** Reader's city, when the send knows it. City-baked banners use it. */
+  city?: string
 }): { subject: string; html: string; text: string } | null {
   if (!input.saved.length && !input.matches.length) return null
   const subject = input.reminders ? 'A keeper is coming up' : 'Your keepers are calling'
@@ -279,6 +281,7 @@ export function composeWatchEmail(input: {
     unsubscribeHref: unsubscribe,
     homeHref: home,
     banner: input.reminders ? 'reminder' : 'matches',
+    bannerCity: input.city,
   })
   return { subject, html, text: text.join('\n') }
 }

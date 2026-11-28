@@ -50,3 +50,15 @@ test('dark-mode shell rules keep the pill orange', () => {
   assert.match(html, /\[data-ogsc\] \.email-btn,\[data-ogsc\] \.email-btn a\{background-color:#FF7A35!important;color:#1A1408!important\}/)
   assert.match(html, /\[data-ogsb\] \.email-btn,\[data-ogsb\] \.email-btn a\{background-color:#FF7A35!important;color:#1A1408!important\}/)
 })
+
+test('city-baked kinds pick the city header; other kinds and unknown cities keep the plain one', () => {
+  const cityHtml = emailDocument({ title: 'The Weekender', rows: '', banner: 'newsletter', bannerCity: 'Sydney' })
+  assert.match(cityHtml, /email-headers\/newsletter-sydney\.png/)
+  assert.match(cityHtml, /width="600" height="200"/)
+  const goldCoast = emailDocument({ title: 'Fresh matches', rows: '', banner: 'matches', bannerCity: 'Gold Coast' })
+  assert.match(goldCoast, /email-headers\/matches-gold-coast\.png/)
+  const plainHtml = emailDocument({ title: 'Your account', rows: '', banner: 'account', bannerCity: 'Sydney' })
+  assert.match(plainHtml, /email-headers\/account\.png/)
+  const unknownHtml = emailDocument({ title: 'The Weekender', rows: '', banner: 'newsletter', bannerCity: 'Alice Springs' })
+  assert.match(unknownHtml, /email-headers\/newsletter\.png/)
+})

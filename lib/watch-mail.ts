@@ -35,10 +35,15 @@ type Listed = WatchRow & {
   venue: { claimStatus: string } | null
 }
 
+/** The city a watch send speaks for: the first followed city, else the first event's city. */
+function watchCity(events: { city?: string | null }[], cities: string[]): string {
+  return cities.find(Boolean) || events.find((event) => event.city)?.city || ''
+}
+
 function watchMeta(events: { date: Date | string; city?: string | null }[], cities: string[]): string | undefined {
   const times = events.map((event) => new Date(event.date).getTime()).filter((time) => Number.isFinite(time))
   if (!times.length) return undefined
-  const city = cities.find(Boolean) || events.find((event) => event.city)?.city || ''
+  const city = watchCity(events, cities)
   if (!city) return undefined
   return emailMetaLine(city, emailDateRange(new Date(Math.min(...times)), new Date(Math.max(...times) + 86400000)))
 }
@@ -160,6 +165,7 @@ export async function sendWatchDigest(userId: string, opts: { test?: boolean } =
     unsubscribeHref: unsubscribeUrl(user.id),
     homeHref: home,
     meta: watchMeta(listed, cities),
+    city: watchCity(listed, cities),
   })
   if (!mail) return { ok: false as const, skipped: true as const, reason: 'empty' }
   if (!emailSendingEnabled()) {
@@ -217,6 +223,7 @@ export async function sendDueReminders() {
       unsubscribeHref: unsubscribeUrl(user.id),
       homeHref: home,
       meta: watchMeta(fresh, [fresh[0]?.city || '']),
+      city: watchCity(fresh, [fresh[0]?.city || '']),
     })
     if (!mail) { skipped++; continue }
     const result = await sendEmail({
