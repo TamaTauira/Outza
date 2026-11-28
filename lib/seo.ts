@@ -257,8 +257,12 @@ function clockMinutes(value?: string | null): number | null {
 /**
  * True once the listing has finished in its own city.
  * The calendar day is the stored date key. The clock is that city's wall time
- * (Australia/Sydney for Sydney). A finish after midnight stays live until that
- * finish, and a listed endsAt wins over the date key.
+ * (Australia/Sydney for Sydney). A listed endsAt in the past is always the
+ * finish. A listed endsAt in the future is not, on its own, a longer event:
+ * endsAt is a derived instant (a linked donor can recompute it from its own
+ * endDate), so it can only keep an event live inside the event's own
+ * calendar span — its date through its endDate, or an after-midnight
+ * finish — and on the span's last day the day's own clock finish governs.
  */
 export function isPastEvent(ev: {
   date: Date | string
@@ -269,10 +273,6 @@ export function isPastEvent(ev: {
   allDay?: boolean | null
   city?: string | null
 }, now = new Date()): boolean {
-  if (ev.endsAt) {
-    const end = new Date(ev.endsAt).getTime()
-    if (!Number.isNaN(end)) return end <= now.getTime()
-  }
   const city = CITIES.find((c) => c.name === ev.city) ?? CITIES[0]
   const startKey = calendarKey(ev.date)
   if (!startKey) return false
@@ -281,10 +281,23 @@ export function isPastEvent(ev: {
   const start = clockMinutes(ev.time)
   const endClock = clockMinutes(ev.endTime)
   const overnight = ev.allDay !== true && start != null && endClock != null && endClock <= start && start >= 10 * 60 && endClock <= 8 * 60
-  const endKey = endDateKey && endDateKey > startKey ? endDateKey : overnight ? addDaysKey(startKey, 1) : startKey
-  if (endKey > today) return false
+  let endKey = endDateKey && endDateKey > startKey ? endDateKey : overnight ? addDaysKey(startKey, 1) : startKey
+  const endsAtMs = ev.endsAt ? new Date(ev.endsAt).getTime() : NaN
+  const hasEndsAt = !Number.isNaN(endsAtMs)
+  if (hasEndsAt && !(endDateKey && endDateKey > startKey)) {
+    // No multi-day endDate of its own: an endsAt on the start day or the
+    // morning after is the after-midnight finish. One days later is a
+    // recomputed instant, not a longer event.
+    const endsKey = toSydneyParts(new Date(endsAtMs), city.tz).date
+    if ((endsKey === startKey || endsKey === addDaysKey(startKey, 1)) && endsKey > endKey) endKey = endsKey
+  }
   if (endKey < today) return true
-  // No real finish: the session stays up for the whole city day. 00:00–00:00 is that placeholder, not a clock.
+  // A finish instant already past is past, wherever the span stands.
+  if (hasEndsAt && endsAtMs <= now.getTime()) return true
+  if (endKey > today) return false
+  // The span's last day: the day's own clock finish governs (a future endsAt
+  // does not override it). No real finish: the session stays up for the whole
+  // city day. 00:00–00:00 is that placeholder, not a clock.
   const openDay = ev.allDay === true || endClock == null || (endClock === 0 && (start == null || start === 0))
   if (openDay) return false
   const nowMin = clockMinutes(toSydneyParts(now, city.tz).time) ?? 0
