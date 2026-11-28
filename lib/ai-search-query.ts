@@ -114,3 +114,32 @@ export function askCandidateTake(dateFrom: string, dateTo: string): number {
   const days = Math.round((to - from) / 86400000)
   return days > 60 ? 500 : 80
 }
+
+/** Zero-padded 'HH:MM' for a minute of day, clamped into the day — the same
+ * string shape the route compares stored times against. */
+function minuteOfDay(mins: number): string {
+  const clamped = Math.max(0, Math.min(mins, 23 * 60 + 59))
+  return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`
+}
+
+/**
+ * "Not already ended today" in SQL, mirroring the route's post-filter
+ * exactly: a listing counts as ended only when it is dated today and its
+ * start is more than 60 minutes past, so a row survives when its date is
+ * after today, or it is today with no time or a time at or after
+ * now − 60 minutes. The condition has to be in the `where`, before the
+ * take — the candidate set is earliest-first, so dropping ended rows in
+ * memory afterwards lets a broad ask spend its whole take on this
+ * morning's finished events and report an honest-looking zero by evening.
+ */
+export function askNotEndedTodayWhere(today: string, nowMinutes: number): Prisma.EventWhereInput {
+  return {
+    OR: [
+      { date: { gt: new Date(`${today}T23:59:59.999Z`) } },
+      {
+        date: askDateBounds(today, today),
+        OR: [{ time: null }, { time: { gte: minuteOfDay(nowMinutes - 60) } }],
+      },
+    ],
+  }
+}
