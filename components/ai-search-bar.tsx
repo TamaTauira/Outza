@@ -46,7 +46,7 @@ function understood(f: AiSearchFilters, today: string | null): string[] {
 }
 
 /** Hero search and the Ask sheet. A plan-shaped ask shows a ready-made outing. */
-export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false, surface = 'light' }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; onResult?: () => void; placeholder?: string; queryRequest?: { id: number; text: string; hints?: Hints } | null; chips?: boolean; inputId?: string; goToPage?: boolean; surface?: 'light' | 'theme' }) {
+export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, queryRequest, chips = true, inputId = 'ai-search', goToPage = false, surface = 'light', cityPending = false, resolveCity }: { city: string; today: string | null; onShowAll: (f: AiSearchFilters) => void; onResult?: () => void; placeholder?: string; queryRequest?: { id: number; text: string; hints?: Hints } | null; chips?: boolean; inputId?: string; goToPage?: boolean; surface?: 'light' | 'theme'; cityPending?: boolean; resolveCity?: () => string }) {
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -308,7 +308,12 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
         return
       }
       event.preventDefault()
-      router.push(`/search?${hintsToQuery(hints, { q: text, city })}`)
+      // The handoff must carry the board's resolved city. While the board's
+      // resolution is still pending, the city prop can still hold the server
+      // seed, so a pending bar re-resolves from the stored inputs at submit
+      // time instead of handing the seed to /search (E2E-13 fix-up).
+      const handoffCity = cityPending && resolveCity ? resolveCity() : city
+      router.push(`/search?${hintsToQuery(hints, { q: text, city: handoffCity })}`)
       return
     }
     event.preventDefault()
