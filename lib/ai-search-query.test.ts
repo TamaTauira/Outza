@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { askCandidateTake, askDateBounds, askTextWhere } from './ai-search-query'
+import { askCandidateTake, askDateBounds, askNotEndedTodayWhere, askTextWhere } from './ai-search-query'
 import { SANS_BOLD_UPPER, styleLetters } from './search-fold'
 
 function flagIsRequired(node: unknown): boolean {
@@ -40,4 +40,58 @@ test('a named year includes the first morning and the last night', () => {
   assert.equal(inside('2028-01-01'), false)
   assert.ok(askCandidateTake('2027-01-01', '2027-12-31') > 80)
   assert.equal(askCandidateTake('2026-11-03', '2026-11-03'), 80)
+})
+
+type EndedRow = { date: Date; time: string | null }
+
+function dateMatches(value: Date, cond: Record<string, unknown>): boolean {
+  const t = value.getTime()
+  if (cond.gt instanceof Date && !(t > cond.gt.getTime())) return false
+  if (cond.gte instanceof Date && !(t >= cond.gte.getTime())) return false
+  if (cond.lte instanceof Date && !(t <= cond.lte.getTime())) return false
+  if (cond.lt instanceof Date && !(t < cond.lt.getTime())) return false
+  return true
+}
+
+/** Interprets the shape askNotEndedTodayWhere builds, the way the SQL would. */
+function notEndedMatches(node: unknown, row: EndedRow): boolean {
+  if (!node || typeof node !== 'object') return false
+  const rec = node as Record<string, unknown>
+  let ok = true
+  if (Array.isArray(rec.OR)) ok = ok && rec.OR.some((child) => notEndedMatches(child, row))
+  if (Array.isArray(rec.AND)) ok = ok && rec.AND.every((child) => notEndedMatches(child, row))
+  if (rec.date && typeof rec.date === 'object') ok = ok && dateMatches(row.date, rec.date as Record<string, unknown>)
+  if ('time' in rec) {
+    const cond = rec.time
+    if (cond === null) ok = ok && row.time === null
+    else if (cond && typeof cond === 'object') {
+      const gte = (cond as Record<string, unknown>).gte
+      ok = ok && row.time !== null && typeof gte === 'string' && row.time >= gte
+    }
+  }
+  return ok
+}
+
+test('the ended-today SQL condition mirrors the route post-filter', () => {
+  const today = '2026-11-28'
+  // 18:00 now, so the post-filter drops today's rows started before 17:00.
+  const where = askNotEndedTodayWhere(today, 18 * 60)
+  const at = (day: string, time: string | null): EndedRow => ({ date: new Date(`${day}T00:00:00.000Z`), time })
+  // The threshold in the where is now − 60 minutes, the post-filter's cut-off.
+  assert.ok(JSON.stringify(where).includes('"gte":"17:00"'))
+  assert.equal(notEndedMatches(where, at(today, '19:30')), true) // later today is in
+  assert.equal(notEndedMatches(where, at(today, '17:00')), true) // exactly at the cut-off is in
+  assert.equal(notEndedMatches(where, at(today, '16:59')), false) // started 61 minutes ago is out
+  assert.equal(notEndedMatches(where, at(today, '09:00')), false) // this morning's finished event is out
+  assert.equal(notEndedMatches(where, at(today, null)), true) // untimed today is in
+  assert.equal(notEndedMatches(where, at('2026-11-29', '00:05')), true) // tomorrow is in
+  assert.equal(notEndedMatches(where, at('2026-12-11', '09:00')), true) // later in the window is in
+})
+
+test('before 1am the ended-today condition admits all of today, like the post-filter', () => {
+  const where = askNotEndedTodayWhere('2026-11-28', 30)
+  const at = (time: string | null): EndedRow => ({ date: new Date('2026-11-28T00:00:00.000Z'), time })
+  assert.equal(notEndedMatches(where, at('00:00')), true)
+  assert.equal(notEndedMatches(where, at('00:29')), true)
+  assert.equal(notEndedMatches(where, at(null)), true)
 })
