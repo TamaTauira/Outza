@@ -24,18 +24,35 @@ test('a paid ticket class wins over the is_free flag in the availability price',
   assert.equal(priceFromAvailability({ is_free: true }), 'Free')
   assert.equal(
     priceFromAvailability({ minimum_ticket_price: { major_value: '20' }, maximum_ticket_price: { major_value: '40' } }),
-    '$20 \u2013 $40',
+    '$20 – $40',
   )
   assert.equal(priceFromAvailability(null), null)
 })
 
-test('the free-events pass may mark an event free only when no paid class exists', () => {
+test('the free-events pass may mark an event free only on positive evidence of free', () => {
   // Some free classes, some paid: not a free event, however the passes land.
   assert.equal(freePassMayMarkFree({ is_free: true, maximum_ticket_price: { major_value: '25' } }, 'Free'), false)
   assert.equal(freePassMayMarkFree(null, '$20'), false)
-  // Wholly free, per the availability read or the destination price lookup.
-  assert.equal(freePassMayMarkFree({ is_free: true }, null), true)
+  // The is_free flag alone is not evidence. This case used to return true:
+  // with no amount evidence anywhere, the bare flag certified the event free
+  // by itself — and a 'Free' price string derived from that same flag counted
+  // as corroboration. Both routes are circular and now return false.
+  assert.equal(freePassMayMarkFree({ is_free: true }, null), false)
+  assert.equal(freePassMayMarkFree({ is_free: true }, 'Free'), false)
+  // Positive evidence from actual amounts: $0 amounts mark free, with or
+  // without the flag, and a $0 maximum needs no flag at all. A positive
+  // amount alongside the flag still blocks.
+  assert.equal(
+    freePassMayMarkFree({ is_free: true, minimum_ticket_price: { major_value: '0' }, maximum_ticket_price: { major_value: '0' } }, null),
+    true,
+  )
+  assert.equal(
+    freePassMayMarkFree({ minimum_ticket_price: { major_value: '0' }, maximum_ticket_price: { major_value: '0' } }, 'Free'),
+    true,
+  )
+  assert.equal(freePassMayMarkFree({ is_free: true, maximum_ticket_price: { major_value: '25' } }, null), false)
   assert.equal(freePassMayMarkFree({ maximum_ticket_price: { major_value: '0' } }, null), true)
+  // A wholly-Free resolved price from the destination lookup still counts.
   assert.equal(freePassMayMarkFree(null, 'Free'), true)
   // No price evidence at all: the free listing alone is not proof.
   assert.equal(freePassMayMarkFree(null, null), false)
