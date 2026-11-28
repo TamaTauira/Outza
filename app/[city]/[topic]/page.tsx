@@ -23,10 +23,15 @@ async function resolve(citySlug: string, topicSlug: string): Promise<Resolved | 
   if (!city) return null
   const topic = topicDef(topicSlug) ?? null
   const [eventSuburbs, model] = await Promise.all([citySuburbs(city, 1), cityGuideModel(city)])
+  // The guide model supplies membership only: its totals count stored
+  // rows without the pages' showing collapse, so they are never a
+  // suburb's printed count (LandingPage takes every printed count
+  // from the totals read). The count field here is a placeholder no
+  // consumer reads — resolve's own lookup uses name and slug only.
   const extra = model.ok
     ? model.decisions
       .filter((d) => d.kind === 'suburb' && d.total > 0 && !eventSuburbs.some((s) => s.slug === d.spec.suburbSlug))
-      .map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: d.total }))
+      .map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: 0 }))
     : []
   const suburbs = [...eventSuburbs, ...extra]
   if (topic) return { city, topic, suburb: null, suburbs }
