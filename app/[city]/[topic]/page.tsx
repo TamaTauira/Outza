@@ -7,7 +7,7 @@ import { cityEditorial } from '@/lib/editorial'
 import { seasonDef } from '@/lib/seasons'
 import { SeasonPage, seasonMetadata } from '@/lib/season-page'
 import { TOPICS, MIN_INDEX, guideFacts, topicDef, cityFromSlug, cityPath, suburbPath, type TopicDef } from '@/lib/seo'
-import { cityEventCounts, cityGuideModel, citySuburbTotals, citySuburbs, landingData, lastRefreshAt } from '@/lib/seo-server'
+import { cityEventCounts, cityGuideModel, citySuburbTotals, citySuburbs, landingData, lastRefreshAt, suburbLinkCount } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
@@ -93,13 +93,13 @@ export default async function LandingPage({ params }: Props) {
   // totals — the two disagreed, because the model counts stored rows
   // without the page's showing collapse or other-town drop. Which
   // suburbs are linked is unchanged; only the numbers move. When the
-  // totals read fails, the counts already at hand stay rather than a
-  // partial set printing as a page's number.
-  const totalsBySlug = new Map(suburbTotals.totals.map((t) => [t.slug, t.count]))
-  const pageCount = (slug: string, fallback: number) => (suburbTotals.ok ? totalsBySlug.get(slug) ?? 0 : fallback)
+  // totals read fails it serves its last good totals (marked not-ok),
+  // and with none of those the link prints with no count at all: a
+  // differently-built number is never substituted.
+  const pageCount = (slug: string) => suburbLinkCount(suburbTotals, slug)
   const linkSuburbs = (model.ok
-    ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: pageCount(d.spec.suburbSlug!, d.total) }))
-    : suburbs.filter((s) => s.count >= MIN_INDEX).map((s) => ({ ...s, count: pageCount(s.slug, s.count) })))
+    ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: pageCount(d.spec.suburbSlug!) }))
+    : suburbs.filter((s) => s.count >= MIN_INDEX).map((s) => ({ ...s, count: pageCount(s.slug) })))
   const origin = siteUrl()
   const heading = headingFor(r)
   const otherCities = CITIES.filter((c) => c.name !== city.name && (counts[c.name] ?? 0) >= MIN_INDEX).map((c) => ({
