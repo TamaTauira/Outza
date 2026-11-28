@@ -46,17 +46,57 @@ test("a signed-in person's All-of-Australia pick beats their home city", () => {
   )
 })
 
-test('a signed-in person falls back to their account home city', () => {
+test("a signed-in person's own pick beats the device pick and their home city", () => {
+  assert.equal(
+    resolveBoardCity({ urlCity: null, userCity: 'Adelaide', homeCity: 'Brisbane', guestCity: 'Perth', signedIn: true }),
+    'Adelaide',
+  )
+})
+
+test('a signed-in person adopts the device pick over their account home city', () => {
+  // The device pick is the most recent explicit choice on this device —
+  // often this same person's, made before signing in or on /local (which
+  // writes only the device key). The first version of this resolution
+  // never read it for a signed-in person, and the caller wrote a fallback
+  // back over it, destroying the pick (E2E-13 fix-up).
   assert.equal(
     resolveBoardCity({ urlCity: null, userCity: null, homeCity: 'Brisbane', guestCity: 'Perth', signedIn: true }),
+    'Perth',
+  )
+})
+
+test('a signed-in person adopts the device pick when they have no home city', () => {
+  assert.equal(
+    resolveBoardCity({ urlCity: null, userCity: null, homeCity: null, guestCity: 'Perth', signedIn: true }),
+    'Perth',
+  )
+})
+
+test("a signed-in person's All-of-Australia device pick is adopted too", () => {
+  assert.equal(
+    resolveBoardCity({ urlCity: null, userCity: null, homeCity: 'Brisbane', guestCity: '', signedIn: true }),
+    '',
+  )
+})
+
+test('a signed-in person falls back to their account home city when nothing is stored', () => {
+  assert.equal(
+    resolveBoardCity({ urlCity: null, userCity: null, homeCity: 'Brisbane', guestCity: null, signedIn: true }),
     'Brisbane',
   )
 })
 
-test("a signed-in person never inherits the device's guest city", () => {
+test('a submit-time resolution from the stored inputs lands on the stored pick, not the seed', () => {
+  // The hero search re-resolves at submit time while the board resolution
+  // is still in flight; from the stored inputs alone it must land on the
+  // same city the board is about to show, never the Sydney seed.
   assert.equal(
-    resolveBoardCity({ urlCity: null, userCity: null, homeCity: null, guestCity: 'Perth', signedIn: true }),
-    'Sydney',
+    resolveBoardCity({ urlCity: null, userCity: null, homeCity: null, guestCity: 'Adelaide', signedIn: false }),
+    'Adelaide',
+  )
+  assert.equal(
+    resolveBoardCity({ urlCity: null, userCity: 'Adelaide', homeCity: null, guestCity: 'Sydney', signedIn: true }),
+    'Adelaide',
   )
 })
 
