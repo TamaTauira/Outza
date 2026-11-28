@@ -189,7 +189,7 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
                   onFocus={() => setActive(i)}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(i)}
-                  className={`cursor-pointer px-3 py-2 outline-none ${i === active ? 'bg-muted' : ''}`}
+                  className={`cursor-pointer px-3 py-2 outline-none ${i === active ? 'bg-muted' : ''} ${isSelected ? 'dark:bg-primary/15' : ''}`}
                 >
                   <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {wording?.eyebrow ?? city.state}
