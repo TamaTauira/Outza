@@ -43,18 +43,33 @@ export function eventbriteExternalId(e: { id?: unknown } | null | undefined): st
 /**
  * Whether the free-events pass may mark this event free as a whole.
  * Appearing in the free listing only proves a free class exists; the pass may
- * set isFree only when the event's price evidence shows no paid class at all.
- * No price evidence is not evidence of free.
+ * set isFree only on positive evidence of free drawn from actual price data:
+ * a $0 maximum, amounts present and all zero, or a resolved price that reads
+ * wholly Free and was derived from amounts. The is_free flag alone is not
+ * evidence — and neither is a 'Free' price string when the flag is the only
+ * evidence in hand, because priceFromAvailability derives that string from
+ * the flag itself; the flag cannot corroborate itself. No price evidence is
+ * not evidence of free.
  */
 export function freePassMayMarkFree(availability: any, price: string | null): boolean {
   const min = moneyNumber(availability?.minimum_ticket_price ?? availability?.min_price)
   const max = moneyNumber(availability?.maximum_ticket_price ?? availability?.max_price)
+  // A paid class anywhere in the evidence — the availability amounts or the
+  // resolved price — means this is not a wholly free event.
   if ((min != null && min > 0) || (max != null && max > 0)) return false
-  if (max != null && max === 0) return true
   const parsed = readPrice(price)
   if (parsed.max != null && parsed.max > 0) return false
-  if (parsed.isFree) return true
-  return availability?.is_free === true
+  // Positive evidence from the amounts themselves: a $0 maximum, or amounts
+  // present and every one of them zero.
+  const amounts = [min, max].filter((n): n is number => n != null)
+  if (amounts.length > 0 && amounts.every((n) => n === 0)) return true
+  if (parsed.isFree) {
+    // A wholly-Free resolved price counts only when it was derived from
+    // actual price data. With no amounts in the availability and only the
+    // is_free flag set, a 'Free' read is the flag restated, not corroboration.
+    return !(availability != null && amounts.length === 0 && availability?.is_free === true)
+  }
+  return false
 }
 
 /** Live ticket prices for a batch of Eventbrite event ids (best-effort). */
