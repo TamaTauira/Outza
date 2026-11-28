@@ -11,9 +11,10 @@ export default async function VenueClaimPage({ params, searchParams }: { params:
   if (!ownershipUiEnabled()) {
     return <main className="max-w-xl mx-auto px-4 py-16 text-sm text-muted-foreground">Venue claiming is turned off.</main>
   }
-  const { id } = await params
-  const venue = await publicVenue(id)
+  const { id: routeParam } = await params
+  const venue = await publicVenue(routeParam)
   if (!venue) notFound()
+  const id = venue.id
   const session = await auth()
   if (!session?.user) redirect(`/login?next=${encodeURIComponent(`/venues/${id}/claim`)}`)
   const dispute = (await searchParams).dispute === '1'
