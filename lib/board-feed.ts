@@ -49,6 +49,7 @@ export type BoardArgs = {
 export function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   const where: Prisma.EventWhereInput = {
     duplicateOfId: null,
+    deletedAt: null,
     status: { not: 'CANCELLED' },
   }
   const actMisfile: Prisma.EventWhereInput = {
