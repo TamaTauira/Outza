@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, SUBURB_TOTALS_MEMO_MAX_AGE_MS, suburbCountsFromRows, suburbGuideTotalsFromRows, suburbLinkCount, suburbTotalsFallback, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
+import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, SUBURB_TOTALS_MEMO_MAX_AGE_MS, suburbCountsFromRows, suburbGuideTotalsFromRows, suburbLinkCount, suburbTotalsFallback, suburbTotalsResult, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
 import { cityDef } from './cities'
 import { isDbSaturation } from './db-guard'
 import { isLandingSuburb, slugify } from './seo'
@@ -275,6 +275,45 @@ test('a failed suburb totals read serves last good totals, marked not ok, for an
   assert.deepEqual(suburbTotalsFallback({ at, totals }, at + SUBURB_TOTALS_MEMO_MAX_AGE_MS), { ok: false, totals }, 'exactly an hour old still serves')
   assert.deepEqual(suburbTotalsFallback({ at, totals }, at + SUBURB_TOTALS_MEMO_MAX_AGE_MS + 1), { ok: false, totals: [] }, 'past an hour the last good totals are unavailable')
   assert.deepEqual(suburbTotalsFallback(undefined, at), { ok: false, totals: [] }, 'a process that never computed totals has nothing to serve')
+})
+
+test('a cached suburb totals payload is the read only while its computation is under an hour old', () => {
+  // The totals data cache serves its last successful fill while
+  // revalidations fail in the background — a failure the app layer
+  // cannot see — so the fill's computation time travels with the
+  // payload and every return, cache hits included, is judged by it.
+  // On 2026-11-28 the Sydney fill of ~20:43 was served as ok: true
+  // past 22:00 while every revalidation timed out under database
+  // saturation: the suburb pages' totals declined as the evening's
+  // events ended, and the nav's never moved.
+  const totals = [{ name: 'Newtown', slug: 'newtown', count: 281 }]
+  const computedAt = 1_000_000_000_000
+  assert.deepEqual(suburbTotalsResult({ totals, computedAt }, computedAt), { ok: true, totals }, 'a just-computed payload is the read')
+  assert.deepEqual(suburbTotalsResult({ totals, computedAt }, computedAt + SUBURB_TOTALS_MEMO_MAX_AGE_MS), { ok: true, totals }, 'a computation exactly an hour old still counts as the read')
+  assert.deepEqual(suburbTotalsResult({ totals, computedAt }, computedAt + SUBURB_TOTALS_MEMO_MAX_AGE_MS + 1), { ok: false, totals: [] }, 'past an hour the payload is no answer: not ok, and its totals drop rather than print as current')
+})
+
+test('the suburb totals memo is stamped with the computation time, not the read time', () => {
+  // citySuburbTotals used to stamp suburbTotalsMemo with Date.now()
+  // on every non-throwing return, cache hits included, so the memo's
+  // clock measured the last render that received the totals rather
+  // than the age of the data — the hour bound in suburbTotalsFallback
+  // could then only fire after an hour with no guide renders at all.
+  // Pin the wiring at source level, the way the landingSelect fields
+  // are pinned above: no CI step type-checks, and the re-stamp is a
+  // one-line regression.
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const src = readFileSync(join(root, 'lib/seo-server.ts'), 'utf8')
+  const cacheStart = src.indexOf('const cachedSuburbTotals')
+  assert.notEqual(cacheStart, -1, 'seo-server.ts: cachedSuburbTotals is where this test expects it')
+  const cacheRegion = src.slice(cacheStart, src.indexOf('const suburbTotalsMemo', cacheStart))
+  assert.match(cacheRegion, /computedAt: Date\.now\(\)/, 'the payload is stamped inside the cached function, at computation')
+  const start = src.indexOf('export const citySuburbTotals')
+  assert.notEqual(start, -1, 'seo-server.ts: citySuburbTotals is where this test expects it')
+  const region = src.slice(start, src.indexOf('export function eventImageUrl', start))
+  assert.match(region, /at: payload\.computedAt/, 'the memo is stamped from the payload computation time')
+  assert.doesNotMatch(region, /at: Date\.now\(\)/, 'the memo must not be stamped with the read time')
+  assert.match(region, /suburbTotalsResult\(payload/, 'every cached return is judged by the computation age')
 })
 
 test('suburb link counts come only from the totals read', () => {
