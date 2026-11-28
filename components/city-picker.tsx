@@ -1,29 +1,46 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, MapPin } from 'lucide-react'
 import { CITIES, CITY_LABELS } from '@/lib/cities'
-import { cityPickerPanelBox, type CityPickerPanelBox } from '@/lib/city-picker-panel'
+import { cityPickerActiveAfterKey, cityPickerPanelBox, type CityPickerPanelBox } from '@/lib/city-picker-panel'
 
 /**
  * City dropdown. A native select cannot show the two-line entries (state
- * eyebrow, city label, coverage line), so this is a listbox popup on a button,
- * following the APG pattern: opening moves focus to the active option, arrows
- * move between options, Enter chooses, Escape closes. The value is always a
- * catalogue city name — region members such as Newcastle are not options;
- * they ride on the Sydney entry's coverage line.
+ * eyebrow, city label, coverage line), so this is a listbox popup on a
+ * button. The value is always a catalogue city name — region members such
+ * as Newcastle are not options; they ride on the Sydney entry's coverage
+ * line.
  *
- * The panel is portalled to the body and fixed-positioned from the trigger's
- * measured rect. Two of its homes (the Home and Local heroes) sit inside the
- * hero card, whose overflow-hidden sliced an absolutely-positioned panel at
- * the card's bottom edge: rows cut mid-entry, the panel's own cap and scroll
- * never reached. Fixed positioning escapes the card; lib/city-picker-panel
- * then caps the panel at the space actually left in the viewport, so it
- * scrolls internally instead of running over the sections below or off the
- * bottom of the screen. The non-scrolling wrapper clips the rows to the
- * panel's rounded corners, so the active row's highlight can never bleed
- * outside them.
+ * Keyboard follows the APG listbox pattern with aria-activedescendant:
+ * focus never leaves the trigger, and the button points at the active
+ * option by id. Arrows move the active option, Home/End jump to the ends,
+ * Enter/Space chooses it, Escape closes, Tab closes without choosing.
+ * The earlier roving-focus version moved DOM focus into the portalled
+ * list, and whether that focus landed depended on effect timing — when it
+ * missed, focus stayed on the trigger, where arrows did nothing and Enter
+ * fell through to the button's native click and merely toggled the panel
+ * shut. Keeping focus on the trigger removes that race entirely: the same
+ * keys do the same thing on every press.
+ *
+ * The active option carries a primary tint and an inset ring in both
+ * themes. (The muted fill it used before is the panel's own background
+ * colour in the dark theme, so the active row was invisible there.) The
+ * selected option keeps its check, plus its dark-mode tint from the
+ * selected-row fix; the ring is what tells the two states apart when they
+ * sit on different rows.
+ *
+ * The panel is portalled to the body and fixed-positioned from the
+ * trigger's measured rect. Two of its homes (the Home and Local heroes)
+ * sit inside the hero card, whose overflow-hidden sliced an absolutely-
+ * positioned panel at the card's bottom edge: rows cut mid-entry, the
+ * panel's own cap and scroll never reached. Fixed positioning escapes
+ * the card; lib/city-picker-panel then caps the panel at the space
+ * actually left in the viewport, so it scrolls internally instead of
+ * running over the sections below or off the bottom of the screen. The
+ * non-scrolling wrapper clips the rows to the panel's rounded corners,
+ * so a row's highlight can never bleed outside them.
  */
 export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city' }: {
   value: string
@@ -39,6 +56,11 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
   const buttonRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<(HTMLLIElement | null)[]>([])
+
+  const autoId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  const baseId = id ?? `city-picker-${autoId}`
+  const listboxId = `${baseId}-listbox`
+  const optionId = (index: number) => `${baseId}-option-${index}`
 
   const selectedIndex = CITIES.findIndex((c) => c.name === value)
   const selected = selectedIndex >= 0 ? CITIES[selectedIndex] : null
@@ -61,7 +83,6 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
 
   useEffect(() => {
     if (!open) return
-    optionRefs.current[active]?.focus()
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node
       if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return
@@ -69,8 +90,14 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open ])
+
+  // Focus stays on the trigger, so the active option is kept in view by
+  // hand: scroll it into the panel's visible slice whenever it moves.
+  useEffect(() => {
+    if (!open) return
+    optionRefs.current[active]?.scrollIntoView({ block: 'nearest' })
+  }, [open, active])
 
   useEffect(() => {
     if (!open) return
@@ -106,42 +133,47 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
     closeList(true)
   }
 
-  const focusOption = (index: number) => {
-    const next = Math.min(Math.max(index, 0), CITIES.length - 1)
-    setActive(next)
-    optionRefs.current[next]?.focus()
-  }
-
-  const onListKeyDown = (e: React.KeyboardEvent) => {
-    switch (e.key) {
-      case 'ArrowDown': e.preventDefault(); focusOption(active + 1); break
-      case 'ArrowUp': e.preventDefault(); focusOption(active - 1); break
-      case 'Home': e.preventDefault(); focusOption(0); break
-      case 'End': e.preventDefault(); focusOption(CITIES.length - 1); break
-      case 'Enter':
-      case ' ': e.preventDefault(); choose(active); break
-      case 'Escape': e.preventDefault(); closeList(true); break
-      case 'Tab': closeList(false); break
-    }
-  }
-
+  // One handler on the trigger runs the whole keyboard pattern, open or
+  // closed — focus is always here, so there is no second focus home whose
+  // keys behave differently.
   const onButtonKeyDown = (e: React.KeyboardEvent) => {
-    if (open) {
-      // Focus can be on the trigger while the panel is open (it never moved
-      // into the list, or was returned here programmatically); the APG
-      // pattern still expects Escape to close from the trigger itself, not
-      // only from an option. Focus is already on the trigger, so closing is
-      // all that is needed.
-      if (e.key === 'Escape') {
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
-        closeList(true)
+        openList()
       }
       return
     }
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const next = cityPickerActiveAfterKey(active, e.key, CITIES.length)
+    if (next !== null) {
       e.preventDefault()
-      openList()
+      setActive(next)
+      return
     }
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+        // preventDefault also disarms the button's native click, which
+        // would otherwise toggle the panel instead of choosing.
+        e.preventDefault()
+        choose(active)
+        break
+      case 'Escape':
+        e.preventDefault()
+        closeList(true)
+        break
+      case 'Tab':
+        // Close without choosing and let the Tab move focus on.
+        setOpen(false)
+        break
+    }
+  }
+
+  // Belt and braces for Space: its click activation fires on keyup, and a
+  // cancelled keydown already disarms it — swallow the keyup too while the
+  // panel is open so a stray activation can never toggle the panel.
+  const onButtonKeyUp = (e: React.KeyboardEvent) => {
+    if (open && e.key === ' ') e.preventDefault()
   }
 
   return (
@@ -153,8 +185,11 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
         aria-label={label}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={listboxId}
+        aria-activedescendant={open ? optionId(active) : undefined}
         onClick={() => (open ? closeList(true) : openList())}
         onKeyDown={onButtonKeyDown}
+        onKeyUp={onButtonKeyUp}
         className={onDark
           ? 'flex h-control-lg w-full items-center gap-1.5 rounded-hero border border-white/25 bg-white/10 px-2.5 text-left text-sm font-medium text-white transition-colors hover:bg-white/15 min-[360px]:gap-2 min-[360px]:px-3 min-[360px]:text-base'
           : 'flex h-control-lg w-full items-center gap-1.5 rounded-hero border border-input bg-background px-2.5 text-left text-sm font-medium text-foreground min-[360px]:gap-2 min-[360px]:px-3 min-[360px]:text-base'}
@@ -171,8 +206,8 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
         >
           <ul
             role="listbox"
+            id={listboxId}
             aria-label={label}
-            onKeyDown={onListKeyDown}
             style={{ maxHeight: box.maxHeight }}
             className="overflow-y-auto overscroll-contain py-1.5 text-popover-foreground"
           >
@@ -183,13 +218,12 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
                 <li
                   key={city.name}
                   ref={(el) => { optionRefs.current[i] = el }}
+                  id={optionId(i)}
                   role="option"
                   aria-selected={isSelected}
-                  tabIndex={-1}
-                  onFocus={() => setActive(i)}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(i)}
-                  className={`cursor-pointer px-3 py-2 outline-none ${i === active ? 'bg-muted' : ''} ${isSelected ? 'dark:bg-primary/15' : ''}`}
+                  className={`cursor-pointer px-3 py-2 ${i === active ? 'bg-primary/15 ring-1 ring-inset ring-primary/60' : ''} ${isSelected ? 'dark:bg-primary/15' : ''}`}
                 >
                   <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {wording?.eyebrow ?? city.state}
