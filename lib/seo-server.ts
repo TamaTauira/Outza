@@ -490,13 +490,18 @@ async function queryCitySuburbTotals(city: CityDef, today: string): Promise<Subu
   // past 400 organiser listings would make its page the smaller number
   // — landingLocal's per-suburb cap — which no suburb is near.)
   // Saturation is NOT caught here: a partial local read would
-  // understate suburbs silently, so it degrades the whole totals read
-  // (citySuburbTotals' fail-safe) instead.
+  // understate suburbs silently, so a failed local read fails the
+  // whole totals read (citySuburbTotals' fail-safe) instead — raised
+  // as the same fail-safe signal a truncated event scan raises, so it
+  // reaches that fail-safe rather than escaping as the render's error.
   const localRows = await withStatementTimeout(8_000, (tx) => tx.localListing.findMany({
     where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, sourceName: null },
     select: localSelect,
     take: 4000,
-  }))
+  })).catch((err) => {
+    console.error('city suburb totals local read failed', city.name, err instanceof Error ? err.message : err)
+    throw new SuburbScanTruncatedError(city.name)
+  })
   const local = presentLocalListings(localRows, city.name, today, addDaysKey(today, 60))
   return suburbGuideTotalsFromRows(rows, local, city, 1)
 }
@@ -511,22 +516,55 @@ const cachedSuburbTotals = unstable_cache(
   { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] },
 )
 
-const suburbTotalsMemo = new Map<string, SuburbGuideTotal[]>()
+const suburbTotalsMemo = new Map<string, { at: number; totals: SuburbGuideTotal[] }>()
+
+/** How long a failed totals read may serve the last good totals for. */
+export const SUBURB_TOTALS_MEMO_MAX_AGE_MS = 60 * 60 * 1000
 
 export interface CitySuburbTotals { ok: boolean; totals: SuburbGuideTotal[] }
 
 /**
+ * What a failed totals read serves: the last good totals this process
+ * computed, while they are under an hour old — attached but marked
+ * `ok: false`, so no caller mistakes them for a fresh read. Older than
+ * that, or never computed in this process: no totals at all, and
+ * callers print no count rather than a stale or foreign number.
+ */
+export function suburbTotalsFallback(kept: { at: number; totals: SuburbGuideTotal[] } | undefined, now: number): CitySuburbTotals {
+  if (kept && now - kept.at <= SUBURB_TOTALS_MEMO_MAX_AGE_MS) return { ok: false, totals: kept.totals }
+  return { ok: false, totals: [] }
+}
+
+/**
+ * The count to print beside a suburb link, from a totals read: the
+ * read's own number — fresh on `ok`, last good on a failed read that
+ * still holds totals — or null, print no count at all. A suburb missing
+ * from a fresh read counts 0 (that read is authoritative); missing
+ * from last-good totals it gets no count, because last good may
+ * predate the suburb. No other construction's number is ever
+ * substituted: the guide model's inventory totals count stored rows
+ * without the pages' showing collapse, so they disagree with the
+ * suburb pages by design.
+ */
+export function suburbLinkCount(result: CitySuburbTotals, slug: string): number | null {
+  const hit = result.totals.find((t) => t.slug === slug)
+  return result.ok ? hit?.count ?? 0 : hit?.count ?? null
+}
+
+/**
  * The suburb totals the guide navigation prints. `ok: false` means the
- * read failed (a truncated scan or a saturated database) with nothing
- * kept from earlier in this process: callers then keep the counts they
- * already had rather than print a partial total as a page's number.
+ * read failed (a truncated scan, a saturated database, or a failed
+ * local read): totals then holds the last good counts this process
+ * computed while they are under an hour old, and is empty when it
+ * holds none — callers print the attached counts, or no count, never
+ * a partial total or another construction's number as a page's count.
  */
 export const citySuburbTotals = cache(async function citySuburbTotals(city: CityDef): Promise<CitySuburbTotals> {
   const today = cityToday(city)
   const key = `${city.name}|${today}`
   try {
     const totals = await cachedSuburbTotals(city.name, today)
-    suburbTotalsMemo.set(key, totals)
+    suburbTotalsMemo.set(key, { at: Date.now(), totals })
     return { ok: true, totals }
   } catch (err) {
     if (err instanceof SuburbScanTruncatedError) {
@@ -536,8 +574,7 @@ export const citySuburbTotals = cache(async function citySuburbTotals(city: City
     } else {
       throw err
     }
-    const kept = suburbTotalsMemo.get(key)
-    return kept ? { ok: true, totals: kept } : { ok: false, totals: [] }
+    return suburbTotalsFallback(suburbTotalsMemo.get(key), Date.now())
   }
 })
 

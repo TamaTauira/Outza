@@ -8,7 +8,7 @@ import {
 } from '@/lib/local-seo'
 import { seasonDef } from '@/lib/seasons'
 import { MIN_INDEX, TOPICS, cityFromSlug, cityPath, slugify, suburbPath, type TopicDef, type WhenKey } from '@/lib/seo'
-import { cityEventCounts, cityGuideModel, citySuburbTotals, citySuburbs, landingData, lastRefreshAt, type LandingEvent } from '@/lib/seo-server'
+import { cityEventCounts, cityGuideModel, citySuburbTotals, citySuburbs, landingData, lastRefreshAt, suburbLinkCount, type LandingEvent } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
@@ -78,9 +78,10 @@ export async function ComboPage({ citySlug, segments }: { citySlug: string; segm
   const [refreshed, counts, suburbTotals] = await Promise.all([lastRefreshAt(), cityEventCounts(), citySuburbTotals(city)])
   // Suburb link counts are the totals the suburb pages themselves
   // print (citySuburbTotals), not the guide model's inventory totals —
-  // the same fix as the topic pages. Link membership is unchanged;
-  // when the totals read fails the model's counts stay.
-  const totalsBySlug = new Map(suburbTotals.totals.map((t) => [t.slug, t.count]))
+  // the same fix as the topic pages. Link membership is unchanged.
+  // When the totals read fails it serves its last good totals (marked
+  // not-ok), and with none of those the link prints with no count at
+  // all: the model's counts are never substituted.
   const origin = siteUrl()
   const otherTopic = activity?.key ?? (when === 'tonight' || when === 'this-weekend' ? when : 'events')
   const crumbs = [
@@ -121,7 +122,7 @@ export async function ComboPage({ citySlug, segments }: { citySlug: string; segm
       degraded={!!data.degraded}
       from={data.from}
       to={data.to}
-      suburbs={model.ok ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: suburbTotals.ok ? totalsBySlug.get(d.spec.suburbSlug!) ?? 0 : d.total })) : []}
+      suburbs={model.ok ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: suburbLinkCount(suburbTotals, d.spec.suburbSlug!) })) : []}
       guides={guideList}
       activeGuide={null}
       otherCities={CITIES.filter((c) => c.name !== city.name && (counts[c.name] ?? 0) >= MIN_INDEX).map((c) => ({
