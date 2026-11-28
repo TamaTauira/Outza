@@ -17,7 +17,7 @@ import { ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { SaveButton } from '@/components/save-button'
 import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
-import { listDepthToLoad } from '@/lib/scroll-restore'
+import { boardPagesToLoad } from '@/lib/scroll-restore'
 import { ReachBeacon } from '@/components/reach-beacon'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { displayTitle, parentCategory } from '@/lib/display-public'
@@ -215,7 +215,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           setTotalPages(initialBoard.totalPages)
           setPage(1)
           setLoading(false)
-          const pages = listDepthToLoad(depthWanted, initialBoard.totalPages)
+          const pages = boardPagesToLoad({ saved: depthWanted, totalPages: initialBoard.totalPages, spanning: span.spanning, preview: previewLimit != null })
           for (let n = 2; n <= pages && !cancelled; n++) {
             const more = await fetchSpan(span.from, span.to, n, true)
             if (!more || cancelled) return
@@ -226,7 +226,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         setPage(1)
         const first = await fetchSpan(span.from, span.to, 1, false)
         if (!first || cancelled) return
-        const pages = listDepthToLoad(depthWanted, first.totalPages)
+        const pages = boardPagesToLoad({ saved: depthWanted, totalPages: first.totalPages, spanning: span.spanning, preview: previewLimit != null })
         for (let n = 2; n <= pages && !cancelled; n++) {
           const more = await fetchSpan(span.from, span.to, n, true)
           if (!more || cancelled) return
