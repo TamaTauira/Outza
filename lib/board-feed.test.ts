@@ -195,3 +195,16 @@ test('the ended count is a property of the whole set, not of the pages loaded', 
   const spanning = [...rows, { date: new Date('2026-12-06T00:00:00Z'), time: '09:00', endTime: '10:00' }]
   assert.equal(boardEndedCount(spanning, { dateFrom: today, dateTo: '2026-12-06' }, today, 12 * 60), 1)
 })
+
+test('a board search word also matches the catalogue subTags', () => {
+  // A jazz night the catalogue tags 'Jazz' must match a search for "jazz"
+  // even when its title never says the word — the tag arm Ask's text clause
+  // already has. Without it the word only ever matched title and venue text.
+  const where = boardWhere({ ...args, search: 'jazz' })
+  const and = (where.AND ?? []) as any[]
+  const clause = and.find((c) => Array.isArray(c?.OR) && c.OR.some((b: any) => b?.title?.contains === 'jazz'))
+  assert.ok(clause, 'the word clause exists')
+  const tagArm = clause.OR.find((b: any) => Array.isArray(b?.subTags?.hasSome))
+  assert.ok(tagArm, 'the word clause carries a subTags arm')
+  assert.ok(tagArm.subTags.hasSome.includes('Jazz'), 'the stored Jazz tag is among the searched forms')
+})

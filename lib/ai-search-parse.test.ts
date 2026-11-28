@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { interpretQuery } from './ai-search-parse'
+import { interpretQuery, keywordFreeFallbackAllowed } from './ai-search-parse'
 
 const TODAY = '2026-10-28'
 
@@ -325,4 +325,27 @@ test('relative dates still resolve when no year is named', () => {
   assert.equal(loose.dateFrom, TODAY)
   assert.equal(loose.dateTo, '2026-11-10')
   assert.equal(loose.keywords.includes('upcoming'), false)
+})
+
+test('the keyword-free fallback needs a real filter, never a keyword count', () => {
+  const bare = { category: '', suburb: '', isFree: false, lgbtiq: false, timeOfDay: 'any' as const, soon: false, nearMe: false }
+  // Gibberish or a bare browse with no filter signal stays an empty result.
+  assert.equal(keywordFreeFallbackAllowed(bare), false)
+  // A real filter is enough on its own — the pass exists for queries whose
+  // words failed, so an empty keyword list cannot disqualify it (the old
+  // route condition required exactly that and the pass never fired).
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, category: 'Music' }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, suburb: 'Newcastle' }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, isFree: true }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, timeOfDay: 'evening' }), true)
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, soon: true }), true)
+  // A near-me ask needs the caller's location, not a word-free trawl.
+  assert.equal(keywordFreeFallbackAllowed({ ...bare, category: 'Music', nearMe: true }), false)
+  // End to end: "music in Newcastle" parses to a suburb focus with no
+  // keywords at all, and the fallback is allowed for exactly that shape.
+  const folded = interpretQuery('music in Newcastle', TODAY)
+  assert.deepEqual(folded.keywords, [])
+  assert.equal(keywordFreeFallbackAllowed(folded), true)
+  const gibberish = interpretQuery('asdfgh', TODAY)
+  assert.equal(keywordFreeFallbackAllowed(gibberish), false)
 })
