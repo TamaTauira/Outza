@@ -5,7 +5,7 @@ import { PageHeader } from '@/components/layout/page-header'
 import { PageShell } from '@/components/page-shell'
 import { getBoardFeed } from '@/lib/board-feed'
 import { COPY } from '@/lib/copy'
-import { CITY_NAMES, cityDef, DEFAULT_CITY } from '@/lib/cities'
+import { boardDisplayName, CITY_NAMES, cityDef, DEFAULT_CITY } from '@/lib/cities'
 import { cityToday } from '@/lib/seo'
 import { EventCardRow } from '@/components/event-card'
 import { SearchPageForm } from '@/components/search-page-form'
@@ -62,7 +62,7 @@ export default async function SearchPage({ searchParams }: Props) {
         <SearchPageForm city={cityName} query={q} hints={hints} />
         {(q || hasPicks) && events.length > 0 && (
           <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
-            {`${events.length} ${events.length === 1 ? 'event' : 'events'} in ${cityName}.`}
+            {`${events.length} ${events.length === 1 ? 'event' : 'events'} in ${boardDisplayName(cityName)}.`}
             {note ? ` ${note}` : ''}
           </p>
         )}
