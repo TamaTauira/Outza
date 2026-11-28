@@ -35,7 +35,13 @@ test('list and map payloads omit descriptions and raw ingest blobs', () => {
   assert.ok(mapLight < mapHeavy / 2)
   const landing = read('./seo-server.ts')
   const select = landing.slice(landing.indexOf('const landingSelect = {'), landing.indexOf('} satisfies'))
-  assert.equal(select.includes('description'), false)
+  // Exception, owner-approved 2026-11-28: the landing (guide) fetch DOES
+  // select description — the guide display alignment needs it for the
+  // guide JSON-LD and category refinement. Guide pages are
+  // server-rendered, so this is not a list/map API payload; the board
+  // and map payloads above stay description-free, as does the guide
+  // model's own fetch below.
+  assert.equal(select.includes('description: true'), true)
   const guide = landing.slice(landing.indexOf('async function queryGuideRows'), landing.indexOf('localListing.findMany'))
   assert.equal(guide.includes('description: true'), false)
 })
