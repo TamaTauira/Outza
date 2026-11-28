@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { degradedLandingResult, guideListMode, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, suburbCountsFromRows, type LandingEvent, type SuburbCountRow } from './seo-server'
 import { cityDef } from './cities'
 import { isDbSaturation } from './db-guard'
@@ -152,4 +155,37 @@ test('guide list section: a positive total with no listings never renders the em
   // events; the empty state claims there are none. The two must never
   // share a render, whatever produced the mismatch.
   assert.equal(guideListMode({ events: 0, local: 0, total: 10131, degraded: false }), 'omitted')
+})
+
+test('every GuideLanding call site passes its read’s degraded flag', () => {
+  // The degraded prop is required by GuideLanding's props type, but no CI
+  // step type-checks (next.config.js sets typescript.ignoreBuildErrors and
+  // ci.yml runs only yarn test and the browser build), so a call site that
+  // omits it still compiles — and renders a failed read as an empty city.
+  // That is exactly how the combo pages slipped through. Pin the caller
+  // set and the prop at source level: a new caller fails here until it
+  // passes a real degraded value and is added to the list below.
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const callers = new Map<string, string>()
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      if (name === 'node_modules' || name.startsWith('.')) continue
+      const abs = join(dir, name)
+      if (statSync(abs).isDirectory()) { walk(abs); continue }
+      if (!/\.tsx?$/.test(name) || /\.(test|spec)\.tsx?$/.test(name) || name.endsWith('.d.ts')) continue
+      const src = readFileSync(abs, 'utf8')
+      if (src.includes('<GuideLanding')) callers.set(relative(root, abs).split('\\').join('/'), src)
+    }
+  }
+  walk(root)
+  assert.deepEqual([...callers.keys()].sort(), [
+    'app/[city]/[topic]/page.tsx',
+    'lib/combo-page.tsx',
+    'lib/season-page.tsx',
+  ], 'the GuideLanding caller set is exactly the topic, combo and season pages')
+  for (const [path, src] of callers) {
+    const start = src.indexOf('<GuideLanding')
+    const block = src.slice(start, src.indexOf('/>', start))
+    assert.match(block, /degraded=\{/, `${path} must pass its read’s degraded flag to GuideLanding`)
+  }
 })
