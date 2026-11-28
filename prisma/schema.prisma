@@ -301,6 +301,7 @@ model User {
   eventClaims     EventClaim[]
   eventSignals    EventSignal[]
   reactions       EventReaction[]
+  localReactions  LocalReaction[]
   togetherPlans   TogetherPlan[]
   togetherMembers TogetherMember[]
   venueFollows    VenueFollow[]
@@ -689,6 +690,7 @@ model LocalListing {
   sourceImageUrl  String?   // picture from the original public listing, when the organiser didn't upload one
   imageAssetId    String?   // processed variants of imagePath via the shared image pipeline
   imageAsset      ImageAsset? @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
+  reactions       LocalReaction[]
   expiresAt       DateTime
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -1629,6 +1631,24 @@ model EventReaction {
 
   @@id([userId, eventId, kind])
   @@index([eventId, kind])
+  @@index([userId, updatedAt])
+}
+
+/// One active reaction of each kind per signed-in person per Local listing.
+/// Local listings are LocalListing rows, not Event rows, so EventReaction
+/// cannot hold theirs. Reactions belong to the listing, not to one date:
+/// the per-date save id is resolved to the listing before it reaches here.
+model LocalReaction {
+  userId    String
+  listingId String
+  kind      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   LocalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId, kind])
+  @@index([listingId, kind])
   @@index([userId, updatedAt])
 }
 
