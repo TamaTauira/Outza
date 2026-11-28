@@ -139,6 +139,15 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
   const tags: string[] = event?.subTags ?? []
   const savedNow = isSaved(event.id)
   const outbound = eventOutbound(event)
+  // Notes that travel with the price: the booking-fee line (ticket links only,
+  // as before) and, when a free class is pooled with paid classes, the
+  // free-tickets note — beside the price, never in the headline.
+  const priceNotes = priced.kind === 'paid'
+    ? [
+        outbound?.kind === 'ticket' && event.quality?.price?.fees ? event.quality.price.fees : null,
+        event.quality?.price?.freeNote ?? null,
+      ].filter((note): note is string => !!note)
+    : []
   const ended = isPastEvent({
     date: event.date,
     endDate: event.endDate,
@@ -173,7 +182,7 @@ export function EventDetailClient({ eventId, initial }: { eventId: string; initi
         time={clock}
         timeZoneLabel={clock ? city.name : null}
         price={price}
-        priceNote={priced.kind === 'paid' && outbound?.kind === 'ticket' && event.quality?.price?.fees ? event.quality.price.fees : null}
+        priceNote={priceNotes.length ? (<>{priceNotes.map((note) => (<span key={note} className="block">{note}</span>))}</>) : null}
         venue={nameLabel ? (
           <span className="inline-flex flex-wrap items-center gap-1">
             {event?.venueId ? (

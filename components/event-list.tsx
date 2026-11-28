@@ -9,7 +9,7 @@ import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent, type Sta
 import { ListingBoardCard } from '@/components/listing-board-card'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { DAY_PARTS, categoryIcon, dayLabel, listSpan, orderedDayParts, toMinutes, type TimeWindow } from '@/lib/board'
-import { listPriceLabel } from '@/lib/price'
+import { listPriceLabel, priceFeeNote } from '@/lib/price'
 import { formatBoardRange, rankBoard, resolveSchedule } from '@/lib/listing-window'
 import { isPaidListing } from '@/lib/quality'
 import { useSaved } from '@/lib/saved'
@@ -410,6 +410,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
               accent={cat?.color ?? '#FF7A35'}
               priceText={price.text}
               priceKind={price.kind}
+              priceNote={priceFeeNote(price.kind)}
               when={when}
               icon={Icon}
               actions={(

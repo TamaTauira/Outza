@@ -19,3 +19,16 @@ test('event detail price is Free, a real amount, or Price TBA', () => {
   assert.equal(eventDetailPrice({ isFree: false, price: 'Ask the organiser' }).label, PRICE_TBA)
   assert.equal(eventDetailPrice({ isFree: false, range: 'Tickets at source' }).label, PRICE_TBA)
 })
+
+test('event detail price leads with the paid amount when free classes are pooled', () => {
+  assert.equal(eventDetailPrice({ isFree: false, price: 'Free – $25' }).label, 'From $25')
+  assert.equal(eventDetailPrice({ isFree: false, price: null, priceMin: 0, priceMax: 25 }).label, 'From $25')
+  assert.equal(eventDetailPrice({ isFree: false, price: 'Free – $2,400' }).label, 'From $2400')
+  assert.equal(eventDetailPrice({ isFree: false, range: 'From $25' }).label, 'From $25')
+})
+
+test('event detail price suppresses out-of-bound prices', () => {
+  assert.equal(eventDetailPrice({ isFree: false, price: '$79,900' }).label, PRICE_TBA)
+  assert.equal(eventDetailPrice({ isFree: false, price: null, priceMin: 899, priceMax: 79900 }).label, PRICE_TBA)
+  assert.equal(eventDetailPrice({ isFree: false, price: '$2,500' }).label, '$2500')
+})
