@@ -107,3 +107,26 @@ export function boardPagesToLoad(input: { saved: number | null; totalPages: numb
   if (!input.spanning && input.windowed && input.totalPages > 0) return Math.min(input.totalPages, BOARD_FULL_LOAD_PAGE_CAP)
   return listDepthToLoad(input.saved, input.totalPages)
 }
+
+/**
+ * The page a board already holding rows for its current query should
+ * reach once it is read as windowed. A window switch can make a board
+ * windowed after its first load already ran unwindowed: the plan chips
+ * pin 'all' for Today and 'evening' for Tonight over the same day with
+ * the same cleared filters, so the span and the board query are
+ * identical, the first-load effect (whose deps are the query, not the
+ * window) never re-runs, and the held set stays at the depth the
+ * unwindowed load stopped at — while the count gate reads the board
+ * as windowed over that partial set and holds the headline. The
+ * target is the first load's own decision (boardPagesToLoad) taken
+ * with the held depth as the saved depth, so it inherits the full
+ * load's ceiling and its capped bookkeeping: a windowed board is
+ * aimed at every page, an unwindowed or spanning board at the depth
+ * already held. A target above the held page therefore only ever
+ * occurs for a windowed board that owes more pages, and a board that
+ * reached its target reads the same target again — the top-up that
+ * fetched it cannot re-fire.
+ */
+export function boardTopUpTarget(input: { heldPages: number; totalPages: number; spanning: boolean; windowed: boolean }): number {
+  return boardPagesToLoad({ saved: input.heldPages, totalPages: input.totalPages, spanning: input.spanning, windowed: input.windowed })
+}

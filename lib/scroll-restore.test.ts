@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boardPagesToLoad, BOARD_FULL_LOAD_PAGE_CAP, isListPage, listDepthToLoad, shouldFinishRestore, SCROLL_MIN_MS, SCROLL_REACHED_MS, SCROLL_STABLE_MS, SCROLL_TIMEOUT_MS } from './scroll-restore'
+import { boardPagesToLoad, boardTopUpTarget, BOARD_FULL_LOAD_PAGE_CAP, isListPage, listDepthToLoad, shouldFinishRestore, SCROLL_MIN_MS, SCROLL_REACHED_MS, SCROLL_STABLE_MS, SCROLL_TIMEOUT_MS } from './scroll-restore'
 
 const ready = {
   target: 1800,
@@ -71,6 +71,26 @@ test('a preview is not a load exemption: the decision takes no preview input', (
   // or open — the windowed cases above are the collapsed board's too.
   assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: true }), 4)
   assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: false }), 1)
+})
+
+test('a board that turns windowed after an unwindowed load owes the rest of its pages', () => {
+  // Today (pinned 'all') depth-loads page 1 of a big day; Tonight
+  // (pinned 'evening') reads the same query as windowed without
+  // re-running the load, so the top-up target is the whole set.
+  assert.equal(boardTopUpTarget({ heldPages: 1, totalPages: 2, spanning: false, windowed: true }), 2)
+  assert.equal(boardTopUpTarget({ heldPages: 3, totalPages: 5, spanning: false, windowed: true }), 5)
+  // The first load's ceiling bounds the top-up too.
+  assert.equal(boardTopUpTarget({ heldPages: 1, totalPages: 40, spanning: false, windowed: true }), BOARD_FULL_LOAD_PAGE_CAP)
+})
+
+test('a settled board owes nothing: the target never passes the held depth for unwindowed or spanning boards', () => {
+  assert.equal(boardTopUpTarget({ heldPages: 1, totalPages: 4, spanning: false, windowed: false }), 1)
+  assert.equal(boardTopUpTarget({ heldPages: 3, totalPages: 5, spanning: false, windowed: false }), 3)
+  assert.equal(boardTopUpTarget({ heldPages: 1, totalPages: 4, spanning: true, windowed: true }), 1)
+  // And a windowed board that reached its target reads it back, so a
+  // completed top-up cannot re-fire.
+  assert.equal(boardTopUpTarget({ heldPages: 2, totalPages: 2, spanning: false, windowed: true }), 2)
+  assert.equal(boardTopUpTarget({ heldPages: BOARD_FULL_LOAD_PAGE_CAP, totalPages: 40, spanning: false, windowed: true }), BOARD_FULL_LOAD_PAGE_CAP)
 })
 
 test('board, local, saved, itinerary and city landings are lists; an event page is not', () => {
