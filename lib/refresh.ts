@@ -329,25 +329,29 @@ export async function warmTotalsCities(
  * finish in this context. The render path's budget is unchanged.
  */
 async function warmSuburbTotals() {
-  const { citySuburbTotals, runWithTotalsScanBudget, TOTALS_WARM_STATEMENT_TIMEOUT_MS } = await import('@/lib/seo-server')
-  const outcome = await warmTotalsCities(CITIES, async (city, budgetMs) => {
-    const run = await runWithSourceBudget(`Suburb totals warm ${city.name}`, budgetMs, () =>
-      runWithTotalsScanBudget(TOTALS_WARM_STATEMENT_TIMEOUT_MS, () => citySuburbTotals(city)))
-    if (run.error) {
-      console.error(`[refresh] suburb totals warm failed for ${city.name}: ${run.error.message}`)
-      return false
-    }
-    if (run.timedOut) {
-      console.error(`[refresh] suburb totals warm for ${city.name} hit its time budget`)
-      return false
-    }
-    if (!run.value?.ok) {
-      console.error(`[refresh] suburb totals warm did not refresh ${city.name}: the totals read failed, last good totals kept`)
-      return false
-    }
-    return true
-  }, { budgetMs: TOTALS_WARM_BUDGET_MS, cityBudgetMs: TOTALS_WARM_CITY_BUDGET_MS })
-  console.log(`[refresh] suburb totals warm: ${outcome.warmed.length}/${CITIES.length} cities refreshed${outcome.failed.length ? `; failed: ${outcome.failed.join(', ')}` : ''}${outcome.skipped.length ? `; skipped: ${outcome.skipped.join(', ')}` : ''}`)
+  try {
+    const { citySuburbTotals, runWithTotalsScanBudget, TOTALS_WARM_STATEMENT_TIMEOUT_MS } = await import('@/lib/seo-server')
+    const outcome = await warmTotalsCities(CITIES, async (city, budgetMs) => {
+      const run = await runWithSourceBudget(`Suburb totals warm ${city.name}`, budgetMs, () =>
+        runWithTotalsScanBudget(TOTALS_WARM_STATEMENT_TIMEOUT_MS, () => citySuburbTotals(city)))
+      if (run.error) {
+        console.error(`[refresh] suburb totals warm failed for ${city.name}: ${run.error.message}`)
+        return false
+      }
+      if (run.timedOut) {
+        console.error(`[refresh] suburb totals warm for ${city.name} hit its time budget`)
+        return false
+      }
+      if (!run.value?.ok) {
+        console.error(`[refresh] suburb totals warm did not refresh ${city.name}: the totals read failed, last good totals kept`)
+        return false
+      }
+      return true
+    }, { budgetMs: TOTALS_WARM_BUDGET_MS, cityBudgetMs: TOTALS_WARM_CITY_BUDGET_MS })
+    console.log(`[refresh] suburb totals warm: ${outcome.warmed.length}/${CITIES.length} cities refreshed${outcome.failed.length ? `; failed: ${outcome.failed.join(', ')}` : ''}${outcome.skipped.length ? `; skipped: ${outcome.skipped.join(', ')}` : ''}`)
+  } catch (err) {
+    console.error('[refresh] suburb totals warm failed', err instanceof Error ? err.message : err)
+  }
 }
 
 async function noteVolume(
