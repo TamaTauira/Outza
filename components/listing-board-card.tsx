@@ -30,6 +30,7 @@ export function ListingBoardCard({
   accent,
   priceText,
   priceKind,
+  priceNote,
   when,
   hot,
   onHot,
@@ -52,6 +53,7 @@ export function ListingBoardCard({
   accent: string
   priceText: string
   priceKind: 'free' | 'paid' | 'unknown'
+  priceNote?: string | null
   when: BoardRange
   hot?: boolean
   onHot?: (on: boolean) => void
@@ -102,7 +104,10 @@ export function ListingBoardCard({
                 <span>{tag}</span>
               </span>
             ) : null}
-            <span className={cn('vp-price', priceKind === 'free' && 'is-free')}>{priceText}</span>
+            <span className="flex min-w-0 flex-col">
+              <span className={cn('vp-price', priceKind === 'free' && 'is-free')}>{priceText}</span>
+              {priceNote ? <span className="text-xs font-normal leading-tight text-muted-foreground">{priceNote}</span> : null}
+            </span>
           </span>
           <span className="relative z-20 flex shrink-0 items-center">{actions}</span>
         </div>
