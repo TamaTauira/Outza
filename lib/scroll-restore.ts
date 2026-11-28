@@ -68,3 +68,18 @@ export function listDepthToLoad(saved: number | null, totalPages: number): numbe
   const cap = totalPages > 0 ? totalPages : want
   return Math.min(want, cap, 8)
 }
+
+/**
+ * How many pages the board's first load fetches. A single-day span can carry
+ * a time window ('now' / 'evening' / 'hour'), and the window's sections and
+ * its stated count are computed from the rows the list holds — page 1 alone
+ * understates both whenever the day runs past one page, and the count then
+ * grows as the visitor pages (the Today preset states the same day's full
+ * set). So a full single-day board loads every page up front; a day is a
+ * handful of pages at most. Spanning spans state a server-derived count and
+ * previews only ever show a slice, so both keep the restoration depth.
+ */
+export function boardPagesToLoad(input: { saved: number | null; totalPages: number; spanning: boolean; preview: boolean }): number {
+  if (!input.spanning && !input.preview && input.totalPages > 0) return input.totalPages
+  return listDepthToLoad(input.saved, input.totalPages)
+}
