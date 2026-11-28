@@ -33,6 +33,7 @@ export default async function BoardLayout({ children }: { children: React.ReactN
       to: now.date,
       events: feed.events as unknown as BoardEvent[],
       total: feed.total,
+      endedTotal: feed.endedTotal,
       totalPages: Math.max(1, Math.ceil(feed.total / 300)),
     }
   } catch (err) {

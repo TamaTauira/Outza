@@ -32,6 +32,8 @@ export type BoardSeed = {
   events: BoardEvent[]
   total: number
   totalPages: number
+  /** Ended rows inside total, from the same server set (see board-feed). */
+  endedTotal?: number
 }
 
 interface EventListProps {
@@ -73,6 +75,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     && span.to === initialBoard.to
   const [events, setEvents] = useState<BoardEvent[]>(initialBoard && seedMatches ? initialBoard.events : [])
   const [total, setTotal] = useState(initialBoard && seedMatches ? initialBoard.total : 0)
+  const [endedTotal, setEndedTotal] = useState(initialBoard && seedMatches ? initialBoard.endedTotal ?? 0 : 0)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
   const [loading, setLoading] = useState(!(initialBoard && seedMatches))
@@ -94,6 +97,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setPrevCity(city)
     setEvents([])
     setTotal(0)
+    setEndedTotal(0)
     setTotalPages(1)
     setPage(1)
     setLoading(true)
@@ -131,7 +135,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       if (filters.suburb) params.set('suburb', filters.suburb)
       if (filters.isFree) params.set('isFree', 'true')
       if (filters.isLGBTI) params.set('isLGBTI', 'true')
-      const result = await readJson<{ events?: BoardEvent[]; total?: number; totalPages?: number }>(`/api/events?${params.toString()}`)
+      const result = await readJson<{ events?: BoardEvent[]; total?: number; totalPages?: number; endedTotal?: number }>(`/api/events?${params.toString()}`)
       if (seq !== fetchSeq.current || (!result.ok && result.reason === 'abort')) return null
       if (!result.ok) {
         if (result.reason === 'network') setOffline(true)
@@ -143,6 +147,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       setEvents((prev) => (append ? [...prev, ...list] : list))
       const totalPages = data?.totalPages ?? 1
       setTotal(data?.total ?? 0)
+      setEndedTotal(data?.endedTotal ?? 0)
       setDataCity(city ?? '')
       setTotalPages(totalPages)
       setOffline(false)
@@ -170,6 +175,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         if (initialBoard && seedMatches && authStatus !== 'authenticated') {
           setEvents(initialBoard.events)
           setTotal(initialBoard.total)
+          setEndedTotal(initialBoard.endedTotal ?? 0)
           setDataCity(initialBoard.city)
           setTotalPages(initialBoard.totalPages)
           setPage(1)
@@ -260,11 +266,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     if (!windowPinned && !loading && effectiveWindow !== timeWindow) onWindowChange?.(effectiveWindow)
   }, [span?.spanning, windowPinned, loading, effectiveWindow, timeWindow, onWindowChange])
 
-  const { timed, untimed, endedCount } = useMemo(() => {
+  const { timed, untimed } = useMemo(() => {
     const t: { ev: BoardEvent; status: ReturnType<typeof getStatus>; start: number; date: string }[] = []
     const u: BoardEvent[] = []
-    let ended = 0
-    if (!span) return { timed: t, untimed: u, endedCount: 0 }
+    if (!span) return { timed: t, untimed: u }
     for (const ev of listed) {
       const date = String(ev.date).slice(0, 10)
       const rowDay = span.spanning ? date : (day ?? span.from)
@@ -272,25 +277,22 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       const status = getStatus(ev, rowDay, today, nowMinutes)
       // No clock, or a midnight-to-late guide time: not a morning session on a single day.
       if (sched.start === null) {
-        if (status.tone === 'done') ended++
         if (!(hideEnded && status.tone === 'done')) u.push(ev)
         continue
       }
       if (sched.dropIn) {
-        if (status.tone === 'done') ended++
         if (hideEnded && status.tone === 'done') continue
         if (span.spanning) t.push({ ev, status, start: sched.start, date })
         else if (effectiveWindow === 'all') u.push(ev)
         continue
       }
       const start = sched.start
-      if (status.tone === 'done') ended++
       if (effectiveWindow === 'hour' && !(start >= nowMinutes && start - nowMinutes <= 60)) continue
       if (effectiveWindow === 'evening' && start < 17 * 60) continue
       if (hideEnded && status.tone === 'done') continue
       t.push({ ev, status, start, date })
     }
-    return { timed: t, untimed: u, endedCount: ended }
+    return { timed: t, untimed: u }
   }, [listed, day, span, today, nowMinutes, effectiveWindow, hideEnded])
 
   const windowRank = useMemo(() => {
@@ -347,9 +349,23 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     })()
     : []
 
+  // The summary count derives from the same set as the listed rows. In a
+  // time window it counts the rendered sections themselves — the 'now'
+  // sections re-admit rows rankBoard set aside, so the bucket sums and
+  // the rendered rows can differ (E2E-17: "5 events" over 8 visible
+  // rows). In the 'hour' window there is no windowRank, so the count is
+  // the hour-filtered rows themselves (timed is already cut to the hour
+  // in the memo above). Unwindowed, it is the board query's total — the
+  // full shaped set for these filters — less the ended rows in that
+  // same server set while they are hidden, so the stated count equals
+  // the rows the visitor can scroll to at any page depth.
   const listedCount = windowRank
-    ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length + windowRank.allday.length + windowRank.possibly.length
-    : timed.length + untimed.length
+    ? effectiveWindow === 'now'
+      ? nowSections.reduce((n, section) => n + section.rows.length, 0)
+      : eveningGroups.reduce((n, group) => n + group.rows.length, 0) + windowRank.possibly.length
+    : effectiveWindow === 'hour'
+      ? timed.length + untimed.length
+      : hideEnded ? total - endedTotal : total
   useEffect(() => { onListedCount?.(staleCity ? 0 : listedCount) }, [listedCount, staleCity, onListedCount])
   const previewFlat = previewLimit == null ? null : (() => {
     const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
@@ -447,10 +463,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
         {span?.spanning && !loading && !staleCity && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
         {!loading && !staleCity && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
-        {isToday && !staleCity && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
+        {isToday && !staleCity && endedTotal > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
           <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
             <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
-            Show ended ({endedCount})
+            Show ended ({endedTotal})
           </label>
         )}
       </div>

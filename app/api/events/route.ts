@@ -22,8 +22,16 @@ export async function GET(request: NextRequest) {
     const body = {
       events: board.events.map((e) => ({ ...e, friendsGoing: friends[e.id] ?? [], going: going.has(e.id), sponsored: boosts.has(e.id) || !!e.promoTier })),
       total: board.total,
+      // total is an exact shaped count only when totalExact; in page mode
+      // it is a lower bound (see board-feed), so totalPages then only
+      // claims the pages known to exist instead of a derived page count.
+      totalExact: board.totalExact,
+      scanTruncated: board.scanTruncated,
+      endedTotal: board.endedTotal,
       page: args.page,
-      totalPages: Math.max(1, Math.ceil(board.total / args.limit)),
+      totalPages: board.totalExact
+        ? Math.max(1, Math.ceil(board.total / args.limit))
+        : args.page + (board.hasMore ? 1 : 0),
     }
     return NextResponse.json(body, { headers: me ? PRIVATE_NO_STORE : publicCacheHeaders(PUBLIC_S_MAXAGE_SECONDS, PUBLIC_SWR_SECONDS) })
   } catch (err: any) {
