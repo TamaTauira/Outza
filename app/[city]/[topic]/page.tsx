@@ -7,7 +7,7 @@ import { cityEditorial } from '@/lib/editorial'
 import { seasonDef } from '@/lib/seasons'
 import { SeasonPage, seasonMetadata } from '@/lib/season-page'
 import { TOPICS, MIN_INDEX, guideFacts, topicDef, cityFromSlug, cityPath, suburbPath, type TopicDef } from '@/lib/seo'
-import { cityEventCounts, cityGuideModel, citySuburbs, landingData, lastRefreshAt } from '@/lib/seo-server'
+import { cityEventCounts, cityGuideModel, citySuburbTotals, citySuburbs, landingData, lastRefreshAt } from '@/lib/seo-server'
 import { BRAND_OG_IMAGE } from '@/lib/brand'
 import { siteUrl } from '@/lib/site-url'
 
@@ -75,20 +75,31 @@ export default async function LandingPage({ params }: Props) {
   const r = await resolve(citySlug, topicSlug)
   if (!r) notFound()
   const { city, topic, suburb, suburbs } = r
-  const [data, model, refreshed, counts] = await Promise.all([
+  const [data, model, refreshed, counts, suburbTotals] = await Promise.all([
     landingData(city, topic, suburb ?? undefined),
     cityGuideModel(city),
     lastRefreshAt(),
     cityEventCounts(),
+    citySuburbTotals(city),
   ])
   const { events, local, total, from, to, degraded } = data
   const path = topic ? cityPath(city, topic.key) : suburbPath(city, suburb!)
   const guides = !model.ok
     ? TOPICS
     : TOPICS.filter((t) => t.key === topic?.key || t.key === 'events' || model.decisions.some((d) => d.path === cityPath(city, t.key) && d.index))
+  // The counts printed beside the suburb links are the totals the
+  // suburb pages themselves print (citySuburbTotals: shaped events
+  // plus the page's local arm), not the guide model's inventory
+  // totals — the two disagreed, because the model counts stored rows
+  // without the page's showing collapse or other-town drop. Which
+  // suburbs are linked is unchanged; only the numbers move. When the
+  // totals read fails, the counts already at hand stay rather than a
+  // partial set printing as a page's number.
+  const totalsBySlug = new Map(suburbTotals.totals.map((t) => [t.slug, t.count]))
+  const pageCount = (slug: string, fallback: number) => (suburbTotals.ok ? totalsBySlug.get(slug) ?? 0 : fallback)
   const linkSuburbs = (model.ok
-    ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: d.total }))
-    : suburbs.filter((s) => s.count >= MIN_INDEX))
+    ? model.decisions.filter((d) => d.kind === 'suburb' && d.index).map((d) => ({ name: d.spec.suburb!, slug: d.spec.suburbSlug!, count: pageCount(d.spec.suburbSlug!, d.total) }))
+    : suburbs.filter((s) => s.count >= MIN_INDEX).map((s) => ({ ...s, count: pageCount(s.slug, s.count) })))
   const origin = siteUrl()
   const heading = headingFor(r)
   const otherCities = CITIES.filter((c) => c.name !== city.name && (counts[c.name] ?? 0) >= MIN_INDEX).map((c) => ({

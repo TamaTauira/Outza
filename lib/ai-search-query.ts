@@ -143,3 +143,26 @@ export function askNotEndedTodayWhere(today: string, nowMinutes: number): Prisma
     ],
   }
 }
+
+/**
+ * Public-visibility arms of Ask's base `where`, in one builder so the
+ * route cannot drift from them: not soft-deleted, not hidden, and
+ * approved (or never put through approval). The first and third arms
+ * are the PUBLIC_EVENT_AND arms the route already applied inline; the
+ * `hidden: false` arm is the one it was missing — a hidden listing's
+ * event page 404s, so an Ask result would disclose a listing that is
+ * public nowhere else, and a promoter draft saved before email
+ * verification is exactly that row. Spreading PUBLIC_EVENT_AND itself
+ * would also pull in its moderation-status and test-title arms, which
+ * Ask has never applied — a wider change than closing this hole.
+ * Every query the route issues builds on the one base `where`, so
+ * these arms cover the strict pass, the broadened-keyword retry and
+ * the keyword-free fallback alike.
+ */
+export function askPublicVisibilityAnd(): Prisma.EventWhereInput[] {
+  return [
+    { deletedAt: null },
+    { hidden: false },
+    { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] },
+  ]
+}

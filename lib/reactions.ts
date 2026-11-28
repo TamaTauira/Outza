@@ -1,5 +1,7 @@
 /** Reaction kinds. Going also writes Attendance so friends-going stays one list. */
 
+import { parseLocalSaveId } from './local-shared'
+
 export const REACTION_KINDS = ['HOT', 'LOVE', 'INTERESTED', 'EXCITED', 'GOING'] as const
 export type ReactionKind = (typeof REACTION_KINDS)[number]
 
@@ -27,4 +29,17 @@ export function reactionWrite(input: { active: boolean; turnOn: boolean }): 'add
   if (input.turnOn && input.active) return 'unchanged'
   if (!input.turnOn && !input.active) return 'unchanged'
   return input.turnOn ? 'add' : 'remove'
+}
+
+/**
+ * Where a reaction lands. Event pages pass a real Event id. A Local listing
+ * detail page passes the listing's per-date save id (local-<listingId>-<date>);
+ * the reaction belongs to the listing itself, so the date is dropped here.
+ * Anything else is treated as an Event id and misses there if unknown.
+ */
+export type ReactionTarget = { type: 'event'; eventId: string } | { type: 'local'; listingId: string }
+
+export function reactionTarget(id: string): ReactionTarget {
+  const local = parseLocalSaveId(id)
+  return local ? { type: 'local', listingId: local.listingId } : { type: 'event', eventId: id }
 }

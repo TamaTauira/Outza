@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { degradedLandingResult, guideListMode, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, suburbCountsFromRows, type LandingEvent, type SuburbCountRow } from './seo-server'
+import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, suburbCountsFromRows, suburbGuideTotalsFromRows, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
 import { cityDef } from './cities'
 import { isDbSaturation } from './db-guard'
 import { isLandingSuburb, slugify } from './seo'
@@ -188,4 +188,76 @@ test('every GuideLanding call site passes its read’s degraded flag', () => {
     const block = src.slice(start, src.indexOf('/>', start))
     assert.match(block, /degraded=\{/, `${path} must pass its read’s degraded flag to GuideLanding`)
   }
+})
+
+const loc = (over: Partial<LandingLocal> = {}): LandingLocal => ({
+  id: 'l1', title: 'Newtown Markets', category: 'MARKET', description: '', suburb: 'Newtown', address: '1 King St, Newtown',
+  startTime: '09:00', endTime: '15:00', priceNote: null, date: '2027-03-06', schedule: 'One-off', recurring: false, organiserName: 'Sam',
+  ...over,
+})
+
+test('suburb guide totals are the totals the suburb pages print: shaped events plus the page local arm', () => {
+  const rows = [
+    sub({ id: 'n1', suburb: 'Newtown', title: 'Gig Night', venueName: 'King Street Theatre', venueAddress: '1 King St, Newtown NSW 2042' }),
+    sub({ id: 'n2', suburb: 'Newtown', title: 'Gig Night', venueName: 'King Street Theatre', venueAddress: '1 King St, Newtown NSW 2042', source: 'eventbrite' }),
+    sub({ id: 'n3', suburb: 'Newtown', title: 'Solo Show', venueName: 'King Street Theatre', venueAddress: '1 King St, Newtown NSW 2042', date: new Date('2027-03-06T00:00:00Z') }),
+    sub({ id: 'n4', suburb: 'Newtown', title: 'Past Show', venueName: 'King Street Theatre', venueAddress: '1 King St, Newtown NSW 2042', date: new Date('2020-01-03T00:00:00Z') }),
+    sub({ id: 'n5', suburb: 'Newtown', title: 'Gig Night 7 November', venueName: 'King Street Theatre', venueAddress: '1 King St, Newtown NSW 2042' }),
+    sub({ id: 'n6', suburb: 'Newtown', title: 'Far Away', venueName: 'Forum Melbourne', venueAddress: '154 Flinders St, Melbourne VIC 3000' }),
+    sub({ id: 'e1' }),
+    sub({ id: 'e2', suburb: 'enmore', title: 'Third Gig', venueName: 'The Warren', date: new Date('2027-03-07T00:00:00Z') }),
+  ]
+  const locals = [
+    loc({ id: 'l1', title: 'Gig Night', suburb: 'Newtown' }),
+    loc({ id: 'l2', title: 'Newtown Markets', suburb: 'Newtown' }),
+    loc({ id: 'l3', title: 'Enmore Yoga', suburb: 'Enmore' }),
+    loc({ id: 'l4', title: 'Far Thing', suburb: 'Melbourne' }),
+  ]
+  // The page side, built the way landingData builds a suburb page:
+  // landingEvents' shaped rows for the suburb (the shared core, grouped
+  // by slug), plus landingLocal's rows for the suburb whose title no
+  // shaped event on the page already carries.
+  const kept = shapeLandingRows(rows, sydney)
+  const pageTotal = (slug: string) => {
+    const events = kept.filter((r) => isLandingSuburb(r.suburb, sydney) && slugify(r.suburb) === slug)
+    const titles = new Set(events.map((r) => normTitle(r.title ?? '')))
+    const localCount = locals.filter((l) => isLandingSuburb(l.suburb, sydney) && slugify(l.suburb) === slug && !titles.has(normTitle(l.title))).length
+    return events.length + localCount
+  }
+  assert.equal(pageTotal('newtown'), 3, 'page construction: duplicate showing collapsed, past, title-mismatched and other-state rows dropped, one local counted, the title-matching local not')
+  assert.equal(pageTotal('enmore'), 3, 'page construction: two shaped events plus one local')
+  // The events-only count path is the page total minus the local arm.
+  assert.deepEqual(
+    Object.fromEntries(suburbCountsFromRows(rows, sydney, 1).map((c) => [c.slug, c.count])),
+    { enmore: 2, newtown: 2 },
+    'the shaped event counts the nav total builds on',
+  )
+  const totals = suburbGuideTotalsFromRows(rows, locals, sydney, 1)
+  assert.deepEqual(
+    Object.fromEntries(totals.map((t) => [t.slug, t.count])),
+    { newtown: pageTotal('newtown'), enmore: pageTotal('enmore') },
+    'the nav total for a suburb equals the total its page prints',
+  )
+  assert.deepEqual(totals.map((t) => t.slug), ['newtown', 'enmore'], 'equal counts keep scan order (Newtown’s rows came first)')
+})
+
+const lr = (over: Record<string, unknown> = {}): LocalRow => ({
+  id: 'l1', title: 'Garage Sale', category: 'GARAGE', description: '', suburb: 'Newtown', address: '1 King St, Newtown NSW 2042',
+  startDate: '2027-03-06', endDate: null, startTime: '08:00', endTime: '14:00', recurrence: 'NONE', recurUntil: null,
+  priceNote: null, organiserName: 'Sam',
+  ...over,
+} as unknown as LocalRow)
+
+test('presentLocalListings maps next occurrences and shows a repeated listing once', () => {
+  const out = presentLocalListings([
+    lr({ id: 'a' }),
+    lr({ id: 'b', title: 'Later Sale', startDate: '2027-06-05' }),
+    lr({ id: 'c' }),
+    lr({ id: 'd', title: 'Weekly Yoga', category: 'COMMUNITY', startDate: '2027-02-20', recurrence: 'WEEKLY', startTime: '07:00' }),
+  ], 'Sydney', '2027-03-01', '2027-04-30')
+  assert.deepEqual(out.map((x) => x.id).sort(), ['a', 'd'], 'the out-of-range listing drops and the identical repeat shows once')
+  const weekly = out.find((x) => x.id === 'd')!
+  assert.equal(weekly.date, '2027-03-06', 'a weekly listing started before the window maps to its next occurrence inside it')
+  assert.equal(weekly.recurring, true)
+  assert.equal(out.find((x) => x.id === 'a')!.date, '2027-03-06')
 })

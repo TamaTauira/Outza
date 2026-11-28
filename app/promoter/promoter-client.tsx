@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import { BadgeCheck, BarChart3, Brain, CalendarPlus, Download, Eye, FileText, LineChart, Loader2, Lock, Mail, Megaphone, MousePointerClick, Pencil, Receipt, Rocket, Search, Share2, Sparkles, Store, Trash2, Users, Wallet } from 'lucide-react'
 import { REFERRAL_LABELS, REFERRAL_SOURCES } from '@/lib/referral-labels'
@@ -25,6 +26,7 @@ import { BoostStudio } from './boost-studio'
 import { OrganiserPlans } from './organiser-plans'
 import { InsightsPanel } from './insights-panel'
 import { PromoterTermsCheck } from '@/components/promoter-terms-check'
+import { ClaimListingForm } from '@/components/claim-form'
 import { endCampaignConfirm } from '@/lib/promotion-end'
 
 type Promo = { id: string; tier: string; days?: number | null; orderId?: string | null; status: string; amountCents: number; paymentMode: string; endsAt?: string | null; createdAt: string }
@@ -461,11 +463,12 @@ const blankListing = (city: string) => ({
 })
 
 function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { events: MyEvent[]; claims: ClaimRow[]; pro: boolean; homeCity: string; onPromote: (id: string) => void; reload: () => void }) {
+  const { data: session } = useSession()
   const [q, setQ] = useState('')
   const [claimCity, setClaimCity] = useState(homeCity || 'Sydney')
   const [results, setResults] = useState<MyEvent[]>([])
   const [searching, setSearching] = useState(false)
-  const [claimNote, setClaimNote] = useState('')
+  const [claimingId, setClaimingId] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [showAllClaims, setShowAllClaims] = useState(false)
@@ -482,25 +485,12 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
   const search = async (e: React.FormEvent) => {
     e.preventDefault()
     const seq = ++searchSeq.current
-    setSearching(true); setClaimNote('')
+    setSearching(true)
     const params = new URLSearchParams({ search: q, limit: '20', sortBy: 'date' })
     if (claimCity) params.set('city', claimCity)
     const d = await fetch(`/api/events?${params}`).then((r) => r.json()).catch((err) => { console.error('Search failed:', err); return {} })
     if (seq !== searchSeq.current) return
     setResults(d?.events ?? []); setSearching(false)
-  }
-  const claim = async (eventId: string) => {
-    setClaimNote('')
-    const res = await fetch('/api/promoter/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ eventId }) })
-    const d = await res.json().catch(() => ({}))
-    if (res.ok) {
-      toast.success(d?.status === 'APPROVED' ? 'Event added to your dashboard' : 'Claim sent. It stays under Pending claims until we review it.')
-      setResults((r) => r.filter((x) => x.id !== eventId)); reload()
-    } else {
-      const message = d?.error ?? 'Could not claim event'
-      setClaimNote(message)
-      toast.error(message)
-    }
   }
   const publishListing = async (eventId: string) => {
     const res = await fetch(`/api/promoter/events/${eventId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ publish: true }) })
@@ -615,19 +605,32 @@ function EventsTab({ events, claims, pro, homeCity, onPromote, reload }: { event
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Event name or venue" className={field} aria-label="Search listings" />
             <button className="flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground">{searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Search</button>
           </form>
-          {claimNote && <p className="mt-2 text-sm text-destructive" role="alert">{claimNote}</p>}
           {!!results.length && <p className="mt-3 text-xs text-muted-foreground">{results.length} {results.length === 1 ? 'match' : 'matches'}</p>}
           <div className="mt-2">
             {(showAllClaims ? results : results.slice(0, 10)).map((r) => {
               const pending = claims.some((c) => c.event.id === r.id && c.status === 'PENDING')
               return (
-                <div key={r.id} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm last:border-0">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{r.title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{fmt(r.date)}{r.time ? ` · ${r.time}` : ''} · {r.venueName}{r.city ? `, ${r.city}` : ''}</span>
-                  </span>
-                  {owned.has(r.id) ? <span className="text-xs text-muted-foreground">Yours</span> : pending ? <span className="text-xs font-medium">Pending</span> : <button onClick={() => claim(r.id)} className="h-8 shrink-0 rounded-md border border-border px-3 text-xs hover:bg-muted">Claim</button>}
-                </div>
+                <Fragment key={r.id}>
+                  <div className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm last:border-0">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{r.title}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{fmt(r.date)}{r.time ? ` · ${r.time}` : ''} · {r.venueName}{r.city ? `, ${r.city}` : ''}</span>
+                    </span>
+                    {owned.has(r.id) ? <span className="text-xs text-muted-foreground">Yours</span> : pending ? <span className="text-xs font-medium">Pending</span> : <button onClick={() => setClaimingId(claimingId === r.id ? null : r.id)} className="h-8 shrink-0 rounded-md border border-border px-3 text-xs hover:bg-muted">Claim</button>}
+                  </div>
+                  {claimingId === r.id && (
+                    <section aria-label="Claim this listing" className="mt-2 rounded-xl bg-background p-5 ring-1 ring-border">
+                      <ClaimListingForm
+                        eventId={r.id}
+                        email={session?.user?.email}
+                        submitUrl="/api/promoter/claim"
+                        bodyExtra={{ eventId: r.id }}
+                        onClose={() => setClaimingId(null)}
+                        onSuccess={() => { setResults((prev) => prev.filter((x) => x.id !== r.id)); setClaimingId(null); reload() }}
+                      />
+                    </section>
+                  )}
+                </Fragment>
               )
             })}
           </div>

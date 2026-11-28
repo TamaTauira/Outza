@@ -31,7 +31,7 @@ const landingSelect = {
 
 export type LandingEvent = Prisma.EventGetPayload<{ select: typeof landingSelect }>
 
-const normTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+export const normTitle = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 const ci = (s: string) => ({ title: { contains: s, mode: 'insensitive' as const } })
 const POST_FILTER = new Set<TopicKey>(['markets', 'pop-up-sales', 'warehouse-sales', 'garage-sales', 'community-events', 'live-music'])
 
@@ -196,6 +196,28 @@ export type LandingLocal = {
   priceNote: string | null; date: string; schedule: string; recurring: boolean; organiserName: string
 }
 
+const localSelect = {
+  id: true, title: true, category: true, description: true, suburb: true, address: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true,
+} satisfies Prisma.LocalListingSelect
+
+export type LocalRow = Prisma.LocalListingGetPayload<{ select: typeof localSelect }>
+
+/**
+ * landingLocal's row pipeline, pure: each listing's next occurrence in
+ * [from, to], soonest first, one row per listing (same title, suburb and
+ * start time is the same listing shown once). landingLocal queries and
+ * delegates here, and the suburb guide totals count through here too,
+ * so a local listing is one listing on every surface that counts it.
+ */
+export function presentLocalListings(rows: LocalRow[], cityName: string, from: string, to: string): LandingLocal[] {
+  return rows
+    .map((l) => ({ l, next: occurrences(l, from, to)[0] }))
+    .filter((x) => x.next)
+    .map(({ l, next }) => ({ id: l.id, title: l.title, category: l.category, description: l.description, suburb: l.suburb, address: l.address, startTime: l.startTime, endTime: l.endTime, priceNote: l.priceNote, organiserName: l.organiserName, date: next!, schedule: recurrenceLabel(l), recurring: l.recurrence !== 'NONE' }))
+    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
+    .filter((x, i, all) => all.findIndex((y) => localDupKey({ ...y, city: cityName }) === localDupKey({ ...x, city: cityName }) && y.startTime === x.startTime) === i)
+}
+
 /** Approved VibePeep Local listings for a topic page: one row per listing (its next date), within 60 days. */
 export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: { suburb?: string; from?: string; to?: string; ownOnly?: boolean } = {}): Promise<LandingLocal[]> {
   if (!topic?.local && opts.suburb == null && !opts.from) return []
@@ -204,7 +226,7 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
   const to = opts.to ?? addDaysStr(today, 60)
   const rows = await withStatementTimeout(8_000, (tx) => tx.localListing.findMany({
     where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, ...(opts.ownOnly ? { sourceName: null } : {}), ...(topic?.local ? { category: topic.local } : {}), ...(opts.suburb ? { suburb: { equals: opts.suburb, mode: 'insensitive' } } : {}) },
-    select: { id: true, title: true, category: true, description: true, suburb: true, address: true, startDate: true, endDate: true, startTime: true, endTime: true, recurrence: true, recurUntil: true, priceNote: true, organiserName: true },
+    select: localSelect,
     take: 400,
   })).catch((err) => {
     if (!isDbSaturation(err)) throw err
@@ -213,13 +235,8 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
   })
   const filter = topic && topic.key !== 'markets' ? TOPIC_FILTER[topic.key] : undefined
   const needsFilter = topic?.key === 'pop-up-sales'
-  return rows
-    .filter((l) => !needsFilter || !filter || filter({ title: `${l.title} ${l.description}`, subTags: [] }))
-    .map((l) => ({ l, next: occurrences(l, from, to)[0] }))
-    .filter((x) => x.next)
-    .map(({ l, next }) => ({ id: l.id, title: l.title, category: l.category, description: l.description, suburb: l.suburb, address: l.address, startTime: l.startTime, endTime: l.endTime, priceNote: l.priceNote, organiserName: l.organiserName, date: next!, schedule: recurrenceLabel(l), recurring: l.recurrence !== 'NONE' }))
-    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))
-    .filter((x, i, all) => all.findIndex((y) => localDupKey({ ...y, city: city.name }) === localDupKey({ ...x, city: city.name }) && y.startTime === x.startTime) === i)
+  const kept = rows.filter((l) => !needsFilter || !filter || filter({ title: `${l.title} ${l.description}`, subTags: [] }))
+  return presentLocalListings(kept, city.name, from, to)
 }
 
 export type LandingData = { events: LandingEvent[]; local: LandingLocal[]; total: number; from: string; to: string | null; degraded?: boolean }
@@ -413,6 +430,114 @@ export const citySuburbs = cache(async function citySuburbs(city: CityDef, min =
     if (!isDbSaturation(err)) throw err
     console.error('city suburbs skipped, database saturated', city.name, err instanceof Error ? err.message : err)
     return suburbMemo.get(key) ?? []
+  }
+})
+
+export type SuburbGuideTotal = { name: string; slug: string; count: number }
+
+/**
+ * Per-suburb totals as the suburb pages themselves print them: the
+ * shaped event count (the shared core suburbCountsFromRows counts —
+ * the same drops and showing collapse the page's list applies) plus
+ * the page's local arm (the organiser-submitted listings landingLocal
+ * surfaces for the suburb, minus any whose title a shaped event on
+ * that page already carries — landingData's own filter). The guide
+ * pages' suburb navigation used to print the guide model's inventory
+ * totals instead: one count per stored row, no showing collapse and
+ * no other-town drop, so the nav and the page disagreed (Newtown was
+ * labelled 301 beside a page printing 281). The nav now reads this
+ * construction; which suburbs are linked is unchanged.
+ */
+export function suburbGuideTotalsFromRows(eventRows: SuburbCountRow[], local: LandingLocal[], city: CityDef, min = 1): SuburbGuideTotal[] {
+  const shaped = shapeLandingRows(eventRows, city)
+  const counts = new Map<string, { name: string; count: number }>()
+  const titles = new Map<string, Set<string>>()
+  const bump = (slug: string, name: string) => {
+    const cur = counts.get(slug)
+    counts.set(slug, { name: cur?.name ?? name, count: (cur?.count ?? 0) + 1 })
+  }
+  for (const r of shaped) {
+    if (!isLandingSuburb(r.suburb, city)) continue
+    const slug = slugify(r.suburb!)
+    bump(slug, r.suburb!)
+    const set = titles.get(slug) ?? new Set<string>()
+    set.add(normTitle(r.title ?? ''))
+    titles.set(slug, set)
+  }
+  for (const l of local) {
+    if (!isLandingSuburb(l.suburb, city)) continue
+    const slug = slugify(l.suburb)
+    if (titles.get(slug)?.has(normTitle(l.title))) continue
+    bump(slug, l.suburb)
+  }
+  return [...counts].filter(([, v]) => v.count >= min).sort((a, b) => b[1].count - a[1].count).map(([slug, v]) => ({ name: v.name, slug, count: v.count }))
+}
+
+async function queryCitySuburbTotals(city: CityDef, today: string): Promise<SuburbGuideTotal[]> {
+  const { rows, truncated } = await scanInChunks((skip, take) => withStatementTimeout(8_000, (tx) => tx.event.findMany({
+    where: { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
+    select: suburbCountSelect,
+    orderBy: [{ date: 'asc' }, { time: 'asc' }, { id: 'asc' }],
+    skip,
+    take,
+  })))
+  if (truncated) throw new SuburbScanTruncatedError(city.name)
+  // The suburb pages' local arm, read city-wide in one query: the same
+  // where landingLocal applies for a suburb page (approved, organiser-
+  // submitted, unexpired) and the same row pipeline, grouped by suburb
+  // afterwards. The take is the whole city's organiser listings, not a
+  // page's 400: grouping needs every suburb's rows. (A single suburb
+  // past 400 organiser listings would make its page the smaller number
+  // — landingLocal's per-suburb cap — which no suburb is near.)
+  // Saturation is NOT caught here: a partial local read would
+  // understate suburbs silently, so it degrades the whole totals read
+  // (citySuburbTotals' fail-safe) instead.
+  const localRows = await withStatementTimeout(8_000, (tx) => tx.localListing.findMany({
+    where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, sourceName: null },
+    select: localSelect,
+    take: 4000,
+  }))
+  const local = presentLocalListings(localRows, city.name, today, addDaysKey(today, 60))
+  return suburbGuideTotalsFromRows(rows, local, city, 1)
+}
+
+const cachedSuburbTotals = unstable_cache(
+  async (cityName: string, today: string) => {
+    const city = CITIES.find((c) => c.name === cityName)
+    if (!city) return [] as SuburbGuideTotal[]
+    return queryCitySuburbTotals(city, today)
+  },
+  ['city-suburb-totals-v1'],
+  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] },
+)
+
+const suburbTotalsMemo = new Map<string, SuburbGuideTotal[]>()
+
+export interface CitySuburbTotals { ok: boolean; totals: SuburbGuideTotal[] }
+
+/**
+ * The suburb totals the guide navigation prints. `ok: false` means the
+ * read failed (a truncated scan or a saturated database) with nothing
+ * kept from earlier in this process: callers then keep the counts they
+ * already had rather than print a partial total as a page's number.
+ */
+export const citySuburbTotals = cache(async function citySuburbTotals(city: CityDef): Promise<CitySuburbTotals> {
+  const today = cityToday(city)
+  const key = `${city.name}|${today}`
+  try {
+    const totals = await cachedSuburbTotals(city.name, today)
+    suburbTotalsMemo.set(key, totals)
+    return { ok: true, totals }
+  } catch (err) {
+    if (err instanceof SuburbScanTruncatedError) {
+      console.error('city suburb totals skipped, scan truncated', city.name)
+    } else if (isDbSaturation(err)) {
+      console.error('city suburb totals skipped, database saturated', city.name, err instanceof Error ? err.message : err)
+    } else {
+      throw err
+    }
+    const kept = suburbTotalsMemo.get(key)
+    return kept ? { ok: true, totals: kept } : { ok: false, totals: [] }
   }
 })
 
