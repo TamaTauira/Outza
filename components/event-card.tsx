@@ -11,6 +11,7 @@ import { CATEGORIES } from '@/lib/categories'
 import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { formatPrice } from '@/lib/board'
+import { priceFeeNote } from '@/lib/price'
 import { displayTitle } from '@/lib/display-public'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { formatVenueLine } from '@/lib/place'
@@ -147,8 +148,11 @@ export function EventCard({ event, index, listingQuery }: { event: EventData; in
 
             {/* Price + CTA */}
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <span className="text-sm font-semibold tabular-nums text-foreground">
-                {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-semibold tabular-nums text-foreground">
+                  {price.kind === 'unknown' ? 'See website' : [price.prefix, price.value].filter(Boolean).join(' ')}
+                </span>
+                {priceFeeNote(price.kind) ? <span className="text-xs font-normal text-muted-foreground">{priceFeeNote(price.kind)}</span> : null}
               </span>
               <span className="flex items-center gap-1 text-xs font-semibold text-primary transition-all group-hover:gap-2">
                 Get tickets <ExternalLink className="w-3 h-3" />
@@ -182,7 +186,10 @@ export function EventCardRow({ event, listingQuery }: { event: EventData; listin
           <span className="truncate">{[clock, formatVenueLine({ venueName: tidyVenueName(event.venueName, event.venueAddress, event.city), suburb, city: event.city })].filter(Boolean).join(' · ')}</span>
         </span>
       </span>
-      <span className={cn('shrink-0 text-sm font-semibold tabular-nums', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{priceText}</span>
+      <span className="flex shrink-0 flex-col items-end">
+        <span className={cn('text-sm font-semibold tabular-nums', price.kind === 'free' ? 'text-free' : 'text-foreground')}>{priceText}</span>
+        {priceFeeNote(price.kind) ? <span className="text-xs font-normal text-muted-foreground">{priceFeeNote(price.kind)}</span> : null}
+      </span>
     </Link>
   )
 }
