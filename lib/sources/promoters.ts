@@ -106,9 +106,12 @@ async function loadCosEventPage(slug: string): Promise<CosDetail> {
 }
 
 /** Frontier Touring – schema.org MusicEvent JSON-LD for every tour date nationally. */
-export async function fetchFrontierEvents(): Promise<number> {
+export async function fetchFrontierEvents(): Promise<{ saved: number; more: boolean }> {
   const html = await fetchHtml('https://www.frontiertouring.com/')
-  if (!html) return 0
+  // The homepage is the whole feed. A failed fetch is zero coverage, not an
+  // empty catalogue: mark the sweep partial so the run cannot read as a
+  // completed sweep for retirement.
+  if (!html) return { saved: 0, more: true }
   let saved = 0
   const offers = frontierOffers(html)
   for (const show of frontierShowsFromHtml(html)) {
@@ -135,7 +138,7 @@ export async function fetchFrontierEvents(): Promise<number> {
     if (ok) saved++
   }
   console.log(`[frontier] saved ${saved} events`)
-  return saved
+  return { saved, more: false }
 }
 
 /** Price still comes off the raw MusicEvent. The show list is the date and the venue. */
@@ -243,9 +246,13 @@ async function saveCosHit(h: any): Promise<boolean> {
 }
 
 /** City of Sydney "What's On" guide – homepage sections plus every date the public search will return. */
-export async function fetchCityOfSydneyEvents(): Promise<number> {
+export async function fetchCityOfSydneyEvents(): Promise<{ saved: number; more: boolean }> {
   console.log('[cityofsydney] starting')
   let saved = 0
+  // Set when any window was skipped after a failed fetch or stayed truncated
+  // at a single day: the run under-covered and must not read as a completed
+  // sweep in the refresh log retirement derives from.
+  const coverage = { incomplete: false }
   const seen = new Set<string>()
   const consider = async (hits: Iterable<any>) => {
     for (const h of hits) {
@@ -261,7 +268,7 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
   const home = await fetchHtml(`${COS_ORIGIN}/`)
   if (home) await consider(cosHitsFromHtml(home))
 
-  const search = async (start: string, end: string): Promise<{ hits: any[]; truncated: boolean } | null> => {
+  const search = async (start: string, end: string): Promise<{ hits: any[]; truncated: boolean; failed?: boolean } | null> => {
     const hits: any[] = []
     let total = 0
     const size = 100
@@ -285,7 +292,10 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
         if (pageNo > 1) break
         const html = await fetchHtml(`${COS_ORIGIN}/?dates=${start},${end}`)
         const embedded = html ? cosHitsFromHtml(html) : []
-        return embedded.length ? { hits: embedded, truncated: embedded.length >= 300 } : null
+        // No API page and no embedded fallback: the fetch failed. That is a
+        // skipped window, not an empty one — say so, so the run is marked
+        // partial instead of reading as a completed sweep.
+        return embedded.length ? { hits: embedded, truncated: embedded.length >= 300 } : { hits: [], truncated: false, failed: true }
       }
       const batch: any[] = json.events ?? []
       total = Number(json.totalResults ?? hits.length + batch.length)
@@ -300,6 +310,10 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
     if (yieldIfBudget('date windows')) return
     const page = await search(start, end)
     if (!page) return
+    if (page.failed) {
+      coverage.incomplete = true
+      return
+    }
     if (page.truncated && start < end) {
       const leftEnd = cosAddDays(start, Math.floor(cosSpan(start, end) / 2))
       if (leftEnd >= start && leftEnd < end) {
@@ -308,7 +322,10 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
         return
       }
     }
-    if (page.truncated) console.warn(`[cityofsydney] ${start} still truncated at ${page.hits.length} hits`)
+    if (page.truncated) {
+      coverage.incomplete = true
+      console.warn(`[cityofsydney] ${start} still truncated at ${page.hits.length} hits`)
+    }
     await consider(page.hits)
   }
 
@@ -327,7 +344,8 @@ export async function fetchCityOfSydneyEvents(): Promise<number> {
   }
 
   console.log(`[cityofsydney] saved ${saved} events`)
-  return saved
+  if (coverage.incomplete) console.warn('[cityofsydney] run under-covered (failed or still-truncated window); marking the sweep partial')
+  return { saved, more: coverage.incomplete }
 }
 
 export { fetchHumanitixEvents } from '@/lib/sources/humanitix'
