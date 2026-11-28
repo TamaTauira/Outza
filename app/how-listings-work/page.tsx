@@ -16,7 +16,7 @@ export const metadata: Metadata = pageMeta({
 const SECTIONS: { title: string; body: string[] }[] = [
   { title: 'Where listings come from', body: [
     'We collect public event information from Ticketmaster, Moshtix, Oztix, Eventbrite, Humanitix, Frontier Touring, City of Sydney, Brisbane City Council’s open events and official venue and market websites, and from organisers who list events with us directly.',
-    'Each event page has one short line: the source, linked when we have a page, and when the listing was updated, next to the event’s times.',
+    'Each event page has one short line: the source, linked when we have a page, and when we last checked the listing, next to the event’s times.',
   ] },
   { title: 'What we never make up', body: [
     'We never invent prices, dates or ticket availability. If a source doesn’t publish a price we say so. Accessibility, age and transport details appear only when the organiser or source provides them.',
@@ -34,7 +34,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     'The same event often appears on several ticketing sites. We merge these into one listing and keep every source attached, so you can still see where the information came from.',
   ] },
   { title: 'Found a mistake?', body: [
-    'Use the small “Report a problem” link on any event page. We check reports against the original source before changing anything.',
+    'Use the small “Report incorrect details” link on any event page. We check reports against the original source before changing anything. On a VibePeep Local listing, the button is “Report this listing”, and our team reviews every report.',
     'Organisers can claim their listing for free. If your account email uses the same domain as the event’s website, the claim is accepted straight away; otherwise our team reviews it. Once the claim is accepted, you can correct details and promote the event.',
   ] },
   { title: 'Sponsored placements', body: [
