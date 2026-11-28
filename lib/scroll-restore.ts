@@ -90,9 +90,20 @@ export const BOARD_FULL_LOAD_PAGE_CAP = 8
  * every page up front, up to BOARD_FULL_LOAD_PAGE_CAP. An unwindowed
  * ('all') board states a server-derived count and pages on demand, so
  * it keeps the restoration depth, as do spanning spans (their count is
- * server-derived too) and previews (they only ever show a slice).
+ * server-derived too).
+ *
+ * A preview (previewLimit) caps the rows the board RENDERS, never the
+ * pages it loads: the stated count sits above the preview exactly as it
+ * sits above the full board, so a windowed preview that loaded only a
+ * slice would publish the slice's partial count. That is the homepage's
+ * collapsed board — the site's main count line — which settled on page
+ * 1's 296 against the open board's 373 in the post-release check on
+ * PR #308, whose full load exempted previews. Loading the whole set
+ * while collapsed also makes opening the board free: the same component
+ * instance flips previewLimit off with the set already held, so the
+ * count cannot change or flash on the flip.
  */
-export function boardPagesToLoad(input: { saved: number | null; totalPages: number; spanning: boolean; preview: boolean; windowed: boolean }): number {
-  if (!input.spanning && !input.preview && input.windowed && input.totalPages > 0) return Math.min(input.totalPages, BOARD_FULL_LOAD_PAGE_CAP)
+export function boardPagesToLoad(input: { saved: number | null; totalPages: number; spanning: boolean; windowed: boolean }): number {
+  if (!input.spanning && input.windowed && input.totalPages > 0) return Math.min(input.totalPages, BOARD_FULL_LOAD_PAGE_CAP)
   return listDepthToLoad(input.saved, input.totalPages)
 }

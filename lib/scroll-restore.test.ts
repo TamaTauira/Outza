@@ -37,29 +37,40 @@ test('paged lists reload the pages that were open, and stop at the last page', (
 test('a windowed single-day board loads every page, so a time window counts its whole set', () => {
   // The landing 'now' window and the Today preset read the same day; with
   // only page 1 held, the windowed count understated it (297 vs 416).
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 2, spanning: false, preview: false, windowed: true }), 2)
-  assert.equal(boardPagesToLoad({ saved: null, totalPages: 3, spanning: false, preview: false, windowed: true }), 3)
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 1, spanning: false, preview: false, windowed: true }), 1)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 2, spanning: false, windowed: true }), 2)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 3, spanning: false, windowed: true }), 3)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 1, spanning: false, windowed: true }), 1)
 })
 
 test('the windowed full load stops at the page ceiling', () => {
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 40, spanning: false, preview: false, windowed: true }), BOARD_FULL_LOAD_PAGE_CAP)
-  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, preview: false, windowed: true }), 1)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 40, spanning: false, windowed: true }), BOARD_FULL_LOAD_PAGE_CAP)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, windowed: true }), 1)
 })
 
 test('an unwindowed single-day board keeps the restoration depth and pages on demand', () => {
   // The 'all' board states a server-derived count, so loading every page
   // up front would buy nothing.
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, preview: false, windowed: false }), 1)
-  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: false, preview: false, windowed: false }), 3)
-  assert.equal(boardPagesToLoad({ saved: 40, totalPages: 40, spanning: false, preview: false, windowed: false }), 8)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: false }), 1)
+  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: false, windowed: false }), 3)
+  assert.equal(boardPagesToLoad({ saved: 40, totalPages: 40, spanning: false, windowed: false }), 8)
 })
 
-test('spanning spans and previews keep the restoration depth', () => {
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: true, preview: false, windowed: true }), 1)
-  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: true, preview: false, windowed: false }), 3)
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, preview: true, windowed: true }), 1)
-  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, preview: false, windowed: false }), 1)
+test('spanning spans keep the restoration depth', () => {
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: true, windowed: true }), 1)
+  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: true, windowed: false }), 3)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, windowed: false }), 1)
+})
+
+test('a preview is not a load exemption: the decision takes no preview input', () => {
+  // The homepage's collapsed board (previewLimit set) publishes the same
+  // windowed count line as the open board. While the load decision
+  // treated a preview as a slice, the landing headline settled on page
+  // 1's partial sum (296) against the open board's full-set count (373).
+  // previewLimit caps the rows rendered, never the pages loaded, so the
+  // calls EventList makes are identical whether the board is collapsed
+  // or open — the windowed cases above are the collapsed board's too.
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: true }), 4)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: false }), 1)
 })
 
 test('board, local, saved, itinerary and city landings are lists; an event page is not', () => {

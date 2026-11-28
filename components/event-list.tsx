@@ -218,7 +218,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     // bound it, which the count gate below reads. A failed append stops
     // the load without recording a completion — the gate stays on.
     const loadRest = async (totalPages: number) => {
-      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, preview: previewLimit != null, windowed: requestedWindow !== 'all' })
+      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, windowed: requestedWindow !== 'all' })
       for (let n = 2; n <= pages && !cancelled; n++) {
         const more = await fetchSpan(span.from, span.to, n, true)
         if (!more || cancelled) return
@@ -265,14 +265,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setPage(1)
     const first = await fetchSpan(span.from, span.to, 1, false)
     if (!first) return
-    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, preview: previewLimit != null, windowed: requestedWindow !== 'all' })
+    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, windowed: requestedWindow !== 'all' })
     for (let n = 2; n <= pages; n++) {
       const more = await fetchSpan(span.from, span.to, n, true)
       if (!more) return
       setPage(n)
     }
     setCappedKey(pages < first.totalPages ? queryKey : null)
-  }, [span, fetchSpan, previewLimit, requestedWindow, queryKey])
+  }, [span, fetchSpan, requestedWindow, queryKey])
 
   useEffect(() => {
     if (!offline || !span) return
@@ -430,8 +430,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // page ceiling bound the load, the held set can never complete, and
   // the headline falls back to the server's full-set numbers for the
   // span rather than ever publishing the partial sum.
+  // The gate and the full load apply to the collapsed preview board
+  // too: its summary line is the same count line (on the homepage it is
+  // the site's main one), so it loads the whole set and holds "…"
+  // until the set lands. #308 exempted previews from both, and its
+  // post-release check caught the landing headline settled on page 1's
+  // partial sum (296) while the open board stated the full windowed
+  // count (373).
   const countGate = boardCountGate({
-    windowed: !span?.spanning && previewLimit == null && (windowRank != null || effectiveWindow === 'hour'),
+    windowed: !span?.spanning && (windowRank != null || effectiveWindow === 'hour'),
     heldPages: page,
     totalPages,
     capped: cappedKey !== null && cappedKey === queryKey,
