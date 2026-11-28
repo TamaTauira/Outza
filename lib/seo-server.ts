@@ -224,6 +224,26 @@ export async function landingLocal(city: CityDef, topic: TopicDef | null, opts: 
 
 export type LandingData = { events: LandingEvent[]; local: LandingLocal[]; total: number; from: string; to: string | null; degraded?: boolean }
 
+export type GuideListMode = 'list' | 'empty' | 'omitted'
+
+/**
+ * What a guide page's list section may claim, decided in one place so the
+ * section can never contradict the headline the same render prints:
+ * 'list' when there is anything to show; 'empty' only for a successful
+ * read that genuinely found nothing (no listings and a zero total);
+ * 'omitted' when the read failed — a degraded result carries no listings,
+ * but a failed load is not an empty city, so the section is left out of
+ * that render rather than dressed in the empty state. A positive total
+ * with no listings is not a successful empty either: the two figures
+ * would contradict each other, so the section is omitted until a render
+ * agrees with itself.
+ */
+export function guideListMode(input: { events: number; local: number; total: number; degraded?: boolean }): GuideListMode {
+  if (input.events > 0 || input.local > 0) return 'list'
+  if (input.degraded || input.total > 0) return 'omitted'
+  return 'empty'
+}
+
 /** Everything a city/topic page shows: board events plus matching VibePeep Local listings. */
 export const landingData = cache(async function landingData(city: CityDef, topic: TopicDef | null, suburb?: string, take = 60, when?: WhenKey, range?: { from: string; to: string }): Promise<LandingData> {
   const ev = await landingEvents(city, { topic: topic?.key, suburb, when, range }, take)

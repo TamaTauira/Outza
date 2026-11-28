@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react'
 import { boardDisplayName, CITY_NAMES, type CityDef } from '@/lib/cities'
 import { formatGuideDay, whenPhrase } from '@/lib/local-seo'
 import { cityPath, suburbPath, type GuideFact, type TopicDef, type TopicKey, type WhenKey } from '@/lib/seo'
-import { guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
+import { guideListMode, guideStructuredData, jsonLdString, type LandingEvent, type LandingLocal } from '@/lib/seo-server'
 import { isLandingPath } from '@/lib/landing-attribution'
 import { PageShell } from '@/components/page-shell'
 import { EventCard, GuideEventList } from '@/components/event-card'
@@ -33,6 +33,8 @@ export function GuideLanding(props: {
   events: LandingEvent[]
   local: LandingLocal[]
   total: number
+  /** True when the read behind this page failed (DB saturation or a capped gather): the list section must not present that as an empty city. */
+  degraded: boolean
   from: string
   to: string | null
   suburbs: { name: string; slug: string; count: number }[]
@@ -46,7 +48,7 @@ export function GuideLanding(props: {
   editorial?: { paragraphs: string[]; more?: { href: string; label: string } } | null
   seasons?: { href: string; title: string }[]
 }) {
-  const { city, topic, suburb, when, heading, blurb, coverage, path, origin, events, local, total, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
+  const { city, topic, suburb, when, heading, blurb, coverage, path, origin, events, local, total, degraded, from, to, suburbs, guides, activeGuide, otherCities, facts, refreshed, related, crumbs, editorial, seasons } = props
   // Counts name the place the total covers: the suburb when one is selected,
   // otherwise the board's display name (Sydney's is its NSW Coast region name).
   const placeName = suburb ?? boardDisplayName(city.name)
@@ -65,6 +67,12 @@ export function GuideLanding(props: {
   const freeShown = listed.filter((e) => e.isFree && !/\$\s*[1-9]/.test(e.price ?? '')).length
   const showRange = (when != null || topic?.key === 'this-weekend') && !!to
   const ld = guideStructuredData({ origin, path, heading, description: blurb, city, crumbs, events, local, total, refreshed, facts })
+  // A failed read (degraded) leaves the list section out of this render
+  // entirely: "It's quiet" is a claim about the city, and a load failure
+  // is not an empty city. The empty state is only for a successful read
+  // that genuinely found nothing (guideListMode also refuses it whenever
+  // the headline total is positive, so the two can never contradict).
+  const listMode = guideListMode({ events: events.length, local: local.length, total, degraded })
 
   return (
     <PageShell>
@@ -139,12 +147,12 @@ export function GuideLanding(props: {
           Plan the day in {city.name} from the <Link href={cityPath(city)} className="text-primary underline">board</Link>, then save the stops you want.
         </p>
 
-        {events.length === 0 && local.length === 0 ? (
+        {listMode === 'empty' ? (
           <div className="mt-12 rounded-xl bg-card p-8 text-center">
             <h2 className="font-display text-xl font-semibold">It’s quiet… for now.</h2>
             <p className="mt-2 text-muted-foreground">New listings land daily. In the meantime, browse <Link href={cityPath(city)} className="text-primary underline">all events in {city.name}</Link>.</p>
           </div>
-        ) : (
+        ) : listMode === 'list' ? (
           <div className="mt-10 space-y-10">
             {events.length > 0 && <div className="vp-guide-rows mt-0 overflow-hidden rounded-xl border border-border bg-card">
               <GuideEventList listingQuery={listingQuery} events={events.map((e) => ({ ...e, date: e.date.toISOString(), imageAsset: e.imageAsset as any }))} />
@@ -182,7 +190,7 @@ export function GuideLanding(props: {
               <p className="text-center text-muted-foreground">Showing the next {events.length} of {total}. <Link href="/" className="text-primary underline">Open the full board</Link> to filter by date, category and price.</p>
             )}
           </div>
-        )}
+        ) : null}
 
         {seasons && seasons.length > 0 && (
           <section className="mt-12" aria-labelledby="seasons">

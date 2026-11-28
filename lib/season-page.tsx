@@ -75,6 +75,7 @@ export async function SeasonPage({ citySlug, seasonSlug }: { citySlug: string; s
       events={data.events}
       local={data.local}
       total={data.total}
+      degraded={!!data.degraded}
       from={data.from}
       to={data.to}
       suburbs={[]}
