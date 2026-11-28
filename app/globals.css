@@ -567,6 +567,19 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
     color: hsl(var(--foreground));
   }
   .vp-price.is-free { color: hsl(var(--free)); }
+  /* Fee note travelling with a paid price on the fixed-height mobile row:
+     subordinate to the price, ellipsised when the row runs out of room. */
+  .vp-fee-note {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 20px;
+    color: hsl(var(--muted-foreground));
+  }
   .vp-mrow-chip { flex: 0 1 auto; }
 
   .vp-board-grid {
