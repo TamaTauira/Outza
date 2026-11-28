@@ -25,7 +25,7 @@ import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
-import { boardCountGate, boardDataIsStale, boardQueryKey } from '@/lib/board-query'
+import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey } from '@/lib/board-query'
 export type BoardSeed = {
   city: string
   from: string
@@ -218,7 +218,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     // bound it, which the count gate below reads. A failed append stops
     // the load without recording a completion — the gate stays on.
     const loadRest = async (totalPages: number) => {
-      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, windowed: requestedWindow !== 'all' })
+      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, windowed: boardLoadIsWindowed({ requestedWindow, windowPinned }) })
       for (let n = 2; n <= pages && !cancelled; n++) {
         const more = await fetchSpan(span.from, span.to, n, true)
         if (!more || cancelled) return
@@ -265,14 +265,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setPage(1)
     const first = await fetchSpan(span.from, span.to, 1, false)
     if (!first) return
-    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, windowed: requestedWindow !== 'all' })
+    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, windowed: boardLoadIsWindowed({ requestedWindow, windowPinned }) })
     for (let n = 2; n <= pages; n++) {
       const more = await fetchSpan(span.from, span.to, n, true)
       if (!more) return
       setPage(n)
     }
     setCappedKey(pages < first.totalPages ? queryKey : null)
-  }, [span, fetchSpan, requestedWindow, queryKey])
+  }, [span, fetchSpan, requestedWindow, windowPinned, queryKey])
 
   useEffect(() => {
     if (!offline || !span) return
@@ -446,8 +446,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // post-release check caught the landing headline settled on page 1's
   // partial sum (296) while the open board stated the full windowed
   // count (373).
+  // The gate and the load take their `windowed` from the same
+  // decision (boardLoadIsWindowed): the requested window, or any
+  // window at all when unpinned — an unpinned board's effective
+  // window is picked by the fallback chain above once rows land, and
+  // can land on 'evening' over an 'all' request. Reading the load
+  // from the request alone left that promotion gated over a
+  // depth-loaded set, with no load left to release it.
   const countGate = boardCountGate({
-    windowed: !span?.spanning && (windowRank != null || effectiveWindow === 'hour'),
+    windowed: !span?.spanning && boardLoadIsWindowed({ requestedWindow, windowPinned }),
     heldPages: page,
     totalPages,
     capped: cappedKey !== null && cappedKey === queryKey,
