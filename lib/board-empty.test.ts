@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { boardGenuinelyEmpty, quietBoardCopy } from './board-empty'
+
+const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8')
 
 // The quiet-city empty state may only speak when the board's query
 // has genuinely returned nothing for the selected city. A load that
@@ -101,4 +104,19 @@ test('a blank search is no search', () => {
     quietBoardCopy({ place: 'Perth', window: 'all', search: '   ' }).headline,
     `Quiet one in Perth today — even the city's having a night in.`,
   )
+})
+
+// The renderer lives in components/event-list.tsx (QuietBoard); pin
+// its shape at source level, in the style of the repo's other source
+// pins: the Local call to action is one shared button, rendered by
+// BOTH layouts — the weekend preview and the fallback — so the
+// fallback's "take a peep at VibePeep Local" is never left as
+// unlinked prose with no way to act on it in the emptiest case.
+test('both quiet-state layouts render the same Local button', () => {
+  const src = read('../components/event-list.tsx')
+  const quiet = src.slice(src.indexOf('function QuietBoard'))
+  assert.match(quiet, /const localButton = \(/)
+  assert.match(quiet, /<a href="\/local"[^>]*>Take a peep at VibePeep Local<\/a>/)
+  // Defined once above the branch, rendered once per layout.
+  assert.equal(quiet.split('{localButton}').length - 1, 2)
 })

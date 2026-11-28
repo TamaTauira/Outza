@@ -114,7 +114,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // The weekend rows the quiet-city empty state previews (see
   // boardGenuinelyEmpty), keyed by the city and weekend span they were
   // fetched for so a stale peek is never presented under a new board.
-  const [weekendPeek, setWeekendPeek] = useState<{ key: string; events: BoardEvent[] } | null>(null)
+  // The response's own total rides along: the preview bar counts the
+  // whole weekend, not just the handful of rows the preview shows.
+  const [weekendPeek, setWeekendPeek] = useState<{ key: string; events: BoardEvent[]; total?: number } | null>(null)
   // The rows on screen must belong to the city the heading names. The heading
   // and picker follow HomeClient's resolved city the moment it lands, but this
   // list used to keep whatever it already held — the Sydney server seed, or a
@@ -261,9 +263,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     let cancelled = false
     ;(async () => {
       const params = new URLSearchParams({ page: '1', limit: String(WEEKEND_PEEK_LIMIT), dateFrom: range.from, dateTo: range.to, city })
-      const result = await readJson<{ events?: BoardEvent[] }>(`/api/events?${params.toString()}`)
+      const result = await readJson<{ events?: BoardEvent[]; total?: number }>(`/api/events?${params.toString()}`)
       if (cancelled || !result.ok) return
-      setWeekendPeek({ key, events: (result.data?.events ?? []).slice(0, WEEKEND_PEEK_LIMIT) })
+      setWeekendPeek({ key, events: (result.data?.events ?? []).slice(0, WEEKEND_PEEK_LIMIT), total: result.data?.total })
     })()
     return () => { cancelled = true }
   }, [boardZero, city, weekendPeek])
@@ -697,11 +699,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const weekendNow = boardZero && city ? weekendRange(cityDef(city)) : null
   const weekendKey = weekendNow ? `${city}|${weekendNow.from}|${weekendNow.to}` : null
   const weekendEvents = weekendPeek && weekendKey && weekendPeek.key === weekendKey ? weekendPeek.events : null
+  // The preview bar counts the whole weekend — the peek response's
+  // own total — not just the rows the preview shows; a response
+  // without a total falls back to the shown rows' count.
+  const weekendCount = weekendEvents ? weekendPeek?.total ?? weekendEvents.length : 0
   const weekendRows = weekendEvents && weekendEvents.length > 0
     ? showRows(weekendEvents.map((ev) => ({ ev, status: getStatus(ev, String(ev.date).slice(0, 10), today, nowMinutes), showDate: dayLabel(String(ev.date).slice(0, 10), today) })))
     : null
   const quietBoard = quietCopy ? (
-    <QuietBoard headline={quietCopy.headline} body={quietCopy.body} weekendRows={weekendRows} weekendCount={weekendEvents?.length ?? 0} />
+    <QuietBoard headline={quietCopy.headline} body={quietCopy.body} weekendRows={weekendRows} weekendCount={weekendCount} />
   ) : null
   return (
     <div>
@@ -878,10 +884,16 @@ function PeepEmpty({ title, body, action }: { title: string; body: string; actio
  * preview of it under its own label and the VibePeep Local button
  * (the board city's Local board: /local resolves the same stored
  * city the board itself is showing). With no weekend rows to show,
- * it falls back to the headline and the full copy, Local nudge
- * included, and no button.
+ * it falls back to the headline and the full copy — with the same
+ * Local button under it, so the state's call to action is a real
+ * link in both layouts, never unlinked prose in the emptiest case.
  */
 function QuietBoard({ headline, body, weekendRows, weekendCount }: { headline: string; body: string; weekendRows: ReactNode | null; weekendCount: number }) {
+  const localButton = (
+    <div className="flex justify-center px-4 py-5">
+      <a href="/local" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Take a peep at VibePeep Local</a>
+    </div>
+  )
   return (
     <div>
       <div className="px-4 pt-8 text-center">
@@ -895,12 +907,13 @@ function QuietBoard({ headline, body, weekendRows, weekendCount }: { headline: s
             <span className="h-px flex-1 bg-primary/25" />
           </div>
           {weekendRows}
-          <div className="flex justify-center px-4 py-5">
-            <a href="/local" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Take a peep at VibePeep Local</a>
-          </div>
+          {localButton}
         </>
       ) : (
-        <p className="mx-auto max-w-sm px-4 pb-8 pt-1 text-center text-sm text-muted-foreground">{body}</p>
+        <>
+          <p className="mx-auto max-w-sm px-4 pt-1 text-center text-sm text-muted-foreground">{body}</p>
+          {localButton}
+        </>
       )}
     </div>
   )
