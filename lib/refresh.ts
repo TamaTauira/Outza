@@ -1,4 +1,5 @@
 import { prisma, runWithJobPrisma } from '@/lib/prisma'
+import { runRetirementPass, RETIREMENT_PASS_BUDGET_MS } from '@/lib/retirement'
 import { fetchTicketmasterEvents } from '@/lib/ticketmaster'
 import { fetchEventbriteEvents } from '@/lib/sources/eventbrite'
 import { fetchFrontierEvents, fetchCityOfSydneyEvents, fetchHumanitixEvents } from '@/lib/sources/promoters'
@@ -354,6 +355,12 @@ async function finalizeCycle(): Promise<RefreshResult> {
   })
   console.log(`[refresh] cycle ${status}: ${cycle.eventsAdded} events, missing=${cycle.missing.length}, failed=${cycle.failed.length}, budget=${cycle.warned.length}`)
   const postErrors = await runPostSteps()
+  // Retirement reads the finished chunks back from the log ledger, so it runs
+  // after the post-steps it must not starve. Its own budget keeps it inside
+  // the finalize invocation; a failure here never fails the cycle.
+  const retirement = await runWithSourceBudget('Retirement pass', RETIREMENT_PASS_BUDGET_MS, () => runRetirementPass())
+  if (retirement.error) postErrors.push(`Retirement pass: ${retirement.error.message}`)
+  else if (retirement.timedOut) postErrors.push('Retirement pass: time budget reached')
   if (postErrors.length) {
     await prisma.refreshLog.update({
       where: { id: log.id },
