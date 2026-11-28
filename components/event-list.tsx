@@ -25,6 +25,7 @@ import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
+import { boardDataIsStale, boardQueryKey } from '@/lib/board-query'
 export type BoardSeed = {
   city: string
   from: string
@@ -73,6 +74,22 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     && !!span
     && span.from === initialBoard.from
     && span.to === initialBoard.to
+  // The identity of the query the board is currently asking for, in the
+  // same terms fetchSpan fetches by. Held rows and totals are only ever
+  // presented under the query that loaded them (see staleQuery below).
+  const queryKey = span
+    ? boardQueryKey({
+      from: span.from,
+      to: span.to,
+      city,
+      search: searchQuery,
+      categories: knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : []),
+      subTag: filters.subTag,
+      suburb: filters.suburb,
+      isFree: filters.isFree,
+      isLGBTI: filters.isLGBTI,
+    })
+    : null
   const [events, setEvents] = useState<BoardEvent[]>(initialBoard && seedMatches ? initialBoard.events : [])
   const [total, setTotal] = useState(initialBoard && seedMatches ? initialBoard.total : 0)
   const [endedTotal, setEndedTotal] = useState(initialBoard && seedMatches ? initialBoard.endedTotal ?? 0 : 0)
@@ -85,6 +102,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // presented under the selected city's name when the two match — see
   // staleCity below.
   const [dataCity, setDataCity] = useState<string | null>(initialBoard && seedMatches ? initialBoard.city : null)
+  // The query key the held rows and total were loaded under, recorded by
+  // every successful fetch (and by the seed application below).
+  const [dataKey, setDataKey] = useState<string | null>(initialBoard && seedMatches ? queryKey : null)
   // The rows on screen must belong to the city the heading names. The heading
   // and picker follow HomeClient's resolved city the moment it lands, but this
   // list used to keep whatever it already held — the Sydney server seed, or a
@@ -102,6 +122,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setPage(1)
     setLoading(true)
     setDataCity(null)
+    setDataKey(null)
   }
   // Held data loaded for another city is stale the moment the selection
   // moves on, whatever path put it there (a fetch or seed application that
@@ -109,6 +130,17 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // loading state — the summary shows no number and no rows render — until
   // this city's fetch lands.
   const staleCity = cityDataIsStale(dataCity, city, events.length + total)
+  // The same treatment for the query itself. When the span or a filter
+  // moves, the held rows and total still belong to the previous query
+  // until the new query's fetch lands — but the summary kept publishing
+  // that previous total in the meantime, with the date-range suffix
+  // withheld until loading finished, so a bare count for the old query
+  // showed first and the count and suffix only updated together at the
+  // end (Today -> This weekend: the old total, then the span's). While
+  // the held data is stale for the current query, the list presents its
+  // loading state, exactly as it does for a stale city. A load-more for
+  // the same query keeps its key, so the count stays stable across it.
+  const staleQuery = queryKey !== null && boardDataIsStale(dataKey, queryKey, events.length + total)
   const listed = events
   const railSkip = useMemo(() => new Set(excludeIds), [excludeIds])
   const [loadingMore, setLoadingMore] = useState(false)
@@ -129,6 +161,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       if (searchQuery) params.set('search', searchQuery)
       if (city) params.set('city', city)
       const cats = knownCategories(filters.categories?.length ? filters.categories : filters.category ? [filters.category] : [])
+      const requestKey = boardQueryKey({ from, to, city, search: searchQuery, categories: cats, subTag: filters.subTag, suburb: filters.suburb, isFree: filters.isFree, isLGBTI: filters.isLGBTI })
       if (cats.length === 1) params.set('category', cats[0])
       else if (cats.length > 1) params.set('categories', cats.join(','))
       if (filters.subTag) params.set('subTag', filters.subTag)
@@ -149,6 +182,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       setTotal(data?.total ?? 0)
       setEndedTotal(data?.endedTotal ?? 0)
       setDataCity(city ?? '')
+      setDataKey(requestKey)
       setTotalPages(totalPages)
       setOffline(false)
       return { totalPages }
@@ -177,6 +211,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           setTotal(initialBoard.total)
           setEndedTotal(initialBoard.endedTotal ?? 0)
           setDataCity(initialBoard.city)
+          setDataKey(queryKey)
           setTotalPages(initialBoard.totalPages)
           setPage(1)
           setLoading(false)
@@ -206,7 +241,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       fetchSeq.current += 1
       release()
     }
-  }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard, city])
+  }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard, city, queryKey])
 
   useEffect(() => {
     if (!offline || !span) return
@@ -366,7 +401,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     : effectiveWindow === 'hour'
       ? timed.length + untimed.length
       : hideEnded ? total - endedTotal : total
-  useEffect(() => { onListedCount?.(staleCity ? 0 : listedCount) }, [listedCount, staleCity, onListedCount])
+  useEffect(() => { onListedCount?.(staleCity || staleQuery ? 0 : listedCount) }, [listedCount, staleCity, staleQuery, onListedCount])
   const previewFlat = previewLimit == null ? null : (() => {
     const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
     const push = (list: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
@@ -442,7 +477,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     )
   }
 
-  const firstLoad = (loading && events.length === 0) || staleCity
+  const firstLoad = (loading && events.length === 0) || staleCity || staleQuery
   // The summary names the selected area group when one is picked (e.g.
   // 'Newcastle & the Hunter' on the Sydney board), else the board city's
   // display name (the NSW Coast region on the Sydney board).
@@ -461,9 +496,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
         <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
-        {span?.spanning && !loading && !staleCity && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
-        {!loading && !staleCity && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
-        {isToday && !staleCity && endedTotal > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
+        {span?.spanning && !loading && !staleCity && !staleQuery && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
+        {!loading && !staleCity && !staleQuery && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
+        {isToday && !staleCity && !staleQuery && endedTotal > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
           <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
             <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
             Show ended ({endedTotal})
@@ -574,7 +609,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         })
       )}
 
-      {!loading && !staleCity && previewLimit == null && page < totalPages && span && (
+      {!loading && !staleCity && !staleQuery && previewLimit == null && page < totalPages && span && (
         <div className="flex justify-center py-5 border-t border-border">
           <button
             onClick={() => { const n = page + 1; setPage(n); fetchSpan(span.from, span.to, n, true) }}
@@ -588,7 +623,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
 
       {/* All-day / untimed */}
-      {!loading && !staleCity && !windowRank && untimed.length > 0 && (
+      {!loading && !staleCity && !staleQuery && !windowRank && untimed.length > 0 && (
         <div className="border-t border-border">
           <button onClick={() => setAllDayOpen((o) => !o)} className="w-full flex items-center gap-3 px-3 sm:px-5 py-3.5 text-left hover:bg-muted/50" aria-expanded={allDayOpen}>
             <Sparkles className="w-4 h-4 text-muted-foreground" />
