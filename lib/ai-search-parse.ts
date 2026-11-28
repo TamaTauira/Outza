@@ -250,7 +250,26 @@ function stemKeyword(w: string): string {
   if (w === 'exhibitions') return 'exhibition'
   if (w === 'theatres' || w === 'theaters' || w === 'theater') return 'theatre'
   if (w === 'festivals') return 'festival'
-  return w
+  return singularise(w)
+}
+
+/**
+ * Ordinary plurals: nightclubs → nightclub, sets → set, gigs → gig, concerts → concert.
+ * The SQL match is a substring scan, so the needle has to be the singular a title
+ * actually carries — "nightclubs" never appears inside "Nightclub".
+ * Words that merely end in "s" are left alone: glass, bass (ss), chorus, status (us),
+ * paris, tennis (is), canvas (as). And a stem that is not a word (movies → movi)
+ * matches nothing at all, so -ies words outside the -y plurals keep their plural form.
+ */
+function singularise(w: string): string {
+  if (w.length <= 3 || !w.endsWith('s')) return w
+  if (/(?:ss|us|is|as)$/.test(w)) return w
+  if (w.endsWith('ies')) {
+    if (/(?:ties|dies)$/.test(w)) return `${w.slice(0, -3)}y`
+    return w
+  }
+  if (/(?:ches|shes|xes|sses)$/.test(w)) return w.slice(0, -2)
+  return w.slice(0, -1)
 }
 
 function nextWeekday(today: string, target: number): string {
@@ -388,7 +407,7 @@ export function normalise(raw: any, today: string, explicitDates = false): AiFil
   if (!city && suburbCity) { city = suburbCity; suburb = '' }
   const cityWords = new Set(city.toLowerCase().split(/\s+/).filter(Boolean))
   const keywords = (Array.isArray(raw?.keywords) ? raw.keywords : [])
-    .map((k: unknown) => clean(k, 30))
+    .map((k: unknown) => stemKeyword(clean(k, 30).toLowerCase()))
     .filter((k: string) => {
       const l = k.toLowerCase()
       if (k.length <= 1 || GENERIC.has(l) || SOFT.has(l) || cityWords.has(l)) return false
