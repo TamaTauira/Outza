@@ -25,7 +25,7 @@ import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
-import { boardDataIsStale, boardQueryKey } from '@/lib/board-query'
+import { boardCountGate, boardDataIsStale, boardQueryKey } from '@/lib/board-query'
 export type BoardSeed = {
   city: string
   from: string
@@ -105,6 +105,11 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // The query key the held rows and total were loaded under, recorded by
   // every successful fetch (and by the seed application below).
   const [dataKey, setDataKey] = useState<string | null>(initialBoard && seedMatches ? queryKey : null)
+  // The query whose first load stopped at the page ceiling (see
+  // boardPagesToLoad): its held set can never complete, so its windowed
+  // headline falls back to the server's full-set numbers rather than
+  // publishing a partial count (see boardCountGate).
+  const [cappedKey, setCappedKey] = useState<string | null>(null)
   // The rows on screen must belong to the city the heading names. The heading
   // and picker follow HomeClient's resolved city the moment it lands, but this
   // list used to keep whatever it already held — the Sydney server seed, or a
@@ -123,6 +128,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setLoading(true)
     setDataCity(null)
     setDataKey(null)
+    setCappedKey(null)
   }
   // Held data loaded for another city is stale the moment the selection
   // moves on, whatever path put it there (a fetch or seed application that
@@ -197,12 +203,29 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     }
   }, [searchQuery, city, filters.category, filters.categories, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI])
 
+  const isToday = !!day && day === today
+  const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'
+
   useEffect(() => {
     if (!span || authStatus === 'loading') return
     let cancelled = false
     const release = holdScrollRestore('board-list')
     // Read before the depth writer below replaces a saved page count with 1.
     const depthWanted = isHistoryNav() ? readListDepth() : 1
+    // The remaining pages of this span's first load, fetched in order. A
+    // windowed board loads every page (to the ceiling) so its stated
+    // count covers the whole set; the load records whether the ceiling
+    // bound it, which the count gate below reads. A failed append stops
+    // the load without recording a completion — the gate stays on.
+    const loadRest = async (totalPages: number) => {
+      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, preview: previewLimit != null, windowed: requestedWindow !== 'all' })
+      for (let n = 2; n <= pages && !cancelled; n++) {
+        const more = await fetchSpan(span.from, span.to, n, true)
+        if (!more || cancelled) return
+        setPage(n)
+      }
+      if (!cancelled) setCappedKey(pages < totalPages ? queryKey : null)
+    }
     ;(async () => {
       try {
         // Anonymous visitors use the server-rendered day. Signed-in visitors refetch for their own flags.
@@ -215,23 +238,13 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           setTotalPages(initialBoard.totalPages)
           setPage(1)
           setLoading(false)
-          const pages = boardPagesToLoad({ saved: depthWanted, totalPages: initialBoard.totalPages, spanning: span.spanning, preview: previewLimit != null })
-          for (let n = 2; n <= pages && !cancelled; n++) {
-            const more = await fetchSpan(span.from, span.to, n, true)
-            if (!more || cancelled) return
-            setPage(n)
-          }
+          await loadRest(initialBoard.totalPages)
           return
         }
         setPage(1)
         const first = await fetchSpan(span.from, span.to, 1, false)
         if (!first || cancelled) return
-        const pages = boardPagesToLoad({ saved: depthWanted, totalPages: first.totalPages, spanning: span.spanning, preview: previewLimit != null })
-        for (let n = 2; n <= pages && !cancelled; n++) {
-          const more = await fetchSpan(span.from, span.to, n, true)
-          if (!more || cancelled) return
-          setPage(n)
-        }
+        await loadRest(first.totalPages)
       } finally {
         release()
       }
@@ -243,12 +256,30 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     }
   }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard, city, queryKey])
 
+  // A retry after a dropped connection re-runs the whole first load —
+  // page 1 and every planned page after it — so a windowed board whose
+  // appends were stranded mid-load completes its set instead of sitting
+  // on the partial rows the page-1 refetch alone brought back.
+  const reloadInitial = useCallback(async () => {
+    if (!span) return
+    setPage(1)
+    const first = await fetchSpan(span.from, span.to, 1, false)
+    if (!first) return
+    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, preview: previewLimit != null, windowed: requestedWindow !== 'all' })
+    for (let n = 2; n <= pages; n++) {
+      const more = await fetchSpan(span.from, span.to, n, true)
+      if (!more) return
+      setPage(n)
+    }
+    setCappedKey(pages < first.totalPages ? queryKey : null)
+  }, [span, fetchSpan, previewLimit, requestedWindow, queryKey])
+
   useEffect(() => {
     if (!offline || !span) return
     const retry = createReconnectRetry()
-    armReconnect(retry, () => { void fetchSpan(span.from, span.to, 1, false) })
+    armReconnect(retry, () => { void reloadInitial() })
     return () => retry.stop()
-  }, [offline, span, fetchSpan])
+  }, [offline, span, reloadInitial])
 
   useEffect(() => { writeListDepth(page) }, [page])
 
@@ -258,9 +289,6 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     const visible = [...nodes].find((el) => el.getClientRects().length > 0)
     visible?.scrollIntoView({ block: 'center' })
   }, [activeId])
-
-  const isToday = !!day && day === today
-  const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'
 
   const countFor = (list: BoardEvent[], w: TimeWindow) => {
     const dayKey = day ?? today ?? ''
@@ -394,14 +422,31 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // full shaped set for these filters — less the ended rows in that
   // same server set while they are hidden, so the stated count equals
   // the rows the visitor can scroll to at any page depth.
-  const listedCount = windowRank
-    ? effectiveWindow === 'now'
-      ? nowSections.reduce((n, section) => n + section.rows.length, 0)
-      : eveningGroups.reduce((n, group) => n + group.rows.length, 0) + windowRank.possibly.length
-    : effectiveWindow === 'hour'
-      ? timed.length + untimed.length
-      : hideEnded ? total - endedTotal : total
-  useEffect(() => { onListedCount?.(staleCity || staleQuery ? 0 : listedCount) }, [listedCount, staleCity, staleQuery, onListedCount])
+  // A windowed count is a sum over the held rows, so it may only be
+  // published once the first load has fetched every page of the span —
+  // until then it would be a partial sum that grows as the appends land.
+  // The gate holds the summary on its loading treatment and reports 0
+  // to the parent, exactly as a stale query does. When the first load's
+  // page ceiling bound the load, the held set can never complete, and
+  // the headline falls back to the server's full-set numbers for the
+  // span rather than ever publishing the partial sum.
+  const countGate = boardCountGate({
+    windowed: !span?.spanning && previewLimit == null && (windowRank != null || effectiveWindow === 'hour'),
+    heldPages: page,
+    totalPages,
+    capped: cappedKey !== null && cappedKey === queryKey,
+  })
+  const countGated = countGate === 'gated'
+  const listedCount = countGate === 'fallback'
+    ? hideEnded ? total - endedTotal : total
+    : windowRank
+      ? effectiveWindow === 'now'
+        ? nowSections.reduce((n, section) => n + section.rows.length, 0)
+        : eveningGroups.reduce((n, group) => n + group.rows.length, 0) + windowRank.possibly.length
+      : effectiveWindow === 'hour'
+        ? timed.length + untimed.length
+        : hideEnded ? total - endedTotal : total
+  useEffect(() => { onListedCount?.(staleCity || staleQuery || countGated ? 0 : listedCount) }, [listedCount, staleCity, staleQuery, countGated, onListedCount])
   const previewFlat = previewLimit == null ? null : (() => {
     const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
     const push = (list: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
@@ -490,14 +535,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       {offline && events.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2 text-sm sm:px-5" role="status">
           <p>The connection dropped. Showing the last list we loaded.</p>
-          <button type="button" onClick={() => { if (span) void fetchSpan(span.from, span.to, 1, false) }} className="font-semibold text-primary">Try again</button>
+          <button type="button" onClick={() => { void reloadInitial() }} className="font-semibold text-primary">Try again</button>
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
-        <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
+        <span className="font-semibold text-foreground">{firstLoad || countGated ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
         {span?.spanning && !loading && !staleCity && !staleQuery && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
-        {!loading && !staleCity && !staleQuery && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
+        {!loading && !staleCity && !staleQuery && !countGated && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
         {isToday && !staleCity && !staleQuery && endedTotal > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
           <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
             <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
@@ -540,7 +585,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         </div>
       ) : offline && events.length === 0 ? (
         <PeepEmpty title="The signal dropped." body="We couldn't reach the list. The page is fine. Try again when you're back online." action={(
-          <button type="button" onClick={() => { if (span) void fetchSpan(span.from, span.to, 1, false) }} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Try again</button>
+          <button type="button" onClick={() => { void reloadInitial() }} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Try again</button>
         )} />
       ) : previewFlat ? (
         previewFlat.length ? showRows(previewFlat) : (
