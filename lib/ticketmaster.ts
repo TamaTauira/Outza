@@ -67,20 +67,27 @@ async function tmJson(url: string, label: string, stats: TicketmasterAttemptStat
   }
 }
 
-export async function fetchTicketmasterEvents(): Promise<number> {
+export async function fetchTicketmasterEvents(): Promise<{ saved: number; more: boolean }> {
   const apiKey = process.env.TICKETMASTER_API_KEY
   const stats: TicketmasterAttemptStats = { attempts: 0, failures: 0, lastStatus: null }
   if (!apiKey) throw new Error(ticketmasterFetchFailure(apiKey, 0, stats) ?? 'TICKETMASTER_API_KEY is not set')
+  const coverage = { incomplete: false }
   let total = 0
   for (const city of CITIES) {
     if (yieldIfBudget('cities')) break
-    total += await fetchCity(city, apiKey, stats)
+    total += await fetchCity(city, apiKey, stats, coverage)
     noteSourceSaved(total)
   }
   const outage = ticketmasterFetchFailure(apiKey, total, stats)
   if (outage) throw new Error(outage)
   console.log(`Ticketmaster: added/updated ${total} events across Australia`)
-  return total
+  // A run where some Discovery calls failed, or a one-day window stayed over
+  // the result cap, under-covered the catalogue. It returns the sweep `more`
+  // flag so its refresh log reads as partial, never as a completed sweep:
+  // retirement derives completed sweeps from that log.
+  const incomplete = coverage.incomplete || stats.failures > 0
+  if (incomplete) console.warn(`[ticketmaster] run under-covered (${stats.failures} failed calls, saturated window: ${coverage.incomplete}); marking the sweep partial`)
+  return { saved: total, more: incomplete }
 }
 
 /** End of the range this city actually lists, capped so a junk date cannot run away. */
@@ -108,14 +115,14 @@ async function horizonEnd(city: CityDef, apiKey: string, stats: TicketmasterAtte
   return furthest > cap ? cap : furthest
 }
 
-async function fetchCity(city: CityDef, apiKey: string, stats: TicketmasterAttemptStats): Promise<number> {
+async function fetchCity(city: CityDef, apiKey: string, stats: TicketmasterAttemptStats, coverage: { incomplete: boolean }): Promise<number> {
   const horizon = await horizonEnd(city, apiKey, stats)
   let saved = 0
   let cursor = new Date()
   while (cursor < horizon) {
     if (yieldIfBudget('date windows')) break
     const end = new Date(Math.min(horizon.getTime(), cursor.getTime() + TM_WINDOW_MS))
-    saved += await fetchWindow(city, apiKey, cursor, end, stats)
+    saved += await fetchWindow(city, apiKey, cursor, end, stats, coverage)
     cursor = end
   }
   console.log(`Ticketmaster ${city.name}: added/updated ${saved} events`)
@@ -126,7 +133,7 @@ async function fetchCity(city: CityDef, apiKey: string, stats: TicketmasterAttem
  * One [start, end) slice. Discovery only returns 1,000 rows per query, so a slice that
  * reports that many (or more) is halved until it fits, down to a single day.
  */
-async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date, stats: TicketmasterAttemptStats): Promise<number> {
+async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date, stats: TicketmasterAttemptStats, coverage: { incomplete: boolean }): Promise<number> {
   if (yieldIfBudget('date windows')) return 0
   if (end.getTime() - start.getTime() < 1000) return 0
   const range = `startDateTime=${tmStamp(start)}&endDateTime=${tmStamp(end)}`
@@ -141,11 +148,12 @@ async function fetchWindow(city: CityDef, apiKey: string, start: Date, end: Date
   const saturated = total >= TM_PAGE_SIZE * TM_MAX_PAGES || totalPages > TM_MAX_PAGES
   if (saturated && span > TM_MIN_WINDOW_MS) {
     const mid = new Date(start.getTime() + Math.floor(span / 2))
-    const left = await fetchWindow(city, apiKey, start, mid, stats)
-    const right = await fetchWindow(city, apiKey, mid, end, stats)
+    const left = await fetchWindow(city, apiKey, start, mid, stats, coverage)
+    const right = await fetchWindow(city, apiKey, mid, end, stats, coverage)
     return left + right
   }
   if (saturated) {
+    coverage.incomplete = true
     console.warn(`[ticketmaster] ${city.name} one-day window still over the 1000-result cap (${total}); taking the first ${TM_PAGE_SIZE * TM_MAX_PAGES}`)
   }
   let saved = await saveTmEvents(events, city)
