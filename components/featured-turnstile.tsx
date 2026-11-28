@@ -30,6 +30,12 @@ export function FeaturedTurnstile({ city }: { city: string }) {
   useEffect(() => {
     let live = true
     const release = holdScrollRestore('featured')
+    // A new city means the cards on screen belong to the old one. Clear them
+    // (and the loaded flag, which brings back the hold space) until this
+    // city's fetch lands, so the strip never shows one city's events under
+    // another city's board — including when the fetch fails (E2E-13).
+    setItems([])
+    setLoaded(false)
     fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`)
       .then((r) => r.json())
       .then((d) => {
