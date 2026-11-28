@@ -8,7 +8,7 @@ import { ItineraryButton } from '@/components/itinerary-button'
 import { eventPath } from '@/lib/seo'
 import { CATEGORIES } from '@/lib/categories'
 import { categoryIcon, checkedAgo, formatPrice, latestIso } from '@/lib/board'
-import { listPriceLabel } from '@/lib/price'
+import { listPriceLabel, priceFeeNote } from '@/lib/price'
 import { ListClock, listClockLabel, listPlaceLine } from '@/components/list-clock'
 import { formatBoardRange, liveStatus, type BoardRange } from '@/lib/listing-window'
 import type { SavedEvent } from '@/lib/saved'
@@ -157,6 +157,7 @@ export function MobileEventRow({ ev, status, saved, onToggleSave, trackSearch, a
           <span>{catName}</span>
         </span>
         <span className={cn('vp-price', price.kind === 'free' && 'is-free')}>{price.text}</span>
+        {priceFeeNote(price.kind) ? <span className="vp-fee-note">{priceFeeNote(price.kind)}</span> : null}
       </span>
       <span className="vp-mrow-actions">
         <SaveButton saved={saved} onClick={() => onToggleSave(ev)} label={saved ? 'Remove from saved' : 'Save event'} className={cn(iconBtn, 'bg-transparent', saved ? 'text-primary' : 'text-muted-foreground')} />
@@ -249,6 +250,7 @@ export function BoardRow({ ev, status, saved, onToggleSave, trackSearch, active,
             className={cn('font-mono text-sm whitespace-nowrap', price.kind === 'free' ? 'text-free' : price.kind === 'unknown' ? 'text-muted-foreground' : 'text-foreground')}
             title={checked ? `Price checked ${checked}` : undefined}
           >{displayPriceValue(price.value, price.kind)}</span>
+          {priceFeeNote(price.kind) ? <div className="text-xs font-normal text-muted-foreground">{priceFeeNote(price.kind)}</div> : null}
         </div>
         <span className={cn('xl:hidden text-sm', STATUS_CLASS[status.tone])}>
           {status.tone === 'live' && <span className="inline-block w-1.5 h-1.5 mr-1 rounded-full bg-free animate-pulse align-middle" />}
