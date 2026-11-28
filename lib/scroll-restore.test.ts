@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { isListPage, listDepthToLoad, shouldFinishRestore, SCROLL_MIN_MS, SCROLL_REACHED_MS, SCROLL_STABLE_MS, SCROLL_TIMEOUT_MS } from './scroll-restore'
+import { boardPagesToLoad, isListPage, listDepthToLoad, shouldFinishRestore, SCROLL_MIN_MS, SCROLL_REACHED_MS, SCROLL_STABLE_MS, SCROLL_TIMEOUT_MS } from './scroll-restore'
 
 const ready = {
   target: 1800,
@@ -32,6 +32,21 @@ test('paged lists reload the pages that were open, and stop at the last page', (
   assert.equal(listDepthToLoad(9, 2), 2)
   assert.equal(listDepthToLoad(null, 4), 1)
   assert.equal(listDepthToLoad(40, 40), 8)
+})
+
+test('a full single-day board loads every page, so a time window counts its whole set', () => {
+  // The landing 'now' window and the Today preset read the same day; with
+  // only page 1 held, the windowed count understated it (297 vs 416).
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 2, spanning: false, preview: false }), 2)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 3, spanning: false, preview: false }), 3)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 1, spanning: false, preview: false }), 1)
+})
+
+test('spanning spans and previews keep the restoration depth', () => {
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: true, preview: false }), 1)
+  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: true, preview: false }), 3)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, preview: true }), 1)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, preview: false }), 1)
 })
 
 test('board, local, saved, itinerary and city landings are lists; an event page is not', () => {
