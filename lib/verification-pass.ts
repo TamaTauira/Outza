@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { remainingBudgetMs, yieldIfBudget } from '@/lib/source-budget'
 import { coordsNoticeKind, missingCoordsNotice, type CoordNoticeKind } from '@/lib/listing-venue'
+import { nearStartAction, readSourceStatus, statusFetch } from '@/lib/source-status'
+import { softHideEvent } from '@/lib/retirement'
 import { recoverMissingVenueCoordinates } from '@/lib/venue-coords'
 import {
   NEAR_START_WINDOW_MS,
@@ -18,6 +20,8 @@ import {
 
 const FLAG_CAP = 40
 const WRITE_CAP = 120
+/** Source re-reads per pass. Each is a real fetch; the cap plus the budget check keep the pass inside its budget. */
+const NEAR_START_RECHECK_CAP = 10
 const EXCEPTION_ACTIONS = ['TIME_CONFLICT', 'MISSING_COORDS', 'SUSPECT_IMAGE', 'SOURCE_FAILURE', 'SOURCE_CHANGED', 'SOURCE_MISSING'] as const
 
 type Flag = { eventId: string; action: string; detail: string }
@@ -40,7 +44,7 @@ export async function runVerificationPass(now = new Date(), changedAfter?: Date 
   const today = sydneyToday()
   const horizon = new Date(today.getTime() + 21 * 86400000)
   const rows = await prisma.event.findMany({
-    where: { date: { gte: today, lte: horizon }, duplicateOfId: null, ...(changedAfter ? { updatedAt: { gt: changedAfter } } : {}) },
+    where: { date: { gte: today, lte: horizon }, duplicateOfId: null, deletedAt: null, ...(changedAfter ? { updatedAt: { gt: changedAfter } } : {}) },
     orderBy: { date: 'asc' },
     take: 400,
     select: {
@@ -246,15 +250,55 @@ export async function runVerificationPass(now = new Date(), changedAfter?: Date 
     const have = new Set(recent.map((row) => row.eventId))
     const fresh = due.filter((row) => !have.has(row.id))
     if (fresh.length) {
-      await prisma.verificationCheck.createMany({
-        data: fresh.map((row) => ({
+      // A due listing is re-read at its source, not just flagged. Only a
+      // definitive answer acts: gone, ended or cancelled soft-hides through
+      // the retirement mechanism (it restores if the source lists the night
+      // again); live restamps the last check; anything less keeps the old
+      // flag-only behaviour. Rechecks are capped and budget-guarded so a slow
+      // source can never eat the pass.
+      const outcomes: { eventId: string; kind: string; outcome: string; detail: string }[] = []
+      let rechecks = 0
+      for (const row of fresh) {
+        if (rechecks < NEAR_START_RECHECK_CAP && remainingBudgetMs(90_000) > 15_000) {
+          rechecks++
+          const status = await readSourceStatus(row, statusFetch, {
+            ticketmasterKey: process.env.TICKETMASTER_API_KEY?.trim() || null,
+          }).catch(() => 'unknown' as const)
+          const action = nearStartAction(status)
+          if (action === 'hide') {
+            await softHideEvent(
+              row.id,
+              `Near-start recheck: the source (${row.source}) reports this occurrence ${status} inside 36 hours of its start. Soft-hidden by the retirement mechanism; it restores if the source lists it again.`,
+              now,
+            )
+            outcomes.push({
+              eventId: row.id,
+              kind: 'NEAR_START',
+              outcome: 'flag',
+              detail: `Rechecked at the source inside 36 hours of start: the source reports it ${status}. Hidden from public listings until a source lists it again. This is not a guarantee.`,
+            })
+            continue
+          }
+          if (action === 'verified') {
+            await prisma.$executeRaw`UPDATE "Event" SET "lastVerifiedAt" = ${now} WHERE "id" = ${row.id}`
+            outcomes.push({
+              eventId: row.id,
+              kind: 'NEAR_START',
+              outcome: 'ok',
+              detail: 'Rechecked at the source inside 36 hours of start: still listed.',
+            })
+            continue
+          }
+        }
+        outcomes.push({
           eventId: row.id,
           kind: 'NEAR_START',
           outcome: 'due',
           detail: 'Starts within 36 hours and the last check is older than 12 hours. The next feed refresh updates it. This is not a guarantee.',
-        })),
-      })
-      checks = fresh.length
+        })
+      }
+      await prisma.verificationCheck.createMany({ data: outcomes })
+      checks = outcomes.length
     }
   }
 
@@ -271,7 +315,11 @@ export async function runVerificationPass(now = new Date(), changedAfter?: Date 
         missing,
         changed,
       },
-      update: { seenAt: now, sourceUrl: row.sourceUrl, missing, changed },
+      // seenAt and missing belong to ingest and the retirement pass: seenAt
+      // is when the feed last listed the event, and missing is the sweep
+      // verdict. This pass is neither, so it must not restamp either one —
+      // doing so would make a vanished listing look freshly seen.
+      update: { sourceUrl: row.sourceUrl, changed },
     })
   })
 
