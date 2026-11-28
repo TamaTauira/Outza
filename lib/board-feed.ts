@@ -266,11 +266,11 @@ export function gatherShapedRow<T extends ShowingRow>(gather: BoardGather<T>, ro
 // query: EventList and the seed are always date-bounded, and the search
 // page prints events.length, not the feed total.
 export const BOARD_EXACT_RAW_THRESHOLD = 2000
-const BOARD_SCAN_TAKE = 300
+export const BOARD_SCAN_TAKE = 300
 // Safety valves, not silent truncations: if a scan ever reaches one,
 // the pass stops, logs, and flags the result (scanTruncated) so the
 // total is never presented as exact when it is partial.
-const BOARD_SCAN_MAX_RAW = 60_000
+export const BOARD_SCAN_MAX_RAW = 60_000
 const PAGE_SCAN_MAX_RAW = 12_000
 
 export interface BoardScanPlan {

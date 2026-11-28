@@ -3,7 +3,8 @@ import { cache } from 'react'
 import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS } from '@/lib/http-cache'
 import type { Prisma } from '@prisma/client'
 import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
-import { CITIES, REGION_MEMBERS, boardCitiesFor, cityDef, type CityDef } from '@/lib/cities'
+import { CITIES, boardCitiesFor, cityDef, type CityDef } from '@/lib/cities'
+import { BOARD_SCAN_MAX_RAW, BOARD_SCAN_TAKE } from '@/lib/board-feed'
 import { imageAssetSelect, variantUrl, type VariantManifest } from '@/lib/images/spec'
 import { eventPictureSelect } from '@/lib/images/display-spec'
 import { placeholderAbsolute } from '@/lib/placeholders'
@@ -43,6 +44,86 @@ const TOPIC_FILTER: Partial<Record<TopicKey, (e: { title: string; subTags: strin
   'community-events': (e) => matchesCommunity(e.title),
 }
 
+/**
+ * Chunked scan of a full matching set, capped the way the board caps its
+ * exact gathers (BOARD_SCAN_TAKE / BOARD_SCAN_MAX_RAW from board-feed).
+ * A guide total is printed as an exact number, so the scan walks to the
+ * end of the set; if the safety cap ever stops it early the caller is
+ * told (truncated) instead of the partial count passing as exact.
+ */
+export async function scanInChunks<T>(fetchChunk: (skip: number, take: number) => Promise<T[]>): Promise<{ rows: T[]; truncated: boolean }> {
+  const rows: T[] = []
+  for (let skip = 0; ; skip += BOARD_SCAN_TAKE) {
+    if (skip >= BOARD_SCAN_MAX_RAW) {
+      console.error(`[seo] guide scan cap reached (${BOARD_SCAN_MAX_RAW} raw rows); the count is partial`)
+      return { rows, truncated: true }
+    }
+    const take = Math.min(BOARD_SCAN_TAKE, BOARD_SCAN_MAX_RAW - skip)
+    const chunk = await fetchChunk(skip, take)
+    rows.push(...chunk)
+    if (chunk.length < take) return { rows, truncated: false }
+  }
+}
+
+/**
+ * The minimum row shape the guide drops and the showing collapse read.
+ * Both guide selects (the landing select and the suburb-count select)
+ * satisfy it.
+ */
+export type LandingShapeRow = {
+  title?: string | null
+  venueName?: string | null
+  venueAddress?: string | null
+  suburb?: string | null
+  city?: string | null
+  date: Date | string
+  endDate?: Date | string | null
+  time?: string | null
+  endTime?: string | null
+  endsAt?: Date | string | null
+  allDay?: boolean | null
+  ticketUrl?: string | null
+  source?: string | null
+  description?: string | null
+}
+
+/**
+ * The filter + collapse core every guide surface shapes by, in the
+ * guide's own order: drop mis-filed, other-town, past and hidden rows,
+ * then collapse duplicate showings (keeping the best-scored copy, as
+ * collapseShowings does). shapeLandingEvents presents these rows for a
+ * guide list; suburbCountsFromRows counts them per suburb. One core, so
+ * a count can never be built on drops the list does not make.
+ */
+export function shapeLandingRows<T extends LandingShapeRow>(rows: T[], city: CityDef): T[] {
+  return collapseShowings(rows.filter((e) => !addressInOtherState(e.venueAddress, city) && !namesAnotherTown(city.name, e) && !isPastEvent(e) && !hiddenFromPublic(e)))
+}
+
+/**
+ * The guide list's own shaping: the shared core, then present. A guide
+ * page's total counts exactly the rows this produces for its where.
+ */
+export function shapeLandingEvents(rows: LandingEvent[], city: CityDef): LandingEvent[] {
+  return shapeLandingRows(rows, city).map((e) => presentListing(e))
+}
+
+/**
+ * The result every degraded guide read returns — DB saturation, or a
+ * gather stopped at the raw-row cap: no events and no total. Every
+ * guide surface prints `total` as an exact number whenever it is
+ * positive (the GuideLanding headline and mobile count lines, "Showing
+ * the next N of TOTAL", the topic page's meta description, the FAQ
+ * facts, JSON-LD numberOfItems), and none of them suppress a number on
+ * `degraded` alone — the flag only drives the robots decision. So a
+ * partial shaped count must never reach those surfaces as `total`:
+ * zeroing it here, at the data level, is the one treatment that keeps
+ * every surface honest with no rendering or copy change, and it is
+ * exactly what the saturation path already renders through all of them.
+ */
+export function degradedLandingResult(from: string, to: string | null) {
+  return { events: [] as LandingEvent[], total: 0, from, to, titles: new Set<string>(), degraded: true }
+}
+
 /** Upcoming, non-duplicate, non-cancelled events for a landing page. */
 export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; suburb?: string; when?: WhenKey; range?: { from: string; to: string } }, take = 60) {
   const today = cityToday(city)
@@ -77,9 +158,21 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
   const post = !!(opts.topic && POST_FILTER.has(opts.topic))
   const tonight = opts.when === 'tonight' || (!opts.when && opts.topic === 'tonight')
   try {
-    const rows = await withStatementTimeout(8_000, (tx) => tx.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }], take: post || tonight ? 500 : take * 2 }))
-    let clean = collapseShowings(rows.filter((e) => !addressInOtherState(e.venueAddress, city) && !namesAnotherTown(city.name, e) && !isPastEvent(e) && !hiddenFromPublic(e)))
-      .map((e) => presentListing(e))
+    // The total is the shaped count of the whole matching set — never a
+    // raw count({ where }) and never the fetched slice. The page prints
+    // it as the number of listings for the topic ("Showing the next N of
+    // TOTAL", "N upcoming listings for this page"), so the full set is
+    // gathered in chunks, the way the board gathers its bounded queries,
+    // and shaped by the list's own rules. The id tiebreak keeps chunk
+    // boundaries stable, as in board-feed's gather.
+    const { rows, truncated } = await scanInChunks((skip, chunkTake) =>
+      withStatementTimeout(8_000, (tx) => tx.event.findMany({ where, select: landingSelect, orderBy: [{ date: 'asc' }, { time: 'asc' }, { id: 'asc' }], skip, take: chunkTake })))
+    // A capped gather holds only part of the set. Its shaped count is
+    // partial, so the read degrades exactly as a saturated one does
+    // (degradedLandingResult) instead of printing the partial number
+    // as the guide's total.
+    if (truncated) return degradedLandingResult(from, to)
+    let clean = shapeLandingEvents(rows, city)
     if (post && opts.topic) clean = clean.filter((e) => matchesTopic(e, opts.topic!))
     if (tonight) {
       const tonightWindow = { window: 'tonight' as const, day: today, nowMinutes: minutesNow(city.name), dropEnded: true }
@@ -88,13 +181,13 @@ export async function landingEvents(city: CityDef, opts: { topic?: TopicKey; sub
         availabilityKind: listingBucket(e, tonightWindow) === 'possibly' ? 'possibly' as const : undefined,
       }))
     }
-    const total = post || tonight ? clean.length : await withStatementTimeout(8_000, (tx) => tx.event.count({ where }))
+    const total = clean.length
     const slice = clean.slice(0, take)
-    return { events: slice, total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))), degraded: false }
+    return { events: slice, total, from, to, titles: new Set(clean.map((e) => normTitle(e.title))), degraded: truncated }
   } catch (err) {
     if (!isDbSaturation(err)) throw err
     console.error('landing events skipped, database saturated', city.name, err instanceof Error ? err.message : err)
-    return { events: [], total: 0, from, to, titles: new Set<string>(), degraded: true }
+    return degradedLandingResult(from, to)
   }
 }
 
@@ -159,18 +252,20 @@ export const landingData = cache(async function landingData(city: CityDef, topic
 
 const totalsCache = new Map<string, { at: number; n: number }>()
 
-/** Listing count for one city/topic page (cached 10 minutes). Count queries, not a full page render. */
+/** Shaped listing total for one city/topic page (cached 10 minutes): the same total the page itself prints, gathered by landingEvents plus the page's own local arm. */
 export const topicTotal = cache(async function topicTotal(city: CityDef, topic: TopicDef): Promise<number> {
   const k = `${city.name}|${topic.key}`
   const hit = totalsCache.get(k)
   if (hit && Date.now() - hit.at < 10 * 60_000) return hit.n
-  const events = (await landingEvents(city, { topic: topic.key }, 1)).total
+  const ev = await landingEvents(city, { topic: topic.key }, 1)
+  // The local arm counts what the topic page itself lists: landingLocal's
+  // next-occurrence, deduped rows, minus any whose title a board event
+  // already covers — the same construction landingData totals with, not a
+  // raw count of approved listings in the category.
   const local = topic.local
-    ? await withStatementTimeout(8_000, (tx) => tx.localListing.count({
-        where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, category: topic.local },
-      })).catch(() => 0)
+    ? (await landingLocal(city, topic)).filter((l) => !ev.titles.has(normTitle(l.title))).length
     : 0
-  const n = events + local
+  const n = ev.total + local
   totalsCache.set(k, { at: Date.now(), n })
   return n
 })
@@ -181,25 +276,29 @@ export async function topicTotals(city: CityDef): Promise<Record<TopicKey, numbe
   return Object.fromEntries(pairs) as Record<TopicKey, number>
 }
 
-/** Upcoming listing counts per city. One grouped query for the "other cities" links. */
+/**
+ * Upcoming shaped listing counts per city, for the "other cities" links.
+ * Each city's number is its own events guide's total, via topicTotal
+ * (which carries the 10-minute totals cache): landingEvents with the
+ * events topic already reads the region board's member cities —
+ * Newcastle counts towards Sydney — and shapes the set the way the
+ * guide list does, so the gate that shows a link can never be passed on
+ * rows the destination page would drop or collapse. Two cities at a
+ * time, the way loadCityGuideModels walks the catalogue: each count is
+ * a full chunked gather, and nine at once would crowd the shared pool.
+ */
 export const cityEventCounts = cache(async function cityEventCounts(): Promise<Record<string, number>> {
-  const earliest = CITIES.map((c) => cityToday(c)).sort()[0]
-  const rows = await withStatementTimeout(8_000, (tx) => tx.event.groupBy({
-    by: ['city'],
-    where: { duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(earliest), lte: day(addDaysKey(earliest, 120)) }, AND: [...PUBLIC_EVENT_AND] },
-    _count: { _all: true },
-  })).catch(() => [])
+  const eventsTopic = TOPICS.find((t) => t.key === 'events')!
   const out: Record<string, number> = {}
-  for (const r of rows) out[r.city] = r._count._all
-  // Region members count towards their board's city: Newcastle's events are Sydney board events.
-  for (const [home, members] of Object.entries(REGION_MEMBERS)) {
-    for (const member of members) {
-      if (out[member]) {
-        out[home] = (out[home] ?? 0) + out[member]
-        delete out[member]
-      }
+  const pending = [...CITIES]
+  const workers = Array.from({ length: Math.min(2, pending.length) }, async () => {
+    for (;;) {
+      const city = pending.shift()
+      if (!city) return
+      out[city.name] = await topicTotal(city, eventsTopic)
     }
-  }
+  })
+  await Promise.all(workers)
   return out
 })
 
@@ -211,19 +310,59 @@ export const lastRefreshAt = cache(async function lastRefreshAt(): Promise<Date 
 
 type SuburbCount = { name: string; slug: string; count: number }
 
-async function queryCitySuburbs(city: CityDef, today: string, min: number): Promise<SuburbCount[]> {
-  const rows = await withStatementTimeout(8_000, (tx) => tx.event.findMany({
-    where: { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
-    select: { suburb: true, venueAddress: true },
-  }))
+const suburbCountSelect = {
+  id: true, title: true, date: true, endDate: true, time: true, endTime: true, endsAt: true, allDay: true,
+  venueName: true, venueAddress: true, suburb: true, city: true, ticketUrl: true, source: true, description: true,
+} satisfies Prisma.EventSelect
+
+export type SuburbCountRow = Prisma.EventGetPayload<{ select: typeof suburbCountSelect }>
+
+/**
+ * Per-suburb counts from shaped rows: the shared shaping core
+ * (shapeLandingRows — the same drops and showing collapse the suburb
+ * page's own list applies via landingEvents with a suburb), so a
+ * suburb's count is the number of listings its page can show — not the
+ * number of stored rows carrying the suburb string.
+ * Rows group by suburb slug, the way the page resolves its suburb.
+ */
+export function suburbCountsFromRows(rows: SuburbCountRow[], city: CityDef, min: number): SuburbCount[] {
+  const shaped = shapeLandingRows(rows, city)
   const counts = new Map<string, { name: string; count: number }>()
-  for (const r of rows) {
-    if (!isLandingSuburb(r.suburb, city) || addressInOtherState(r.venueAddress, city)) continue
+  for (const r of shaped) {
+    if (!isLandingSuburb(r.suburb, city)) continue
     const slug = slugify(r.suburb!)
     const cur = counts.get(slug)
     counts.set(slug, { name: cur?.name ?? r.suburb!, count: (cur?.count ?? 0) + 1 })
   }
   return [...counts].filter(([, v]) => v.count >= min).sort((a, b) => b[1].count - a[1].count).map(([slug, v]) => ({ name: v.name, slug, count: v.count }))
+}
+
+/**
+ * A suburb scan stopped at the raw-row cap. The partial counts are not
+ * authoritative, so they must neither be written to the suburbs cache
+ * nor served as this call's answer: throwing out of the cached
+ * function leaves the stored counts alone (the same reliance
+ * cachedGuideModel places on throwing under saturation), and
+ * citySuburbs fails safe to the last good counts this process served,
+ * or none.
+ */
+export class SuburbScanTruncatedError extends Error {
+  constructor(cityName: string) {
+    super(`suburb scan for ${cityName} stopped at the raw-row cap; partial counts discarded`)
+    this.name = 'SuburbScanTruncatedError'
+  }
+}
+
+async function queryCitySuburbs(city: CityDef, today: string, min: number): Promise<SuburbCount[]> {
+  const { rows, truncated } = await scanInChunks((skip, take) => withStatementTimeout(8_000, (tx) => tx.event.findMany({
+    where: { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
+    select: suburbCountSelect,
+    orderBy: [{ date: 'asc' }, { time: 'asc' }, { id: 'asc' }],
+    skip,
+    take,
+  })))
+  if (truncated) throw new SuburbScanTruncatedError(city.name)
+  return suburbCountsFromRows(rows, city, min)
 }
 
 const cachedSuburbs = unstable_cache(
@@ -247,6 +386,10 @@ export const citySuburbs = cache(async function citySuburbs(city: CityDef, min =
     suburbMemo.set(key, rows)
     return rows
   } catch (err) {
+    if (err instanceof SuburbScanTruncatedError) {
+      console.error('city suburbs skipped, scan truncated', city.name)
+      return suburbMemo.get(key) ?? []
+    }
     if (!isDbSaturation(err)) throw err
     console.error('city suburbs skipped, database saturated', city.name, err instanceof Error ? err.message : err)
     return suburbMemo.get(key) ?? []
