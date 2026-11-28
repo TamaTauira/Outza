@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { PUBLIC_EVENT_TAG, PUBLIC_REVALIDATE_SECONDS } from '@/lib/http-cache'
@@ -473,8 +474,48 @@ export function suburbGuideTotalsFromRows(eventRows: SuburbCountRow[], local: La
   return [...counts].filter(([, v]) => v.count >= min).sort((a, b) => b[1].count - a[1].count).map(([slug, v]) => ({ name: v.name, slug, count: v.count }))
 }
 
+/**
+ * The suburb totals scan's per-chunk statement budget. On the render
+ * path a chunk gets 8s, like every other guide read: a render may not
+ * wait longer. The budget is a Promise.race, not a cancellation (see
+ * withStatementTimeout): a chunk that loses it keeps running in the
+ * database, and one lost chunk discards the whole fill. Under the
+ * saturation of 2026-11-28 the render-triggered fill could not
+ * complete at all — every revalidation of the Sydney entry failed
+ * from ~20:43 on — so the fill now also runs from the ingest
+ * finalize warm (lib/refresh.ts), where a longer budget applies.
+ */
+export const TOTALS_SCAN_STATEMENT_TIMEOUT_MS = 8_000
+
+/**
+ * The totals scan's statement budget inside the finalize warm, where
+ * the caller is an hourly cron invocation rather than a render:
+ * waiting is affordable there and the SQL is running anyway, so a
+ * chunk gets 25s to actually finish — roughly triple a busy chunk's
+ * time under the render budget, and still short enough that one
+ * doomed chunk cannot eat a city's whole warm budget on its own.
+ */
+export const TOTALS_WARM_STATEMENT_TIMEOUT_MS = 25_000
+
+const totalsScanBudget = new AsyncLocalStorage<number>()
+
+/** The statement budget the totals scan runs under in this context: the warm's inside runWithTotalsScanBudget, the render path's everywhere else. */
+export function totalsScanStatementTimeoutMs(): number {
+  return totalsScanBudget.getStore() ?? TOTALS_SCAN_STATEMENT_TIMEOUT_MS
+}
+
+/**
+ * Run `fn` with the totals scan's statement budget set to
+ * `statementTimeoutMs`. Only the finalize warm calls this, with
+ * TOTALS_WARM_STATEMENT_TIMEOUT_MS; every other caller of the totals
+ * read — the guide renders — runs at the default, unchanged.
+ */
+export function runWithTotalsScanBudget<T>(statementTimeoutMs: number, fn: () => Promise<T>): Promise<T> {
+  return totalsScanBudget.run(statementTimeoutMs, fn)
+}
+
 async function queryCitySuburbTotals(city: CityDef, today: string): Promise<SuburbGuideTotal[]> {
-  const { rows, truncated } = await scanInChunks((skip, take) => withStatementTimeout(8_000, (tx) => tx.event.findMany({
+  const { rows, truncated } = await scanInChunks((skip, take) => withStatementTimeout(totalsScanStatementTimeoutMs(), (tx) => tx.event.findMany({
     where: { city: { in: boardCitiesFor(city.name) }, duplicateOfId: null, status: { not: 'CANCELLED' }, date: { gte: day(today), lte: day(addDaysKey(today, 120)) }, suburb: { not: null }, AND: [...PUBLIC_EVENT_AND] },
     select: suburbCountSelect,
     orderBy: [{ date: 'asc' }, { time: 'asc' }, { id: 'asc' }],
@@ -494,7 +535,7 @@ async function queryCitySuburbTotals(city: CityDef, today: string): Promise<Subu
   // whole totals read (citySuburbTotals' fail-safe) instead — raised
   // as the same fail-safe signal a truncated event scan raises, so it
   // reaches that fail-safe rather than escaping as the render's error.
-  const localRows = await withStatementTimeout(8_000, (tx) => tx.localListing.findMany({
+  const localRows = await withStatementTimeout(totalsScanStatementTimeoutMs(), (tx) => tx.localListing.findMany({
     where: { city: { in: boardCitiesFor(city.name) }, status: 'APPROVED', duplicateOfId: null, expiresAt: { gte: new Date() }, sourceName: null },
     select: localSelect,
     take: 4000,

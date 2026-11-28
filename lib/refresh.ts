@@ -12,11 +12,14 @@ import { runImagePass } from '@/lib/images/runner'
 import { importLocalFromBoard } from '@/lib/local-import'
 import { fetchMoshtixEvents, fetchOztixEvents, fetchTicketekEvents } from '@/lib/sources/ticketing'
 import { runWithSourceBudget } from '@/lib/source-budget'
+import { CITIES, type CityDef } from '@/lib/cities'
 import {
   REFRESH_CHUNKS,
   REFRESH_CYCLE_WINDOW_MS,
   REFRESH_INVOCATION_BUDGET_MS,
   SOURCE_BUDGET_MAX_MS,
+  TOTALS_WARM_BUDGET_MS,
+  TOTALS_WARM_CITY_BUDGET_MS,
   assessRefreshCycle,
   postStepBudget,
   chunkById,
@@ -259,6 +262,98 @@ async function invalidatePublicListings() {
   }
 }
 
+export type TotalsWarmOutcome = { warmed: string[]; failed: string[]; skipped: string[] }
+
+/**
+ * Walk cities two at a time — the guide-model walk's shape: each
+ * city's totals are a full chunked scan, and nine at once would crowd
+ * the shared pool — warming each through `warmOne` with the smaller
+ * of its per-city budget and what is left of the warm's wall clock.
+ * A city that fails is recorded and the walk continues: the warm is a
+ * finalize post-step, so one city's failure may not fail the cycle or
+ * block the cities behind it. Cities the wall clock runs out on are
+ * skipped, not failed. Outcomes are reported in catalogue order.
+ */
+export async function warmTotalsCities(
+  cities: readonly CityDef[],
+  warmOne: (city: CityDef, budgetMs: number) => Promise<boolean>,
+  opts: { budgetMs: number; cityBudgetMs: number; now?: () => number },
+): Promise<TotalsWarmOutcome> {
+  const now = opts.now ?? Date.now
+  const startedAt = now()
+  const outcome: TotalsWarmOutcome = { warmed: [], failed: [], skipped: [] }
+  const pending = [...cities]
+  const workers = Array.from({ length: Math.min(2, pending.length) }, async () => {
+    for (;;) {
+      const city = pending.shift()
+      if (!city) return
+      const left = opts.budgetMs - (now() - startedAt)
+      if (left <= 0) {
+        outcome.skipped.push(city.name)
+        continue
+      }
+      let ok = false
+      try {
+        ok = await warmOne(city, Math.min(opts.cityBudgetMs, left))
+      } catch {
+        ok = false
+      }
+      ;(ok ? outcome.warmed : outcome.failed).push(city.name)
+    }
+  })
+  await Promise.all(workers)
+  const order = new Map(cities.map((c, i) => [c.name, i] as const))
+  const byCatalogue = (a: string, b: string) => (order.get(a) ?? 0) - (order.get(b) ?? 0)
+  outcome.warmed.sort(byCatalogue)
+  outcome.failed.sort(byCatalogue)
+  outcome.skipped.sort(byCatalogue)
+  return outcome
+}
+
+/**
+ * Recompute the suburb totals the guide navigation prints, here in
+ * finalize rather than leaving the recompute to guide renders. The
+ * totals scan is the heaviest read on the site (a full-city chunked
+ * gather), and under database saturation a render-triggered fill
+ * could not complete — on 2026-11-28 every revalidation of the
+ * Sydney entry failed from ~20:43 on, and the nav printed a
+ * computation over an hour old before the totals read's age judgement
+ * dropped it. Warming through the same cached path the renders read
+ * fills the same cache entries, on the ingest cadence; between warms
+ * the age judgement guarantees the counts degrade honestly (last good
+ * for an hour from computation, then no count). Each city is isolated
+ * in the budgeted post-step pattern: a failure or timeout logs and
+ * never fails the cycle. Inside the warm the scan's per-chunk
+ * statement budget is the warm's longer one — the race there does
+ * not cancel the SQL, so the longer wait is what lets chunks actually
+ * finish in this context. The render path's budget is unchanged.
+ */
+async function warmSuburbTotals() {
+  try {
+    const { citySuburbTotals, runWithTotalsScanBudget, TOTALS_WARM_STATEMENT_TIMEOUT_MS } = await import('@/lib/seo-server')
+    const outcome = await warmTotalsCities(CITIES, async (city, budgetMs) => {
+      const run = await runWithSourceBudget(`Suburb totals warm ${city.name}`, budgetMs, () =>
+        runWithTotalsScanBudget(TOTALS_WARM_STATEMENT_TIMEOUT_MS, () => citySuburbTotals(city)))
+      if (run.error) {
+        console.error(`[refresh] suburb totals warm failed for ${city.name}: ${run.error.message}`)
+        return false
+      }
+      if (run.timedOut) {
+        console.error(`[refresh] suburb totals warm for ${city.name} hit its time budget`)
+        return false
+      }
+      if (!run.value?.ok) {
+        console.error(`[refresh] suburb totals warm did not refresh ${city.name}: the totals read failed, last good totals kept`)
+        return false
+      }
+      return true
+    }, { budgetMs: TOTALS_WARM_BUDGET_MS, cityBudgetMs: TOTALS_WARM_CITY_BUDGET_MS })
+    console.log(`[refresh] suburb totals warm: ${outcome.warmed.length}/${CITIES.length} cities refreshed${outcome.failed.length ? `; failed: ${outcome.failed.join(', ')}` : ''}${outcome.skipped.length ? `; skipped: ${outcome.skipped.join(', ')}` : ''}`)
+  } catch (err) {
+    console.error('[refresh] suburb totals warm failed', err instanceof Error ? err.message : err)
+  }
+}
+
 async function noteVolume(
   name: string,
   outcome: { saved: number; continuation: boolean; more: boolean; sweepId?: string | null },
@@ -378,6 +473,13 @@ async function finalizeCycle(): Promise<RefreshResult> {
   }
   if (cycle.ok) await boundedImagePass()
   await invalidatePublicListings()
+  // Last, warm the suburb totals (see warmSuburbTotals): invalidation
+  // has just dropped the cached fills, and recomputing them here —
+  // budgeted, failure-isolated, on the ingest cadence — replaces the
+  // render-triggered recompute that saturation starved. Only the
+  // finalize cycle warms: it is the path that performs this
+  // invalidation at the end of a completed ingest cycle.
+  await warmSuburbTotals()
   return {
     eventsAdded: cycle.eventsAdded,
     errors: [...postErrors, ...sourceErrors],

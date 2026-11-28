@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, SUBURB_TOTALS_MEMO_MAX_AGE_MS, suburbCountsFromRows, suburbGuideTotalsFromRows, suburbLinkCount, suburbTotalsFallback, suburbTotalsResult, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
+import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, runWithTotalsScanBudget, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, SUBURB_TOTALS_MEMO_MAX_AGE_MS, suburbCountsFromRows, suburbGuideTotalsFromRows, suburbLinkCount, totalsScanStatementTimeoutMs, suburbTotalsFallback, suburbTotalsResult, TOTALS_SCAN_STATEMENT_TIMEOUT_MS, TOTALS_WARM_STATEMENT_TIMEOUT_MS, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
 import { cityDef } from './cities'
 import { isDbSaturation } from './db-guard'
 import { isLandingSuburb, slugify } from './seo'
@@ -398,4 +398,43 @@ test('suburb link counts never fall back to the guide model total', () => {
   const landing = readFileSync(join(root, 'components/guide-landing.tsx'), 'utf8')
   assert.match(landing, /count: number \| null/, 'GuideLanding admits a suburb link with no count')
   assert.match(landing, /s\.count !== null/, 'GuideLanding renders the count only when one is supplied')
+})
+
+test('the totals scan statement budget defaults to the render-path value and threads only inside the warm context', async () => {
+  // The render path's budget is the 8s every other guide read uses,
+  // and it is the default everywhere: only a caller wrapped in
+  // runWithTotalsScanBudget — the finalize warm, with the warm's
+  // 25s — sees anything else, and the default is restored when the
+  // warm context ends. Threading the budget this way (rather than as
+  // an argument to the cached totals function) keeps the warm on the
+  // same cache entries the renders read: an extra argument would key
+  // a separate entry the render path never sees.
+  assert.equal(TOTALS_SCAN_STATEMENT_TIMEOUT_MS, 8_000, 'the render-path budget is the standard guide-read budget')
+  assert.equal(totalsScanStatementTimeoutMs(), TOTALS_SCAN_STATEMENT_TIMEOUT_MS, 'outside any warm context the scan runs at the render budget')
+  assert.ok(TOTALS_WARM_STATEMENT_TIMEOUT_MS >= 20_000 && TOTALS_WARM_STATEMENT_TIMEOUT_MS <= 30_000, 'the warm budget is in the 20–30s band sized for the cron context')
+  const inside = await runWithTotalsScanBudget(TOTALS_WARM_STATEMENT_TIMEOUT_MS, async () => totalsScanStatementTimeoutMs())
+  assert.equal(inside, TOTALS_WARM_STATEMENT_TIMEOUT_MS, 'inside the warm context the scan runs at the warm budget')
+  const nested = await runWithTotalsScanBudget(25_000, async () => {
+    const deep = await runWithTotalsScanBudget(30_000, async () => totalsScanStatementTimeoutMs())
+    return { deep, after: totalsScanStatementTimeoutMs() }
+  })
+  assert.deepEqual(nested, { deep: 30_000, after: 25_000 }, 'a nested context restores the outer budget on exit')
+  assert.equal(totalsScanStatementTimeoutMs(), TOTALS_SCAN_STATEMENT_TIMEOUT_MS, 'the render budget is restored after the warm context ends')
+})
+
+test('the totals scan reads its statement budget from the threaded context; no other guide scan does', () => {
+  // Pin at source level, the way the other totals invariants are
+  // pinned above: both reads inside queryCitySuburbTotals (the event
+  // chunks and the city-wide local read) take the threaded budget, and
+  // no read in that function hard-codes the render value — a
+  // hard-coded 8s there would silently cap the warm at the render
+  // budget while the warm's own accounting assumed 25s.
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const src = readFileSync(join(root, 'lib/seo-server.ts'), 'utf8')
+  const start = src.indexOf('async function queryCitySuburbTotals')
+  assert.notEqual(start, -1, 'seo-server.ts: queryCitySuburbTotals is where this test expects it')
+  const region = src.slice(start, src.indexOf('export interface SuburbTotalsPayload', start))
+  const threaded = region.match(/withStatementTimeout\(totalsScanStatementTimeoutMs\(\)/g) ?? []
+  assert.equal(threaded.length, 2, 'both reads of the totals scan take the threaded budget')
+  assert.doesNotMatch(region, /withStatementTimeout\(8_000/, 'no read in the totals scan hard-codes the render budget')
 })
