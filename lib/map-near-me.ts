@@ -57,6 +57,22 @@ export function shouldAutoLocate(input: { storedConsent: string | null; permissi
   return input.storedConsent === 'granted'
 }
 
+/** The locate states the map's Near me control cycles through. */
+export type LocateState = 'idle' | 'locating' | 'found' | 'denied' | 'unavailable'
+
+/**
+ * The locate state after the visitor jumps elsewhere (a city change or an
+ * area selection) invalidates any in-flight locate: a locate that already
+ * landed ('found') and one still waiting on the browser's answer
+ * ('locating') both settle back to 'idle', so the Near Me button always
+ * becomes tappable again — a dropped locate must never leave it spinning,
+ * disabled, forever. States that already carry an outcome ('denied',
+ * 'unavailable') and plain 'idle' are left exactly as they are.
+ */
+export function locateStateAfterInvalidation(current: LocateState): LocateState {
+  return current === 'found' || current === 'locating' ? 'idle' : current
+}
+
 /**
  * Where selecting an area value should jump the map: the centre of the area
  * group it names on this board, or null for a plain suburb — those pins are

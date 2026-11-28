@@ -5,6 +5,7 @@ import {
   NEAR_ME_RADII_KM,
   areaJumpTarget,
   filterPinsWithinRadius,
+  locateStateAfterInvalidation,
   pinDistanceKm,
   shouldAutoLocate,
 } from './map-near-me'
@@ -63,6 +64,18 @@ test('auto-locate falls back to the stored consent when permission cannot be rea
   assert.equal(shouldAutoLocate({ storedConsent: 'granted', permission: null }), true)
   assert.equal(shouldAutoLocate({ storedConsent: 'declined', permission: null }), false)
   assert.equal(shouldAutoLocate({ storedConsent: null, permission: null }), false)
+})
+
+test('an invalidated locate settles back to idle, whatever stage it reached', () => {
+  // Still waiting on the browser's answer when the jump lands: the button
+  // must become tappable again, never spin disabled forever.
+  assert.equal(locateStateAfterInvalidation('locating'), 'idle')
+  // Already landed: Near me turns off with the jump, as before.
+  assert.equal(locateStateAfterInvalidation('found'), 'idle')
+  // States that already carry an outcome (or none) are untouched.
+  assert.equal(locateStateAfterInvalidation('idle'), 'idle')
+  assert.equal(locateStateAfterInvalidation('denied'), 'denied')
+  assert.equal(locateStateAfterInvalidation('unavailable'), 'unavailable')
 })
 
 test('an area group value jumps to its centre; a plain suburb does not', () => {
