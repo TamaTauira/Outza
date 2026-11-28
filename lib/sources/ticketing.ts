@@ -329,7 +329,7 @@ const OZTIX_HORIZON = 730 * DAY
 
 const OZTIX_FIELDS = 'EventName,EventDescription,SpecialGuests,DateStartUnix,DateEndUnix,EventUrl,EventImage1,Categories,Bands,Venue,_geoloc,MinPrice,PriceFrom,MaxPrice,PriceTo,IsFree,IsCancelled,IsPostponed,IsRescheduled,HasEventDatePassed'
 
-async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<string>): Promise<number> {
+async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<string>, coverage: { incomplete: boolean }): Promise<number> {
   if (yieldIfBudget('date windows')) return 0
   const r = await oztixQuery(
     `query=&hitsPerPage=${OZTIX_HITS}&aroundLatLng=${city.lat},${city.lng}&aroundRadius=${city.radiusKm * 1000}` +
@@ -341,11 +341,17 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
   // A full page may be capped nbHits as well as a short `hits` array, so split whenever the page is full.
   if (hits.length >= OZTIX_HITS && b - a > DAY) {
     const mid = a + Math.floor((b - a) / 2)
-    const left = await fetchOztixSpan(city, a, mid, seen)
-    const right = await fetchOztixSpan(city, mid, b, seen)
+    const left = await fetchOztixSpan(city, a, mid, seen, coverage)
+    const right = await fetchOztixSpan(city, mid, b, seen, coverage)
     return left + right
   }
-  if (hits.length >= OZTIX_HITS) console.warn(`[oztix] ${city.name} day still over the ${OZTIX_HITS}-hit cap (${nb})`)
+  if (hits.length >= OZTIX_HITS) {
+    // A single day still over the hit cap: the tail of the day was never
+    // read. Mark the run under-covered so its log cannot read as a
+    // completed sweep for retirement.
+    coverage.incomplete = true
+    console.warn(`[oztix] ${city.name} day still over the ${OZTIX_HITS}-hit cap (${nb})`)
+  }
   let saved = 0
   for (const e of hits) {
     try {
@@ -394,10 +400,11 @@ async function fetchOztixSpan(city: CityDef, a: number, b: number, seen: Set<str
   return saved
 }
 
-export async function fetchOztixEvents(): Promise<number> {
+export async function fetchOztixEvents(): Promise<{ saved: number; more: boolean }> {
   if (!process.env.OZTIX_ALGOLIA_KEY) throw new Error('OZTIX_ALGOLIA_KEY is not set')
   const now = Math.floor(Date.now() / 1000)
   const horizon = now + OZTIX_HORIZON
+  const coverage = { incomplete: false }
   let saved = 0
   for (const city of INGEST_CITIES) {
     if (yieldIfBudget('cities')) break
@@ -405,12 +412,13 @@ export async function fetchOztixEvents(): Promise<number> {
     for (let a = now; a < horizon; a += OZTIX_WINDOW) {
       if (yieldIfBudget('date windows')) break
       const b = Math.min(a + OZTIX_WINDOW, horizon)
-      saved += await fetchOztixSpan(city, a, b, seen)
+      saved += await fetchOztixSpan(city, a, b, seen, coverage)
       noteSourceSaved(saved)
     }
   }
   console.log(`[oztix] saved ${saved} events`)
-  return saved
+  if (coverage.incomplete) console.warn('[oztix] run under-covered (a day stayed over the hit cap); marking the sweep partial')
+  return { saved, more: coverage.incomplete }
 }
 
 // ---------------- Ticketek (licensed partner feed only, never the website) ----------------
@@ -486,7 +494,7 @@ function parseCsv(text: string): Row[] {
   return head ? body.map((r) => Object.fromEntries(head.map((h, i) => [h.trim(), r[i] ?? '']))) : []
 }
 
-async function ticketekRows(): Promise<Row[] | null> {
+async function ticketekRows(): Promise<{ rows: Row[]; truncated: boolean } | null> {
   const sid = process.env.IMPACT_ACCOUNT_SID, token = process.env.IMPACT_AUTH_TOKEN, catalog = process.env.IMPACT_TICKETEK_CATALOG_ID
   if (sid && token && catalog) {
     const auth = `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`
@@ -504,8 +512,11 @@ async function ticketekRows(): Promise<Row[] | null> {
       next = j?.['@nextpageuri'] || null
       await sleep(500)
     }
-    if (next) console.warn(`[ticketek] stopped at ${TICKETEK_MAX_PAGES} catalog pages; feed still has another page`)
-    return rows
+    // Stopping with another page unread — at the ceiling or at the budget —
+    // means the catalogue was under-covered; the caller marks the sweep
+    // partial so the run cannot read as a completed sweep for retirement.
+    if (next) console.warn(`[ticketek] stopped at ${pages} catalog pages; feed still has another page`)
+    return { rows, truncated: !!next }
   }
   const url = process.env.TICKETEK_FEED_URL
   if (!url) return null
@@ -516,17 +527,19 @@ async function ticketekRows(): Promise<Row[] | null> {
   const text = await res.text()
   if (/^\s*[[{]/.test(text)) {
     const j = JSON.parse(text)
-    return Array.isArray(j) ? j : j.items ?? j.Items ?? j.events ?? j.data ?? []
+    const list = Array.isArray(j) ? j : j.items ?? j.Items ?? j.events ?? j.data ?? []
+    return { rows: list, truncated: false }
   }
-  return parseCsv(text)
+  return { rows: parseCsv(text), truncated: false }
 }
 
-export async function fetchTicketekEvents(): Promise<number> {
-  const rows = await ticketekRows()
-  if (!rows) {
+export async function fetchTicketekEvents(): Promise<{ saved: number; more: boolean } | number> {
+  const feed = await ticketekRows()
+  if (!feed) {
     console.log('[ticketek] no licensed feed configured, skipped')
     return 0
   }
+  const { rows, truncated } = feed
   const images = process.env.TICKETEK_IMAGES_ALLOWED === '1'
   let saved = 0
   for (const r of rows) {
@@ -579,5 +592,6 @@ export async function fetchTicketekEvents(): Promise<number> {
     }
   }
   console.log(`[ticketek] saved ${saved} events`)
-  return saved
+  if (truncated) console.warn('[ticketek] run under-covered (catalog pages unread); marking the sweep partial')
+  return { saved, more: truncated }
 }

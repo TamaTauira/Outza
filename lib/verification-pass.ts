@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { sydneyToday } from '@/lib/event-store'
 import { remainingBudgetMs, yieldIfBudget } from '@/lib/source-budget'
 import { coordsNoticeKind, missingCoordsNotice, type CoordNoticeKind } from '@/lib/listing-venue'
+import { nearStartAction, nearStartHideAllowed, readSourceStatus, statusFetch, NEAR_START_HIDE_CAP_PER_SOURCE } from '@/lib/source-status'
+import { softHideEvent } from '@/lib/retirement'
 import { recoverMissingVenueCoordinates } from '@/lib/venue-coords'
 import {
   NEAR_START_WINDOW_MS,
@@ -18,6 +20,8 @@ import {
 
 const FLAG_CAP = 40
 const WRITE_CAP = 120
+/** Source re-reads per pass. Each is a real fetch; the cap plus the budget check keep the pass inside its budget. */
+const NEAR_START_RECHECK_CAP = 10
 const EXCEPTION_ACTIONS = ['TIME_CONFLICT', 'MISSING_COORDS', 'SUSPECT_IMAGE', 'SOURCE_FAILURE', 'SOURCE_CHANGED', 'SOURCE_MISSING'] as const
 
 type Flag = { eventId: string; action: string; detail: string }
@@ -40,7 +44,7 @@ export async function runVerificationPass(now = new Date(), changedAfter?: Date 
   const today = sydneyToday()
   const horizon = new Date(today.getTime() + 21 * 86400000)
   const rows = await prisma.event.findMany({
-    where: { date: { gte: today, lte: horizon }, duplicateOfId: null, ...(changedAfter ? { updatedAt: { gt: changedAfter } } : {}) },
+    where: { date: { gte: today, lte: horizon }, duplicateOfId: null, deletedAt: null, ...(changedAfter ? { updatedAt: { gt: changedAfter } } : {}) },
     orderBy: { date: 'asc' },
     take: 400,
     select: {
@@ -246,32 +250,113 @@ export async function runVerificationPass(now = new Date(), changedAfter?: Date 
     const have = new Set(recent.map((row) => row.eventId))
     const fresh = due.filter((row) => !have.has(row.id))
     if (fresh.length) {
-      await prisma.verificationCheck.createMany({
-        data: fresh.map((row) => ({
+      // A due listing is re-read at its source, not just flagged. Only a
+      // definitive answer acts: gone, ended or cancelled soft-hides through
+      // the retirement mechanism (it restores if the source lists the night
+      // again); live restamps the last check; anything less keeps the old
+      // flag-only behaviour. Rechecks are capped and budget-guarded so a slow
+      // source can never eat the pass.
+      const outcomes: { eventId: string; kind: string; outcome: string; detail: string }[] = []
+      const heldAudits: { source: string; detail: string }[] = []
+      const hidesBySource = new Map<string, number>()
+      let rechecks = 0
+      for (const row of fresh) {
+        if (rechecks < NEAR_START_RECHECK_CAP && remainingBudgetMs(90_000) > 15_000) {
+          rechecks++
+          const status = await readSourceStatus(row, statusFetch, {
+            ticketmasterKey: process.env.TICKETMASTER_API_KEY?.trim() || null,
+          }).catch(() => 'unknown' as const)
+          const action = nearStartAction(status)
+          if (action === 'hide' && !nearStartHideAllowed(hidesBySource, row.source)) {
+            // The per-source recheck cap is spent: this pass has already
+            // hidden the cap's worth of one source's listings on recheck
+            // evidence alone. A systematically wrong reader must not keep
+            // going — flag for an admin instead of hiding.
+            const sourceKey = row.source ?? 'unknown'
+            if (!heldAudits.some((held) => held.source === sourceKey)) {
+              heldAudits.push({
+                source: sourceKey,
+                detail: `${sourceKey}: the near-start recheck reached its per-source hide cap (${NEAR_START_HIDE_CAP_PER_SOURCE} in one pass) and further definitive negatives from this source were flagged instead of hidden. Check the source reader before trusting more of its verdicts.`,
+              })
+            }
+            outcomes.push({
+              eventId: row.id,
+              kind: 'NEAR_START',
+              outcome: 'flag',
+              detail: `Rechecked at the source inside 36 hours of start: the source reports it ${status}, but this pass already hid ${NEAR_START_HIDE_CAP_PER_SOURCE} listings from this source on recheck evidence, so this one was flagged for an admin instead of hidden.`,
+            })
+            continue
+          }
+          if (action === 'hide') {
+            hidesBySource.set(row.source ?? '', (hidesBySource.get(row.source ?? '') ?? 0) + 1)
+            await softHideEvent(
+              row.id,
+              `Near-start recheck: the source (${row.source}) reports this occurrence ${status} inside 36 hours of its start. Soft-hidden by the retirement mechanism; it restores if the source lists it again.`,
+              now,
+            )
+            outcomes.push({
+              eventId: row.id,
+              kind: 'NEAR_START',
+              outcome: 'flag',
+              detail: `Rechecked at the source inside 36 hours of start: the source reports it ${status}. Hidden from public listings until a source lists it again. This is not a guarantee.`,
+            })
+            continue
+          }
+          if (action === 'verified') {
+            await prisma.$executeRaw`UPDATE "Event" SET "lastVerifiedAt" = ${now} WHERE "id" = ${row.id}`
+            outcomes.push({
+              eventId: row.id,
+              kind: 'NEAR_START',
+              outcome: 'ok',
+              detail: 'Rechecked at the source inside 36 hours of start: still listed.',
+            })
+            continue
+          }
+        }
+        outcomes.push({
           eventId: row.id,
           kind: 'NEAR_START',
           outcome: 'due',
           detail: 'Starts within 36 hours and the last check is older than 12 hours. The next feed refresh updates it. This is not a guarantee.',
-        })),
-      })
-      checks = fresh.length
+        })
+      }
+      await prisma.verificationCheck.createMany({ data: outcomes })
+      checks = outcomes.length
+      for (const held of heldAudits) {
+        const existing = await prisma.qualityAudit.findFirst({
+          where: { action: 'SOURCE_RETIREMENT_HELD', status: 'OPEN', detail: { startsWith: `${held.source}:` } },
+          select: { id: true },
+        })
+        if (!existing) {
+          await prisma.qualityAudit.create({
+            data: { eventId: null, action: 'SOURCE_RETIREMENT_HELD', status: 'OPEN', detail: held.detail },
+          })
+        }
+      }
     }
   }
 
   const touched = rows.slice(0, WRITE_CAP)
+  // This pass never creates SourceRecords. A record minted here would be
+  // stamped seenAt=now by the schema default with no feed sighting behind
+  // it, and retirement reads seenAt as "the feed last listed this event" —
+  // a phantom sighting that would keep a vanished listing looking freshly
+  // seen forever. Ingest creates records when a feed actually lists an
+  // event; this pass only maintains sourceUrl/changed on records that
+  // already exist.
+  const existingRecords = await prisma.sourceRecord.findMany({
+    where: { eventId: { in: touched.map((row) => row.id) } },
+    select: { id: true, eventId: true, source: true },
+  })
+  const existingRecordId = new Map(existingRecords.map((rec) => [`${rec.eventId}|${rec.source}`, rec.id]))
   await inBatches(touched, async (row) => {
-    const missing = !(row.sourceUrl || row.ticketUrl || row.organiserUrl)
-    const changed = row.source ? !row.sources.includes(row.source) : false
-    await prisma.sourceRecord.upsert({
-      where: { eventId_source: { eventId: row.id, source: row.source } },
-      create: {
-        eventId: row.id,
-        source: row.source,
-        sourceUrl: row.sourceUrl,
-        missing,
-        changed,
-      },
-      update: { seenAt: now, sourceUrl: row.sourceUrl, missing, changed },
+    if (!row.source) return
+    const recordId = existingRecordId.get(`${row.id}|${row.source}`)
+    if (!recordId) return
+    const changed = !row.sources.includes(row.source)
+    await prisma.sourceRecord.update({
+      where: { id: recordId },
+      data: { sourceUrl: row.sourceUrl, changed },
     })
   })
 

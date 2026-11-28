@@ -206,21 +206,33 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
   return saved
 }
 
-/** One inclusive date window. Splits when the page wall would hide events; otherwise reads every returned page. */
-async function scrapeWindow(city: CityDef, path: string, forceFree: boolean, start: string, end: string): Promise<number> {
-  if (yieldIfBudget('date windows')) return 0
+type WindowResult = { saved: number; incomplete: boolean }
+
+/**
+ * One inclusive date window. Splits when the page wall would hide events;
+ * otherwise reads every returned page. `incomplete` is set whenever coverage
+ * fell short — a listing page that failed to load, or a window still
+ * truncated at a single day — so the caller can mark the run partial in the
+ * refresh log. A run that silently under-covers must never read as a
+ * completed sweep: retirement derives completed sweeps from that log.
+ */
+async function scrapeWindow(city: CityDef, path: string, forceFree: boolean, start: string, end: string): Promise<WindowResult> {
+  if (yieldIfBudget('date windows')) return { saved: 0, incomplete: false }
   const first = await fetchListingPage(city, path, 1, start, end)
   await sleep(EB_DELAY_MS)
-  if (!first || first.results.length === 0) return 0
+  if (!first) return { saved: 0, incomplete: true }
+  if (first.results.length === 0) return { saved: 0, incomplete: false }
   if (listingTruncated(first) && start < end) {
     const leftEnd = addDays(start, Math.floor(spanDays(start, end) / 2))
     if (leftEnd >= start && leftEnd < end) {
       const left = await scrapeWindow(city, path, forceFree, start, leftEnd)
       const right = await scrapeWindow(city, path, forceFree, addDays(leftEnd, 1), end)
-      return left + right
+      return { saved: left.saved + right.saved, incomplete: left.incomplete || right.incomplete }
     }
   }
+  let incomplete = false
   if (listingTruncated(first)) {
+    incomplete = true
     console.warn(`[eventbrite] ${city.name} ${path} ${start} still truncated (${first.objectCount} events); taking the pages the site returns`)
   }
   let saved = await storeResults(city, first.results, forceFree)
@@ -230,38 +242,52 @@ async function scrapeWindow(city: CityDef, path: string, forceFree: boolean, sta
     if (yieldIfBudget('pages')) break
     const info = await fetchListingPage(city, path, page, start, end)
     await sleep(EB_DELAY_MS)
-    if (!info || info.results.length === 0) break
+    if (!info) {
+      // A page we know exists failed to load: the window is under-covered.
+      incomplete = true
+      break
+    }
+    if (info.results.length === 0) break
     saved += await storeResults(city, info.results, forceFree)
     if (info.results.length < (info.pageSize || 20)) break
   }
-  return saved
+  return { saved, incomplete }
 }
 
-async function scrapeListing(city: CityDef, path: string, forceFree: boolean): Promise<number> {
+async function scrapeListing(city: CityDef, path: string, forceFree: boolean): Promise<WindowResult> {
   const today = toSydneyParts(new Date(), 'Australia/Sydney').date
   const horizon = addDays(today, EB_HORIZON_DAYS)
   let saved = 0
+  let incomplete = false
   for (let start = today; start <= horizon;) {
     if (yieldIfBudget('date windows')) break
     const windowEnd = addDays(start, EB_WINDOW_DAYS - 1)
     const end = windowEnd > horizon ? horizon : windowEnd
-    saved += await scrapeWindow(city, path, forceFree, start, end)
+    const window = await scrapeWindow(city, path, forceFree, start, end)
+    saved += window.saved
+    incomplete = incomplete || window.incomplete
     start = addDays(end, 1)
   }
-  return saved
+  return { saved, incomplete }
 }
 
-export async function fetchEventbriteEvents(): Promise<number> {
+export async function fetchEventbriteEvents(): Promise<{ saved: number; more: boolean }> {
   let total = 0
+  let incomplete = false
   for (const city of INGEST_CITIES) {
     if (yieldIfBudget('cities')) break
     // All-events first. The free listing runs second so its isFree flag is what saveEvent keeps
     // when the same event is in both feeds (a same-source update overwrites isFree).
     const all = await scrapeListing(city, 'all-events', false)
     const free = await scrapeListing(city, 'free--events', true)
-    console.log(`[eventbrite] ${city.name}: saved ${free + all} events`)
-    total += free + all
+    console.log(`[eventbrite] ${city.name}: saved ${free.saved + all.saved} events`)
+    total += free.saved + all.saved
+    incomplete = incomplete || all.incomplete || free.incomplete
     noteSourceSaved(total)
   }
-  return total
+  // An under-covered run returns the sweep `more` flag, which the refresh log
+  // stores as a sweep mark: the run reads as partial, never as a completed
+  // sweep, so retirement cannot judge listings against coverage we never had.
+  if (incomplete) console.warn('[eventbrite] run under-covered (failed page or still-truncated window); marking the sweep partial')
+  return { saved: total, more: incomplete }
 }
