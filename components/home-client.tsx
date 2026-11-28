@@ -409,7 +409,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           <HeroCard
             priority
             image={cityHeroSrc(city)}
-            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{boardDisplayName(city || DEFAULT_CITY)} tonight.</span></>}
+            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{boardDisplayName(city || DEFAULT_CITY)}.</span></>}
             lede={<p>{COPY.homeHero}</p>}
           >
             <div className="mt-5 grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
