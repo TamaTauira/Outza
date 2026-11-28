@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, suburbCountsFromRows, suburbGuideTotalsFromRows, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
+import { degradedLandingResult, guideListMode, normTitle, presentLocalListings, scanInChunks, shapeLandingEvents, shapeLandingRows, SuburbScanTruncatedError, SUBURB_TOTALS_MEMO_MAX_AGE_MS, suburbCountsFromRows, suburbGuideTotalsFromRows, suburbLinkCount, suburbTotalsFallback, type LandingEvent, type LandingLocal, type LocalRow, type SuburbCountRow } from './seo-server'
 import { cityDef } from './cities'
 import { isDbSaturation } from './db-guard'
 import { isLandingSuburb, slugify } from './seo'
@@ -260,4 +260,62 @@ test('presentLocalListings maps next occurrences and shows a repeated listing on
   assert.equal(weekly.date, '2027-03-06', 'a weekly listing started before the window maps to its next occurrence inside it')
   assert.equal(weekly.recurring, true)
   assert.equal(out.find((x) => x.id === 'a')!.date, '2027-03-06')
+})
+
+test('a failed suburb totals read serves last good totals, marked not ok, for an hour', () => {
+  // citySuburbTotals' fail-safe: a failed read (truncated scan,
+  // saturated database, failed local read) serves the totals this
+  // process last computed — attached to an ok: false result, so no
+  // caller mistakes them for a fresh read — while they are under an
+  // hour old. Past that they are treated as unavailable: a number that
+  // old is not a page's count either.
+  const totals = [{ name: 'Newtown', slug: 'newtown', count: 281 }]
+  const at = 1_000_000_000_000
+  assert.deepEqual(suburbTotalsFallback({ at, totals }, at + 5 * 60 * 1000), { ok: false, totals }, 'fresh last good totals ride along, marked not ok')
+  assert.deepEqual(suburbTotalsFallback({ at, totals }, at + SUBURB_TOTALS_MEMO_MAX_AGE_MS), { ok: false, totals }, 'exactly an hour old still serves')
+  assert.deepEqual(suburbTotalsFallback({ at, totals }, at + SUBURB_TOTALS_MEMO_MAX_AGE_MS + 1), { ok: false, totals: [] }, 'past an hour the last good totals are unavailable')
+  assert.deepEqual(suburbTotalsFallback(undefined, at), { ok: false, totals: [] }, 'a process that never computed totals has nothing to serve')
+})
+
+test('suburb link counts come only from the totals read', () => {
+  // The number beside a suburb link is the totals read's own: fresh on
+  // ok, last good on a failed read that still holds totals, and no
+  // count at all when the read holds none. Nothing else is ever
+  // substituted — in particular not the guide model's inventory total,
+  // which counts stored rows without the pages' showing collapse.
+  const fresh = { ok: true, totals: [{ name: 'Newtown', slug: 'newtown', count: 281 }] }
+  assert.equal(suburbLinkCount(fresh, 'newtown'), 281)
+  assert.equal(suburbLinkCount(fresh, 'enmore'), 0, 'a fresh read is authoritative: a suburb it does not list counts 0')
+  const lastGood = { ok: false, totals: fresh.totals }
+  assert.equal(suburbLinkCount(lastGood, 'newtown'), 281, 'a failed read still prints its last good totals')
+  assert.equal(suburbLinkCount(lastGood, 'enmore'), null, 'a suburb missing from last good totals gets no count: last good may predate it')
+  assert.equal(suburbLinkCount({ ok: false, totals: [] }, 'newtown'), null, 'a failed read with nothing kept prints no count')
+})
+
+test('suburb link counts never fall back to the guide model total', () => {
+  // The guide model's suburb totals (d.total) count stored rows with
+  // no showing collapse, so they disagree with the suburb pages by
+  // design. #324 moved the nav to citySuburbTotals but left d.total as
+  // the fallback when that read failed — and the read fails on any
+  // cold process under saturation, so the model number kept printing
+  // beside the links (Newtown labelled 292 over a page printing 280).
+  // Pin both renderers to the totals read at source level, the way the
+  // GuideLanding caller set is pinned above: no CI step type-checks,
+  // and the substitution is a one-line regression.
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const regions: Record<string, [string, string]> = {
+    'app/[city]/[topic]/page.tsx': ['const pageCount', 'const origin'],
+    'lib/combo-page.tsx': ['suburbs={', 'guides={'],
+  }
+  for (const [path, [from, to]] of Object.entries(regions)) {
+    const src = readFileSync(join(root, path), 'utf8')
+    const start = src.indexOf(from)
+    assert.notEqual(start, -1, `${path}: the suburb link construction is where this test expects it`)
+    const region = src.slice(start, src.indexOf(to, start))
+    assert.match(region, /suburbLinkCount\(/, `${path} takes its suburb link counts from the totals read`)
+    assert.doesNotMatch(region, /d\.total/, `${path} must not fall back to the guide model total for a suburb count`)
+  }
+  const landing = readFileSync(join(root, 'components/guide-landing.tsx'), 'utf8')
+  assert.match(landing, /count: number \| null/, 'GuideLanding admits a suburb link with no count')
+  assert.match(landing, /s\.count !== null/, 'GuideLanding renders the count only when one is supplied')
 })
