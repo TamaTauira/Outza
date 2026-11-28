@@ -257,12 +257,12 @@ function clockMinutes(value?: string | null): number | null {
 /**
  * True once the listing has finished in its own city.
  * The calendar day is the stored date key. The clock is that city's wall time
- * (Australia/Sydney for Sydney). The event's own calendar span — its date
- * through its endDate, or an after-midnight finish — decides whether it can
- * still be live at all. A listed endsAt is a derived instant (a linked donor
- * can recompute it from its own endDate), so it sets the finish inside that
- * span but can never stretch the span: once the span's last day is over, the
- * event is past no matter how far ahead endsAt points.
+ * (Australia/Sydney for Sydney). A listed endsAt in the past is always the
+ * finish. A listed endsAt in the future is not, on its own, a longer event:
+ * endsAt is a derived instant (a linked donor can recompute it from its own
+ * endDate), so it can only keep an event live inside the event's own
+ * calendar span — its date through its endDate, or an after-midnight
+ * finish — and on the span's last day the day's own clock finish governs.
  */
 export function isPastEvent(ev: {
   date: Date | string
@@ -292,12 +292,12 @@ export function isPastEvent(ev: {
     if ((endsKey === startKey || endsKey === addDaysKey(startKey, 1)) && endsKey > endKey) endKey = endsKey
   }
   if (endKey < today) return true
-  if (endKey > today) return false
-  // The span's last day. The finish is whichever comes first, the listed
-  // endsAt or the span's own clock finish: endsAt can end an event early,
-  // never late. No real finish: the session stays up for the whole city day.
-  // 00:00–00:00 is that placeholder, not a clock.
+  // A finish instant already past is past, wherever the span stands.
   if (hasEndsAt && endsAtMs <= now.getTime()) return true
+  if (endKey > today) return false
+  // The span's last day: the day's own clock finish governs (a future endsAt
+  // does not override it). No real finish: the session stays up for the whole
+  // city day. 00:00–00:00 is that placeholder, not a clock.
   const openDay = ev.allDay === true || endClock == null || (endClock === 0 && (start == null || start === 0))
   if (openDay) return false
   const nowMin = clockMinutes(toSydneyParts(now, city.tz).time) ?? 0
