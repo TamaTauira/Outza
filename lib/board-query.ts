@@ -45,3 +45,24 @@ export function boardQueryKey(parts: BoardQueryParts): string {
 export function boardDataIsStale(dataKey: string | null, currentKey: string, held: number): boolean {
   return held > 0 && dataKey !== currentKey
 }
+
+/**
+ * Whether a board's stated count may be published yet, and as what. A
+ * windowed count ('now' / 'evening' / 'hour') is derived from the rows
+ * the list holds, so while the first load is still fetching the span's
+ * remaining pages any number it produced would be a partial sum that
+ * grows as the appends land — the count is 'gated' (the summary holds
+ * its loading treatment and the surface reports 0) until the held pages
+ * reach the span's page total. When the first load's page ceiling bound
+ * the load (see boardPagesToLoad in lib/scroll-restore.ts), the held
+ * set can never complete; rather than publish the partial sum as final,
+ * the headline 'fallback's to the server's full-set numbers for the
+ * span — the same numbers the unwindowed board states. An unwindowed
+ * board derives its count from the server set from the first response,
+ * so it is always 'ready'.
+ */
+export function boardCountGate(input: { windowed: boolean; heldPages: number; totalPages: number; capped: boolean }): 'gated' | 'fallback' | 'ready' {
+  if (!input.windowed) return 'ready'
+  if (input.heldPages >= input.totalPages) return 'ready'
+  return input.capped ? 'fallback' : 'gated'
+}

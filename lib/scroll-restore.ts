@@ -68,3 +68,31 @@ export function listDepthToLoad(saved: number | null, totalPages: number): numbe
   const cap = totalPages > 0 ? totalPages : want
   return Math.min(want, cap, 8)
 }
+
+/** The deepest first load the board ever makes, in pages. This was the
+ * ceiling on every first load before the windowed full load existed
+ * (listDepthToLoad caps there too); the full load keeps it as its own
+ * bound, so it can never make a first load deeper than the deepest one
+ * the site already made for scroll restoration. At 300 rows a page the
+ * bound is 2,400 rows — a single day is a handful of pages at most
+ * (Sydney's biggest ≈ 2), so the bound is headroom, not an expected
+ * case. A load the bound stops short is never mistaken for a complete
+ * set: the count gate (boardCountGate) treats it as capped. */
+export const BOARD_FULL_LOAD_PAGE_CAP = 8
+
+/**
+ * How many pages the board's first load fetches. A single-day span can
+ * carry a time window ('now' / 'evening' / 'hour'), and the window's
+ * sections and its stated count are computed from the rows the list
+ * holds — page 1 alone understates both whenever the day runs past one
+ * page, and the count then grows as the visitor pages (the Today preset
+ * states the same day's full set). So a windowed single-day board loads
+ * every page up front, up to BOARD_FULL_LOAD_PAGE_CAP. An unwindowed
+ * ('all') board states a server-derived count and pages on demand, so
+ * it keeps the restoration depth, as do spanning spans (their count is
+ * server-derived too) and previews (they only ever show a slice).
+ */
+export function boardPagesToLoad(input: { saved: number | null; totalPages: number; spanning: boolean; preview: boolean; windowed: boolean }): number {
+  if (!input.spanning && !input.preview && input.windowed && input.totalPages > 0) return Math.min(input.totalPages, BOARD_FULL_LOAD_PAGE_CAP)
+  return listDepthToLoad(input.saved, input.totalPages)
+}
