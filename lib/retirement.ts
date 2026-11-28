@@ -14,6 +14,21 @@
  * sees it again. Nothing is ever deleted, and a hide is always reversible.
  * Hides are marked with a SOURCE_RETIRED audit row so this mechanism never
  * resurrects a listing an admin soft-deleted by hand.
+ *
+ * Two guards keep a broken feed from retiring a healthy catalogue:
+ * - A sweep that misses an implausible share of a source's catalogue is
+ *   suspicious. While a source is suspicious, its latest miss does not
+ *   count toward the two-miss rule and every hide it would have caused is
+ *   held, with an OPEN audit for admins. A persistently broken feed is
+ *   suspicious on every pass, so it can never mass-hide, no matter how
+ *   often it repeats.
+ * - Restore only lifts a soft-delete this mechanism itself set. No admin
+ *   code path in the repo writes Event.deletedAt (admins moderate via
+ *   `hidden`/`moderationStatus`), so a manual delete can only be made
+ *   out-of-band; the mechanism recognises its own delete by timestamp —
+ *   the SOURCE_RETIRED audit is written in the same transaction, moments
+ *   after deletedAt. A deletedAt later than that audit belongs to someone
+ *   else and is never auto-lifted.
  */
 import { prisma } from '@/lib/prisma'
 import { sourceLogStatus } from '@/lib/refresh-plan'
@@ -26,6 +41,13 @@ export const SUSPICIOUS_MISS_SHARE = 0.3
 export const SUSPICIOUS_MISS_MIN = 10
 /** Consecutive completed sweeps that must miss a record before it can hide its event. */
 export const MISSES_BEFORE_HIDE = 2
+/**
+ * How far after its SOURCE_RETIRED audit a deletedAt may sit and still be
+ * the mechanism's own delete. The hide writes deletedAt and its audit in
+ * one transaction, so the two are moments apart; a manual re-delete lands
+ * far later than this.
+ */
+export const DELETE_AUTHORSHIP_TOLERANCE_MS = 60_000
 const LOG_WINDOW_MS = 14 * 24 * 60 * 60 * 1000
 const LOG_TAKE = 80
 const HIDE_CAP = 300
@@ -170,8 +192,21 @@ export type RetirementEventInput = {
   deletedAt: Date | null
   duplicateOfId: string | null
   communityKey: string | null
-  /** True when the latest retirement audit for this event is this mechanism's own hide. */
-  retiredBySweep: boolean
+  /** The latest SOURCE_RETIRED / SOURCE_RESTORED audit for this event, if any. */
+  retirementAudit: { action: string; createdAt: Date } | null
+}
+
+/**
+ * Whether the event's current soft-delete is this mechanism's own: the
+ * latest retirement audit is its hide, and deletedAt was written by that
+ * hide (same transaction — moments before the audit), not re-set by anyone
+ * since. A manual restore followed by a manual re-delete leaves deletedAt
+ * well after the audit, so the re-delete is never auto-lifted.
+ */
+export function sweepOwnsCurrentDelete(ev: RetirementEventInput): boolean {
+  if (!ev.deletedAt || !ev.retirementAudit) return false
+  if (ev.retirementAudit.action !== 'SOURCE_RETIRED') return false
+  return ev.deletedAt.getTime() <= ev.retirementAudit.createdAt.getTime() + DELETE_AUTHORSHIP_TOLERANCE_MS
 }
 
 export type RetirementPlan = {
@@ -211,8 +246,8 @@ export function planRetirement(input: {
   const missesByRecordId = new Map<string, number>()
   const markMissingIds: string[] = []
   const clearMissingIds: string[] = []
-  const newlyMissedBySource = new Map<string, number>()
-  const visibleBySource = new Map<string, number>()
+  const missedBySource = new Map<string, number>()
+  const catalogueBySource = new Map<string, number>()
 
   for (const record of input.records) {
     const ev = eventsById.get(record.eventId)
@@ -221,26 +256,39 @@ export function planRetirement(input: {
     if (!sweeps || !sweeps.length) continue
     const misses = missedSweeps(record.seenAt, sweeps)
     missesByRecordId.set(record.id, misses)
-    if (!record.missing) {
-      visibleBySource.set(record.source, (visibleBySource.get(record.source) ?? 0) + 1)
-    }
+    catalogueBySource.set(record.source, (catalogueBySource.get(record.source) ?? 0) + 1)
+    if (misses >= 1) missedBySource.set(record.source, (missedBySource.get(record.source) ?? 0) + 1)
     const shouldBeMissing = misses >= 1
     if (shouldBeMissing && !record.missing) {
       markMissingIds.push(record.id)
-      newlyMissedBySource.set(record.source, (newlyMissedBySource.get(record.source) ?? 0) + 1)
     } else if (!shouldBeMissing && record.missing) {
       clearMissingIds.push(record.id)
     }
   }
 
+  // Suspicion is judged on everything the latest completed sweep missed,
+  // not only on records newly flagged this pass. Judging new flags alone
+  // let a broken feed through: the first bad sweep flagged the whole
+  // catalogue (nothing at two misses yet, nothing held), and the second
+  // bad sweep flagged nothing new — so it read as ordinary and hid
+  // everything. A source whose latest sweep missed an implausible share
+  // of its whole catalogue is suspicious on every such pass.
   const suspiciousSources: string[] = []
-  for (const [source, newly] of newlyMissedBySource) {
-    const visible = visibleBySource.get(source) ?? 0
-    if (newly >= SUSPICIOUS_MISS_MIN && visible > 0 && newly > visible * SUSPICIOUS_MISS_SHARE) {
+  for (const [source, missed] of missedBySource) {
+    const catalogue = catalogueBySource.get(source) ?? 0
+    if (missed >= SUSPICIOUS_MISS_MIN && catalogue > 0 && missed > catalogue * SUSPICIOUS_MISS_SHARE) {
       suspiciousSources.push(source)
     }
   }
   const suspicious = new Set(suspiciousSources)
+
+  // While a source is suspicious, its latest miss does not count toward
+  // the two-miss rule. Combined with the hold below, a persistently broken
+  // feed can never accumulate the misses a hide needs.
+  const effectiveMisses = (record: RetirementRecordInput): number => {
+    const misses = missesByRecordId.get(record.id) ?? 0
+    return suspicious.has(record.source) ? Math.max(0, misses - 1) : misses
+  }
 
   const recordsByEvent = new Map<string, RetirementRecordInput[]>()
   for (const record of input.records) {
@@ -257,16 +305,19 @@ export function planRetirement(input: {
     if (!records.length) continue
     if (ev.deletedAt == null) {
       if (!eventInScope(ev, todayStartMs)) continue
-      const allMissed =
+      const rawAllMissed =
         records.every((record) => (missesByRecordId.get(record.id) ?? 0) >= MISSES_BEFORE_HIDE)
-      if (!allMissed) continue
-      if (records.some((record) => suspicious.has(record.source))) heldEventIds.push(ev.id)
+      if (!rawAllMissed) continue
+      const allMissed = records.every((record) => effectiveMisses(record) >= MISSES_BEFORE_HIDE)
+      if (!allMissed || records.some((record) => suspicious.has(record.source))) heldEventIds.push(ev.id)
       else hideEventIds.push(ev.id)
       continue
     }
     // Already soft-deleted. Only this mechanism's own hides come back, and
-    // only when a completed sweep has seen the listing again.
-    if (!ev.retiredBySweep) continue
+    // only when a completed sweep has seen the listing again. Ownership is
+    // judged against the CURRENT deletedAt (see sweepOwnsCurrentDelete):
+    // a delete anyone else set after the mechanism's hide is left alone.
+    if (!sweepOwnsCurrentDelete(ev)) continue
     if (ev.duplicateOfId != null || ev.communityKey != null) continue
     const seenAgain = records.some((record) => missesByRecordId.get(record.id) === 0)
     if (seenAgain) restoreEventIds.push(ev.id)
@@ -278,30 +329,37 @@ export function planRetirement(input: {
 /**
  * The one soft-hide both retirement paths use. Sets deletedAt and leaves a
  * SOURCE_RETIRED audit marker, so a later sighting can restore exactly the
- * listings this mechanism hid — never one an admin removed by hand.
+ * listings this mechanism hid — never one an admin removed by hand. The
+ * two writes are one transaction: a hide without its marker would be a
+ * delete the restore check cannot prove is ours (and would never lift),
+ * and a marker without the hide would claim ownership of someone else's.
  */
 export async function softHideEvent(eventId: string, detail: string, now = new Date()): Promise<boolean> {
-  const res = await prisma.event.updateMany({
-    where: { id: eventId, deletedAt: null },
-    data: { deletedAt: now },
+  return prisma.$transaction(async (tx) => {
+    const res = await tx.event.updateMany({
+      where: { id: eventId, deletedAt: null },
+      data: { deletedAt: now },
+    })
+    if (res.count === 0) return false
+    await tx.qualityAudit.create({
+      data: { eventId, action: 'SOURCE_RETIRED', detail, status: null },
+    })
+    return true
   })
-  if (res.count === 0) return false
-  await prisma.qualityAudit.create({
-    data: { eventId, action: 'SOURCE_RETIRED', detail, status: null },
-  })
-  return true
 }
 
 async function restoreEvent(eventId: string, detail: string): Promise<boolean> {
-  const res = await prisma.event.updateMany({
-    where: { id: eventId, deletedAt: { not: null } },
-    data: { deletedAt: null },
+  return prisma.$transaction(async (tx) => {
+    const res = await tx.event.updateMany({
+      where: { id: eventId, deletedAt: { not: null } },
+      data: { deletedAt: null },
+    })
+    if (res.count === 0) return false
+    await tx.qualityAudit.create({
+      data: { eventId, action: 'SOURCE_RESTORED', detail, status: null },
+    })
+    return true
   })
-  if (res.count === 0) return false
-  await prisma.qualityAudit.create({
-    data: { eventId, action: 'SOURCE_RESTORED', detail, status: null },
-  })
-  return true
 }
 
 async function setMissing(ids: string[], missing: boolean) {
@@ -370,17 +428,17 @@ export async function runRetirementPass(now = new Date()): Promise<{
   const audits = await prisma.qualityAudit.findMany({
     where: { eventId: { in: eventIds }, action: { in: ['SOURCE_RETIRED', 'SOURCE_RESTORED'] } },
     orderBy: { createdAt: 'desc' },
-    select: { eventId: true, action: true },
+    select: { eventId: true, action: true, createdAt: true },
   })
-  const retiredBySweep = new Map<string, boolean>()
+  const retirementAudit = new Map<string, { action: string; createdAt: Date }>()
   for (const audit of audits) {
-    if (audit.eventId && !retiredBySweep.has(audit.eventId)) {
-      retiredBySweep.set(audit.eventId, audit.action === 'SOURCE_RETIRED')
+    if (audit.eventId && !retirementAudit.has(audit.eventId)) {
+      retirementAudit.set(audit.eventId, { action: audit.action, createdAt: audit.createdAt })
     }
   }
   const events: RetirementEventInput[] = eventRows.map((ev) => ({
     ...ev,
-    retiredBySweep: retiredBySweep.get(ev.id) ?? false,
+    retirementAudit: retirementAudit.get(ev.id) ?? null,
   }))
 
   const plan = planRetirement({ sweepsBySource, records, events, todayStart })
@@ -420,7 +478,7 @@ export async function runRetirementPass(now = new Date()): Promise<{
             eventId: null,
             action: 'SOURCE_RETIREMENT_HELD',
             status: 'OPEN',
-            detail: `${source}: one completed sweep newly missed an implausible share of its upcoming listings, so ${plan.heldEventIds.length} listing(s) that met the two-miss rule were NOT hidden on this sweep alone. The misses are recorded; a further missed sweep hides as usual.`,
+            detail: `${source}: its latest completed sweep missed an implausible share of its upcoming listings, so ${plan.heldEventIds.length} listing(s) that met the two-miss rule were NOT hidden. While the source keeps missing at that rate its misses do not count toward the hide rule, so a persistently broken feed cannot mass-hide its listings; the hides stay held until the source's sweeps look ordinary again.`,
           },
         })
       }
