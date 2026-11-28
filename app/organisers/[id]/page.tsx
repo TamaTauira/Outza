@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { prisma } from '@/lib/prisma'
+import { boardDisplayName } from '@/lib/cities'
 import { sydneyToday } from '@/lib/event-store'
 import { eventPath } from '@/lib/seo'
 import { SiteHeader } from '@/components/site-header'
@@ -67,7 +68,7 @@ export default async function OrganiserPage({ params }: Props) {
               {name}
               {claimed && <ClaimedTick kind="organiser" className="h-5 w-5" />}
             </h1>
-            {user.homeCity && <p className="text-sm text-muted-foreground mt-1">{user.homeCity}</p>}
+            {user.homeCity && <p className="text-sm text-muted-foreground mt-1">{boardDisplayName(user.homeCity)}</p>}
           </div>
         </div>
         {user.bio && <p className="mt-4 text-sm leading-relaxed whitespace-pre-wrap">{user.bio}</p>}
