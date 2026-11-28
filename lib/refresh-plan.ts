@@ -35,6 +35,25 @@ export const FINALIZE_POST_BUDGET_MS = 150_000
 const POST_STEP_TAIL_MS = 5_000
 
 /**
+ * The suburb-totals warm that ends finalize, after the public-listings
+ * invalidation drops the cached fills. The finalize steps before it
+ * can already draw ~205s of the 300s function limit in the worst case
+ * (the 150s post-step wall, retirement's 30s, the image pass's 25s),
+ * so the warm takes what is left with margin for the cycle assessment
+ * and the log writes — and in practice the earlier steps rarely take
+ * their full budgets, so the warm usually has its whole minute.
+ */
+export const TOTALS_WARM_BUDGET_MS = 60_000
+/**
+ * One city's share of the warm. Sydney's totals scan is the only one
+ * near the edge (dozens of chunks); the other cities are a handful of
+ * chunks each. A city whose chunk loses its statement race fails in
+ * about that race's budget (25s in the warm), well inside this cap —
+ * the cap binds only a scan whose chunks all succeed slowly.
+ */
+export const TOTALS_WARM_CITY_BUDGET_MS = 45_000
+
+/**
  * Budget for one finalize post-step, or null when starting it would run past
  * the finalize ceiling. Quality keeps the local-import budget in reserve.
  */
