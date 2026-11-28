@@ -4,6 +4,7 @@ import { OWNER_EMAIL } from './email'
 import {
   faultAlertCopyRecipients,
   faultAlertExtraRecipients,
+  sameInbox,
   faultErrorParts,
   faultMachineBlock,
   faultRouteFor,
@@ -36,6 +37,20 @@ test('fault copies parse a comma-separated list and skip the owner', () => {
     assert.deepEqual(faultAlertExtraRecipients(), ['ops@example.com', OWNER_EMAIL, 'second@example.com'])
     assert.deepEqual(faultAlertCopyRecipients(), ['ops@example.com', 'second@example.com'])
   })
+})
+
+test('fault copies skip Gmail aliases of the owner, which land in the same inbox', () => {
+  withEnv('tama.tauira+faults@gmail.com, ta.ma.ta.ui.ra@googlemail.com, ops@example.com', () => {
+    assert.deepEqual(faultAlertCopyRecipients(), ['ops@example.com'])
+  })
+})
+
+test('sameInbox applies Gmail rules only to Gmail addresses', () => {
+  assert.equal(sameInbox('Tama.Tauira+alerts@Gmail.com', OWNER_EMAIL), true)
+  assert.equal(sameInbox('ta.ma.ta.ui.ra@googlemail.com', OWNER_EMAIL), true)
+  assert.equal(sameInbox('ops@example.com', OWNER_EMAIL), false)
+  // A plus-tag on another provider is a different mailbox, not an alias.
+  assert.equal(sameInbox('owner+alerts@example.com', 'owner@example.com'), false)
 })
 
 test('an empty fault recipient list emails the owner only', () => {
