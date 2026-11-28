@@ -130,3 +130,27 @@ export function boardPagesToLoad(input: { saved: number | null; totalPages: numb
 export function boardTopUpTarget(input: { heldPages: number; totalPages: number; spanning: boolean; windowed: boolean }): number {
   return boardPagesToLoad({ saved: input.heldPages, totalPages: input.totalPages, spanning: input.spanning, windowed: input.windowed })
 }
+
+/**
+ * Whether a top-up append's null return is a genuine failure of the
+ * attempt, as opposed to the append being superseded or abandoned.
+ * fetchSpan returns null for both: it nulls a fetch a newer one has
+ * superseded (by its own sequence test) and it nulls a fetch that
+ * genuinely failed — an HTTP error, unparseable JSON, a dropped
+ * connection, a throw. Only the genuine failure may consume the
+ * query's one top-up attempt; a superseded append's board is owned by
+ * the newer fetch now, and an abandoned loop (the mirrors no longer
+ * hold: the query moved on, or the board stopped being windowed) is
+ * not a failure either.
+ *
+ * fetchSpan increments the board's fetch sequence on entry,
+ * synchronously, so the append ran under seqBefore + 1, where
+ * seqBefore is the sequence read immediately before the call. The
+ * sequence has moved past that exactly when a newer fetch started
+ * (Show More, a retry, a fresh load) or a load cleanup bumped it —
+ * the supersede case. stillCurrent is the loop's mirror test at the
+ * moment the append resolved.
+ */
+export function boardTopUpAppendFailed(input: { seqBefore: number; seqNow: number; stillCurrent: boolean }): boolean {
+  return input.stillCurrent && input.seqNow === input.seqBefore + 1
+}

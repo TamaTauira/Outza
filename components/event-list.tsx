@@ -17,7 +17,7 @@ import { ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { SaveButton } from '@/components/save-button'
 import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
-import { boardPagesToLoad, boardTopUpTarget } from '@/lib/scroll-restore'
+import { boardPagesToLoad, boardTopUpAppendFailed, boardTopUpTarget } from '@/lib/scroll-restore'
 import { ReachBeacon } from '@/components/reach-beacon'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { displayTitle, parentCategory } from '@/lib/display-public'
@@ -162,14 +162,18 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // current query, window and page total from refs the top-up effect
   // refreshes on every run, rather than from its own closure. The
   // settled mark records the query a top-up already completed, so it
-  // cannot re-fire for that query; a fresh first load (the load effect
-  // or reloadInitial) clears it, because a new load can leave the held
-  // set short again under a different window.
+  // cannot re-fire for that query; the failed mark records the query
+  // a top-up append genuinely failed for (boardTopUpAppendFailed), so
+  // the effect cannot re-fire that attempt either. A fresh first load
+  // (the load effect or reloadInitial) clears both marks, because a
+  // new load can leave the held set short again under a different
+  // window.
   const topUpQueryRef = useRef<string | null>(null)
   const topUpWindowedRef = useRef(false)
   const topUpTotalPagesRef = useRef(1)
   const topUpRunningRef = useRef(false)
   const topUpSettledRef = useRef<string | null>(null)
+  const topUpFailedRef = useRef<string | null>(null)
 
   const fetchSpan = useCallback(async (from: string, to: string, pageNum: number, append: boolean) => {
     const seq = ++fetchSeq.current
@@ -226,6 +230,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   useEffect(() => {
     if (!span || authStatus === 'loading') return
     topUpSettledRef.current = null
+    topUpFailedRef.current = null
     let cancelled = false
     const release = holdScrollRestore('board-list')
     // Read before the depth writer below replaces a saved page count with 1.
@@ -281,6 +286,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const reloadInitial = useCallback(async () => {
     if (!span) return
     topUpSettledRef.current = null
+    topUpFailedRef.current = null
     setPage(1)
     const first = await fetchSpan(span.from, span.to, 1, false)
     if (!first) return
@@ -322,7 +328,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // when a newer query supersedes them, the mirrors abandon it when
   // the query moves on or the board stops being windowed, and a
   // failed append stops it without recording a completion, leaving
-  // recovery to the same retry paths as a failed first load.
+  // recovery to the same retry paths as a failed first load. A
+  // genuinely failed append also records the query in the failed
+  // mark: the effect's deps include the loading flags the failed
+  // fetch toggles on its way out, so without the mark it would fire
+  // the same attempt again at round-trip rate against a persistently
+  // failing endpoint. With it, the headline simply stays gated until
+  // a retry path (which clears the mark) reloads the board. A
+  // superseded or abandoned append records nothing — its board
+  // belongs to a newer fetch, or to no fetch at all.
   const topUpTarget = span
     ? boardTopUpTarget({ heldPages: page, totalPages, spanning: span.spanning, windowed: loadWindowed })
     : page
@@ -333,7 +347,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     if (!span || span.spanning || authStatus === 'loading' || loading || loadingMore || offline) return
     if (dataKey !== queryKey) return
     if (topUpTarget <= page) return
-    if (topUpRunningRef.current || topUpSettledRef.current === queryKey) return
+    if (topUpRunningRef.current || topUpSettledRef.current === queryKey || topUpFailedRef.current === queryKey) return
     topUpRunningRef.current = true
     const target = topUpTarget
     const key = queryKey
@@ -341,8 +355,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       try {
         for (let n = page + 1; n <= target; n++) {
           if (topUpQueryRef.current !== key || !topUpWindowedRef.current) return
+          const seqBefore = fetchSeq.current
           const more = await fetchSpan(span.from, span.to, n, true)
-          if (!more) return
+          if (!more) {
+            if (boardTopUpAppendFailed({ seqBefore, seqNow: fetchSeq.current, stillCurrent: topUpQueryRef.current === key && topUpWindowedRef.current })) {
+              topUpFailedRef.current = key
+            }
+            return
+          }
           setPage(n)
         }
         if (topUpQueryRef.current === key) {
