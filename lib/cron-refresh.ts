@@ -31,7 +31,7 @@ export async function handleRefreshRequest(req: Request, chunkId: string | null)
 
   console.log(`[refresh] chunk ${chunk.id}`)
   const result = await runRefreshChunk(chunk.id)
-  await writeHeartbeat(`refresh-${chunk.id}`).catch(() => {})
+  await writeHeartbeat(`refresh-${chunk.id}`).catch((err) => console.error(`[refresh] heartbeat write failed for ${chunk.id}`, err instanceof Error ? err.message : err))
   const index = REFRESH_CHUNKS.findIndex((c) => c.id === chunk.id)
   const next = REFRESH_CHUNKS[index + 1] ?? null
   const chained = chain && next ? await dispatchChunk(req, next.id) : false
