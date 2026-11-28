@@ -25,7 +25,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { HomeRails } from '@/components/home-rails';
 import { PageScrollLock } from '@/components/page-scroll-lock';
 import { ViewToggle } from '@/components/view-toggle';
-import { SuggestionButton } from '@/components/suggestion-button';
 import { AiSearchBar, type AiSearchFilters } from '@/components/ai-search-bar';
 import { HeroCard, cityHeroSrc } from '@/components/hero-card';
 import { FeaturedTurnstile } from '@/components/featured-turnstile';
@@ -672,7 +671,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         </div>
       }
 
-      {view !== 'map' && <SuggestionButton />}
     </div>);
 
 }

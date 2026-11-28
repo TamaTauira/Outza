@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { LogoHomeLink } from '@/components/logo'
+import { SuggestionLink } from '@/components/suggestion-button'
 import { SocialIcon } from '@/components/site-social-icons'
 import { ACKNOWLEDGEMENT_OF_COUNTRY } from '@/lib/cities'
 import { BRAND_TAGLINE } from '@/lib/brand'
@@ -14,7 +16,7 @@ import {
 } from '@/lib/site-links'
 import { SITE_SOCIAL } from '@/lib/site-social'
 
-function LinkList({ links, cities = false }: { links: SiteLink[]; cities?: boolean }) {
+function LinkList({ links, cities = false, children }: { links: SiteLink[]; cities?: boolean; children?: ReactNode }) {
   return (
     <ul className={cities ? 'vp-foot-cities' : 'vp-foot-list'}>
       {links.map((link) => (
@@ -22,11 +24,12 @@ function LinkList({ links, cities = false }: { links: SiteLink[]; cities?: boole
           <Link href={link.href} className="vp-foot-link">{link.label}</Link>
         </li>
       ))}
+      {children}
     </ul>
   )
 }
 
-function FootGroup({ title, links, cities = false, open = false }: { title: string; links: SiteLink[]; cities?: boolean; open?: boolean }) {
+function FootGroup({ title, links, cities = false, open = false, children }: { title: string; links: SiteLink[]; cities?: boolean; open?: boolean; children?: ReactNode }) {
   return (
     <div className="vp-foot-slot">
       <details className="vp-foot-acc" {...(open ? { open: true } : {})}>
@@ -34,12 +37,12 @@ function FootGroup({ title, links, cities = false, open = false }: { title: stri
           <span>{title}</span>
         </summary>
         <div className="vp-foot-panel">
-          <LinkList links={links} cities={cities} />
+          <LinkList links={links} cities={cities}>{children}</LinkList>
         </div>
       </details>
       <div className="vp-foot-static">
         <p className="vp-foot-label">{title}</p>
-        <LinkList links={links} cities={cities} />
+        <LinkList links={links} cities={cities}>{children}</LinkList>
       </div>
     </div>
   )
@@ -72,7 +75,9 @@ export function SiteFooter() {
           </div>
           <FootGroup title="Explore" links={EXPLORE_LINKS} />
           <FootGroup title="Cities" links={FOOTER_CITY_LINKS} cities open />
-          <FootGroup title="Company" links={COMPANY_LINKS} />
+          <FootGroup title="Company" links={COMPANY_LINKS}>
+            <SuggestionLink />
+          </FootGroup>
           <FootGroup title="Legal" links={LEGAL_LINKS} />
         </div>
 
