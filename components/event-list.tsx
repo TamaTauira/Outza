@@ -76,6 +76,22 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
   const [loading, setLoading] = useState(!(initialBoard && seedMatches))
   const [offline, setOffline] = useState(false)
+  // The rows on screen must belong to the city the heading names. The heading
+  // and picker follow HomeClient's resolved city the moment it lands, but this
+  // list used to keep whatever it already held — the Sydney server seed, or a
+  // previous city's fetch — until a fetch for the new city completed, and if
+  // that fetch was skipped or failed the wrong city stayed up indefinitely
+  // (E2E-13). So when the city changes, drop the previous city's rows and go
+  // back to the loading state; the fetch below fills in the new city.
+  const [prevCity, setPrevCity] = useState(city)
+  if (prevCity !== city) {
+    setPrevCity(city)
+    setEvents([])
+    setTotal(0)
+    setTotalPages(1)
+    setPage(1)
+    setLoading(true)
+  }
   const listed = events
   const railSkip = useMemo(() => new Set(excludeIds), [excludeIds])
   const [loadingMore, setLoadingMore] = useState(false)
@@ -169,7 +185,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       fetchSeq.current += 1
       release()
     }
-  }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard])
+  }, [span?.from, span?.to, fetchSpan, seedMatches, authStatus, initialBoard, city])
 
   useEffect(() => {
     if (!offline || !span) return

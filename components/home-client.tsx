@@ -76,6 +76,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const [timeWindow, setTimeWindow] = useBackState<TimeWindow>('home:window-v2', 'now');
   const [windowPinned, setWindowPinned] = useState(false);
   const [city, setCityState] = useState<string>(DEFAULT_CITY);
+  // True once the client city resolution has run, or a pick has been made.
+  // Until then, the surfaces that would show a city's events stay in their
+  // loading state and the heading names no city, so the Sydney server seed
+  // is never presented as the chosen city (E2E-13 fix-up).
+  const [cityResolved, setCityResolved] = useState(false);
   const [catsHydrated, setCatsHydrated] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [railIds, setRailIds] = useState<string[]>([]);
@@ -91,6 +96,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   const setCity = (c: string) => {
     cityTouched.current = true;
     setCityState(c);
+    setCityResolved(true);
     writeCity(c);
     writeUserCity(userId, c);
     // Drop an area preset from the city we're leaving. Keep a free-text suburb Ask VibePeep set.
@@ -103,6 +109,21 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     setFilters(keep);
   };
   const pinWindow = (w: TimeWindow) => { setWindowPinned(true); setTimeWindow(w); };
+
+  // The hero search hands off to /search with a city parameter. Once the
+  // board resolution has run, the bar uses the resolved city like every
+  // other surface. In the brief window before that, a submission re-resolves
+  // from the same stored inputs rather than carrying the Sydney server seed
+  // (E2E-13 fix-up). The account home city is the one input not readable
+  // synchronously; it can only matter for a signed-in person with no pick
+  // stored anywhere, and resolution lands a beat later on the board itself.
+  const resolveSearchCity = () => resolveBoardCity({
+    urlCity: new URLSearchParams(window.location.search).get('city'),
+    userCity: userId ? readUserCity(userId) : null,
+    homeCity: null,
+    guestCity: readCity(),
+    signedIn: !!userId,
+  });
 
   const filterUser = useRef<string | null | undefined>(undefined);
   useEffect(() => {
@@ -142,40 +163,50 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
     if (authStatus === 'loading') return;
     if (cityTouched.current) {
       if (userId) writeUserCity(userId, city);
+      setCityResolved(true);
       return;
     }
     let cancelled = false;
     const url = new URLSearchParams(window.location.search).get('city');
     const signedIn = !!userId;
     const userCity = signedIn ? readUserCity(userId) : null;
-    const apply = (homeCity: string | null) => {
+    const guestCity = readCity();
+    const apply = (homeCity: string | null, persist = true) => {
       if (cancelled || cityTouched.current) return;
       const next = resolveBoardCity({
         urlCity: url,
         userCity,
         homeCity,
-        guestCity: signedIn ? null : readCity(),
+        guestCity,
         signedIn,
       });
       setCityState(next);
-      writeCity(next);
-      if (signedIn && userId) writeUserCity(userId, next);
+      setCityResolved(true);
+      if (!persist) return;
+      // Write the result back only to the store this resolution belongs to:
+      // a signed-in person's resolution to their own key, a guest's to the
+      // device key. The first version wrote both keys unconditionally, so a
+      // fallback result (the edge IP default, or the account home city)
+      // overwrote a stored device pick it had never read (E2E-13 fix-up).
+      if (signedIn) writeUserCity(userId, next);
+      else writeCity(next);
     };
     // The edge (IP) default only ever fills gaps. It is consulted solely when
     // nothing is stored, and its area only fills an empty area slot, so a
     // suburb or area the person (or a link) already chose always wins. Once
-    // applied, the city is written back through the same keys a manual pick
-    // uses, so the default persists like a pick and never fights the person
+    // applied, the city is written back to the store the resolution belongs
+    // to, so the default persists like a pick and never fights the person
     // on the next page; a later manual change overwrites it the same way.
     const applyEdgeArea = (area: unknown) => {
       if (typeof area !== 'string' || !area) return;
       setFilters((f) => (f.suburb ? f : { ...f, suburb: area }));
     };
     const urlChosen = url === '' || (!!url && CITIES.some((c) => c.name === url));
-    const guestBefore = readCity();
-    if (!signedIn || userCity !== null || urlChosen) {
+    // A stored device pick settles the board on its own: it outranks the
+    // account home city, so there is no need to wait on /api/me for it.
+    if (!signedIn || userCity !== null || guestCity !== null || urlChosen) {
       apply(null);
-      if (!signedIn && guestBefore === null && !url) {
+      if (!signedIn && guestCity === null && !url) {
         fetch('/api/edge-city').then((r) => r.json()).then((d) => {
           if (cancelled || cityTouched.current || typeof d?.city !== 'string' || !d.city) return
           setCityState(d.city)
@@ -191,7 +222,9 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         if (cancelled) return;
         if (!result.ok) {
           if (result.reason === 'network') armReconnect(retry, () => { if (!cancelled) loadHome(); });
-          else apply(null);
+          // A failed read settles the board for this visit but persists
+          // nothing: a fallback must never be cemented as the person's pick.
+          else apply(null, false);
           return;
         }
         const home = result.data?.user?.homeCity;
@@ -265,9 +298,10 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
   }, [city]);
 
   useEffect(() => {
+    if (!cityResolved) return;
     const place = city || DEFAULT_CITY
     document.title = `What’s on in ${place}: events, gigs and things to do | VibePeep`
-  }, [city]);
+  }, [city, cityResolved]);
 
   // Debounce the search box
   useEffect(() => {
@@ -390,7 +424,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             ? 'weekend'
             : '';
   const customDate = !!day && planKey !== 'today' && planKey !== 'tonight' && planKey !== 'weekend';
-  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${boardDisplayName(city || DEFAULT_CITY)}`;
+  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${cityResolved ? boardDisplayName(city || DEFAULT_CITY) : ''}`;
   const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string; detail: string }[] = today ? [
     { key: 'today', label: 'Today', detail: shortDate(today) },
@@ -409,12 +443,12 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           <HeroCard
             priority
             image={cityHeroSrc(city)}
-            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{boardDisplayName(city || DEFAULT_CITY)}.</span></>}
+            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{cityResolved ? `${boardDisplayName(city || DEFAULT_CITY)}.` : '…'}</span></>}
             lede={<p>{COPY.homeHero}</p>}
           >
             <div className="mt-5 grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
-              <CityPicker value={city || DEFAULT_CITY} onChange={setCity} onDark />
-              <AiSearchBar city={city} today={today} onShowAll={applyAiSearch} placeholder="Jazz Friday" queryRequest={askRequest} chips={false} goToPage />
+              <CityPicker value={cityResolved ? (city || DEFAULT_CITY) : ''} onChange={setCity} onDark />
+              <AiSearchBar city={cityResolved ? city : ''} cityPending={!cityResolved} resolveCity={resolveSearchCity} today={today} onShowAll={applyAiSearch} placeholder="Jazz Friday" queryRequest={askRequest} chips={false} goToPage />
             </div>
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-xs text-white/80">Describe a vibe, a date, a place or a budget. Try “plan my Saturday” and I’ll line the night up in Ask.</p>
             <div className="vp-chip-row relative mt-4 flex flex-wrap gap-2">
@@ -435,8 +469,11 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
         ) : null}
 
         <div className={view === 'map' ? 'contents' : view === 'board' ? 'vp-wrap px-4 pt-hero sm:px-6' : 'vp-wrap vp-page-top px-4 sm:px-6'}>
-        {view === 'board' && <FeaturedTurnstile city={city} />}
-        {view === 'board' && (
+        {/* The city-data surfaces mount only once the client resolution has
+            run, so none of them can fetch or paint the Sydney seed's events
+            under another city's heading in the meantime (E2E-13 fix-up). */}
+        {view === 'board' && cityResolved && <FeaturedTurnstile city={city} />}
+        {view === 'board' && cityResolved && (
           <HomeRails
             city={city}
             today={today}
@@ -450,7 +487,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <h1 className="sr-only">Map</h1>
             <div className="vp-map-toolbar flex shrink-0 flex-col gap-[var(--vp-card-gap)] bg-background py-[var(--vp-page-top)] sm:flex-row sm:items-center">
               <div className="w-full shrink-0 sm:w-[46%] sm:max-w-[19rem] lg:w-80 lg:max-w-none">
-                <CityPicker value={city || DEFAULT_CITY} onChange={setCity} />
+                <CityPicker value={cityResolved ? (city || DEFAULT_CITY) : ''} onChange={setCity} />
               </div>
               <div className="min-w-0 w-full sm:flex-1">
                 <SearchField id="map-search" value={searchInput} onChange={setSearchInput} onClear={() => setSearchInput('')} placeholder="Search the map" label="Search events" />
@@ -581,7 +618,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             </>
           }
 
-          {view === 'board' &&
+          {view === 'board' && cityResolved &&
           <>
           <EventList
             layout={resultsView}

@@ -44,8 +44,14 @@ const chosen = (city: string | null | undefined): string | undefined => {
 
 /**
  * Which city the board opens on.
- * A URL wins. A signed-in person's own pick wins, then their account home city.
- * Another person's device city is not used once someone is signed in.
+ * A URL wins. A signed-in person's own pick wins, then the pick stored on
+ * this device, then their account home city. The device pick outranks the
+ * home city: it is the most recent explicit choice made on this device —
+ * often this same person's, made before they signed in, or on /local,
+ * which writes only the device key. The first version of this resolution
+ * never read the device pick for a signed-in person, and the caller then
+ * wrote a fallback (the edge IP default, or the home city) back over it,
+ * destroying the pick (E2E-13 fix-up).
  * Empty string means All of Australia and is a real choice.
  */
 export function resolveBoardCity(input: {
@@ -60,6 +66,8 @@ export function resolveBoardCity(input: {
   if (input.signedIn) {
     const own = chosen(input.userCity)
     if (own !== undefined) return own
+    const device = chosen(input.guestCity)
+    if (device !== undefined) return device
     const home = chosen(input.homeCity)
     if (home) return home
     return DEFAULT_CITY

@@ -142,7 +142,10 @@ export function HomeRails({
     return () => { live = false; retry.stop(); finish() }
   }, [city, today, reloadKey])
 
-  useEffect(() => { setReady(false) }, [city, today])
+  // A new city means the rows on screen belong to the old one. Clear them as
+  // well as the ready flag, so the rails never show one city's events under
+  // another city's heading while the refetch is in flight (E2E-13).
+  useEffect(() => { setReady(false); setRows([]); setFeatured([]) }, [city, today])
 
   if (!today) return null
   const weekend = weekendFrom(today)
