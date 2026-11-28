@@ -21,13 +21,40 @@ function parseServerData(html: string): any | null {
   }
 }
 
-function priceFromAvailability(t: any): string | null {
+export function priceFromAvailability(t: any): string | null {
   if (!t) return null
-  if (t.is_free) return 'Free'
   const min = moneyNumber(t.minimum_ticket_price ?? t.min_price)
   const max = moneyNumber(t.maximum_ticket_price ?? t.max_price)
+  // A positive ticket price wins over is_free: an event with some free classes
+  // and some paid ones is a mixed event, not a free one.
+  if ((min != null && min > 0) || (max != null && max > 0)) {
+    return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price
+  }
+  if (t.is_free) return 'Free'
   if (min == null && max == null) return readPrice(t.minimum_ticket_price?.display ?? t.minimum_ticket_price_display).price
   return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price
+}
+
+/** The stable source id the other externalId feeds already pass to saveEvent. */
+export function eventbriteExternalId(e: { id?: unknown } | null | undefined): string | null {
+  return e?.id != null && e.id !== '' ? String(e.id) : null
+}
+
+/**
+ * Whether the free-events pass may mark this event free as a whole.
+ * Appearing in the free listing only proves a free class exists; the pass may
+ * set isFree only when the event's price evidence shows no paid class at all.
+ * No price evidence is not evidence of free.
+ */
+export function freePassMayMarkFree(availability: any, price: string | null): boolean {
+  const min = moneyNumber(availability?.minimum_ticket_price ?? availability?.min_price)
+  const max = moneyNumber(availability?.maximum_ticket_price ?? availability?.max_price)
+  if ((min != null && min > 0) || (max != null && max > 0)) return false
+  if (max != null && max === 0) return true
+  const parsed = readPrice(price)
+  if (parsed.max != null && parsed.max > 0) return false
+  if (parsed.isFree) return true
+  return availability?.is_free === true
 }
 
 /** Live ticket prices for a batch of Eventbrite event ids (best-effort). */
@@ -132,6 +159,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
       const page = joinOriginPath('https://www.eventbrite.com.au', e?.url)
         ?? (e?.id ? usableUrl(`https://www.eventbrite.com.au/e/${e.id}`) : null)
       const organiser = firstListingUrl(e?.primary_organizer ?? e?.organizer, ['website_url', 'url', 'website'])
+      const price = priceFromAvailability(e?.ticket_availability) ?? prices.get(String(e?.id)) ?? null
       const ok = await saveEvent({
         title: e?.name,
         description: preferDescription(e?.full_description, e?.summary),
@@ -142,8 +170,8 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
         venueName: v?.name ?? 'TBA',
         venueAddress: v?.address?.localized_address_display ?? null,
         genres,
-        isFree: forceFree,
-        price: priceFromAvailability(e?.ticket_availability) ?? prices.get(String(e?.id)) ?? null,
+        isFree: forceFree && freePassMayMarkFree(e?.ticket_availability, price),
+        price,
         imageUrl: e?.image?.original?.url ?? e?.image?.url ?? null,
         ticketUrl: page,
         sourceUrl: page,
@@ -151,6 +179,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
         latitude: parseFloat(v?.address?.latitude) || null,
         longitude: parseFloat(v?.address?.longitude) || null,
         source: 'eventbrite',
+        externalId: eventbriteExternalId(e),
         status,
         city: place,
       })
