@@ -109,6 +109,11 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const youRef = useRef<any>(null)
   const Lref = useRef<any>(null)
   const fetchSeq = useRef(0)
+  // Incremented whenever a locate starts and whenever the visitor jumps
+  // elsewhere (city change, area selection): a geolocation answer that
+  // arrives after either is stale and must not re-centre the map or switch
+  // Near me back on over the new city/area.
+  const locateGenRef = useRef(0)
   const [loc, setLoc] = useState<LocState>('idle')
   // The visitor's own position and the Near me radius. Session-only state:
   // coordinates are never persisted or sent anywhere (see lib/map-near-me).
@@ -260,6 +265,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     // not a change — an auto-locate already in flight must survive it.)
     if (centredCityRef.current !== city) {
       centredCityRef.current = city
+      locateGenRef.current++
       setUserPos(null)
       setLoc((cur) => (cur === 'found' ? 'idle' : cur))
     }
@@ -277,6 +283,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     const prev = suburbRef.current
     suburbRef.current = filters.suburb
     if (!filters.suburb || filters.suburb === prev) return
+    locateGenRef.current++
     setUserPos(null)
     setLoc((cur) => (cur === 'found' ? 'idle' : cur))
     const map = mapInstanceRef.current
@@ -301,9 +308,11 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   // Zoom to the visitor's own location (only after they've opted in; used in the browser only)
   const locate = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) { setLoc('unavailable'); return }
+    const gen = ++locateGenRef.current
     setLoc('locating')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (gen !== locateGenRef.current) return
         try { localStorage.setItem(LOC_KEY, 'granted') } catch {}
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         const map = mapInstanceRef.current
@@ -320,6 +329,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         setLoc('found')
       },
       (err) => {
+        if (gen !== locateGenRef.current) return
         setUserPos(null)
         if (err.code === err.PERMISSION_DENIED) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} ; setLoc('denied') }
         else setLoc('unavailable')
@@ -327,6 +337,19 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     )
   }, [])
+
+  // The "You are here" dot belongs to Near me: whenever the held position
+  // is dropped — an area/suburb jump, a city change, a failed re-locate —
+  // the marker goes too, so the map never keeps showing the visitor's dot
+  // while the distance filter is off.
+  useEffect(() => {
+    if (userPos) return
+    const map = mapInstanceRef.current
+    if (map && youRef.current) {
+      map.removeLayer(youRef.current)
+      youRef.current = null
+    }
+  }, [userPos])
 
   // On mount, centre on the visitor when location is already granted — the
   // Permissions API where it can be read, else the stored consent from a
@@ -423,10 +446,13 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       if (tier === 'GOLD' && !locked) continue
       addMarker(e, tier)
     }
-    for (const f of featured) {
-      if (f.tier !== 'GOLD') continue
-      addMarker(f, 'GOLD')
-    }
+    // GOLD featured pins arrive as their own set, but the Near me radius is
+    // a promise about every pin on the map: while Near me is on they go
+    // through the same distance cut as the fetched events (they carry the
+    // same latitude/longitude shape). Off, they show exactly as before.
+    const goldFeatured = featured.filter((f: any) => f.tier === 'GOLD')
+    const shownGold = nearMe && userPos ? filterPinsWithinRadius(goldFeatured, userPos, radiusKm) : goldFeatured
+    for (const f of shownGold) addMarker(f, 'GOLD')
     map.addLayer(mcg)
     markersRef.current = mcg
     goldRef.current = null
@@ -434,7 +460,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       const bounds = mcg.getBounds()
       if (bounds?.isValid?.()) map.fitBounds(bounds.pad(0.25), { maxZoom: 14, animate: false })
     }
-  }, [displayEvents, featured, ready, locked])
+  }, [displayEvents, featured, ready, locked, nearMe, userPos, radiusKm])
 
   const inView = (e: any) => {
     if (e?.latitude == null || e?.longitude == null) return false
