@@ -256,26 +256,42 @@ const UNCOVERED_PLACES = [
 const FOLDED_PLACES = KNOWN_CITY_DEFS.filter((c) => !CITY_NAMES.includes(c.name)).map((c) => c.name)
 
 /**
- * The uncovered place an ask names, or '' when it names none — including
- * when it names a covered place instead. Detection lives in the parser
- * because it is the only stage that sees the raw words. A covered place
- * named anywhere wins (catalogue city, folded place, or a known
- * suburb/area); an uncovered one only counts in a place position —
- * after "in"/"near", opening the query, or closing it — so a venue or
- * artist that merely carries a place's name mid-sentence is not flagged.
+ * The uncovered places an ask names, in longest-first order — empty when
+ * it names none, including when it names a covered place instead.
+ * Detection lives in the parser because it is the only stage that sees
+ * the raw words. A covered place named anywhere wins (catalogue city,
+ * folded place, or a known suburb/area); an uncovered one only counts
+ * in a place position — after "in"/"near", opening the query, or
+ * closing it — so a venue or artist that merely carries a place's name
+ * mid-sentence is not flagged. The closing position carries the same
+ * left boundary as the folded-place check above, and a compound name
+ * ("Mount Wellington") is a landmark, not the place being asked about.
+ * Every match is collected, not just the first: the note names one
+ * place, but the words of all of them must leave the keywords.
  */
-export function uncoveredPlaceInQuery(q: string): string {
-  if (cityInQuery(q) || suburbHit(q)) return ''
+export function uncoveredPlacesInQuery(q: string): string[] {
+  if (cityInQuery(q) || suburbHit(q)) return []
   for (const name of FOLDED_PLACES) {
-    if (new RegExp(`(^|[^a-z])${escapeRe(name)}([^a-z]|$)`, 'i').test(q)) return ''
+    if (new RegExp(`(^|[^a-z])${escapeRe(name)}([^a-z]|$)`, 'i').test(q)) return []
   }
   const s = q.toLowerCase()
   const places = [...UNCOVERED_PLACES].sort((a, b) => b.length - a.length)
+  const found: string[] = []
   for (const place of places) {
     const body = escapeRe(place.toLowerCase())
-    if (new RegExp(`(?:^|\\bin\\s+|\\bnear\\s+)${body}(?![a-z])|${body}(?![a-z])[\\s?!.,]*$`).test(s)) return place
+    const m = new RegExp(`(?:^|\\bin\\s+|\\bnear\\s+)${body}(?![a-z])|(^|[^a-z])${body}(?![a-z])[\\s?!.,]*$`).exec(s)
+    if (!m) continue
+    // Closing position only (the boundary group participated): a place
+    // name riding on a compound-name prefix is the compound, not the place.
+    if (m[1] !== undefined && /\b(?:mount|mt)\s+$/.test(s.slice(0, m.index + m[1].length))) continue
+    found.push(place)
   }
-  return ''
+  return found
+}
+
+/** The uncovered place an ask names, or '' when it names none. */
+export function uncoveredPlaceInQuery(q: string): string {
+  return uncoveredPlacesInQuery(q)[0] ?? ''
 }
 
 const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
@@ -380,12 +396,19 @@ export function fallbackParse(q: string, today: string) {
   const out: Record<string, unknown> = { keywords: [] as string[], explicitDates: false, city: '', subTag: '', paidOnly: false, categoryStrict: false }
   const range = extractExplicitRange(q, today)
   const weekday = s.match(/\b(?:on\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?:\s+night)?\b/)
-  // Past asks — "last weekend", "yesterday", "last Friday", or a named
-  // range that has already ended — are answered with the coming weekend
-  // under a flag, never by quietly rewriting the dates: only upcoming
-  // events are listed, and the route shows the note that says so. A named
-  // range that is still running or still to come wins over the phrase.
-  const pastPhrase = /\blast\s+(weekend|week|night|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b|\byesterday\b|\bweekend\s+just\s+(?:gone|passed)\b/.test(s)
+  // Past asks — "last weekend", "last Friday", or a named range that has
+  // already ended — are answered with the coming weekend under a flag,
+  // never by quietly rewriting the dates: only upcoming events are
+  // listed, and the route shows the note that says so. A named range
+  // that is still running or still to come wins over the phrase. Two
+  // shapes are deliberately NOT past asks: bare "yesterday" and
+  // "last night" / "last <weekday> night" are event titles as often as
+  // they are dates ("Yesterday Once More", "Last Night of the Proms",
+  // "Last Friday Night"), and firing on them would also stop their
+  // words out of the keywords and gut the title search — so they search
+  // as titles over the normal window instead. "last <weekday>" bare
+  // still fires: it is a date, not a title.
+  const pastPhrase = /\blast\s+(?:weekend|week|(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?!\s+night\b))\b|\bweekend\s+just\s+(?:gone|passed)\b/.test(s)
   if (range && range.to >= today) {
     out.dateFrom = range.from
     out.dateTo = range.to
@@ -573,12 +596,16 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   out.categoryStrict = false
   out.nearMe = /\b(near me|nearby|around me)\b/i.test(q)
   if (fb.pastIntent === true || modelPast) out.pastIntent = true
-  const uncovered = uncoveredPlaceInQuery(q)
+  const uncoveredPlaces = uncoveredPlacesInQuery(q)
+  const uncovered = uncoveredPlaces[0] ?? ''
   if (uncovered) {
     out.uncoveredPlace = uncovered
-    // The place's own words are spent on the coverage note, not left as
-    // keywords the board city's events would have to contain.
-    const placeWords = new Set(uncovered.toLowerCase().split(/\s+/))
+    // The places' own words are spent on the coverage note, not left as
+    // keywords the board city's events would have to contain. Every
+    // uncovered place named in a place position is stripped, not just
+    // the one the note names: in "gigs in Auckland or Wellington" the
+    // other place's word would otherwise survive as an ANDed keyword.
+    const placeWords = new Set(uncoveredPlaces.flatMap((p) => p.toLowerCase().split(/\s+/)))
     out.keywords = out.keywords.filter((k) => !placeWords.has(k))
   }
   return out

@@ -289,6 +289,29 @@ test('covered places never read as uncovered', () => {
   assert.equal(interpretQuery('jazz gigs', FRIDAY).uncoveredPlace, undefined)
 })
 
+test('every uncovered place named is stripped from the keywords, not just the one in the note', () => {
+  // The note names one place (the longest match, as before), but the
+  // other place's word must not survive as an ANDed keyword either way
+  // round — it would filter the board city's events by a word they
+  // cannot contain.
+  const both = interpretQuery('gigs in Auckland or Wellington', FRIDAY)
+  assert.equal(both.uncoveredPlace, 'Wellington')
+  assert.deepEqual(both.keywords, ['gig'])
+
+  const reversed = interpretQuery('gigs in Wellington or Auckland', FRIDAY)
+  assert.equal(reversed.uncoveredPlace, 'Wellington')
+  assert.deepEqual(reversed.keywords, ['gig'])
+})
+
+test('a compound landmark name is not the uncovered place it ends with', () => {
+  // "Mount Wellington" is a Hobart landmark, not an ask about Wellington.
+  assert.equal(interpretQuery('walks on Mount Wellington', FRIDAY).uncoveredPlace, undefined)
+  // …while the place itself, asked about plainly, still flags — by
+  // preposition and by closing position alike.
+  assert.equal(interpretQuery('things to do in Wellington', FRIDAY).uncoveredPlace, 'Wellington')
+  assert.equal(interpretQuery('best markets Wellington', FRIDAY).uncoveredPlace, 'Wellington')
+})
+
 test('past asks are flagged and answered with the coming weekend instead of a silent remap', () => {
   const last = interpretQuery('gigs last weekend', FRIDAY)
   assert.equal(last.pastIntent, true)
@@ -297,11 +320,6 @@ test('past asks are flagged and answered with the coming weekend instead of a si
   // The word "last" is spent on the date, not left as a keyword an event
   // title would have to contain.
   assert.deepEqual(last.keywords, ['gig'])
-
-  const yesterday = interpretQuery('gigs yesterday', FRIDAY)
-  assert.equal(yesterday.pastIntent, true)
-  assert.equal(yesterday.dateFrom, '2026-10-30')
-  assert.deepEqual(yesterday.keywords, ['gig'])
 
   const named = interpretQuery('concerts in December 2024', FRIDAY)
   assert.equal(named.pastIntent, true)
@@ -313,6 +331,33 @@ test('past asks are flagged and answered with the coming weekend instead of a si
   assert.equal(model.pastIntent, true)
   assert.equal(model.dateFrom, '2026-10-30')
   assert.equal(model.dateTo, '2026-11-01')
+})
+
+test('title-shaped phrases are not past asks', () => {
+  // "Yesterday" and "Last <Weekday> Night" are event titles as often as
+  // they are dates. They keep their words as keywords and search over
+  // the normal window — firing the past branch on them would also stop
+  // the title words out of the keywords and gut the search.
+  const yesterday = interpretQuery('Yesterday Once More', FRIDAY)
+  assert.equal(yesterday.pastIntent, undefined)
+  assert.ok(yesterday.keywords.includes('yesterday'))
+  assert.equal(yesterday.dateFrom, FRIDAY)
+  assert.equal(yesterday.dateTo, '2026-11-12')
+
+  // The deliberate trade-off: a bare "yesterday" ask reads as a title too.
+  const gigsYesterday = interpretQuery('gigs yesterday', FRIDAY)
+  assert.equal(gigsYesterday.pastIntent, undefined)
+  assert.ok(gigsYesterday.keywords.includes('yesterday'))
+
+  assert.equal(interpretQuery('Last Night of the Proms', FRIDAY).pastIntent, undefined)
+  assert.equal(interpretQuery('last friday night party', FRIDAY).pastIntent, undefined)
+
+  // …while the unambiguous past shapes still fire: "last <weekday>"
+  // bare is a date, not a title.
+  const tuesday = interpretQuery('shows last tuesday', FRIDAY)
+  assert.equal(tuesday.pastIntent, true)
+  assert.equal(tuesday.dateFrom, '2026-10-30')
+  assert.equal(tuesday.dateTo, '2026-11-01')
 })
 
 test('periods still in progress or still to come are not past asks', () => {
