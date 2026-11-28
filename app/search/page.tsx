@@ -34,6 +34,7 @@ export default async function SearchPage({ searchParams }: Props) {
   const today = cityToday(cityDef(cityName))
   const hasPicks = pickedHints(hints)
   let note = ''
+  let searchedCity = cityName
   let events: Awaited<ReturnType<typeof getBoardFeed>>['events'] = []
   if (q || hasPicks) {
     try {
@@ -48,6 +49,9 @@ export default async function SearchPage({ searchParams }: Props) {
           feed = await getBoardFeed(args)
         }
       }
+      // The words can name a different city than the URL did; the count line
+      // below names the city that was actually searched, not the URL's.
+      searchedCity = args.city
       events = feed.events
     } catch {
       note = 'Search is busy. Try again in a moment.'
@@ -62,7 +66,7 @@ export default async function SearchPage({ searchParams }: Props) {
         <SearchPageForm city={cityName} query={q} hints={hints} />
         {(q || hasPicks) && events.length > 0 && (
           <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
-            {`${events.length} ${events.length === 1 ? 'event' : 'events'} in ${boardDisplayName(cityName)}.`}
+            {`${events.length} ${events.length === 1 ? 'event' : 'events'} in ${boardDisplayName(searchedCity)}.`}
             {note ? ` ${note}` : ''}
           </p>
         )}

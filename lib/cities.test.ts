@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boardDisplayName, CITIES, CITY_LABELS, INGEST_CITIES, INGEST_ONLY_CITIES, boardCitiesFor } from './cities'
+import { boardCityForPlace, boardDisplayName, CITIES, CITY_LABELS, INGEST_CITIES, INGEST_ONLY_CITIES, boardCitiesFor } from './cities'
 import { CITY_TRANSIT } from './city-transit'
 import { MARKETS } from './intel/markets'
-import { areaGroupFor, areaGroupLabels, areasForCity, filterAreasForCity, matchesAreaGroup } from './categories'
+import { areaGroupFor, areaGroupForPlace, areaGroupLabels, areasForCity, filterAreasForCity, matchesAreaGroup } from './categories'
 import { cityFromSlug, cityPath } from './seo'
 import { FOOTER_CITY_LINKS } from './site-links'
 
@@ -98,4 +98,26 @@ test('the NSW Coast board area filter groups Sydney, the Illawarra and the Hunte
   const cbdEvent = { city: 'Sydney', suburb: 'Sydney', latitude: -33.8688, longitude: 151.2093 }
   assert.equal(matchesAreaGroup(cbdEvent, 'Sydney', sydney), true)
   assert.equal(matchesAreaGroup(cbdEvent, 'Sydney', hunter), false)
+})
+
+test('a known place resolves to the board it belongs to', () => {
+  for (const city of CITIES) assert.equal(boardCityForPlace(city.name), city.name, city.name)
+  // The folded-in places ride the Sydney board: Newcastle as a region member,
+  // Wollongong as an area whose listings file to Sydney.
+  assert.equal(boardCityForPlace('Newcastle'), 'Sydney')
+  assert.equal(boardCityForPlace('Wollongong'), 'Sydney')
+  // Unknown names stay unknown, so a caller can tell "not a place" apart.
+  assert.equal(boardCityForPlace('Auckland'), null)
+  assert.equal(boardCityForPlace(''), null)
+  assert.equal(boardCityForPlace(null), null)
+  assert.equal(boardCityForPlace(undefined), null)
+})
+
+test('a folded-in place names its area group on the board it belongs to', () => {
+  assert.equal(areaGroupForPlace('Sydney', 'Newcastle')?.label, 'Newcastle & the Hunter')
+  assert.equal(areaGroupForPlace('Sydney', 'Wollongong')?.label, 'Wollongong & the Illawarra')
+  // A place is only an area on its own board, and plain suburbs are not areas.
+  assert.equal(areaGroupForPlace('Melbourne', 'Newcastle'), undefined)
+  assert.equal(areaGroupForPlace('Sydney', 'Hamilton'), undefined)
+  assert.equal(areaGroupForPlace('Sydney', ''), undefined)
 })

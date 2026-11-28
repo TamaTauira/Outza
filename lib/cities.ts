@@ -69,6 +69,26 @@ export const REGION_MEMBERS: Record<string, string[]> = { Sydney: ['Newcastle'] 
 /** The stored city names a city's board covers: itself plus its region members. */
 export const boardCitiesFor = (cityName: string): string[] => [cityName, ...(REGION_MEMBERS[cityName] ?? [])]
 
+/** Area-only places and the board their listings file to. Wollongong's have
+ * filed to Sydney since the city removal; it is not a region member because
+ * no rows carry its name. */
+const AREA_ONLY_BOARDS: Record<string, string> = { Wollongong: 'Sydney' }
+
+/**
+ * The selectable board a known place belongs to: a catalogue city is its own
+ * board, a region member rides its board city's board (Newcastle → Sydney),
+ * and an area-only place files to its board above. Null for a name the
+ * product does not know, so callers can tell "not a place" from a place.
+ */
+export function boardCityForPlace(name: string | null | undefined): string | null {
+  if (!name) return null
+  if (CITY_NAMES.includes(name)) return name
+  for (const [board, members] of Object.entries(REGION_MEMBERS)) {
+    if (members.includes(name)) return board
+  }
+  return AREA_ONLY_BOARDS[name] ?? null
+}
+
 /** Picker wording for one catalogue city: state eyebrow, display label, optional coverage line. */
 export interface CityLabel {
   eyebrow: string

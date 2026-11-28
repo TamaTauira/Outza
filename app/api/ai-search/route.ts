@@ -3,8 +3,8 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { sydneyToday } from '@/lib/event-store'
 import { sydneyNow, toMinutes } from '@/lib/board'
-import { CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
-import { CITY_NAMES } from '@/lib/cities'
+import { areaGroupForPlace, CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
+import { boardCitiesFor, boardCityForPlace, CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, keywordRelaxAllowed, type AiFilters } from '@/lib/ai-search-parse'
 import { askCandidateTake, askDateBounds, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
 import { applyHints } from '@/lib/search-hints'
@@ -83,17 +83,39 @@ export async function POST(req: NextRequest) {
     const now = sydneyNow()
 
     const price = priceWhere(filters)
+    // A suburb that names a folded-in place (Newcastle, Wollongong) is an area
+    // focus, not text to scan for: narrow by the board's area group — the filed
+    // city and the area's suburbs — the way boardWhere does. A contains scan
+    // for the place name would miss its own suburbs (Hamilton, Dapto), whose
+    // listings never have to say the place's name.
+    const suburbGroup = filters.suburb && !CITY_NAMES.includes(filters.suburb) && boardCityForPlace(filters.suburb) === searchCity
+      ? areaGroupForPlace(searchCity, filters.suburb)
+      : undefined
+    const suburbClause: Prisma.EventWhereInput | null = (() => {
+      if (!filters.suburb) return null
+      if (suburbGroup) {
+        const or: Prisma.EventWhereInput[] = []
+        if (suburbGroup.storedCities.length) or.push({ city: { in: suburbGroup.storedCities } })
+        if (suburbGroup.suburbs.length) or.push({ suburb: { in: suburbGroup.suburbs, mode: 'insensitive' } })
+        return or.length ? { OR: or } : null
+      }
+      return { OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueName: { contains: filters.suburb, mode: 'insensitive' as const } }] }
+    })()
     const narrowed: Prisma.EventWhereInput[] = [
       ...(price ? [price] : []),
       ...(filters.paidOnly ? [{ NOT: { OR: [{ price: { contains: 'free', mode: 'insensitive' as const } }, { priceMin: { lte: 0 } }] } }] : []),
-      ...(filters.suburb ? [{ OR: [{ suburb: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueAddress: { contains: filters.suburb, mode: 'insensitive' as const } }, { venueName: { contains: filters.suburb, mode: 'insensitive' as const } }] }] : []),
+      ...(suburbClause ? [suburbClause] : []),
     ]
     const musicIntent = filters.category === 'Music' || /\b(live music|gigs?|concerts?)\b/i.test(q)
+    // A region board (Sydney, the NSW Coast) also carries its member cities'
+    // events — Newcastle files under its own name but shows here, exactly as
+    // boardWhere reads it. Single-city equality could never return them.
+    const cityMembers = searchCity ? boardCitiesFor(searchCity) : []
     const base: Prisma.EventWhereInput = {
       date: askDateBounds(filters.dateFrom, filters.dateTo),
       duplicateOfId: null,
       status: { not: 'CANCELLED' },
-      ...(searchCity ? { city: searchCity } : {}),
+      ...(cityMembers.length > 1 ? { city: { in: cityMembers } } : searchCity ? { city: searchCity } : {}),
       ...(shouldFilterCategory(filters, q) ? { category: filters.category } : {}),
       // Only a chip-picked tag is a hard filter. A tag the parser inferred from the
       // person's words boosts in rankAskRows instead — stored tags are too patchy
