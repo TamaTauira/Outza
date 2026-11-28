@@ -38,6 +38,18 @@ test('pins are filtered by radius and ordered nearest first', () => {
   assert.deepEqual(filterPinsWithinRadius(pins, CBD, 25).map((p) => p.id), ['cbd', 'bondi', 'parramatta'])
 })
 
+test('featured-style pins go through the same radius cut as fetched pins', () => {
+  // GOLD featured items carry the same latitude/longitude shape as events,
+  // so the map cuts them with this same filter while Near me is on.
+  const featured = [
+    { id: 'gold-far', tier: 'GOLD', ...PARRAMATTA },
+    { id: 'gold-near', tier: 'GOLD', ...BONDI },
+    { id: 'gold-pinless', tier: 'GOLD', ...NO_COORDS },
+  ]
+  assert.deepEqual(filterPinsWithinRadius(featured, CBD, 10).map((p) => p.id), ['gold-near'])
+  assert.deepEqual(filterPinsWithinRadius(featured, CBD, 25).map((p) => p.id), ['gold-near', 'gold-far'])
+})
+
 test('auto-locate follows the browser permission where it can be read', () => {
   assert.equal(shouldAutoLocate({ storedConsent: null, permission: 'granted' }), true)
   assert.equal(shouldAutoLocate({ storedConsent: 'declined', permission: 'granted' }), true)
