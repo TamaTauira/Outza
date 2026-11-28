@@ -25,6 +25,8 @@ export type SourceStatusRow = {
   ticketUrl: string | null
   sourceUrl: string | null
   date: Date
+  /** The listing's title, used to identity-match a JSON-LD node to this event. */
+  title?: string | null
 }
 
 /** What the near-start recheck does with a status. Only a definitive negative hides. */
@@ -32,6 +34,21 @@ export function nearStartAction(status: SourceStatus): 'hide' | 'verified' | 'fl
   if (status === 'gone' || status === 'ended' || status === 'cancelled') return 'hide'
   if (status === 'live') return 'verified'
   return 'flag'
+}
+
+/**
+ * Aggregate guard for near-start hides: at most this many listings per
+ * source per pass may be hidden on recheck evidence. A reader that is
+ * systematically wrong about one source (a shared page, a changed API)
+ * otherwise hides its whole near-start catalogue ten listings at a time,
+ * pass after pass; past the cap the definitive negatives are flagged for
+ * an admin instead of hidden.
+ */
+export const NEAR_START_HIDE_CAP_PER_SOURCE = 3
+
+/** Whether one more near-start hide is allowed for this source in this pass. */
+export function nearStartHideAllowed(hidesBySource: ReadonlyMap<string, number>, source: string | null | undefined): boolean {
+  return (hidesBySource.get(source ?? '') ?? 0) < NEAR_START_HIDE_CAP_PER_SOURCE
 }
 
 const STATUS_UA =
@@ -96,7 +113,14 @@ async function readEventbrite(url: string, fetch: PriceFetch, row: SourceStatusR
   } | null
   if (!json) return 'unknown'
   const ev = json.events?.[0]
-  if (!ev) return 'gone'
+  if (!ev) {
+    // An empty destination result alone is not 'gone': unlisted and draft
+    // events drop out of the destination API while their listing page
+    // still resolves. Only a dead listing page corroborates the absence.
+    const page = await fetch({ url }).catch(() => null)
+    if (page && (page.status === 404 || page.status === 410)) return 'gone'
+    return 'unknown'
+  }
   const status = (ev.status ?? '').toLowerCase()
   if (status === 'canceled' || status === 'cancelled') return 'cancelled'
   if (status === 'ended' || status === 'completed') return 'ended'
@@ -191,8 +215,10 @@ async function readCos(url: string, fetch: PriceFetch): Promise<SourceStatus | n
   return record && typeof record === 'object' && !Array.isArray(record) ? 'live' : 'unknown'
 }
 
-/** schema.org eventStatus named in any JSON-LD block on the page. */
-export function jsonLdEventStatus(html: string): string | null {
+type JsonLdNode = Record<string, unknown>
+
+function jsonLdNodes(html: string): JsonLdNode[] {
+  const nodes: JsonLdNode[] = []
   for (const match of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)) {
     let parsed: unknown
     try {
@@ -200,26 +226,110 @@ export function jsonLdEventStatus(html: string): string | null {
     } catch {
       continue
     }
-    const nodes = Array.isArray(parsed) ? parsed : [parsed]
-    for (const node of nodes) {
+    const top = Array.isArray(parsed) ? parsed : [parsed]
+    for (const node of top) {
       if (!node || typeof node !== 'object') continue
-      const graph = (node as { '@graph'?: unknown })['@graph']
+      const graph = (node as JsonLdNode)['@graph']
       const inner = Array.isArray(graph) ? graph : [node]
       for (const item of inner) {
-        if (!item || typeof item !== 'object') continue
-        const status = (item as { eventStatus?: unknown }).eventStatus
-        if (typeof status === 'string' && status) return status
+        if (item && typeof item === 'object') nodes.push(item as JsonLdNode)
       }
     }
+  }
+  return nodes
+}
+
+function nodeStatus(node: JsonLdNode): string | null {
+  const status = node.eventStatus
+  return typeof status === 'string' && status ? status : null
+}
+
+/** schema.org eventStatus named in any JSON-LD block on the page. */
+export function jsonLdEventStatus(html: string): string | null {
+  for (const node of jsonLdNodes(html)) {
+    const status = nodeStatus(node)
+    if (status) return status
   }
   return null
 }
 
-async function readGeneric(url: string, fetch: PriceFetch): Promise<SourceStatus> {
+function normaliseName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function namesMatch(a: string, b: string): boolean {
+  const na = normaliseName(a)
+  const nb = normaliseName(b)
+  if (!na || !nb) return false
+  if (na === nb) return true
+  const shorter = na.length <= nb.length ? na : nb
+  const longer = na.length <= nb.length ? nb : na
+  return shorter.length >= 4 && longer.includes(shorter)
+}
+
+function normaliseUrl(value: string): string {
+  return value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '')
+}
+
+function dayOf(value: unknown): string | null {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10)
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10)
+  return null
+}
+
+export type JsonLdExpectation = {
+  name?: string | null
+  date?: Date | string | null
+  url?: string | null
+}
+
+/**
+ * Whether a JSON-LD node is confidently THIS event. Every identity field
+ * present on both sides (name, start day, URL) must agree — a shared tour
+ * page carries one node per night under the same name, so a name match
+ * with a different start day is a sibling, not this event — and at least
+ * one field must actually agree. A node that matches on nothing is some
+ * other event, and a cancelled sibling must not condemn this listing.
+ */
+export function jsonLdNodeMatches(node: JsonLdNode, expect: JsonLdExpectation): boolean {
+  let compared = 0
+  const name = typeof node.name === 'string' ? node.name : null
+  if (name && expect.name) {
+    compared++
+    if (!namesMatch(name, expect.name)) return false
+  }
+  const startDay = dayOf(node.startDate)
+  const expectDay = dayOf(expect.date ?? null)
+  if (startDay && expectDay) {
+    compared++
+    if (startDay !== expectDay) return false
+  }
+  const url = typeof node.url === 'string' ? node.url : null
+  if (url && expect.url) {
+    compared++
+    if (normaliseUrl(url) !== normaliseUrl(expect.url)) return false
+  }
+  return compared > 0
+}
+
+/**
+ * The eventStatus of the JSON-LD node that identity-matches the expected
+ * event. Nodes with a status but no confident match are ignored: no match
+ * means unknown, never cancelled.
+ */
+export function jsonLdEventStatusFor(html: string, expect: JsonLdExpectation): string | null {
+  for (const node of jsonLdNodes(html)) {
+    const status = nodeStatus(node)
+    if (status && jsonLdNodeMatches(node, expect)) return status
+  }
+  return null
+}
+
+async function readGeneric(url: string, fetch: PriceFetch, row: SourceStatusRow): Promise<SourceStatus> {
   const res = await fetch({ url })
   if (res.status === 404 || res.status === 410) return 'gone'
   if (unusable(res) || !res.body) return 'unknown'
-  const status = jsonLdEventStatus(res.body)
+  const status = jsonLdEventStatusFor(res.body, { name: row.title ?? null, date: row.date, url })
   if (status && /EventCancelled/i.test(status)) return 'cancelled'
   return 'unknown'
 }
@@ -230,12 +340,18 @@ async function readUrl(url: string, fetch: PriceFetch, row: SourceStatusRow, api
   if (ticketmasterEventId(url)) return (await readTicketmaster(url, fetch, apiKey)) ?? 'unknown'
   if (humanitixDataUrl(url)) return (await readHumanitix(url, fetch)) ?? 'unknown'
   if (cosEventSlug(url)) return (await readCos(url, fetch)) ?? 'unknown'
-  return readGeneric(url, fetch)
+  return readGeneric(url, fetch, row)
 }
 
+const DEFINITIVE_NEGATIVE: SourceStatus[] = ['gone', 'ended', 'cancelled']
+
 /**
- * The source page speaks first (it is the listing of record), then the
- * ticket link. The first definitive answer wins; anything less is unknown.
+ * Reads every stored URL for the listing and combines the verdicts. The
+ * source page and the ticket link must agree before anything acts: one
+ * definitive negative alongside a live read from the other URL is a
+ * conflict, and a conflict is unknown — a listing is never hidden because
+ * two pages disagreed about it. Agreeing negatives act (the listing of
+ * record, the source URL, wins which negative is reported).
  */
 export async function readSourceStatus(
   row: SourceStatusRow,
@@ -246,10 +362,15 @@ export async function readSourceStatus(
   const unique = [...new Set(urls)]
   if (!unique.length) return 'unknown'
   const apiKey = opts?.ticketmasterKey ?? null
+  const results: SourceStatus[] = []
   for (const url of unique) {
     if (isTicketekHost(url) || skipHost(url)) continue
-    const status = await readUrl(url, fetch, row, apiKey).catch(() => 'unknown' as SourceStatus)
-    if (status !== 'unknown') return status
+    results.push(await readUrl(url, fetch, row, apiKey).catch(() => 'unknown' as SourceStatus))
   }
+  const negatives = results.filter((status) => DEFINITIVE_NEGATIVE.includes(status))
+  const hasLive = results.includes('live')
+  if (hasLive && negatives.length) return 'unknown'
+  if (negatives.length) return negatives[0]
+  if (hasLive) return 'live'
   return 'unknown'
 }
