@@ -188,7 +188,7 @@ export function LocalBrowse({
         title={<><span className="block">Good things are happening</span><span className="vp-gradient-line block text-brand-gradient">around the corner.</span></>}
         lede="From weekend markets to neighbourhood garage sales, take a peep at what’s happening near you."
       >
-        <div className="mt-5 grid gap-3 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
           <CityPicker value={city} onChange={setCity} onDark label="City" />
           <SearchBar value={query} onChange={setQuery} onSubmit={() => applyQuery(query)} placeholder="Markets, sales" label={`Search names, places, dates and free events in ${city}`} />
         </div>
