@@ -74,6 +74,22 @@ export function locateStateAfterInvalidation(current: LocateState): LocateState 
 }
 
 /**
+ * The locate state after the browser answers a locate with an error, given
+ * whether the visitor asked for it. A deliberate tap keeps the honest
+ * outcome: a permission denial lands on 'denied' (the card explains that
+ * location is off and how to turn it on), any other failure on
+ * 'unavailable'. An unprompted mount auto-locate (silent) never owns an
+ * outcome the visitor didn't ask for: denial and failure alike settle back
+ * to 'idle', so the map simply opens on the board's selected area with
+ * Near me offered — per the owner rule, permission being off must never
+ * plaster a card on arrival.
+ */
+export function locateStateAfterError(input: { permissionDenied: boolean; silent: boolean }): LocateState {
+  if (input.silent) return 'idle'
+  return input.permissionDenied ? 'denied' : 'unavailable'
+}
+
+/**
  * Where selecting an area value should jump the map: the centre of the area
  * group it names on this board, or null for a plain suburb — those pins are
  * already filtered server-side and there is no stored centre to jump to.

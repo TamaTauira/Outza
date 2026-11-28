@@ -14,7 +14,7 @@ import { createBasemap } from '@/lib/map-basemap'
 import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
-import { DEFAULT_NEAR_ME_RADIUS_KM, NEAR_ME_RADII_KM, areaJumpTarget, filterPinsWithinRadius, locateStateAfterInvalidation, shouldAutoLocate, type LocateState } from '@/lib/map-near-me'
+import { DEFAULT_NEAR_ME_RADIUS_KM, NEAR_ME_RADII_KM, areaJumpTarget, filterPinsWithinRadius, locateStateAfterError, locateStateAfterInvalidation, shouldAutoLocate, type LocateState } from '@/lib/map-near-me'
 import { isPaidListing } from '@/lib/quality'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { isBareNetworkFault } from '@/lib/network-fault'
@@ -308,9 +308,13 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     return () => map.off('moveend', read)
   }, [ready, city])
 
-  // Zoom to the visitor's own location (only after they've opted in; used in the browser only)
-  const locate = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) { setLoc('unavailable'); return }
+  // Zoom to the visitor's own location (only after they've opted in; used in the browser only).
+  // The mount auto-locate passes { silent: true }: it runs unprompted, so an
+  // error settles back to 'idle' instead of owning a card the visitor never
+  // asked for (locateStateAfterError). A tap keeps the honest outcome.
+  const locate = useCallback((opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setLoc(locateStateAfterError({ permissionDenied: false, silent })); return }
     const gen = ++locateGenRef.current
     setLoc('locating')
     navigator.geolocation.getCurrentPosition(
@@ -336,10 +340,19 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         map.setView(ll, 14)
       },
       (err) => {
+        // Logged before the generation guard, so a refusal stays capturable
+        // even when a jump has already superseded this locate: the code and
+        // message are the only way to see why the browser refused.
+        console.error('[near-me] geolocation error', err.code, err.message)
         if (gen !== locateGenRef.current) return
         setUserPos(null)
-        if (err.code === err.PERMISSION_DENIED) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} ; setLoc('denied') }
-        else setLoc('unavailable')
+        const denied = err.code === err.PERMISSION_DENIED
+        // Only a tapped denial is recorded as consent: a silent
+        // (unprompted) refusal persists nothing, so a transient browser
+        // 'no' during the mount check is never stored as the visitor
+        // having declined.
+        if (denied && !silent) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} }
+        setLoc(locateStateAfterError({ permissionDenied: denied, silent }))
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     )
@@ -376,7 +389,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         if (status) permission = status.state
       } catch { /* the Permissions API cannot answer here; the stored consent decides */ }
       if (cancelled) return
-      if (shouldAutoLocate({ storedConsent: stored, permission })) locate()
+      if (shouldAutoLocate({ storedConsent: stored, permission })) locate({ silent: true })
     })()
     return () => { cancelled = true }
   }, [ready, locate])
@@ -576,7 +589,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       )}
       {ready && (
         <button
-          onClick={nearMe ? recentre : locate}
+          onClick={nearMe ? recentre : () => locate()}
           disabled={loc === 'locating'}
           aria-pressed={nearMe}
           className={(bleed ? 'vp-map-float absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-white/90 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white sm:w-auto sm:px-4' : 'vp-map-float absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl hover:bg-white disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white dark:hover:bg-neutral-900') + (nearMe ? ' ring-2 ring-primary' : '')}
