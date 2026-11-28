@@ -347,9 +347,18 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     })()
     : []
 
+  // The summary count derives from the same set as the listed rows. In a
+  // time window it counts the rendered sections themselves — the 'now'
+  // sections re-admit rows rankBoard set aside, so the bucket sums and
+  // the rendered rows can differ (E2E-17: "5 events" over 8 visible
+  // rows). Unwindowed, it is the board query's total — the full shaped
+  // set for these filters, not just the pages loaded so far — less the
+  // ended rows the list is currently hiding.
   const listedCount = windowRank
-    ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length + windowRank.allday.length + windowRank.possibly.length
-    : timed.length + untimed.length
+    ? effectiveWindow === 'now'
+      ? nowSections.reduce((n, section) => n + section.rows.length, 0)
+      : eveningGroups.reduce((n, group) => n + group.rows.length, 0) + windowRank.possibly.length
+    : Math.max(timed.length + untimed.length, hideEnded ? total - endedCount : total)
   useEffect(() => { onListedCount?.(staleCity ? 0 : listedCount) }, [listedCount, staleCity, onListedCount])
   const previewFlat = previewLimit == null ? null : (() => {
     const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
