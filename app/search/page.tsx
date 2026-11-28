@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
 import { hintsFromParams, pickedHints } from '@/lib/search-hints'
 import { relaxedSearchArgs, searchFeedArgs } from '@/lib/search-feed'
+import { interpretQuery } from '@/lib/ai-search-parse'
+import { SearchCityInherit } from '@/components/search-city-inherit'
 import { pageMeta } from '@/lib/page-meta'
 
 export const dynamic = 'force-dynamic'
@@ -32,6 +34,11 @@ export default async function SearchPage({ searchParams }: Props) {
   const requested = sp.city && CITY_NAMES.includes(sp.city) ? sp.city : ''
   const cityName = requested || DEFAULT_CITY
   const today = cityToday(cityDef(cityName))
+  // The city the words themselves named, if any. searchFeedArgs searches
+  // it over the URL city, so a correction to the visitor's own city must
+  // never fire for such a query. Hints cannot name a city, so the raw
+  // parse is the whole story.
+  const queryCity = q ? interpretQuery(q, today).city : ''
   const hasPicks = pickedHints(hints)
   let note = ''
   let searchedCity = cityName
@@ -64,6 +71,7 @@ export default async function SearchPage({ searchParams }: Props) {
       <Page className="pb-8">
         <PageHeader title="Search" lede="Search what’s on. The link keeps your words, so you can send it." />
         <SearchPageForm city={cityName} query={q} hints={hints} />
+        {!requested && <SearchCityInherit seedCity={cityName} queryCity={queryCity} query={q} hints={hints} />}
         {(q || hasPicks) && events.length > 0 && (
           <p className="mt-4 text-sm text-muted-foreground" aria-live="polite">
             {`${events.length} ${events.length === 1 ? 'event' : 'events'} in ${boardDisplayName(searchedCity)}.`}

@@ -89,3 +89,25 @@ export function resolveBoardCity(input: {
 export function cityDataIsStale(dataCity: string | null, city: string | null | undefined, held: number): boolean {
   return held > 0 && dataCity !== (city ?? '')
 }
+
+/**
+ * Whether a /search render must be re-requested under a different city.
+ * /search is server-rendered from its URL, so when the link named no city
+ * the server seeds the search with DEFAULT_CITY and the client corrects
+ * the URL to the resolved city — the board's seed-then-resolve pattern,
+ * with the URL as the correction. Returns the city to re-request under,
+ * or null to stay: the words named a city (the searched city follows the
+ * query, never the stored pick), the resolution landed on the seed, or
+ * the resolution is All of Australia — /search has no URL form for it (an
+ * absent ?city= is the seed, not a choice), so that pick keeps the seeded
+ * behaviour rather than inventing one.
+ */
+export function searchInheritTarget(input: {
+  seedCity: string
+  queryCity?: string | null
+  resolvedCity: string
+}): string | null {
+  if (input.queryCity && CITY_NAMES.includes(input.queryCity)) return null
+  if (!input.resolvedCity || !CITY_NAMES.includes(input.resolvedCity)) return null
+  return input.resolvedCity === input.seedCity ? null : input.resolvedCity
+}
