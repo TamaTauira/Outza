@@ -36,12 +36,21 @@ test('list and map payloads omit descriptions and raw ingest blobs', () => {
   const landing = read('./seo-server.ts')
   const select = landing.slice(landing.indexOf('const landingSelect = {'), landing.indexOf('} satisfies'))
   // Exception, owner-approved 2026-11-28: the landing (guide) fetch DOES
-  // select description — the guide display alignment needs it for the
-  // guide JSON-LD and category refinement. Guide pages are
-  // server-rendered, so this is not a list/map API payload; the board
-  // and map payloads above stay description-free, as does the guide
-  // model's own fetch below.
+  // select description — for server-side use only. The guide JSON-LD,
+  // category refinement (presentListing), topic matching (matchesTopic)
+  // and collapse scoring (listingScore) all run on the full rows on the
+  // server, and GuideLanding omits description from the rows it hands
+  // to the client components (pinned below), so guide pages do not ship
+  // full descriptions in their client payload. The board and map
+  // payloads above stay description-free, as does the guide model's
+  // own fetch below.
   assert.equal(select.includes('description: true'), true)
+  const guideLanding = read('../components/guide-landing.tsx')
+  // The strip: rows cross into EventCard/GuideEventList only through
+  // clientEvent, which destructures description off the row; the raw
+  // rows are never spread into those components.
+  assert.match(guideLanding, /const \{ description: _description, \.\.\.rest \} = e/)
+  assert.equal(guideLanding.includes('...e, date:'), false)
   const guide = landing.slice(landing.indexOf('async function queryGuideRows'), landing.indexOf('localListing.findMany'))
   assert.equal(guide.includes('description: true'), false)
 })
