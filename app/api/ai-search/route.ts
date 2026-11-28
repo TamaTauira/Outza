@@ -95,7 +95,10 @@ export async function POST(req: NextRequest) {
       status: { not: 'CANCELLED' },
       ...(searchCity ? { city: searchCity } : {}),
       ...(shouldFilterCategory(filters, q) ? { category: filters.category } : {}),
-      ...(filters.subTag ? { subTags: { has: filters.subTag } } : {}),
+      // Only a chip-picked tag is a hard filter. A tag the parser inferred from the
+      // person's words boosts in rankAskRows instead — stored tags are too patchy
+      // for an inferred guess to gate on.
+      ...(chipTag ? { subTags: { has: chipTag } } : {}),
       ...(filters.timeOfDay === 'morning' ? { time: { gte: '05:00', lt: '12:00' } } : {}),
       ...(filters.timeOfDay === 'afternoon' ? { time: { gte: '12:00', lt: '17:00' } } : {}),
       ...(filters.timeOfDay === 'evening' ? { time: { gte: '17:00' } } : {}),
@@ -144,7 +147,10 @@ export async function POST(req: NextRequest) {
     let rows = await load(filters.keywords)
     let relaxed = false
     const broader = relaxedKeywords(filters.keywords)
-    if (rows.length < 3 && broader && !musicIntent) {
+    // Music queries relax too: the strict AND is exactly what zeroes gig and
+    // concert asks ("classical concerts and theatre" must be allowed to fall
+    // back to "classical" alone). focusMusic still narrows the relaxed rows.
+    if (rows.length < 3 && broader) {
       const extra = await load(broader)
       const seen = new Set(rows.map((row) => row.id))
       rows = [...rows, ...extra.filter((row) => !seen.has(row.id))]

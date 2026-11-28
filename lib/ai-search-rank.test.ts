@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { interpretQuery } from './ai-search-parse'
-import { rankAskRows, type AskRow } from './ai-search-rank'
+import { rankAskRows, relaxedKeywords, type AskRow } from './ai-search-rank'
 import { SANS_BOLD_UPPER, styleLetters } from './search-fold'
 
 const FRIDAY = '2026-10-30'
@@ -135,6 +135,91 @@ test('Gay 2027 in Sydney returns BIG GAY BLOCK PARTY and does not invent a listi
 
   const prideFirst = rankAskRows(pool, { ...interpretQuery('pride 2027', '2026-11-03'), city: 'Sydney' })
   assert.equal(prideFirst[0]?.id, 'pride')
+})
+
+test('relaxedKeywords falls back to the longest topic word, short topics included', () => {
+  assert.deepEqual(relaxedKeywords(['nightclub', 'set']), ['nightclub'])
+  assert.deepEqual(relaxedKeywords(['classical', 'concert', 'theatre']), ['classical'])
+  // "food" and "wine" are four letters each: the old five-letter floor left
+  // "food and wine" with no relaxation at all.
+  assert.deepEqual(relaxedKeywords(['food', 'wine']), ['food'])
+  // A three-letter needle substring-matches half the catalogue, so it never relaxes.
+  assert.equal(relaxedKeywords(['gig', 'art']), null)
+  assert.equal(relaxedKeywords(['market']), null)
+  assert.equal(relaxedKeywords([]), null)
+})
+
+test('partial matches rank by how many words hit, behind a full match', () => {
+  const row = (over: Partial<AskRow> & Pick<AskRow, 'id' | 'title' | 'date'>): AskRow => ({
+    time: '19:30', venueName: 'Adelaide Town Hall', suburb: 'CBD', city: 'Adelaide', category: 'Music', subTags: [],
+    isFree: false, price: '$40', priceMin: 40, description: '',
+    ...over,
+  })
+  const rows: AskRow[] = [
+    row({ id: 'symphony', title: 'Adelaide Symphony Orchestra', date: '2026-10-31', description: 'An evening of classical music.', subTags: ['Classical'] }),
+    row({ id: 'chamber', title: 'Chamber Concert', date: '2026-10-31', description: 'Classical concert favourites.' }),
+    row({ id: 'full', title: 'Classical Concert', date: '2026-10-31', description: 'Classical concerts staged in a theatre setting.' }),
+    row({ id: 'rock', title: 'Rock Night', date: '2026-10-31', venueName: 'The Gov', description: 'Loud guitars.' }),
+  ]
+  const filters = interpretQuery('classical concerts and theatre in Adelaide this weekend', FRIDAY)
+  assert.deepEqual(filters.keywords, ['classical', 'concert', 'theatre'])
+  const results = rankAskRows(rows, { ...filters, city: 'Adelaide' }, 50)
+  // The relaxed pass ("classical" alone) returns symphony and chamber; before,
+  // the ranker dropped both for missing a word and the ask came back empty.
+  assert.deepEqual(results.map((r) => r.id), ['full', 'chamber', 'symphony'])
+})
+
+test('a nightclub-only row surfaces for a nightclub and DJ set ask', () => {
+  const row = (over: Partial<AskRow> & Pick<AskRow, 'id' | 'title' | 'date'>): AskRow => ({
+    time: '22:00', venueName: 'Oxford Art Factory', suburb: 'Darlinghurst', city: 'Sydney', category: 'Nightlife', subTags: [],
+    isFree: false, price: '$25', priceMin: 25, description: '',
+    ...over,
+  })
+  const rows: AskRow[] = [
+    row({ id: 'rpm', title: 'Rpm Arena', date: '2026-10-31', description: 'Hard techno nightclub energy all night.' }),
+    row({ id: 'jazz-brunch', title: 'Jazz Brunch', date: '2026-10-31', description: 'Smooth tunes.' }),
+  ]
+  const filters = interpretQuery('nightclubs and DJ sets in Sydney this weekend', FRIDAY)
+  assert.deepEqual(filters.keywords, ['nightclub', 'set'])
+  const results = rankAskRows(rows, { ...filters, city: 'Sydney' }, 50)
+  assert.deepEqual(results.map((r) => r.id), ['rpm'])
+})
+
+test('food-only and wine-only rows both answer a food and wine ask', () => {
+  const row = (over: Partial<AskRow> & Pick<AskRow, 'id' | 'title' | 'date'>): AskRow => ({
+    time: '11:00', venueName: 'Exhibition Park', suburb: 'Mitchell', city: 'Canberra', category: 'Food & Drink', subTags: [],
+    isFree: false, price: '$20', priceMin: 20, description: '',
+    ...over,
+  })
+  const rows: AskRow[] = [
+    row({ id: 'harvest', title: 'Harvest Dinner', date: '2026-12-06', description: 'Local food producers dinner.' }),
+    row({ id: 'street-food', title: 'Street Food Fair', date: '2026-12-05' }),
+    row({ id: 'vineyard', title: 'Vineyard Tour', date: '2026-12-05', description: 'Wine tasting among the vines.' }),
+    row({ id: 'books', title: 'Book Fair', date: '2026-12-05', description: 'Second-hand books.' }),
+  ]
+  const filters = interpretQuery('food and wine in Canberra in December', '2026-10-28')
+  assert.deepEqual(filters.keywords, ['food', 'wine'])
+  assert.deepEqual(relaxedKeywords(filters.keywords), ['food'])
+  const results = rankAskRows(rows, { ...filters, city: 'Canberra' }, 50)
+  // No row matches both words, so every match is partial — and none is dropped.
+  assert.deepEqual(results.map((r) => r.id), ['street-food', 'vineyard', 'harvest'])
+})
+
+test('an inferred subTag boosts a tagged row instead of gating it out', () => {
+  const row = (over: Partial<AskRow> & Pick<AskRow, 'id' | 'title' | 'date'>): AskRow => ({
+    time: '19:30', venueName: 'Concert Hall', suburb: 'CBD', city: 'Sydney', category: 'Music', subTags: [],
+    isFree: false, price: '$40', priceMin: 40, description: '',
+    ...over,
+  })
+  const rows: AskRow[] = [
+    row({ id: 'untagged', title: 'Classical Nights', date: '2026-10-31' }),
+    row({ id: 'tagged', title: 'Classical Nights', date: '2026-10-31', subTags: ['Classical'] }),
+  ]
+  const filters = interpretQuery('classical in Sydney', FRIDAY)
+  assert.equal(filters.subTag, 'Classical')
+  const results = rankAskRows(rows, { ...filters, city: 'Sydney' }, 50)
+  // Both rows answer; the one actually tagged Classical stands first.
+  assert.deepEqual(results.map((r) => r.id), ['tagged', 'untagged'])
 })
 
 test('free excludes a paid listing even when isFree was set', () => {

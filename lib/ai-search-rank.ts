@@ -62,7 +62,7 @@ function tagBlob(row: AskRow): string {
   return fold((row.subTags ?? []).join(' '))
 }
 
-type Strength = 'title' | 'description' | 'place' | 'tag' | 'lgbti' | 'none'
+type Strength = 'title' | 'description' | 'place' | 'tag' | 'partial' | 'lgbti' | 'none'
 
 /** Whole words only, so "market" matches Markets but not Haymarket, and "gay" does not match Gaylard. */
 function hasWord(blob: string, word: string): boolean {
@@ -92,7 +92,16 @@ function strengthFor(row: AskRow, keywords: string[], widen: boolean): Strength 
   const tags = tagBlob(row)
   const blobs = [title, description, place, tags]
   const required = keywords.filter((word) => !isLgbtiTerm(word))
-  if (required.length && !required.every((word) => wordInRow(row, blobs, word))) return 'none'
+  if (required.length) {
+    const matched = required.filter((word) => wordInRow(row, blobs, word)).length
+    if (matched < required.length) {
+      // A relaxed pass (one keyword in SQL) hands back rows that match only some of
+      // the person's words. Those are partial matches — ranked by how many words
+      // hit — not full matches, and not nothing.
+      if (required.length >= 2 && matched > 0) return 'partial'
+      return 'none'
+    }
+  }
 
   const inTitle = (word: string) => (isLgbtiTerm(word) ? hasLgbtiText(title) : hasWord(title, word))
   if (keywords.length && keywords.every(inTitle) && required.every((word) => hasWord(title, word))) return 'title'
@@ -106,6 +115,13 @@ function strengthFor(row: AskRow, keywords: string[], widen: boolean): Strength 
   if (keywords.length && keywords.every((word) => hasWord(tags, word) || tagHit(row, word) || (isLgbtiTerm(word) && hasLgbtiText(tags)))) return 'tag'
   if (widen && row.isLGBTI) return 'lgbti'
   return 'none'
+}
+
+/** How many of the person's topic words a row matches at all (any field or tag). */
+function matchedWordCount(row: AskRow, required: string[]): number {
+  if (!required.length) return 0
+  const blobs = [titleBlob(row), fold(row.description), placeBlob(row), tagBlob(row)]
+  return required.filter((word) => wordInRow(row, blobs, word)).length
 }
 
 function inRange(row: AskRow, filters: Pick<AiFilters, 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree'>): boolean {
@@ -128,6 +144,7 @@ function inRange(row: AskRow, filters: Pick<AiFilters, 'dateFrom' | 'dateTo' | '
  */
 export function rankAskRows<T extends AskRow>(rows: T[], filters: Pick<AiFilters, 'keywords' | 'category' | 'subTag' | 'dateFrom' | 'dateTo' | 'city' | 'suburb' | 'isFree' | 'lgbtiq'>, limit = ASK_LIMIT): T[] {
   const keywords = filters.keywords.map((word) => word.toLowerCase())
+  const required = keywords.filter((word) => !isLgbtiTerm(word))
   const widen = filters.lgbtiq || keywords.some((word) => isLgbtiTerm(word))
   const pool = rows.filter((row) => inRange(row, filters))
   const scored = pool.map((row) => ({ row, strength: strengthFor(row, keywords, widen) }))
@@ -135,33 +152,41 @@ export function rankAskRows<T extends AskRow>(rows: T[], filters: Pick<AiFilters
   const descriptions = scored.filter((item) => item.strength === 'description')
   const places = scored.filter((item) => item.strength === 'place')
   const tags = scored.filter((item) => item.strength === 'tag')
+  const partials = scored.filter((item) => item.strength === 'partial')
   const flags = scored.filter((item) => item.strength === 'lgbti')
   let chosen = titles
   if (!keywords.length && !widen) chosen = scored
   else if (titles.length && !widen) chosen = titles
   else if (titles.length) chosen = [...titles, ...descriptions, ...flags]
-  else if (descriptions.length) chosen = [...descriptions, ...flags]
-  else if (places.length) chosen = [...places, ...flags]
-  else if (tags.length) chosen = [...tags, ...flags]
-  else chosen = flags
-  const strengthScore: Record<Strength, number> = { title: 5, description: 3, place: 2, tag: 2, lgbti: 1, none: 0 }
+  // No title matched every word, so the full matches in the weaker tiers stand
+  // first and partial matches (the relaxed pass's rows) fill in behind them.
+  // A title-tier full match stays exact: "Queen Victoria Market" returns that
+  // market, not every other row that happens to say "market".
+  else chosen = [...descriptions, ...places, ...tags, ...partials, ...flags]
+  const strengthScore: Record<Strength, number> = { title: 5, description: 3, place: 2, tag: 2, partial: 1, lgbti: 1, none: 0 }
   const ranked = chosen
     .map((item) => {
       const title = titleBlob(item.row)
       const hits = keywords.reduce((n, word) => n + (hasWord(title, word) ? 2 : 0), 0)
       const synonym = widen && hasLgbtiText(title) ? 1 : 0
       const categoryBoost = filters.category && item.row.category === filters.category ? 1 : 0
+      const subTagBoost = filters.subTag && (item.row.subTags ?? []).includes(filters.subTag) ? 1 : 0
+      const partialHits = item.strength === 'partial' ? matchedWordCount(item.row, required) * 30 : 0
       const pop = (item.row._count?.savedBy ?? 0) + (item.row._count?.attendees ?? 0) + Math.min(item.row.views ?? 0, 50) / 50
-      return { item, score: strengthScore[item.strength] * 100 + hits * 10 + synonym + categoryBoost + pop }
+      return { item, score: strengthScore[item.strength] * 100 + hits * 10 + synonym + categoryBoost + subTagBoost + partialHits + pop }
     })
     .sort((a, b) => b.score - a.score || dayKey(a.item.row.date).localeCompare(dayKey(b.item.row.date)) || (a.item.row.time ?? '').localeCompare(b.item.row.time ?? ''))
   return ranked.slice(0, limit).map((entry) => entry.item.row)
 }
 
-/** When every keyword together is too tight, the longest topic word is enough. */
+/**
+ * When every keyword together is too tight, the longest topic word is enough.
+ * Four letters is the floor: "food" and "wine" are real topics, while a
+ * three-letter needle ("art", "gig") substring-matches half the catalogue.
+ */
 export function relaxedKeywords(keywords: string[]): string[] | null {
   if (keywords.length < 2) return null
   const longest = [...keywords].sort((a, b) => b.length - a.length)[0]
-  if (!longest || longest.length < 5) return null
+  if (!longest || longest.length < 4) return null
   return [longest]
 }
