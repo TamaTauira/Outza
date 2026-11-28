@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boardPagesToLoad, isListPage, listDepthToLoad, shouldFinishRestore, SCROLL_MIN_MS, SCROLL_REACHED_MS, SCROLL_STABLE_MS, SCROLL_TIMEOUT_MS } from './scroll-restore'
+import { boardPagesToLoad, BOARD_FULL_LOAD_PAGE_CAP, isListPage, listDepthToLoad, shouldFinishRestore, SCROLL_MIN_MS, SCROLL_REACHED_MS, SCROLL_STABLE_MS, SCROLL_TIMEOUT_MS } from './scroll-restore'
 
 const ready = {
   target: 1800,
@@ -34,19 +34,32 @@ test('paged lists reload the pages that were open, and stop at the last page', (
   assert.equal(listDepthToLoad(40, 40), 8)
 })
 
-test('a full single-day board loads every page, so a time window counts its whole set', () => {
+test('a windowed single-day board loads every page, so a time window counts its whole set', () => {
   // The landing 'now' window and the Today preset read the same day; with
   // only page 1 held, the windowed count understated it (297 vs 416).
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 2, spanning: false, preview: false }), 2)
-  assert.equal(boardPagesToLoad({ saved: null, totalPages: 3, spanning: false, preview: false }), 3)
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 1, spanning: false, preview: false }), 1)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 2, spanning: false, preview: false, windowed: true }), 2)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 3, spanning: false, preview: false, windowed: true }), 3)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 1, spanning: false, preview: false, windowed: true }), 1)
+})
+
+test('the windowed full load stops at the page ceiling', () => {
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 40, spanning: false, preview: false, windowed: true }), BOARD_FULL_LOAD_PAGE_CAP)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, preview: false, windowed: true }), 1)
+})
+
+test('an unwindowed single-day board keeps the restoration depth and pages on demand', () => {
+  // The 'all' board states a server-derived count, so loading every page
+  // up front would buy nothing.
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, preview: false, windowed: false }), 1)
+  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: false, preview: false, windowed: false }), 3)
+  assert.equal(boardPagesToLoad({ saved: 40, totalPages: 40, spanning: false, preview: false, windowed: false }), 8)
 })
 
 test('spanning spans and previews keep the restoration depth', () => {
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: true, preview: false }), 1)
-  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: true, preview: false }), 3)
-  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, preview: true }), 1)
-  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, preview: false }), 1)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: true, preview: false, windowed: true }), 1)
+  assert.equal(boardPagesToLoad({ saved: 3, totalPages: 5, spanning: true, preview: false, windowed: false }), 3)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, preview: true, windowed: true }), 1)
+  assert.equal(boardPagesToLoad({ saved: null, totalPages: 0, spanning: false, preview: false, windowed: false }), 1)
 })
 
 test('board, local, saved, itinerary and city landings are lists; an event page is not', () => {
