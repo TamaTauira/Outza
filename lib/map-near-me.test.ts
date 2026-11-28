@@ -5,6 +5,7 @@ import {
   NEAR_ME_RADII_KM,
   areaJumpTarget,
   filterPinsWithinRadius,
+  locateStateAfterError,
   locateStateAfterInvalidation,
   pinDistanceKm,
   shouldAutoLocate,
@@ -76,6 +77,23 @@ test('an invalidated locate settles back to idle, whatever stage it reached', ()
   assert.equal(locateStateAfterInvalidation('idle'), 'idle')
   assert.equal(locateStateAfterInvalidation('denied'), 'denied')
   assert.equal(locateStateAfterInvalidation('unavailable'), 'unavailable')
+})
+
+test('a tapped locate reports its error outcome honestly', () => {
+  // A deliberate tap the browser refuses lands on the denied card, so the
+  // visitor learns location is off and how to turn it on.
+  assert.equal(locateStateAfterError({ permissionDenied: true, silent: false }), 'denied')
+  // Any other failure on a tap lands on the retry card instead.
+  assert.equal(locateStateAfterError({ permissionDenied: false, silent: false }), 'unavailable')
+})
+
+test('an unprompted auto-locate never owns an error outcome', () => {
+  // The mount auto-locate runs before the visitor asks for anything: a
+  // denial settles silently back to idle — the map opens on the board's
+  // selected area with Near me merely offered, no card on arrival.
+  assert.equal(locateStateAfterError({ permissionDenied: true, silent: true }), 'idle')
+  // The same holds for a position failure or a timeout on that call.
+  assert.equal(locateStateAfterError({ permissionDenied: false, silent: true }), 'idle')
 })
 
 test('an area group value jumps to its centre; a plain suburb does not', () => {
