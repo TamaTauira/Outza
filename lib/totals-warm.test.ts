@@ -92,3 +92,21 @@ test('finalize warms the totals after its invalidation, and only finalize does',
   const invalidate = src.slice(src.indexOf('async function invalidatePublicListings'), src.indexOf('export type TotalsWarmOutcome'))
   assert.equal(invalidate.includes('warmSuburbTotals'), false, 'the invalidation itself does not warm: both refresh paths call it, only finalize warms')
 })
+
+test('the warm can never reject: its whole body, dynamic import included, sits inside a try/catch', () => {
+  // finalizeCycle awaits warmSuburbTotals unwrapped, after the cycle
+  // log is recorded and the heartbeat written path depends on it
+  // returning — a rejection (e.g. the seo-server module failing to
+  // load) would cost finalizeCycle its result. Every other finalize
+  // post-step guards its own failures; the warm must too, at its top
+  // level, not just per city. Pin it at source level like the
+  // placement above.
+  const src = readFileSync(new URL('./refresh.ts', import.meta.url), 'utf8')
+  const warm = src.slice(src.indexOf('async function warmSuburbTotals'), src.indexOf('async function noteVolume'))
+  const importAt = warm.indexOf("await import('@/lib/seo-server')")
+  assert.ok(importAt > -1, 'the warm still loads the totals read from seo-server')
+  assert.ok(warm.indexOf('try {') > -1 && warm.indexOf('try {') < importAt, 'the try opens before the dynamic import, so a module-load failure is caught too')
+  assert.ok(warm.indexOf('} catch (err) {') > importAt, 'the catch closes around the import and the walk')
+  assert.ok(warm.includes("console.error('[refresh] suburb totals warm failed'"), 'a caught failure is logged, not swallowed silently')
+  assert.equal(warm.includes('throw'), false, 'the warm never rethrows: it returns normally on every path')
+})
