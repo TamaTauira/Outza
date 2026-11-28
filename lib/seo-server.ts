@@ -506,13 +506,28 @@ async function queryCitySuburbTotals(city: CityDef, today: string): Promise<Subu
   return suburbGuideTotalsFromRows(rows, local, city, 1)
 }
 
+/**
+ * What the totals data cache holds: the totals and the time they
+ * were computed. The cache serves its last successful fill while
+ * revalidations fail in the background (invisible to this layer), so
+ * the fill's age has to travel with it: without computedAt, a stale
+ * fill is indistinguishable from a fresh read — on the evening of
+ * 2026-11-28 the Sydney entry served a ~20:43 computation as current
+ * for over an hour while every revalidation timed out. The cache key
+ * carries v2 because the payload shape changed: the data cache
+ * persists across deployments, so the old key's array-shaped fills
+ * must never be read as payloads.
+ */
+export interface SuburbTotalsPayload { totals: SuburbGuideTotal[]; computedAt: number }
+
 const cachedSuburbTotals = unstable_cache(
-  async (cityName: string, today: string) => {
+  async (cityName: string, today: string): Promise<SuburbTotalsPayload> => {
     const city = CITIES.find((c) => c.name === cityName)
-    if (!city) return [] as SuburbGuideTotal[]
-    return queryCitySuburbTotals(city, today)
+    if (!city) return { totals: [], computedAt: Date.now() }
+    const totals = await queryCitySuburbTotals(city, today)
+    return { totals, computedAt: Date.now() }
   },
-  ['city-suburb-totals-v1'],
+  ['city-suburb-totals-v2'],
   { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [PUBLIC_EVENT_TAG] },
 )
 
@@ -524,15 +539,33 @@ export const SUBURB_TOTALS_MEMO_MAX_AGE_MS = 60 * 60 * 1000
 export interface CitySuburbTotals { ok: boolean; totals: SuburbGuideTotal[] }
 
 /**
- * What a failed totals read serves: the last good totals this process
- * computed, while they are under an hour old — attached but marked
- * `ok: false`, so no caller mistakes them for a fresh read. Older than
- * that, or never computed in this process: no totals at all, and
- * callers print no count rather than a stale or foreign number.
+ * What a failed totals read serves: the last good totals, stamped
+ * with the time they were computed, while that is under an hour
+ * ago — attached but marked `ok: false`, so no caller mistakes them
+ * for a fresh read. Older than that, or never computed: no totals
+ * at all, and callers print no count rather than a stale or foreign
+ * number.
  */
 export function suburbTotalsFallback(kept: { at: number; totals: SuburbGuideTotal[] } | undefined, now: number): CitySuburbTotals {
   if (kept && now - kept.at <= SUBURB_TOTALS_MEMO_MAX_AGE_MS) return { ok: false, totals: kept.totals }
   return { ok: false, totals: [] }
+}
+
+/**
+ * What a cached totals payload means for this read, judged by the
+ * age of the computation it carries: while the computation is under
+ * an hour old the payload IS the read — freshly computed, or the
+ * last good fill still inside its bound. Past an hour it is no
+ * answer at all: the read is treated as failed and falls back on
+ * the payload's own vintage, which is past the bound, so the
+ * totals drop and callers print no count. Judging every return —
+ * cache hits included — is what stops a stale fill whose
+ * revalidations keep failing from being served as `ok: true`
+ * indefinitely.
+ */
+export function suburbTotalsResult(payload: SuburbTotalsPayload, now: number): CitySuburbTotals {
+  if (now - payload.computedAt <= SUBURB_TOTALS_MEMO_MAX_AGE_MS) return { ok: true, totals: payload.totals }
+  return suburbTotalsFallback({ at: payload.computedAt, totals: payload.totals }, now)
 }
 
 /**
@@ -552,20 +585,25 @@ export function suburbLinkCount(result: CitySuburbTotals, slug: string): number 
 }
 
 /**
- * The suburb totals the guide navigation prints. `ok: false` means the
- * read failed (a truncated scan, a saturated database, or a failed
- * local read): totals then holds the last good counts this process
- * computed while they are under an hour old, and is empty when it
- * holds none — callers print the attached counts, or no count, never
- * a partial total or another construction's number as a page's count.
+ * The suburb totals the guide navigation prints. `ok: false` means
+ * the read failed (a truncated scan, a saturated database, or a
+ * failed local read) or the newest computation the cache holds is
+ * over an hour old: totals then holds the last good counts while
+ * they are under an hour from their computation, and is empty when
+ * it holds none — callers print the attached counts, or no count,
+ * never a partial total or another construction's number as a
+ * page's count. The memo is stamped with the payload's computation
+ * time, never the time of this read: stamping reads made the memo
+ * measure render recency, so the hour bound could never fire while
+ * the site had traffic.
  */
 export const citySuburbTotals = cache(async function citySuburbTotals(city: CityDef): Promise<CitySuburbTotals> {
   const today = cityToday(city)
   const key = `${city.name}|${today}`
   try {
-    const totals = await cachedSuburbTotals(city.name, today)
-    suburbTotalsMemo.set(key, { at: Date.now(), totals })
-    return { ok: true, totals }
+    const payload = await cachedSuburbTotals(city.name, today)
+    suburbTotalsMemo.set(key, { at: payload.computedAt, totals: payload.totals })
+    return suburbTotalsResult(payload, Date.now())
   } catch (err) {
     if (err instanceof SuburbScanTruncatedError) {
       console.error('city suburb totals skipped, scan truncated', city.name)
