@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { BackToEventsLink } from '@/components/back-to-events-link'
 import { CATEGORIES } from '@/lib/categories'
-import { CITIES } from '@/lib/cities'
+import { boardDisplayName, CITIES } from '@/lib/cities'
 import { ProfileFields } from '@/components/profile-fields'
 import { aboutYouStatus, profileDigits, visibleAboutErrors } from '@/lib/profile-shared'
 import { VibeCard } from './vibe-card'
@@ -156,12 +156,12 @@ export function AccountClient() {
       {!promoter && <section className={`${card} lg:col-span-2`}>
         <label htmlFor="acct-city" className="font-semibold block mb-3">Home city</label>
         <select id="acct-city" value={me.homeCity ?? ''} onChange={(e) => save({ homeCity: e.target.value })} className="h-control w-full rounded-control border border-border bg-background px-3 text-base sm:w-auto">
-          {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
+          {CITIES.map((c) => <option key={c.name} value={c.name}>{boardDisplayName(c.name)}</option>)}
         </select>
         <AccountCardHeader className="mt-5" title="What’s your thing?" lede="We’ll use this when we write to you." />
         <div className="flex flex-wrap gap-2">{CATEGORIES.map((c) => <Chip key={c.name} pressed={(me.preferredCategories ?? []).includes(c.name)} onClick={() => save({ preferredCategories: toggleIn(me.preferredCategories ?? [], c.name) })}>{c.name}</Chip>)}</div>
         <AccountCardHeader className="mt-5" title="Cities to include" />
-        <div className="flex flex-wrap gap-2">{CITIES.map((c) => <Chip key={c.name} pressed={(me.preferredCities ?? []).includes(c.name)} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })}>{c.name}</Chip>)}</div>
+        <div className="flex flex-wrap gap-2">{CITIES.map((c) => <Chip key={c.name} pressed={(me.preferredCities ?? []).includes(c.name)} onClick={() => save({ preferredCities: toggleIn(me.preferredCities ?? [], c.name) })}>{boardDisplayName(c.name)}</Chip>)}</div>
       </section>}
 
       {!promoter && <FollowsCard />}
