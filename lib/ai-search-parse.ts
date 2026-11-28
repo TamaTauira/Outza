@@ -517,6 +517,22 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   }
   if (/\b(live music|gigs?|concerts?)\b/i.test(q)) merged = { ...merged, category: 'Music' }
   const out = normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
+  // A model's keywords are filtered in normalise against the city only, so
+  // when the fallback found no keywords of its own — every content word was
+  // a stop word or the place itself, e.g. "music in Newcastle" — a
+  // model-supplied place word survives as a keyword and is ANDed as a text
+  // needle no listing has to match. The focus place is a filter, never a
+  // keyword: drop its words (the resolved suburb's, which is the folded
+  // place's name when that is the focus) from the merged keywords here,
+  // before the fallback's own keywords — which already stopped them — take
+  // over below, so fallback-approved words are never dropped by this.
+  const focusWords = new Set<string>()
+  for (const focus of [out.suburb, typeof fb.suburb === 'string' ? fb.suburb : '']) {
+    focus.toLowerCase().split(/\s+/).filter(Boolean).forEach((w) => focusWords.add(stemKeyword(w)))
+  }
+  if (focusWords.size) {
+    out.keywords = out.keywords.filter((k) => !k.toLowerCase().split(/\s+/).some((w) => focusWords.has(stemKeyword(w))))
+  }
   if (typeof fb.suburb === 'string' && fb.suburb) out.suburb = fb.suburb
   if (typeof fb.subTag === 'string' && fb.subTag) out.subTag = fb.subTag
   if (fb.paidOnly === true) out.paidOnly = true
