@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cityDataIsStale, resolveBoardCity } from './city-pref'
+import { cityDataIsStale, resolveBoardCity, searchInheritTarget } from './city-pref'
 
 // The homepage has one city resolution (HomeClient) and every surface —
 // heading, picker, board, rails, Coming up next — reads the result. These
@@ -151,4 +151,32 @@ test('held data is not stale for the city it was loaded for', () => {
 test('an empty hand is never stale', () => {
   assert.equal(cityDataIsStale('Melbourne', 'Adelaide', 0), false)
   assert.equal(cityDataIsStale(null, 'Adelaide', 0), false)
+})
+
+// /search inherits the board's city when its link named none: the server
+// seeds DEFAULT_CITY and the client re-requests under the resolved city.
+// These pin when that correction fires, so a /search render is never left
+// headed with a city its results were not loaded for — and a query that
+// named its own city is never dragged onto the stored pick.
+
+test('a /search render seeded with the default moves to the resolved city', () => {
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: '', resolvedCity: 'Melbourne' }), 'Melbourne')
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: null, resolvedCity: 'Perth' }), 'Perth')
+})
+
+test('a /search render already on the resolved city stays', () => {
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: '', resolvedCity: 'Sydney' }), null)
+})
+
+test('a query that named a city is never corrected onto the stored pick', () => {
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: 'Sydney', resolvedCity: 'Melbourne' }), null)
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: 'Brisbane', resolvedCity: 'Melbourne' }), null)
+})
+
+test('an All-of-Australia resolution has no /search URL form and stays seeded', () => {
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: '', resolvedCity: '' }), null)
+})
+
+test('an unknown resolved value never becomes a /search city', () => {
+  assert.equal(searchInheritTarget({ seedCity: 'Sydney', queryCity: '', resolvedCity: 'Atlantis' }), null)
 })
