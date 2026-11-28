@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boardCountGate, boardDataIsStale, boardQueryKey } from './board-query'
+import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey } from './board-query'
+import { boardPagesToLoad } from './scroll-restore'
 
 // The board holds rows and a total loaded for one query (span, city,
 // search, filters) while the selection can move to another. Held data
@@ -82,4 +83,37 @@ test('a capped windowed load falls back instead of publishing a partial count', 
   // Paging on to the last page completes the set, and the windowed
   // count takes over from the fallback.
   assert.equal(boardCountGate({ windowed: true, heldPages: 12, totalPages: 12, capped: true }), 'ready')
+})
+
+// The shared windowed decision: the first load and the count gate
+// both take `windowed` from boardLoadIsWindowed, so a board the gate
+// holds is always one whose load was commanded to fetch the whole
+// set. A pinned board's effective window is its requested window.
+// An unpinned board's effective window is chosen by a fallback chain
+// once rows land and can be promoted to 'evening' over an 'all'
+// request — the case that stranded the headline on "…": the load
+// had read the request alone and fetched only the restoration
+// depth, the gate read the promoted window and held, and no load
+// was left to release it.
+
+test("a pinned 'all' board is unwindowed and loads at restoration depth", () => {
+  // Safe because a pinned board's effective window is its requested
+  // one: the count is the server's full-set total from page 1.
+  assert.equal(boardLoadIsWindowed({ requestedWindow: 'all', windowPinned: true }), false)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: boardLoadIsWindowed({ requestedWindow: 'all', windowPinned: true }) }), 1)
+})
+
+test("an unpinned 'all' board loads as windowed, so the gate always has a load that can lift it", () => {
+  assert.equal(boardLoadIsWindowed({ requestedWindow: 'all', windowPinned: false }), true)
+  // The pin is optional and absent means unpinned, as in EventList.
+  assert.equal(boardLoadIsWindowed({ requestedWindow: 'all' }), true)
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: boardLoadIsWindowed({ requestedWindow: 'all', windowPinned: false }) }), 4)
+})
+
+test('a windowed request loads as windowed, pinned or not', () => {
+  for (const requestedWindow of ['now', 'hour', 'evening'] as const) {
+    assert.equal(boardLoadIsWindowed({ requestedWindow, windowPinned: true }), true)
+    assert.equal(boardLoadIsWindowed({ requestedWindow, windowPinned: false }), true)
+  }
+  assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: boardLoadIsWindowed({ requestedWindow: 'now', windowPinned: true }) }), 4)
 })

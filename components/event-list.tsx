@@ -25,7 +25,7 @@ import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
-import { boardCountGate, boardDataIsStale, boardQueryKey } from '@/lib/board-query'
+import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey } from '@/lib/board-query'
 export type BoardSeed = {
   city: string
   from: string
@@ -218,7 +218,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     // bound it, which the count gate below reads. A failed append stops
     // the load without recording a completion — the gate stays on.
     const loadRest = async (totalPages: number) => {
-      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, preview: previewLimit != null, windowed: requestedWindow !== 'all' })
+      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, windowed: boardLoadIsWindowed({ requestedWindow, windowPinned }) })
       for (let n = 2; n <= pages && !cancelled; n++) {
         const more = await fetchSpan(span.from, span.to, n, true)
         if (!more || cancelled) return
@@ -265,14 +265,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setPage(1)
     const first = await fetchSpan(span.from, span.to, 1, false)
     if (!first) return
-    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, preview: previewLimit != null, windowed: requestedWindow !== 'all' })
+    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, windowed: boardLoadIsWindowed({ requestedWindow, windowPinned }) })
     for (let n = 2; n <= pages; n++) {
       const more = await fetchSpan(span.from, span.to, n, true)
       if (!more) return
       setPage(n)
     }
     setCappedKey(pages < first.totalPages ? queryKey : null)
-  }, [span, fetchSpan, previewLimit, requestedWindow, queryKey])
+  }, [span, fetchSpan, requestedWindow, windowPinned, queryKey])
 
   useEffect(() => {
     if (!offline || !span) return
@@ -390,18 +390,27 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     ? (() => {
       const horizon = nowMinutes + 12 * 60
       const dayKey = day ?? ''
+      // The re-admission reads the start the same way rankBoard does —
+      // through resolveSchedule, which derives a start from startsAt
+      // when the listing carries no clock string. Reading ev.time alone
+      // silently dropped that whole storage shape from this band: a
+      // startsAt-only listing starting more than three hours out was in
+      // no 'now' section at all, though the full-day board renders it
+      // with its derived clock. (Drop-ins stay out: they belong to the
+      // All day section, and a midnight-placeholder start of 0 would
+      // otherwise double-count one at the day's first minute.)
       const upcoming = listed.filter((ev) => {
         if (!dayKey || String(ev.date).slice(0, 10) !== dayKey) return false
-        const start = toMinutes(ev.time)
-        if (start == null) return false
-        return start >= nowMinutes && start <= horizon
+        const sched = resolveSchedule(ev, dayKey)
+        if (sched.dropIn || sched.start == null) return false
+        return sched.start >= nowMinutes && sched.start <= horizon
       })
       const seen = new Set<string>()
       const coming = [...windowRank.soon, ...upcoming].filter((ev) => {
         if (seen.has(ev.id)) return false
         seen.add(ev.id)
         return true
-      }).sort((a, b) => (toMinutes(a.time) ?? 0) - (toMinutes(b.time) ?? 0))
+      }).sort((a, b) => (resolveSchedule(a, dayKey).start ?? 0) - (resolveSchedule(b, dayKey).start ?? 0))
       const happening = [...windowRank.lead, ...windowRank.still].filter((ev) => !seen.has(ev.id))
       return [
         { key: 'next', label: 'Coming up', rows: coming.map(rowFor), possibly: false },
@@ -430,8 +439,22 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // page ceiling bound the load, the held set can never complete, and
   // the headline falls back to the server's full-set numbers for the
   // span rather than ever publishing the partial sum.
+  // The gate and the full load apply to the collapsed preview board
+  // too: its summary line is the same count line (on the homepage it is
+  // the site's main one), so it loads the whole set and holds "…"
+  // until the set lands. #308 exempted previews from both, and its
+  // post-release check caught the landing headline settled on page 1's
+  // partial sum (296) while the open board stated the full windowed
+  // count (373).
+  // The gate and the load take their `windowed` from the same
+  // decision (boardLoadIsWindowed): the requested window, or any
+  // window at all when unpinned — an unpinned board's effective
+  // window is picked by the fallback chain above once rows land, and
+  // can land on 'evening' over an 'all' request. Reading the load
+  // from the request alone left that promotion gated over a
+  // depth-loaded set, with no load left to release it.
   const countGate = boardCountGate({
-    windowed: !span?.spanning && previewLimit == null && (windowRank != null || effectiveWindow === 'hour'),
+    windowed: !span?.spanning && boardLoadIsWindowed({ requestedWindow, windowPinned }),
     heldPages: page,
     totalPages,
     capped: cappedKey !== null && cappedKey === queryKey,
