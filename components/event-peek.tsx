@@ -63,7 +63,7 @@ type PeekEvent = {
   organiserUrl?: string | null
   source?: string | null
   communityKey?: string | null
-  quality?: { price?: { range?: string | null; fees?: string | null } | null } | null
+  quality?: { price?: { range?: string | null; fees?: string | null; freeNote?: string | null } | null } | null
 }
 
 /** Event opened over the page you were on. The address is the real event URL. */
@@ -227,7 +227,7 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
                 time={clock}
                 timeZoneLabel={city.name}
                 price={priced.label}
-                priceNote={priced.kind === 'paid' ? event.quality?.price?.fees : null}
+                priceNote={priced.kind === 'paid' && (event.quality?.price?.fees || event.quality?.price?.freeNote) ? (<>{[event.quality?.price?.fees, event.quality?.price?.freeNote].filter((note): note is string => !!note).map((note) => (<span key={note} className="block">{note}</span>))}</>) : null}
                 venue={placeTitle ? (
                   <>
                     <span className="font-medium">{placeTitle}</span>
