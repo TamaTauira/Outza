@@ -46,7 +46,7 @@ export type BoardArgs = {
   promoterId: string
 }
 
-function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
+export function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   const where: Prisma.EventWhereInput = {
     duplicateOfId: null,
     status: { not: 'CANCELLED' },
@@ -109,11 +109,20 @@ function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   const price = priceWhere({ isFree: a.isFree, maxPrice: a.maxPrice ?? null })
   if (price) and.push(price)
   and.push(...PUBLIC_EVENT_AND)
-  // Today's listings, plus anything still running after midnight (endsAt in the future).
+  // Today's listings, plus anything still inside its own calendar span: a
+  // multi-day endDate still to run, or an after-midnight finish from
+  // yesterday. A future endsAt on its own no longer qualifies a row \u2014 a
+  // linked donor can recompute endsAt from its own endDate, so the span is
+  // what bounds this branch (isPastEvent applies the same rule in shapeBoard).
+  const today = sydneyToday()
+  const yesterday = new Date(today.getTime() - 86_400_000)
   and.push({
     OR: [
-      { date: { gte: sydneyToday() }, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
-      { endsAt: { gt: new Date() } },
+      { date: { gte: today }, OR: [{ endsAt: null }, { endsAt: { gt: new Date() } }] },
+      {
+        endsAt: { gt: new Date() },
+        OR: [{ endDate: { gte: today } }, { endDate: null, date: { gte: yesterday } }],
+      },
     ],
   })
   if (a.isLGBTI) where.isLGBTI = true
