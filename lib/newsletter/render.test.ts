@@ -106,7 +106,7 @@ test('the digest html is personal, table-based, and Gmail-safe', () => {
   assert.match(html, /Ticketmaster · Updated 28 Oct/)
   assert.match(html, /Manage preferences/)
   assert.match(html, /Unsubscribe/)
-  assert.match(html, /email-headers\/newsletter\.png/)
+  assert.match(html, /email-headers\/newsletter-sydney\.png/)
   assert.match(html, /alt="VibePeep: The Weekender"/)
   assert.equal(html.includes('icon-512.png'), false)
   assert.equal(html.includes('vibepeep-wordmark'), false)

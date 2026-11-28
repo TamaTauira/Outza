@@ -1,21 +1,41 @@
 #!/usr/bin/env python3
 """Bake the shared email header and footer assets once. Nothing here runs at send time.
 
-Headers (design approved by the owner 26 Nov 2026, handover 3.13):
-each kind in lib/email-header-copy.json becomes one slim black banner,
-1200x234 (600x117 at 1x), colour #141414, flat edge to edge. Left: the
-VibePeep lockup, the kind's title and a short orange-to-pink gradient
-underline. Right: the kind's approved Tummer plate from
-assets/email-header-source/<kind>.png, baked into the same black with no
-frame, border, seam or halo: the art is contained to the header height,
-right-aligned, every RGB channel is floored at #141414 (plate black becomes
-banner black, brighter art untouched) and a 60px smoothstep fade runs at
-the panel's left edge. Both a 2x master (<kind>.png) and a 1x copy
+Headers (design approved by the owner 28 Nov 2026, the v6 banner):
+each kind in lib/email-header-copy.json becomes one tall black banner,
+1200x400 (600x200 at 1x), colour #141414, flat edge to edge. Left: the
+VibePeep lockup at (44, 36), height 56, and under it the kind's title in
+Manrope extrabold 72px, white #F5F5F7, at (42, 128). Right: the kind's
+approved Tummer plate from assets/email-header-source/<kind>.png — the
+plate's right window (x 480..1200) scaled to height 356 and pasted at the
+bottom right, every RGB channel floored at #141414 (plate black becomes
+banner black, brighter art untouched), a 100px smoothstep fade at the
+panel's left edge, and a mild contrast/colour lift plus unsharp so the
+art stays crisp. An 8px orange-to-pink gradient strip runs along the
+bottom edge. The whole banner is rendered at 2x and downscaled, so type
+and art land anti-aliased. Both a 2x master (<kind>.png) and a 1x copy
 (<kind>-1x.png) are written to public/email-headers/. No WebP in mail.
+
+City variants: the kinds whose send path knows the reader's city
+(newsletter, daily-drop, big-month, matches, reminder — see
+EMAIL_HEADER_CITY_KINDS in lib/email-brand.ts) are also baked once per
+catalogue city as <kind>-<city-slug>.png (+ -1x). Those carry an area
+locator under the title: the city's eyebrow from CITY_LABELS in
+lib/cities.ts (Manrope bold 17px, letter-spaced, peach #FFB088, at
+(44, 252)), the area name in Manrope extrabold 36px at (42, 282) — for
+Sydney "Sydney & " in white and "the NSW Coast" in the orange-to-pink
+gradient, other cities all white — and a 5px gradient underline at
+(44, 336), about 55% of the name's width. Keep CITY_LABELS below in sync
+with lib/cities.ts.
 
 Every kind has its own plate. A missing file stops the build.
 Tummer's hands stay rounded mittens, a single thumb lobe is fine. Do not
-add a plate with separate fingers.
+add a plate with separate fingers. (Known exception, owner-flagged: the
+account plate as supplied has separated fingers; its mitten re-render is
+separate ART-stream work.)
+
+Manrope is required. Set VIBEPEEP_MANROPE_FONT to a Manrope variable
+font if it is not in one of the candidate paths below.
 
 Footer icons (handover 3.14): each social mark in SITE_SOCIAL order is
 baked as one 72px PNG (36px at 1x) in public/email-icons/: a #2c2c2e
@@ -27,11 +47,12 @@ icons (Calendar, Clock, Banknote, MapPin).
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 COPY = ROOT / 'lib' / 'email-header-copy.json'
@@ -41,219 +62,175 @@ LOCKUP = ROOT / 'public' / 'brand' / 'vibepeep-lockup-dark@3x.png'
 HEADERS = ROOT / 'public' / 'email-headers'
 ICONS = ROOT / 'public' / 'email-icons'
 
-# Slim bake: 117px at 600px email width, 234px at 2x. Logo 24px at 600 = 48px here.
-W, H = 1200, 234
-PAD = 48
-LOGO_H = 48
-TEXT_MAX_W = 440
-BANNER = (20, 20, 20)  # #141414
-ORANGE = (255, 122, 53, 255)  # #FF7A35
-PINK = (240, 90, 157, 255)  # #F05A9D
-INK = (247, 247, 247, 255)
-FACT_ORANGE = ORANGE
+# v6 bake: 200px tall at 600px email width, 400px at 2x. Everything is
+# drawn on a 2x-supersampled canvas (2400x800) and downscaled once.
+SS = 2
+W, H = 1200, 400
+GROUND = (20, 20, 20)  # #141414
+ORANGE = (255, 122, 53)  # #FF7A35
+PINK = (240, 90, 157)  # #F05A9D
+INK = (245, 245, 247)  # #F5F5F7
+PEACH = (255, 176, 136)  # #FFB088
+FACT_ORANGE = ORANGE + (255,)
+
+LOGO_X, LOGO_Y, LOGO_H = 44, 36, 56
+TITLE_X, TITLE_Y, TITLE_SIZE, TITLE_MAX_W = 42, 128, 72, 660
+PLATE_CROP_X = 480
+PLATE_H = 356
+PLATE_FADE = 100
+EYEBROW_X, EYEBROW_Y, EYEBROW_SIZE = 44, 252, 17
+AREA_X, AREA_Y, AREA_SIZE = 42, 282, 36
+UNDERLINE_X, UNDERLINE_Y, UNDERLINE_H = 44, 336, 5
+STRIP_H = 8
+
+# Kinds whose send path knows the reader's city. Mirrors
+# EMAIL_HEADER_CITY_KINDS in lib/email-brand.ts.
+CITY_KINDS = ['newsletter', 'daily-drop', 'big-month', 'matches', 'reminder']
+
+# Mirror of CITY_LABELS in lib/cities.ts: city -> (eyebrow, label).
+CITY_LABELS = {
+    'Sydney': ('NSW · THE HARBOUR STATE', 'Sydney & the NSW Coast'),
+    'Melbourne': ('VIC · THE GARDEN STATE', 'Melbourne'),
+    'Brisbane': ('QLD · THE SUNSHINE STATE', 'Brisbane'),
+    'Gold Coast': ('QLD · THE SUNSHINE STATE', 'Gold Coast'),
+    'Perth': ('WA · THE WILDFLOWER STATE', 'Perth'),
+    'Adelaide': ('SA · THE FESTIVAL STATE', 'Adelaide'),
+    'Canberra': ('ACT · THE BUSH CAPITAL', 'Canberra'),
+    'Hobart': ('TAS · THE APPLE ISLE', 'Hobart'),
+    'Darwin': ('NT · THE TOP END', 'Darwin'),
+}
 
 SOCIAL_ORDER = ['instagram', 'tiktok', 'threads', 'youtube', 'x', 'facebook', 'linkedin']
 ICON_CIRCLE = '#2c2c2e'
 ICON_GLYPH = '#F5F5F7'
 
 FONT_CANDIDATES = [
-    # Inter variable (design environment): optical size 14, weight set per call.
-    ('/usr/share/fonts/truetype/sand-box/google/Inter/Inter-VariableFont_opsz,wght.ttf', True),
-    ('/usr/share/fonts/truetype/macos/Inter-Bold.ttf', False),
-    ('/usr/share/fonts/truetype/inter/Inter-Bold.ttf', False),
-    ('/usr/share/fonts/opentype/inter/Inter-Bold.otf', False),
-    ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', False),
+    (os.environ.get('VIBEPEEP_MANROPE_FONT'), True),
+    ('/usr/share/fonts/truetype/manrope/Manrope-VariableFont_wght.ttf', True),
+    ('/usr/share/fonts/truetype/manrope/Manrope[wght].ttf', True),
+    ('/usr/share/fonts/truetype/manrope/Manrope-Bold.ttf', False),
+    ('/usr/share/fonts/truetype/macos/Manrope-Bold.ttf', False),
 ]
 
 
 def _font_face() -> tuple[str, bool]:
     for path, variable in FONT_CANDIDATES:
-        if Path(path).exists():
+        if path and Path(path).exists():
             return path, variable
-    raise SystemExit('No bold sans font found for email headers')
+    raise SystemExit('No Manrope font found for email headers (set VIBEPEEP_MANROPE_FONT)')
 
 
-def load_font(size: int, weight: int = 700) -> ImageFont.FreeTypeFont:
+def load_font(size: int, weight: int = 800) -> ImageFont.FreeTypeFont:
     path, variable = _font_face()
     font = ImageFont.truetype(path, size)
     if variable:
-        font.set_variation_by_axes([14, weight])
+        font.set_variation_by_axes([weight])
     return font
 
 
-class Plate:
-    """An approved source plate: its RGB pixels and the subject bounding box."""
-
-    def __init__(self, kind: str):
-        self.kind = kind
-        self.path = SOURCE / f'{kind}.png'
-        if not self.path.exists():
-            raise SystemExit(f'no approved plate for {kind}: {self.path}')
-        self.rgb = np.array(Image.open(self.path).convert('RGB'))
-        self.h, self.w = self.rgb.shape[:2]
-        lum = self.rgb.max(axis=2).astype(np.int16)
-        self.lum = lum
-        self.sat = lum - self.rgb.min(axis=2).astype(np.int16)
-        ys, xs = np.where((lum > 16) | (self.sat > 12))
-        self.bbox = (int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1)
-
-
-def art_natural_size(plate: Plate, th: int, atmosphere: int = 36) -> tuple[int, int, int, int, float]:
-    """Source window (x0, y0, x1, y1) and scale that shows the full figure at height th.
-
-    `atmosphere` adds a little of the plate's own glow to the left of the
-    bbox so the subject is not hard-cropped on its left.
-    """
-    bx0, by0, bx1, by1 = plate.bbox
-    pad = 8
-    by0 = max(0, by0 - pad)
-    by1 = min(plate.h, by1 + pad)
-    bh = by1 - by0
-    scale = th / bh
-    ax0 = max(0, bx0 - atmosphere)
-    ax1 = min(plate.w, bx1 + pad)
-    return ax0, by0, ax1, by1, scale
-
-
-def art_panel_width(plate: Plate, th: int, atmosphere: int = 36, min_w: int = 300, max_w: int = 600) -> int:
-    ax0, by0, ax1, by1, scale = art_natural_size(plate, th, atmosphere)
-    natural = int(round((ax1 - ax0) * scale))
-    return max(min_w, min(max_w, natural))
-
-
-def flatten_empty_black(art: Image.Image, ground: tuple[int, int, int], subj_x: int, fade: int = 28) -> Image.Image:
-    """Match empty plate-black to the banner so no rectangle edge shows.
-
-    Only the field to the left of the subject is remapped. Tummer's
-    near-black body, and any sparkles, hearts or confetti, stay as approved.
-    """
-    arr = np.array(art).astype(np.float32)
-    h, w, _ = arr.shape
-    lum = arr.max(axis=2)
-    sat = lum - arr.min(axis=2)
-    sparkle = (lum > 40) | (sat > 25)
-
-    xs = np.arange(w, dtype=np.float32)[None, :].repeat(h, axis=0)
-    t = np.clip((xs - (subj_x - fade)) / max(1, fade), 0, 1)
-    t = t * t * (3 - 2 * t)  # smoothstep
-    alpha = np.where(sparkle, 1.0, t)
-
-    g = np.array(ground, dtype=np.float32)
-    out = arr * alpha[..., None] + g * (1.0 - alpha[..., None])
-    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), 'RGB')
-
-
-def panel_art_on_ground(plate: Plate, tw: int, th: int, ground: tuple[int, int, int], atmosphere: int = 36) -> Image.Image:
-    """Contain-to-height, right-align, flatten empty left black into `ground`."""
-    ax0, by0, ax1, by1, scale = art_natural_size(plate, th, atmosphere)
-    src = Image.fromarray(plate.rgb, 'RGB')
-    crop = src.crop((ax0, by0, ax1, by1))
-    nw = max(1, int(round(crop.width * scale)))
-    resized = crop.resize((nw, th), Image.Resampling.LANCZOS)
-
-    bx0 = plate.bbox[0]
-    if resized.width >= tw:
-        cut = resized.width - tw
-        resized = resized.crop((cut, 0, resized.width, th))
-        src_x0 = ax0 + cut / scale
-        ox = 0
-    else:
-        src_x0 = ax0
-        ox = tw - resized.width
-
-    canvas = Image.new('RGB', (tw, th), ground)
-    canvas.paste(resized, (ox, 0))
-    subj_x = int(round(ox + max(0, bx0 - src_x0) * scale))
-    return flatten_empty_black(canvas, ground, subj_x)
-
-
-def gradient_bar(width: int, height: int = 4) -> Image.Image:
-    bar = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-    px = bar.load()
+def gradient_strip(width: int, height: int) -> Image.Image:
+    """One orange-to-pink horizontal gradient, sized to draw at SS scale."""
+    strip = Image.new('RGB', (width, 1))
+    px = strip.load()
     for x in range(width):
         t = x / max(1, width - 1)
-        color = tuple(int(ORANGE[i] * (1 - t) + PINK[i] * t) for i in range(3)) + (255,)
-        for y in range(height):
-            px[x, y] = color
-    return bar
+        px[x, 0] = tuple(int(ORANGE[i] + (PINK[i] - ORANGE[i]) * t) for i in range(3))
+    return strip.resize((width, height))
 
 
-def fit_title(text: str) -> tuple[ImageFont.FreeTypeFont, str, int]:
-    """One line when it fits. Otherwise the split that keeps the largest type."""
-    max_w = TEXT_MAX_W
-    for size in range(48, 31, -2):
-        font = load_font(size, 700)
-        if font.getlength(text) <= max_w:
-            return font, text, size
-        words = text.split(' ')
-        if len(words) < 2:
-            continue
-        best: tuple[float, str] | None = None
-        for cut in range(1, len(words)):
-            lines = (' '.join(words[:cut]), ' '.join(words[cut:]))
-            longest = max(font.getlength(line) for line in lines)
-            if longest <= max_w and (best is None or longest < best[0]):
-                best = (longest, '\n'.join(lines))
-        if best:
-            return font, best[1], size
-    font = load_font(32, 700)
-    return font, text, 32
+def gradient_text(canvas: Image.Image, xy: tuple[int, int], text: str, font: ImageFont.FreeTypeFont) -> None:
+    """Draw text filled with the brand gradient, positioned on the full canvas."""
+    mask = Image.new('L', canvas.size, 0)
+    ImageDraw.Draw(mask).text(xy, text, font=font, fill=255)
+    canvas.paste(gradient_strip(canvas.size[0], canvas.size[1]), (0, 0), mask)
 
 
-def left_stack(headline: str, lockup: Image.Image) -> tuple[Image.Image, int]:
-    """Lockup + title + gradient underline, vertically packed."""
-    logo_w = int(round(LOGO_H * (lockup.width / lockup.height)))
-    logo = lockup.resize((logo_w, LOGO_H), Image.Resampling.LANCZOS)
-    font, laid, size = fit_title(headline)
-    ascent, descent = font.getmetrics()
-    lines = laid.split('\n')
-    spacing = 2
-    line_h = ascent + descent
-    title_h = len(lines) * line_h + spacing * (len(lines) - 1)
-    longest = max(font.getlength(line) for line in lines)
-    bar_w = max(96, min(220, int(longest * 0.72)))
-    bar_h = 4
-    gap_logo = 12
-    gap_bar = 8
-    block_h = LOGO_H + gap_logo + title_h + gap_bar + bar_h
-    block_w = max(logo_w, int(longest) + 4, bar_w)
-    block = Image.new('RGBA', (block_w, block_h), (0, 0, 0, 0))
-    block.paste(logo, (0, 0), logo)
-    draw = ImageDraw.Draw(block)
-    draw.multiline_text((0, LOGO_H + gap_logo), laid, font=font, fill=INK, spacing=spacing)
-    bar_y = LOGO_H + gap_logo + title_h + gap_bar
-    block.paste(gradient_bar(bar_w, bar_h), (0, bar_y), gradient_bar(bar_w, bar_h))
-    return block, block_h
+def plate_panel(kind: str) -> Image.Image:
+    """The kind's Tummer plate, treated and ready to paste bottom-right.
 
-
-def paste_left(canvas: Image.Image, headline: str, lockup: Image.Image) -> None:
-    block, block_h = left_stack(headline, lockup)
-    top = max(PAD // 2, (H - block_h) // 2)
-    if canvas.mode == 'RGB':
-        canvas.paste(block.convert('RGB'), (PAD, top), block)
-    else:
-        canvas.paste(block, (PAD, top), block)
-
-
-def build_header(plate: Plate, headline: str, lockup: Image.Image) -> Image.Image:
-    """The approved seamless bake: header and art in one PNG on #141414."""
-    canvas = Image.new('RGBA', (W, H), BANNER + (255,))
-    max_w = W - (PAD + TEXT_MAX_W + 24)
-    pw = art_panel_width(plate, H, atmosphere=36, min_w=300, max_w=min(600, max_w))
-    filled = panel_art_on_ground(plate, pw, H, BANNER, atmosphere=36)
-    a = np.array(filled).astype(np.int16)
-    g = np.array(BANNER, dtype=np.int16)
-    # Floor every channel at the banner black: plate #000 becomes the
-    # banner, brighter art untouched.
-    a = np.maximum(a, g)
-    # Soft fade at the panel's left edge so no vertical seam can exist.
-    fade = 60
-    t = np.clip(np.arange(pw) / fade, 0, 1)
+    Crop the plate's right window, scale to PLATE_H, lift contrast and
+    colour a touch, floor every channel at the banner black, sharpen,
+    then smoothstep-fade the panel's left edge into the ground. The
+    figure itself is never faded or cropped.
+    """
+    path = SOURCE / f'{kind}.png'
+    if not path.exists():
+        raise SystemExit(f'no approved plate for {kind}: {path}')
+    plate = Image.open(path).convert('RGB')
+    crop = plate.crop((PLATE_CROP_X, 0, plate.width, plate.height))
+    pw = int(round(crop.width * (PLATE_H * SS) / crop.height))
+    panel = crop.resize((pw, PLATE_H * SS), Image.Resampling.LANCZOS)
+    panel = ImageEnhance.Contrast(panel).enhance(1.04)
+    panel = ImageEnhance.Color(panel).enhance(1.05)
+    arr = np.maximum(np.asarray(panel).astype(np.int16), GROUND[0])
+    panel = Image.fromarray(arr.astype('uint8'))
+    panel = panel.filter(ImageFilter.UnsharpMask(radius=2.2, percent=68, threshold=2))
+    pa = np.asarray(panel).astype(np.float32)
+    fade = PLATE_FADE * SS
+    t = np.clip(np.arange(pw, dtype=np.float32) / fade, 0, 1)
     t = t * t * (3 - 2 * t)
-    a = (a * t[None, :, None] + g * (1 - t[None, :, None])).astype(np.uint8)
-    canvas.paste(Image.fromarray(a, 'RGB'), (W - pw, 0))
-    paste_left(canvas, headline, lockup)
-    return canvas.convert('RGB')
+    g = np.array(GROUND, dtype=np.float32)
+    pa = pa * t[None, :, None] + g * (1 - t[None, :, None])
+    return Image.fromarray(np.clip(pa, 0, 255).astype('uint8'))
+
+
+def fit_title(text: str) -> ImageFont.FreeTypeFont:
+    """Manrope extrabold at TITLE_SIZE, stepped down until the line fits."""
+    size = TITLE_SIZE
+    while size > 56:
+        font = load_font(size * SS, 800)
+        if font.getlength(text) <= TITLE_MAX_W * SS:
+            return font
+        size -= 2
+    return load_font(size * SS, 800)
+
+
+def draw_area_locator(canvas: Image.Image, city: str) -> None:
+    """Eyebrow + area name + gradient underline, under the title."""
+    eyebrow, label = CITY_LABELS[city]
+    draw = ImageDraw.Draw(canvas)
+    font_e = load_font(EYEBROW_SIZE * SS, 700)
+    x = EYEBROW_X * SS
+    tracking = 3 * SS
+    for ch in eyebrow:
+        draw.text((x, EYEBROW_Y * SS), ch, font=font_e, fill=PEACH)
+        x += draw.textlength(ch, font=font_e) + tracking
+    font_a = load_font(AREA_SIZE * SS, 800)
+    y = AREA_Y * SS
+    if ' & the ' in label:
+        head, tail = label.split(' & the ', 1)
+        head += ' & '
+        tail = 'the ' + tail
+        draw.text((AREA_X * SS, y), head, font=font_a, fill=INK)
+        head_w = draw.textlength(head, font=font_a)
+        gradient_text(canvas, (AREA_X * SS + head_w, y), tail, font_a)
+        name_w = head_w + draw.textlength(tail, font=font_a)
+    else:
+        draw.text((AREA_X * SS, y), label, font=font_a, fill=INK)
+        name_w = draw.textlength(label, font=font_a)
+    underline_w = int(name_w * 0.55)
+    canvas.paste(gradient_strip(underline_w, UNDERLINE_H * SS), (UNDERLINE_X * SS, UNDERLINE_Y * SS))
+
+
+def build_header(kind: str, headline: str, lockup: Image.Image, city: str | None = None) -> Image.Image:
+    """One v6 banner on #141414: lockup, title, plate, bottom strip."""
+    canvas = Image.new('RGB', (W * SS, H * SS), GROUND)
+    panel = plate_panel(kind)
+    canvas.paste(panel, (W * SS - panel.width, H * SS - panel.height))
+    logo_w = int(round(LOGO_H * SS * (lockup.width / lockup.height)))
+    logo = lockup.resize((logo_w, LOGO_H * SS), Image.Resampling.LANCZOS)
+    canvas.paste(logo, (LOGO_X * SS, LOGO_Y * SS), logo)
+    draw = ImageDraw.Draw(canvas)
+    draw.text((TITLE_X * SS, TITLE_Y * SS), headline, font=fit_title(headline), fill=INK)
+    if city:
+        draw_area_locator(canvas, city)
+    canvas.paste(gradient_strip(W * SS, STRIP_H * SS), (0, (H - STRIP_H) * SS))
+    return canvas.resize((W, H), Image.Resampling.LANCZOS)
+
+
+def city_slug(name: str) -> str:
+    """'Gold Coast' -> 'gold-coast'. Mirrors emailHeaderCitySlug in lib/email-brand.ts."""
+    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
 
 
 def social_icon(name: str) -> Image.Image:
@@ -342,16 +319,30 @@ def save_png(path: Path, image: Image.Image) -> None:
     image.save(path, format='PNG', optimize=True)
 
 
-def main() -> None:
+def bake_headers() -> int:
     headlines: dict[str, str] = json.loads(COPY.read_text())
     lockup = Image.open(LOCKUP).convert('RGBA')
     HEADERS.mkdir(parents=True, exist_ok=True)
+    count = 0
     for kind, headline in headlines.items():
-        plate = Plate(kind)
-        image = build_header(plate, headline, lockup)
+        image = build_header(kind, headline, lockup)
         save_png(HEADERS / f'{kind}.png', image)
-        save_png(HEADERS / f'{kind}-1x.png', image.resize((600, 117), Image.Resampling.LANCZOS))
+        save_png(HEADERS / f'{kind}-1x.png', image.resize((600, 200), Image.Resampling.LANCZOS))
+        count += 2
         print(f'{kind}: {headline}')
+        if kind in CITY_KINDS:
+            for city in CITY_LABELS:
+                slug = city_slug(city)
+                variant = build_header(kind, headline, lockup, city=city)
+                save_png(HEADERS / f'{kind}-{slug}.png', variant)
+                save_png(HEADERS / f'{kind}-{slug}-1x.png', variant.resize((600, 200), Image.Resampling.LANCZOS))
+                count += 2
+            print(f'{kind}: + {len(CITY_LABELS)} city variants')
+    return count
+
+
+def main() -> None:
+    count = bake_headers()
     icons = {
         'calendar.png': fact_calendar(),
         'clock.png': fact_clock(),
@@ -362,7 +353,7 @@ def main() -> None:
         icons[f'{name}.png'] = social_icon(name)
     for name, image in icons.items():
         save_png(ICONS / name, image)
-    print(f'{len(headlines)} headers (2x + 1x), {len(icons)} icons')
+    print(f'{count} header PNGs, {len(icons)} icons')
 
 
 if __name__ == '__main__':
