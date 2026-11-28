@@ -26,7 +26,7 @@ import { eventPath, weekendRange } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
 import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey, boardWindowSuffix } from '@/lib/board-query'
-import { boardGenuinelyEmpty, quietBoardCopy, WEEKEND_PEEK_LIMIT } from '@/lib/board-empty'
+import { boardGenuinelyEmpty, quietBoardCopy, selectWeekendPeekRows, WEEKEND_PEEK_FETCH_LIMIT } from '@/lib/board-empty'
 export type BoardSeed = {
   city: string
   from: string
@@ -242,8 +242,11 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // uses, scoped to the same city (whose where-clause already widens
   // to the board's region), over the This-weekend preset's own span
   // (weekendRange). No other filters ride along — the preview is the
-  // board's weekend, not the failed view's. A failed peek leaves the
-  // state unsettled and the empty state in its headline-and-copy form.
+  // board's weekend, not the failed view's. The held rows are the
+  // weekend's upcoming ones (see selectWeekendPeekRows): the board
+  // hides ended rows, so the preview does too. A failed peek leaves
+  // the state unsettled and the empty state in its headline-and-copy
+  // form.
   const boardZero = boardGenuinelyEmpty({
     city,
     spanning: !!span?.spanning,
@@ -262,13 +265,18 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     if (weekendPeek?.key === key) return
     let cancelled = false
     ;(async () => {
-      const params = new URLSearchParams({ page: '1', limit: String(WEEKEND_PEEK_LIMIT), dateFrom: range.from, dateTo: range.to, city })
+      const params = new URLSearchParams({ page: '1', limit: String(WEEKEND_PEEK_FETCH_LIMIT), dateFrom: range.from, dateTo: range.to, city })
       const result = await readJson<{ events?: BoardEvent[]; total?: number }>(`/api/events?${params.toString()}`)
       if (cancelled || !result.ok) return
-      setWeekendPeek({ key, events: (result.data?.events ?? []).slice(0, WEEKEND_PEEK_LIMIT), total: result.data?.total })
+      // The preview shows upcoming rows only: the feed's hand runs
+      // wider than the preview (see WEEKEND_PEEK_FETCH_LIMIT) and the
+      // selection drops the rows the board itself would call ended —
+      // the same live-status test its own rows are hidden by.
+      const events = selectWeekendPeekRows(result.data?.events ?? [], (ev) => getStatus(ev, String(ev.date).slice(0, 10), today, nowMinutes).tone === 'done')
+      setWeekendPeek({ key, events, total: result.data?.total })
     })()
     return () => { cancelled = true }
-  }, [boardZero, city, weekendPeek])
+  }, [boardZero, city, weekendPeek, today, nowMinutes])
 
   useEffect(() => {
     if (!span || authStatus === 'loading') return
@@ -694,6 +702,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // "tonight"), the weekend peek's rows rendered by the board's own
   // row renderer, and nothing at all when the board is not genuinely
   // empty — the branches below then keep their existing empty states.
+  // The collapsed preview defers to it on the same terms: a genuinely
+  // empty board is quiet there too, while a window that is merely
+  // empty keeps the preview's own "this window" wording.
   const quietCategory = filters.category || (filters.categories?.length === 1 ? filters.categories[0] : '')
   const quietCopy = boardZero ? quietBoardCopy({ place: placeName, window: effectiveWindow, category: quietCategory, search: searchQuery }) : null
   const weekendNow = boardZero && city ? weekendRange(cityDef(city)) : null
@@ -770,7 +781,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         )} />
       ) : previewFlat ? (
         previewFlat.length ? showRows(previewFlat) : (
-          <PeepEmpty title="Crickets. I checked twice." body="Nothing else in this window. Open the full list or loosen a filter." />
+          quietBoard ?? (
+            <PeepEmpty title="Crickets. I checked twice." body="Nothing else in this window. Open the full list or loosen a filter." />
+          )
         )
       ) : span?.spanning && timed.length === 0 ? (
         <PeepEmpty title="Crickets. I checked twice." body="Nothing in that date range. Widen the dates or loosen your filters." />

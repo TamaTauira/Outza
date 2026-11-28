@@ -16,6 +16,36 @@ import type { TimeWindow } from './board'
 export const WEEKEND_PEEK_LIMIT = 4
 
 /**
+ * How many weekend rows the peek asks the feed for. The preview only
+ * ever shows the first WEEKEND_PEEK_LIMIT rows that have not ended,
+ * and ended rows cluster at the head of the span — the part of today
+ * already gone by the time a board can come back empty — so the peek
+ * over-fetches (five preview slots' worth) and selects from the
+ * fuller hand. If even this hand is entirely ended, the weekend is
+ * empty for the state's purposes and it falls back to its
+ * headline-and-copy form.
+ */
+export const WEEKEND_PEEK_FETCH_LIMIT = 20
+
+/**
+ * The rows the weekend preview shows: the fetched hand with the
+ * ended rows dropped, order preserved, capped at the preview limit.
+ * Ended-ness is the caller's test — EventList passes the board's own
+ * (the row's live status, resolved through resolveSchedule, the same
+ * test the board hides its own rows by) — so the preview hides
+ * exactly the rows the board itself would hide, and an all-ended
+ * hand selects nothing.
+ */
+export function selectWeekendPeekRows<T>(rows: readonly T[], isEnded: (row: T) => boolean, limit: number = WEEKEND_PEEK_LIMIT): T[] {
+  const picked: T[] = []
+  for (const row of rows) {
+    if (picked.length >= limit) break
+    if (!isEnded(row)) picked.push(row)
+  }
+  return picked
+}
+
+/**
  * True only when the board's current query has genuinely returned
  * zero events for the selected city — as opposed to a load that is
  * still running, failed, or never landed. The distinction rides on
