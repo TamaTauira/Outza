@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { CATALOGUE_IDS, catalogueEntry, renderTemplate, templateMailHeaders, type TemplateId } from './email-catalogue'
+import { EMAIL_HEADER_CITY_KINDS } from './email-brand'
 
 function visible(value: string) {
   return value.replace(/https?:\/\/\S+/g, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')
@@ -33,6 +34,7 @@ test('every catalogue template has html and text, a logo, and no brand slip', ()
       assert.match(mail.html, /Unsubscribe/)
     }
     if (entry.priority === 'launch-must') assert.match(mail.html, /#FF7A35/)
-    assert.match(mail.html, new RegExp(`/email-headers/${entry.banner}\\.png`), id)
+    const citySuffix = EMAIL_HEADER_CITY_KINDS.includes(entry.banner) ? '(-[a-z-]+)?' : ''
+    assert.match(mail.html, new RegExp(`/email-headers/${entry.banner}${citySuffix}\\.png`), id)
   }
 })
