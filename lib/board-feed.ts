@@ -111,7 +111,7 @@ export function boardWhere(a: BoardArgs): Prisma.EventWhereInput {
   and.push(...PUBLIC_EVENT_AND)
   // Today's listings, plus anything still inside its own calendar span: a
   // multi-day endDate still to run, or an after-midnight finish from
-  // yesterday. A future endsAt on its own no longer qualifies a row \u2014 a
+  // yesterday. A future endsAt on its own no longer qualifies a row — a
   // linked donor can recompute endsAt from its own endDate, so the span is
   // what bounds this branch (isPastEvent applies the same rule in shapeBoard).
   const today = sydneyToday()
