@@ -56,8 +56,11 @@ export function eventImageSizes(slot: 'card' | 'rail' | 'sheet' | 'page' | 'boar
 }
 
 /**
- * Fills its parent. A real photo sits sharp on all four edges over a blurred
- * copy of itself. The blur fades into the card or the page colour.
+ * Fills its parent. A real photo sits sharp and whole — never cropped —
+ * centred over a blurred copy of itself: the fit layer takes the photo's own
+ * aspect ratio (the --vp-ratio custom property, wired in globals.css) and the
+ * sharp layer is object-contain, so the full poster always shows. The blur
+ * fills whatever frame is left and fades into the card or the page colour.
  * Holding art is only for a missing picture or a genuinely tiny one.
  */
 export function EventImage({
@@ -207,7 +210,9 @@ function StageImage({
   onLoad?: (img: HTMLImageElement) => void
   onError?: () => void
 }) {
-  const fit = cn(blur ? 'vp-photo-blur-img object-cover' : 'object-cover', className)
+  // The blur copy covers the frame; the sharp layer is contained, so the
+  // whole photo shows uncropped over it.
+  const fit = cn(blur ? 'vp-photo-blur-img object-cover' : 'object-contain', className)
   if (optimized && !srcSet) {
     return (
       <Image

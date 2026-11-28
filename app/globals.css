@@ -714,7 +714,7 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   }
 }
 
-/* Option B. Sharp photo on a blurred copy. The blur eases into the host colour on every side. */
+/* Poster treatment. The whole photo, uncropped, centred over a blurred copy of itself. The blur eases into the host colour on every side. */
 .vp-photo {
   --vp-surface: hsl(var(--card));
   position: absolute;
@@ -772,6 +772,22 @@ html[data-vp-fold='side'] .vp-site-header ~ main.vp-page-top {
   width: 100%;
   height: 100%;
   transform: none;
+}
+/* EventImage sets --vp-ratio (the photo's natural width / height) on the fit
+   layer once the size is known. The layer then becomes a centred box in the
+   photo's own ratio inside the frame, so the sharp layer shows the whole
+   poster over the blurred fill instead of covering — and cropping — the
+   frame. .is-open (ratio not known yet) and engines without typed calc or
+   container units keep the full frame above; the sharp layer's
+   object-contain still prevents any crop there. */
+@supports (width: calc(1cqh * 2)) {
+  .vp-photo-fit:not(.is-open) {
+    margin: auto;
+    aspect-ratio: var(--vp-ratio);
+    width: min(100cqw, calc(100cqh * var(--vp-ratio)));
+    height: auto;
+    max-height: 100%;
+  }
 }
 .vp-photo-feather {
   -webkit-mask-image: none;
