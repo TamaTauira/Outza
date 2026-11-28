@@ -116,7 +116,7 @@ function ev(partial: Partial<RetirementEventInput> & { id: string }): Retirement
     deletedAt: null,
     duplicateOfId: null,
     communityKey: null,
-    retiredBySweep: false,
+    retirementAudit: null,
     ...partial,
   }
 }
@@ -209,7 +209,11 @@ test('an event whose other source has no completed sweeps is not hidden', () => 
 test('a reappearing event is restored and its record cleared', () => {
   const result = plan(
     [rec({ id: 'r1', eventId: 'e1', seenAt: new Date(T0 + 50 * HOUR), missing: true })],
-    [ev({ id: 'e1', deletedAt: new Date(T0 + 40 * HOUR), retiredBySweep: true })],
+    [ev({
+      id: 'e1',
+      deletedAt: new Date(T0 + 40 * HOUR),
+      retirementAudit: { action: 'SOURCE_RETIRED', createdAt: new Date(T0 + 40 * HOUR + 1000) },
+    })],
   )
   assert.deepEqual(result.restoreEventIds, ['e1'])
   assert.deepEqual(result.clearMissingIds, ['r1'])
@@ -218,9 +222,38 @@ test('a reappearing event is restored and its record cleared', () => {
 test('an admin soft-delete is never auto-restored', () => {
   const result = plan(
     [rec({ id: 'r1', eventId: 'e1', seenAt: new Date(T0 + 50 * HOUR), missing: true })],
-    [ev({ id: 'e1', deletedAt: new Date(T0 + 40 * HOUR), retiredBySweep: false })],
+    [ev({ id: 'e1', deletedAt: new Date(T0 + 40 * HOUR), retirementAudit: null })],
   )
   assert.deepEqual(result.restoreEventIds, [])
+})
+
+test('a manual re-delete after a manual restore is never auto-lifted', () => {
+  // The mechanism hid e1 at T+40h (deletedAt and its SOURCE_RETIRED audit
+  // land together). An admin then restored it by hand and later re-deleted
+  // it by hand: the current deletedAt (T+90h) sits far after the audit, so
+  // it is the admin's delete, not the mechanism's — even though the latest
+  // retirement audit still says SOURCE_RETIRED and a sweep sees the event.
+  const result = plan(
+    [
+      rec({ id: 'r1', eventId: 'e1', seenAt: new Date(T0 + 50 * HOUR), missing: true }),
+      rec({ id: 'r2', eventId: 'e2', seenAt: new Date(T0 + 50 * HOUR), missing: true }),
+    ],
+    [
+      ev({
+        id: 'e1',
+        deletedAt: new Date(T0 + 90 * HOUR),
+        retirementAudit: { action: 'SOURCE_RETIRED', createdAt: new Date(T0 + 40 * HOUR + 1000) },
+      }),
+      // Control: e2's delete is still the mechanism's own (deletedAt in
+      // step with its audit), so the same sighting restores it.
+      ev({
+        id: 'e2',
+        deletedAt: new Date(T0 + 40 * HOUR),
+        retirementAudit: { action: 'SOURCE_RETIRED', createdAt: new Date(T0 + 40 * HOUR + 1000) },
+      }),
+    ],
+  )
+  assert.deepEqual(result.restoreEventIds, ['e2'])
 })
 
 test('past, duplicate and community events are out of scope', () => {
@@ -270,4 +303,36 @@ test('an ordinary number of misses in one sweep still hides', () => {
   const result = plan(records, events)
   assert.deepEqual(result.suspiciousSources, [])
   assert.equal(result.hideEventIds.length, 5)
+})
+
+test('two consecutive degraded sweeps covering a whole source hide nothing, however often they repeat', () => {
+  // The canonical broken-feed scenario: the source's feed degrades so two
+  // completed sweeps in a row see none of its listings. The first sweep
+  // flags the whole catalogue; the second flags nothing new. Judging
+  // suspicion on newly-flagged records alone let the second sweep hide
+  // everything — this replay pins that it cannot.
+  const sweep1: CompletedSweep = { startedAt: T0 + 24 * HOUR, endedAt: T0 + 25 * HOUR, chunks: 1, events: 0 }
+  const sweep2: CompletedSweep = { startedAt: T0 + 48 * HOUR, endedAt: T0 + 49 * HOUR, chunks: 1, events: 0 }
+  const sweep3: CompletedSweep = { startedAt: T0 + 72 * HOUR, endedAt: T0 + 73 * HOUR, chunks: 1, events: 0 }
+  const events: RetirementEventInput[] = []
+  const fresh: RetirementRecordInput[] = []
+  for (let n = 0; n < 40; n++) {
+    events.push(ev({ id: `e${n}` }))
+    fresh.push(rec({ id: `r${n}`, eventId: `e${n}`, seenAt: new Date(T0 + 2 * HOUR) }))
+  }
+
+  const pass1 = plan(fresh, events, { eventbrite: [sweep1] })
+  assert.equal(pass1.markMissingIds.length, 40, 'the first degraded sweep flags the whole catalogue')
+  assert.deepEqual(pass1.hideEventIds, [], 'one miss hides nothing')
+  assert.deepEqual(pass1.suspiciousSources, ['eventbrite'], 'the first degraded sweep is already suspicious')
+
+  const flagged = fresh.map((record) => ({ ...record, missing: true }))
+  const pass2 = plan(flagged, events, { eventbrite: [sweep2, sweep1] })
+  assert.deepEqual(pass2.suspiciousSources, ['eventbrite'])
+  assert.deepEqual(pass2.hideEventIds, [], 'the second degraded sweep hides nothing')
+  assert.equal(pass2.heldEventIds.length, 40, 'every would-be hide is held, so the OPEN audit fires')
+
+  const pass3 = plan(flagged, events, { eventbrite: [sweep3, sweep2, sweep1] })
+  assert.deepEqual(pass3.hideEventIds, [], 'a third degraded sweep still hides nothing')
+  assert.equal(pass3.heldEventIds.length, 40)
 })
