@@ -1,5 +1,5 @@
 import { CATEGORIES, areasForCity } from '@/lib/categories'
-import { CITIES, CITY_NAMES } from '@/lib/cities'
+import { CITIES, CITY_NAMES, KNOWN_CITY_DEFS } from '@/lib/cities'
 
 function addDays(key: string, n: number): string {
   const d = new Date(`${key}T00:00:00Z`)
@@ -33,6 +33,10 @@ export interface AiFilters {
   nearMe: boolean
   /** True only when the person picked a category (the vibe control). Inferred topics stay soft. */
   categoryStrict: boolean
+  /** Place named in the query that VibePeep does not cover. Absent when none was named. */
+  uncoveredPlace?: string
+  /** True when the query asked for a past period. The span is the coming weekend, answered under a note saying so. */
+  pastIntent?: boolean
 }
 
 const GENERIC = new Set(['live', 'music', 'live music', 'event', 'events', 'things', 'fun', 'stuff', 'show', 'shows', 'activities'])
@@ -228,6 +232,52 @@ function suburbHit(q: string): { suburb: string; city: string } | null {
   return { suburb: top.suburb, city: cities.size === 1 ? top.city : '' }
 }
 
+/**
+ * Major places VibePeep does not cover, named so an ask about one can be
+ * answered honestly instead of silently substituting the board city.
+ * Deliberately conservative: a place is listed only when it is not a
+ * catalogue city, not a folded place (KNOWN_CITY_DEFS), and not a suburb
+ * or area of a covered city — and even then it only counts in a place
+ * position (see uncoveredPlaceInQuery). Hamilton is left out on purpose:
+ * it is also a Newcastle suburb on the Sydney board, and the covered
+ * reading wins. Byron Bay is listed: it belongs to none of the covered
+ * sets, so its events are not on any board.
+ */
+const UNCOVERED_PLACES = [
+  'Auckland', 'Wellington', 'Christchurch', 'Dunedin', 'Tauranga', 'Napier', 'Whangarei', 'Rotorua',
+  'Palmerston North', 'New Plymouth', 'Invercargill', 'Queenstown', 'Gisborne', 'Whanganui',
+  'Geelong', 'Cairns', 'Townsville', 'Toowoomba', 'Ballarat', 'Bendigo', 'Launceston', 'Albury',
+  'Wagga Wagga', 'Coffs Harbour', 'Dubbo', 'Tamworth', 'Alice Springs', 'Broome', 'Byron Bay',
+  'Sunshine Coast', 'Mackay', 'Rockhampton', 'Bunbury', 'Geraldton', 'Port Macquarie', 'Hervey Bay',
+  'Mildura', 'Shepparton', 'Gladstone',
+]
+
+/** Folded places (Newcastle, Wollongong) are covered: they resolve onto the Sydney board. */
+const FOLDED_PLACES = KNOWN_CITY_DEFS.filter((c) => !CITY_NAMES.includes(c.name)).map((c) => c.name)
+
+/**
+ * The uncovered place an ask names, or '' when it names none — including
+ * when it names a covered place instead. Detection lives in the parser
+ * because it is the only stage that sees the raw words. A covered place
+ * named anywhere wins (catalogue city, folded place, or a known
+ * suburb/area); an uncovered one only counts in a place position —
+ * after "in"/"near", opening the query, or closing it — so a venue or
+ * artist that merely carries a place's name mid-sentence is not flagged.
+ */
+export function uncoveredPlaceInQuery(q: string): string {
+  if (cityInQuery(q) || suburbHit(q)) return ''
+  for (const name of FOLDED_PLACES) {
+    if (new RegExp(`(^|[^a-z])${escapeRe(name)}([^a-z]|$)`, 'i').test(q)) return ''
+  }
+  const s = q.toLowerCase()
+  const places = [...UNCOVERED_PLACES].sort((a, b) => b.length - a.length)
+  for (const place of places) {
+    const body = escapeRe(place.toLowerCase())
+    if (new RegExp(`(?:^|\\bin\\s+|\\bnear\\s+)${body}(?![a-z])|${body}(?![a-z])[\\s?!.,]*$`).test(s)) return place
+  }
+  return ''
+}
+
 const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
 const DATE_WORDS = new Set([
   'next', 'week', 'weeks', 'month', 'night', 'nights', 'christmas', 'xmas', 'saturday', 'sunday',
@@ -330,10 +380,22 @@ export function fallbackParse(q: string, today: string) {
   const out: Record<string, unknown> = { keywords: [] as string[], explicitDates: false, city: '', subTag: '', paidOnly: false, categoryStrict: false }
   const range = extractExplicitRange(q, today)
   const weekday = s.match(/\b(?:on\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?:\s+night)?\b/)
-  if (range) {
+  // Past asks — "last weekend", "yesterday", "last Friday", or a named
+  // range that has already ended — are answered with the coming weekend
+  // under a flag, never by quietly rewriting the dates: only upcoming
+  // events are listed, and the route shows the note that says so. A named
+  // range that is still running or still to come wins over the phrase.
+  const pastPhrase = /\blast\s+(weekend|week|night|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b|\byesterday\b|\bweekend\s+just\s+(?:gone|passed)\b/.test(s)
+  if (range && range.to >= today) {
     out.dateFrom = range.from
     out.dateTo = range.to
     out.explicitDates = true
+  } else if (range || pastPhrase) {
+    const [from, to] = weekend(today)
+    out.dateFrom = from
+    out.dateTo = to
+    out.explicitDates = true
+    out.pastIntent = true
   } else if (/\b(christmas|xmas)\b/.test(s)) {
     const y = Number(today.slice(0, 4))
     const thisYear = `${y}-12-25`
@@ -397,6 +459,7 @@ export function fallbackParse(q: string, today: string) {
   if (city) city.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
   if (place?.suburb) place.suburb.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
   if (/\bdate night\b/.test(s)) { stop.add('date'); stop.add('night') }
+  if (out.pastIntent) { stop.add('last'); stop.add('yesterday'); stop.add('just'); stop.add('gone'); stop.add('passed') }
   const words = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w)).map(stemKeyword)
   out.keywords = [...new Set(words)].slice(0, 4)
   return out
@@ -489,6 +552,16 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
     merged = ai ? { ...fb, ...ai, city: fb.city || ai.city, category: ai.category || fb.category, timeOfDay: fb.timeOfDay || ai.timeOfDay } : fb
   }
   if (/\b(live music|gigs?|concerts?)\b/i.test(q)) merged = { ...merged, category: 'Music' }
+  // A model-supplied range that has already ended is a past ask too (the
+  // fallback's own past branch never produces one). Rewrite it to the
+  // coming weekend under the past flag rather than letting normalise
+  // clamp it into the future without a trace.
+  let modelPast = false
+  if (!fb.pastIntent && typeof merged.dateFrom === 'string' && typeof merged.dateTo === 'string' && DAY_RE.test(merged.dateFrom) && DAY_RE.test(merged.dateTo) && merged.dateTo < today) {
+    const [from, to] = weekend(today)
+    merged = { ...merged, dateFrom: from, dateTo: to }
+    modelPast = true
+  }
   const out = normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
   if (typeof fb.suburb === 'string' && fb.suburb) out.suburb = fb.suburb
   if (typeof fb.subTag === 'string' && fb.subTag) out.subTag = fb.subTag
@@ -499,6 +572,15 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   if (Array.isArray(fb.keywords) && fb.keywords.length) out.keywords = fb.keywords as string[]
   out.categoryStrict = false
   out.nearMe = /\b(near me|nearby|around me)\b/i.test(q)
+  if (fb.pastIntent === true || modelPast) out.pastIntent = true
+  const uncovered = uncoveredPlaceInQuery(q)
+  if (uncovered) {
+    out.uncoveredPlace = uncovered
+    // The place's own words are spent on the coverage note, not left as
+    // keywords the board city's events would have to contain.
+    const placeWords = new Set(uncovered.toLowerCase().split(/\s+/))
+    out.keywords = out.keywords.filter((k) => !placeWords.has(k))
+  }
   return out
 }
 
