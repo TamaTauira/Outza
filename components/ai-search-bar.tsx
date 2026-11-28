@@ -26,7 +26,7 @@ export interface AiSearchFilters {
 type Hints = SearchHints
 const NO_HINTS: Hints = EMPTY_HINTS
 interface AiResult { id: string; title: string; date: string; time: string | null; venueName: string; suburb: string | null; city: string; category: string; isFree: boolean; price: string | null }
-interface AiResponse { filters: AiSearchFilters; ai: boolean; relaxed: boolean; total: number; results: AiResult[] }
+interface AiResponse { filters: AiSearchFilters; ai: boolean; relaxed: boolean; total: number; results: AiResult[]; uncoveredPlace?: string; pastIntent?: boolean; noSignal?: boolean; degraded?: boolean; needsLocation?: boolean }
 
 const PLAN_SUGGESTIONS = ['Saturday date night', 'Family Sunday', 'Free afternoon', 'Family day out']
 const SEARCH_SUGGESTIONS = ['Live music', 'Comedy under $40', 'LGBTIQ+ this week']
@@ -138,6 +138,11 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
       if (id !== reqId.current) return
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { setError(d?.error ?? 'Can’t search just now. Give it another go in a tick.'); setData(null); return }
+      if (d?.noSignal) {
+        setError('Tell us what you feel like doing, e.g. “jazz on Friday night”, or pick a time, budget or idea.')
+        setData(null)
+        return
+      }
       if (d?.needsLocation && !coords) {
         if (typeof navigator === 'undefined' || !navigator.geolocation) {
           setError('Allow location for “near me”, or name a city or suburb. We won’t guess from the board city.')
@@ -464,6 +469,12 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
             ))}
           </div>
           {data.relaxed && <p className="mt-2 text-sm text-muted-foreground">Couldn’t nail every word, but these tick most of your boxes.</p>}
+          {data.uncoveredPlace && (
+            <p className="mt-2 text-sm text-foreground">{data.uncoveredPlace}’s not on our map yet — VibePeep covers nine Australian cities for now.{(data.filters.city || city) ? ` Here’s what’s on in ${data.filters.city || city} instead.` : ''}</p>
+          )}
+          {data.pastIntent && (
+            <p className="mt-2 text-sm text-foreground">We only list what’s coming up — here’s this weekend instead.</p>
+          )}
 
           {data.results.length ? (
             <ul className="vp-ask-results mt-3 grid min-w-0 grid-cols-1 gap-3">
@@ -490,6 +501,8 @@ export function AiSearchBar({ city, today, onShowAll, onResult, placeholder, que
                 )
               })}
             </ul>
+          ) : data.degraded ? (
+            <p className="mt-3 text-sm text-foreground">Ask’s having a moment. Give it another go.</p>
           ) : (
             <p className="mt-3 text-sm text-foreground">I had a proper look. Nothing on VibePeep matches that{(data.filters.city || city) && !data.filters.nearMe ? ` in ${data.filters.city || city}` : ''}. Try a city, a date, or a different kind of event.</p>
           )}

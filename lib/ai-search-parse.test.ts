@@ -258,6 +258,143 @@ test('words that merely end in s are not mangled', () => {
   assert.deepEqual(interpretQuery('galleries in Sydney', FRIDAY).keywords, ['galleries'])
 })
 
+test('an uncovered place is named in the parse, never silently swapped for the board city', () => {
+  const auckland = interpretQuery("what's on in Auckland", FRIDAY)
+  assert.equal(auckland.uncoveredPlace, 'Auckland')
+  assert.equal(auckland.city, '')
+  // The place's own word is spent on the note, not left as a keyword the
+  // board city's events would have to contain.
+  assert.deepEqual(auckland.keywords, [])
+
+  assert.equal(interpretQuery('gigs in Wellington', FRIDAY).uncoveredPlace, 'Wellington')
+  assert.equal(interpretQuery('concerts in Byron Bay', FRIDAY).uncoveredPlace, 'Byron Bay')
+  assert.equal(interpretQuery('things to do in Geelong', FRIDAY).uncoveredPlace, 'Geelong')
+  assert.equal(interpretQuery('Auckland gigs', FRIDAY).uncoveredPlace, 'Auckland')
+  assert.equal(interpretQuery('gigs near Queenstown', FRIDAY).uncoveredPlace, 'Queenstown')
+})
+
+test('covered places never read as uncovered', () => {
+  // Catalogue cities.
+  assert.equal(interpretQuery('gigs in Sydney', FRIDAY).uncoveredPlace, undefined)
+  assert.equal(interpretQuery('gigs in Perth', FRIDAY).uncoveredPlace, undefined)
+  // Folded places resolve onto the Sydney board.
+  assert.equal(interpretQuery('gigs in Newcastle', FRIDAY).uncoveredPlace, undefined)
+  assert.equal(interpretQuery('gigs in Wollongong', FRIDAY).uncoveredPlace, undefined)
+  // Known suburbs and areas of covered cities.
+  assert.equal(interpretQuery('markets in Bondi', FRIDAY).uncoveredPlace, undefined)
+  assert.equal(interpretQuery('fremantle markets', FRIDAY).uncoveredPlace, undefined)
+  // A bare mention mid-sentence is a name, not the place being asked about.
+  assert.equal(interpretQuery('an Auckland band plays the hits', FRIDAY).uncoveredPlace, undefined)
+  // No place at all.
+  assert.equal(interpretQuery('jazz gigs', FRIDAY).uncoveredPlace, undefined)
+})
+
+test('every uncovered place named is stripped from the keywords, not just the one in the note', () => {
+  // The note names one place (the longest match, as before), but the
+  // other place's word must not survive as an ANDed keyword either way
+  // round — it would filter the board city's events by a word they
+  // cannot contain.
+  const both = interpretQuery('gigs in Auckland or Wellington', FRIDAY)
+  assert.equal(both.uncoveredPlace, 'Wellington')
+  assert.deepEqual(both.keywords, ['gig'])
+
+  const reversed = interpretQuery('gigs in Wellington or Auckland', FRIDAY)
+  assert.equal(reversed.uncoveredPlace, 'Wellington')
+  assert.deepEqual(reversed.keywords, ['gig'])
+})
+
+test('a compound landmark name is not the uncovered place it ends with', () => {
+  // "Mount Wellington" is a Hobart landmark, not an ask about Wellington.
+  assert.equal(interpretQuery('walks on Mount Wellington', FRIDAY).uncoveredPlace, undefined)
+  // …while the place itself, asked about plainly, still flags — by
+  // preposition and by closing position alike.
+  assert.equal(interpretQuery('things to do in Wellington', FRIDAY).uncoveredPlace, 'Wellington')
+  assert.equal(interpretQuery('best markets Wellington', FRIDAY).uncoveredPlace, 'Wellington')
+})
+
+test('past asks are flagged and answered with the coming weekend instead of a silent remap', () => {
+  const last = interpretQuery('gigs last weekend', FRIDAY)
+  assert.equal(last.pastIntent, true)
+  assert.equal(last.dateFrom, '2026-10-30')
+  assert.equal(last.dateTo, '2026-11-01')
+  // The word "last" is spent on the date, not left as a keyword an event
+  // title would have to contain.
+  assert.deepEqual(last.keywords, ['gig'])
+
+  const named = interpretQuery('concerts in December 2024', FRIDAY)
+  assert.equal(named.pastIntent, true)
+  assert.equal(named.dateFrom, '2026-10-30')
+  assert.equal(named.dateTo, '2026-11-01')
+
+  // A model-supplied range that has already ended is a past ask too.
+  const model = interpretQuery('jazz gigs', FRIDAY, { dateFrom: '2026-10-23', dateTo: '2026-10-25', keywords: ['jazz'] })
+  assert.equal(model.pastIntent, true)
+  assert.equal(model.dateFrom, '2026-10-30')
+  assert.equal(model.dateTo, '2026-11-01')
+})
+
+test('title-shaped phrases are not past asks', () => {
+  // "Yesterday" and "Last <Weekday> Night" are event titles as often as
+  // they are dates. They keep their words as keywords and search over
+  // the normal window — firing the past branch on them would also stop
+  // the title words out of the keywords and gut the search.
+  const yesterday = interpretQuery('Yesterday Once More', FRIDAY)
+  assert.equal(yesterday.pastIntent, undefined)
+  assert.ok(yesterday.keywords.includes('yesterday'))
+  assert.equal(yesterday.dateFrom, FRIDAY)
+  assert.equal(yesterday.dateTo, '2026-11-12')
+
+  // The deliberate trade-off: a bare "yesterday" ask reads as a title too.
+  const gigsYesterday = interpretQuery('gigs yesterday', FRIDAY)
+  assert.equal(gigsYesterday.pastIntent, undefined)
+  assert.ok(gigsYesterday.keywords.includes('yesterday'))
+
+  assert.equal(interpretQuery('Last Night of the Proms', FRIDAY).pastIntent, undefined)
+  assert.equal(interpretQuery('last friday night party', FRIDAY).pastIntent, undefined)
+
+  // …while the unambiguous past shapes still fire: "last <weekday>"
+  // bare is a date, not a title.
+  const tuesday = interpretQuery('shows last tuesday', FRIDAY)
+  assert.equal(tuesday.pastIntent, true)
+  assert.equal(tuesday.dateFrom, '2026-10-30')
+  assert.equal(tuesday.dateTo, '2026-11-01')
+})
+
+test('periods still in progress or still to come are not past asks', () => {
+  const month = interpretQuery('events in October', FRIDAY)
+  assert.equal(month.pastIntent, undefined)
+  assert.equal(month.dateFrom, '2026-10-30')
+  assert.equal(month.dateTo, '2026-10-31')
+
+  const weekend = interpretQuery('gigs this weekend', FRIDAY)
+  assert.equal(weekend.pastIntent, undefined)
+  assert.equal(weekend.dateFrom, '2026-10-30')
+  assert.equal(weekend.dateTo, '2026-11-01')
+})
+
+test('an ask with no parseable signal parses to no signal at all', () => {
+  // The route's no-signal guard reads exactly these fields: an emoji-only
+  // ask must arrive with none of them set and the default window in place.
+  const emoji = interpretQuery('🎉🎉', FRIDAY)
+  assert.deepEqual(emoji.keywords, [])
+  assert.equal(emoji.category, '')
+  assert.equal(emoji.suburb, '')
+  assert.equal(emoji.city, '')
+  assert.equal(emoji.isFree, false)
+  assert.equal(emoji.paidOnly, false)
+  assert.equal(emoji.maxPrice, null)
+  assert.equal(emoji.lgbtiq, false)
+  assert.equal(emoji.timeOfDay, 'any')
+  assert.equal(emoji.dateFrom, FRIDAY)
+  assert.equal(emoji.dateTo, '2026-11-12')
+  assert.equal(emoji.uncoveredPlace, undefined)
+  assert.equal(emoji.pastIntent, undefined)
+
+  // Keyword-shaped gibberish is a different thing: the word is the signal,
+  // so it runs as a real (empty) search rather than the no-signal path.
+  assert.deepEqual(interpretQuery('asdfgh', FRIDAY).keywords, ['asdfgh'])
+})
+
 test('folded-in places resolve to their board, and the place is not a keyword', () => {
   // Newcastle has no board of its own: the ask lands on the Sydney board with
   // Newcastle kept as the focus, and "newcastle" must not survive as a word
