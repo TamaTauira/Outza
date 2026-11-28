@@ -315,6 +315,18 @@ test('suburb link counts never fall back to the guide model total', () => {
     assert.match(region, /suburbLinkCount\(/, `${path} takes its suburb link counts from the totals read`)
     assert.doesNotMatch(region, /d\.total/, `${path} must not fall back to the guide model total for a suburb count`)
   }
+  // resolve() in the topic page also builds suburb objects — the
+  // model's extra suburbs — and stamps a count field on them. Those
+  // counts cannot print today (LandingPage overrides every printed
+  // count), but the field sits one deleted override away from live,
+  // so pin the construction itself: membership may come from the
+  // model, a stamped count may not.
+  const page = readFileSync(join(root, 'app/[city]/[topic]/page.tsx'), 'utf8')
+  const resolveStart = page.indexOf('async function resolve')
+  assert.notEqual(resolveStart, -1, 'page.tsx: resolve() is where this test expects it')
+  const resolveRegion = page.slice(resolveStart, page.indexOf('function headingFor', resolveStart))
+  assert.match(resolveRegion, /model\.decisions/, 'page.tsx: resolve() builds its extra suburbs from the guide model')
+  assert.doesNotMatch(resolveRegion, /count:\s*d\.total/, 'page.tsx: resolve() must not stamp a suburb count from the guide model total')
   const landing = readFileSync(join(root, 'components/guide-landing.tsx'), 'utf8')
   assert.match(landing, /count: number \| null/, 'GuideLanding admits a suburb link with no count')
   assert.match(landing, /s\.count !== null/, 'GuideLanding renders the count only when one is supplied')
