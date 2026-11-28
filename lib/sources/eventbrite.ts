@@ -21,13 +21,55 @@ function parseServerData(html: string): any | null {
   }
 }
 
-function priceFromAvailability(t: any): string | null {
+export function priceFromAvailability(t: any): string | null {
   if (!t) return null
-  if (t.is_free) return 'Free'
   const min = moneyNumber(t.minimum_ticket_price ?? t.min_price)
   const max = moneyNumber(t.maximum_ticket_price ?? t.max_price)
+  // A positive ticket price wins over is_free: an event with some free classes
+  // and some paid ones is a mixed event, not a free one.
+  if ((min != null && min > 0) || (max != null && max > 0)) {
+    return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price
+  }
+  if (t.is_free) return 'Free'
   if (min == null && max == null) return readPrice(t.minimum_ticket_price?.display ?? t.minimum_ticket_price_display).price
   return priceFromAmounts(min, max, { fromOnly: min != null && max == null && min > 0 }).price
+}
+
+/** The stable source id the other externalId feeds already pass to saveEvent. */
+export function eventbriteExternalId(e: { id?: unknown } | null | undefined): string | null {
+  return e?.id != null && e.id !== '' ? String(e.id) : null
+}
+
+/**
+ * Whether the free-events pass may mark this event free as a whole.
+ * Appearing in the free listing only proves a free class exists; the pass may
+ * set isFree only on positive evidence of free drawn from actual price data:
+ * a $0 maximum, amounts present and all zero, or a resolved price that reads
+ * wholly Free and was derived from amounts. The is_free flag alone is not
+ * evidence — and neither is a 'Free' price string when the flag is the only
+ * evidence in hand, because priceFromAvailability derives that string from
+ * the flag itself; the flag cannot corroborate itself. No price evidence is
+ * not evidence of free.
+ */
+export function freePassMayMarkFree(availability: any, price: string | null): boolean {
+  const min = moneyNumber(availability?.minimum_ticket_price ?? availability?.min_price)
+  const max = moneyNumber(availability?.maximum_ticket_price ?? availability?.max_price)
+  // A paid class anywhere in the evidence — the availability amounts or the
+  // resolved price — means this is not a wholly free event.
+  if ((min != null && min > 0) || (max != null && max > 0)) return false
+  const parsed = readPrice(price)
+  if (parsed.max != null && parsed.max > 0) return false
+  // Positive evidence from the amounts themselves: a $0 maximum, or amounts
+  // present and every one of them zero.
+  const amounts = [min, max].filter((n): n is number => n != null)
+  if (amounts.length > 0 && amounts.every((n) => n === 0)) return true
+  if (parsed.isFree) {
+    // A wholly-Free resolved price counts only when it was derived from
+    // actual price data. With no amounts in the availability and only the
+    // is_free flag set, a 'Free' read is the flag restated, not corroboration.
+    return !(availability != null && amounts.length === 0 && availability?.is_free === true)
+  }
+  return false
 }
 
 /** Live ticket prices for a batch of Eventbrite event ids (best-effort). */
@@ -132,6 +174,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
       const page = joinOriginPath('https://www.eventbrite.com.au', e?.url)
         ?? (e?.id ? usableUrl(`https://www.eventbrite.com.au/e/${e.id}`) : null)
       const organiser = firstListingUrl(e?.primary_organizer ?? e?.organizer, ['website_url', 'url', 'website'])
+      const price = priceFromAvailability(e?.ticket_availability) ?? prices.get(String(e?.id)) ?? null
       const ok = await saveEvent({
         title: e?.name,
         description: preferDescription(e?.full_description, e?.summary),
@@ -142,8 +185,8 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
         venueName: v?.name ?? 'TBA',
         venueAddress: v?.address?.localized_address_display ?? null,
         genres,
-        isFree: forceFree,
-        price: priceFromAvailability(e?.ticket_availability) ?? prices.get(String(e?.id)) ?? null,
+        isFree: forceFree && freePassMayMarkFree(e?.ticket_availability, price),
+        price,
         imageUrl: e?.image?.original?.url ?? e?.image?.url ?? null,
         ticketUrl: page,
         sourceUrl: page,
@@ -151,6 +194,7 @@ async function storeResults(city: CityDef, results: any[], forceFree: boolean): 
         latitude: parseFloat(v?.address?.latitude) || null,
         longitude: parseFloat(v?.address?.longitude) || null,
         source: 'eventbrite',
+        externalId: eventbriteExternalId(e),
         status,
         city: place,
       })
