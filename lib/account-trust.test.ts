@@ -4,10 +4,12 @@ import {
   DEFAULT_TRIAL_DAYS,
   GENERIC_RESET_MESSAGE,
   RESET_TTL_MS,
+  VERIFY_GATE_MESSAGE,
   VERIFY_TTL_MS,
   accountIsVerified,
   expiresAt,
   hashAuthToken,
+  listingWriteNeedsVerification,
   tooManyTokens,
   trialAccess,
   trialConsentCopy,
@@ -80,4 +82,28 @@ test('consent copy names a free month and a shorter override', () => {
 test('a timestamp means the account email is verified', () => {
   assert.equal(accountIsVerified(null), false)
   assert.equal(accountIsVerified(new Date('2026-11-04T00:00:00.000Z')), true)
+})
+
+test('the gate message is the publish-or-pay wording', () => {
+  assert.equal(VERIFY_GATE_MESSAGE, 'Verify your email before you publish or pay. You can still browse and save.')
+})
+
+test('saving a draft skips the verification gate; publishing a new listing does not', () => {
+  // Create: no publish flag, or publish false, is a draft save.
+  assert.equal(listingWriteNeedsVerification({}), false)
+  assert.equal(listingWriteNeedsVerification({ publish: false }), false)
+  assert.equal(listingWriteNeedsVerification({ publish: true }), true)
+  // Only the boolean true publishes — the same rule listingHiddenOnCreate uses.
+  assert.equal(listingWriteNeedsVerification({ publish: 'true' }), false)
+  assert.equal(listingWriteNeedsVerification({ publish: 1 }), false)
+})
+
+test('editing a draft skips the verification gate; publishing it or editing a live listing does not', () => {
+  assert.equal(listingWriteNeedsVerification({ currentlyHidden: true }), false)
+  assert.equal(listingWriteNeedsVerification({ currentlyHidden: true, publish: false }), false)
+  assert.equal(listingWriteNeedsVerification({ currentlyHidden: true, publish: true }), true)
+  assert.equal(listingWriteNeedsVerification({ currentlyHidden: false }), true)
+  assert.equal(listingWriteNeedsVerification({ currentlyHidden: false, publish: false }), true)
+  // A null hidden flag is not a live listing: PUBLIC_EVENT_AND only admits hidden === false.
+  assert.equal(listingWriteNeedsVerification({ currentlyHidden: null }), false)
 })

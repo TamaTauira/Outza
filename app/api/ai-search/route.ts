@@ -6,7 +6,7 @@ import { sydneyNow, toMinutes } from '@/lib/board'
 import { areaGroupForPlace, CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { boardCitiesFor, boardCityForPlace, CITY_NAMES } from '@/lib/cities'
 import { interpretQuery, keywordFreeFallbackAllowed, type AiFilters } from '@/lib/ai-search-parse'
-import { askCandidateTake, askDateBounds, askNotEndedTodayWhere, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
+import { askCandidateTake, askDateBounds, askNotEndedTodayWhere, askPublicVisibilityAnd, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
 import { applyHints } from '@/lib/search-hints'
 import { rankAskRows, relaxedKeywords, ASK_LIMIT } from '@/lib/ai-search-rank'
 import { isPaidListing } from '@/lib/quality'
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
       ...(filters.timeOfDay === 'evening' ? { time: { gte: '17:00' } } : {}),
       ...(filters.soon ? { time: { gte: clockMinute(now.minutes - 30), lte: clockMinute(now.minutes + 180) } } : {}),
       ...(filters.paidOnly ? { isFree: false } : {}),
-      AND: [...narrowed, { deletedAt: null }, { OR: [{ approvalState: null }, { approvalState: 'APPROVED' }] }],
+      AND: [...narrowed, ...askPublicVisibilityAnd()],
     }
     const select = {
       id: true, title: true, description: true, date: true, time: true, venueName: true, venueAddress: true, suburb: true, city: true, category: true, subTags: true,

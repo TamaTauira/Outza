@@ -37,6 +37,19 @@ export function accountIsVerified(emailVerified: Date | null | undefined): boole
   return emailVerified instanceof Date && !Number.isNaN(emailVerified.getTime())
 }
 
+/**
+ * Whether a promoter listing write needs a verified email. Publishing does:
+ * creating with publish set, pressing Publish on a draft, or editing a
+ * listing that is already live. Saving a draft does not — a create without
+ * publish is stored hidden (listingHiddenOnCreate), and hidden rows sit off
+ * every public surface (PUBLIC_EVENT_AND in lib/community-shared, and the
+ * event page loader), so a draft stays private by its status, not by the gate.
+ */
+export function listingWriteNeedsVerification(input: { publish?: unknown; currentlyHidden?: boolean | null }): boolean {
+  if (input.publish === true) return true
+  return input.currentlyHidden === false
+}
+
 /** One calendar month. Override with TRIAL_PERIOD_DAYS (1–90). */
 export const DEFAULT_TRIAL_DAYS = 30
 

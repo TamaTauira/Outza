@@ -7,6 +7,7 @@ import { queueEventImage } from '@/lib/images/runner'
 import { parsePromoterListing } from '@/lib/promoter-listing'
 import { resolveListingPlace } from '@/lib/venue-place'
 import { unverifiedGate } from '@/lib/account-flow'
+import { listingWriteNeedsVerification } from '@/lib/account-trust'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,8 +16,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const me = await getSessionUser()
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
-  const gate = await unverifiedGate(me.id)
-  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
   const ev = await prisma.event.findUnique({ where: { id }, select: { id: true, promoterId: true, city: true, imageUrl: true, source: true, hidden: true, moderationStatus: true, status: true, deletedAt: true } })
   if (!ev) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
@@ -26,6 +25,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const b = await req.json().catch(() => ({}))
+  // The verification gate bites on publishing and on edits to a live
+  // listing; editing a draft (hidden) is allowed before verification.
+  if (listingWriteNeedsVerification({ publish: b.publish, currentlyHidden: ev.hidden })) {
+    const gate = await unverifiedGate(me.id)
+    if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   if (b.publish === true && b.title == null) {
     if (ev.deletedAt || ev.status === 'CANCELLED') return NextResponse.json({ error: 'This listing is unpublished.' }, { status: 400 })
     if (ev.moderationStatus === 'review' || ev.moderationStatus === 'hidden') {
