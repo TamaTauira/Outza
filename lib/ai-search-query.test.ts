@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { askCandidateTake, askDateBounds, askNotEndedTodayWhere, askTextWhere } from './ai-search-query'
+import { askCandidateTake, askDateBounds, askNotEndedTodayWhere, askPublicVisibilityAnd, askTextWhere } from './ai-search-query'
 import { SANS_BOLD_UPPER, styleLetters } from './search-fold'
 
 function flagIsRequired(node: unknown): boolean {
@@ -94,4 +94,34 @@ test('before 1am the ended-today condition admits all of today, like the post-fi
   assert.equal(notEndedMatches(where, at('00:00')), true)
   assert.equal(notEndedMatches(where, at('00:29')), true)
   assert.equal(notEndedMatches(where, at(null)), true)
+})
+
+type VisibilityRow = { deletedAt: Date | null; hidden: boolean; approvalState: string | null }
+
+/** Interprets the arms askPublicVisibilityAnd builds, the way the SQL would. */
+function visibilityMatches(arms: unknown, row: VisibilityRow): boolean {
+  if (!Array.isArray(arms)) return false
+  return arms.every((arm) => {
+    const rec = arm as Record<string, unknown>
+    if ('deletedAt' in rec) return row.deletedAt === rec.deletedAt
+    if ('hidden' in rec) return row.hidden === rec.hidden
+    if (Array.isArray(rec.OR)) {
+      return rec.OR.some((child) => row.approvalState === (child as Record<string, unknown>).approvalState)
+    }
+    return false
+  })
+}
+
+test('the public-visibility arms keep hidden listings out of Ask', () => {
+  const arms = askPublicVisibilityAnd()
+  // The hidden arm is in the built where itself, not just implied by a
+  // neighbouring condition — it is the arm the route used to lack.
+  assert.ok(JSON.stringify(arms).includes('"hidden":false'))
+  const row = (over: Partial<VisibilityRow>): VisibilityRow => ({ deletedAt: null, hidden: false, approvalState: null, ...over })
+  assert.equal(visibilityMatches(arms, row({})), true) // a public listing is in
+  assert.equal(visibilityMatches(arms, row({ approvalState: 'APPROVED' })), true)
+  assert.equal(visibilityMatches(arms, row({ hidden: true })), false) // a pre-verification draft stays out
+  assert.equal(visibilityMatches(arms, row({ hidden: true, approvalState: 'APPROVED' })), false) // approval does not unhide
+  assert.equal(visibilityMatches(arms, row({ deletedAt: new Date() })), false) // soft-deleted stays out
+  assert.equal(visibilityMatches(arms, row({ approvalState: 'PENDING' })), false) // unapproved stays out
 })
