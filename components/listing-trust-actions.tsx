@@ -7,6 +7,7 @@ import { Flag, BadgeCheck, Loader2, Clock, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSession } from 'next-auth/react'
 import { REPORT_REASONS } from '@/lib/trust-shared'
+import { ClaimListingForm } from '@/components/claim-form'
 
 const field = 'h-control w-full rounded-control border border-border bg-background px-3 text-base focus:outline-none focus:ring-2 focus:ring-primary/40'
 
@@ -18,7 +19,6 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
   const [busy, setBusy] = useState(false)
   const [claimStatus, setClaimStatus] = useState<string | null>(null)
   const [report, setReport] = useState({ reason: '', details: '', email: '' })
-  const [claim, setClaim] = useState({ orgName: '', position: '', evidenceUrl: '', message: '' })
   const canClaim = !event.promoter && !event.isMine
 
   useEffect(() => {
@@ -52,15 +52,6 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
     if (!report.reason) { toast.error('Please choose what is wrong.'); return }
     const d = await post('report', report)
     if (d) { toast.success('Thanks. We’ll check this listing against the source.'); setOpen(''); setReport({ reason: '', details: '', email: '' }) }
-  }
-  const sendClaim = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const d = await post('claim', claim)
-    if (d) {
-      setClaimStatus(d.status)
-      toast.success(d.status === 'APPROVED' ? 'This listing is now in your promoter dashboard.' : 'Claim sent. We’ll review it and email you.')
-      setOpen('')
-    }
   }
 
   return (
@@ -110,25 +101,7 @@ export function ListingTrustActions({ event }: { event: { id: string; title: str
 
       {open === 'claim' && (
         <section id="listing-claim" aria-label="Claim this listing" className="mt-4 rounded-xl bg-card p-5 shadow-md ring-1 ring-border">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-            <h3 className="font-semibold text-base">Claim this listing</h3>
-            <p className="text-muted-foreground mt-1">
-              Are you the organiser? Verify your connection so you can update the details and see how it’s travelling. If your account email uses the same domain as the event’s website, the claim is accepted straight away. Otherwise a person reviews it. Knowing the public details is not enough.
-            </p>
-            </div>
-            <button type="button" aria-label="Close" onClick={() => setOpen('')} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-          </div>
-          <form onSubmit={sendClaim} className="space-y-3">
-            <input required className={field} maxLength={120} placeholder="Organisation or business name" value={claim.orgName} onChange={(e) => setClaim({ ...claim, orgName: e.target.value })} />
-            <input className={field} maxLength={120} placeholder="Your role (e.g. promoter, venue manager)" value={claim.position} onChange={(e) => setClaim({ ...claim, position: e.target.value })} />
-            <input className={field} maxLength={500} placeholder="Link that shows you run this event (official site, socials)" value={claim.evidenceUrl} onChange={(e) => setClaim({ ...claim, evidenceUrl: e.target.value })} />
-            <textarea className={field} rows={3} maxLength={2000} placeholder="Anything else that helps us check this claim" value={claim.message} onChange={(e) => setClaim({ ...claim, message: e.target.value })} />
-            <p className="text-xs text-muted-foreground">Claiming is free. Signed in as {session?.user?.email}.</p>
-            <button type="submit" disabled={busy} className="w-full h-10 rounded-md bg-primary text-primary-foreground font-semibold hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-2">
-              {busy && <Loader2 className="w-4 h-4 animate-spin" />}Submit Claim
-            </button>
-          </form>
+          <ClaimListingForm eventId={event.id} email={session?.user?.email} onClose={() => setOpen('')} onSuccess={(d) => { setClaimStatus(d.status ?? null); setOpen('') }} />
         </section>
       )}
     </div>
