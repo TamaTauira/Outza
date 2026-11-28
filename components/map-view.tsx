@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { FilterState } from '@/components/filter-panel'
@@ -14,6 +14,7 @@ import { createBasemap } from '@/lib/map-basemap'
 import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
+import { DEFAULT_NEAR_ME_RADIUS_KM, NEAR_ME_RADII_KM, areaJumpTarget, filterPinsWithinRadius, shouldAutoLocate } from '@/lib/map-near-me'
 import { isPaidListing } from '@/lib/quality'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { isBareNetworkFault } from '@/lib/network-fault'
@@ -89,7 +90,7 @@ function markerIcon(L: any, e: { category?: string | null }, color: string, tier
 }
 
 const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coordinates are never stored)
-type LocState = 'idle' | 'asking' | 'locating' | 'found' | 'denied' | 'unavailable'
+type LocState = 'idle' | 'locating' | 'found' | 'denied' | 'unavailable'
 
 export function MapView({ filters, searchQuery, city = '', bleed = false, chips = null, eventsOverride, focusId = null, onSelect, countNoun = 'events' }: MapViewProps) {
   const router = useRouter()
@@ -108,7 +109,17 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   const youRef = useRef<any>(null)
   const Lref = useRef<any>(null)
   const fetchSeq = useRef(0)
+  // Incremented whenever a locate starts and whenever the visitor jumps
+  // elsewhere (city change, area selection): a geolocation answer that
+  // arrives after either is stale and must not re-centre the map or switch
+  // Near me back on over the new city/area.
+  const locateGenRef = useRef(0)
   const [loc, setLoc] = useState<LocState>('idle')
+  // The visitor's own position and the Near me radius. Session-only state:
+  // coordinates are never persisted or sent anywhere (see lib/map-near-me).
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [radiusKm, setRadiusKm] = useState<number>(DEFAULT_NEAR_ME_RADIUS_KM)
+  const nearMe = loc === 'found' && !!userPos
   const cardsRef = useRef<HTMLDivElement>(null)
   const [dock, setDock] = useState(0)
   const [box, setBox] = useState<{ south: number; north: number; west: number; east: number } | null>(null)
@@ -144,7 +155,10 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       if (cats.length === 1) params.set('category', cats[0])
       else if (cats.length > 1) params.set('categories', cats.join(','))
       if (filters.subTag) params.set('subTag', filters.subTag)
-      if (filters.suburb) params.set('suburb', filters.suburb)
+      // Near me filters by distance instead of suburb, so while it is on the
+      // suburb clause stays out of the map's fetch. The shared filter state
+      // is untouched — selecting an area turns Near me off (below).
+      if (filters.suburb && !nearMe) params.set('suburb', filters.suburb)
       if (filters.isFree) params.set('isFree', 'true')
       if (filters.isLGBTI) params.set('isLGBTI', 'true')
       if (filters.dateFrom) params.set('dateFrom', filters.dateFrom)
@@ -173,7 +187,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     } finally {
       if (seq === fetchSeq.current) setLoading(false)
     }
-  }, [searchQuery, city, categoryKey, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI, filters.dateFrom, filters.dateTo])
+  }, [searchQuery, city, categoryKey, filters.subTag, filters.suburb, filters.isFree, filters.isLGBTI, filters.dateFrom, filters.dateTo, nearMe])
 
   useEffect(() => { if (!locked) fetchEvents() }, [fetchEvents, locked])
 
@@ -240,13 +254,43 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   }, [ready, dark])
 
   // Re-centre when the city changes
+  const centredCityRef = useRef(city)
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!ready || !map) return
     if (locked) return
+    // Picking another city is a jump elsewhere: Near me and its distance
+    // filter belong to the place the visitor was standing in, so a real
+    // city change turns them off. (The first run after the map is ready is
+    // not a change — an auto-locate already in flight must survive it.)
+    if (centredCityRef.current !== city) {
+      centredCityRef.current = city
+      locateGenRef.current++
+      setUserPos(null)
+      setLoc((cur) => (cur === 'found' ? 'idle' : cur))
+    }
     if (city) { const c = cityDef(city); map.setView([c.lat, c.lng], 12) }
     else map.setView([-27.5, 134], 4)
   }, [ready, city, locked])
+
+  // Selecting an area is a jump elsewhere too: it turns Near me off (the
+  // suburb clause the board already applies takes over from the distance
+  // filter) and, when the value names one of the board's area groups, pans
+  // to that group's centre. A plain suburb has no stored centre; its pins
+  // are already the only ones fetched, so the view stays put.
+  const suburbRef = useRef(filters.suburb)
+  useEffect(() => {
+    const prev = suburbRef.current
+    suburbRef.current = filters.suburb
+    if (!filters.suburb || filters.suburb === prev) return
+    locateGenRef.current++
+    setUserPos(null)
+    setLoc((cur) => (cur === 'found' ? 'idle' : cur))
+    const map = mapInstanceRef.current
+    if (!ready || !map || locked) return
+    const target = areaJumpTarget(city, filters.suburb)
+    if (target) map.setView([target.lat, target.lng], 12)
+  }, [filters.suburb, ready, city, locked])
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -264,10 +308,13 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   // Zoom to the visitor's own location (only after they've opted in; used in the browser only)
   const locate = useCallback(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) { setLoc('unavailable'); return }
+    const gen = ++locateGenRef.current
     setLoc('locating')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (gen !== locateGenRef.current) return
         try { localStorage.setItem(LOC_KEY, 'granted') } catch {}
+        setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         const map = mapInstanceRef.current
         if (!map) return
         const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude]
@@ -282,6 +329,8 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
         setLoc('found')
       },
       (err) => {
+        if (gen !== locateGenRef.current) return
+        setUserPos(null)
         if (err.code === err.PERMISSION_DENIED) { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} ; setLoc('denied') }
         else setLoc('unavailable')
       },
@@ -289,15 +338,69 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     )
   }, [])
 
+  // The "You are here" dot belongs to Near me: whenever the held position
+  // is dropped — an area/suburb jump, a city change, a failed re-locate —
+  // the marker goes too, so the map never keeps showing the visitor's dot
+  // while the distance filter is off.
+  useEffect(() => {
+    if (userPos) return
+    const map = mapInstanceRef.current
+    if (map && youRef.current) {
+      map.removeLayer(youRef.current)
+      youRef.current = null
+    }
+  }, [userPos])
+
+  // On mount, centre on the visitor when location is already granted — the
+  // Permissions API where it can be read, else the stored consent from a
+  // previous Near Me success (see shouldAutoLocate). Otherwise the map opens
+  // on the board's selected area as usual and the Near Me button offers to
+  // enable location; the map never waits on a permission answer to render,
+  // and no in-app prompt pops up on its own.
   useEffect(() => {
     if (!ready) return
-    let pref: string | null = null
-    try { pref = localStorage.getItem(LOC_KEY) } catch {}
-    if (pref === 'granted') locate()
-    else if (pref !== 'declined') setLoc('asking')
+    let cancelled = false
+    ;(async () => {
+      let stored: string | null = null
+      try { stored = localStorage.getItem(LOC_KEY) } catch {}
+      let permission: 'granted' | 'denied' | 'prompt' | null = null
+      try {
+        const status = await navigator.permissions?.query({ name: 'geolocation' as PermissionName })
+        if (status) permission = status.state
+      } catch { /* the Permissions API cannot answer here; the stored consent decides */ }
+      if (cancelled) return
+      if (shouldAutoLocate({ storedConsent: stored, permission })) locate()
+    })()
+    return () => { cancelled = true }
   }, [ready, locate])
 
-  const declineLocation = () => { try { localStorage.setItem(LOC_KEY, 'declined') } catch {} ; setLoc('idle') }
+  // Re-centre on the visitor's own position (the Near Me button while Near
+  // me is on). Uses the position already held — no fresh permission request.
+  const recentre = useCallback(() => {
+    const map = mapInstanceRef.current
+    if (!map || !userPos) return
+    const zoom = typeof map.getZoom === 'function' ? map.getZoom() : 14
+    map.setView([userPos.lat, userPos.lng], Math.max(zoom, 14))
+  }, [userPos])
+
+  // Picking a radius also frames it, so the visitor sees the area the
+  // distance filter now covers.
+  const chooseRadius = useCallback((r: number) => {
+    setRadiusKm(r)
+    const map = mapInstanceRef.current
+    const L = Lref.current
+    if (!map || !L || !userPos) return
+    const bounds = L.latLng(userPos.lat, userPos.lng).toBounds(r * 2000)
+    if (bounds?.isValid?.()) map.fitBounds(bounds, { maxZoom: 15 })
+  }, [userPos])
+
+  // While Near me is on, the pins are the fetched set cut to the chosen
+  // radius around the visitor (nearest first) — distance replaces the
+  // suburb filter. Off, the fetched set is shown as before.
+  const displayEvents = useMemo(
+    () => (nearMe && userPos ? filterPinsWithinRadius(events, userPos, radiusKm) : events),
+    [events, nearMe, userPos, radiusKm],
+  )
 
   useEffect(() => {
     const map = mapInstanceRef.current
@@ -338,15 +441,18 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       mcg.addLayer(m)
     }
 
-    for (const e of events) {
+    for (const e of displayEvents) {
       const tier = e.promoTier ?? tierById.get(e.id)
       if (tier === 'GOLD' && !locked) continue
       addMarker(e, tier)
     }
-    for (const f of featured) {
-      if (f.tier !== 'GOLD') continue
-      addMarker(f, 'GOLD')
-    }
+    // GOLD featured pins arrive as their own set, but the Near me radius is
+    // a promise about every pin on the map: while Near me is on they go
+    // through the same distance cut as the fetched events (they carry the
+    // same latitude/longitude shape). Off, they show exactly as before.
+    const goldFeatured = featured.filter((f: any) => f.tier === 'GOLD')
+    const shownGold = nearMe && userPos ? filterPinsWithinRadius(goldFeatured, userPos, radiusKm) : goldFeatured
+    for (const f of shownGold) addMarker(f, 'GOLD')
     map.addLayer(mcg)
     markersRef.current = mcg
     goldRef.current = null
@@ -354,14 +460,14 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       const bounds = mcg.getBounds()
       if (bounds?.isValid?.()) map.fitBounds(bounds.pad(0.25), { maxZoom: 14, animate: false })
     }
-  }, [events, featured, ready, locked])
+  }, [displayEvents, featured, ready, locked, nearMe, userPos, radiusKm])
 
   const inView = (e: any) => {
     if (e?.latitude == null || e?.longitude == null) return false
     if (!box) return true
     return e.latitude >= box.south && e.latitude <= box.north && e.longitude >= box.west && e.longitude <= box.east
   }
-  const visiblePins = events.filter(inView)
+  const visiblePins = displayEvents.filter(inView)
   const count = visiblePins.length
   const pinned = visiblePins.slice(0, 40)
   const showCards = bleed && pinned.length > 0
@@ -463,27 +569,30 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       )}
       {ready && (
         <button
-          onClick={locate}
+          onClick={nearMe ? recentre : locate}
           disabled={loc === 'locating'}
-          className={bleed ? 'vp-map-float absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-white/90 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white sm:w-auto sm:px-4' : 'vp-map-float absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl hover:bg-white disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white dark:hover:bg-neutral-900'}
-          aria-label="Zoom to my location"
+          aria-pressed={nearMe}
+          className={(bleed ? 'vp-map-float absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-white/90 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white sm:w-auto sm:px-4' : 'vp-map-float absolute right-4 top-4 z-20 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-xl hover:bg-white disabled:opacity-60 dark:bg-neutral-900/80 dark:text-white dark:hover:bg-neutral-900') + (nearMe ? ' ring-2 ring-primary' : '')}
+          aria-label={nearMe ? 'Re-centre on my location' : 'Zoom to my location'}
         >
           {loc === 'locating' ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <LocateFixed className="h-4 w-4 text-primary" />}
           <span className="hidden sm:inline">Near Me</span>
         </button>
       )}
-      {loc === 'asking' && (
-        <div className={bleed ? 'vp-map-ask absolute bottom-[calc(var(--vp-map-dock,0px)+3.4rem)] left-3 right-3 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border lg:bottom-4 lg:left-auto lg:right-16 lg:w-[340px]' : 'vp-map-ask absolute bottom-24 left-4 right-4 z-30 rounded-2xl bg-card p-4 text-card-foreground shadow-2xl ring-1 ring-border sm:bottom-4 sm:left-auto sm:right-16 sm:w-[340px]'}>
-          <button onClick={declineLocation} className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Dismiss">
-            <X className="h-4 w-4" />
-          </button>
-          <p className="pr-6 font-display text-lg font-bold leading-tight">Where you at?</p>
-          <p className="mt-1.5 text-sm text-muted-foreground">Share your location and we'll zoom straight to the action around you.</p>
-          <p className="mt-2 text-xs text-muted-foreground">We only use it in your browser to centre the map. Nothing gets saved.</p>
-          <div className="mt-3 flex gap-2">
-            <button onClick={locate} className="h-10 flex-1 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90">Use My Location</button>
-            <button onClick={declineLocation} className="h-10 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">Skip for Now</button>
-          </div>
+      {ready && nearMe && (
+        <div className="vp-map-float absolute right-4 top-[4.25rem] z-20 flex items-center gap-1 rounded-full bg-white/90 p-1 text-neutral-900 shadow-lg backdrop-blur-xl dark:bg-neutral-900/80 dark:text-white" role="group" aria-label="Near me distance">
+          <span className="pl-2 pr-1 text-xs font-semibold">Near me</span>
+          {NEAR_ME_RADII_KM.map((r) => (
+            <button
+              key={r}
+              type="button"
+              aria-pressed={radiusKm === r}
+              onClick={() => chooseRadius(r)}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${radiusKm === r ? 'bg-primary text-primary-foreground' : 'hover:bg-black/5 dark:hover:bg-white/10'}`}
+            >
+              {r} km
+            </button>
+          ))}
         </div>
       )}
       {(loc === 'denied' || loc === 'unavailable') && (
