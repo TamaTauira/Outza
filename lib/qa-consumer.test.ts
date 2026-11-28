@@ -8,8 +8,12 @@ import { classifyCategory, refineStoredCategory } from './categories'
 
 const TODAY = '2026-10-29'
 
-test('board city follows the account, then that person’s own pick', () => {
-  assert.equal(resolveBoardCity({ signedIn: true, homeCity: 'Melbourne', guestCity: 'Sydney' }), 'Melbourne')
+test('board city follows that person’s own pick, then the device pick, then the account', () => {
+  // A stored device pick is adopted ahead of the account home city: it is
+  // the most recent explicit choice on the device, and ignoring it while
+  // writing a fallback over it destroyed people's picks (E2E-13 fix-up).
+  assert.equal(resolveBoardCity({ signedIn: true, homeCity: 'Melbourne', guestCity: 'Sydney' }), 'Sydney')
+  assert.equal(resolveBoardCity({ signedIn: true, homeCity: 'Melbourne', guestCity: null }), 'Melbourne')
   assert.equal(resolveBoardCity({ signedIn: true, userCity: 'Brisbane', homeCity: 'Sydney', guestCity: 'Perth' }), 'Brisbane')
   assert.equal(resolveBoardCity({ signedIn: true, urlCity: 'Darwin', userCity: 'Brisbane', homeCity: 'Sydney' }), 'Darwin')
   assert.equal(resolveBoardCity({ signedIn: false, guestCity: 'Darwin', homeCity: 'Sydney' }), 'Darwin')
