@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { formatPrice, listPriceLabel, readPrice } from './price'
+import { BOOKING_FEES_NOTE, formatPrice, listPriceLabel, priceFeeNote, priceFromAmounts, priceOutlier, readPrice } from './price'
 
 test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice('$25').price, '$25')
@@ -26,4 +26,67 @@ test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice({ major_value: '25.00' }).price, '$25')
   const cents = readPrice({ currency: 'AUD', value: 2500 })
   assert.equal(cents.price, '$25')
+})
+
+test('sanity bound suppresses out-of-bound prices at read and at display', () => {
+  // Read/ingest side: an unbounded range is not a storable price.
+  assert.equal(readPrice('$79,900').price, null)
+  assert.equal(readPrice('$79,900').min, null)
+  assert.equal(readPrice('$79,900').suppressed, true)
+  assert.equal(readPrice('$899 – $79,900').suppressed, true)
+  assert.equal(readPrice('$2,501').suppressed, true)
+  assert.equal(readPrice('$2,500').price, '$2500')
+  assert.equal(readPrice('$2,500').min, 2500)
+  // Display side: rows stored before the bound existed stop showing the price.
+  assert.equal(formatPrice(false, '$79,900').kind, 'unknown')
+  assert.equal(formatPrice(false, '$79,900').value, 'See website')
+  assert.equal(formatPrice(false, null, 899, 79900).kind, 'unknown')
+  assert.equal(listPriceLabel(false, null, 899, 79900).text, 'See website')
+  assert.equal(listPriceLabel(false, '$3,959.50').kind, 'unknown')
+  // A free hint never resurrects a suppressed read as Free.
+  assert.equal(readPrice('$3,000', true).isFree, false)
+  assert.equal(readPrice('$3,000', true).suppressed, true)
+})
+
+test('prices in the $1,000–$2,500 band are flagged, not suppressed', () => {
+  assert.equal(readPrice('$1,250').flagged, true)
+  assert.equal(readPrice('$1,000').flagged, true)
+  assert.equal(readPrice('$2,500').flagged, true)
+  assert.equal(readPrice('$999').flagged, false)
+  assert.equal(readPrice('$25').flagged, false)
+  assert.equal(readPrice('Free').flagged, false)
+  assert.equal(priceOutlier(55, 3959.5), 'suppressed')
+  assert.equal(priceOutlier(899, 2500), 'flagged')
+  assert.equal(priceOutlier(25, 40), null)
+  assert.equal(priceOutlier(null, null), null)
+})
+
+test('mixed free and paid classes lead with the cheapest paid amount', () => {
+  const mixed = readPrice('Free – $25')
+  assert.equal(mixed.price, 'From $25')
+  assert.equal(mixed.isFree, false)
+  assert.equal(mixed.hasFree, true)
+  assert.equal(priceFromAmounts(0, 25).price, 'From $25')
+  assert.equal(priceFromAmounts(0, 25).hasFree, true)
+  const shown = formatPrice(false, 'Free – $25')
+  assert.equal(shown.prefix, 'From')
+  assert.equal(shown.value, '$25')
+  assert.equal(shown.kind, 'paid')
+  assert.equal(shown.hasFree, true)
+  assert.equal(formatPrice(false, null, 0, 25).prefix, 'From')
+  assert.equal(formatPrice(false, null, 0, 25).value, '$25')
+  assert.equal(listPriceLabel(false, 'Free – $25').text, 'From $25')
+  assert.equal(listPriceLabel(false, null, 0, 800).text, 'From $800')
+  // All-free stays Free, on every surface.
+  assert.equal(readPrice('$0').isFree, true)
+  assert.equal(priceFromAmounts(0, 0).isFree, true)
+  assert.equal(formatPrice(false, null, 0, 0).kind, 'free')
+  assert.equal(listPriceLabel(true, null).text, 'Free')
+})
+
+test('fee note travels with paid prices only', () => {
+  assert.equal(BOOKING_FEES_NOTE, 'Booking fees may apply at checkout')
+  assert.equal(priceFeeNote('paid'), BOOKING_FEES_NOTE)
+  assert.equal(priceFeeNote('free'), null)
+  assert.equal(priceFeeNote('unknown'), null)
 })
