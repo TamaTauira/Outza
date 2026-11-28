@@ -8,7 +8,7 @@ import { CITY_NAMES, boardCitiesFor, cityDef } from '@/lib/cities'
 import { areaGroupFor, knownCategories, matchesAreaGroup, presentListing } from '@/lib/categories'
 import { addressInOtherState, isPastEvent, namesAnotherTown } from '@/lib/seo'
 import { coordsFitCity } from '@/lib/travel'
-import { collapseShowings, hiddenFromPublic, sameShowing } from '@/lib/listing-visibility'
+import { collapseShowings, hiddenFromPublic, sameShowing, type PublicSession } from '@/lib/listing-visibility'
 import { correctPin, placeFromText } from '@/lib/venue-place'
 import { imageAssetSelect } from '@/lib/images/spec'
 import { eventPictureSelect } from '@/lib/images/display-spec'
@@ -180,31 +180,103 @@ function shapeBoard(events: Prisma.EventGetPayload<{ select: typeof BOARD_SELECT
   return shown
 }
 
+type ShapedRow = ReturnType<typeof shapeBoard>[number]
+
+/** A shaped row as the gather dedupe sees it: an id plus the session fields sameShowing reads. */
+type ShowingRow = PublicSession & { id: string; date: Date }
+
+const SHOWING_BLOCK_MINUTES = 45
+
+function startMinutes(time?: string | null): number | null {
+  const match = time?.match(/^(\d{1,2}):(\d{2})/)
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null
+}
+
+/**
+ * Accumulates the shaped rows of one board query, dropping a row when an
+ * already-kept row is the same showing (or carries the same id). Kept rows
+ * are bucketed by session day and 45-minute start block — the exact
+ * preconditions sameShowing itself checks (same day; starts within 45
+ * minutes unless one side is untimed) — so every pair sameShowing could
+ * join is compared, and no other pair needs to be.
+ */
+export interface BoardGather<T extends ShowingRow> {
+  rows: T[]
+  ids: Set<string>
+  days: Map<string, { blocks: Map<number, T[]>; untimed: T[] }>
+}
+
+export function newBoardGather<T extends ShowingRow>(): BoardGather<T> {
+  return { rows: [], ids: new Set(), days: new Map() }
+}
+
+/** Adds one shaped row to the gather. Returns false when it copies a kept row. */
+export function gatherShapedRow<T extends ShowingRow>(gather: BoardGather<T>, row: T): boolean {
+  if (gather.ids.has(row.id)) return false
+  const day = row.date.toISOString().slice(0, 10)
+  let bucket = gather.days.get(day)
+  if (!bucket) {
+    bucket = { blocks: new Map(), untimed: [] }
+    gather.days.set(day, bucket)
+  }
+  const start = startMinutes(row.time)
+  const candidates: T[] = [...bucket.untimed]
+  if (start == null) {
+    for (const rows of bucket.blocks.values()) candidates.push(...rows)
+  } else {
+    const block = Math.floor(start / SHOWING_BLOCK_MINUTES)
+    for (const b of [block - 1, block, block + 1]) candidates.push(...(bucket.blocks.get(b) ?? []))
+  }
+  if (candidates.some((earlier) => sameShowing(earlier, row))) return false
+  gather.ids.add(row.id)
+  if (start == null) bucket.untimed.push(row)
+  else {
+    const block = Math.floor(start / SHOWING_BLOCK_MINUTES)
+    const rows = bucket.blocks.get(block) ?? []
+    rows.push(row)
+    bucket.blocks.set(block, rows)
+  }
+  gather.rows.push(row)
+  return true
+}
+
+// The scan walks the whole matching set in chunks of this size so the
+// reported total can be the shaped count (see queryBoard). The chunk cap
+// is a safety valve far beyond any board span the UI requests; if it ever
+// trips, the total is the shaped count of the rows scanned so far.
+const BOARD_SCAN_TAKE = 300
+const BOARD_SCAN_MAX_CHUNKS = 40
+
 async function queryBoard(raw: string) {
   const a = JSON.parse(raw) as BoardArgs
   const where = boardWhere(a)
+  // The id tiebreak keeps chunk boundaries stable: without a unique final
+  // key, rows tied on date/time/title can swap chunks between the queries
+  // of one gather and be counted twice or skipped.
   const orderBy = a.sortBy === 'date'
-    ? [{ date: 'asc' as const }, { time: { sort: 'asc' as const, nulls: 'last' as const } }, { title: 'asc' as const }]
-    : [{ title: 'asc' as const }]
+    ? [{ date: 'asc' as const }, { time: { sort: 'asc' as const, nulls: 'last' as const } }, { title: 'asc' as const }, { id: 'asc' as const }]
+    : [{ title: 'asc' as const }, { id: 'asc' as const }]
   const skip = (a.page - 1) * a.limit
-  const gathered: ReturnType<typeof shapeBoard> = []
+  const take = Math.max(BOARD_SCAN_TAKE, a.limit)
+  // One source of truth for the list and its count: gather every shaped,
+  // deduped row the filters admit, then take the page out of that same
+  // sequence, so the total is the sequence's length. It used to be a raw
+  // prisma count of the where clause whenever the last scanned page was
+  // full — pricing in everything shapeBoard drops (past rows, hidden
+  // rows, other towns, collapsed showings) — and the shaped count
+  // otherwise, so the same filters stated wildly different totals from
+  // load to load (E2E-17).
+  const gather = newBoardGather<ShapedRow>()
   let scanned = 0
-  let fullPage = false
-  while (gathered.length < a.limit && scanned < a.limit * 5) {
-    const events = await prisma.event.findMany({ where, orderBy, skip: skip + scanned, take: a.limit, select: BOARD_SELECT })
+  for (let chunk = 0; chunk < BOARD_SCAN_MAX_CHUNKS; chunk++) {
+    const events = await prisma.event.findMany({ where, orderBy, skip: scanned, take, select: BOARD_SELECT })
     scanned += events.length
-    fullPage = events.length === a.limit
     for (const row of shapeBoard(events, a.city, a.categories, a.suburb, a.isFree, a.maxPrice ?? null)) {
-      if (gathered.some((earlier) => earlier.id === row.id || sameShowing(earlier, row))) continue
-      gathered.push(row)
-      if (gathered.length >= a.limit) break
+      gatherShapedRow(gather, row)
     }
-    if (!fullPage) break
+    if (events.length < take) break
   }
-  const shown = gathered.slice(0, a.limit)
-  const total = fullPage
-    ? await prisma.event.count({ where })
-    : skip + shown.length
+  const shown = gather.rows.slice(skip, skip + a.limit)
   const tiers = await activeTierMap(shown.map((e) => e.id))
   return {
     events: shown.map((e) => ({
@@ -219,7 +291,7 @@ async function queryBoard(raw: string) {
       friendsGoing: [] as string[],
       going: false,
     })),
-    total: Math.max(0, total),
+    total: gather.rows.length,
   }
 }
 
