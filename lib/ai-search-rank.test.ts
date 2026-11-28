@@ -229,3 +229,51 @@ test('free excludes a paid listing even when isFree was set', () => {
   assert.equal(brisbane.some((row) => row.id === 'hardcore'), false)
   assert.ok(free.every((row) => row.priceMin == null || row.priceMin <= 0))
 })
+
+test('a folded-place ask keeps its own area’s rows and drops the rest of the board', () => {
+  const row = (over: Partial<AskRow> & Pick<AskRow, 'id' | 'title' | 'date'>): AskRow => ({
+    time: '20:00', venueName: 'The Pub', suburb: 'CBD', city: 'Sydney', category: 'Music', subTags: [],
+    isFree: false, price: '$20', priceMin: 20, description: '',
+    ...over,
+  })
+
+  // Newcastle files under its own city name on the Sydney board, and its
+  // suburbs (Hamilton, Maitland) never have to say "Newcastle". Before the
+  // ranker was widened, its city-equality and place-name blob tests dropped
+  // every one of these rows after the SQL had deliberately fetched them.
+  const newcastle = interpretQuery('gigs in Newcastle', '2026-11-28')
+  assert.equal(newcastle.city, 'Sydney')
+  assert.equal(newcastle.suburb, 'Newcastle')
+  const hunterRows: AskRow[] = [
+    row({ id: 'hamilton-gig', title: 'Gig Night', date: '2026-12-05', city: 'Newcastle', suburb: 'Hamilton', venueName: 'Hamilton Station Hotel' }),
+    row({ id: 'maitland-gig', title: 'Gig Night', date: '2026-12-05', suburb: 'Maitland', venueName: 'The Grand Junction' }),
+    row({ id: 'newtown-gig', title: 'Gig Night', date: '2026-12-05', suburb: 'Newtown', venueName: 'The Vanguard' }),
+    row({ id: 'melbourne-gig', title: 'Gig Night', date: '2026-12-05', city: 'Melbourne', suburb: 'Fitzroy' }),
+  ]
+  const hunter = rankAskRows(hunterRows, { ...newcastle, city: 'Sydney' }, 50)
+  assert.deepEqual(hunter.map((r) => r.id).sort(), ['hamilton-gig', 'maitland-gig'])
+
+  // Wollongong's rows file under Sydney, so only the suburb arm can save
+  // them: a Dapto listing's text never says "Wollongong".
+  const gong = interpretQuery('gigs in Wollongong', '2026-11-28')
+  assert.equal(gong.city, 'Sydney')
+  assert.equal(gong.suburb, 'Wollongong')
+  const illawarraRows: AskRow[] = [
+    row({ id: 'dapto-gig', title: 'Gig Night', date: '2026-12-05', suburb: 'Dapto', venueName: 'Dapto Leagues Club' }),
+    row({ id: 'kiama-gig', title: 'Gig Night', date: '2026-12-05', suburb: 'Kiama', venueName: 'The Pavilion' }),
+    row({ id: 'surry-gig', title: 'Gig Night', date: '2026-12-05', suburb: 'Surry Hills', venueName: 'The Clock' }),
+  ]
+  const illawarra = rankAskRows(illawarraRows, { ...gong, city: 'Sydney' }, 50)
+  assert.deepEqual(illawarra.map((r) => r.id).sort(), ['dapto-gig', 'kiama-gig'])
+
+  // An ordinary suburb focus keeps the old text test: a venue named for
+  // the suburb still counts, even when the listing sits in another suburb.
+  const bondi = interpretQuery('gigs in Bondi', '2026-11-28')
+  assert.equal(bondi.suburb, 'Bondi')
+  const bondiRows: AskRow[] = [
+    row({ id: 'bondi-venue', title: 'Gig Night', date: '2026-12-05', suburb: 'Paddington', venueName: 'Bondi Hotel' }),
+    row({ id: 'surry-gig-2', title: 'Gig Night', date: '2026-12-05', suburb: 'Surry Hills', venueName: 'The Clock' }),
+  ]
+  const bondiResults = rankAskRows(bondiRows, { ...bondi, city: 'Sydney' }, 50)
+  assert.deepEqual(bondiResults.map((r) => r.id), ['bondi-venue'])
+})

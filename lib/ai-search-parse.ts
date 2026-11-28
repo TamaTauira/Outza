@@ -553,3 +553,20 @@ export function keywordRelaxAllowed(f: Pick<AiFilters, 'keywords' | 'category' |
   if (!f.keywords.length || f.nearMe) return false
   return !!(f.category || f.suburb || f.isFree || f.lgbtiq || f.timeOfDay !== 'any' || f.soon)
 }
+
+/**
+ * Whether the keyword-free last resort may run. That pass drops the person's
+ * words entirely and lets the ranker tier everything the base filters admit
+ * by how many of the words a listing matches somewhere, so it asks for the
+ * same real-filter signal keywordRelaxAllowed does — a category, a suburb
+ * focus, a price, a time of day. What differs is the keyword test:
+ * keywordRelaxAllowed guards dropping words the person gave, so it requires
+ * some; this pass is what runs when the words have already failed, so an
+ * empty or exhausted keyword list can never be its disqualifier. (The route
+ * once ANDed the two guards together, which made the pass unreachable for
+ * every query.) Gibberish with no other signal stays an empty result.
+ */
+export function keywordFreeFallbackAllowed(f: Pick<AiFilters, 'category' | 'suburb' | 'isFree' | 'lgbtiq' | 'timeOfDay' | 'soon' | 'nearMe'>): boolean {
+  if (f.nearMe) return false
+  return !!(f.category || f.suburb || f.isFree || f.lgbtiq || f.timeOfDay !== 'any' || f.soon)
+}

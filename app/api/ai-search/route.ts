@@ -5,7 +5,7 @@ import { sydneyToday } from '@/lib/event-store'
 import { sydneyNow, toMinutes } from '@/lib/board'
 import { areaGroupForPlace, CATEGORIES, conflictsWithMusicIntent, presentListing } from '@/lib/categories'
 import { boardCitiesFor, boardCityForPlace, CITY_NAMES } from '@/lib/cities'
-import { interpretQuery, keywordRelaxAllowed, type AiFilters } from '@/lib/ai-search-parse'
+import { interpretQuery, keywordFreeFallbackAllowed, type AiFilters } from '@/lib/ai-search-parse'
 import { askCandidateTake, askDateBounds, askTextWhere, priceWhere, shouldFilterCategory } from '@/lib/ai-search-query'
 import { applyHints } from '@/lib/search-hints'
 import { rankAskRows, relaxedKeywords, ASK_LIMIT } from '@/lib/ai-search-rank'
@@ -178,7 +178,16 @@ export async function POST(req: NextRequest) {
       rows = [...rows, ...extra.filter((row) => !seen.has(row.id))]
       relaxed = extra.length > 0
     }
-    if (!rows.length && keywordRelaxAllowed(filters) && !filters.keywords.length && !musicIntent) {
+    // Keyword-free last resort: the strict and broadened passes found
+    // nothing, so drop the words and rank everything the base filters
+    // admit — the ranker still tiers by the person's words, so only
+    // listings matching at least one word somewhere surface, and
+    // focusMusic still narrows a music ask. This pass used to require
+    // keywordRelaxAllowed AND an empty keyword list, which that guard
+    // itself forbids, so it could never fire for any query. The base
+    // pass is capped by askCandidateTake, so on a big board its pool is
+    // the soonest listings in the filtered set.
+    if (!rows.length && keywordFreeFallbackAllowed(filters)) {
       rows = focusMusic((await run(base)).map((e) => presentListing(e)))
       relaxed = rows.length > 0
     }
