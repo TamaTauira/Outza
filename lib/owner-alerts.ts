@@ -44,10 +44,29 @@ export function faultAlertExtraRecipients(raw: string | undefined = process.env.
   return out
 }
 
-/** Extra recipients for this send, excluding the owner so they are not mailed twice. */
+/**
+ * Whether two addresses land in the same inbox. Gmail ignores dots and
+ * plus-tags in the local part, and googlemail.com is the same mailbox, so
+ * an extra recipient written as one of those forms still mails the owner a
+ * second copy of every fault.
+ */
+export function sameInbox(a: string, b: string): boolean {
+  const norm = (raw: string) => {
+    const email = raw.trim().toLowerCase()
+    const at = email.lastIndexOf('@')
+    if (at < 0) return email
+    let local = email.slice(0, at)
+    let domain = email.slice(at + 1)
+    if (domain === 'googlemail.com') domain = 'gmail.com'
+    if (domain === 'gmail.com') local = local.split('+')[0].replace(/\./g, '')
+    return `${local}@${domain}`
+  }
+  return norm(a) === norm(b)
+}
+
+/** Extra recipients for this send, excluding the owner's own inbox so they are not mailed twice. */
 export function faultAlertCopyRecipients(owner = OWNER_EMAIL): string[] {
-  const skip = owner.trim().toLowerCase()
-  return faultAlertExtraRecipients().filter((email) => email.toLowerCase() !== skip)
+  return faultAlertExtraRecipients().filter((email) => !sameInbox(email, owner))
 }
 
 /** Cron or page path a fixer should open for this fault. */
