@@ -26,16 +26,21 @@ interface FeaturedItem {
 export function FeaturedTurnstile({ city }: { city: string }) {
   const [items, setItems] = useState<FeaturedItem[]>([])
   const [loaded, setLoaded] = useState(false)
+  // A new city means the cards on screen belong to the old one. Clear them
+  // (and the loaded flag, which brings back the hold space) during render —
+  // not in the fetch effect below, which runs after the first paint with
+  // the new city and let the old city's cards show for a beat, including
+  // when the fetch then failed (E2E-13; transition leak).
+  const [prevCity, setPrevCity] = useState(city)
+  if (prevCity !== city) {
+    setPrevCity(city)
+    setItems([])
+    setLoaded(false)
+  }
 
   useEffect(() => {
     let live = true
     const release = holdScrollRestore('featured')
-    // A new city means the cards on screen belong to the old one. Clear them
-    // (and the loaded flag, which brings back the hold space) until this
-    // city's fetch lands, so the strip never shows one city's events under
-    // another city's board — including when the fetch fails (E2E-13).
-    setItems([])
-    setLoaded(false)
     fetch(`/api/featured${city ? `?city=${encodeURIComponent(city)}` : ''}`)
       .then((r) => r.json())
       .then((d) => {
