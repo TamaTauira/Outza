@@ -76,3 +76,16 @@ export function resolveBoardCity(input: {
   if (guest !== undefined) return guest
   return DEFAULT_CITY
 }
+
+/**
+ * True when data a surface is holding was loaded for a different city than
+ * the one now selected, so it must not be presented under the selected
+ * city's name — the surface shows its loading state until its own fetch
+ * for the selected city lands. `dataCity` is the city the held data was
+ * loaded for (null when the surface has not recorded one); `held` is how
+ * much data is being held (rows, a total, or both). An empty hand is never
+ * stale, and '' is a real selection (All of Australia) on both sides.
+ */
+export function cityDataIsStale(dataCity: string | null, city: string | null | undefined, held: number): boolean {
+  return held > 0 && dataCity !== (city ?? '')
+}

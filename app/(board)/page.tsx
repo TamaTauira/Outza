@@ -1,19 +1,20 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { jsonLdString } from '@/lib/seo-server'
 import { BRAND_ICON_512, BRAND_NAME, BRAND_SUBLINE, BRAND_TAGLINE } from '@/lib/brand'
 import { SITE_SAME_AS } from '@/lib/site-social'
-import { CITY_NAMES } from '@/lib/cities'
 import { siteUrl } from '@/lib/site-url'
 import { brandedTitle } from '@/lib/page-meta'
 import { openGraphImage } from '@/lib/share-image'
 
 export async function generateMetadata(): Promise<Metadata> {
-  const h = await headers()
-  const raw = h.get('x-vercel-ip-city')
-  const decoded = raw ? decodeURIComponent(raw).trim() : ''
-  const city = CITY_NAMES.find((name) => name.toLowerCase() === decoded.toLowerCase()) ?? 'Sydney'
-  const title = `What’s on in ${city}: events, gigs and things to do`
+  // The board's city is resolved on the client (stored pick, account home
+  // city, then the edge default), so the server-rendered title names no
+  // city. The previous title named the edge IP city, falling back to
+  // Sydney, and sat in the tab until the client resolution replaced it —
+  // telling someone with another city stored that they were looking at
+  // Sydney. The client sets the city-specific title once the resolution
+  // lands (HomeClient).
+  const title = 'What’s on: events, gigs and things to do'
   const branded = brandedTitle(title)
   const image = openGraphImage(undefined, branded)
   return {

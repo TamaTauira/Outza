@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { resolveBoardCity } from './city-pref'
+import { cityDataIsStale, resolveBoardCity } from './city-pref'
 
 // The homepage has one city resolution (HomeClient) and every surface —
 // heading, picker, board, rails, Coming up next — reads the result. These
@@ -130,4 +130,25 @@ test('unknown stored values are ignored', () => {
     resolveBoardCity({ urlCity: null, userCity: null, homeCity: null, guestCity: 'Atlantis', signedIn: false }),
     'Sydney',
   )
+})
+
+// The board surfaces hold data loaded for one city while the selection can
+// move to another. Held data may only be presented under the name of the
+// city it was loaded for; while the two differ, the surface shows its
+// loading state instead of the old city's count or cards (transition leak).
+
+test('held data is stale when it was loaded for a different city', () => {
+  assert.equal(cityDataIsStale('Melbourne', 'Adelaide', 113), true)
+  assert.equal(cityDataIsStale('Sydney', '', 281), true)
+  assert.equal(cityDataIsStale('Sydney', undefined, 281), true)
+})
+
+test('held data is not stale for the city it was loaded for', () => {
+  assert.equal(cityDataIsStale('Adelaide', 'Adelaide', 34), false)
+  assert.equal(cityDataIsStale('', '', 12), false)
+})
+
+test('an empty hand is never stale', () => {
+  assert.equal(cityDataIsStale('Melbourne', 'Adelaide', 0), false)
+  assert.equal(cityDataIsStale(null, 'Adelaide', 0), false)
 })
