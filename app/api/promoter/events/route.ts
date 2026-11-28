@@ -8,6 +8,7 @@ import { queueEventImage } from '@/lib/images/runner'
 import { listingHiddenOnCreate, parsePromoterListing } from '@/lib/promoter-listing'
 import { resolveListingPlace } from '@/lib/venue-place'
 import { unverifiedGate } from '@/lib/account-flow'
+import { listingWriteNeedsVerification } from '@/lib/account-trust'
 
 export const dynamic = 'force-dynamic'
 
@@ -86,9 +87,13 @@ export async function POST(req: Request) {
   const me = await getSessionUser()
   if (!me) return unauthorized()
   if (!isPromoter(me.role)) return forbidden()
-  const gate = await unverifiedGate(me.id)
-  if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const b = await req.json().catch(() => ({}))
+  // The verification gate bites on publishing, not on saving a draft: a
+  // create without publish is stored hidden, off the public board.
+  if (listingWriteNeedsVerification({ publish: b.publish })) {
+    const gate = await unverifiedGate(me.id)
+    if (gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   const parsed = parsePromoterListing(b)
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const listing = parsed.listing
