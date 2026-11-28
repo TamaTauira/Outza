@@ -8,7 +8,7 @@
 import { CITIES } from '@/lib/cities'
 import { boardClockLine, resolveSchedule } from '@/lib/listing-window'
 import { cityToday } from '@/lib/seo'
-import { PRICE_SUPPRESS_ABOVE, readPrice } from '@/lib/price'
+import { BOOKING_FEES_NOTE, readPrice, resolveStoredPrice } from '@/lib/price'
 
 export type EventStatus = 'SCHEDULED' | 'CANCELLED' | 'POSTPONED' | 'RESCHEDULED' | 'SOLD_OUT'
 export type Recurrence = 'DAILY' | 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'RECURRING'
@@ -147,28 +147,26 @@ const money = (n: number) => (n === 0 ? 'Free' : `$${Number.isInteger(n) ? n : n
 /** Noted beside the price when a free class is pooled with paid classes. The free tickets are never the headline. */
 export const FREE_TICKETS_NOTE = 'Free tickets available'
 
-/** Human price range plus an honest note about booking fees. Free entry, 0 and $0 are free — no booking-fee line. */
+/**
+ * Human price range plus an honest note about booking fees. Resolves through
+ * the same stored-price precedence as the board and list (lib/price), so the
+ * event page can never disagree with the card that led to it. Free entry, 0
+ * and $0 are free — no booking-fee line.
+ */
 export function priceSummary(ev: { isFree: boolean; price?: string | null; priceMin?: number | null; priceMax?: number | null; feesIncluded?: boolean | null }) {
-  const read = readPrice(ev.price)
-  const lo = ev.priceMin ?? read.min
-  const hi = ev.priceMax ?? read.max ?? lo
-  // A positive amount anywhere — string or columns — means the listing is not
-  // free as a whole, whatever the isFree flag or a $0 minimum says.
-  const paid = isPaidListing(ev) || (hi != null && hi > 0)
-  if (!paid && (ev.isFree || (ev.priceMin != null && ev.priceMin <= 0) || read.isFree)) return { range: 'Free', fees: null as string | null, freeNote: null as string | null }
-  const fees = ev.feesIncluded === true ? 'Includes booking fees' : 'Booking fees may apply at checkout'
+  const r = resolveStoredPrice(ev.isFree, ev.price ?? null, ev.priceMin, ev.priceMax)
+  if (r.kind === 'free') return { range: 'Free', fees: null as string | null, freeNote: null as string | null }
+  if (r.kind === 'unknown') return { range: 'Price not published', fees: null as string | null, freeNote: null as string | null }
+  const fees = ev.feesIncluded === true ? 'Includes booking fees' : BOOKING_FEES_NOTE
+  const freeNote = r.hasFree ? FREE_TICKETS_NOTE : null
+  if (r.verbatim) return { range: r.verbatim, fees, freeNote }
+  const min = r.min!
+  const max = r.max ?? min
   // A free class pooled with paid classes leads with the paid amount the range
   // can stand behind; the free tickets are noted, never headlined, and never
   // rendered as a "Free – $X" range.
-  if (lo === 0 && hi != null && hi > 0) {
-    if (hi > PRICE_SUPPRESS_ABOVE) return { range: 'Price not published', fees: null as string | null, freeNote: null as string | null }
-    return { range: `From ${money(hi)}`, fees, freeNote: FREE_TICKETS_NOTE }
-  }
-  const r = ev.priceMin != null && ev.priceMin > 0 ? { min: ev.priceMin, max: ev.priceMax ?? ev.priceMin } : parsePriceRange(false, ev.price)
-  if (r.min == null || r.min <= 0 || (r.max ?? r.min) > PRICE_SUPPRESS_ABOVE) return { range: 'Price not published', fees: null as string | null, freeNote: null as string | null }
-  const fromLabel = /\bfrom\b/i.test(ev.price ?? '') && (r.max == null || r.max === r.min)
-  const range = r.max != null && r.max !== r.min ? `${money(r.min)} – ${money(r.max)}` : fromLabel ? `From ${money(r.min)}` : money(r.min)
-  return { range, fees, freeNote: null as string | null }
+  const range = r.hasFree ? `From ${money(max)}` : max !== min ? `${money(min)} – ${money(max)}` : r.fromOnly ? `From ${money(min)}` : money(min)
+  return { range, fees, freeNote }
 }
 
 /** Infers a repeat pattern from the gaps (in days) between upcoming dates of one series. */

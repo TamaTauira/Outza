@@ -18,7 +18,7 @@ import { hasSourceBudget, isAbortLike, noteSourceSaved, remainingBudgetMs, sourc
 import { INGEST_CITIES, type CityDef } from '@/lib/cities'
 import { joinOriginPath } from '@/lib/listing-link'
 import { moshtixListingDescription, preferDescription } from '@/lib/description-text'
-import { moneyNumber, priceFromAmounts, readPrice, type PriceRead } from '@/lib/price'
+import { moneyNumber, priceFromAmounts, priceFromTicketClasses, readPrice, type PriceRead } from '@/lib/price'
 import { siteUrl } from '@/lib/site-url'
 import { oztixGenreLabels } from '@/lib/oztix-labels'
 import { cityForIngest, cityFromPlace } from '@/lib/venue-city'
@@ -40,11 +40,14 @@ function largestMoshtixImage(items: { type?: string; url?: string }[] | null | u
   return best?.url ?? null
 }
 
-function moshtixPrice(tickets: { ticketPrice?: unknown; hidden?: boolean; complimentary?: boolean; donation?: boolean; addOn?: boolean }[]): PriceRead {
+function moshtixPrice(tickets: { ticketPrice?: unknown; name?: string | null; hidden?: boolean; complimentary?: boolean; donation?: boolean; addOn?: boolean }[]): PriceRead {
   const visible = tickets.filter((t) => !t.hidden && !t.donation && !t.addOn)
-  const nums = visible.filter((t) => !t.complimentary).map((t) => moneyNumber(t.ticketPrice)).filter((n): n is number => n != null)
-  if (!nums.length) return visible.some((t) => t.complimentary) ? readPrice(null, true) : readPrice(null)
-  return priceFromAmounts(Math.min(...nums), Math.max(...nums))
+  const classes = visible
+    .filter((t) => !t.complimentary)
+    .map((t) => ({ name: t.name ?? null, amount: moneyNumber(t.ticketPrice) }))
+    .filter((cls): cls is { name: string | null; amount: number } => cls.amount != null && cls.amount >= 0)
+  if (!classes.length) return visible.some((t) => t.complimentary) ? readPrice(null, true) : readPrice(null)
+  return priceFromTicketClasses(classes)
 }
 
 // ---------------- Moshtix (official open GraphQL API, public events only) ----------------

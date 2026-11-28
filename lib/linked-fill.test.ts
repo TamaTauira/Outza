@@ -258,6 +258,51 @@ test('plansForRows fills the canonical Courtney listing from the same-day Ticket
   assert.equal(rows.some((row) => row.event.id === TICKETMASTER_ID), false)
 })
 
+function moshtix(partial: Partial<FillEvent> = {}): FillEvent {
+  return {
+    id: 'moshtix-row',
+    title: 'Courtney Barnett',
+    venueName: 'The Tivoli',
+    venueAddress: '52 Costin St, Brisbane',
+    city: 'Brisbane',
+    date: '2026-11-04',
+    time: null,
+    endTime: null,
+    price: null,
+    priceMin: null,
+    priceMax: null,
+    isFree: false,
+    source: 'moshtix',
+    sources: ['moshtix'],
+    ticketUrl: null,
+    relation: 'linked',
+    ...partial,
+  }
+}
+
+test('price and ticket link are filled as a pair from one donor', () => {
+  const canonical = frontier({ ticketUrl: null, price: null, sources: ['frontier'] })
+  const priceOnly = ticketmaster({ price: '$50', priceMin: 50, priceMax: 50, ticketUrl: null, relation: 'linked' })
+  const both = moshtix({ price: '$45', priceMin: 45, priceMax: 45, ticketUrl: 'https://www.moshtix.com.au/v2/event/courtney-barnett/123456' })
+  const plan = planLinkedFill(canonical, [priceOnly, both])
+  // The Ticketmaster donor outranks Moshtix but offers no link, so the pair
+  // comes from Moshtix — the source that provides both.
+  assert.equal(plan.patch.price, '$45')
+  assert.equal(plan.patch.ticketUrl, 'https://www.moshtix.com.au/v2/event/courtney-barnett/123456')
+  assert.equal(plan.filled.find((row) => row.field === 'price')?.source, 'moshtix')
+  assert.equal(plan.filled.find((row) => row.field === 'ticketUrl')?.source, 'moshtix')
+})
+
+test('a price is never paired with another donor\u2019s ticket link', () => {
+  const canonical = frontier({ ticketUrl: null, price: null, sources: ['frontier'] })
+  const priceOnly = ticketmaster({ price: '$50', priceMin: 50, priceMax: 50, ticketUrl: null, relation: 'linked' })
+  const linkOnly = moshtix({ ticketUrl: 'https://www.moshtix.com.au/v2/event/courtney-barnett/123456' })
+  const plan = planLinkedFill(canonical, [priceOnly, linkOnly])
+  assert.equal(plan.patch.price, '$50')
+  assert.equal(plan.patch.ticketUrl, undefined)
+  assert.equal(plan.filled.find((row) => row.field === 'ticketUrl'), undefined)
+})
+
 test('a source refresh cannot clear a filled time, price or street with a blank', () => {
   const existing = {
     date: '2026-11-04',

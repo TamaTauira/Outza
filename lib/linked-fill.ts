@@ -224,21 +224,57 @@ export function planLinkedFill(canonical: FillEvent, donors: FillEvent[]): Linke
     }
   }
 
-  if (!reliablePrice(canonical) && !locked(canonical, 'price')) {
-    const found = pick(usable, true, (donor) => reliablePrice(donor))
-    if (found) {
-      patch.price = found.value.price
-      patch.isFree = found.value.isFree
-      patch.priceMin = found.value.min
-      patch.priceMax = found.value.max
-      note('price', found.donor.source)
-      note('isFree', found.donor.source)
-      note('priceMin', found.donor.source)
-      note('priceMax', found.donor.source)
-      if (canonical.feesIncluded == null && typeof found.donor.feesIncluded === 'boolean') {
-        patch.feesIncluded = found.donor.feesIncluded
-        note('feesIncluded', found.donor.source)
+  const priceMissing = !reliablePrice(canonical) && !locked(canonical, 'price')
+  const urlMissing = !usableUrl(canonical.ticketUrl) && !locked(canonical, 'ticketUrl')
+  const applyPrice = (found: { donor: FillEvent; value: PriceRead }) => {
+    patch.price = found.value.price
+    patch.isFree = found.value.isFree
+    patch.priceMin = found.value.min
+    patch.priceMax = found.value.max
+    note('price', found.donor.source)
+    note('isFree', found.donor.source)
+    note('priceMin', found.donor.source)
+    note('priceMax', found.donor.source)
+    if (canonical.feesIncluded == null && typeof found.donor.feesIncluded === 'boolean') {
+      patch.feesIncluded = found.donor.feesIncluded
+      note('feesIncluded', found.donor.source)
+    }
+  }
+  if (priceMissing && urlMissing) {
+    // Price and ticket link are filled as a pair, from one donor: a price
+    // taken from one source must never be displayed beside another source's
+    // ticket link. A donor offering both beats a higher-ranked donor
+    // offering only one of them.
+    const pair = pick(usable, true, (donor) => {
+      const price = reliablePrice(donor)
+      const url = usableUrl(donor.ticketUrl)
+      return price && url ? { price, url } : null
+    })
+    if (pair) {
+      applyPrice({ donor: pair.donor, value: pair.value.price })
+      patch.ticketUrl = pair.value.url
+      note('ticketUrl', pair.donor.source)
+    } else {
+      // No donor offers both. Fill one field alone; never pair across donors.
+      const found = pick(usable, true, (donor) => reliablePrice(donor))
+      if (found) {
+        applyPrice(found)
+      } else {
+        const link = pick(usable, true, (donor) => usableUrl(donor.ticketUrl))
+        if (link) {
+          patch.ticketUrl = link.value
+          note('ticketUrl', link.donor.source)
+        }
       }
+    }
+  } else if (priceMissing) {
+    const found = pick(usable, true, (donor) => reliablePrice(donor))
+    if (found) applyPrice(found)
+  } else if (urlMissing) {
+    const found = pick(usable, true, (donor) => usableUrl(donor.ticketUrl))
+    if (found) {
+      patch.ticketUrl = found.value
+      note('ticketUrl', found.donor.source)
     }
   }
 
@@ -263,14 +299,6 @@ export function planLinkedFill(canonical: FillEvent, donors: FillEvent[]): Linke
       patch.longitude = found.value.lng
       note('latitude', found.donor.source)
       note('longitude', found.donor.source)
-    }
-  }
-
-  if (!usableUrl(canonical.ticketUrl) && !locked(canonical, 'ticketUrl')) {
-    const found = pick(usable, true, (donor) => usableUrl(donor.ticketUrl))
-    if (found) {
-      patch.ticketUrl = found.value
-      note('ticketUrl', found.donor.source)
     }
   }
 

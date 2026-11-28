@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { BOOKING_FEES_NOTE, formatPrice, listPriceLabel, priceFeeNote, priceFromAmounts, priceOutlier, readPrice } from './price'
+import { BOOKING_FEES_NOTE, formatPrice, isBulkTicketClass, listPriceLabel, moneyNumber, priceFeeNote, priceFromAmounts, priceFromTicketClasses, priceOutlier, readPrice, readPriceRows } from './price'
 
 test('parses common price strings without inventing amounts', () => {
   assert.equal(readPrice('$25').price, '$25')
@@ -89,4 +89,52 @@ test('fee note travels with paid prices only', () => {
   assert.equal(priceFeeNote('paid'), BOOKING_FEES_NOTE)
   assert.equal(priceFeeNote('free'), null)
   assert.equal(priceFeeNote('unknown'), null)
+})
+
+test('a bare money-object value is minor units, with or without a currency', () => {
+  // Eventbrite's contract: `value` is cents, `major_value` is the decimal.
+  // The bare shape used to slip through as dollars: 79900 became $79,900.
+  assert.equal(moneyNumber({ value: 79900 }), 799)
+  assert.equal(moneyNumber({ value: 79900, currency: 'AUD' }), 799)
+  assert.equal(moneyNumber({ value: 2500, currency: 'AUD', major_value: '25.00' }), 25)
+  assert.equal(moneyNumber({ major_value: '25.00' }), 25)
+  assert.equal(readPrice({ value: 79900 }).price, '$799')
+})
+
+test('bulk and group classes never set the headline range', () => {
+  assert.equal(isBulkTicketClass({ name: 'Group of 10', amount: 4257 }), true)
+  assert.equal(isBulkTicketClass({ name: 'Corporate Table', amount: 7990 }), true)
+  assert.equal(isBulkTicketClass({ name: 'Table of 8', amount: 800 }), true)
+  assert.equal(isBulkTicketClass({ name: 'Family', amount: 120 }), true)
+  assert.equal(isBulkTicketClass({ name: 'Adult', amount: 50, quantity: 10 }), true)
+  assert.equal(isBulkTicketClass({ name: 'Adult', amount: 50 }), false)
+  assert.equal(isBulkTicketClass({ name: 'Concession', amount: 40 }), false)
+  assert.equal(isBulkTicketClass({ name: '5 classes at $25 each', amount: 125 }), false)
+  const ranged = priceFromTicketClasses([
+    { name: 'Adult', amount: 50 },
+    { name: 'Concession', amount: 40 },
+    { name: 'Group of 30', amount: 4257 },
+  ])
+  assert.equal(ranged.price, '$40 – $50')
+  // A normal class range is untouched.
+  assert.equal(priceFromTicketClasses([{ name: 'Adult', amount: 50 }, { name: 'Concession', amount: 40 }]).price, '$40 – $50')
+  // Every class bulk: fall back to all of them rather than showing nothing.
+  assert.equal(priceFromTicketClasses([{ name: 'Group of 10', amount: 500 }]).price, '$500')
+  // Labelled price rows (City of Sydney style) follow the same rule.
+  assert.equal(readPriceRows([{ label: 'Adult', price: '$50' }, { label: 'Group booking', price: '$4,257' }]).price, '$50')
+  assert.equal(readPriceRows([{ label: 'Adult', price: '$50' }, { label: 'Concession', price: '$40' }]).price, '$40 – $50')
+})
+
+test('one stored-price resolution: columns win disagreements, the string keeps agreement nuance', () => {
+  // Agreement: the string's "From" survives.
+  assert.equal(formatPrice(false, 'From $40', 40, 40).prefix, 'From')
+  assert.equal(formatPrice(false, 'From $40', 40, 40).value, '$40')
+  // Disagreement: the numeric columns (what the price filters use) win.
+  assert.equal(listPriceLabel(false, '$25 – $80', 25, 40).text, '$25–$40')
+  // A stale isFree flag does not hide paid columns.
+  assert.equal(listPriceLabel(true, null, 25, 80).text, '$25–$80')
+  assert.equal(listPriceLabel(true, null, 25, 80).kind, 'paid')
+  // Out-of-bound columns suppress even a sane string; sane columns rescue a suppressed string.
+  assert.equal(formatPrice(false, '$112.90', 112.9, 3000).kind, 'unknown')
+  assert.equal(formatPrice(false, '$79,900', 25, 40).value, '$25–$40')
 })

@@ -6,7 +6,7 @@
 import { Prisma } from '@prisma/client'
 import { isDbSaturation, withStatementTimeout } from '@/lib/db-guard'
 import { BROWSER_UA, sydneyToday } from '@/lib/event-store'
-import { PRICE_ENRICH_BUDGET_MS, groupTargets, resolveEventPrice, type PriceFetch, type PriceGroup, type PriceRequest, type PriceResponse, type PriceTarget } from '@/lib/price-lookup'
+import { PRICE_ENRICH_BUDGET_MS, groupTargets, outcomeRowIds, resolveEventPrice, type PriceFetch, type PriceGroup, type PriceRequest, type PriceResponse, type PriceTarget } from '@/lib/price-lookup'
 import { PRICE_REASON, TRANSIENT_PRICE_REASONS } from '@/lib/price-read'
 
 export { PRICE_ENRICH_BUDGET_MS }
@@ -160,28 +160,42 @@ async function nextTargets(take: number, now: Date, skipTicketmaster: boolean): 
   return selectCandidates('past', take, now, skipTicketmaster)
 }
 
-async function idsForGroup(group: PriceGroup): Promise<string[]> {
-  if (!group.urls.length) return group.ids
-  const more = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
-    where: {
-      organiserEditedAt: null,
-      duplicateOfId: null,
-      deletedAt: null,
-      AND: [
-        blankPrice,
-        { OR: group.urls.flatMap((url) => [{ ticketUrl: url }, { sourceUrl: url }]) },
-      ],
-    },
-    select: { id: true },
-    take: 200,
-  }))
-  return [...new Set([...group.ids, ...more.map((row) => row.id)])]
+export type OutcomeCandidate = { id: string; ticketUrl: string | null; sourceUrl: string | null }
+
+async function idsForGroup(group: PriceGroup, ticketPage: string | null): Promise<string[]> {
+  const byId = new Map<string, OutcomeCandidate>()
+  for (const id of group.ids) byId.set(id, { id, ticketUrl: null, sourceUrl: null })
+  const known = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
+    where: { id: { in: group.ids } },
+    select: { id: true, ticketUrl: true, sourceUrl: true },
+  })).catch(() => [] as OutcomeCandidate[])
+  for (const row of known) byId.set(row.id, row)
+  if (group.urls.length) {
+    const more = await withStatementTimeout(QUERY_TIMEOUT_MS, (tx) => tx.event.findMany({
+      where: {
+        organiserEditedAt: null,
+        duplicateOfId: null,
+        deletedAt: null,
+        AND: [
+          blankPrice,
+          { OR: group.urls.flatMap((url) => [{ ticketUrl: url }, { sourceUrl: url }]) },
+        ],
+      },
+      select: { id: true, ticketUrl: true, sourceUrl: true },
+      take: 200,
+    }))
+    for (const row of more) if (!byId.has(row.id)) byId.set(row.id, row)
+  }
+  return outcomeRowIds(group, ticketPage, [...byId.values()])
 }
 
-async function persist(group: PriceGroup, outcome: { price: string | null; isFree: boolean; min: number | null; max: number | null; reason: string | null }, now: Date) {
-  const ids = [...group.ids]
+async function persist(group: PriceGroup, outcome: { price: string | null; isFree: boolean; min: number | null; max: number | null; reason: string | null; ticketPage?: string | null }, now: Date) {
+  // Only the rows the outcome may land on (see outcomeRowIds). If the
+  // sibling lookup itself fails, fall back to the group's own rows — never
+  // to the wider URL-sharing expansion.
+  let ids = [...group.ids]
   try {
-    for (const id of await idsForGroup(group)) if (!ids.includes(id)) ids.push(id)
+    ids = await idsForGroup(group, outcome.ticketPage ?? null)
   } catch (err) {
     console.error('[price-enrich] sibling lookup failed', group.sample.id, err instanceof Error ? err.message : err)
   }

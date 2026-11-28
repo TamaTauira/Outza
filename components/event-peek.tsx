@@ -49,6 +49,8 @@ type PeekEvent = {
   isFree?: boolean | null
   isLGBTI?: boolean | null
   price?: string | null
+  priceMin?: number | null
+  priceMax?: number | null
   imageUrl?: string | null
   imageWidth?: number | null
   imageHeight?: number | null
@@ -125,6 +127,8 @@ export function EventPeek({ event, fullHref, surface }: { event: PeekEvent; full
   const priced = eventDetailPrice({
     isFree: event.isFree,
     price: event.price,
+    priceMin: event.priceMin,
+    priceMax: event.priceMax,
     range: event.quality?.price?.range,
   })
   const tags = event.subTags ?? []

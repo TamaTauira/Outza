@@ -84,12 +84,14 @@ export function moneyNumber(v: unknown): number | null {
     if (o.major_value != null && o.major_value !== '') return moneyNumber(o.major_value)
     if (typeof o.display === 'string' && extractAmounts(o.display).length) return moneyNumber(o.display)
     if (o.amount != null && o.amount !== '') return moneyNumber(o.amount)
-    // Eventbrite's `value` is minor units when currency is set and major_value is absent.
-    if (o.value != null && o.currency != null && o.major_value == null) {
+    // A money object's `value` is minor units — that is Eventbrite's contract
+    // (`value` is cents, `major_value` is the decimal amount). Dividing only
+    // when a currency happened to accompany it let a bare { value: 79900 }
+    // through as $79,900 instead of $799.
+    if (o.value != null && o.major_value == null) {
       const n = Number(o.value)
       return Number.isFinite(n) ? Math.round(n) / 100 : null
     }
-    if (o.value != null) return moneyNumber(o.value)
     if (o.price != null && typeof o.price !== 'object') return moneyNumber(o.price)
   }
   return null
@@ -109,6 +111,38 @@ export function priceFromAmounts(min: number | null, max: number | null, opts?: 
   // range can stand behind — never a headline "Free" and never a "Free – $X" range.
   const price = a === 0 ? `From ${moneyText(b)}` : fromOnly ? `From ${moneyText(a)}` : a === b ? moneyText(a) : `${moneyText(a)} – ${moneyText(b)}`
   return { price, isFree: false, min: a, max: b, fromOnly, hasFree: a === 0, suppressed: false, flagged: priceOutlier(a, b) === 'flagged' }
+}
+
+export type TicketClassAmount = {
+  /** The class name as the source published it ("Adult", "Group of 10", …), when it published one. */
+  name?: string | null
+  amount: number
+  /** Admissions the class price covers, when the source states it. */
+  quantity?: number | null
+}
+
+const BULK_CLASS_NAME = /\b(groups?|corporate|team|bundle|family|couples?)\b|\btable\s+of\s+\d+|\bbooth\s+for\s+\d+|\bfor\s+\d+\b|\b\d+\s*(?:people|persons|guests|adults|tickets|pack)\b|\bpack\s+of\s+\d+|\badmits\s+\d+|\bdouble\s+pass\b|\bx\s*\d+\b/i
+
+/** True when a ticket class is plainly priced for more than one admission: a stated quantity over 1, or a group / corporate / table / bundle name. */
+export function isBulkTicketClass(cls: TicketClassAmount): boolean {
+  if (typeof cls.quantity === 'number' && Number.isFinite(cls.quantity) && cls.quantity > 1) return true
+  const name = (cls.name ?? '').trim()
+  return !!name && BULK_CLASS_NAME.test(name)
+}
+
+/**
+ * The headline range from ticket classes. A bulk/group total — a table, a
+ * corporate tier, a 30-ticket bundle — is not a per-person price, so it never
+ * sets the range while any single-admission class exists. The classes stay in
+ * the data; only the headline range ignores them. When every class is bulk,
+ * the range falls back to all of them rather than showing nothing.
+ */
+export function priceFromTicketClasses(classes: TicketClassAmount[]): PriceRead {
+  const usable = classes.filter((cls) => Number.isFinite(cls.amount) && cls.amount >= 0)
+  if (!usable.length) return UNKNOWN
+  const singles = usable.filter((cls) => !isBulkTicketClass(cls))
+  const pool = singles.length ? singles : usable
+  return priceFromAmounts(Math.min(...pool.map((cls) => cls.amount)), Math.max(...pool.map((cls) => cls.amount)))
 }
 
 function isClearlyFree(text: string): boolean {
@@ -156,57 +190,111 @@ function readPriceValue(raw: unknown): PriceRead {
 
 /** City of Sydney `priceData` rows and similar `{ label, price }[]` lists. */
 export function readPriceRows(rows: { label?: string; price?: unknown }[]): PriceRead {
+  const parsed = rows.map((row) => ({ label: String(row?.label ?? ''), read: readPrice(row?.price) }))
+  // A bulk-labelled row (a group or corporate total) never sets the headline
+  // range while a single-admission row exists.
+  const singles = parsed.filter((row) => !isBulkTicketClass({ name: row.label }))
+  const pool = singles.length ? singles : parsed
   const nums: number[] = []
   let fromOnly = false
   let sawFree = false
-  for (const row of rows) {
-    const r = readPrice(row?.price)
+  for (const row of pool) {
+    const r = row.read
     if (r.isFree) { sawFree = true; nums.push(0) }
     if (r.min != null) nums.push(r.min)
     if (r.max != null && r.max !== r.min) nums.push(r.max)
-    if (/\b(from|starting)\b/i.test(String(row?.label ?? '')) && r.min != null && r.min === r.max) fromOnly = true
+    if (/\b(from|starting)\b/i.test(row.label) && r.min != null && r.min === r.max) fromOnly = true
   }
   if (!nums.length) return sawFree ? FREE : UNKNOWN
   const distinct = new Set(nums)
   return priceFromAmounts(Math.min(...nums), Math.max(...nums), { fromOnly: fromOnly && distinct.size === 1 })
 }
 
-/** Board/card label. Uses the price string first, then numeric columns already stored on the event. */
+export interface StoredPriceResolution {
+  kind: 'free' | 'paid' | 'unknown'
+  min: number | null
+  max: number | null
+  fromOnly: boolean
+  /** A free class sits alongside paid classes. */
+  hasFree: boolean
+  /** Real amounts were read but breached the publishable bound. */
+  suppressed: boolean
+  flagged: boolean
+  /** A non-numeric price worth showing as written ("Gold coin donation") when nothing numeric resolved. */
+  verbatim: string | null
+}
+
+const NO_AMOUNTS = { min: null, max: null, fromOnly: false, hasFree: false, suppressed: false, flagged: false, verbatim: null } as const
+
+/**
+ * The one resolution every surface reads a stored price through — board,
+ * list, event page, and the summaries baked into API payloads. The numeric
+ * columns are what the price filters use, so when the string and the columns
+ * disagree, the columns win; when they agree, the string's "From" and
+ * free-class nuance is kept. A positive amount anywhere beats the isFree
+ * flag. Before this, the board preferred the string and the event page the
+ * columns, so the two could show different prices for the same row.
+ */
+export function resolveStoredPrice(
+  isFree: boolean,
+  price: string | null,
+  priceMin?: number | null,
+  priceMax?: number | null,
+): StoredPriceResolution {
+  const stringRead = readPrice(price)
+  const lo = priceMin != null && Number.isFinite(priceMin) ? priceMin : null
+  const hi = priceMax != null && Number.isFinite(priceMax) ? priceMax : null
+  const columnRead = lo != null || hi != null ? priceFromAmounts(lo ?? hi!, hi ?? lo!) : null
+  const definitive = (read: PriceRead | null): boolean => !!read && (read.isFree || read.min != null || read.suppressed === true)
+  let chosen: PriceRead | null = null
+  if (definitive(columnRead)) {
+    chosen = columnRead
+    // Same amounts either way: the string carries the "From" / free-class nuance.
+    if (!columnRead!.suppressed && stringRead.min != null && stringRead.min === columnRead!.min && stringRead.max === columnRead!.max) {
+      chosen = stringRead
+    }
+  } else if (definitive(stringRead)) {
+    chosen = stringRead
+  }
+  if (chosen) {
+    if (chosen.isFree) return { ...NO_AMOUNTS, kind: 'free' }
+    if (chosen.suppressed) return { ...NO_AMOUNTS, kind: 'unknown', suppressed: true }
+    return {
+      kind: 'paid',
+      min: chosen.min,
+      max: chosen.max,
+      fromOnly: chosen.fromOnly,
+      hasFree: chosen.hasFree === true,
+      suppressed: false,
+      flagged: chosen.flagged === true,
+      verbatim: null,
+    }
+  }
+  if (isFree) return { ...NO_AMOUNTS, kind: 'free' }
+  if (stringRead.suppressed || columnRead?.suppressed) return { ...NO_AMOUNTS, kind: 'unknown', suppressed: true }
+  const verbatim = price && !UNKNOWN_LABEL.test(price.trim()) ? price.trim() : null
+  return { ...NO_AMOUNTS, kind: verbatim ? 'paid' : 'unknown', verbatim }
+}
+
+/** Board/card label. Resolves the stored string and columns through the one shared precedence. */
 export function formatPrice(
   isFree: boolean,
   price: string | null,
   priceMin?: number | null,
   priceMax?: number | null,
 ): { prefix: string; value: string; kind: 'free' | 'paid' | 'unknown'; hasFree: boolean } {
-  const r = readPrice(price, isFree)
-  let min = r.min
-  let max = r.max
-  let fromOnly = r.fromOnly
-  let hasFree = r.hasFree === true
-  if (r.isFree) return { prefix: '', value: 'Free', kind: 'free', hasFree: false }
-  if (min == null && priceMin != null && Number.isFinite(priceMin)) {
-    min = priceMin
-    max = priceMax != null && Number.isFinite(priceMax) ? priceMax : priceMin
-    fromOnly = false
-    hasFree = min === 0 && max != null && max > min
-  }
-  if (min == null) {
-    // Amounts were read but suppressed by the sanity bound: never fall back to
-    // printing the raw string.
-    if (r.suppressed) return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
-    if (price && !UNKNOWN_LABEL.test(price.trim())) return { prefix: '', value: price.trim(), kind: 'paid', hasFree: false }
-    return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
-  }
-  // The bound is enforced again here so rows stored before it existed (their
-  // numeric columns included) stop showing an out-of-bound price.
-  if (priceOutlier(min, max) === 'suppressed') return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
-  if (max == null || max === min) {
-    if (min === 0) return { prefix: '', value: 'Free', kind: 'free', hasFree: false }
-    if (fromOnly) return { prefix: 'From', value: moneyText(min), kind: 'paid', hasFree }
-    return { prefix: '', value: moneyText(min), kind: 'paid', hasFree }
+  const r = resolveStoredPrice(isFree, price, priceMin, priceMax)
+  if (r.kind === 'free') return { prefix: '', value: 'Free', kind: 'free', hasFree: false }
+  if (r.kind === 'unknown') return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
+  if (r.verbatim) return { prefix: '', value: r.verbatim, kind: 'paid', hasFree: false }
+  const min = r.min!
+  const max = r.max ?? min
+  if (max === min) {
+    if (r.fromOnly) return { prefix: 'From', value: moneyText(min), kind: 'paid', hasFree: r.hasFree }
+    return { prefix: '', value: moneyText(min), kind: 'paid', hasFree: r.hasFree }
   }
   if (min === 0) return { prefix: 'From', value: moneyText(max), kind: 'paid', hasFree: true }
-  return { prefix: '', value: `${moneyText(min)}–${moneyText(max)}`, kind: 'paid', hasFree }
+  return { prefix: '', value: `${moneyText(min)}–${moneyText(max)}`, kind: 'paid', hasFree: r.hasFree }
 }
 
 /** One line for a list row or board card. Missing prices stay “See website”. */

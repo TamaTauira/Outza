@@ -32,3 +32,11 @@ test('event detail price suppresses out-of-bound prices', () => {
   assert.equal(eventDetailPrice({ isFree: false, price: null, priceMin: 899, priceMax: 79900 }).label, PRICE_TBA)
   assert.equal(eventDetailPrice({ isFree: false, price: '$2,500' }).label, '$2500')
 })
+
+test('event detail price refuses a stale out-of-bound range', () => {
+  // The Leadership Excellence row (priceMin 899, priceMax 79,900) with the
+  // range a pre-bound summary baked for it: "$899 – $79900". Neither the
+  // fields nor the stale range may put the out-of-bound price on the page.
+  assert.equal(eventDetailPrice({ isFree: false, price: '$899 – $79,900', priceMin: 899, priceMax: 79900, range: '$899 – $79900' }).label, PRICE_TBA)
+  assert.equal(eventDetailPrice({ isFree: false, range: '$899 – $79900' }).label, PRICE_TBA)
+})
