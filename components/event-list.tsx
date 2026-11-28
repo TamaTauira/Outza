@@ -17,7 +17,7 @@ import { ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { SaveButton } from '@/components/save-button'
 import { cn } from '@/lib/utils'
 import { holdScrollRestore, isHistoryNav, readListDepth, useBackState, writeListDepth } from '@/lib/scroll-memory'
-import { boardPagesToLoad } from '@/lib/scroll-restore'
+import { boardPagesToLoad, boardTopUpAppendFailed, boardTopUpTarget } from '@/lib/scroll-restore'
 import { ReachBeacon } from '@/components/reach-beacon'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { displayTitle, parentCategory } from '@/lib/display-public'
@@ -157,6 +157,23 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [allDayOpen, setAllDayOpen] = useBackState('board:allDayOpen', false)
   const { isSaved, toggle } = useSaved()
   const fetchSeq = useRef(0)
+  // Guards and mirrors for the window-switch top-up below. Its loop is
+  // async and outlives the render that started it, so it reads the
+  // current query, window and page total from refs the top-up effect
+  // refreshes on every run, rather than from its own closure. The
+  // settled mark records the query a top-up already completed, so it
+  // cannot re-fire for that query; the failed mark records the query
+  // a top-up append genuinely failed for (boardTopUpAppendFailed), so
+  // the effect cannot re-fire that attempt either. A fresh first load
+  // (the load effect or reloadInitial) clears both marks, because a
+  // new load can leave the held set short again under a different
+  // window.
+  const topUpQueryRef = useRef<string | null>(null)
+  const topUpWindowedRef = useRef(false)
+  const topUpTotalPagesRef = useRef(1)
+  const topUpRunningRef = useRef(false)
+  const topUpSettledRef = useRef<string | null>(null)
+  const topUpFailedRef = useRef<string | null>(null)
 
   const fetchSpan = useCallback(async (from: string, to: string, pageNum: number, append: boolean) => {
     const seq = ++fetchSeq.current
@@ -205,9 +222,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 
   const isToday = !!day && day === today
   const requestedWindow: TimeWindow = isToday ? timeWindow : timeWindow === 'evening' ? 'evening' : 'all'
+  // The one window decision the first load, the count gate and the
+  // window-switch top-up all take (see boardLoadIsWindowed), computed
+  // once per render so the three can never read it differently.
+  const loadWindowed = boardLoadIsWindowed({ requestedWindow, windowPinned })
 
   useEffect(() => {
     if (!span || authStatus === 'loading') return
+    topUpSettledRef.current = null
+    topUpFailedRef.current = null
     let cancelled = false
     const release = holdScrollRestore('board-list')
     // Read before the depth writer below replaces a saved page count with 1.
@@ -218,7 +241,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     // bound it, which the count gate below reads. A failed append stops
     // the load without recording a completion — the gate stays on.
     const loadRest = async (totalPages: number) => {
-      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, windowed: boardLoadIsWindowed({ requestedWindow, windowPinned }) })
+      const pages = boardPagesToLoad({ saved: depthWanted, totalPages, spanning: span.spanning, windowed: loadWindowed })
       for (let n = 2; n <= pages && !cancelled; n++) {
         const more = await fetchSpan(span.from, span.to, n, true)
         if (!more || cancelled) return
@@ -262,10 +285,12 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // on the partial rows the page-1 refetch alone brought back.
   const reloadInitial = useCallback(async () => {
     if (!span) return
+    topUpSettledRef.current = null
+    topUpFailedRef.current = null
     setPage(1)
     const first = await fetchSpan(span.from, span.to, 1, false)
     if (!first) return
-    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, windowed: boardLoadIsWindowed({ requestedWindow, windowPinned }) })
+    const pages = boardPagesToLoad({ saved: 1, totalPages: first.totalPages, spanning: span.spanning, windowed: loadWindowed })
     for (let n = 2; n <= pages; n++) {
       const more = await fetchSpan(span.from, span.to, n, true)
       if (!more) return
@@ -280,6 +305,75 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     armReconnect(retry, () => { void reloadInitial() })
     return () => retry.stop()
   }, [offline, span, reloadInitial])
+
+  // A window switch can make this board windowed after its first load
+  // already ran unwindowed. The plan chips pin 'all' for Today and
+  // 'evening' for Tonight over the same day with the same cleared
+  // filters, so the span and the board query are identical and the
+  // first-load effect above — whose deps are the query, not the
+  // window — never re-runs; the filter panel's When choices have the
+  // same shape. The held set is then the depth the unwindowed load
+  // stopped at, while the count gate reads the board as windowed over
+  // that partial set and holds the headline. Top the load up instead:
+  // append the remaining planned pages (boardTopUpTarget — the first
+  // load's own decision, ceiling included) without refetching page 1
+  // or disturbing the rows already held, and record the ceiling the
+  // same way the first load does. The guards keep it out of the first
+  // load's way: it waits until the held rows are this query's own
+  // (dataKey recorded) and no fetch is in flight (a retry's page-1
+  // refetch must land first, or the appends would land on the set it
+  // is about to replace), and it never runs for a spanning span (the
+  // target reads the held depth back). The loop follows the first
+  // load's discipline — fetchSpan's sequence guard drops its fetches
+  // when a newer query supersedes them, the mirrors abandon it when
+  // the query moves on or the board stops being windowed, and a
+  // failed append stops it without recording a completion, leaving
+  // recovery to the same retry paths as a failed first load. A
+  // genuinely failed append also records the query in the failed
+  // mark: the effect's deps include the loading flags the failed
+  // fetch toggles on its way out, so without the mark it would fire
+  // the same attempt again at round-trip rate against a persistently
+  // failing endpoint. With it, the headline simply stays gated until
+  // a retry path (which clears the mark) reloads the board. A
+  // superseded or abandoned append records nothing — its board
+  // belongs to a newer fetch, or to no fetch at all.
+  const topUpTarget = span
+    ? boardTopUpTarget({ heldPages: page, totalPages, spanning: span.spanning, windowed: loadWindowed })
+    : page
+  useEffect(() => {
+    topUpQueryRef.current = queryKey
+    topUpWindowedRef.current = loadWindowed
+    topUpTotalPagesRef.current = totalPages
+    if (!span || span.spanning || authStatus === 'loading' || loading || loadingMore || offline) return
+    if (dataKey !== queryKey) return
+    if (topUpTarget <= page) return
+    if (topUpRunningRef.current || topUpSettledRef.current === queryKey || topUpFailedRef.current === queryKey) return
+    topUpRunningRef.current = true
+    const target = topUpTarget
+    const key = queryKey
+    ;(async () => {
+      try {
+        for (let n = page + 1; n <= target; n++) {
+          if (topUpQueryRef.current !== key || !topUpWindowedRef.current) return
+          const seqBefore = fetchSeq.current
+          const more = await fetchSpan(span.from, span.to, n, true)
+          if (!more) {
+            if (boardTopUpAppendFailed({ seqBefore, seqNow: fetchSeq.current, stillCurrent: topUpQueryRef.current === key && topUpWindowedRef.current })) {
+              topUpFailedRef.current = key
+            }
+            return
+          }
+          setPage(n)
+        }
+        if (topUpQueryRef.current === key) {
+          setCappedKey(target < topUpTotalPagesRef.current ? key : null)
+          topUpSettledRef.current = key
+        }
+      } finally {
+        topUpRunningRef.current = false
+      }
+    })()
+  }, [span?.from, span?.to, span?.spanning, authStatus, loading, loadingMore, offline, dataKey, queryKey, loadWindowed, topUpTarget, page, totalPages, fetchSpan])
 
   useEffect(() => { writeListDepth(page) }, [page])
 
@@ -454,7 +548,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // from the request alone left that promotion gated over a
   // depth-loaded set, with no load left to release it.
   const countGate = boardCountGate({
-    windowed: !span?.spanning && boardLoadIsWindowed({ requestedWindow, windowPinned }),
+    windowed: !span?.spanning && loadWindowed,
     heldPages: page,
     totalPages,
     capped: cappedKey !== null && cappedKey === queryKey,
