@@ -657,7 +657,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       {!loading && !staleCity && !staleQuery && previewLimit == null && page < totalPages && span && (
         <div className="flex justify-center py-5 border-t border-border">
           <button
-            onClick={() => { const n = page + 1; setPage(n); fetchSpan(span.from, span.to, n, true) }}
+            onClick={async () => { const n = page + 1; const more = await fetchSpan(span.from, span.to, n, true); if (more) setPage(n) }}
             disabled={loadingMore}
             className="px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
           >
