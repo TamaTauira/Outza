@@ -9,10 +9,47 @@ export interface PriceRead {
   min: number | null
   max: number | null
   fromOnly: boolean
+  /** A free class sits alongside paid classes (the range starts at $0 but does not end there). */
+  hasFree?: boolean
+  /** Real amounts were read but breached the publishable bound and were suppressed, not merely unknown. */
+  suppressed?: boolean
+  /** The range reaches the internal review band (from $1,000) without breaching the bound. */
+  flagged?: boolean
 }
 
-const FREE: PriceRead = { price: 'Free', isFree: true, min: 0, max: 0, fromOnly: false }
-const UNKNOWN: PriceRead = { price: null, isFree: false, min: null, max: null, fromOnly: false }
+const FREE: PriceRead = { price: 'Free', isFree: true, min: 0, max: 0, fromOnly: false, hasFree: false, suppressed: false, flagged: false }
+const UNKNOWN: PriceRead = { price: null, isFree: false, min: null, max: null, fromOnly: false, hasFree: false, suppressed: false, flagged: false }
+const SUPPRESSED: PriceRead = { price: null, isFree: false, min: null, max: null, fromOnly: false, hasFree: false, suppressed: true, flagged: false }
+
+/**
+ * Per-ticket sanity bound for anything VibePeep displays or stores. Ranges
+ * reaching $1,000 are flagged for internal review; a range past $2,500 is not
+ * published at all — pooled group totals and unconverted cents land there, and
+ * a suppressed price beats an invented or clamped one. Enforced here, at the
+ * single choke point every feed and reader funnels through, and again at
+ * display time so already-stored rows are covered without a bulk update.
+ */
+export const PRICE_FLAG_ABOVE = 1000
+export const PRICE_SUPPRESS_ABOVE = 2500
+
+export type PriceOutlier = 'suppressed' | 'flagged' | null
+
+/** The outlier level of a numeric range, if any. Compares the largest amount: it is the one that would be displayed. */
+export function priceOutlier(min: number | null, max: number | null): PriceOutlier {
+  const hi = max ?? min
+  if (hi == null || !Number.isFinite(hi)) return null
+  if (hi > PRICE_SUPPRESS_ABOVE) return 'suppressed'
+  if (hi >= PRICE_FLAG_ABOVE) return 'flagged'
+  return null
+}
+
+/** Shown wherever a paid price is displayed: published amounts are face value unless the source says fees are included. */
+export const BOOKING_FEES_NOTE = 'Booking fees may apply at checkout'
+
+/** The fee note that travels with a displayed price, or null when no price (or a free one) is shown. */
+export function priceFeeNote(kind: 'free' | 'paid' | 'unknown'): string | null {
+  return kind === 'paid' ? BOOKING_FEES_NOTE : null
+}
 
 const UNKNOWN_LABEL = /^(tba|tbc|n\/?a|price tba|price tbc|see website|various|poa|price on application|unknown|coming soon|-|—|–)$/i
 
@@ -66,9 +103,12 @@ export function priceFromAmounts(min: number | null, max: number | null, opts?: 
   const a = Math.min(lo, hi)
   const b = Math.max(lo, hi)
   if (a === 0 && b === 0) return FREE
+  if (priceOutlier(a, b) === 'suppressed') return SUPPRESSED
   const fromOnly = !!opts?.fromOnly && a === b
-  const price = a === 0 ? `Free – ${moneyText(b)}` : fromOnly ? `From ${moneyText(a)}` : a === b ? moneyText(a) : `${moneyText(a)} – ${moneyText(b)}`
-  return { price, isFree: false, min: a, max: b, fromOnly }
+  // A $0 class pooled with paid classes leads with the cheapest paid amount the
+  // range can stand behind — never a headline "Free" and never a "Free – $X" range.
+  const price = a === 0 ? `From ${moneyText(b)}` : fromOnly ? `From ${moneyText(a)}` : a === b ? moneyText(a) : `${moneyText(a)} – ${moneyText(b)}`
+  return { price, isFree: false, min: a, max: b, fromOnly, hasFree: a === 0, suppressed: false, flagged: priceOutlier(a, b) === 'flagged' }
 }
 
 function isClearlyFree(text: string): boolean {
@@ -80,6 +120,9 @@ function isClearlyFree(text: string): boolean {
 export function readPrice(raw: unknown, isFreeHint = false): PriceRead {
   const parsed = readPriceValue(raw)
   if (!isFreeHint) return parsed
+  // A suppressed read had real amounts over the bound; a free hint must not
+  // resurrect them as Free (the Eventbrite free-listing pass relies on this).
+  if (parsed.suppressed) return parsed
   if (parsed.min != null && parsed.min > 0) return parsed
   if (parsed.max != null && parsed.max > 0) return parsed
   return FREE
@@ -134,28 +177,36 @@ export function formatPrice(
   price: string | null,
   priceMin?: number | null,
   priceMax?: number | null,
-): { prefix: string; value: string; kind: 'free' | 'paid' | 'unknown' } {
+): { prefix: string; value: string; kind: 'free' | 'paid' | 'unknown'; hasFree: boolean } {
   const r = readPrice(price, isFree)
   let min = r.min
   let max = r.max
   let fromOnly = r.fromOnly
-  if (r.isFree) return { prefix: '', value: 'Free', kind: 'free' }
+  let hasFree = r.hasFree === true
+  if (r.isFree) return { prefix: '', value: 'Free', kind: 'free', hasFree: false }
   if (min == null && priceMin != null && Number.isFinite(priceMin)) {
     min = priceMin
     max = priceMax != null && Number.isFinite(priceMax) ? priceMax : priceMin
     fromOnly = false
+    hasFree = min === 0 && max != null && max > min
   }
   if (min == null) {
-    if (price && !UNKNOWN_LABEL.test(price.trim())) return { prefix: '', value: price.trim(), kind: 'paid' }
-    return { prefix: '', value: 'See website', kind: 'unknown' }
+    // Amounts were read but suppressed by the sanity bound: never fall back to
+    // printing the raw string.
+    if (r.suppressed) return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
+    if (price && !UNKNOWN_LABEL.test(price.trim())) return { prefix: '', value: price.trim(), kind: 'paid', hasFree: false }
+    return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
   }
+  // The bound is enforced again here so rows stored before it existed (their
+  // numeric columns included) stop showing an out-of-bound price.
+  if (priceOutlier(min, max) === 'suppressed') return { prefix: '', value: 'See website', kind: 'unknown', hasFree: false }
   if (max == null || max === min) {
-    if (min === 0) return { prefix: '', value: 'Free', kind: 'free' }
-    if (fromOnly) return { prefix: 'From', value: moneyText(min), kind: 'paid' }
-    return { prefix: '', value: moneyText(min), kind: 'paid' }
+    if (min === 0) return { prefix: '', value: 'Free', kind: 'free', hasFree: false }
+    if (fromOnly) return { prefix: 'From', value: moneyText(min), kind: 'paid', hasFree }
+    return { prefix: '', value: moneyText(min), kind: 'paid', hasFree }
   }
-  if (min === 0) return { prefix: 'free –', value: moneyText(max), kind: 'paid' }
-  return { prefix: '', value: `${moneyText(min)}–${moneyText(max)}`, kind: 'paid' }
+  if (min === 0) return { prefix: 'From', value: moneyText(max), kind: 'paid', hasFree: true }
+  return { prefix: '', value: `${moneyText(min)}–${moneyText(max)}`, kind: 'paid', hasFree }
 }
 
 /** One line for a list row or board card. Missing prices stay “See website”. */
@@ -164,9 +215,9 @@ export function listPriceLabel(
   price: string | null,
   priceMin?: number | null,
   priceMax?: number | null,
-): { text: string; kind: 'free' | 'paid' | 'unknown' } {
+): { text: string; kind: 'free' | 'paid' | 'unknown'; hasFree: boolean } {
   const parsed = formatPrice(isFree, price, priceMin, priceMax)
-  if (parsed.kind === 'free') return { text: 'Free', kind: 'free' }
-  if (parsed.kind === 'unknown') return { text: 'See website', kind: 'unknown' }
-  return { text: [parsed.prefix, parsed.value].filter(Boolean).join(' '), kind: 'paid' }
+  if (parsed.kind === 'free') return { text: 'Free', kind: 'free', hasFree: false }
+  if (parsed.kind === 'unknown') return { text: 'See website', kind: 'unknown', hasFree: false }
+  return { text: [parsed.prefix, parsed.value].filter(Boolean).join(' '), kind: 'paid', hasFree: parsed.hasFree }
 }
