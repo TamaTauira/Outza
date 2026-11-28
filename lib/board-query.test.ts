@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey } from './board-query'
+import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey, boardWindowSuffix } from './board-query'
 import { boardPagesToLoad } from './scroll-restore'
 
 // The board holds rows and a total loaded for one query (span, city,
@@ -116,4 +116,18 @@ test('a windowed request loads as windowed, pinned or not', () => {
     assert.equal(boardLoadIsWindowed({ requestedWindow, windowPinned: false }), true)
   }
   assert.equal(boardPagesToLoad({ saved: 1, totalPages: 4, spanning: false, windowed: boardLoadIsWindowed({ requestedWindow: 'now', windowPinned: true }) }), 4)
+})
+
+// The summary line's window label: the landing window ('now') states
+// "from now" — its own label, per the owner's 2026-11-28 decision —
+// not the evening window's "tonight". 'hour' and 'all' add no words.
+
+test("the landing 'now' window is labelled 'from now', not 'tonight'", () => {
+  assert.equal(boardWindowSuffix('now'), ' from now')
+})
+
+test("the evening window keeps 'tonight', and 'hour'/'all' add no time words", () => {
+  assert.equal(boardWindowSuffix('evening'), ' tonight')
+  assert.equal(boardWindowSuffix('hour'), '')
+  assert.equal(boardWindowSuffix('all'), '')
 })
