@@ -4,7 +4,7 @@ import { boardDisplayName, CITIES, CITY_LABELS, INGEST_CITIES, INGEST_ONLY_CITIE
 import { CITY_TRANSIT } from './city-transit'
 import { MARKETS } from './intel/markets'
 import { areaGroupFor, areaGroupLabels, areasForCity, filterAreasForCity, matchesAreaGroup } from './categories'
-import { cityFromSlug } from './seo'
+import { cityFromSlug, cityPath } from './seo'
 import { FOOTER_CITY_LINKS } from './site-links'
 
 test('catalogue city lists are the one CITIES array', () => {
@@ -50,6 +50,15 @@ test('board display name is the region label for Sydney and the plain name elsew
   }
   // Places without a picker label fall back to the name they were given.
   assert.equal(boardDisplayName('Newcastle'), 'Newcastle')
+})
+
+test('footer city links carry the display label over the plain-name path', () => {
+  for (const city of CITIES) {
+    const link = FOOTER_CITY_LINKS.find((l) => l.href === cityPath(city))
+    assert.ok(link, city.name)
+    assert.equal(link!.label, boardDisplayName(city.name), city.name)
+  }
+  assert.equal(FOOTER_CITY_LINKS.find((l) => l.href === '/sydney/events')?.label, 'Sydney & the NSW Coast')
 })
 
 test('Newcastle is ingest-only: collected and on the Sydney board, but never selectable', () => {
