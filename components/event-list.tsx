@@ -24,6 +24,7 @@ import { displayTitle, parentCategory } from '@/lib/display-public'
 import { listPlaceLine } from '@/components/list-clock'
 import { eventPath } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
+import { cityDataIsStale } from '@/lib/city-pref'
 export type BoardSeed = {
   city: string
   from: string
@@ -76,6 +77,11 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const [totalPages, setTotalPages] = useState(initialBoard && seedMatches ? initialBoard.totalPages : 1)
   const [loading, setLoading] = useState(!(initialBoard && seedMatches))
   const [offline, setOffline] = useState(false)
+  // The city the held rows and total were loaded for. The summary count is
+  // computed from the held rows, so the count (and the rows) may only be
+  // presented under the selected city's name when the two match — see
+  // staleCity below.
+  const [dataCity, setDataCity] = useState<string | null>(initialBoard && seedMatches ? initialBoard.city : null)
   // The rows on screen must belong to the city the heading names. The heading
   // and picker follow HomeClient's resolved city the moment it lands, but this
   // list used to keep whatever it already held — the Sydney server seed, or a
@@ -91,7 +97,14 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     setTotalPages(1)
     setPage(1)
     setLoading(true)
+    setDataCity(null)
   }
+  // Held data loaded for another city is stale the moment the selection
+  // moves on, whatever path put it there (a fetch or seed application that
+  // completed after the switch, say). While stale, the list presents its
+  // loading state — the summary shows no number and no rows render — until
+  // this city's fetch lands.
+  const staleCity = cityDataIsStale(dataCity, city, events.length + total)
   const listed = events
   const railSkip = useMemo(() => new Set(excludeIds), [excludeIds])
   const [loadingMore, setLoadingMore] = useState(false)
@@ -130,6 +143,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       setEvents((prev) => (append ? [...prev, ...list] : list))
       const totalPages = data?.totalPages ?? 1
       setTotal(data?.total ?? 0)
+      setDataCity(city ?? '')
       setTotalPages(totalPages)
       setOffline(false)
       return { totalPages }
@@ -156,6 +170,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         if (initialBoard && seedMatches && authStatus !== 'authenticated') {
           setEvents(initialBoard.events)
           setTotal(initialBoard.total)
+          setDataCity(initialBoard.city)
           setTotalPages(initialBoard.totalPages)
           setPage(1)
           setLoading(false)
@@ -335,7 +350,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   const listedCount = windowRank
     ? windowRank.lead.length + windowRank.soon.length + windowRank.still.length + windowRank.allday.length + windowRank.possibly.length
     : timed.length + untimed.length
-  useEffect(() => { onListedCount?.(listedCount) }, [listedCount, onListedCount])
+  useEffect(() => { onListedCount?.(staleCity ? 0 : listedCount) }, [listedCount, staleCity, onListedCount])
   const previewFlat = previewLimit == null ? null : (() => {
     const rows: { ev: BoardEvent; status?: Status; showDate?: string }[] = []
     const push = (list: { ev: BoardEvent; status?: Status; showDate?: string }[]) => {
@@ -410,7 +425,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
     )
   }
 
-  const firstLoad = loading && events.length === 0
+  const firstLoad = (loading && events.length === 0) || staleCity
   // The summary names the selected area group when one is picked (e.g.
   // 'Newcastle & the Hunter' on the Sydney board), else the board city's
   // display name (the NSW Coast region on the Sydney board).
@@ -429,9 +444,9 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       <div className="flex flex-wrap items-center gap-2 px-3 sm:px-5 py-2.5 border-b border-border text-sm text-muted-foreground">
         <span className="w-1.5 h-1.5 rounded-full bg-free" />
         <span className="font-semibold text-foreground">{firstLoad ? '…' : listedCount}</span> {listedCount === 1 ? 'event' : 'events'} in {placeName}{effectiveWindow === 'evening' || effectiveWindow === 'now' ? ' tonight' : ''}
-        {span?.spanning && !loading && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
-        {!loading && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
-        {isToday && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
+        {span?.spanning && !loading && !staleCity && <span>· {dayLabel(span.from, today)} – {dayLabel(span.to, today)}</span>}
+        {!loading && !staleCity && untimed.length > 0 && <span>· {untimed.length} all-day</span>}
+        {isToday && !staleCity && endedCount > 0 && effectiveWindow !== 'now' && effectiveWindow !== 'hour' && (
           <label className="ml-2 inline-flex items-center gap-1.5 cursor-pointer select-none">
             <input type="checkbox" checked={showEnded} onChange={(e) => setShowEnded(e.target.checked)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
             Show ended ({endedCount})
@@ -542,7 +557,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
         })
       )}
 
-      {!loading && previewLimit == null && page < totalPages && span && (
+      {!loading && !staleCity && previewLimit == null && page < totalPages && span && (
         <div className="flex justify-center py-5 border-t border-border">
           <button
             onClick={() => { const n = page + 1; setPage(n); fetchSpan(span.from, span.to, n, true) }}
@@ -556,7 +571,7 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       )}
 
       {/* All-day / untimed */}
-      {!loading && !windowRank && untimed.length > 0 && (
+      {!loading && !staleCity && !windowRank && untimed.length > 0 && (
         <div className="border-t border-border">
           <button onClick={() => setAllDayOpen((o) => !o)} className="w-full flex items-center gap-3 px-3 sm:px-5 py-3.5 text-left hover:bg-muted/50" aria-expanded={allDayOpen}>
             <Sparkles className="w-4 h-4 text-muted-foreground" />
