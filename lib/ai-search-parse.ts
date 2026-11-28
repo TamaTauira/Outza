@@ -1,5 +1,5 @@
 import { CATEGORIES, areasForCity } from '@/lib/categories'
-import { CITIES, CITY_NAMES } from '@/lib/cities'
+import { boardCityForPlace, CITIES, CITY_NAMES, KNOWN_CITY_DEFS } from '@/lib/cities'
 
 function addDays(key: string, n: number): string {
   const d = new Date(`${key}T00:00:00Z`)
@@ -197,6 +197,25 @@ export function cityInQuery(q: string): string {
   return ''
 }
 
+/** Known places with no board of their own (Newcastle, Wollongong). */
+const FOLDED_PLACE_NAMES = KNOWN_CITY_DEFS.filter((c) => !CITY_NAMES.includes(c.name)).map((c) => c.name)
+
+/**
+ * A folded-in place named in the query. It is not a board, so it can never be
+ * the search city itself: it resolves to its board city (boardCityForPlace)
+ * and stays as the area focus. Left unrecognised it survived as a keyword,
+ * which ANDed the search down to nothing — "gigs in Newcastle" matched no
+ * Sydney listing because no listing's text had to say "Newcastle".
+ */
+export function foldedPlaceInQuery(q: string): string {
+  const places = [...FOLDED_PLACE_NAMES].sort((a, b) => b.length - a.length)
+  for (const name of places) {
+    const body = name.toLowerCase().replace(/ /g, '\\s+')
+    if (new RegExp(`(^|[^a-z])${body}([^a-z]|$)`, 'i').test(q)) return name
+  }
+  return ''
+}
+
 /** Friday–Sunday, or from today through Sunday once the weekend has started. Same span as weekendRange. */
 function weekend(today: string): [string, string] {
   const dow = new Date(`${today}T00:00:00Z`).getUTCDay()
@@ -214,10 +233,13 @@ function escapeRe(s: string) {
 /** Longest known suburb in the query. A name that belongs to one city also names that city. */
 function suburbHit(q: string): { suburb: string; city: string } | null {
   const hits: { suburb: string; city: string }[] = []
-  for (const c of CITY_NAMES) {
+  // Folded-in places keep area lists too (Hamilton is Newcastle's), so their
+  // suburbs are looked up as well — the city a hit names is the board the
+  // place belongs to, since the place itself is not a board.
+  for (const c of [...CITY_NAMES, ...FOLDED_PLACE_NAMES]) {
     for (const area of areasForCity(c)) {
       if (/^cbd$/i.test(area)) continue
-      if (new RegExp(`\\b${escapeRe(area)}\\b(?!\\s+(?:st|street|rd|road|ave|avenue|ln|lane|dr|drive)\\b)`, 'i').test(q)) hits.push({ suburb: area, city: c })
+      if (new RegExp(`\\b${escapeRe(area)}\\b(?!\\s+(?:st|street|rd|road|ave|avenue|ln|lane|dr|drive)\\b)`, 'i').test(q)) hits.push({ suburb: area, city: boardCityForPlace(c) ?? c })
     }
   }
   if (!hits.length) return null
@@ -388,14 +410,18 @@ export function fallbackParse(q: string, today: string) {
   if (!dateNight && cat.category) out.category = cat.category
   if (!dateNight && cat.subTag) out.subTag = cat.subTag
   const namedCity = cityInQuery(q)
+  const folded = namedCity ? '' : foldedPlaceInQuery(q)
   const place = suburbHit(q)
   if (namedCity) out.city = namedCity
+  else if (folded) out.city = boardCityForPlace(folded) ?? ''
   else if (place?.city) out.city = place.city
   if (place?.suburb) out.suburb = place.suburb
+  else if (folded) out.suburb = folded
   const city = String(out.city || '')
   const stop = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'what', 'whats', 'events', 'event', 'near', 'free', 'paid', 'under', 'something', 'things', 'thing', 'some', 'show', 'find', 'me', 'on', 'in', 'to', 'do', 'a', 'an', 'of', 'at', 'live', 'music', 'nye', 'new', 'year', 'eve', 'bar', ...DATE_WORDS, ...SOFT, ...Object.keys(MONTH_FULL), ...Object.keys(MONTH_ABBR), 'may'])
   if (city) city.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
-  if (place?.suburb) place.suburb.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
+  const focus = place?.suburb || folded
+  if (focus) focus.toLowerCase().split(/\s+/).forEach((w) => stop.add(w))
   if (/\bdate night\b/.test(s)) { stop.add('date'); stop.add('night') }
   const words = s.replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w)).map(stemKeyword)
   out.keywords = [...new Set(words)].slice(0, 4)
@@ -404,7 +430,8 @@ export function fallbackParse(q: string, today: string) {
 
 function cityFromText(value: unknown): string {
   const text = clean(value, 40).toLowerCase()
-  return CITIES.find((c) => c.name.toLowerCase() === text)?.name ?? ''
+  const hit = KNOWN_CITY_DEFS.find((c) => c.name.toLowerCase() === text)
+  return hit ? (boardCityForPlace(hit.name) ?? '') : ''
 }
 
 /** Validates model or fallback output. Explicit years are not pulled back to the default two-week window. */
@@ -490,6 +517,22 @@ export function interpretQuery(q: string, today: string, aiRaw?: any): AiFilters
   }
   if (/\b(live music|gigs?|concerts?)\b/i.test(q)) merged = { ...merged, category: 'Music' }
   const out = normalise(merged, today, Boolean(fb.explicitDates) || (aiNamesYear && !fb.dateFrom))
+  // A model's keywords are filtered in normalise against the city only, so
+  // when the fallback found no keywords of its own — every content word was
+  // a stop word or the place itself, e.g. "music in Newcastle" — a
+  // model-supplied place word survives as a keyword and is ANDed as a text
+  // needle no listing has to match. The focus place is a filter, never a
+  // keyword: drop its words (the resolved suburb's, which is the folded
+  // place's name when that is the focus) from the merged keywords here,
+  // before the fallback's own keywords — which already stopped them — take
+  // over below, so fallback-approved words are never dropped by this.
+  const focusWords = new Set<string>()
+  for (const focus of [out.suburb, typeof fb.suburb === 'string' ? fb.suburb : '']) {
+    focus.toLowerCase().split(/\s+/).filter(Boolean).forEach((w) => focusWords.add(stemKeyword(w)))
+  }
+  if (focusWords.size) {
+    out.keywords = out.keywords.filter((k) => !k.toLowerCase().split(/\s+/).some((w) => focusWords.has(stemKeyword(w))))
+  }
   if (typeof fb.suburb === 'string' && fb.suburb) out.suburb = fb.suburb
   if (typeof fb.subTag === 'string' && fb.subTag) out.subTag = fb.subTag
   if (fb.paidOnly === true) out.paidOnly = true

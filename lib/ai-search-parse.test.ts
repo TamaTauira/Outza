@@ -258,6 +258,64 @@ test('words that merely end in s are not mangled', () => {
   assert.deepEqual(interpretQuery('galleries in Sydney', FRIDAY).keywords, ['galleries'])
 })
 
+test('folded-in places resolve to their board, and the place is not a keyword', () => {
+  // Newcastle has no board of its own: the ask lands on the Sydney board with
+  // Newcastle kept as the focus, and "newcastle" must not survive as a word
+  // the listings are ANDed against — no listing's text has to say it.
+  const liam = interpretQuery('indie gigs in Newcastle', FRIDAY)
+  assert.equal(liam.city, 'Sydney')
+  assert.equal(liam.suburb, 'Newcastle')
+  assert.equal(liam.category, 'Music')
+  assert.deepEqual(liam.keywords, ['indie', 'gig'])
+
+  // Wollongong files to Sydney the same way.
+  const gong = interpretQuery('markets in Wollongong', FRIDAY)
+  assert.equal(gong.city, 'Sydney')
+  assert.equal(gong.suburb, 'Wollongong')
+  assert.deepEqual(gong.keywords, ['market'])
+
+  // A suburb of a folded-in place names the place's board too.
+  const hamilton = interpretQuery('gigs in Hamilton', FRIDAY)
+  assert.equal(hamilton.city, 'Sydney')
+  assert.equal(hamilton.suburb, 'Hamilton')
+  assert.deepEqual(hamilton.keywords, ['gig'])
+
+  // A catalogue city named outright still wins over a folded-in place.
+  const perth = interpretQuery('gigs in Perth', FRIDAY)
+  assert.equal(perth.city, 'Perth')
+  assert.equal(perth.suburb, '')
+})
+
+test('a model-supplied place word never survives as a keyword when the fallback found none', () => {
+  // "music in Newcastle": every content word is a stop word or the place
+  // itself, so the fallback's keyword list is empty and the merge keeps the
+  // model's keywords. The model cannot name Newcastle as a city (the prompt
+  // offers catalogue cities only), so the place can only arrive as a
+  // keyword — where the route would AND it as a text needle and zero the
+  // ask. The place is the focus filter, never a keyword.
+  const newcastle = interpretQuery('music in Newcastle', FRIDAY, { keywords: ['newcastle'] })
+  assert.equal(newcastle.city, 'Sydney')
+  assert.equal(newcastle.suburb, 'Newcastle')
+  assert.deepEqual(newcastle.keywords, [])
+
+  const gong = interpretQuery('music in Wollongong', FRIDAY, { keywords: ['wollongong'] })
+  assert.equal(gong.city, 'Sydney')
+  assert.equal(gong.suburb, 'Wollongong')
+  assert.deepEqual(gong.keywords, [])
+
+  // The catalogue-city twin: normalise filters model keywords against the
+  // city only, so a suburb focus leaks the same way without the guard.
+  const bondi = interpretQuery('music in Bondi', FRIDAY, { keywords: ['bondi'] })
+  assert.equal(bondi.city, 'Sydney')
+  assert.equal(bondi.suburb, 'Bondi')
+  assert.deepEqual(bondi.keywords, [])
+
+  // A real keyword riding alongside the place word survives; only the
+  // place word is dropped.
+  const mixed = interpretQuery('music in Newcastle', FRIDAY, { keywords: ['newcastle', 'jazz'] })
+  assert.deepEqual(mixed.keywords, ['jazz'])
+})
+
 test('relative dates still resolve when no year is named', () => {
   const tonight = interpretQuery('live music tonight', TODAY)
   assert.equal(tonight.dateFrom, TODAY)
