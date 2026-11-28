@@ -93,11 +93,50 @@ const publicSelect = {
   latitude: true, longitude: true, officialDomain: true, key: true,
 } as const
 
+/**
+ * Resolution order for a /venues/[param] segment: the venue id first, then
+ * the venue key, so a link that carries a key lands on the same page an id
+ * link does. Returns the first hit, else null.
+ */
+export async function resolveVenueParam<T>(
+  param: string,
+  lookup: (where: { id: string } | { key: string }) => Promise<T | null>,
+): Promise<T | null> {
+  const byId = await lookup({ id: param })
+  if (byId) return byId
+  return lookup({ key: param })
+}
+
 export async function publicVenue(id: string) {
-  const venue = await prisma.venue.findUnique({ where: { id }, select: publicSelect })
+  const venue = await resolveVenueParam(id, (where) => prisma.venue.findUnique({ where, select: publicSelect }))
   if (!venue) return null
   const { officialDomain: _domain, key: _key, ...rest } = venue
   return { ...rest, completeness: profileCompleteness(venue), managed: venue.claimStatus === 'CLAIMED' }
+}
+
+/** Where clause for the /venue finder. Null when the term is too short to search on. */
+export function venueSearchWhere(q: string) {
+  const term = q.trim().slice(0, 80)
+  if (term.length < 2) return null
+  return {
+    OR: [
+      { name: { contains: term, mode: 'insensitive' as const } },
+      { city: { contains: term, mode: 'insensitive' as const } },
+      { address: { contains: term, mode: 'insensitive' as const } },
+    ],
+  }
+}
+
+/** Venue discovery for the /venue finder: name, city or address contains the term. */
+export async function searchVenues(q: string, take = 20) {
+  const where = venueSearchWhere(q)
+  if (!where) return []
+  return prisma.venue.findMany({
+    where,
+    select: { id: true, name: true, city: true, address: true },
+    orderBy: { name: 'asc' },
+    take,
+  })
 }
 
 export async function venueFollowerCount(venueId: string): Promise<number | null> {
