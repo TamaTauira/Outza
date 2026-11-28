@@ -126,7 +126,18 @@ export function CityPicker({ value, onChange, onDark, id, label = 'Choose a city
   }
 
   const onButtonKeyDown = (e: React.KeyboardEvent) => {
-    if (open) return
+    if (open) {
+      // Focus can be on the trigger while the panel is open (it never moved
+      // into the list, or was returned here programmatically); the APG
+      // pattern still expects Escape to close from the trigger itself, not
+      // only from an option. Focus is already on the trigger, so closing is
+      // all that is needed.
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        closeList(true)
+      }
+      return
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
       openList()
