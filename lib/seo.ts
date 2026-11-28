@@ -257,8 +257,8 @@ function clockMinutes(value?: string | null): number | null {
 /**
  * True once the listing has finished in its own city.
  * The calendar day is the stored date key. The clock is that city's wall time
- * (Australia/Sydney for Sydney). The event's own calendar span \u2014 its date
- * through its endDate, or an after-midnight finish \u2014 decides whether it can
+ * (Australia/Sydney for Sydney). The event's own calendar span — its date
+ * through its endDate, or an after-midnight finish — decides whether it can
  * still be live at all. A listed endsAt is a derived instant (a linked donor
  * can recompute it from its own endDate), so it sets the finish inside that
  * span but can never stretch the span: once the span's last day is over, the
@@ -296,7 +296,7 @@ export function isPastEvent(ev: {
   // The span's last day. The finish is whichever comes first, the listed
   // endsAt or the span's own clock finish: endsAt can end an event early,
   // never late. No real finish: the session stays up for the whole city day.
-  // 00:00\u201300:00 is that placeholder, not a clock.
+  // 00:00–00:00 is that placeholder, not a clock.
   if (hasEndsAt && endsAtMs <= now.getTime()) return true
   const openDay = ev.allDay === true || endClock == null || (endClock === 0 && (start == null || start === 0))
   if (openDay) return false
