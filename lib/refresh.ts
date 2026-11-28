@@ -1,4 +1,5 @@
 import { prisma, runWithJobPrisma } from '@/lib/prisma'
+import { writeHeartbeat } from '@/lib/job-watermark'
 import { runRetirementPass, RETIREMENT_PASS_BUDGET_MS } from '@/lib/retirement'
 import { fetchTicketmasterEvents } from '@/lib/ticketmaster'
 import { fetchEventbriteEvents } from '@/lib/sources/eventbrite'
@@ -329,6 +330,7 @@ async function reportFullRunFaults(_logId: string, selected: number, sourceFaile
  * Completed even if a source failed or stopped at its time budget, as long as every chunk finished.
  */
 async function finalizeCycle(): Promise<RefreshResult> {
+  console.log('[refresh] finalize started')
   const since = new Date(Date.now() - REFRESH_CYCLE_WINDOW_MS)
   const logs = await prisma.refreshLog.findMany({
     where: { startedAt: { gte: since }, status: { startsWith: 'source:' } },
@@ -354,6 +356,13 @@ async function finalizeCycle(): Promise<RefreshResult> {
     },
   })
   console.log(`[refresh] cycle ${status}: ${cycle.eventsAdded} events, missing=${cycle.missing.length}, failed=${cycle.failed.length}, budget=${cycle.warned.length}`)
+  // The cycle outcome is recorded, which is the finalize chunk's essential
+  // work, so the heartbeat belongs here — not in the cron route after the
+  // post-steps. A slow quality pass, retirement pass or image pass (or an
+  // invocation killed during one) must not read as a finalize that never
+  // finished: the watchdog only sees this heartbeat. The route still writes
+  // its own heartbeat when the whole invocation returns.
+  await writeHeartbeat('refresh-finalize').catch((err) => console.error('[refresh] finalize heartbeat failed', err instanceof Error ? err.message : err))
   const postErrors = await runPostSteps()
   // Retirement reads the finished chunks back from the log ledger, so it runs
   // after the post-steps it must not starve. Its own budget keeps it inside
