@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } fro
 import { useSession } from 'next-auth/react'
 import { FilterState } from '@/components/filter-panel'
 import { areaGroupFor, CATEGORIES, knownCategories } from '@/lib/categories'
-import { boardDisplayName } from '@/lib/cities'
+import { boardDisplayName, cityDef } from '@/lib/cities'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent, type Status } from '@/components/board-row'
 import { ListingBoardCard } from '@/components/listing-board-card'
 import { ItineraryButton } from '@/components/itinerary-button'
@@ -22,10 +22,11 @@ import { ReachBeacon } from '@/components/reach-beacon'
 import { displaySuburb, tidyVenueName } from '@/lib/cities'
 import { displayTitle, parentCategory } from '@/lib/display-public'
 import { listPlaceLine } from '@/components/list-clock'
-import { eventPath } from '@/lib/seo'
+import { eventPath, weekendRange } from '@/lib/seo'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { cityDataIsStale } from '@/lib/city-pref'
 import { boardCountGate, boardDataIsStale, boardLoadIsWindowed, boardQueryKey, boardWindowSuffix } from '@/lib/board-query'
+import { boardGenuinelyEmpty, quietBoardCopy, WEEKEND_PEEK_LIMIT } from '@/lib/board-empty'
 export type BoardSeed = {
   city: string
   from: string
@@ -110,6 +111,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // headline falls back to the server's full-set numbers rather than
   // publishing a partial count (see boardCountGate).
   const [cappedKey, setCappedKey] = useState<string | null>(null)
+  // The weekend rows the quiet-city empty state previews (see
+  // boardGenuinelyEmpty), keyed by the city and weekend span they were
+  // fetched for so a stale peek is never presented under a new board.
+  const [weekendPeek, setWeekendPeek] = useState<{ key: string; events: BoardEvent[] } | null>(null)
   // The rows on screen must belong to the city the heading names. The heading
   // and picker follow HomeClient's resolved city the moment it lands, but this
   // list used to keep whatever it already held — the Sydney server seed, or a
@@ -226,6 +231,42 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // window-switch top-up all take (see boardLoadIsWindowed), computed
   // once per render so the three can never read it differently.
   const loadWindowed = boardLoadIsWindowed({ requestedWindow, windowPinned })
+
+  // The quiet-city empty state (lib/board-empty) may only speak when
+  // this query has genuinely come back empty for the selected city —
+  // a failed or still-running load keeps the board's existing
+  // presentation. While it speaks, it previews the coming weekend
+  // through the board's own feed: the same /api/events path fetchSpan
+  // uses, scoped to the same city (whose where-clause already widens
+  // to the board's region), over the This-weekend preset's own span
+  // (weekendRange). No other filters ride along — the preview is the
+  // board's weekend, not the failed view's. A failed peek leaves the
+  // state unsettled and the empty state in its headline-and-copy form.
+  const boardZero = boardGenuinelyEmpty({
+    city,
+    spanning: !!span?.spanning,
+    isToday,
+    loading,
+    offline,
+    dataKey,
+    queryKey,
+    total,
+    heldRows: events.length,
+  })
+  useEffect(() => {
+    if (!boardZero || !city) return
+    const range = weekendRange(cityDef(city))
+    const key = `${city}|${range.from}|${range.to}`
+    if (weekendPeek?.key === key) return
+    let cancelled = false
+    ;(async () => {
+      const params = new URLSearchParams({ page: '1', limit: String(WEEKEND_PEEK_LIMIT), dateFrom: range.from, dateTo: range.to, city })
+      const result = await readJson<{ events?: BoardEvent[] }>(`/api/events?${params.toString()}`)
+      if (cancelled || !result.ok) return
+      setWeekendPeek({ key, events: (result.data?.events ?? []).slice(0, WEEKEND_PEEK_LIMIT) })
+    })()
+    return () => { cancelled = true }
+  }, [boardZero, city, weekendPeek])
 
   useEffect(() => {
     if (!span || authStatus === 'loading') return
@@ -645,6 +686,23 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
   // display name (the NSW Coast region on the Sydney board).
   const selectedArea = city ? areaGroupFor(city, filters.suburb) : undefined
   const placeName = selectedArea ? selectedArea.label : city ? boardDisplayName(city) : 'Australia'
+  // The quiet-city empty state, when this board is genuinely empty:
+  // the approved copy for this view (a search or a single picked
+  // category names itself in the admission; the evening window says
+  // "tonight"), the weekend peek's rows rendered by the board's own
+  // row renderer, and nothing at all when the board is not genuinely
+  // empty — the branches below then keep their existing empty states.
+  const quietCategory = filters.category || (filters.categories?.length === 1 ? filters.categories[0] : '')
+  const quietCopy = boardZero ? quietBoardCopy({ place: placeName, window: effectiveWindow, category: quietCategory, search: searchQuery }) : null
+  const weekendNow = boardZero && city ? weekendRange(cityDef(city)) : null
+  const weekendKey = weekendNow ? `${city}|${weekendNow.from}|${weekendNow.to}` : null
+  const weekendEvents = weekendPeek && weekendKey && weekendPeek.key === weekendKey ? weekendPeek.events : null
+  const weekendRows = weekendEvents && weekendEvents.length > 0
+    ? showRows(weekendEvents.map((ev) => ({ ev, status: getStatus(ev, String(ev.date).slice(0, 10), today, nowMinutes), showDate: dayLabel(String(ev.date).slice(0, 10), today) })))
+    : null
+  const quietBoard = quietCopy ? (
+    <QuietBoard headline={quietCopy.headline} body={quietCopy.body} weekendRows={weekendRows} weekendCount={weekendEvents?.length ?? 0} />
+  ) : null
   return (
     <div>
       <ReachBeacon surface={searchQuery ? 'search' : 'board'} ids={events.map((event) => event.id)} term={searchQuery} />
@@ -720,13 +778,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
       ) : windowRank ? (
         <>
           {(effectiveWindow === 'now' ? nowSections.length === 0 : eveningGroups.length === 0 && windowRank.possibly.length === 0) ? (
-            <PeepEmpty
-              title="Crickets. I checked twice."
-              body="Nothing listed tonight yet. Try this weekend."
-              action={onWindowChange ? (
-                <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
-              ) : null}
-            />
+            quietBoard ?? (
+              <PeepEmpty
+                title="Crickets. I checked twice."
+                body="Nothing listed tonight yet. Try this weekend."
+                action={onWindowChange ? (
+                  <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
+                ) : null}
+              />
+            )
           ) : effectiveWindow === 'now' ? nowSections.map((section) => {
             const open = !closed[section.key]
             return (
@@ -752,13 +812,15 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
           )}
         </>
       ) : groups.length === 0 ? (
-        <PeepEmpty
-          title="Crickets. I checked twice."
-          body={effectiveWindow !== 'all' ? 'Nothing in this window. Hit “Full day”, pick another date or loosen your filters.' : 'Try widening the dates: pick another date or loosen your filters.'}
-          action={effectiveWindow !== 'all' && onWindowChange ? (
-            <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
-          ) : null}
-        />
+        quietBoard ?? (
+          <PeepEmpty
+            title="Crickets. I checked twice."
+            body={effectiveWindow !== 'all' ? 'Nothing in this window. Hit “Full day”, pick another date or loosen your filters.' : 'Try widening the dates: pick another date or loosen your filters.'}
+            action={effectiveWindow !== 'all' && onWindowChange ? (
+              <button onClick={() => onWindowChange('all')} className="mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Show the Full Day</button>
+            ) : null}
+          />
+        )
       ) : (
         groups.map((g) => {
           const open = !closed[g.key]
@@ -806,6 +868,40 @@ function PeepEmpty({ title, body, action }: { title: string; body: string; actio
       <p className="mb-1 font-semibold">{title}</p>
       <p className="mx-auto max-w-sm text-sm text-muted-foreground">{body}</p>
       {action}
+    </div>
+  )
+}
+
+/**
+ * The quiet-city empty state (see lib/board-empty): the approved
+ * headline, then — when the coming weekend has anything on — a live
+ * preview of it under its own label and the VibePeep Local button
+ * (the board city's Local board: /local resolves the same stored
+ * city the board itself is showing). With no weekend rows to show,
+ * it falls back to the headline and the full copy, Local nudge
+ * included, and no button.
+ */
+function QuietBoard({ headline, body, weekendRows, weekendCount }: { headline: string; body: string; weekendRows: ReactNode | null; weekendCount: number }) {
+  return (
+    <div>
+      <div className="px-4 pt-8 text-center">
+        <p className="font-semibold">{headline}</p>
+      </div>
+      {weekendRows ? (
+        <>
+          <div className="mt-4 flex h-11 items-center gap-3 border-y border-border px-3 sm:px-5">
+            <span className="text-sm font-semibold">This weekend</span>
+            <span className="font-mono text-xs text-muted-foreground">{weekendCount} {weekendCount === 1 ? 'event' : 'events'}</span>
+            <span className="h-px flex-1 bg-primary/25" />
+          </div>
+          {weekendRows}
+          <div className="flex justify-center px-4 py-5">
+            <a href="/local" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90">Take a peep at VibePeep Local</a>
+          </div>
+        </>
+      ) : (
+        <p className="mx-auto max-w-sm px-4 pb-8 pt-1 text-center text-sm text-muted-foreground">{body}</p>
+      )}
     </div>
   )
 }
