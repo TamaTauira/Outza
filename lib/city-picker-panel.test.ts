@@ -5,6 +5,7 @@ import {
   CITY_PICKER_PANEL_GAP,
   CITY_PICKER_PANEL_MAX_HEIGHT,
   CITY_PICKER_PANEL_MIN_WIDTH,
+  cityPickerActiveAfterKey,
   cityPickerPanelBox,
 } from './city-picker-panel'
 
@@ -54,4 +55,43 @@ test('panel shifts left rather than spilling off the right edge', () => {
   const box = cityPickerPanelBox({ bottom: 100, left: 1200, width: 304 }, { width: 1280, height: 800 })
   assert.equal(box.left, 1280 - CITY_PICKER_PANEL_EDGE - 304)
   assert.ok(box.left + box.width <= 1280 - CITY_PICKER_PANEL_EDGE)
+})
+
+test('arrow keys move the active option by one', () => {
+  assert.equal(cityPickerActiveAfterKey(0, 'ArrowDown', 9), 1)
+  assert.equal(cityPickerActiveAfterKey(4, 'ArrowDown', 9), 5)
+  assert.equal(cityPickerActiveAfterKey(4, 'ArrowUp', 9), 3)
+  assert.equal(cityPickerActiveAfterKey(8, 'ArrowUp', 9), 7)
+})
+
+test('arrow keys clamp at both ends instead of wrapping', () => {
+  assert.equal(cityPickerActiveAfterKey(8, 'ArrowDown', 9), 8)
+  assert.equal(cityPickerActiveAfterKey(0, 'ArrowUp', 9), 0)
+})
+
+test('Home and End jump to the first and last options', () => {
+  assert.equal(cityPickerActiveAfterKey(5, 'Home', 9), 0)
+  assert.equal(cityPickerActiveAfterKey(5, 'End', 9), 8)
+  assert.equal(cityPickerActiveAfterKey(0, 'End', 9), 8)
+  assert.equal(cityPickerActiveAfterKey(8, 'Home', 9), 0)
+})
+
+test('non-navigation keys leave the active option to the caller', () => {
+  for (const key of ['Enter', ' ', 'Escape', 'Tab', 'a', 'PageDown', 'ArrowLeft', 'ArrowRight']) {
+    assert.equal(cityPickerActiveAfterKey(3, key, 9), null, `key ${JSON.stringify(key)}`)
+  }
+})
+
+test('an out-of-range active index is clamped back into the list', () => {
+  assert.equal(cityPickerActiveAfterKey(12, 'ArrowDown', 9), 8)
+  assert.equal(cityPickerActiveAfterKey(-2, 'ArrowUp', 9), 0)
+  assert.equal(cityPickerActiveAfterKey(12, 'ArrowUp', 9), 8)
+})
+
+test('a single-option list never moves, and an empty list has no active option', () => {
+  assert.equal(cityPickerActiveAfterKey(0, 'ArrowDown', 1), 0)
+  assert.equal(cityPickerActiveAfterKey(0, 'ArrowUp', 1), 0)
+  assert.equal(cityPickerActiveAfterKey(0, 'End', 1), 0)
+  assert.equal(cityPickerActiveAfterKey(0, 'ArrowDown', 0), null)
+  assert.equal(cityPickerActiveAfterKey(0, 'Home', 0), null)
 })
