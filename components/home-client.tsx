@@ -453,9 +453,6 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             <p className="relative mt-2 max-w-[var(--vp-measure)] text-xs text-white/80">Describe a vibe, a date, a place or a budget. Try “plan my Saturday” and I’ll line the night up in Ask.</p>
             <div className="vp-chip-row relative mt-4 flex flex-wrap gap-2">
               {[
-                { label: 'Tonight', run: () => applyPlan('tonight') },
-                { label: 'This weekend', run: () => applyPlan('weekend') },
-                { label: 'Next week', run: () => applyPlan('next') },
                 { label: 'Free', run: () => { update({ isFree: true }); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Live music', run: () => { setFilters((f) => withCategories(f, ['Music'])); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
                 { label: 'Date night', run: () => { if (!today) return; setDay(today); pinWindow('evening'); setFilters((f) => ({ ...withCategories(f, ['Food & Drink', 'Music', 'Arts & Culture', 'Nightlife']), dateFrom: '', dateTo: '' })); rememberView('list'); requestAnimationFrame(() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })); } },
