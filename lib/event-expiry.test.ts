@@ -30,3 +30,36 @@ test('Sydney midnight is not Perth midnight', () => {
   assert.equal(isPastEvent(day, justAfterMidnight), true)
   assert.equal(isPastEvent({ date: '2026-11-25', city: 'Perth' }, justAfterMidnight), false)
 })
+
+test('a future endsAt cannot resurrect an event whose own dates are over', () => {
+  const phantom = {
+    date: '2026-11-14T00:00:00.000Z', endDate: '2026-11-14T00:00:00.000Z',
+    time: '17:00', endTime: '18:00', endsAt: '2026-11-28T07:00:00.000Z', city: 'Sydney',
+  }
+  assert.equal(isPastEvent(phantom, new Date('2026-11-28T00:00:00.000Z')), true)
+  const noEndDate = {
+    date: '2026-11-14T00:00:00.000Z',
+    time: '17:00', endTime: '18:00', endsAt: '2026-11-28T07:00:00.000Z', city: 'Sydney',
+  }
+  assert.equal(isPastEvent(noEndDate, new Date('2026-11-28T00:00:00.000Z')), true)
+})
+
+test('a multi-day event stays live until its own end date and finish', () => {
+  const festival = {
+    date: '2026-11-25T00:00:00.000Z', endDate: '2026-11-30T00:00:00.000Z',
+    time: '10:00', endTime: '18:00', endsAt: '2026-11-30T07:00:00.000Z', city: 'Sydney',
+  }
+  assert.equal(isPastEvent(festival, new Date('2026-11-28T00:00:00.000Z')), false)
+  // On the final day it ends at its own finish, not at an endsAt pushed past it.
+  const lastDay = { ...festival, endsAt: '2026-12-01T07:00:00.000Z' }
+  assert.equal(isPastEvent(lastDay, new Date('2026-11-30T01:00:00.000Z')), false)
+  assert.equal(isPastEvent(lastDay, new Date('2026-11-30T09:00:00.000Z')), true)
+})
+
+test('a future event is not past, and an after-midnight endsAt still counts', () => {
+  const future = { date: '2026-12-05T00:00:00.000Z', time: '19:00', city: 'Sydney' }
+  assert.equal(isPastEvent(future, new Date('2026-11-28T00:00:00.000Z')), false)
+  const lateFinish = { date: '2026-11-25T00:00:00.000Z', time: '17:00', endsAt: '2026-11-25T14:00:00.000Z', city: 'Sydney' }
+  assert.equal(isPastEvent(lateFinish, justAfterMidnight), false)
+  assert.equal(isPastEvent(lateFinish, new Date('2026-11-25T15:30:00.000Z')), true)
+})
