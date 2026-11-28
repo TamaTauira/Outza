@@ -37,7 +37,7 @@ export function GuideLanding(props: {
   degraded: boolean
   from: string
   to: string | null
-  suburbs: { name: string; slug: string; count: number }[]
+  suburbs: { name: string; slug: string; count: number | null }[]
   guides: TopicDef[]
   activeGuide: TopicKey | null
   otherCities: { href: string; label: string }[]
@@ -210,7 +210,7 @@ export function GuideLanding(props: {
               {suburbs.slice(0, 24).map((s) => (
                 <Link key={s.slug} href={suburbPath(city, s.name)} aria-current={s.name === suburb && !topic && !when ? 'page' : undefined}
                   className="px-3 py-1.5 rounded-lg bg-card shadow-sm text-sm hover:bg-muted transition-colors">
-                  {s.name} <span className="text-muted-foreground">({s.count})</span>
+                  {s.name}{s.count !== null && <span className="text-muted-foreground"> ({s.count})</span>}
                 </Link>
               ))}
             </div>
