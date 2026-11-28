@@ -14,7 +14,7 @@ import { createBasemap } from '@/lib/map-basemap'
 import { destroyLeafletMap, detachBasemap, mapIsLive } from '@/lib/leaflet-map'
 import { MAP_ATTRIBUTION, MAP_MAX_ZOOM } from '@/lib/map-style'
 import { loadLeaflet } from '@/lib/load-leaflet'
-import { DEFAULT_NEAR_ME_RADIUS_KM, NEAR_ME_RADII_KM, areaJumpTarget, filterPinsWithinRadius, shouldAutoLocate } from '@/lib/map-near-me'
+import { DEFAULT_NEAR_ME_RADIUS_KM, NEAR_ME_RADII_KM, areaJumpTarget, filterPinsWithinRadius, locateStateAfterInvalidation, shouldAutoLocate, type LocateState } from '@/lib/map-near-me'
 import { isPaidListing } from '@/lib/quality'
 import { armReconnect, createReconnectRetry, readJson } from '@/lib/client-fetch'
 import { isBareNetworkFault } from '@/lib/network-fault'
@@ -90,7 +90,7 @@ function markerIcon(L: any, e: { category?: string | null }, color: string, tier
 }
 
 const LOC_KEY = 'outza-location-v1' // 'granted' | 'declined' (consent only, coordinates are never stored)
-type LocState = 'idle' | 'locating' | 'found' | 'denied' | 'unavailable'
+type LocState = LocateState
 
 export function MapView({ filters, searchQuery, city = '', bleed = false, chips = null, eventsOverride, focusId = null, onSelect, countNoun = 'events' }: MapViewProps) {
   const router = useRouter()
@@ -112,7 +112,10 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
   // Incremented whenever a locate starts and whenever the visitor jumps
   // elsewhere (city change, area selection): a geolocation answer that
   // arrives after either is stale and must not re-centre the map or switch
-  // Near me back on over the new city/area.
+  // Near me back on over the new city/area. The jumps settle the locate
+  // state themselves (locateStateAfterInvalidation), so a stale callback
+  // can simply drop its answer — 'locating' never outlives the locate
+  // that set it.
   const locateGenRef = useRef(0)
   const [loc, setLoc] = useState<LocState>('idle')
   // The visitor's own position and the Near me radius. Session-only state:
@@ -267,7 +270,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
       centredCityRef.current = city
       locateGenRef.current++
       setUserPos(null)
-      setLoc((cur) => (cur === 'found' ? 'idle' : cur))
+      setLoc((cur) => locateStateAfterInvalidation(cur))
     }
     if (city) { const c = cityDef(city); map.setView([c.lat, c.lng], 12) }
     else map.setView([-27.5, 134], 4)
@@ -285,7 +288,7 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     if (!filters.suburb || filters.suburb === prev) return
     locateGenRef.current++
     setUserPos(null)
-    setLoc((cur) => (cur === 'found' ? 'idle' : cur))
+    setLoc((cur) => locateStateAfterInvalidation(cur))
     const map = mapInstanceRef.current
     if (!ready || !map || locked) return
     const target = areaJumpTarget(city, filters.suburb)
@@ -313,8 +316,13 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (gen !== locateGenRef.current) return
+        // Settle the locate state before the map work: the returns below
+        // (no map instance, Leaflet not in hand) must not strand the
+        // button in 'locating'. The browser answered and the position is
+        // held, so the locate is 'found' whatever happens to the marker.
         try { localStorage.setItem(LOC_KEY, 'granted') } catch {}
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLoc('found')
         const map = mapInstanceRef.current
         if (!map) return
         const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude]
@@ -326,7 +334,6 @@ export function MapView({ filters, searchQuery, city = '', bleed = false, chips 
           zIndexOffset: 2000, keyboard: false,
         }).bindTooltip('You are here').addTo(map)
         map.setView(ll, 14)
-        setLoc('found')
       },
       (err) => {
         if (gen !== locateGenRef.current) return
