@@ -16,7 +16,7 @@ import { SearchField } from '@/components/ui/search-field';
 import { Chip } from '@/components/ui/chip';
 import { FilterBar, filterChipClass } from '@/components/filter-bar';
 import { cn } from '@/lib/utils';
-import { CITIES, cityDef, DEFAULT_CITY } from '@/lib/cities';
+import { boardDisplayName, CITIES, cityDef, DEFAULT_CITY } from '@/lib/cities';
 import { CityPicker } from '@/components/city-picker';
 import { weekendRange } from '@/lib/seo';
 import { toast } from 'sonner';
@@ -390,7 +390,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
             ? 'weekend'
             : '';
   const customDate = !!day && planKey !== 'today' && planKey !== 'tonight' && planKey !== 'weekend';
-  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${city || DEFAULT_CITY}`;
+  const freshLine = `${lastRefresh ? `Updated ${new Date(lastRefresh).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ` : ''}${boardDisplayName(city || DEFAULT_CITY)}`;
   const shortDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   const planChips: { key: 'today' | 'tonight' | 'tomorrow' | 'weekend' | 'next'; label: string; detail: string }[] = today ? [
     { key: 'today', label: 'Today', detail: shortDate(today) },
@@ -409,7 +409,7 @@ export function HomeClient({ initialNow, initialBoard = null }: { initialNow: Sy
           <HeroCard
             priority
             image={cityHeroSrc(city)}
-            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{city || DEFAULT_CITY} tonight.</span></>}
+            title={<><span className="block">What’s on in</span><span className="vp-gradient-line block text-brand-gradient">{boardDisplayName(city || DEFAULT_CITY)} tonight.</span></>}
             lede={<p>{COPY.homeHero}</p>}
           >
             <div className="mt-5 grid gap-3 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">

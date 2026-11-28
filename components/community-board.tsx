@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { EventImage } from '@/components/event-image'
 import { Navbar } from '@/components/navbar'
-import { CITIES } from '@/lib/cities'
+import { boardDisplayName, CITIES } from '@/lib/cities'
 import { loadCommunityPage, pageKindFor, recordCommunityEntrance } from '@/lib/community'
 import {
   communityCityPath, communityPageIndexable, communityPlacePath, communitySectionPath, freshListingCount,
@@ -92,7 +92,7 @@ export async function CommunityBoard({
       <Navbar savedCount={0} />
       <main className="vp-wrap vp-page-top px-4 pb-6 sm:px-6">
         <p className="text-sm"><Link href="/local" className="text-muted-foreground hover:text-foreground">Local</Link></p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{section.label}{city ? ` in ${city.name}` : ''}</h1>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">{section.label}{city ? ` in ${boardDisplayName(city.name)}` : ''}</h1>
         <p className="mt-2 text-base text-muted-foreground">{section.blurb}</p>
         {section.key === 'school-fundraisers' && (
           <p className="mt-3 rounded-xl bg-muted px-4 py-3 text-sm text-muted-foreground">School listings show the suburb only. Street addresses and photos of children stay off the public page.</p>
@@ -107,7 +107,7 @@ export async function CommunityBoard({
             <label className="text-sm font-semibold">City
               <select name="city" defaultValue={one(search.city) || ''} className={`${field} mt-1 font-normal`}>
                 <option value="">All cities</option>
-                {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                {CITIES.map((c) => <option key={c.name} value={c.name}>{boardDisplayName(c.name)}</option>)}
               </select>
             </label>
           )}

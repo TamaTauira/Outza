@@ -43,7 +43,7 @@ function headingFor(r: Resolved) {
 
 function blurbFor(r: Resolved) {
   return r.topic
-    ? r.topic.blurb(r.city.name)
+    ? r.topic.blurb(r.topic.key === 'events' ? boardDisplayName(r.city.name) : r.city.name)
     : `Upcoming gigs, shows, markets and things to do in ${r.suburb}, ${r.city.name}, with times, venues, prices and links to the organiser.`
 }
 
@@ -93,7 +93,7 @@ export default async function LandingPage({ params }: Props) {
   const heading = headingFor(r)
   const otherCities = CITIES.filter((c) => c.name !== city.name && (counts[c.name] ?? 0) >= MIN_INDEX).map((c) => ({
     href: cityPath(c, topic?.key ?? 'events'),
-    label: topic ? topic.heading(c.name) : `Events in ${c.name}`,
+    label: topic ? topic.heading(topic.key === 'events' ? boardDisplayName(c.name) : c.name) : `Events in ${c.name}`,
   }))
   const editorial = topic ? cityEditorial(topic.key, city) : null
   const seasonLinks = model.seasons.filter((s) => s.index).map((s) => ({ href: s.path, title: seasonDef(s.key)?.h1(city.name) ?? s.key }))

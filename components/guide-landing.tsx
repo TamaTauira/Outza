@@ -98,7 +98,7 @@ export function GuideLanding(props: {
           {total > 0 && (
             <p className="mt-3 hidden text-muted-foreground leading-relaxed md:block">
               {topic?.key === 'tonight' || when === 'tonight' ? (
-                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {city.name}. Listings without a start time are marked time not listed and sit after the timed ones. Morning-only times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
+                <>Tonight covers <strong className="text-foreground">5pm onwards</strong> in {boardDisplayName(city.name)}. Listings without a start time are marked time not listed and sit after the timed ones. Morning-only times stay on the <Link href={cityPath(city, 'events')} className="text-primary underline">full events guide</Link>.</>
               ) : (
                 <>Right now there {total === 1 ? 'is' : 'are'} <strong className="text-foreground">{total}</strong> upcoming {total === 1 ? 'event' : 'events'}
                 {` in ${placeName}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
@@ -170,7 +170,7 @@ export function GuideLanding(props: {
             {total > 0 && (
               <p className="text-sm leading-relaxed text-muted-foreground md:hidden">
                 {topic?.key === 'tonight' || when === 'tonight' ? (
-                  <>Tonight covers 5pm onwards in {city.name}. Untimed listings are marked time not listed.</>
+                  <>Tonight covers 5pm onwards in {boardDisplayName(city.name)}. Untimed listings are marked time not listed.</>
                 ) : (
                   <>{total} upcoming {total === 1 ? 'event' : 'events'}{` in ${placeName}`}{when ? ` ${whenPhrase(when)}` : topic?.key === 'this-weekend' ? ' this weekend' : ''}.</>
                 )}

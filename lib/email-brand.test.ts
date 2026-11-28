@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { EMAIL_BUTTON, emailButton, emailDocument } from './email-brand'
+import { EMAIL_BUTTON, emailButton, emailDocument, emailMetaLine } from './email-brand'
 
 function channel(hex: string, index: number) {
   const n = parseInt(hex.slice(1), 16)
@@ -30,6 +30,11 @@ test('the shared email pill is orange ink on orange, 44px tall', () => {
   assert.ok(pad && line)
   assert.equal(Number(pad[1]) + Number(line[1]) + Number(pad[1]), 44)
   assert.ok(contrast('#1A1408', EMAIL_BUTTON) >= 7)
+})
+
+test('the email meta line names the board, not the stored city', () => {
+  assert.equal(emailMetaLine('Sydney', 'THIS WEEK'), 'SYDNEY & THE NSW COAST · THIS WEEK')
+  assert.equal(emailMetaLine('Melbourne', 'THIS WEEK'), 'MELBOURNE · THIS WEEK')
 })
 
 test('dark-mode shell rules keep the pill orange', () => {

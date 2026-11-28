@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Repeat, Loader2 } from 'lucide-react'
-import { CITY_NAMES } from '@/lib/cities'
+import { boardDisplayName, CITY_NAMES } from '@/lib/cities'
 import { LOCAL_CATEGORIES, RECURRENCES, MAX_SPAN_DAYS, recurrenceLabel, occurrences, addDaysStr, fmtDay } from '@/lib/local-shared'
 import { LocalImportCard, type ImportResult } from './local-import-card'
 import { LocalImageField, type LocalImage } from './local-image-field'
@@ -95,7 +95,7 @@ export function LocalSubmitForm({ defaultCity, signedIn, defaultEmail, onDone }:
           <div><label className={label} htmlFor="l-sub">Suburb</label><input id="l-sub" className={field('suburb')} value={f.suburb} onChange={set('suburb')} required /></div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={label} htmlFor="l-pc">Postcode</label><input id="l-pc" className={field('postcode')} value={f.postcode} onChange={set('postcode')} inputMode="numeric" maxLength={4} required /></div>
-            <div><label className={label} htmlFor="l-city">City</label><select id="l-city" className={field('city')} value={f.city} onChange={set('city')}>{CITY_NAMES.map((c) => <option key={c}>{c}</option>)}</select></div>
+            <div><label className={label} htmlFor="l-city">City</label><select id="l-city" className={field('city')} value={f.city} onChange={set('city')}>{CITY_NAMES.map((c) => <option key={c} value={c}>{boardDisplayName(c)}</option>)}</select></div>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">We check the address against OpenStreetMap. The address is shown publicly so people can find you.</p>

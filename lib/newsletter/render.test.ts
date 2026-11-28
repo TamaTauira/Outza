@@ -149,7 +149,7 @@ test('the digest html is personal, table-based, and Gmail-safe', () => {
   }
   assert.match(html, /<table/)
   assert.match(html, /max-width:620px/)
-  assert.match(html, /SYDNEY · THU, 29 OCT – WED, 4 NOV/)
+  assert.match(html, /SYDNEY &amp; THE NSW COAST · THU, 29 OCT – WED, 4 NOV/)
   assert.match(html, /fillcolor="#FF7A35"/)
   assert.match(html, /strokecolor="#FF7A35"/)
   assert.match(html, /height:44px;v-text-anchor:middle/)

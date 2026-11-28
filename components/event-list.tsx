@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } fro
 import { useSession } from 'next-auth/react'
 import { FilterState } from '@/components/filter-panel'
 import { areaGroupFor, CATEGORIES, knownCategories } from '@/lib/categories'
+import { boardDisplayName } from '@/lib/cities'
 import { BoardRow, BoardHeadings, GroupBar, getStatus, type BoardEvent, type Status } from '@/components/board-row'
 import { ListingBoardCard } from '@/components/listing-board-card'
 import { ItineraryButton } from '@/components/itinerary-button'
@@ -395,9 +396,10 @@ export function EventList({ filters, searchQuery, day, today, nowMinutes, timeWi
 
   const firstLoad = loading && events.length === 0
   // The summary names the selected area group when one is picked (e.g.
-  // 'Newcastle & the Hunter' on the Sydney board), else the board city.
+  // 'Newcastle & the Hunter' on the Sydney board), else the board city's
+  // display name (the NSW Coast region on the Sydney board).
   const selectedArea = city ? areaGroupFor(city, filters.suburb) : undefined
-  const placeName = selectedArea ? selectedArea.label : (city || 'Australia')
+  const placeName = selectedArea ? selectedArea.label : city ? boardDisplayName(city) : 'Australia'
   return (
     <div>
       <ReachBeacon surface={searchQuery ? 'search' : 'board'} ids={events.map((event) => event.id)} term={searchQuery} />

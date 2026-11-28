@@ -9,7 +9,7 @@ import { AuthShell } from '@/components/auth-shell'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { CITIES } from '@/lib/cities'
+import { boardDisplayName, CITIES } from '@/lib/cities'
 import { cn } from '@/lib/utils'
 import { GoogleButton } from '@/components/google-button'
 import { isPostcode, parseBirthYear } from '@/lib/profile-shared'
@@ -122,7 +122,7 @@ function SignupForm({ role, setRole }: { role: 'CONSUMER' | 'PROMOTER'; setRole:
         <Label htmlFor="homeCity">Home city</Label>
         <select id="homeCity" value={homeCity} onChange={(e) => setHomeCity(e.target.value)}
           className="w-full h-11 rounded-md border border-input bg-background px-3 text-sm">
-          {CITIES.map((c) => <option key={c.name} value={c.name}>{c.name}, {c.state}</option>)}
+          {CITIES.map((c) => <option key={c.name} value={c.name}>{boardDisplayName(c.name)}</option>)}
         </select>
       </div>
       {role === 'CONSUMER' && <ProfileFields birthYear={birthYear} homePostcode={homePostcode} onBirthYear={setBirthYear} onPostcode={setHomePostcode} />}

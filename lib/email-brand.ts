@@ -5,6 +5,7 @@ import { CLAIMED_TICK_COPY } from '@/lib/ownership'
 import { businessAbn, legalEntity } from '@/lib/site'
 import { SITE_SOCIAL } from '@/lib/site-social'
 import { CANONICAL_SITE_URL } from '@/lib/site-url'
+import { boardDisplayName } from '@/lib/cities'
 
 /**
  * Shared email chrome. Every template uses this header, button, card and footer.
@@ -133,9 +134,9 @@ export function emailDateRange(from: Date, toExclusive: Date): string {
   return start === end ? start : `${start} – ${end}`
 }
 
-/** "SYDNEY · WED, 25 NOV – THU, 26 NOV". Sits directly under the banner. */
+/** "SYDNEY & THE NSW COAST · WED, 25 NOV – THU, 26 NOV". Sits directly under the banner. */
 export function emailMetaLine(city: string, range: string): string {
-  return `${city.trim().toUpperCase()} · ${range}`
+  return `${boardDisplayName(city.trim()).toUpperCase()} · ${range}`
 }
 
 /** "The Imperial" stays as it is. "Enmore Theatre" gains one "the". */

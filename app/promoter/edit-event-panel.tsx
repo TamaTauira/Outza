@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, X } from 'lucide-react'
 import { CATEGORIES } from '@/lib/categories'
-import { CITIES } from '@/lib/cities'
+import { boardDisplayName, CITIES } from '@/lib/cities'
 import { auToIso, isoToAu } from '@/lib/au-date'
 import { applyListingField, finishTimeError, listingPayloadPrice } from '@/lib/promoter-listing'
 
@@ -67,7 +67,7 @@ export function EditEventPanel({ event, onClose, onSaved }: { event: EditableEve
       {finishTimeError({ startDate: f.date, endDate: f.endDate, time: f.time, endTime: f.endTime }) && <p className="text-sm text-destructive sm:col-span-2" role="alert">{finishTimeError({ startDate: f.date, endDate: f.endDate, time: f.time, endTime: f.endTime })}</p>}
       <input required value={f.venueName} onChange={set('venueName')} placeholder="Venue" aria-label="Venue" className={field} />
       <input value={f.venueAddress} onChange={set('venueAddress')} placeholder="Street, suburb, postcode" aria-label="Address" className={field} />
-      <select value={f.city} onChange={set('city')} className={field} aria-label="City">{CITIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
+      <select value={f.city} onChange={set('city')} className={field} aria-label="City">{CITIES.map((c) => <option key={c.name} value={c.name}>{boardDisplayName(c.name)}</option>)}</select>
       <select value={f.category} onChange={set('category')} className={field} aria-label="Category">{CATEGORIES.map((c) => <option key={c.name}>{c.name}</option>)}</select>
       <select value={f.subTag} onChange={set('subTag')} className={field} aria-label="Subtag"><option value="">Subtag (optional)</option>{subTags.map((t) => <option key={t}>{t}</option>)}</select>
       <input value={f.price} onChange={set('price')} placeholder="Price e.g. $25 or Free" aria-label="Price" disabled={f.isFree} className={field} />

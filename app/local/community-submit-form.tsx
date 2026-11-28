@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
-import { CITY_NAMES } from '@/lib/cities'
+import { boardDisplayName, CITY_NAMES } from '@/lib/cities'
 import { COMMUNITY_PRESETS, COMMUNITY_RECURRENCE, COMMUNITY_SECTIONS, presetByKey } from '@/lib/community-shared'
 
 const field = 'mt-1 h-12 w-full scroll-mt-24 rounded-lg border border-border bg-background px-3 text-base'
@@ -271,7 +271,7 @@ export function CommunitySubmitForm({ category, preset, email }: { category?: st
             <FieldError id="err-suburb" message={errors.suburb} />
           </label>
           <label className={label}>City
-            <select value={f.city} onChange={set('city')} className={field}>{CITY_NAMES.map((c) => <option key={c}>{c}</option>)}</select>
+            <select value={f.city} onChange={set('city')} className={field}>{CITY_NAMES.map((c) => <option key={c} value={c}>{boardDisplayName(c)}</option>)}</select>
           </label>
         </div>
         <label className={label}>Place name <span className="font-normal text-muted-foreground">(optional)</span>

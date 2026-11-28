@@ -44,9 +44,7 @@ export const editorialPath = (slug: string) => `/guides/${slug}`
 export const editorialForTopic = (topic: TopicKey) => EDITORIAL_GUIDES.find((g) => g.topic === topic)
 
 const CITY_NOTE: Record<string, string> = {
-  Sydney: 'This is Sydney, not the rest of NSW. Newcastle and Wollongong have their own guides.',
-  Newcastle: 'This is Newcastle, not Sydney. The two cities are not blended.',
-  Wollongong: 'This is Wollongong, not Sydney. The two cities are not blended.',
+  Sydney: 'This is Sydney & the NSW Coast: Sydney, plus Wollongong & the Illawarra and Newcastle & the Hunter.',
   Melbourne: 'This is Melbourne, not the rest of Victoria.',
   Brisbane: 'This is Brisbane. The Gold Coast has its own guide.',
   'Gold Coast': 'This is the Gold Coast, not Brisbane.',
