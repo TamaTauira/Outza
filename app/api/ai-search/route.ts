@@ -69,17 +69,43 @@ export async function POST(req: NextRequest) {
     const filters = applyHints(interpretQuery(q, today, parsed), hints, today)
     if (Number.isFinite(chipPrice) && chipPrice > 0) filters.maxPrice = Math.min(chipPrice, 2000)
     if (chipTag) filters.subTag = chipTag
+    const uncoveredPlace = filters.uncoveredPlace ?? ''
+    const pastIntent = filters.pastIntent === true
     const lat = Number(body?.lat)
     const lng = Number(body?.lng)
     let searchCity = filters.city || city
     if (filters.nearMe && !filters.city) {
       const located = Number.isFinite(lat) && Number.isFinite(lng) ? nearestCity(lat, lng) : null
       if (!located) {
-        return NextResponse.json({ filters, ai: !!parsed, relaxed: false, total: 0, results: [], needsLocation: true })
+        return NextResponse.json({ filters, ai: !!parsed, relaxed: false, total: 0, results: [], needsLocation: true, uncoveredPlace, pastIntent, degraded: false, noSignal: false })
       }
       searchCity = located
       filters.city = located
     }
+
+    // No-signal guard: the query had characters, but the parse found
+    // nothing in them — no keywords, category, suburb, named city, price,
+    // flag or non-default dates (an emoji-only ask is the shape that
+    // lands here). Running the base query anyway would present the city
+    // pool as a successful search; gibberish with no other signal stays
+    // an empty result, as the drop-keywords fallback already assumes.
+    // Picks from the UI (hints, chips) are signal too — they came from
+    // the person's taps, not from the unparseable text.
+    const defaultToDate = new Date(`${today}T00:00:00Z`)
+    defaultToDate.setUTCDate(defaultToDate.getUTCDate() + 13)
+    const hasSignal = !!(
+      filters.keywords.length || filters.category || filters.suburb || filters.city ||
+      filters.isFree || filters.paidOnly || filters.maxPrice != null || filters.lgbtiq ||
+      filters.timeOfDay !== 'any' || filters.soon || filters.nearMe ||
+      filters.dateFrom !== today || filters.dateTo !== defaultToDate.toISOString().slice(0, 10) ||
+      uncoveredPlace || pastIntent || hasHints || chipPrice > 0 || chipTag
+    )
+    if (q.length >= 2 && !hasSignal) {
+      const { noteAsk } = await import('@/lib/ops/ask-stats')
+      await noteAsk(false)
+      return NextResponse.json({ filters, ai: !!parsed, relaxed: false, total: 0, results: [], noSignal: true, uncoveredPlace, pastIntent, degraded: false })
+    }
+
     const now = sydneyNow()
 
     const price = priceWhere(filters)
@@ -115,11 +141,16 @@ export async function POST(req: NextRequest) {
       return list.filter((e) => e.category === 'Music' && !conflictsWithMusicIntent(e.title, e.description ?? '', e.subTags ?? []))
     }
 
+    // A timed-out or failed query is not a genuine no-match: run()
+    // still returns [], but the response says it was degraded so the
+    // client can own the failure instead of reporting "nothing matches".
+    let degraded = false
     const run = async (where: Prisma.EventWhereInput) => {
       const rows = await prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('statement_timeout', '4000', true)`
         return tx.event.findMany({ where, select, take: askCandidateTake(filters.dateFrom, filters.dateTo), orderBy: [{ date: 'asc' }, { time: 'asc' }] })
       }, { timeout: 6000 }).catch((err) => {
+        degraded = true
         console.error('ai-search query timed out or failed', err instanceof Error ? err.message : err)
         return [] as Awaited<ReturnType<typeof prisma.event.findMany>>
       })
@@ -163,10 +194,10 @@ export async function POST(req: NextRequest) {
 
     const matched = rankAskRows(rows, { ...filters, city: searchCity }, Math.max(rows.length, 1))
     const { noteAsk } = await import('@/lib/ops/ask-stats')
-    await noteAsk(true)
+    await noteAsk(!(degraded && matched.length === 0))
 
     return NextResponse.json({
-      filters, ai: !!parsed, relaxed, total: matched.length,
+      filters, ai: !!parsed, relaxed, total: matched.length, uncoveredPlace, pastIntent, degraded, noSignal: false,
       results: matched.slice(0, ASK_LIMIT).map((e) => ({
         id: e.id, title: e.title, date: e.date.toISOString().slice(0, 10), time: e.time, venueName: e.venueName,
         suburb: e.suburb, city: e.city, category: e.category, isFree: e.isFree, price: e.price,
